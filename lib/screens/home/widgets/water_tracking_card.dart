@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/water_provider.dart';
+import '../../../widgets/glass_container.dart';
 
 class WaterTrackingCard extends StatelessWidget {
   const WaterTrackingCard({super.key});
@@ -17,13 +18,10 @@ class WaterTrackingCard extends StatelessWidget {
         final goal = 2000; // Default goal
         final progress = (amount / goal).clamp(0.0, 1.0);
 
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: context.surfaceColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: context.glassBorderColor),
-          ),
+        return GlassContainer(
+          padding: const EdgeInsets.all(24),
+          borderRadius: 28,
+          backgroundColor: context.surfaceColor.withOpacity(0.4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -32,40 +30,115 @@ class WaterTrackingCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        LucideIcons.droplets,
-                        color: AppColors.carbs,
-                        size: 20,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.carbs.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          LucideIcons.droplets,
+                          color: AppColors.carbs,
+                          size: 20,
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text('Hydration', style: AppTypography.heading3),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'HYDRATION',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: context.textMutedColor,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              fontSize: 10,
+                            ),
+                          ),
+                          Text(
+                            'Daily Water Goal',
+                            style: AppTypography.heading3.copyWith(
+                              color: context.textPrimaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                  Text(
-                    '$amount / $goal ml',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.carbs,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '$amount',
+                        style: AppTypography.heading2.copyWith(
+                          color: AppColors.carbs,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        'of $goal ml',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: context.textMutedColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Stack(
+                children: [
+                  Container(
+                    height: 10,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: context.surfaceLightColor.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  FractionallySizedBox(
+                    widthFactor: progress,
+                    child: Container(
+                      height: 10,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.carbs,
+                            AppColors.carbs.withOpacity(0.7),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.carbs.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              LinearProgressIndicator(
-                value: progress,
-                backgroundColor: context.glassBorderColor,
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  AppColors.carbs,
-                ),
-                borderRadius: BorderRadius.circular(4),
-                minHeight: 8,
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildWaterActionButton(context, '+250ml', 250),
-                  _buildWaterActionButton(context, '+500ml', 500),
-                  _buildWaterActionButton(context, 'Custom', 0, isCustom: true),
+                  Expanded(
+                    child: _buildWaterActionButton(context, '+250', 250),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildWaterActionButton(context, '+500', 500),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildWaterActionButton(
+                      context,
+                      'Custom',
+                      0,
+                      isCustom: true,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -81,26 +154,29 @@ class WaterTrackingCard extends StatelessWidget {
     int amount, {
     bool isCustom = false,
   }) {
-    return ElevatedButton(
-      onPressed: () {
+    return GestureDetector(
+      onTap: () {
         if (isCustom) {
           _showCustomWaterDialog(context);
         } else {
           context.read<WaterProvider>().addWater(amount);
         }
       },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: context.surfaceLightColor,
-        foregroundColor: context.textPrimaryColor,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        minimumSize: const Size(80, 40),
-        textStyle: AppTypography.labelSmall.copyWith(
-          inherit: false, // Prevent interpolation issues
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        borderRadius: 16,
+        backgroundColor: context.surfaceLightColor.withOpacity(0.4),
+        borderColor: context.glassBorderColor.withOpacity(0.4),
+        child: Center(
+          child: Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: context.textPrimaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ),
-      child: Text(label),
     );
   }
 
@@ -111,9 +187,14 @@ class WaterTrackingCard extends StatelessWidget {
       builder:
           (context) => AlertDialog(
             backgroundColor: context.surfaceColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
             title: Text(
               'Add Water',
-              style: TextStyle(color: context.textPrimaryColor),
+              style: AppTypography.heading3.copyWith(
+                color: context.textPrimaryColor,
+              ),
             ),
             content: TextField(
               controller: controller,
@@ -124,13 +205,19 @@ class WaterTrackingCard extends StatelessWidget {
                 suffixStyle: TextStyle(color: context.textSecondaryColor),
                 hintText: 'Enter amount',
                 hintStyle: TextStyle(color: context.textMutedColor),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.carbs),
+                ),
               ),
               autofocus: true,
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: context.textSecondaryColor),
+                ),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -140,6 +227,13 @@ class WaterTrackingCard extends StatelessWidget {
                     Navigator.pop(context);
                   }
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.carbs,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: const Text('Add'),
               ),
             ],
