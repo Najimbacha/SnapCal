@@ -113,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                                   .fadeIn(delay: 100.ms, duration: 500.ms)
                                   .scale(
                                     begin: const Offset(0.8, 0.8),
-                                    curve: Curves.outBack,
+                                    curve: Curves.easeOutBack,
                                     duration: 500.ms,
                                   ),
                             ),
