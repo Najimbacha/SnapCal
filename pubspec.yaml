@@ -23,6 +23,7 @@ dependencies:
   # Camera & Gallery
   camera: ^0.11.0+2
   image_picker: ^1.0.7
+  mobile_scanner: ^5.1.0
 
   # HTTP & API
   dio: ^5.4.0

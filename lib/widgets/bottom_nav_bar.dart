@@ -1,8 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/theme/app_colors.dart';
+import '../core/theme/theme_colors.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-/// Custom bottom navigation bar with emphasized center button
+/// Reimagined bottom navigation bar - Floating Glass Dock
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -16,56 +20,89 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 88,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          top: BorderSide(color: AppColors.glassBorder, width: 0.5),
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              // Home Tab
-              _NavItem(
-                icon: LucideIcons.home,
-                label: 'Home',
-                isSelected: currentIndex == 0,
-                onTap: () => onTap(0),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Stack(
+        clipBehavior: Clip.none, // Allow scan button to overflow
+        alignment: Alignment.bottomCenter,
+        children: [
+          // Glass Background Bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                height: 72,
+                decoration: BoxDecoration(
+                  color: context.surfaceColor.withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: context.glassBorderColor, width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Home
+                    _NavItem(
+                      icon: LucideIcons.home,
+                      isSelected: currentIndex == 0,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        onTap(0);
+                      },
+                    ),
+                    // Log
+                    _NavItem(
+                      icon: LucideIcons.clipboardList,
+                      isSelected: currentIndex == 1,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        onTap(1);
+                      },
+                    ),
+                    // Placeholder for center button (keeps spacing)
+                    const SizedBox(width: 72),
+                    // Stats
+                    _NavItem(
+                      icon: LucideIcons.barChart3,
+                      isSelected: currentIndex == 3,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        onTap(3);
+                      },
+                    ),
+                    // Profile (Settings)
+                    _NavItem(
+                      icon: LucideIcons.user,
+                      isSelected: currentIndex == 4,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        onTap(4);
+                      },
+                    ),
+                  ],
+                ),
               ),
-
-              // Log Tab
-              _NavItem(
-                icon: LucideIcons.clipboardList,
-                label: 'Log',
-                isSelected: currentIndex == 1,
-                onTap: () => onTap(1),
-              ),
-
-              // Snap Tab (Center)
-              _SnapButton(isSelected: currentIndex == 2, onTap: () => onTap(2)),
-
-              // Assistant Tab
-              _NavItem(
-                icon: LucideIcons.sparkles,
-                label: 'AI',
-                isSelected: currentIndex == 3,
-                onTap: () => onTap(3),
-              ),
-
-              // Insights Tab
-              _NavItem(
-                icon: LucideIcons.barChart3,
-                label: 'Stats',
-                isSelected: currentIndex == 4,
-                onTap: () => onTap(4),
-              ),
-            ],
+            ),
           ),
-        ),
+          // Floating Scan Button (Overlaid)
+          Positioned(
+            top: -16, // Float above the bar
+            child: _ScanHeroButton(
+              isSelected: currentIndex == 2,
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                onTap(2);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -73,13 +110,11 @@ class BottomNavBar extends StatelessWidget {
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
-  final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _NavItem({
     required this.icon,
-    required this.label,
     required this.isSelected,
     required this.onTap,
   });
@@ -90,22 +125,26 @@ class _NavItem extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 64,
+        width: 48,
+        height: 48,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              color:
+                  isSelected ? AppColors.primary : context.textSecondaryColor,
               size: 24,
             ),
             const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+            // Selection indicator dot
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: isSelected ? 6 : 0,
+              height: 6,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
               ),
             ),
           ],
@@ -115,32 +154,47 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-class _SnapButton extends StatelessWidget {
+class _ScanHeroButton extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _SnapButton({required this.isSelected, required this.onTap});
+  const _ScanHeroButton({required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withAlpha(80),
-              blurRadius: 16,
-              spreadRadius: 2,
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.5),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+              border: Border.all(
+                color: context.textPrimaryColor.withOpacity(0.3),
+                width: 2,
+              ),
             ),
-          ],
-        ),
-        child: Icon(LucideIcons.camera, color: AppColors.background, size: 28),
-      ),
+            child: const Icon(
+              LucideIcons.camera,
+              color: Colors.black,
+              size: 32,
+            ),
+          )
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scale(
+            begin: const Offset(1.0, 1.0),
+            end: const Offset(1.05, 1.05),
+            duration: 1500.ms,
+            curve: Curves.easeInOut,
+          ),
     );
   }
 }

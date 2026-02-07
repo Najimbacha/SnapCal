@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme/app_colors.dart';
+import '../core/theme/theme_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../providers/auth_provider.dart';
 
@@ -35,8 +36,8 @@ class AuthModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
@@ -58,7 +59,7 @@ class AuthModal extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.textMuted.withAlpha(50),
+                color: context.textMutedColor.withAlpha(50),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -92,7 +93,7 @@ class AuthModal extends StatelessWidget {
           Text(
             subtitle,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondaryColor,
             ),
             textAlign: TextAlign.center,
           ),
@@ -141,7 +142,7 @@ class AuthModal extends StatelessWidget {
             child: Text(
               'Not Now',
               style: AppTypography.labelSmall.copyWith(
-                color: AppColors.textMuted,
+                color: context.textMutedColor,
               ),
             ),
           ),

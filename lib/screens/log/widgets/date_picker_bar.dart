@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/date_utils.dart' as app_date;
+
+import '../../../widgets/glass_container.dart';
 
 /// Date picker bar with navigation arrows
 class DatePickerBar extends StatelessWidget {
@@ -24,13 +27,10 @@ class DatePickerBar extends StatelessWidget {
     final isToday = app_date.DateUtils.isToday(selectedDate);
     final isFuture = app_date.DateUtils.isFuture(selectedDate);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.glassBorder),
-      ),
+    return GlassContainer(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      borderRadius: 24,
+      backgroundColor: context.surfaceColor.withOpacity(0.5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -38,35 +38,47 @@ class DatePickerBar extends StatelessWidget {
           _NavButton(icon: LucideIcons.chevronLeft, onPressed: onPrevious),
 
           // Date display
-          GestureDetector(
-            onTap: !isToday ? onToday : null,
-            child: Column(
-              children: [
-                Text(
-                  app_date.DateUtils.getDateLabel(selectedDate),
-                  style: AppTypography.heading3,
-                ),
-                if (!isToday)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Row(
-                      children: [
-                        Icon(
-                          LucideIcons.arrowRight,
-                          size: 12,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Go to Today',
-                          style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
+          Expanded(
+            child: GestureDetector(
+              onTap: !isToday ? onToday : null,
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    app_date.DateUtils.getDateLabel(selectedDate),
+                    style: AppTypography.labelLarge.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
                     ),
                   ),
-              ],
+                  if (!isToday)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            LucideIcons.calendar,
+                            size: 10,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Return to Today',
+                            style: AppTypography.bodySmall.copyWith(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                              letterSpacing: 0.5,
+                              textBaseline: TextBaseline.alphabetic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
 
@@ -101,16 +113,18 @@ class _NavButton extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: isDisabled
-              ? AppColors.surfaceLight.withAlpha(50)
-              : AppColors.surfaceLight,
+          color:
+              isDisabled
+                  ? context.surfaceLightColor.withOpacity(0.5)
+                  : context.surfaceLightColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
           icon,
-          color: isDisabled
-              ? AppColors.textMuted.withAlpha(100)
-              : AppColors.textSecondary,
+          color:
+              isDisabled
+                  ? context.textMutedColor.withOpacity(0.5)
+                  : context.textSecondaryColor,
           size: 20,
         ),
       ),

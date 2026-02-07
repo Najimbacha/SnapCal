@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/theme_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -21,7 +22,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.backgroundColor,
       body: SafeArea(
         child: Consumer3<MealProvider, SettingsProvider, AuthProvider>(
           builder: (
@@ -111,7 +112,7 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 32),
 
                     // Action Buttons (Insights)
-                    _buildInsightsButton(context),
+                    _buildInsightsButton(context, settingsProvider),
 
                     const SizedBox(height: 32),
 
@@ -146,7 +147,7 @@ class HomeScreen extends StatelessWidget {
                             .slideX(begin: 0.1, duration: 400.ms);
                       }),
                     ] else ...[
-                      _buildEmptyState(),
+                      _buildEmptyState(context),
                     ],
                   ],
                 ),
@@ -162,21 +163,38 @@ class HomeScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Good ${_getTimeOfDay()}!', style: AppTypography.heading2),
-            const SizedBox(height: 4),
-            Text(
-              'Track your nutrition today',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Good ${_getTimeOfDay()}!',
+                style: AppTypography.heading2,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                'Track your nutrition today',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: context.textSecondaryColor,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
         Row(
           children: [
+            // AI Assistant Icon
+            IconButton(
+              onPressed: () => context.push('/assistant'),
+              icon: const Icon(
+                LucideIcons.sparkles,
+                color: AppColors.primary,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 4),
             // Streak Counter
             GestureDetector(
               onTap: () => context.push('/reports'),
@@ -186,9 +204,9 @@ class HomeScreen extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: context.surfaceColor,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.glassBorder),
+                  border: Border.all(color: context.glassBorderColor),
                 ),
                 child: Row(
                   children: [
@@ -204,70 +222,154 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            // Settings Icon
-            IconButton(
-              onPressed: () => context.push('/settings'),
-              icon: const Icon(
-                LucideIcons.settings,
-                color: AppColors.textSecondary,
-              ),
-            ),
+            const SizedBox(width: 8),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildInsightsButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push('/reports'),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withAlpha(20),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primary.withAlpha(50)),
-        ),
-        child: Row(
-          children: [
-            Icon(LucideIcons.barChart3, color: AppColors.primary),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Weekly Insights', style: AppTypography.labelMedium),
-                  Text(
-                    'Check your progress and macro distribution',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+  Widget _buildInsightsButton(
+    BuildContext context,
+    SettingsProvider settingsProvider,
+  ) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            if (settingsProvider.isPro) {
+              context.push('/planner');
+            } else {
+              context.push('/paywall');
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.surfaceColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color:
+                    settingsProvider.isPro
+                        ? AppColors.primary.withOpacity(0.5)
+                        : context.glassBorderColor,
               ),
             ),
-            Icon(LucideIcons.chevronRight, color: AppColors.primary, size: 20),
-          ],
+            child: Row(
+              children: [
+                Icon(LucideIcons.chefHat, color: AppColors.primary),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Smart Meal Planner',
+                            style: AppTypography.labelMedium,
+                          ),
+                          if (settingsProvider.isPro) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'PRO',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      Text(
+                        'Generate weekly plans & grocery lists',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: context.textSecondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  settingsProvider.isPro
+                      ? LucideIcons.chevronRight
+                      : LucideIcons.lock,
+                  color:
+                      settingsProvider.isPro
+                          ? context.textSecondaryColor
+                          : AppColors.primary,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 24),
+        GestureDetector(
+          onTap: () => context.push('/reports'),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(20),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.primary.withAlpha(50)),
+            ),
+            child: Row(
+              children: [
+                Icon(LucideIcons.barChart3, color: AppColors.primary),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Weekly Insights', style: AppTypography.labelMedium),
+                      Text(
+                        'Check your progress and macro distribution',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: context.textSecondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  LucideIcons.chevronRight,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Container(
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.surfaceColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.glassBorder),
+            border: Border.all(color: context.glassBorderColor),
           ),
           child: Column(
             children: [
               Icon(
                 LucideIcons.camera,
                 size: 48,
-                color: AppColors.textSecondary,
+                color: context.textSecondaryColor,
               ),
               const SizedBox(height: 16),
               Text('No meals logged yet', style: AppTypography.heading3),
@@ -275,7 +377,7 @@ class HomeScreen extends StatelessWidget {
               Text(
                 'Tap the camera button to snap your first meal!',
                 style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.textSecondaryColor,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -317,11 +419,11 @@ class HomeScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: context.surfaceLightColor,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               LucideIcons.shieldAlert,
               color: AppColors.primary,
               size: 24,

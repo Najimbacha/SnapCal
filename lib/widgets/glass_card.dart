@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/theme/app_colors.dart';
+import '../core/theme/theme_colors.dart';
 
 /// Reusable glass-effect card widget
 class GlassCard extends StatelessWidget {
@@ -31,9 +31,9 @@ class GlassCard extends StatelessWidget {
       height: height,
       margin: margin,
       decoration: BoxDecoration(
-        color: backgroundColor ?? AppColors.surface,
+        color: backgroundColor ?? context.surfaceColor,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: AppColors.glassBorder, width: 1),
+        border: Border.all(color: context.glassBorderColor, width: 1),
       ),
       child: Padding(
         padding: padding ?? const EdgeInsets.all(16),

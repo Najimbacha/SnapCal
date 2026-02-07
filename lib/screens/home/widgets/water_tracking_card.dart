@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/water_provider.dart';
 
@@ -19,9 +20,9 @@ class WaterTrackingCard extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.surfaceColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.glassBorder),
+            border: Border.all(color: context.glassBorderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,7 +52,7 @@ class WaterTrackingCard extends StatelessWidget {
               const SizedBox(height: 16),
               LinearProgressIndicator(
                 value: progress,
-                backgroundColor: AppColors.glassBorder,
+                backgroundColor: context.glassBorderColor,
                 valueColor: const AlwaysStoppedAnimation<Color>(
                   AppColors.carbs,
                 ),
@@ -89,8 +90,8 @@ class WaterTrackingCard extends StatelessWidget {
         }
       },
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: context.surfaceLightColor,
+        foregroundColor: context.textPrimaryColor,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         minimumSize: const Size(80, 40),
         textStyle: AppTypography.labelSmall.copyWith(
@@ -109,13 +110,20 @@ class WaterTrackingCard extends StatelessWidget {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Add Water'),
+            backgroundColor: context.surfaceColor,
+            title: Text(
+              'Add Water',
+              style: TextStyle(color: context.textPrimaryColor),
+            ),
             content: TextField(
               controller: controller,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
+              style: TextStyle(color: context.textPrimaryColor),
+              decoration: InputDecoration(
                 suffixText: 'ml',
+                suffixStyle: TextStyle(color: context.textSecondaryColor),
                 hintText: 'Enter amount',
+                hintStyle: TextStyle(color: context.textMutedColor),
               ),
               autofocus: true,
             ),

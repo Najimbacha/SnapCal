@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/glass_card.dart';
 
@@ -45,7 +45,7 @@ class MacroCard extends StatelessWidget {
                 Text(
                   label,
                   style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondaryColor,
                   ),
                 ),
               ],
@@ -54,7 +54,7 @@ class MacroCard extends StatelessWidget {
             Text(
               '$consumed/${goal}g',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.textPrimary,
+                color: context.textPrimaryColor,
               ),
             ),
             const SizedBox(height: 8),
@@ -63,7 +63,7 @@ class MacroCard extends StatelessWidget {
               lineHeight: 6,
               percent: progress,
               barRadius: const Radius.circular(3),
-              backgroundColor: AppColors.surfaceLight,
+              backgroundColor: context.surfaceLightColor,
               progressColor: color,
             ),
           ],

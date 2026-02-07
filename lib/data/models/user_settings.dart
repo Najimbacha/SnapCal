@@ -45,6 +45,15 @@ class UserSettings extends HiveObject {
   @HiveField(12)
   final String dinnerTime;
 
+  @HiveField(13)
+  final double? height; // in cm
+
+  @HiveField(14)
+  final double? targetWeight; // in kg
+
+  @HiveField(15)
+  final String themeMode; // 'system', 'light', 'dark'
+
   UserSettings({
     required this.dailyCalorieGoal,
     required this.dailyProteinGoal,
@@ -59,6 +68,9 @@ class UserSettings extends HiveObject {
     this.breakfastTime = '08:00',
     this.lunchTime = '13:00',
     this.dinnerTime = '19:00',
+    this.height,
+    this.targetWeight,
+    this.themeMode = 'system',
   });
 
   UserSettings copyWith({
@@ -75,6 +87,9 @@ class UserSettings extends HiveObject {
     String? breakfastTime,
     String? lunchTime,
     String? dinnerTime,
+    double? height,
+    double? targetWeight,
+    String? themeMode,
   }) {
     return UserSettings(
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -90,6 +105,9 @@ class UserSettings extends HiveObject {
       breakfastTime: breakfastTime ?? this.breakfastTime,
       lunchTime: lunchTime ?? this.lunchTime,
       dinnerTime: dinnerTime ?? this.dinnerTime,
+      height: height ?? this.height,
+      targetWeight: targetWeight ?? this.targetWeight,
+      themeMode: themeMode ?? this.themeMode,
     );
   }
 
@@ -108,6 +126,9 @@ class UserSettings extends HiveObject {
       'breakfastTime': breakfastTime,
       'lunchTime': lunchTime,
       'dinnerTime': dinnerTime,
+      'height': height,
+      'targetWeight': targetWeight,
+      'themeMode': themeMode,
     };
   }
 
@@ -129,6 +150,9 @@ class UserSettings extends HiveObject {
       breakfastTime: json['breakfastTime'] as String? ?? '08:00',
       lunchTime: json['lunchTime'] as String? ?? '13:00',
       dinnerTime: json['dinnerTime'] as String? ?? '19:00',
+      height: json['height'] as double?,
+      targetWeight: json['targetWeight'] as double?,
+      themeMode: json['themeMode'] as String? ?? 'system',
     );
   }
 
@@ -148,6 +172,9 @@ class UserSettings extends HiveObject {
       breakfastTime: '08:00',
       lunchTime: '13:00',
       dinnerTime: '19:00',
+      height: null,
+      targetWeight: null,
+      themeMode: 'system',
     );
   }
 }

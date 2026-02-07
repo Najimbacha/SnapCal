@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/meal.dart';
 import '../../../widgets/glass_card.dart';
@@ -25,7 +26,7 @@ class RecentMealTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
+              color: context.surfaceLightColor,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(

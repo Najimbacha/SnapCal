@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_colors.dart';
 
 /// Large circular shutter button for camera capture
 class ShutterButton extends StatefulWidget {
@@ -73,26 +74,27 @@ class _ShutterButtonState extends State<ShutterButton>
               height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.textPrimary, width: 4),
+                border: Border.all(color: context.textPrimaryColor, width: 4),
               ),
               child: Center(
-                child: widget.isLoading
-                    ? SizedBox(
-                        width: 56,
-                        height: 56,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          color: AppColors.primary,
+                child:
+                    widget.isLoading
+                        ? SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: AppColors.primary,
+                          ),
+                        )
+                        : Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: context.textPrimaryColor,
+                          ),
                         ),
-                      )
-                    : Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
               ),
             ),
           );

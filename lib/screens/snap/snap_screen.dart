@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/theme_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/image_utils.dart';
 import '../../data/services/gemini_service.dart';
@@ -15,6 +17,8 @@ import '../paywall/paywall_modal.dart';
 import 'widgets/shutter_button.dart';
 import 'widgets/analyzing_overlay.dart';
 import 'widgets/result_modal.dart';
+import 'widgets/barcode_scanner_view.dart';
+import '../../data/services/barcode_service.dart';
 
 /// Camera screen for capturing and analyzing food images
 class SnapScreen extends StatefulWidget {
@@ -32,11 +36,13 @@ class _SnapScreenState extends State<SnapScreen>
   bool _isCapturing = false;
   bool _isAnalyzing = false;
   bool _hasInitializedOnce = false;
+  bool _isScanningBarcode = false;
   Uint8List? _capturedImageBytes;
-  GeminiAnalysisResult? _analysisResult;
+  NutritionResult? _analysisResult;
   String? _errorMessage;
 
   final AIService _geminiService = AIService();
+  final BarcodeService _barcodeService = BarcodeService();
 
   @override
   void initState() {
@@ -92,7 +98,7 @@ class _SnapScreenState extends State<SnapScreen>
 
       _cameraController = CameraController(
         _cameras![0],
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,
       );
 
@@ -325,11 +331,18 @@ class _SnapScreenState extends State<SnapScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.backgroundColor,
       body: Stack(
         children: [
           // Camera preview
-          if (_isInitialized && _cameraController != null)
+          if (_isScanningBarcode)
+            Positioned.fill(
+              child: BarcodeScannerView(
+                onBarcodeDetected: _handleBarcodeDetected,
+                onCancel: () => setState(() => _isScanningBarcode = false),
+              ),
+            )
+          else if (_isInitialized && _cameraController != null)
             Positioned.fill(child: CameraPreview(_cameraController!))
           else if (_errorMessage != null)
             _buildErrorState()
@@ -348,8 +361,8 @@ class _SnapScreenState extends State<SnapScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.background,
-                    AppColors.background.withAlpha(0),
+                    context.backgroundColor,
+                    context.backgroundColor.withAlpha(0),
                   ],
                 ),
               ),
@@ -387,8 +400,8 @@ class _SnapScreenState extends State<SnapScreen>
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    AppColors.background,
-                    AppColors.background.withAlpha(0),
+                    context.backgroundColor,
+                    context.backgroundColor.withAlpha(0),
                   ],
                 ),
               ),
@@ -417,13 +430,27 @@ class _SnapScreenState extends State<SnapScreen>
                         isLoading: _isCapturing,
                       ),
                       const SizedBox(width: 40),
-                      // Mock button or space for symmetry
-                      const SizedBox(width: 52),
+                      // Barcode button
+                      IconButton(
+                        onPressed:
+                            () => setState(() => _isScanningBarcode = true),
+                        icon: const Icon(
+                          LucideIcons.scan,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withAlpha(50),
+                          padding: const EdgeInsets.all(12),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Point camera or pick from gallery',
+                    _isScanningBarcode
+                        ? 'Align barcode in the center'
+                        : 'Point camera or pick from gallery',
                     style: AppTypography.bodySmall,
                   ),
                 ],
@@ -436,6 +463,36 @@ class _SnapScreenState extends State<SnapScreen>
         ],
       ),
     );
+  }
+
+  Future<void> _handleBarcodeDetected(String code) async {
+    setState(() {
+      _isScanningBarcode = false;
+      _isAnalyzing = true;
+    });
+
+    try {
+      final result = await _barcodeService.fetchProductByBarcode(code);
+      if (result != null) {
+        setState(() {
+          _analysisResult = result;
+          _isAnalyzing = false;
+        });
+        _showResultModal();
+      } else {
+        setState(() {
+          _isAnalyzing = false;
+          _errorMessage = "Product not found. Try manual entry.";
+        });
+        _showManualInputModal();
+      }
+    } catch (e) {
+      setState(() {
+        _isAnalyzing = false;
+        _errorMessage = "Barcode error: $e";
+      });
+      _showManualInputModal();
+    }
   }
 
   Widget _buildMealCounter() {
@@ -470,9 +527,9 @@ class _SnapScreenState extends State<SnapScreen>
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.surfaceColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.glassBorder),
+            border: Border.all(color: context.glassBorderColor),
           ),
           child: Text(
             '$remaining snaps left',
@@ -493,7 +550,7 @@ class _SnapScreenState extends State<SnapScreen>
           Text(
             'Loading camera...',
             style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondaryColor,
             ),
           ),
         ],
@@ -511,7 +568,7 @@ class _SnapScreenState extends State<SnapScreen>
             Icon(
               LucideIcons.cameraOff,
               size: 64,
-              color: AppColors.textSecondary,
+              color: context.textSecondaryColor,
             ),
             const SizedBox(height: 24),
             Text('Camera Unavailable', style: AppTypography.heading3),
@@ -519,7 +576,7 @@ class _SnapScreenState extends State<SnapScreen>
             Text(
               _errorMessage ?? 'Unable to access camera',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: context.textSecondaryColor,
               ),
               textAlign: TextAlign.center,
             ),

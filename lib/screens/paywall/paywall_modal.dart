@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/theme_colors.dart';
 import '../../core/theme/app_typography.dart';
 
 /// Paywall modal for upgrading to Pro
@@ -20,7 +21,7 @@ class PaywallModal extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surfaceColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -31,7 +32,7 @@ class PaywallModal extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textMuted,
+              color: context.textMutedColor,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -61,7 +62,9 @@ class PaywallModal extends StatelessWidget {
                 child: Icon(
                   LucideIcons.crown,
                   size: 36,
-                  color: AppColors.background,
+                  color:
+                      Colors
+                          .white, // Crown icon should stay white/light on yellow
                 ),
               )
               .animate()
@@ -82,7 +85,7 @@ class PaywallModal extends StatelessWidget {
           Text(
             'You\'ve reached the free limit of 3 snaps per day',
             style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondaryColor,
             ),
             textAlign: TextAlign.center,
           ),
@@ -127,7 +130,7 @@ class PaywallModal extends StatelessWidget {
                 child: Text(
                   '/month',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondaryColor,
                   ),
                 ),
               ),
@@ -179,7 +182,7 @@ class PaywallModal extends StatelessWidget {
             child: Text(
               'Maybe later',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: context.textSecondaryColor,
               ),
             ),
           ),
@@ -190,7 +193,7 @@ class PaywallModal extends StatelessWidget {
           Text(
             'Cancel anytime. Subscription auto-renews.',
             style: AppTypography.labelSmall.copyWith(
-              color: AppColors.textMuted,
+              color: context.textMutedColor,
             ),
           ),
 

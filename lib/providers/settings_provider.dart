@@ -19,6 +19,8 @@ class SettingsProvider with ChangeNotifier {
   }
 
   // Getters
+  SettingsRepository get repository =>
+      _repository; // Expose for mock subscription service
   UserSettings get settings => _settings;
   bool get isLoading => _isLoading;
   bool get isPro => _settings.isPro;
@@ -28,10 +30,13 @@ class SettingsProvider with ChangeNotifier {
   int get dailyProteinGoal => _settings.dailyProteinGoal;
   int get dailyCarbGoal => _settings.dailyCarbGoal;
   int get dailyFatGoal => _settings.dailyFatGoal;
+  double? get height => _settings.height;
+  double? get targetWeight => _settings.targetWeight;
 
   bool get notificationsEnabled => _settings.notificationsEnabled;
   bool get mealRemindersEnabled => _settings.mealRemindersEnabled;
   bool get goalAlertsEnabled => _settings.goalAlertsEnabled;
+  String get themeMode => _settings.themeMode;
 
   /// Load settings from repository
   void _loadSettings() {
@@ -180,6 +185,20 @@ class SettingsProvider with ChangeNotifier {
   /// Upgrade to pro
   Future<void> upgradeToPro() async {
     _settings = _settings.copyWith(isPro: true);
+    await _repository.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  /// Update body profile (height and target weight)
+  Future<void> updateBodyProfile({double? height, double? targetWeight}) async {
+    _settings = _settings.copyWith(height: height, targetWeight: targetWeight);
+    await _repository.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  /// Set theme mode ('system', 'light', 'dark')
+  Future<void> setThemeMode(String mode) async {
+    _settings = _settings.copyWith(themeMode: mode);
     await _repository.saveSettings(_settings);
     notifyListeners();
   }

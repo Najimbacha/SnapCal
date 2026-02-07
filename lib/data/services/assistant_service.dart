@@ -55,41 +55,43 @@ class AssistantService {
       );
 
       final response = await _dio.post(
-        '${AppConstants.geminiApiUrl}?key=${AppConstants.geminiApiKey}',
-        options: Options(headers: {'Content-Type': 'application/json'}),
+        AppConstants.groqApiUrl,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer ${AppConstants.groqApiKey}',
+            'Content-Type': 'application/json',
+          },
+        ),
         data: {
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt},
-              ],
-            },
+          'model': 'llama-3.3-70b-versatile',
+          'messages': [
+            {'role': 'user', 'content': prompt},
           ],
-          'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 2048},
+          'temperature': 0.7,
+          'max_tokens': 2048,
         },
       );
 
       if (response.statusCode == 200) {
         final data = response.data;
-        final text =
-            data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                as String?;
+        final text = data['choices']?[0]?['message']?['content'] as String?;
 
         if (text != null) {
-          final cleanedText = _cleanResponse(text);
-          final jsonResult = jsonDecode(cleanedText) as List<dynamic>;
+          print("Assistant Raw Response: $text");
+          final jsonString = _extractJson(text);
+          final jsonResult = jsonDecode(jsonString) as List<dynamic>;
           return jsonResult
               .map((e) => AssistantResponse.fromJson(e as Map<String, dynamic>))
               .toList();
         }
       }
 
-      throw GeminiException('Failed to get recommendations: Invalid response');
+      throw GeminiException('Failed to get response from Groq');
     } on DioException catch (e) {
       throw GeminiException('Network error: ${e.message}');
     } catch (e) {
       if (e is GeminiException) rethrow;
-      throw GeminiException('Assistant Error: $e');
+      throw GeminiException('AI Parser Error: $e');
     }
   }
 
@@ -107,52 +109,67 @@ class AssistantService {
     final remainingFat = targetMacros['fat']! - currentMacros['fat']!;
 
     return """
-You are a expert nutrition coach for the app SnapCal.
-Your goal is to provide specific, actionable advice and recipe suggestions based on a user's progress for today.
+You are the "SnapCal AI Nutritionist," a high-end personal health and nutrition expert.
+Your goal is to provide supportive, data-driven coaching and meal suggestions to help the user hit their goals.
 
-Todays Progress:
-- Calories: $currentCalories / $targetCalories (Remaining: $remainingCalories)
+CURRENT USER STATUS (CONTEXT):
+- Calories: $currentCalories / $targetCalories (Remaining: $remainingCalories kcal)
 - Protein: ${currentMacros['protein']}g / ${targetMacros['protein']}g (Remaining: ${remainingProtein}g)
 - Carbs: ${currentMacros['carbs']}g / ${targetMacros['carbs']}g (Remaining: ${remainingCarbs}g)
 - Fat: ${currentMacros['fat']}g / ${targetMacros['fat']}g (Remaining: ${remainingFat}g)
 
-${userQuery != null ? "User Question: $userQuery" : "The user wants general coaching and recipe suggestions for the rest of the day."}
+${userQuery != null ? "USER QUESTION: $userQuery" : "The user wants a daily progress check and personalized meal/coaching suggestions."}
 
-REQUIREMENTS:
-1. Return a JSON LIST of 2-3 items.
-2. Each item must have: 'title', 'content', 'type' (either 'recipe' or 'coaching'), and 'macros' (optional, only for recipes).
-3. 'macros' should be a map: {"calories": int, "protein": int, "carbs": int, "fat": int}.
-4. Be supportive and professional.
-5. If the user is over their limit, provide tips on how to manage the rest of the day (e.g., light activity, hydration).
-6. Recipes should be quick and easy to log in SnapCal.
+STRICT PERSONA RULES:
+1. YOU ARE A NUTRITIONIST. Start by acknowledging the user warmly if they greet you.
+2. BE SHORT AND PRECISE. Avoid fluff or long explanations. Get straight to the point.
+3. STAY UNBIASED. Provide objective, science-based nutritional advice without personal opinions or marketing bias.
+4. ALWAYS steer the conversation back to their health, macros, and nutrition goals.
+5. ONLY answer questions related to nutrition, fitness, diet (Keto, Paleo, Fasting, etc.), or cooking.
+6. If the user asks about unrelated topics, politely decline and offer to help with their diet instead.
+7. Use the user's "Remaining" macros to suggest exactly what they should eat NEXT.
+8. Be professional and encouraging.
 
-FORMAT:
+RESPONSE REQUIREMENTS:
+- You MUST return a JSON LIST [ ... ] containing 2-3 objects.
+- Each object represents a "Card" in the UI.
+- 'type' must be either 'recipe' or 'coaching'.
+- 'title' should be catchy (e.g., "Protein Power Up").
+- 'content' should be a short, actionable paragraph.
+- 'macros' (optional for recipes): {"calories": int, "protein": int, "carbs": int, "fat": int}.
+
+EXAMPLE JSON OUTPUT (ONLY RETURN THIS FORMAT):
 [
   {
-    "title": "...",
-    "content": "...",
-    "type": "recipe",
-    "macros": {"calories": 300, "protein": 25, "carbs": 10, "fat": 8}
+    "title": "Nutritionist Tip",
+    "content": "You are doing great on calories, but you need 30g more protein. Try a protein shake or chicken breast.",
+    "type": "coaching"
   },
   {
-    "title": "...",
-    "content": "...",
-    "type": "coaching"
+    "title": "Keto Lunch Idea",
+    "content": "Since you have 500 kcal left and need low carbs, try a Tuna Salad with extra virgin olive oil.",
+    "type": "recipe",
+    "macros": {"calories": 420, "protein": 35, "carbs": 5, "fat": 28}
   }
 ]
 """;
   }
 
-  String _cleanResponse(String text) {
+  String _extractJson(String text) {
+    // Look for the first '[' and last ']'
+    final regex = RegExp(r'\[[\s\S]*\]');
+    final match = regex.firstMatch(text);
+    if (match != null) {
+      return match.group(0)!;
+    }
+    // Fallback to trimming backticks
     String cleaned = text.trim();
-    if (cleaned.startsWith('```json')) {
+    if (cleaned.startsWith('```json'))
       cleaned = cleaned.substring(7);
-    } else if (cleaned.startsWith('```')) {
+    else if (cleaned.startsWith('```'))
       cleaned = cleaned.substring(3);
-    }
-    if (cleaned.endsWith('```')) {
+    if (cleaned.endsWith('```'))
       cleaned = cleaned.substring(0, cleaned.length - 3);
-    }
     return cleaned.trim();
   }
 }

@@ -10,6 +10,8 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/assistant/assistant_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'providers/auth_provider.dart';
+import 'screens/planner/meal_planner_screen.dart';
+import 'screens/paywall/paywall_screen.dart'; // Import
 
 /// App router configuration
 final appRouter = GoRouter(
@@ -33,6 +35,18 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/paywall', // New Route
+      builder: (context, state) => const PaywallScreen(),
+    ),
+    GoRoute(
+      path: '/assistant',
+      builder: (context, state) => const AssistantScreen(),
+    ),
+    GoRoute(
+      path: '/planner',
+      builder: (context, state) => const MealPlannerScreen(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
@@ -72,20 +86,20 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/assistant',
+              path: '/reports',
               pageBuilder:
                   (context, state) =>
-                      const NoTransitionPage(child: AssistantScreen()),
+                      const NoTransitionPage(child: ReportsScreen()),
             ),
           ],
         ),
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/reports',
+              path: '/profile',
               pageBuilder:
                   (context, state) =>
-                      const NoTransitionPage(child: ReportsScreen()),
+                      const NoTransitionPage(child: SettingsScreen()),
             ),
           ],
         ),

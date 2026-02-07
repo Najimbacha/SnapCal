@@ -1,17 +1,23 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/constants/app_constants.dart';
+import '../models/meal.dart';
+import '../models/meal_plan.dart'; // MealPlan model
+import '../models/grocery_item.dart'; // GroceryItem model
+import '../models/user_settings.dart'; // UserSettings model
 
-/// Response from Gemini API
-class GeminiAnalysisResult {
+/// Generic Nutrition Result from AI, Barcode, or Manual Entry
+class NutritionResult {
   final String foodName;
   final int calories;
   final int protein;
   final int carbs;
   final int fat;
 
-  GeminiAnalysisResult({
+  NutritionResult({
     required this.foodName,
     required this.calories,
     required this.protein,
@@ -19,8 +25,8 @@ class GeminiAnalysisResult {
     required this.fat,
   });
 
-  factory GeminiAnalysisResult.fromJson(Map<String, dynamic> json) {
-    return GeminiAnalysisResult(
+  factory NutritionResult.fromJson(Map<String, dynamic> json) {
+    return NutritionResult(
       foodName: json['food_name'] as String? ?? 'Unknown Food',
       calories: json['calories'] as int? ?? 0,
       protein: json['protein'] as int? ?? 0,
@@ -37,7 +43,7 @@ class AIService {
   AIService() : _dio = Dio();
 
   /// Main method: Tries Gemini first, falls back to Groq, then Manual
-  Future<GeminiAnalysisResult> analyzeFood(Uint8List imageBytes) async {
+  Future<NutritionResult> analyzeFood(Uint8List imageBytes) async {
     String geminiError = "Unknown";
     try {
       // 1. Try Free Gemini First
@@ -60,7 +66,7 @@ class AIService {
   }
 
   /// Primary: Google Gemini 2.5 Flash
-  Future<GeminiAnalysisResult> _detectWithGemini(Uint8List imageBytes) async {
+  Future<NutritionResult> _detectWithGemini(Uint8List imageBytes) async {
     try {
       final base64Image = base64Encode(imageBytes);
 
@@ -107,7 +113,7 @@ class AIService {
   }
 
   /// Fallback: Groq (Llama 3.2 11B Vision)
-  Future<GeminiAnalysisResult> _detectWithGroq(Uint8List imageBytes) async {
+  Future<NutritionResult> _detectWithGroq(Uint8List imageBytes) async {
     try {
       final base64Image = base64Encode(imageBytes);
       final imageUrl = "data:image/jpeg;base64,$base64Image";
@@ -151,38 +157,91 @@ class AIService {
     }
   }
 
-  /// Shared JSON Parser
-  GeminiAnalysisResult _parseResponse(String text) {
+  /// Shared JSON Parser (Runs in Background Isolate)
+  Future<NutritionResult> _parseResponse(String text) async {
     print("Raw API Response: $text"); // Requested Debug Log
-
     try {
-      String jsonString = _extractJson(text);
-      final jsonResult = jsonDecode(jsonString) as Map<String, dynamic>;
-      return GeminiAnalysisResult.fromJson(jsonResult);
+      return await compute(_parseNutritionJsonInIsolate, text);
     } catch (e) {
       print("Parsing Error: $e");
       throw GeminiException('Failed to parse JSON');
     }
   }
 
-  /// Extracts JSON object from raw text using Regex
-  String _extractJson(String rawResponse) {
-    final regex = RegExp(r'\{[\s\S]*\}');
-    final match = regex.firstMatch(rawResponse);
-    if (match != null) {
-      return match.group(0)!;
-    }
-    throw GeminiException('No JSON found in response');
-  }
-
-  GeminiAnalysisResult _getFallbackResult([String? errorMessage]) {
-    return GeminiAnalysisResult(
+  NutritionResult _getFallbackResult([String? errorMessage]) {
+    return NutritionResult(
       foodName: errorMessage != null ? 'Error: $errorMessage' : 'Unknown Food',
       calories: 0,
       protein: 0,
       carbs: 0,
       fat: 0,
     );
+  }
+
+  /// Generate Weekly Meal Plan & Grocery List
+  Future<PlanGenerationResult?> generateWeeklyMealPlan(
+    UserSettings settings,
+  ) async {
+    try {
+      final prompt = _buildMealPlanPrompt(settings);
+
+      // We reuse the Gemini structure but with text input only
+      final response = await _dio.post(
+        '${AppConstants.geminiApiUrl}?key=${AppConstants.geminiApiKey}',
+        options: Options(headers: {'Content-Type': 'application/json'}),
+        data: {
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt},
+              ],
+            },
+          ],
+          'generationConfig': {
+            // Higher output tokens for a full week plan
+            'maxOutputTokens': 4096,
+            'temperature': 0.7, // More creativity for recipes
+          },
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final text =
+            data['candidates']?[0]?['content']?['parts']?[0]?['text']
+                as String?;
+        if (text != null) {
+          // Parse in background isolate
+          return await compute(_parseMealPlanJsonInIsolate, text);
+        }
+      }
+      return null;
+    } catch (e) {
+      print("Meal Planning Error: $e");
+      return null;
+    }
+  }
+
+  String _buildMealPlanPrompt(UserSettings settings) {
+    return '''
+    Generate a 7-day weekly meal plan and a consolidated grocery list.
+    Target Calories: ${settings.dailyCalorieGoal} kcal/day.
+    Target Macros: Protein ${settings.dailyProteinGoal}g, Carbs ${settings.dailyCarbGoal}g, Fat ${settings.dailyFatGoal}g.
+    
+    The output MUST be valid JSON with this exact structure:
+    {
+      "week_plan": {
+        "0": [{"name": "Breakfast name", "calories": 500}, ...], // 0 is Monday
+        ...
+        "6": [...] // 6 is Sunday
+      },
+      "grocery_list": [
+        {"name": "Item name", "amount": "Qty", "category": "Produce/Meat/Dairy/etc"}
+      ]
+    }
+    Include 3 meals (Breakfast, Lunch, Dinner) per day.
+    Keep names concise.
+    ''';
   }
 
   /// Extracts detailed error message from DioException
@@ -203,6 +262,78 @@ class AIService {
     }
     return error.toString();
   }
+
+  // --- Static/Top-Level Functions for Compute ---
+
+  static NutritionResult _parseNutritionJsonInIsolate(String text) {
+    final String jsonString = _extractJsonStatic(text);
+    final jsonResult = jsonDecode(jsonString) as Map<String, dynamic>;
+    return NutritionResult.fromJson(jsonResult);
+  }
+
+  static PlanGenerationResult _parseMealPlanJsonInIsolate(String text) {
+    String jsonString = _extractJsonStatic(text);
+    final json = jsonDecode(jsonString) as Map<String, dynamic>;
+
+    // Parse Plan
+    final weekPlanMap = json['week_plan'] as Map<String, dynamic>;
+    final Map<int, List<Meal>> weeklyMeals = {};
+
+    weekPlanMap.forEach((key, value) {
+      final dayIndex = int.parse(key);
+      final mealsList =
+          (value as List)
+              .map(
+                (m) => Meal(
+                  id: const Uuid().v4(),
+                  timestamp:
+                      DateTime.now().millisecondsSinceEpoch, // Placeholder
+                  dateString: 'Day $dayIndex', // Placeholder
+                  foodName: m['name'],
+                  calories:
+                      m['calories'] is int
+                          ? m['calories']
+                          : (m['calories'] as num).round(),
+                  macros: Macros.empty(), // Details not fetched to save tokens
+                ),
+              )
+              .toList();
+      weeklyMeals[dayIndex] = mealsList;
+    });
+
+    final plan = MealPlan.createEmpty().copyWith(weeklyMeals: weeklyMeals);
+
+    // Parse Grocery List
+    final groceryListJson = json['grocery_list'] as List;
+    final groceryList =
+        groceryListJson
+            .map(
+              (item) => GroceryItem(
+                name: item['name'],
+                amount: item['amount'],
+                category: item['category'],
+              ),
+            )
+            .toList();
+
+    return PlanGenerationResult(plan: plan, groceryList: groceryList);
+  }
+
+  static String _extractJsonStatic(String rawResponse) {
+    final regex = RegExp(r'\{[\s\S]*\}');
+    final match = regex.firstMatch(rawResponse);
+    if (match != null) {
+      return match.group(0)!;
+    }
+    throw GeminiException('No JSON found in response');
+  }
+}
+
+class PlanGenerationResult {
+  final MealPlan plan;
+  final List<GroceryItem> groceryList;
+
+  PlanGenerationResult({required this.plan, required this.groceryList});
 }
 
 /// Custom exception for Gemini API errors

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 
 /// Large circular progress indicator for calorie tracking
@@ -33,7 +34,7 @@ class CalorieRing extends StatelessWidget {
             child: CustomPaint(
               painter: _RingPainter(
                 progress: 1.0,
-                color: AppColors.surfaceLight,
+                color: context.surfaceLightColor,
                 strokeWidth: 16,
               ),
             ),
@@ -58,14 +59,14 @@ class CalorieRing extends StatelessWidget {
               Text(
                 consumed.toString(),
                 style: AppTypography.displayLarge.copyWith(
-                  color: AppColors.textPrimary,
+                  color: context.textPrimaryColor,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Kcal Eaten',
                 style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.textSecondaryColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -75,13 +76,13 @@ class CalorieRing extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
+                  color: context.surfaceLightColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${goal - consumed} left',
                   style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondaryColor,
                   ),
                 ),
               ),
@@ -111,20 +112,22 @@ class _RingPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
 
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round;
 
     if (hasGlow) {
       // Add glow effect
-      final glowPaint = Paint()
-        ..color = color.withAlpha(60)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth + 8
-        ..strokeCap = StrokeCap.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      final glowPaint =
+          Paint()
+            ..color = color.withAlpha(60)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = strokeWidth + 8
+            ..strokeCap = StrokeCap.round
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
 
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),

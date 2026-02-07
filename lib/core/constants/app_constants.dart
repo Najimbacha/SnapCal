@@ -4,39 +4,46 @@ class AppConstants {
 
   // API Configuration
   // TODO: Replace with your actual API keys (do NOT commit real keys!)
-  static const String geminiApiKey = 'YOUR_GEMINI_API_KEY_HERE';
+  static const String geminiApiKey = 'AIzaSyCdAdk3ER8ZD8Gmj36plQCTiDVbKJMeeB0';
   static const String geminiApiUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
 
-  static const String groqApiKey = 'YOUR_GROQ_API_KEY_HERE';
+  static const String groqApiKey =
+      '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';
   static const String groqApiUrl =
       'https://api.groq.com/openai/v1/chat/completions';
 
   // System Prompt for Gemini
   static const String geminiSystemPrompt = '''
-You are a Nutritionist AI. Analyze this image.
-Output ONLY a raw JSON object. 
-Do NOT use markdown code blocks (```). 
-Do NOT add any intro text. 
-Do NOT explain your answer.
+You are a Nutritionist AI analyzing food images.
 
-Return this exact JSON structure:
+Output ONLY a raw JSON object with no markdown formatting, no code blocks, no explanatory text.
+
+Return this exact structure:
 {
-  "food_name": "String (descriptive name)",
-  "calories": Integer,
-  "protein": Integer (grams),
-  "carbs": Integer (grams),
-  "fat": Integer (grams)
+  "food_name": "string",
+  "calories": number,
+  "protein": number,
+  "carbs": number,
+  "fat": number
 }
 
-If the image is unclear, guess. 
-If it is NOT food, return: {"food_name": "Unknown Food", "calories": 0, "protein": 0, "carbs": 0, "fat": 0}
+Rules:
+- All nutritional values are for a typical single serving
+- protein, carbs, fat are in grams
+- If multiple food items, combine into one entry or focus on the main item
+- If unclear or partially visible food, provide your best estimate
+- If NOT food at all, return: {"food_name": "Not food", "calories": 0, "protein": 0, "carbs": 0, "fat": 0}
+
+Example valid output:
+{"food_name": "Grilled chicken breast", "calories": 165, "protein": 31, "carbs": 0, "fat": 4}
 ''';
 
   // Storage Keys
   static const String mealsBoxName = 'meals_box';
   static const String settingsBoxName = 'settings_box';
   static const String waterBoxName = 'water_box';
+  static const String assistantBoxName = 'assistant_box';
   static const String settingsKey = 'user_settings';
 
   // Default User Goals
@@ -50,8 +57,8 @@ If it is NOT food, return: {"food_name": "Unknown Food", "calories": 0, "protein
   static const int freeTierDailyMealLimit = 3;
 
   // Image Processing
-  static const int maxImageSize = 1024;
-  static const int imageQuality = 85;
+  static const int maxImageSize = 800;
+  static const int imageQuality = 70;
 
   // Animation Durations
   static const Duration shortAnimation = Duration(milliseconds: 200);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 
 /// Overlay shown while analyzing food image
@@ -10,7 +11,7 @@ class AnalyzingOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.background.withAlpha(230),
+      color: context.backgroundColor.withAlpha(230),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -33,7 +34,7 @@ class AnalyzingOverlay extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.auto_fix_high,
-                        color: AppColors.background,
+                        color: context.backgroundColor,
                         size: 28,
                       ),
                     ),
@@ -63,7 +64,7 @@ class AnalyzingOverlay extends StatelessWidget {
             Text(
               'This will only take a moment',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: context.textSecondaryColor,
               ),
             ),
           ],
