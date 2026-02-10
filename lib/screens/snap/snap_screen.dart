@@ -370,24 +370,19 @@ class _SnapScreenState extends State<SnapScreen>
   /// Flash toggle button
   Widget _buildFlashButton(SnapController controller) {
     IconData icon;
-    String tooltip;
 
     switch (controller.flashMode) {
       case FlashMode.off:
         icon = LucideIcons.zapOff;
-        tooltip = 'Flash Off';
         break;
       case FlashMode.auto:
         icon = LucideIcons.zap;
-        tooltip = 'Flash Auto';
         break;
       case FlashMode.always:
         icon = LucideIcons.zap;
-        tooltip = 'Flash On';
         break;
       case FlashMode.torch:
         icon = LucideIcons.sun;
-        tooltip = 'Torch';
         break;
     }
 
