@@ -3,9 +3,11 @@ import 'gemini_service.dart'; // For NutritionResult
 
 /// Service for looking up food by barcode via OpenFoodFacts API
 class BarcodeService {
-  final Dio _dio;
+  static final BarcodeService _instance = BarcodeService._internal();
+  factory BarcodeService() => _instance;
+  BarcodeService._internal() : _dio = Dio();
 
-  BarcodeService() : _dio = Dio();
+  final Dio _dio;
 
   /// Fetches product data from OpenFoodFacts
   Future<NutritionResult?> fetchProductByBarcode(String barcode) async {

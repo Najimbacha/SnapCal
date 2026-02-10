@@ -6,9 +6,9 @@ class AppColors {
 
   // ============= SHARED ACCENT COLORS (Same in both themes) =============
 
-  // Primary Accent
-  static const Color primary = Color(0xFF4ADE80);
-  static const Color primaryDark = Color(0xFF22C55E);
+  // Primary Accent - Emerald (Health/Wellness)
+  static const Color primary = Color(0xFF10B981);
+  static const Color primaryDark = Color(0xFF059669);
 
   // Macro Colors
   static const Color protein = Color(0xFFA78BFA);
@@ -16,13 +16,13 @@ class AppColors {
   static const Color fat = Color(0xFFFB923C);
 
   // Status Colors
-  static const Color success = Color(0xFF4ADE80);
+  static const Color success = Color(0xFF10B981);
   static const Color error = Color(0xFFEF4444);
   static const Color warning = Color(0xFFFBBF24);
 
   // Gradient for primary button
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
+    colors: [Color(0xFF10B981), Color(0xFF059669)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

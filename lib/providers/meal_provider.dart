@@ -25,13 +25,23 @@ class MealProvider with ChangeNotifier {
   String get selectedDate => _selectedDate;
   bool get isLoading => _isLoading;
 
+  int? _memoizedTodaysCalories;
+  Macros? _memoizedTodaysMacros;
+
   /// Get today's total calories
   int get todaysTotalCalories {
-    return _todaysMeals.fold(0, (sum, meal) => sum + meal.calories);
+    if (_memoizedTodaysCalories != null) return _memoizedTodaysCalories!;
+    _memoizedTodaysCalories = _todaysMeals.fold<int>(
+      0,
+      (sum, meal) => sum + meal.calories,
+    );
+    return _memoizedTodaysCalories!;
   }
 
   /// Get today's total macros
   Macros get todaysTotalMacros {
+    if (_memoizedTodaysMacros != null) return _memoizedTodaysMacros!;
+
     int protein = 0;
     int carbs = 0;
     int fat = 0;
@@ -42,12 +52,13 @@ class MealProvider with ChangeNotifier {
       fat += meal.macros.fat;
     }
 
-    return Macros(protein: protein, carbs: carbs, fat: fat);
+    _memoizedTodaysMacros = Macros(protein: protein, carbs: carbs, fat: fat);
+    return _memoizedTodaysMacros!;
   }
 
   /// Get selected date's total calories
   int get selectedDateTotalCalories {
-    return _selectedDateMeals.fold(0, (sum, meal) => sum + meal.calories);
+    return _selectedDateMeals.fold<int>(0, (sum, meal) => sum + meal.calories);
   }
 
   /// Get today's meal count
@@ -62,6 +73,8 @@ class MealProvider with ChangeNotifier {
     notifyListeners();
 
     _todaysMeals = _repository.getTodaysMeals();
+    _memoizedTodaysCalories = null;
+    _memoizedTodaysMacros = null;
 
     _isLoading = false;
     notifyListeners();
@@ -159,7 +172,7 @@ class MealProvider with ChangeNotifier {
       final date = today.subtract(Duration(days: i));
       final dateString = app_date.DateUtils.getDateString(date);
       final meals = _repository.getMealsByDate(dateString);
-      final total = meals.fold(0, (sum, meal) => sum + meal.calories);
+      final total = meals.fold<int>(0, (sum, meal) => sum + meal.calories);
       trend.add(total.toDouble());
     }
     return trend;
@@ -200,7 +213,7 @@ class MealProvider with ChangeNotifier {
       final date = today.subtract(Duration(days: i));
       final dateString = app_date.DateUtils.getDateString(date);
       final meals = _repository.getMealsByDate(dateString);
-      final totalCals = meals.fold(0, (sum, meal) => sum + meal.calories);
+      final totalCals = meals.fold<int>(0, (sum, meal) => sum + meal.calories);
 
       // Considered successful if logged something and not grossly over goal (>110%)
       // Or if exactly 0, maybe they didn't track, so not a "success".

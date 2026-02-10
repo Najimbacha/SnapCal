@@ -16,6 +16,7 @@ import 'providers/assistant_provider.dart';
 import 'providers/metrics_provider.dart';
 import 'providers/planner_provider.dart';
 import 'providers/water_provider.dart'; // Re-added
+import 'data/services/connectivity_service.dart';
 import 'screens/splash/splash_screen.dart';
 
 void main() {
@@ -77,6 +78,7 @@ class _SnapCalAppState extends State<SnapCalApp> {
         // Initialization Complete: Build App Tree
         return MultiProvider(
           providers: [
+            ChangeNotifierProvider(create: (_) => ConnectivityService()),
             ChangeNotifierProvider(create: (_) => AuthProvider()),
             ChangeNotifierProvider(
               create: (_) => SettingsProvider(_settingsRepository),
@@ -90,17 +92,23 @@ class _SnapCalAppState extends State<SnapCalApp> {
             ChangeNotifierProvider<AssistantProvider>(
               create: (context) => AssistantProvider(_assistantRepository),
             ),
-            ChangeNotifierProvider(
+            ChangeNotifierProxyProvider<SettingsProvider, MetricsProvider>(
               create:
                   (context) =>
                       MetricsProvider(context.read<SettingsProvider>()),
+              update:
+                  (context, settings, metrics) =>
+                      metrics!..updateSettings(settings),
             ),
-            ChangeNotifierProvider(
+            ChangeNotifierProxyProvider<SettingsProvider, PlannerProvider>(
               create:
                   (context) => PlannerProvider(
                     _aiService,
                     context.read<SettingsProvider>(),
                   ),
+              update:
+                  (context, settings, planner) =>
+                      planner!..updateSettings(settings),
             ),
           ],
           child: const ConnectedApp(),

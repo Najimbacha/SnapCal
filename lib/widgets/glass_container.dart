@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../core/theme/theme_colors.dart';
 
+/// Performance-tuned glass container widget.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final double? width;
@@ -28,25 +29,31 @@ class GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      margin: margin,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              color: backgroundColor ?? context.glassBackgroundColor,
-              borderRadius: BorderRadius.circular(borderRadius),
-              border: Border.all(
-                color: borderColor ?? context.glassBorderColor,
-                width: 1.5,
-              ),
+    return RepaintBoundary(
+      child: Container(
+        width: width,
+        height: height,
+        margin: margin,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: blur,
+              sigmaY: blur,
+              tileMode: TileMode.clamp,
             ),
-            child: child,
+            child: Container(
+              padding: padding,
+              decoration: BoxDecoration(
+                color: backgroundColor ?? context.glassBackgroundColor,
+                borderRadius: BorderRadius.circular(borderRadius),
+                border: Border.all(
+                  color: borderColor ?? context.glassBorderColor,
+                  width: 1.0, // Thinner border for better sub-pixel rendering
+                ),
+              ),
+              child: child,
+            ),
           ),
         ),
       ),

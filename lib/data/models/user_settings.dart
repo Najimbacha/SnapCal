@@ -54,6 +54,9 @@ class UserSettings extends HiveObject {
   @HiveField(15)
   final String themeMode; // 'system', 'light', 'dark'
 
+  @HiveField(16)
+  final bool onboardingComplete;
+
   UserSettings({
     required this.dailyCalorieGoal,
     required this.dailyProteinGoal,
@@ -71,6 +74,7 @@ class UserSettings extends HiveObject {
     this.height,
     this.targetWeight,
     this.themeMode = 'system',
+    this.onboardingComplete = false,
   });
 
   UserSettings copyWith({
@@ -90,6 +94,7 @@ class UserSettings extends HiveObject {
     double? height,
     double? targetWeight,
     String? themeMode,
+    bool? onboardingComplete,
   }) {
     return UserSettings(
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -108,6 +113,7 @@ class UserSettings extends HiveObject {
       height: height ?? this.height,
       targetWeight: targetWeight ?? this.targetWeight,
       themeMode: themeMode ?? this.themeMode,
+      onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     );
   }
 
@@ -129,6 +135,7 @@ class UserSettings extends HiveObject {
       'height': height,
       'targetWeight': targetWeight,
       'themeMode': themeMode,
+      'onboardingComplete': onboardingComplete,
     };
   }
 
@@ -153,6 +160,7 @@ class UserSettings extends HiveObject {
       height: json['height'] as double?,
       targetWeight: json['targetWeight'] as double?,
       themeMode: json['themeMode'] as String? ?? 'system',
+      onboardingComplete: json['onboardingComplete'] as bool? ?? false,
     );
   }
 
@@ -175,6 +183,7 @@ class UserSettings extends HiveObject {
       height: null,
       targetWeight: null,
       themeMode: 'system',
+      onboardingComplete: false,
     );
   }
 }

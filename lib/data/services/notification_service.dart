@@ -132,6 +132,7 @@ class NotificationService {
           channelDescription: 'Alerts when you hit your nutrition goals',
           importance: Importance.max,
           priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
         ),
         iOS: DarwinNotificationDetails(),
       ),

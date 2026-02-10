@@ -33,13 +33,14 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
       height: fields[13] as double?,
       targetWeight: fields[14] as double?,
       themeMode: (fields[15] as String?) ?? 'system',
+      onboardingComplete: (fields[16] as bool?) ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserSettings obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.dailyCalorieGoal)
       ..writeByte(1)
@@ -71,7 +72,9 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
       ..writeByte(14)
       ..write(obj.targetWeight)
       ..writeByte(15)
-      ..write(obj.themeMode);
+      ..write(obj.themeMode)
+      ..writeByte(16)
+      ..write(obj.onboardingComplete);
   }
 
   @override

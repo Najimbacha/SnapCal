@@ -1,16 +1,11 @@
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/utils/image_utils.dart';
-import '../../data/services/gemini_service.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../paywall/paywall_modal.dart';
@@ -18,7 +13,9 @@ import 'widgets/shutter_button.dart';
 import 'widgets/analyzing_overlay.dart';
 import 'widgets/result_modal.dart';
 import 'widgets/barcode_scanner_view.dart';
-import '../../data/services/barcode_service.dart';
+import 'widgets/food_frame_guide.dart';
+import '../../data/services/connectivity_service.dart';
+import 'snap_controller.dart';
 
 /// Camera screen for capturing and analyzing food images
 class SnapScreen extends StatefulWidget {
@@ -30,37 +27,24 @@ class SnapScreen extends StatefulWidget {
 
 class _SnapScreenState extends State<SnapScreen>
     with WidgetsBindingObserver, RouteAware {
-  CameraController? _cameraController;
-  List<CameraDescription>? _cameras;
-  bool _isInitialized = false;
-  bool _isCapturing = false;
-  bool _isAnalyzing = false;
+  late final SnapController _controller;
   bool _hasInitializedOnce = false;
-  bool _isScanningBarcode = false;
-  Uint8List? _capturedImageBytes;
-  NutritionResult? _analysisResult;
-  String? _errorMessage;
-
-  final AIService _geminiService = AIService();
-  final BarcodeService _barcodeService = BarcodeService();
 
   @override
   void initState() {
     super.initState();
+    _controller = SnapController();
     WidgetsBinding.instance.addObserver(this);
-    // Don't initialize camera here - wait until screen is visible
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Initialize camera only on first visible build to avoid blocking main thread
     if (!_hasInitializedOnce) {
       _hasInitializedOnce = true;
-      // Use a post-frame callback to avoid blocking the build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          _initializeCamera();
+          _controller.initializeCamera();
         }
       });
     }
@@ -69,159 +53,14 @@ class _SnapScreenState extends State<SnapScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cameraController?.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      return;
-    }
-
-    if (state == AppLifecycleState.inactive) {
-      _cameraController?.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      _initializeCamera();
-    }
-  }
-
-  Future<void> _initializeCamera() async {
-    try {
-      _cameras = await availableCameras();
-      if (_cameras!.isEmpty) {
-        setState(() {
-          _errorMessage = 'No cameras available';
-        });
-        return;
-      }
-
-      _cameraController = CameraController(
-        _cameras![0],
-        ResolutionPreset.medium,
-        enableAudio: false,
-      );
-
-      await _cameraController!.initialize();
-
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to initialize camera';
-      });
-    }
-  }
-
-  Future<void> _captureAndAnalyze() async {
-    // Check free tier limit
-    final mealProvider = context.read<MealProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
-
-    if (!settingsProvider.canAddMeal(mealProvider.todaysMealCount)) {
-      _showPaywall();
-      return;
-    }
-
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      return;
-    }
-
-    setState(() {
-      _isCapturing = true;
-    });
-
-    try {
-      final XFile imageFile = await _cameraController!.takePicture();
-      final bytes = await imageFile.readAsBytes();
-
-      // Compress image
-      final compressedBytes = ImageUtils.compressImageBytes(bytes);
-
-      setState(() {
-        _capturedImageBytes = compressedBytes;
-        _isCapturing = false;
-        _isAnalyzing = true;
-      });
-
-      // Analyze with Gemini
-      try {
-        final result = await _geminiService.analyzeFood(compressedBytes);
-        setState(() {
-          _analysisResult = result;
-          _isAnalyzing = false;
-        });
-        _showResultModal();
-      } on GeminiException catch (e) {
-        setState(() {
-          _isAnalyzing = false;
-          _errorMessage = e.message;
-        });
-        // Show manual input option
-        _showManualInputModal();
-      }
-    } catch (e) {
-      setState(() {
-        _isCapturing = false;
-        _errorMessage = 'Failed to capture image';
-      });
-    }
-  }
-
-  Future<void> _pickFromGallery() async {
-    // Check free tier limit
-    final mealProvider = context.read<MealProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
-
-    if (!settingsProvider.canAddMeal(mealProvider.todaysMealCount)) {
-      _showPaywall();
-      return;
-    }
-
-    final ImagePicker picker = ImagePicker();
-    try {
-      final XFile? imageFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-
-      if (imageFile == null) return;
-
-      final bytes = await imageFile.readAsBytes();
-
-      // Compress image
-      final compressedBytes = ImageUtils.compressImageBytes(bytes);
-
-      setState(() {
-        _capturedImageBytes = compressedBytes;
-        _isAnalyzing = true;
-      });
-
-      // Analyze with Gemini
-      try {
-        final result = await _geminiService.analyzeFood(compressedBytes);
-        setState(() {
-          _analysisResult = result;
-          _isAnalyzing = false;
-        });
-        _showResultModal();
-      } on GeminiException catch (e) {
-        setState(() {
-          _isAnalyzing = false;
-          _errorMessage = e.message;
-        });
-        // Show manual input option
-        _showManualInputModal();
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to pick image';
-      });
+    if (state == AppLifecycleState.resumed) {
+      _controller.initializeCamera();
     }
   }
 
@@ -253,10 +92,10 @@ class _SnapScreenState extends State<SnapScreen>
               bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
             child: ResultModal(
-              imageBytes: _capturedImageBytes,
-              result: _analysisResult,
+              imageBytes: _controller.capturedImageBytes,
+              result: _controller.analysisResult,
               onSave: _saveMeal,
-              onCancel: _cancelCapture,
+              onCancel: _controller.reset,
             ),
           ),
     );
@@ -274,10 +113,10 @@ class _SnapScreenState extends State<SnapScreen>
               bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
             child: ResultModal(
-              imageBytes: _capturedImageBytes,
+              imageBytes: _controller.capturedImageBytes,
               result: null,
               onSave: _saveMeal,
-              onCancel: _cancelCapture,
+              onCancel: _controller.reset,
             ),
           ),
     );
@@ -291,7 +130,6 @@ class _SnapScreenState extends State<SnapScreen>
     int fat,
   ) async {
     Navigator.pop(context); // Close modal
-
     final mealProvider = context.read<MealProvider>();
     final settingsProvider = context.read<SettingsProvider>();
 
@@ -304,195 +142,307 @@ class _SnapScreenState extends State<SnapScreen>
       settings: settingsProvider,
     );
 
-    // Update streak
     await settingsProvider.updateStreakOnMealLog();
+    _controller.reset();
 
-    // Reset state
-    setState(() {
-      _capturedImageBytes = null;
-      _analysisResult = null;
-    });
-
-    // Navigate to home
     if (mounted) {
       context.go('/');
     }
   }
 
-  void _cancelCapture() {
-    Navigator.pop(context);
-    setState(() {
-      _capturedImageBytes = null;
-      _analysisResult = null;
-      _errorMessage = null;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.backgroundColor,
-      body: Stack(
-        children: [
-          // Camera preview
-          if (_isScanningBarcode)
-            Positioned.fill(
-              child: BarcodeScannerView(
-                onBarcodeDetected: _handleBarcodeDetected,
-                onCancel: () => setState(() => _isScanningBarcode = false),
-              ),
-            )
-          else if (_isInitialized && _cameraController != null)
-            Positioned.fill(child: CameraPreview(_cameraController!))
-          else if (_errorMessage != null)
-            _buildErrorState()
-          else
-            _buildLoadingState(),
-
-          // Top gradient overlay
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 120,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    context.backgroundColor,
-                    context.backgroundColor.withAlpha(0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Header
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 20,
-            right: 20,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return ChangeNotifierProvider.value(
+      value: _controller,
+      child: Consumer<SnapController>(
+        builder: (context, controller, child) {
+          return Scaffold(
+            backgroundColor: context.backgroundColor,
+            body: Stack(
               children: [
-                Text('Snap Your Food', style: AppTypography.heading2),
-                _buildMealCounter(),
-              ],
-            ),
-          ),
+                // Camera preview
+                if (controller.isScanningBarcode)
+                  Positioned.fill(
+                    child: RepaintBoundary(
+                      child: BarcodeScannerView(
+                        onBarcodeDetected:
+                            (code) => controller.handleBarcodeDetected(
+                              code,
+                              onShowResult: _showResultModal,
+                              onShowManualInput: _showManualInputModal,
+                            ),
+                        onCancel: () => controller.isScanningBarcode = false,
+                      ),
+                    ),
+                  )
+                else if (controller.isInitialized &&
+                    controller.cameraController != null)
+                  Positioned.fill(
+                    child: RepaintBoundary(
+                      child: CameraPreview(controller.cameraController!),
+                    ),
+                  )
+                else if (controller.errorMessage != null)
+                  _buildErrorState()
+                else
+                  _buildLoadingState(),
 
-          // Bottom controls
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: EdgeInsets.only(
-                left: 40,
-                right: 40,
-                top: 32,
-                bottom: MediaQuery.of(context).padding.bottom + 100,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    context.backgroundColor,
-                    context.backgroundColor.withAlpha(0),
-                  ],
+                // Food viewfinder guide (only when camera is active)
+                if (controller.isInitialized &&
+                    !controller.isScanningBarcode &&
+                    !controller.isAnalyzing)
+                  const Positioned.fill(child: FoodFrameGuide()),
+
+                // Top gradient overlay
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 140,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.6),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+
+                // Header row
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 12,
+                  left: 20,
+                  right: 20,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Gallery button
-                      IconButton(
-                        onPressed: _pickFromGallery,
-                        icon: const Icon(
-                          LucideIcons.image,
+                      Text(
+                        'Snap Your Food',
+                        style: AppTypography.heading2.copyWith(
                           color: Colors.white,
-                          size: 28,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withAlpha(50),
-                          padding: const EdgeInsets.all(12),
                         ),
                       ),
-                      const SizedBox(width: 40),
-                      ShutterButton(
-                        onPressed: _captureAndAnalyze,
-                        isLoading: _isCapturing,
-                      ),
-                      const SizedBox(width: 40),
-                      // Barcode button
-                      IconButton(
-                        onPressed:
-                            () => setState(() => _isScanningBarcode = true),
-                        icon: const Icon(
-                          LucideIcons.scan,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withAlpha(50),
-                          padding: const EdgeInsets.all(12),
-                        ),
+                      Row(
+                        children: [
+                          // Flash toggle
+                          if (controller.isInitialized &&
+                              !controller.isScanningBarcode)
+                            _buildFlashButton(controller),
+                          const SizedBox(width: 8),
+                          _buildMealCounter(),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _isScanningBarcode
-                        ? 'Align barcode in the center'
-                        : 'Point camera or pick from gallery',
-                    style: AppTypography.bodySmall,
+                ),
+
+                // Bottom controls area
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: EdgeInsets.only(
+                      left: 32,
+                      right: 32,
+                      top: 40,
+                      bottom: MediaQuery.of(context).padding.bottom + 40,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        stops: const [0.0, 0.4, 1.0],
+                        colors: [
+                          Colors.black.withOpacity(0.7),
+                          Colors.black.withOpacity(0.3),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            // Gallery button
+                            _buildControlButton(
+                              icon: LucideIcons.image,
+                              label: 'Gallery',
+                              onTap:
+                                  () => controller.pickFromGallery(
+                                    mealProvider: context.read<MealProvider>(),
+                                    settingsProvider:
+                                        context.read<SettingsProvider>(),
+                                    connectivity:
+                                        context.read<ConnectivityService>(),
+                                    onShowPaywall: _showPaywall,
+                                    onShowResult: _showResultModal,
+                                    onShowManualInput: _showManualInputModal,
+                                  ),
+                            ),
+                            // Shutter button
+                            ShutterButton(
+                              onPressed:
+                                  () => controller.captureAndAnalyze(
+                                    mealProvider: context.read<MealProvider>(),
+                                    settingsProvider:
+                                        context.read<SettingsProvider>(),
+                                    connectivity:
+                                        context.read<ConnectivityService>(),
+                                    onShowPaywall: _showPaywall,
+                                    onShowResult: _showResultModal,
+                                    onShowManualInput: _showManualInputModal,
+                                  ),
+                              isLoading: controller.isCapturing,
+                            ),
+                            // Barcode button
+                            _buildControlButton(
+                              icon: LucideIcons.scan,
+                              label: 'Barcode',
+                              onTap: () => controller.isScanningBarcode = true,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _buildStatusText(),
+                      ],
+                    ),
                   ),
-                ],
+                ),
+
+                // Analyzing overlay
+                if (controller.isAnalyzing)
+                  const Positioned.fill(
+                    child: RepaintBoundary(child: AnalyzingOverlay()),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Glassmorphic control button with label
+  Widget _buildControlButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.15),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.25),
+                width: 1.5,
               ),
             ),
+            child: Icon(icon, color: Colors.white, size: 24),
           ),
-
-          // Analyzing overlay
-          if (_isAnalyzing) const Positioned.fill(child: AnalyzingOverlay()),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 11,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Future<void> _handleBarcodeDetected(String code) async {
-    setState(() {
-      _isScanningBarcode = false;
-      _isAnalyzing = true;
-    });
+  /// Flash toggle button
+  Widget _buildFlashButton(SnapController controller) {
+    IconData icon;
+    String tooltip;
 
-    try {
-      final result = await _barcodeService.fetchProductByBarcode(code);
-      if (result != null) {
-        setState(() {
-          _analysisResult = result;
-          _isAnalyzing = false;
-        });
-        _showResultModal();
-      } else {
-        setState(() {
-          _isAnalyzing = false;
-          _errorMessage = "Product not found. Try manual entry.";
-        });
-        _showManualInputModal();
-      }
-    } catch (e) {
-      setState(() {
-        _isAnalyzing = false;
-        _errorMessage = "Barcode error: $e";
-      });
-      _showManualInputModal();
+    switch (controller.flashMode) {
+      case FlashMode.off:
+        icon = LucideIcons.zapOff;
+        tooltip = 'Flash Off';
+        break;
+      case FlashMode.auto:
+        icon = LucideIcons.zap;
+        tooltip = 'Flash Auto';
+        break;
+      case FlashMode.always:
+        icon = LucideIcons.zap;
+        tooltip = 'Flash On';
+        break;
+      case FlashMode.torch:
+        icon = LucideIcons.sun;
+        tooltip = 'Torch';
+        break;
     }
+
+    final isActive = controller.flashMode != FlashMode.off;
+
+    return GestureDetector(
+      onTap: controller.toggleFlash,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color:
+              isActive
+                  ? AppColors.primary.withOpacity(0.3)
+                  : Colors.white.withOpacity(0.15),
+          border: Border.all(
+            color:
+                isActive
+                    ? AppColors.primary.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.2),
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: isActive ? AppColors.primary : Colors.white,
+          size: 20,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusText() {
+    return Consumer2<SnapController, ConnectivityService>(
+      builder: (context, controller, connectivity, _) {
+        String text = 'Point camera or pick from gallery';
+        Color color = Colors.white.withOpacity(0.7);
+        FontWeight? weight;
+
+        if (controller.isScanningBarcode) {
+          text = 'Align barcode in the center';
+        } else if (!connectivity.isOnline) {
+          text = '⚠️ Offline: AI features unavailable';
+          color = AppColors.error;
+          weight = FontWeight.bold;
+        }
+
+        return Text(
+          text,
+          style: AppTypography.bodySmall.copyWith(
+            color: color,
+            fontWeight: weight,
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildMealCounter() {
@@ -504,19 +454,21 @@ class _SnapScreenState extends State<SnapScreen>
 
         if (settingsProvider.isPro) {
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: AppColors.primary.withAlpha(30),
+              color: AppColors.primary.withOpacity(0.3),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.primary.withOpacity(0.5)),
             ),
             child: Row(
               children: [
-                Icon(LucideIcons.crown, size: 14, color: AppColors.primary),
-                const SizedBox(width: 6),
+                Icon(LucideIcons.crown, size: 13, color: AppColors.primary),
+                const SizedBox(width: 4),
                 Text(
                   'Pro',
                   style: AppTypography.labelMedium.copyWith(
                     color: AppColors.primary,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -525,15 +477,18 @@ class _SnapScreenState extends State<SnapScreen>
         }
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: context.surfaceColor,
+            color: Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: context.glassBorderColor),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
           child: Text(
-            '$remaining snaps left',
-            style: AppTypography.labelMedium,
+            '$remaining left',
+            style: AppTypography.labelMedium.copyWith(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 12,
+            ),
           ),
         );
       },
@@ -574,7 +529,7 @@ class _SnapScreenState extends State<SnapScreen>
             Text('Camera Unavailable', style: AppTypography.heading3),
             const SizedBox(height: 8),
             Text(
-              _errorMessage ?? 'Unable to access camera',
+              _controller.errorMessage ?? 'Unable to access camera',
               style: AppTypography.bodyMedium.copyWith(
                 color: context.textSecondaryColor,
               ),
@@ -582,7 +537,7 @@ class _SnapScreenState extends State<SnapScreen>
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _initializeCamera,
+              onPressed: _controller.initializeCamera,
               child: const Text('Retry'),
             ),
           ],

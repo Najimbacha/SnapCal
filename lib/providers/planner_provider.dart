@@ -10,7 +10,7 @@ class PlannerProvider with ChangeNotifier {
   static const String _groceryBoxName = 'grocery_list_box';
 
   final AIService _aiService;
-  final SettingsProvider _settingsProvider;
+  SettingsProvider _settingsProvider;
 
   Box<MealPlan>? _planBox;
   Box<GroceryItem>? _groceryBox;
@@ -22,6 +22,11 @@ class PlannerProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   bool _isGenerating = false;
   bool get isGenerating => _isGenerating;
+
+  void updateSettings(SettingsProvider settings) {
+    _settingsProvider = settings;
+    notifyListeners();
+  }
 
   MealPlan? get currentPlan => _currentPlan;
   List<GroceryItem> get groceryList => _groceryList;

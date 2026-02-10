@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
@@ -12,139 +13,132 @@ class WaterTrackingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<WaterProvider>(
-      builder: (context, waterProvider, child) {
-        final amount = waterProvider.todaysWaterMl;
-        final goal = 2000; // Default goal
-        final progress = (amount / goal).clamp(0.0, 1.0);
+    // High-performance granular selection
+    final amount = context.select<WaterProvider, int>((p) => p.todaysWaterMl);
+    const int goal = 2000; // Const goal for optimization
+    final progress = (amount / goal).clamp(0.0, 1.0);
 
-        return GlassContainer(
-          padding: const EdgeInsets.all(24),
-          borderRadius: 28,
-          backgroundColor: context.surfaceColor.withOpacity(0.4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return GlassContainer(
+      padding: const EdgeInsets.all(24),
+      borderRadius: 28,
+      backgroundColor: context.surfaceColor.withOpacity(0.4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.carbs.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          LucideIcons.droplets,
-                          color: AppColors.carbs,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'HYDRATION',
-                            style: AppTypography.labelSmall.copyWith(
-                              color: context.textMutedColor,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                              fontSize: 10,
-                            ),
-                          ),
-                          Text(
-                            'Daily Water Goal',
-                            style: AppTypography.heading3.copyWith(
-                              color: context.textPrimaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '$amount',
-                        style: AppTypography.heading2.copyWith(
-                          color: AppColors.carbs,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        'of $goal ml',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: context.textMutedColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Stack(
                 children: [
                   Container(
-                    height: 10,
-                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: context.surfaceLightColor.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(5),
+                      color: AppColors.carbs.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      LucideIcons.droplets,
+                      color: AppColors.carbs,
+                      size: 20,
                     ),
                   ),
-                  FractionallySizedBox(
-                    widthFactor: progress,
-                    child: Container(
-                      height: 10,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.carbs,
-                            AppColors.carbs.withOpacity(0.7),
-                          ],
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'HYDRATION',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: context.textMutedColor,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          fontSize: 10,
                         ),
-                        borderRadius: BorderRadius.circular(5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.carbs.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                       ),
-                    ),
+                      Text(
+                        'Daily Water Goal',
+                        style: AppTypography.heading3.copyWith(
+                          color: context.textPrimaryColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: _buildWaterActionButton(context, '+250', 250),
+                  Text(
+                    '$amount',
+                    style: AppTypography.heading2.copyWith(
+                      color: AppColors.carbs,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildWaterActionButton(context, '+500', 500),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildWaterActionButton(
-                      context,
-                      'Custom',
-                      0,
-                      isCustom: true,
+                  Text(
+                    'of $goal ml',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: context.textMutedColor,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 24),
+          Stack(
+            children: [
+              Container(
+                height: 10,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: context.surfaceLightColor.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: progress,
+                child: Container(
+                  height: 10,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.carbs,
+                        AppColors.carbs.withOpacity(0.7),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.carbs.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(child: _buildWaterActionButton(context, '+250', 250)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildWaterActionButton(context, '+500', 500)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildWaterActionButton(
+                  context,
+                  'Custom',
+                  0,
+                  isCustom: true,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -156,6 +150,7 @@ class WaterTrackingCard extends StatelessWidget {
   }) {
     return GestureDetector(
       onTap: () {
+        HapticFeedback.lightImpact();
         if (isCustom) {
           _showCustomWaterDialog(context);
         } else {
@@ -221,6 +216,7 @@ class WaterTrackingCard extends StatelessWidget {
               ),
               ElevatedButton(
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   final val = int.tryParse(controller.text);
                   if (val != null) {
                     context.read<WaterProvider>().addWater(val);

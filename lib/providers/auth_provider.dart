@@ -194,15 +194,24 @@ class AuthProvider with ChangeNotifier {
     required String phoneNumber,
     required Function(String) onCodeSent,
     required Function(String) onVerificationFailed,
+    bool isMock = false, // Add isMock for WhatsApp simulation
   }) async {
     _status = AuthStatus.loading;
     notifyListeners();
+
+    if (isMock) {
+      // Simulation for WhatsApp/Development
+      await Future.delayed(const Duration(seconds: 2));
+      _status = AuthStatus.authenticated;
+      onCodeSent("mock_verification_id"); // Simulate success
+      notifyListeners();
+      return;
+    }
 
     try {
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto-verification or instant completion
           if (isAnonymous) {
             await _user?.linkWithCredential(credential);
           } else {
@@ -216,9 +225,7 @@ class AuthProvider with ChangeNotifier {
           notifyListeners();
         },
         codeSent: (String verificationId, int? resendToken) {
-          _status =
-              AuthStatus
-                  .authenticated; // Keep status stable while waiting for OTP
+          _status = AuthStatus.authenticated;
           onCodeSent(verificationId);
           notifyListeners();
         },
@@ -236,8 +243,23 @@ class AuthProvider with ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
 
+    if (verificationId == "mock_verification_id") {
+      // Mock validation: Allow logic if code is 123456
+      if (smsCode == "123456") {
+        await Future.delayed(const Duration(seconds: 1));
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+      } else {
+        _errorMessage = "Invalid mock code. Try 123456";
+        _status = AuthStatus.error;
+        notifyListeners();
+        throw Exception(_errorMessage);
+      }
+      return;
+    }
+
     try {
-      final credential = PhoneAuthProvider.credential(
+      PhoneAuthCredential credential = PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode,
       );
@@ -251,10 +273,12 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = e.message;
       _status = AuthStatus.error;
       notifyListeners();
+      throw e;
     } catch (e) {
       _errorMessage = e.toString();
       _status = AuthStatus.error;
       notifyListeners();
+      throw e;
     }
   }
 

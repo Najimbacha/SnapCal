@@ -105,11 +105,19 @@ class _LogScreenState extends State<LogScreen> {
     return Scaffold(
       backgroundColor: context.backgroundColor,
       body: SafeArea(
-        child: Consumer<MealProvider>(
-          builder: (context, mealProvider, child) {
-            final meals = mealProvider.selectedDateMeals;
-            final selectedDate = mealProvider.selectedDate;
-            final totalCalories = mealProvider.selectedDateTotalCalories;
+        child: Builder(
+          builder: (context) {
+            // High-performance granular selection
+            final meals = context.select<MealProvider, List<Meal>>(
+              (p) => p.selectedDateMeals,
+            );
+            final selectedDate = context.select<MealProvider, String>(
+              (p) => p.selectedDate,
+            );
+            final totalCalories = context.select<MealProvider, int>(
+              (p) => p.selectedDateTotalCalories,
+            );
+            final mealProvider = context.read<MealProvider>();
 
             return Column(
               children: [
@@ -155,43 +163,49 @@ class _LogScreenState extends State<LogScreen> {
                   ),
                 ),
 
-                // Summary card
+                // Summary card - Isolated repaint
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: GlassContainer(
-                        padding: const EdgeInsets.all(24),
-                        borderRadius: 32,
-                        backgroundColor: context.surfaceColor.withOpacity(0.4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _SummaryItem(
-                              label: 'Logged Meals',
-                              value: '${meals.length}',
-                              icon: LucideIcons.utensils,
-                            ),
-                            Container(
-                              width: 1,
-                              height: 32,
-                              color: context.glassBorderColor.withOpacity(0.3),
-                            ),
-                            _SummaryItem(
-                              label: 'Total Calories',
-                              value: '$totalCalories',
-                              unit: 'kcal',
-                              icon: LucideIcons.flame,
-                              valueColor: AppColors.primary,
-                            ),
-                          ],
+                  child: RepaintBoundary(
+                    child: GlassContainer(
+                          padding: const EdgeInsets.all(24),
+                          borderRadius: 32,
+                          backgroundColor: context.surfaceColor.withOpacity(
+                            0.4,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _SummaryItem(
+                                label: 'Logged Meals',
+                                value: '${meals.length}',
+                                icon: LucideIcons.utensils,
+                              ),
+                              Container(
+                                width: 1,
+                                height: 32,
+                                color: context.glassBorderColor.withOpacity(
+                                  0.3,
+                                ),
+                              ),
+                              _SummaryItem(
+                                label: 'Total Calories',
+                                value: '$totalCalories',
+                                unit: 'kcal',
+                                icon: LucideIcons.flame,
+                                valueColor: AppColors.primary,
+                              ),
+                            ],
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms, curve: Curves.easeOutCubic)
+                        .slideY(
+                          begin: 0.2,
+                          duration: 400.ms,
+                          curve: Curves.easeOutCubic,
                         ),
-                      )
-                      .animate()
-                      .fadeIn(duration: 400.ms, curve: Curves.easeOutCubic)
-                      .slideY(
-                        begin: 0.2,
-                        duration: 400.ms,
-                        curve: Curves.easeOutCubic,
-                      ),
+                  ),
                 ),
 
                 const SizedBox(height: 24),
@@ -207,45 +221,48 @@ class _LogScreenState extends State<LogScreen> {
                             itemCount: meals.length,
                             itemBuilder: (context, index) {
                               final meal = meals[index];
-                              return MealListTile(
-                                    meal: meal,
-                                    onTap: () => _showEditModal(meal),
-                                    onDelete: () async {
-                                      final messenger = ScaffoldMessenger.of(
-                                        context,
-                                      );
-                                      await mealProvider.deleteMeal(meal.id);
-                                      if (mounted) {
-                                        messenger.showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              '${meal.foodName} removed',
-                                            ),
-                                            backgroundColor:
-                                                context.surfaceColor,
-                                            action: SnackBarAction(
-                                              label: 'Undo',
-                                              textColor: AppColors.primary,
-                                              onPressed: () {
-                                                // Undo functionality
-                                              },
-                                            ),
-                                          ),
+                              // RepaintBoundary here helps smooth out the dismissal/scroll interaction
+                              return RepaintBoundary(
+                                child: MealListTile(
+                                      meal: meal,
+                                      onTap: () => _showEditModal(meal),
+                                      onDelete: () async {
+                                        final messenger = ScaffoldMessenger.of(
+                                          context,
                                         );
-                                      }
-                                    },
-                                  )
-                                  .animate()
-                                  .fadeIn(
-                                    delay: (index * 80).ms,
-                                    duration: 400.ms,
-                                    curve: Curves.easeOut,
-                                  )
-                                  .slideY(
-                                    begin: 0.1,
-                                    duration: 400.ms,
-                                    curve: Curves.easeOut,
-                                  );
+                                        await mealProvider.deleteMeal(meal.id);
+                                        if (mounted) {
+                                          messenger.showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                '${meal.foodName} removed',
+                                              ),
+                                              backgroundColor:
+                                                  context.surfaceColor,
+                                              action: SnackBarAction(
+                                                label: 'Undo',
+                                                textColor: AppColors.primary,
+                                                onPressed: () {
+                                                  // Undo functionality
+                                                },
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    )
+                                    .animate()
+                                    .fadeIn(
+                                      delay: (index * 80).ms,
+                                      duration: 400.ms,
+                                      curve: Curves.easeOut,
+                                    )
+                                    .slideY(
+                                      begin: 0.1,
+                                      duration: 400.ms,
+                                      curve: Curves.easeOut,
+                                    ),
+                              );
                             },
                           ),
                 ),

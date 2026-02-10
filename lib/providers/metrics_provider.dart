@@ -6,10 +6,15 @@ import 'settings_provider.dart';
 class MetricsProvider with ChangeNotifier {
   static const String _boxName = 'body_metrics_box';
   Box<BodyMetric>? _box;
-  final SettingsProvider _settingsProvider;
+  SettingsProvider _settingsProvider;
 
   MetricsProvider(this._settingsProvider) {
     _init();
+  }
+
+  void updateSettings(SettingsProvider settings) {
+    _settingsProvider = settings;
+    notifyListeners();
   }
 
   bool _isLoading = true;
@@ -24,16 +29,21 @@ class MetricsProvider with ChangeNotifier {
     } else {
       _box = Hive.box<BodyMetric>(_boxName);
     }
-    _loadMetrics();
+    _sortMetrics(); // Load without notifying
     _isLoading = false;
-    notifyListeners();
+    notifyListeners(); // Single notify after full init
   }
 
-  void _loadMetrics() {
+  /// Sort/reload metrics from box without notifying listeners
+  void _sortMetrics() {
     if (_box == null) return;
     _metrics =
         _box!.values.toList()
           ..sort((a, b) => b.date.compareTo(a.date)); // Newest first
+  }
+
+  void _loadMetrics() {
+    _sortMetrics();
     notifyListeners();
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,6 +9,7 @@ import '../../core/theme/app_typography.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../data/services/connectivity_service.dart';
 import '../../widgets/glass_container.dart';
 
 class AssistantScreen extends StatefulWidget {
@@ -26,6 +28,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   void _loadInitialRecommendations() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final isOnline = context.read<ConnectivityService>().isOnline;
+      if (!isOnline) return;
+
       final mealProvider = context.read<MealProvider>();
       final settingsProvider = context.read<SettingsProvider>();
 
@@ -59,6 +64,19 @@ class _AssistantScreenState extends State<AssistantScreen> {
   void _handleSearch() {
     if (_searchController.text.isEmpty) return;
 
+    final isOnline = context.read<ConnectivityService>().isOnline;
+    if (!isOnline) {
+      HapticFeedback.vibrate();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Working offline. AI Assistant requires internet.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    HapticFeedback.lightImpact();
     final mealProvider = context.read<MealProvider>();
     final settingsProvider = context.read<SettingsProvider>();
 
@@ -177,7 +195,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
                               ),
                               const SizedBox(height: 24),
                               ElevatedButton(
-                                onPressed: _loadInitialRecommendations,
+                                onPressed: () {
+                                  HapticFeedback.mediumImpact();
+                                  _loadInitialRecommendations();
+                                },
                                 child: const Text('Retry'),
                               ),
                             ],
@@ -356,30 +377,48 @@ class _AssistantScreenState extends State<AssistantScreen> {
         child: Row(
           children: [
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.backgroundColor.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: context.glassBorderColor),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: context.textPrimaryColor,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Ask your personal nutritionist...',
-                    hintStyle: AppTypography.bodySmall.copyWith(
-                      color: context.textMutedColor,
+              child: Consumer<ConnectivityService>(
+                builder: (context, connectivity, _) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: context.backgroundColor.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color:
+                            connectivity.isOnline
+                                ? context.glassBorderColor
+                                : AppColors.error.withOpacity(0.3),
+                      ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
+                    child: TextField(
+                      controller: _searchController,
+                      enabled: connectivity.isOnline,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: context.textPrimaryColor,
+                      ),
+                      decoration: InputDecoration(
+                        hintText:
+                            connectivity.isOnline
+                                ? 'Ask your personal nutritionist...'
+                                : '⚠️ Offline: AI features unavailable',
+                        hintStyle: AppTypography.bodySmall.copyWith(
+                          color:
+                              connectivity.isOnline
+                                  ? context.textMutedColor
+                                  : AppColors.error.withOpacity(0.7),
+                          fontWeight:
+                              connectivity.isOnline ? null : FontWeight.bold,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                      onSubmitted: (_) => _handleSearch(),
                     ),
-                    border: InputBorder.none,
-                  ),
-                  onSubmitted: (_) => _handleSearch(),
-                ),
+                  );
+                },
               ),
             ),
             const SizedBox(width: 12),

@@ -37,6 +37,7 @@ class SettingsProvider with ChangeNotifier {
   bool get mealRemindersEnabled => _settings.mealRemindersEnabled;
   bool get goalAlertsEnabled => _settings.goalAlertsEnabled;
   String get themeMode => _settings.themeMode;
+  bool get onboardingComplete => _settings.onboardingComplete;
 
   /// Load settings from repository
   void _loadSettings() {
@@ -192,6 +193,16 @@ class SettingsProvider with ChangeNotifier {
   /// Update body profile (height and target weight)
   Future<void> updateBodyProfile({double? height, double? targetWeight}) async {
     _settings = _settings.copyWith(height: height, targetWeight: targetWeight);
+    await _repository.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  /// Complete onboarding and set initial calorie goal
+  Future<void> completeOnboarding(int calorieGoal) async {
+    _settings = _settings.copyWith(
+      dailyCalorieGoal: calorieGoal,
+      onboardingComplete: true,
+    );
     await _repository.saveSettings(_settings);
     notifyListeners();
   }

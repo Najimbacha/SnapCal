@@ -38,82 +38,118 @@ class NutritionResult {
 
 /// Service for interacting with AI models (Gemini + Groq Fallback)
 class AIService {
+  static final AIService _instance = AIService._internal();
+  factory AIService() => _instance;
+  AIService._internal() : _dio = Dio() {
+    debugPrint(
+      '🔑 AIService: Gemini Key Length: ${AppConstants.geminiApiKey.length}',
+    );
+    debugPrint(
+      '🔑 AIService: Groq Key Length: ${AppConstants.groqApiKey.length}',
+    );
+  }
+
   final Dio _dio;
 
-  AIService() : _dio = Dio();
-
-  /// Main method: Tries Gemini first, falls back to Groq, then Manual
+  /// Main method: Tries Groq first (faster), falls back to Gemini, then Manual
   Future<NutritionResult> analyzeFood(Uint8List imageBytes) async {
-    String geminiError = "Unknown";
+    String groqError = "Unknown";
     try {
-      // 1. Try Free Gemini First
-      print("Attempting analysis with Gemini...");
-      return await _detectWithGemini(imageBytes);
+      // 1. Try Groq first (faster, higher free limits)
+      print("Attempting analysis with Groq...");
+      return await _detectWithGroq(imageBytes);
     } catch (e) {
-      geminiError = _extractDioError(e);
-      print("Gemini failed ($e). Switching to Groq...");
+      groqError = _extractDioError(e);
+      print("Groq failed ($groqError). Switching to Gemini...");
       try {
-        // 2. Fallback to Free Groq
-        return await _detectWithGroq(imageBytes);
+        // 2. Fallback to Gemini
+        return await _detectWithGeminiRetry(imageBytes, maxRetries: 2);
       } catch (e2) {
         // 3. Last Resort: Manual Entry
-        String groqError = _extractDioError(e2);
-        String combinedError = "Gem: $geminiError | Groq: $groqError";
+        String geminiError = _extractDioError(e2);
+        String combinedError = "Groq: $groqError | Gem: $geminiError";
         print("All AIs failed. $combinedError");
         return _getFallbackResult(combinedError);
       }
     }
   }
 
-  /// Primary: Google Gemini 2.5 Flash
-  Future<NutritionResult> _detectWithGemini(Uint8List imageBytes) async {
-    try {
-      final base64Image = base64Encode(imageBytes);
-
-      final response = await _dio.post(
-        '${AppConstants.geminiApiUrl}?key=${AppConstants.geminiApiKey}',
-        options: Options(headers: {'Content-Type': 'application/json'}),
-        data: {
-          'contents': [
-            {
-              'parts': [
-                {'text': AppConstants.geminiSystemPrompt},
-                {
-                  'inline_data': {
-                    'mime_type': 'image/jpeg',
-                    'data': base64Image,
-                  },
-                },
-              ],
-            },
-          ],
-          'generationConfig': {
-            'temperature': 0.4,
-            'topK': 32,
-            'topP': 1,
-            'maxOutputTokens': 1024,
-          },
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final text =
-            data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                as String?;
-
-        if (text != null) {
-          return _parseResponse(text);
+  /// Gemini with automatic retry for 429 rate-limit errors
+  Future<NutritionResult> _detectWithGeminiRetry(
+    Uint8List imageBytes, {
+    int maxRetries = 3,
+  }) async {
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await _detectWithGemini(imageBytes);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 429 && attempt < maxRetries) {
+          final waitSeconds = 15 * (attempt + 1); // 15s, 30s, 45s
+          print(
+            "⏳ Rate limited. Retrying in ${waitSeconds}s (attempt ${attempt + 1}/$maxRetries)...",
+          );
+          await Future.delayed(Duration(seconds: waitSeconds));
+          continue;
         }
+        rethrow;
       }
-      throw GeminiException('Gemini returned empty response');
-    } catch (e) {
-      rethrow;
     }
+    throw GeminiException(
+      'Gemini rate limit exceeded after $maxRetries retries',
+    );
+  }
+
+  /// Primary: Google Gemini 2.0 Flash
+  Future<NutritionResult> _detectWithGemini(Uint8List imageBytes) async {
+    if (AppConstants.geminiApiKey.isEmpty) {
+      throw GeminiException(
+        'Gemini API key is missing. Ensure GEMINI_API_KEY is set via --dart-define.',
+      );
+    }
+    final base64Image = base64Encode(imageBytes);
+
+    final response = await _dio.post(
+      '${AppConstants.geminiApiUrl}?key=${AppConstants.geminiApiKey}',
+      options: Options(headers: {'Content-Type': 'application/json'}),
+      data: {
+        'contents': [
+          {
+            'parts': [
+              {'text': AppConstants.geminiSystemPrompt},
+              {
+                'inline_data': {'mime_type': 'image/jpeg', 'data': base64Image},
+              },
+            ],
+          },
+        ],
+        'generationConfig': {
+          'temperature': 0.4,
+          'topK': 32,
+          'topP': 1,
+          'maxOutputTokens': 1024,
+        },
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = response.data;
+      final text =
+          data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+
+      if (text != null) {
+        return _parseResponse(text);
+      }
+    }
+    throw GeminiException('Gemini returned empty response');
   }
 
   /// Fallback: Groq (Llama 3.2 11B Vision)
   Future<NutritionResult> _detectWithGroq(Uint8List imageBytes) async {
+    if (AppConstants.groqApiKey.isEmpty) {
+      throw GeminiException(
+        'Groq API key is missing. Ensure GROQ_API_KEY is set via --dart-define.',
+      );
+    }
     try {
       final base64Image = base64Encode(imageBytes);
       final imageUrl = "data:image/jpeg;base64,$base64Image";

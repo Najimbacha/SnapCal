@@ -3,13 +3,17 @@ class AppConstants {
   AppConstants._();
 
   // API Configuration
-  // TODO: Replace with your actual API keys (do NOT commit real keys!)
-  static const String geminiApiKey = 'AIzaSyCdAdk3ER8ZD8Gmj36plQCTiDVbKJMeeB0';
+  static const String geminiApiKey = String.fromEnvironment(
+    'GEMINI_API_KEY',
+    defaultValue: 'AIzaSyB97TgssKrR7fTOP0D4mdyjA4KBgHDlaB4',
+  );
   static const String geminiApiUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-  static const String groqApiKey =
-      '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';
+  static const String groqApiKey = String.fromEnvironment(
+    'GROQ_API_KEY',
+    defaultValue: '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',
+  );
   static const String groqApiUrl =
       'https://api.groq.com/openai/v1/chat/completions';
 
@@ -41,6 +45,7 @@ Example valid output:
 
   // Storage Keys
   static const String mealsBoxName = 'meals_box';
+  static const String mealIndexBoxName = 'meal_index_box';
   static const String settingsBoxName = 'settings_box';
   static const String waterBoxName = 'water_box';
   static const String assistantBoxName = 'assistant_box';

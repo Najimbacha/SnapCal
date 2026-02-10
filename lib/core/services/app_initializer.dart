@@ -14,6 +14,9 @@ import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/water_repository.dart';
 import '../../data/repositories/assistant_repository.dart';
 
+import '../../data/services/gemini_service.dart';
+import '../../data/services/barcode_service.dart';
+
 class AppInitializer {
   static Future<void> init({
     required MealRepository mealRepository,
@@ -39,6 +42,8 @@ class AppInitializer {
       _initFirebase(),
       _initHive(),
       NotificationService().init(),
+      // Warm up AI and Barcode services (Dio initialization)
+      _warmupSingletons(),
     ]);
 
     // 3. Initialize Repositories (Dependent on Hive)
@@ -51,6 +56,13 @@ class AppInitializer {
 
     final duration = DateTime.now().difference(startTime).inMilliseconds;
     debugPrint('✅ AppInitializer: Completed in ${duration}ms');
+  }
+
+  static Future<void> _warmupSingletons() async {
+    // Simply instantiating the singletons triggers their Dio/internal setup
+    AIService();
+    BarcodeService();
+    debugPrint('⚡ Services warmed up');
   }
 
   static Future<void> _initFirebase() async {

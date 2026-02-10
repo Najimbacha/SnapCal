@@ -12,343 +12,442 @@ import '../../core/theme/app_typography.dart';
 import 'widgets/weight_entry_modal.dart';
 import '../../widgets/glass_container.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      body: Consumer3<SettingsProvider, AuthProvider, MetricsProvider>(
-        builder: (context, settings, auth, metrics, child) {
-          return CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 140.0,
-                floating: false,
-                pinned: true,
-                elevation: 0,
-                backgroundColor: context.backgroundColor,
-                flexibleSpace: FlexibleSpaceBar(
-                  centerTitle: false,
-                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-                  title: Text(
-                    'Settings',
-                    style: AppTypography.heading1.copyWith(
-                      color: context.textPrimaryColor,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  background: Container(color: context.backgroundColor),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 140.0,
+            floating: false,
+            pinned: true,
+            elevation: 0,
+            backgroundColor: context.backgroundColor,
+            flexibleSpace: FlexibleSpaceBar(
+              centerTitle: false,
+              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+              title: Text(
+                'Settings',
+                style: AppTypography.heading1.copyWith(
+                  color: context.textPrimaryColor,
+                  letterSpacing: -1,
                 ),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      _buildProfileHeader(auth, context)
-                          .animate()
-                          .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-                          .slideY(begin: 0.1, duration: 400.ms),
-                      const SizedBox(height: 32),
+              background: Container(color: context.backgroundColor),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  // Profile Header - only rebuilds when auth changes
+                  Selector<AuthProvider, _AuthSnapshot>(
+                    selector:
+                        (_, auth) => _AuthSnapshot(
+                          isAnonymous: auth.isAnonymous,
+                          displayName: auth.user?.displayName,
+                          email: auth.user?.email,
+                        ),
+                    builder:
+                        (context, authSnap, _) =>
+                            _buildProfileHeader(authSnap, context)
+                                .animate()
+                                .fadeIn(duration: 400.ms, curve: Curves.easeOut)
+                                .slideY(begin: 0.1, duration: 400.ms),
+                  ),
+                  const SizedBox(height: 32),
 
-                      ..._buildSettingsSection('BODY PROFILE', context, [
-                        _buildGoalTile(
-                          context,
-                          'Current Weight',
-                          metrics.currentWeight != null
-                              ? '${metrics.currentWeight!.toStringAsFixed(1)} kg'
-                              : 'Set Weight',
-                          LucideIcons.scale,
-                          const Color(0xFF6B4DFF),
-                          () => showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => const WeightEntryModal(),
-                          ),
-                        ),
-                        _buildDivider(context),
-                        _buildGoalTile(
-                          context,
-                          'Height',
-                          settings.height != null
-                              ? '${settings.height!.round()} cm'
-                              : 'Set Height',
-                          LucideIcons.ruler,
-                          const Color(0xFF5E5CE6),
-                          () => _showGoalDialog(
-                            context,
-                            'Height',
-                            settings.height?.toInt() ?? 170,
-                            (val) => settings.updateBodyProfile(
-                              height: val.toDouble(),
-                            ),
-                            unit: 'cm',
-                          ),
-                        ),
-                        _buildDivider(context),
-                        _buildGoalTile(
-                          context,
-                          'Target Weight',
-                          settings.targetWeight != null
-                              ? '${settings.targetWeight} kg'
-                              : 'Set Target',
-                          LucideIcons.target,
-                          const Color(0xFFFF2D55),
-                          () => _showGoalDialog(
-                            context,
-                            'Target Weight',
-                            settings.targetWeight?.toInt() ?? 70,
-                            (val) => settings.updateBodyProfile(
-                              targetWeight: val.toDouble(),
-                            ),
-                            unit: 'kg',
-                          ),
-                        ),
-                      ], delay: 100),
+                  // Body Profile Section - only rebuilds when relevant values change
+                  ..._buildBodyProfileSection(context),
 
-                      ..._buildSettingsSection('NUTRITION GOALS', context, [
-                        _buildGoalTile(
-                          context,
-                          'Daily Calories',
-                          '${settings.dailyCalorieGoal} kcal',
-                          LucideIcons.flame,
-                          const Color(0xFFFF453A),
-                          () => _showGoalDialog(
-                            context,
-                            'Calories',
-                            settings.dailyCalorieGoal,
-                            settings.updateCalorieGoal,
-                          ),
-                        ),
-                        _buildDivider(context),
-                        _buildGoalTile(
-                          context,
-                          'Protein',
-                          '${settings.dailyProteinGoal}g',
-                          LucideIcons.beef,
-                          const Color(0xFF30D158),
-                          () => _showGoalDialog(
-                            context,
-                            'Protein',
-                            settings.dailyProteinGoal,
-                            settings.updateProteinGoal,
-                          ),
-                        ),
-                        _buildDivider(context),
-                        _buildGoalTile(
-                          context,
-                          'Carbs',
-                          '${settings.dailyCarbGoal}g',
-                          LucideIcons.apple,
-                          const Color(0xFF0A84FF),
-                          () => _showGoalDialog(
-                            context,
-                            'Carbs',
-                            settings.dailyCarbGoal,
-                            settings.updateCarbGoal,
-                          ),
-                        ),
-                        _buildDivider(context),
-                        _buildGoalTile(
-                          context,
-                          'Fats',
-                          '${settings.dailyFatGoal}g',
-                          LucideIcons.droplets,
-                          const Color(0xFFFF9F0A),
-                          () => _showGoalDialog(
-                            context,
-                            'Fat',
-                            settings.dailyFatGoal,
-                            settings.updateFatGoal,
-                          ),
-                        ),
-                      ], delay: 200),
+                  // Nutrition Goals Section - only rebuilds when goals change
+                  ..._buildNutritionGoalsSection(context),
 
-                      ..._buildSettingsSection('PREFERENCES', context, [
-                        _buildSwitchTile(
-                          context,
-                          'Notifications',
-                          LucideIcons.bell,
-                          const Color(0xFFFF375F),
-                          settings.notificationsEnabled,
-                          settings.toggleNotifications,
-                        ),
-                        if (settings.notificationsEnabled) ...[
-                          _buildDivider(context),
-                          _buildSwitchTile(
-                            context,
-                            'Meal Reminders',
-                            LucideIcons.clock,
-                            const Color(0xFFBF5AF2),
-                            settings.mealRemindersEnabled,
-                            settings.toggleMealReminders,
-                          ),
-                        ],
-                      ], delay: 300),
+                  // Preferences Section
+                  ..._buildPreferencesSection(context),
 
-                      ..._buildSettingsSection('APPEARANCE', context, [
-                        _buildThemeSelector(context, settings),
-                      ], delay: 400),
+                  // Appearance Section
+                  ..._buildAppearanceSection(context),
 
-                      ..._buildSettingsSection('SUBSCRIPTION', context, [
-                        ListTile(
-                          onTap: () => context.push('/paywall'),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          leading: GlassContainer(
-                            padding: const EdgeInsets.all(8),
-                            borderRadius: 12,
-                            backgroundColor:
-                                settings.isPro
-                                    ? const Color(0xFFFFD60A).withOpacity(0.2)
-                                    : context.surfaceLightColor.withOpacity(
-                                      0.5,
-                                    ),
-                            borderColor:
-                                settings.isPro
-                                    ? const Color(0xFFFFD60A).withOpacity(0.5)
-                                    : context.glassBorderColor,
-                            child: Icon(
-                              LucideIcons.crown,
-                              color:
-                                  settings.isPro
-                                      ? const Color(0xFFFFD60A)
-                                      : context.textPrimaryColor,
-                              size: 20,
+                  // Subscription Section
+                  ..._buildSubscriptionSection(context),
+
+                  // Support Section
+                  ..._buildSupportSection(context),
+
+                  const SizedBox(height: 32),
+                  // Sign Out button
+                  Selector<AuthProvider, bool>(
+                    selector: (_, auth) => auth.isAnonymous,
+                    builder: (context, isAnonymous, _) {
+                      if (isAnonymous) return const SizedBox.shrink();
+                      return GlassContainer(
+                        padding: EdgeInsets.zero,
+                        borderRadius: 20,
+                        backgroundColor: Colors.transparent,
+                        borderColor: AppColors.error.withOpacity(0.2),
+                        child: TextButton(
+                          onPressed: () => _handleLogout(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
-                          title: Text(
-                            'Manage Subscription',
-                            style: AppTypography.bodyLarge.copyWith(
-                              color: context.textPrimaryColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              if (settings.isPro)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Color(0xFF30D158),
-                                        Color(0xFF28A745),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Text(
-                                    'PRO',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                LucideIcons.chevronRight,
+                              const Icon(
+                                LucideIcons.logOut,
                                 size: 18,
-                                color: context.textMutedColor,
+                                color: AppColors.error,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Sign Out',
+                                style: AppTypography.bodyLarge.copyWith(
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ], delay: 500),
-
-                      ..._buildSettingsSection('SUPPORT', context, [
-                        _buildSimpleTile(
-                          context,
-                          LucideIcons.helpCircle,
-                          'Help Center',
-                          const Color(0xFF64D2FF),
-                        ),
-                        _buildDivider(context),
-                        _buildSimpleTile(
-                          context,
-                          LucideIcons.shieldCheck,
-                          'Privacy Policy',
-                          const Color(0xFF32D74B),
-                        ),
-                        _buildDivider(context),
-                        _buildSimpleTile(
-                          context,
-                          LucideIcons.info,
-                          'About SnapCal',
-                          const Color(0xFF8E8E93),
-                        ),
-                      ], delay: 600),
-
-                      const SizedBox(height: 32),
-                      if (!auth.isAnonymous)
-                        GlassContainer(
-                          padding: EdgeInsets.zero,
-                          borderRadius: 20,
-                          backgroundColor: Colors.transparent,
-                          borderColor: AppColors.error.withOpacity(0.2),
-                          child: TextButton(
-                            onPressed: () => _handleLogout(auth, context),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 20),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  LucideIcons.logOut,
-                                  size: 18,
-                                  color: AppColors.error,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Sign Out',
-                                  style: AppTypography.bodyLarge.copyWith(
-                                    color: AppColors.error,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ).animate().fadeIn(delay: 700.ms, duration: 400.ms),
-
-                      const SizedBox(height: 48),
-                      Text(
-                        'SnapCal v1.0.0',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: context.textMutedColor,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 100),
-                    ],
+                      ).animate().fadeIn(delay: 700.ms, duration: 400.ms);
+                    },
                   ),
-                ),
+
+                  const SizedBox(height: 48),
+                  Text(
+                    'SnapCal v1.0.0',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: context.textMutedColor,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 100),
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  // ─── Body Profile Section ─────────────────────────────────────────
+  List<Widget> _buildBodyProfileSection(BuildContext context) {
+    return _buildSettingsSection('BODY PROFILE', context, [
+      // Current Weight - only rebuilds when weight changes
+      Selector<MetricsProvider, double?>(
+        selector: (_, m) => m.currentWeight,
+        builder:
+            (context, weight, _) => _buildGoalTile(
+              context,
+              'Current Weight',
+              weight != null ? '${weight.toStringAsFixed(1)} kg' : 'Set Weight',
+              LucideIcons.scale,
+              const Color(0xFF6B4DFF),
+              () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const WeightEntryModal(),
+              ),
+            ),
+      ),
+      _buildDivider(context),
+      // Height
+      Selector<SettingsProvider, double?>(
+        selector: (_, s) => s.height,
+        builder:
+            (context, height, _) => _buildGoalTile(
+              context,
+              'Height',
+              height != null ? '${height.round()} cm' : 'Set Height',
+              LucideIcons.ruler,
+              const Color(0xFF5E5CE6),
+              () => _showGoalDialog(
+                context,
+                'Height',
+                height?.toInt() ?? 170,
+                (val) => context.read<SettingsProvider>().updateBodyProfile(
+                  height: val.toDouble(),
+                ),
+                unit: 'cm',
+              ),
+            ),
+      ),
+      _buildDivider(context),
+      // Target Weight
+      Selector<SettingsProvider, double?>(
+        selector: (_, s) => s.targetWeight,
+        builder:
+            (context, targetWeight, _) => _buildGoalTile(
+              context,
+              'Target Weight',
+              targetWeight != null ? '${targetWeight} kg' : 'Set Target',
+              LucideIcons.target,
+              const Color(0xFFFF2D55),
+              () => _showGoalDialog(
+                context,
+                'Target Weight',
+                targetWeight?.toInt() ?? 70,
+                (val) => context.read<SettingsProvider>().updateBodyProfile(
+                  targetWeight: val.toDouble(),
+                ),
+                unit: 'kg',
+              ),
+            ),
+      ),
+    ], delay: 100);
+  }
+
+  // ─── Nutrition Goals Section ──────────────────────────────────────
+  List<Widget> _buildNutritionGoalsSection(BuildContext context) {
+    return _buildSettingsSection('NUTRITION GOALS', context, [
+      // Daily Calories - only rebuilds when calorie goal changes
+      Selector<SettingsProvider, int>(
+        selector: (_, s) => s.dailyCalorieGoal,
+        builder:
+            (context, calorieGoal, _) => _buildGoalTile(
+              context,
+              'Daily Calories',
+              '$calorieGoal kcal',
+              LucideIcons.flame,
+              const Color(0xFFFF453A),
+              () => _showGoalDialog(
+                context,
+                'Calories',
+                calorieGoal,
+                context.read<SettingsProvider>().updateCalorieGoal,
+              ),
+            ),
+      ),
+      _buildDivider(context),
+      // Protein
+      Selector<SettingsProvider, int>(
+        selector: (_, s) => s.dailyProteinGoal,
+        builder:
+            (context, proteinGoal, _) => _buildGoalTile(
+              context,
+              'Protein',
+              '${proteinGoal}g',
+              LucideIcons.beef,
+              const Color(0xFF30D158),
+              () => _showGoalDialog(
+                context,
+                'Protein',
+                proteinGoal,
+                context.read<SettingsProvider>().updateProteinGoal,
+              ),
+            ),
+      ),
+      _buildDivider(context),
+      // Carbs
+      Selector<SettingsProvider, int>(
+        selector: (_, s) => s.dailyCarbGoal,
+        builder:
+            (context, carbGoal, _) => _buildGoalTile(
+              context,
+              'Carbs',
+              '${carbGoal}g',
+              LucideIcons.apple,
+              const Color(0xFF0A84FF),
+              () => _showGoalDialog(
+                context,
+                'Carbs',
+                carbGoal,
+                context.read<SettingsProvider>().updateCarbGoal,
+              ),
+            ),
+      ),
+      _buildDivider(context),
+      // Fats
+      Selector<SettingsProvider, int>(
+        selector: (_, s) => s.dailyFatGoal,
+        builder:
+            (context, fatGoal, _) => _buildGoalTile(
+              context,
+              'Fats',
+              '${fatGoal}g',
+              LucideIcons.droplets,
+              const Color(0xFFFF9F0A),
+              () => _showGoalDialog(
+                context,
+                'Fat',
+                fatGoal,
+                context.read<SettingsProvider>().updateFatGoal,
+              ),
+            ),
+      ),
+    ], delay: 200);
+  }
+
+  // ─── Preferences Section ──────────────────────────────────────────
+  List<Widget> _buildPreferencesSection(BuildContext context) {
+    return _buildSettingsSection('PREFERENCES', context, [
+      Selector<SettingsProvider, bool>(
+        selector: (_, s) => s.notificationsEnabled,
+        builder:
+            (context, notifEnabled, _) => Column(
+              children: [
+                _buildSwitchTile(
+                  context,
+                  'Notifications',
+                  LucideIcons.bell,
+                  const Color(0xFFFF375F),
+                  notifEnabled,
+                  context.read<SettingsProvider>().toggleNotifications,
+                ),
+                if (notifEnabled) ...[
+                  _buildDivider(context),
+                  Selector<SettingsProvider, bool>(
+                    selector: (_, s) => s.mealRemindersEnabled,
+                    builder:
+                        (context, mealReminders, _) => _buildSwitchTile(
+                          context,
+                          'Meal Reminders',
+                          LucideIcons.clock,
+                          const Color(0xFFBF5AF2),
+                          mealReminders,
+                          context.read<SettingsProvider>().toggleMealReminders,
+                        ),
+                  ),
+                ],
+              ],
+            ),
+      ),
+    ], delay: 300);
+  }
+
+  // ─── Appearance Section ───────────────────────────────────────────
+  List<Widget> _buildAppearanceSection(BuildContext context) {
+    return _buildSettingsSection('APPEARANCE', context, [
+      Selector<SettingsProvider, String>(
+        selector: (_, s) => s.themeMode,
+        builder:
+            (context, themeMode, _) => _buildThemeSelector(context, themeMode),
+      ),
+    ], delay: 400);
+  }
+
+  // ─── Subscription Section ─────────────────────────────────────────
+  List<Widget> _buildSubscriptionSection(BuildContext context) {
+    return _buildSettingsSection('SUBSCRIPTION', context, [
+      Selector<SettingsProvider, bool>(
+        selector: (_, s) => s.isPro,
+        builder:
+            (context, isPro, _) => ListTile(
+              onTap: () => context.push('/paywall'),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
+              leading: GlassContainer(
+                padding: const EdgeInsets.all(8),
+                borderRadius: 12,
+                backgroundColor:
+                    isPro
+                        ? const Color(0xFFFFD60A).withOpacity(0.2)
+                        : context.surfaceLightColor.withOpacity(0.5),
+                borderColor:
+                    isPro
+                        ? const Color(0xFFFFD60A).withOpacity(0.5)
+                        : context.glassBorderColor,
+                child: Icon(
+                  LucideIcons.crown,
+                  color:
+                      isPro
+                          ? const Color(0xFFFFD60A)
+                          : context.textPrimaryColor,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                'Manage Subscription',
+                style: AppTypography.bodyLarge.copyWith(
+                  color: context.textPrimaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isPro)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF30D158), Color(0xFF28A745)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'PRO',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    LucideIcons.chevronRight,
+                    size: 18,
+                    color: context.textMutedColor,
+                  ),
+                ],
+              ),
+            ),
+      ),
+    ], delay: 500);
+  }
+
+  // ─── Support Section ──────────────────────────────────────────────
+  List<Widget> _buildSupportSection(BuildContext context) {
+    return _buildSettingsSection('SUPPORT', context, [
+      _buildSimpleTile(
+        context,
+        LucideIcons.helpCircle,
+        'Help Center',
+        const Color(0xFF64D2FF),
+      ),
+      _buildDivider(context),
+      _buildSimpleTile(
+        context,
+        LucideIcons.shieldCheck,
+        'Privacy Policy',
+        const Color(0xFF32D74B),
+      ),
+      _buildDivider(context),
+      _buildSimpleTile(
+        context,
+        LucideIcons.info,
+        'About SnapCal',
+        const Color(0xFF8E8E93),
+      ),
+    ], delay: 600);
+  }
+
+  // ─── Shared Builders ──────────────────────────────────────────────
   List<Widget> _buildSettingsSection(
     String title,
     BuildContext context,
@@ -370,7 +469,7 @@ class SettingsScreen extends StatelessWidget {
     ];
   }
 
-  Widget _buildProfileHeader(AuthProvider auth, BuildContext context) {
+  Widget _buildProfileHeader(_AuthSnapshot auth, BuildContext context) {
     return GlassContainer(
       padding: const EdgeInsets.all(20),
       borderRadius: 28,
@@ -400,7 +499,7 @@ class SettingsScreen extends StatelessWidget {
                 Text(
                   auth.isAnonymous
                       ? 'Guest User'
-                      : (auth.user?.displayName ?? 'SnapCal User'),
+                      : (auth.displayName ?? 'SnapCal User'),
                   style: AppTypography.heading3.copyWith(
                     color: context.textPrimaryColor,
                     fontWeight: FontWeight.w900,
@@ -419,7 +518,7 @@ class SettingsScreen extends StatelessWidget {
                   child: Text(
                     auth.isAnonymous
                         ? 'Sign in to sync data'
-                        : (auth.user?.email ?? 'Premium Account'),
+                        : (auth.email ?? 'Premium Account'),
                     style: AppTypography.bodySmall.copyWith(
                       color: context.textSecondaryColor,
                       fontWeight: FontWeight.w600,
@@ -482,11 +581,12 @@ class SettingsScreen extends StatelessWidget {
     String? unit,
   }) {
     final controller = TextEditingController(text: current.toString());
+
     showDialog(
       context: context,
       builder:
-          (context) => AlertDialog(
-            backgroundColor: context.surfaceLightColor,
+          (dialogContext) => AlertDialog(
+            backgroundColor: dialogContext.surfaceLightColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -499,19 +599,20 @@ class SettingsScreen extends StatelessWidget {
             content: TextField(
               controller: controller,
               keyboardType: TextInputType.number,
+              autofocus: true,
               style: AppTypography.bodyLarge.copyWith(
                 fontWeight: FontWeight.bold,
               ),
               decoration: InputDecoration(
                 hintText: 'Enter amount',
-                hintStyle: TextStyle(color: context.textMutedColor),
+                hintStyle: TextStyle(color: dialogContext.textMutedColor),
                 suffixText: unit ?? (title == 'Calories' ? 'kcal' : 'g'),
                 suffixStyle: AppTypography.bodySmall.copyWith(
-                  color: context.textSecondaryColor,
+                  color: dialogContext.textSecondaryColor,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: context.glassBorderColor),
+                  borderSide: BorderSide(color: dialogContext.glassBorderColor),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -521,11 +622,14 @@ class SettingsScreen extends StatelessWidget {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  controller.dispose();
+                  Navigator.pop(dialogContext);
+                },
                 child: Text(
                   'Cancel',
                   style: TextStyle(
-                    color: context.textSecondaryColor,
+                    color: dialogContext.textSecondaryColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -539,9 +643,11 @@ class SettingsScreen extends StatelessWidget {
                   onPressed: () {
                     final value = int.tryParse(controller.text);
                     if (value != null && value > 0) {
-                      onSave(value);
-                      Navigator.pop(context);
+                      Navigator.pop(dialogContext);
+                      // Call onSave AFTER closing the dialog to avoid rebuild conflicts
+                      Future.microtask(() => onSave(value));
                     }
+                    controller.dispose();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
@@ -668,7 +774,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildThemeSelector(BuildContext context, SettingsProvider settings) {
+  Widget _buildThemeSelector(BuildContext context, String currentMode) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
@@ -703,21 +809,21 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 _themeOption(
                   context,
-                  settings,
+                  currentMode,
                   'system',
                   LucideIcons.smartphone,
                   'Auto',
                 ),
                 _themeOption(
                   context,
-                  settings,
+                  currentMode,
                   'light',
                   LucideIcons.sun,
                   'Light',
                 ),
                 _themeOption(
                   context,
-                  settings,
+                  currentMode,
                   'dark',
                   LucideIcons.moon,
                   'Dark',
@@ -732,14 +838,14 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _themeOption(
     BuildContext context,
-    SettingsProvider settings,
+    String currentMode,
     String mode,
     IconData icon,
     String label,
   ) {
-    final isSelected = settings.themeMode == mode;
+    final isSelected = currentMode == mode;
     return GestureDetector(
-      onTap: () => settings.setThemeMode(mode),
+      onTap: () => context.read<SettingsProvider>().setThemeMode(mode),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -765,8 +871,29 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _handleLogout(AuthProvider auth, BuildContext context) async {
+  Future<void> _handleLogout(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
     await auth.signOut();
     if (context.mounted) context.go('/auth');
   }
+}
+
+/// Lightweight snapshot to avoid rebuilding on every AuthProvider change
+class _AuthSnapshot {
+  final bool isAnonymous;
+  final String? displayName;
+  final String? email;
+
+  _AuthSnapshot({required this.isAnonymous, this.displayName, this.email});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _AuthSnapshot &&
+          isAnonymous == other.isAnonymous &&
+          displayName == other.displayName &&
+          email == other.email;
+
+  @override
+  int get hashCode => Object.hash(isAnonymous, displayName, email);
 }

@@ -10,27 +10,44 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/assistant/assistant_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'providers/auth_provider.dart';
+import 'providers/settings_provider.dart';
 import 'screens/planner/meal_planner_screen.dart';
 import 'screens/paywall/paywall_screen.dart'; // Import
+import 'screens/onboarding/onboarding_screen.dart';
 
 /// App router configuration
 final appRouter = GoRouter(
   initialLocation: '/',
   redirect: (context, state) {
     final authProvider = context.read<AuthProvider>();
+    final settingsProvider = context.read<SettingsProvider>();
     final loggingIn = state.matchedLocation == '/auth';
+    final onboarding = state.matchedLocation == '/onboarding';
 
-    // accessible to everyone - no auth wall!
-    // If user is explicitly going to /auth while already logged in (and not anon),
-    // redirect to home.
+    // 1. Auth blocking (optional, but SnapCal allows anon access)
     if (authProvider.isAuthenticated &&
         !authProvider.isAnonymous &&
         loggingIn) {
       return '/';
     }
+
+    // 2. Onboarding Redirect
+    // If auth is initialized (even anon) and onboarding not complete,
+    // and they aren't already on the onboarding screen, send them there.
+    if (authProvider.isAuthenticated &&
+        !settingsProvider.onboardingComplete &&
+        !onboarding &&
+        !loggingIn) {
+      return '/onboarding';
+    }
+
     return null;
   },
   routes: [
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) => const OnboardingScreen(),
+    ),
     GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
     GoRoute(
       path: '/settings',
