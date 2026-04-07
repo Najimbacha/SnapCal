@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/theme_colors.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../widgets/glass_container.dart';
 
-/// Card for displaying macro nutrient progress
+import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_colors.dart';
+import '../../../widgets/ui_blocks.dart';
+
 class MacroCard extends StatelessWidget {
   final String label;
   final int consumed;
@@ -25,116 +25,57 @@ class MacroCard extends StatelessWidget {
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
 
     return Expanded(
-      child: GlassContainer(
+      child: AppSectionCard(
+        color: context.cardSoftColor,
         padding: const EdgeInsets.all(16),
-        borderRadius: 24,
-        backgroundColor: context.surfaceColor.withOpacity(0.4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(6),
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    color: color.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    icon ?? _getIconForLabel(label),
-                    size: 14,
-                    color: color,
-                  ),
+                  child: Icon(icon ?? Icons.circle, color: color, size: 18),
                 ),
+                const Spacer(),
                 Text(
                   '${(progress * 100).round()}%',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: AppTypography.labelSmall.copyWith(color: color),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
-              label.toUpperCase(),
-              style: AppTypography.labelSmall.copyWith(
-                color: context.textMutedColor,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-                fontSize: 9,
+              '${consumed}g',
+              style: AppTypography.heading2.copyWith(
+                color: context.textPrimaryColor,
               ),
             ),
             const SizedBox(height: 4),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  consumed.toString(),
-                  style: AppTypography.heading3.copyWith(
-                    color: context.textPrimaryColor,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Text(
-                  ' / ${goal}g',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: context.textMutedColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            Text(
+              '$label • $goal g goal',
+              style: AppTypography.bodySmall.copyWith(
+                color: context.textSecondaryColor,
+              ),
             ),
-            const SizedBox(height: 16),
-            Stack(
-              children: [
-                Container(
-                  height: 6,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: context.surfaceLightColor.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-                FractionallySizedBox(
-                  widthFactor: progress,
-                  child: Container(
-                    height: 6,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [color, color.withOpacity(0.7)],
-                      ),
-                      borderRadius: BorderRadius.circular(3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withOpacity(0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                minHeight: 7,
+                value: progress,
+                backgroundColor: context.dividerColor,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  IconData _getIconForLabel(String label) {
-    switch (label.toLowerCase()) {
-      case 'protein':
-        return Icons.fitness_center;
-      case 'carbs':
-        return Icons.bakery_dining;
-      case 'fat':
-        return Icons.opacity;
-      default:
-        return Icons.circle;
-    }
   }
 }

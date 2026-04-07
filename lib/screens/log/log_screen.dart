@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/theme_colors.dart';
+import 'package:provider/provider.dart';
+
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/date_utils.dart' as app_date;
+import '../../data/models/meal.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../data/models/meal.dart';
+import '../../widgets/app_page_scaffold.dart';
+import '../../widgets/ui_blocks.dart';
 import 'widgets/date_picker_bar.dart';
-import 'widgets/meal_list_tile.dart';
 import 'widgets/edit_meal_modal.dart';
-import '../../widgets/glass_container.dart';
+import 'widgets/meal_list_tile.dart';
 
-/// Log screen for viewing and editing meal history
 class LogScreen extends StatefulWidget {
   const LogScreen({super.key});
 
@@ -26,7 +24,6 @@ class _LogScreenState extends State<LogScreen> {
   @override
   void initState() {
     super.initState();
-    // Load today's meals
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MealProvider>().loadMealsForDate(
         app_date.DateUtils.getTodayString(),
@@ -92,9 +89,7 @@ class _LogScreenState extends State<LogScreen> {
                 );
               },
               onCancel: () => Navigator.pop(context),
-              onDelete:
-                  () =>
-                      Navigator.pop(context), // Nothing to delete for new entry
+              onDelete: () => Navigator.pop(context),
             ),
           ),
     );
@@ -102,319 +97,119 @@ class _LogScreenState extends State<LogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.backgroundColor,
-      body: SafeArea(
-        child: Builder(
-          builder: (context) {
-            // High-performance granular selection
-            final meals = context.select<MealProvider, List<Meal>>(
-              (p) => p.selectedDateMeals,
-            );
-            final selectedDate = context.select<MealProvider, String>(
-              (p) => p.selectedDate,
-            );
-            final totalCalories = context.select<MealProvider, int>(
-              (p) => p.selectedDateTotalCalories,
-            );
-            final mealProvider = context.read<MealProvider>();
+    final meals = context.select<MealProvider, List<Meal>>(
+      (p) => p.selectedDateMeals,
+    );
+    final selectedDate = context.select<MealProvider, String>(
+      (p) => p.selectedDate,
+    );
+    final totalCalories = context.select<MealProvider, int>(
+      (p) => p.selectedDateTotalCalories,
+    );
+    final mealProvider = context.read<MealProvider>();
+    final colorScheme = Theme.of(context).colorScheme;
 
-            return Column(
+    return AppPageScaffold(
+      title: 'Daily Log',
+      subtitle:
+          'Review and refine your entries for a precise tracking day.',
+      scrollable: true,
+      trailing: IconButton.filledTonal(
+        icon: const Icon(LucideIcons.plus),
+        onPressed: _showManualAddModal,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSectionCard(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Column(
               children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Daily Log',
-                                style: AppTypography.heading2.copyWith(
-                                  letterSpacing: -1,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              Text(
-                                'Track your nutrition journey',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: context.textMutedColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          _buildAddButton(),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      DatePickerBar(
-                        selectedDate: selectedDate,
-                        onPrevious: () => mealProvider.goToPreviousDay(),
-                        onNext: () => mealProvider.goToNextDay(),
-                        onToday: () => mealProvider.goToToday(),
-                      ),
-                    ],
-                  ),
+                DatePickerBar(
+                  selectedDate: selectedDate,
+                  onPrevious: mealProvider.goToPreviousDay,
+                  onNext: mealProvider.goToNextDay,
+                  onToday: mealProvider.goToToday,
                 ),
-
-                // Summary card - Isolated repaint
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: RepaintBoundary(
-                    child: GlassContainer(
-                          padding: const EdgeInsets.all(24),
-                          borderRadius: 32,
-                          backgroundColor: context.surfaceColor.withOpacity(
-                            0.4,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _SummaryItem(
-                                label: 'Logged Meals',
-                                value: '${meals.length}',
-                                icon: LucideIcons.utensils,
-                              ),
-                              Container(
-                                width: 1,
-                                height: 32,
-                                color: context.glassBorderColor.withOpacity(
-                                  0.3,
-                                ),
-                              ),
-                              _SummaryItem(
-                                label: 'Total Calories',
-                                value: '$totalCalories',
-                                unit: 'kcal',
-                                icon: LucideIcons.flame,
-                                valueColor: AppColors.primary,
-                              ),
-                            ],
-                          ),
-                        )
-                        .animate()
-                        .fadeIn(duration: 400.ms, curve: Curves.easeOutCubic)
-                        .slideY(
-                          begin: 0.2,
-                          duration: 400.ms,
-                          curve: Curves.easeOutCubic,
-                        ),
-                  ),
-                ),
-
                 const SizedBox(height: 24),
-
-                // Meal list
-                Expanded(
-                  child:
-                      meals.isEmpty
-                          ? _buildEmptyState(selectedDate)
-                          : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: meals.length,
-                            itemBuilder: (context, index) {
-                              final meal = meals[index];
-                              // RepaintBoundary here helps smooth out the dismissal/scroll interaction
-                              return RepaintBoundary(
-                                child: MealListTile(
-                                      meal: meal,
-                                      onTap: () => _showEditModal(meal),
-                                      onDelete: () async {
-                                        final messenger = ScaffoldMessenger.of(
-                                          context,
-                                        );
-                                        await mealProvider.deleteMeal(meal.id);
-                                        if (mounted) {
-                                          messenger.showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                '${meal.foodName} removed',
-                                              ),
-                                              backgroundColor:
-                                                  context.surfaceColor,
-                                              action: SnackBarAction(
-                                                label: 'Undo',
-                                                textColor: AppColors.primary,
-                                                onPressed: () {
-                                                  // Undo functionality
-                                                },
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    )
-                                    .animate()
-                                    .fadeIn(
-                                      delay: (index * 80).ms,
-                                      duration: 400.ms,
-                                      curve: Curves.easeOut,
-                                    )
-                                    .slideY(
-                                      begin: 0.1,
-                                      duration: 400.ms,
-                                      curve: Curves.easeOut,
-                                    ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: MetricTile(
+                        label: 'Entries',
+                        value: '${meals.length}',
+                        accent: colorScheme.primary,
+                        icon: LucideIcons.utensils,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: MetricTile(
+                        label: 'Total kcal',
+                        value: '$totalCalories',
+                        hint: 'on ${selectedDate.split('-').last}',
+                        accent: colorScheme.secondary,
+                        icon: LucideIcons.flame,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              'MEAL HISTORY',
+              style: AppTypography.labelMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (meals.isEmpty)
+            AppEmptyState(
+              icon: LucideIcons.bookOpen,
+              title:
+                  app_date.DateUtils.isToday(selectedDate)
+                      ? 'No logs today'
+                      : 'Empty history',
+              body:
+                  app_date.DateUtils.isToday(selectedDate)
+                      ? 'Track your meals to see them here.'
+                      : 'There is no data for this day.',
+              actionLabel: 'Add Manually',
+              onAction: _showManualAddModal,
+            )
+          else
+            Column(
+              children:
+                  meals
+                      .map(
+                        (meal) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: MealListTile(
+                            meal: meal,
+                            onTap: () => _showEditModal(meal),
+                            onDelete: () async {
+                              final messenger = ScaffoldMessenger.of(context);
+                              await mealProvider.deleteMeal(meal.id);
+                              if (!mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('${meal.foodName} removed'),
+                                ),
                               );
                             },
                           ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddButton() {
-    return GestureDetector(
-      onTap: _showManualAddModal,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(LucideIcons.plus, color: AppColors.primary, size: 24),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String selectedDate) {
-    final isToday = app_date.DateUtils.isToday(selectedDate);
-
-    return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(40),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: context.surfaceColor.withOpacity(0.3),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: context.glassBorderColor.withOpacity(0.5),
-                    ),
-                  ),
-                  child: Icon(
-                    LucideIcons.bookOpen,
-                    size: 48,
-                    color: context.textMutedColor.withOpacity(0.5),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  isToday ? 'No meals yet' : 'Nothing logged here',
-                  style: AppTypography.heading3.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  isToday
-                      ? 'Start your day by tracking your first meal!'
-                      : 'Take a look at another day in your journey.',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: context.textSecondaryColor,
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                        ),
+                      )
+                      .toList(),
             ),
-          ),
-        )
-        .animate()
-        .fadeIn(duration: 600.ms)
-        .scale(
-          begin: const Offset(0.9, 0.9),
-          duration: 600.ms,
-          curve: Curves.easeOutBack,
-        );
-  }
-}
-
-class _SummaryItem extends StatelessWidget {
-  final String label;
-  final String value;
-  final String? unit;
-  final IconData icon;
-  final Color? valueColor;
-
-  const _SummaryItem({
-    required this.label,
-    required this.value,
-    this.unit,
-    required this.icon,
-    this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: (valueColor ?? context.textSecondaryColor).withOpacity(0.08),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            icon,
-            size: 16,
-            color: valueColor ?? context.textSecondaryColor,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              value,
-              style: AppTypography.heading3.copyWith(
-                color: valueColor ?? context.textPrimaryColor,
-                fontWeight: FontWeight.w900,
-                fontSize: 24,
-                height: 1,
-              ),
-            ),
-            if (unit != null) ...[
-              const SizedBox(width: 4),
-              Text(
-                unit!,
-                style: AppTypography.labelSmall.copyWith(
-                  color: context.textMutedColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label.toUpperCase(),
-          style: AppTypography.labelSmall.copyWith(
-            color: context.textMutedColor,
-            fontWeight: FontWeight.w800,
-            fontSize: 9,
-            letterSpacing: 1,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

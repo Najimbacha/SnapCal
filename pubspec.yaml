@@ -35,6 +35,8 @@ dependencies:
   flutter_facebook_auth: ^7.1.1
 
   # UI Components
+  google_fonts: ^6.2.1
+  dynamic_color: ^1.7.0
   lucide_icons: ^0.257.0
   font_awesome_flutter: ^10.7.0
   flutter_animate: ^4.5.0

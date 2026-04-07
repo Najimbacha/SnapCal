@@ -57,6 +57,42 @@ class UserSettings extends HiveObject {
   @HiveField(16)
   final bool onboardingComplete;
 
+  @HiveField(17)
+  final int? age;
+
+  @HiveField(18)
+  final String? gender;
+
+  @HiveField(19)
+  final String? activityLevel;
+
+  @HiveField(20)
+  final int? goalTimelineMonths;
+
+  @HiveField(21)
+  final double? startingWeight;
+
+  @HiveField(22)
+  final String weightUnit;
+
+  @HiveField(23)
+  final String heightUnit;
+
+  @HiveField(24)
+  final String goalMode;
+
+  @HiveField(25)
+  final double weeklyRateKg;
+
+  @HiveField(26)
+  final String recommendationInsight;
+
+  @HiveField(27)
+  final String recommendationTip;
+
+  @HiveField(28)
+  final String recommendationSafetyNote;
+
   UserSettings({
     required this.dailyCalorieGoal,
     required this.dailyProteinGoal,
@@ -75,6 +111,18 @@ class UserSettings extends HiveObject {
     this.targetWeight,
     this.themeMode = 'system',
     this.onboardingComplete = false,
+    this.age,
+    this.gender,
+    this.activityLevel,
+    this.goalTimelineMonths,
+    this.startingWeight,
+    this.weightUnit = 'kg',
+    this.heightUnit = 'cm',
+    this.goalMode = 'maintain',
+    this.weeklyRateKg = 0,
+    this.recommendationInsight = '',
+    this.recommendationTip = '',
+    this.recommendationSafetyNote = '',
   });
 
   UserSettings copyWith({
@@ -95,6 +143,18 @@ class UserSettings extends HiveObject {
     double? targetWeight,
     String? themeMode,
     bool? onboardingComplete,
+    int? age,
+    String? gender,
+    String? activityLevel,
+    int? goalTimelineMonths,
+    double? startingWeight,
+    String? weightUnit,
+    String? heightUnit,
+    String? goalMode,
+    double? weeklyRateKg,
+    String? recommendationInsight,
+    String? recommendationTip,
+    String? recommendationSafetyNote,
   }) {
     return UserSettings(
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -114,6 +174,20 @@ class UserSettings extends HiveObject {
       targetWeight: targetWeight ?? this.targetWeight,
       themeMode: themeMode ?? this.themeMode,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
+      age: age ?? this.age,
+      gender: gender ?? this.gender,
+      activityLevel: activityLevel ?? this.activityLevel,
+      goalTimelineMonths: goalTimelineMonths ?? this.goalTimelineMonths,
+      startingWeight: startingWeight ?? this.startingWeight,
+      weightUnit: weightUnit ?? this.weightUnit,
+      heightUnit: heightUnit ?? this.heightUnit,
+      goalMode: goalMode ?? this.goalMode,
+      weeklyRateKg: weeklyRateKg ?? this.weeklyRateKg,
+      recommendationInsight:
+          recommendationInsight ?? this.recommendationInsight,
+      recommendationTip: recommendationTip ?? this.recommendationTip,
+      recommendationSafetyNote:
+          recommendationSafetyNote ?? this.recommendationSafetyNote,
     );
   }
 
@@ -136,6 +210,18 @@ class UserSettings extends HiveObject {
       'targetWeight': targetWeight,
       'themeMode': themeMode,
       'onboardingComplete': onboardingComplete,
+      'age': age,
+      'gender': gender,
+      'activityLevel': activityLevel,
+      'goalTimelineMonths': goalTimelineMonths,
+      'startingWeight': startingWeight,
+      'weightUnit': weightUnit,
+      'heightUnit': heightUnit,
+      'goalMode': goalMode,
+      'weeklyRateKg': weeklyRateKg,
+      'recommendationInsight': recommendationInsight,
+      'recommendationTip': recommendationTip,
+      'recommendationSafetyNote': recommendationSafetyNote,
     };
   }
 
@@ -161,6 +247,19 @@ class UserSettings extends HiveObject {
       targetWeight: json['targetWeight'] as double?,
       themeMode: json['themeMode'] as String? ?? 'system',
       onboardingComplete: json['onboardingComplete'] as bool? ?? false,
+      age: json['age'] as int?,
+      gender: json['gender'] as String?,
+      activityLevel: json['activityLevel'] as String?,
+      goalTimelineMonths: json['goalTimelineMonths'] as int?,
+      startingWeight: json['startingWeight'] as double?,
+      weightUnit: json['weightUnit'] as String? ?? 'kg',
+      heightUnit: json['heightUnit'] as String? ?? 'cm',
+      goalMode: json['goalMode'] as String? ?? 'maintain',
+      weeklyRateKg: (json['weeklyRateKg'] as num?)?.toDouble() ?? 0,
+      recommendationInsight: json['recommendationInsight'] as String? ?? '',
+      recommendationTip: json['recommendationTip'] as String? ?? '',
+      recommendationSafetyNote:
+          json['recommendationSafetyNote'] as String? ?? '',
     );
   }
 
@@ -184,6 +283,18 @@ class UserSettings extends HiveObject {
       targetWeight: null,
       themeMode: 'system',
       onboardingComplete: false,
+      age: null,
+      gender: null,
+      activityLevel: null,
+      goalTimelineMonths: null,
+      startingWeight: null,
+      weightUnit: 'kg',
+      heightUnit: 'cm',
+      goalMode: 'maintain',
+      weeklyRateKg: 0,
+      recommendationInsight: '',
+      recommendationTip: '',
+      recommendationSafetyNote: '',
     );
   }
 }

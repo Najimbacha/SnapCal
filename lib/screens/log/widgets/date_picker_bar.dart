@@ -115,8 +115,8 @@ class _NavButton extends StatelessWidget {
         decoration: BoxDecoration(
           color:
               isDisabled
-                  ? context.surfaceLightColor.withOpacity(0.5)
-                  : context.surfaceLightColor,
+                  ? context.cardSoftColor.withValues(alpha: 0.5)
+                  : context.cardSoftColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(

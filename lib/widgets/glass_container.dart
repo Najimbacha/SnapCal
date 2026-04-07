@@ -22,7 +22,7 @@ class GlassContainer extends StatelessWidget {
     this.padding,
     this.margin,
     this.borderRadius = 20,
-    this.blur = 10,
+    this.blur = 6,
     this.backgroundColor,
     this.borderColor,
   });
@@ -49,8 +49,9 @@ class GlassContainer extends StatelessWidget {
                 borderRadius: BorderRadius.circular(borderRadius),
                 border: Border.all(
                   color: borderColor ?? context.glassBorderColor,
-                  width: 1.0, // Thinner border for better sub-pixel rendering
+                  width: 1.0,
                 ),
+                boxShadow: context.cardShadow,
               ),
               child: child,
             ),

@@ -4,6 +4,7 @@ import '../data/repositories/settings_repository.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/notification_service.dart';
+import '../data/services/calorie_onboarding_service.dart';
 
 /// Provider for managing user settings and subscription state
 class SettingsProvider with ChangeNotifier {
@@ -32,6 +33,18 @@ class SettingsProvider with ChangeNotifier {
   int get dailyFatGoal => _settings.dailyFatGoal;
   double? get height => _settings.height;
   double? get targetWeight => _settings.targetWeight;
+  int? get age => _settings.age;
+  String? get gender => _settings.gender;
+  String? get activityLevel => _settings.activityLevel;
+  int? get goalTimelineMonths => _settings.goalTimelineMonths;
+  double? get startingWeight => _settings.startingWeight;
+  String get weightUnit => _settings.weightUnit;
+  String get heightUnit => _settings.heightUnit;
+  String get goalMode => _settings.goalMode;
+  double get weeklyRateKg => _settings.weeklyRateKg;
+  String get recommendationInsight => _settings.recommendationInsight;
+  String get recommendationTip => _settings.recommendationTip;
+  String get recommendationSafetyNote => _settings.recommendationSafetyNote;
 
   bool get notificationsEnabled => _settings.notificationsEnabled;
   bool get mealRemindersEnabled => _settings.mealRemindersEnabled;
@@ -197,10 +210,30 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Complete onboarding and set initial calorie goal
-  Future<void> completeOnboarding(int calorieGoal) async {
+  /// Complete onboarding and persist the profile + recommendation result
+  Future<void> completeOnboarding({
+    required OnboardingProfileInput profile,
+    required OnboardingRecommendation recommendation,
+  }) async {
     _settings = _settings.copyWith(
-      dailyCalorieGoal: calorieGoal,
+      dailyCalorieGoal: recommendation.dailyCalories,
+      dailyProteinGoal: recommendation.proteinGrams,
+      dailyCarbGoal: recommendation.carbGrams,
+      dailyFatGoal: recommendation.fatGrams,
+      age: profile.age,
+      gender: profile.gender,
+      activityLevel: profile.activityLevel,
+      goalTimelineMonths: profile.timelineMonths,
+      startingWeight: profile.currentWeightKg,
+      height: profile.heightCm,
+      targetWeight: profile.goalWeightKg,
+      weightUnit: profile.weightUnit,
+      heightUnit: profile.heightUnit,
+      goalMode: recommendation.goalMode,
+      weeklyRateKg: recommendation.weeklyRateKg,
+      recommendationInsight: recommendation.insight,
+      recommendationTip: recommendation.tip,
+      recommendationSafetyNote: recommendation.safetyNote,
       onboardingComplete: true,
     );
     await _repository.saveSettings(_settings);
@@ -241,6 +274,52 @@ class SettingsProvider with ChangeNotifier {
 
     await _repository.saveSettings(_settings);
     notifyListeners();
+  }
+
+  /// Recalculate nutrition plan based on current weight
+  /// Uses Mifflin-St Jeor via CalorieOnboardingService
+  Future<bool> recalculatePlan({required double currentWeightKg}) async {
+    // Guard: need minimum profile data
+    final age = _settings.age;
+    final gender = _settings.gender;
+    final heightCm = _settings.height;
+    final targetWeight = _settings.targetWeight;
+
+    if (age == null || gender == null || heightCm == null || targetWeight == null) {
+      return false; // Not enough data to recalculate
+    }
+
+    final service = CalorieOnboardingService();
+    final input = OnboardingProfileInput(
+      age: age,
+      gender: gender,
+      heightCm: heightCm,
+      currentWeightKg: currentWeightKg,
+      goalWeightKg: targetWeight,
+      timelineMonths: _settings.goalTimelineMonths ?? 6,
+      activityLevel: _settings.activityLevel ?? 'active',
+      weightUnit: _settings.weightUnit,
+      heightUnit: _settings.heightUnit,
+    );
+
+    final recommendation = await service.buildRecommendation(input);
+
+    _settings = _settings.copyWith(
+      dailyCalorieGoal: recommendation.dailyCalories,
+      dailyProteinGoal: recommendation.proteinGrams,
+      dailyCarbGoal: recommendation.carbGrams,
+      dailyFatGoal: recommendation.fatGrams,
+      startingWeight: currentWeightKg,
+      goalMode: recommendation.goalMode,
+      weeklyRateKg: recommendation.weeklyRateKg,
+      recommendationInsight: recommendation.insight,
+      recommendationTip: recommendation.tip,
+      recommendationSafetyNote: recommendation.safetyNote,
+    );
+
+    await _repository.saveSettings(_settings);
+    notifyListeners();
+    return true;
   }
 
   /// Refresh settings

@@ -14,6 +14,7 @@ import 'providers/settings_provider.dart';
 import 'screens/planner/meal_planner_screen.dart';
 import 'screens/paywall/paywall_screen.dart'; // Import
 import 'screens/onboarding/onboarding_screen.dart';
+import 'widgets/hero_action_button.dart';
 
 /// App router configuration
 final appRouter = GoRouter(
@@ -126,21 +127,70 @@ final appRouter = GoRouter(
 );
 
 /// Shell route for bottom navigation
-class MainShell extends StatelessWidget {
+class MainShell extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainShell({super.key, required this.navigationShell});
 
   @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int _lastNavIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateNavIndex();
+  }
+
+  @override
+  void didUpdateWidget(MainShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _updateNavIndex();
+  }
+
+  void _updateNavIndex() {
+    final mapped = _mapBranchToNav(widget.navigationShell.currentIndex);
+    if (mapped != -1) {
+      _lastNavIndex = mapped;
+    }
+  }
+
+  int _mapBranchToNav(int branchIndex) {
+    if (branchIndex < 2) return branchIndex;
+    if (branchIndex == 2) return -1; // Snap is FAB
+    return branchIndex - 1;
+  }
+
+  int _mapNavToBranch(int navIndex) {
+    if (navIndex < 2) return navIndex;
+    return navIndex + 1;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: navigationShell,
+      extendBody: true,
+      body: widget.navigationShell,
+      floatingActionButton: HeroActionButton(
+        isActive: widget.navigationShell.currentIndex == 2,
+        onTap: () {
+          widget.navigationShell.goBranch(
+            2,
+            initialLocation: widget.navigationShell.currentIndex == 2,
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomNavBar(
-        currentIndex: navigationShell.currentIndex,
+        currentIndex: _lastNavIndex,
         onTap: (index) {
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
+          final branchIndex = _mapNavToBranch(index);
+          widget.navigationShell.goBranch(
+            branchIndex,
+            initialLocation: branchIndex == widget.navigationShell.currentIndex,
           );
         },
       ),

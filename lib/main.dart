@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'router.dart';
@@ -153,13 +154,21 @@ class ConnectedApp extends StatelessWidget {
         // 2. Show Main App with dynamic theme
         return Consumer<SettingsProvider>(
           builder: (context, settingsProvider, _) {
-            return MaterialApp.router(
-              title: 'SnapCal',
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
-              themeMode: _getThemeMode(settingsProvider.themeMode),
-              routerConfig: appRouter,
+            return DynamicColorBuilder(
+              builder: (lightDynamic, darkDynamic) {
+                return MaterialApp.router(
+                  title: 'SnapCal',
+                  debugShowCheckedModeBanner: false,
+                  theme: AppTheme.lightTheme.copyWith(
+                    colorScheme: lightDynamic ?? AppTheme.lightTheme.colorScheme,
+                  ),
+                  darkTheme: AppTheme.darkTheme.copyWith(
+                    colorScheme: darkDynamic ?? AppTheme.darkTheme.colorScheme,
+                  ),
+                  themeMode: _getThemeMode(settingsProvider.themeMode),
+                  routerConfig: appRouter,
+                );
+              },
             );
           },
         );

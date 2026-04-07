@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/theme_colors.dart';
+import 'package:provider/provider.dart';
+
 import '../../core/theme/app_typography.dart';
+import '../../data/services/connectivity_service.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../data/services/connectivity_service.dart';
-import '../../widgets/glass_container.dart';
+import '../../widgets/app_page_scaffold.dart';
+import '../../widgets/ui_blocks.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -20,39 +19,14 @@ class AssistantScreen extends StatefulWidget {
 }
 
 class _AssistantScreenState extends State<AssistantScreen> {
+  final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     _loadInitialRecommendations();
   }
-
-  void _loadInitialRecommendations() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final isOnline = context.read<ConnectivityService>().isOnline;
-      if (!isOnline) return;
-
-      final mealProvider = context.read<MealProvider>();
-      final settingsProvider = context.read<SettingsProvider>();
-
-      context.read<AssistantProvider>().fetchRecommendations(
-        currentCalories: mealProvider.todaysTotalCalories,
-        targetCalories: settingsProvider.dailyCalorieGoal,
-        currentMacros: {
-          'protein': mealProvider.todaysTotalMacros.protein,
-          'carbs': mealProvider.todaysTotalMacros.carbs,
-          'fat': mealProvider.todaysTotalMacros.fat,
-        },
-        targetMacros: {
-          'protein': settingsProvider.dailyProteinGoal,
-          'carbs': settingsProvider.dailyCarbGoal,
-          'fat': settingsProvider.dailyFatGoal,
-        },
-      );
-    });
-  }
-
-  final _searchController = TextEditingController();
-  final _scrollController = ScrollController();
 
   @override
   void dispose() {
@@ -61,22 +35,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
     super.dispose();
   }
 
-  void _handleSearch() {
-    if (_searchController.text.isEmpty) return;
+  void _loadInitialRecommendations() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !context.read<ConnectivityService>().isOnline) return;
+      _fetchRecommendations(clearPrevious: true);
+    });
+  }
 
-    final isOnline = context.read<ConnectivityService>().isOnline;
-    if (!isOnline) {
-      HapticFeedback.vibrate();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Working offline. AI Assistant requires internet.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    HapticFeedback.lightImpact();
+  void _fetchRecommendations({String? query, bool clearPrevious = false}) {
     final mealProvider = context.read<MealProvider>();
     final settingsProvider = context.read<SettingsProvider>();
 
@@ -93,466 +59,199 @@ class _AssistantScreenState extends State<AssistantScreen> {
         'carbs': settingsProvider.dailyCarbGoal,
         'fat': settingsProvider.dailyFatGoal,
       },
-      userQuery: _searchController.text,
+      userQuery: query,
+      clearPrevious: clearPrevious,
     );
-    _searchController.clear();
-    FocusScope.of(context).unfocus();
-
-    // Scroll to bottom after sending
-    _scrollToBottom();
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+  void _handleSearch() {
+    if (_searchController.text.trim().isEmpty) return;
+    if (!context.read<ConnectivityService>().isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Assistant needs connection.'),
+        ),
+      );
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    _fetchRecommendations(query: _searchController.text.trim());
+    _searchController.clear();
+    FocusScope.of(context).unfocus();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.backgroundColor,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text(
-          'AI Assistant',
-          style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: context.backgroundColor.withOpacity(0.8),
-        elevation: 0,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.refreshCw, size: 20),
-            onPressed:
-                () => context.read<AssistantProvider>().fetchRecommendations(
-                  currentCalories:
-                      context.read<MealProvider>().todaysTotalCalories,
-                  targetCalories:
-                      context.read<SettingsProvider>().dailyCalorieGoal,
-                  currentMacros: {
-                    'protein':
-                        context.read<MealProvider>().todaysTotalMacros.protein,
-                    'carbs':
-                        context.read<MealProvider>().todaysTotalMacros.carbs,
-                    'fat': context.read<MealProvider>().todaysTotalMacros.fat,
-                  },
-                  targetMacros: {
-                    'protein':
-                        context.read<SettingsProvider>().dailyProteinGoal,
-                    'carbs': context.read<SettingsProvider>().dailyCarbGoal,
-                    'fat': context.read<SettingsProvider>().dailyFatGoal,
-                  },
-                  clearPrevious: true,
-                ),
-          ),
-        ],
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppPageScaffold(
+      title: 'AI Coach',
+      subtitle: 'Personalized guidance for your fitness goals.',
+      trailing: IconButton.filledTonal(
+        icon: const Icon(LucideIcons.refreshCw),
+        onPressed: () => _fetchRecommendations(clearPrevious: true),
       ),
-      body: Stack(
-        children: [
-          // Subtle background gradient
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.primary.withOpacity(0.05),
-                    context.backgroundColor,
-                  ],
+      bottomBar: BottomActionBar(
+        child: Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(32),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            children: [
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  enabled: context.watch<ConnectivityService>().isOnline,
+                  decoration: InputDecoration(
+                    hintText: 'Ask anything...',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    hintStyle: AppTypography.bodyMedium.copyWith(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  onSubmitted: (_) => _handleSearch(),
                 ),
               ),
-            ),
+              IconButton.filled(
+                onPressed: _handleSearch,
+                icon: const Icon(LucideIcons.send, size: 20),
+              ),
+            ],
           ),
-          Column(
-            children: [
-              Expanded(
-                child: Consumer<AssistantProvider>(
-                  builder: (context, assistant, child) {
-                    if (assistant.error != null) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                LucideIcons.alertTriangle,
-                                color: AppColors.error,
-                                size: 48,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                assistant.error!,
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 24),
-                              ElevatedButton(
-                                onPressed: () {
-                                  HapticFeedback.mediumImpact();
-                                  _loadInitialRecommendations();
-                                },
-                                child: const Text('Retry'),
-                              ),
-                            ],
+        ),
+      ),
+      child: Consumer<AssistantProvider>(
+        builder: (context, assistant, _) {
+          if (assistant.error != null) {
+            return Center(
+              child: AppEmptyState(
+                icon: LucideIcons.alertTriangle,
+                title: 'Coach unavailable',
+                body: assistant.error!,
+                actionLabel: 'Retry',
+                onAction: _loadInitialRecommendations,
+              ),
+            );
+          }
+
+          if (assistant.history.isEmpty && assistant.isLoading) {
+            return const Center(
+              child: AppEmptyState(
+                icon: LucideIcons.sparkles,
+                title: 'Thinking...',
+                body: 'Preparing your personalized suggestions.',
+              ),
+            );
+          }
+
+          if (assistant.history.isEmpty) {
+            return const Center(
+              child: AppEmptyState(
+                icon: LucideIcons.messageCircle,
+                title: 'Start chatting',
+                body: 'Ask for meal ideas, plans, or general guidance.',
+              ),
+            );
+          }
+
+          return ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.only(bottom: 24),
+            itemCount: assistant.history.length + (assistant.isLoading ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index >= assistant.history.length) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: AppSectionCard(
+                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colorScheme.primary,
                           ),
                         ),
-                      );
-                    }
-
-                    // Scroll to bottom when new messages arrive
-                    if (assistant.history.isNotEmpty) {
-                      _scrollToBottom();
-                    }
-
-                    return ListView.builder(
-                      controller: _scrollController,
-                      padding: EdgeInsets.fromLTRB(
-                        20,
-                        MediaQuery.of(context).padding.top + 80,
-                        20,
-                        100, // Extra padding for docked input
-                      ),
-                      itemCount:
-                          assistant.history.length +
-                          (assistant.isLoading ? 1 : 0) +
-                          1,
-                      itemBuilder: (context, index) {
-                        if (index == 0) {
-                          return _buildWelcomeHeader()
-                              .animate()
-                              .fadeIn(duration: 600.ms)
-                              .slideY(begin: 0.2, end: 0);
-                        }
-
-                        final dataIndex = index - 1;
-                        if (dataIndex < assistant.history.length) {
-                          final item = assistant.history[dataIndex];
-                          if (item is Map && item['type'] == 'user') {
-                            return _buildUserMessage(item['content'])
-                                .animate()
-                                .fadeIn(duration: 400.ms)
-                                .slideX(begin: 0.2, end: 0);
-                          }
-                          return _buildRecommendationCard(item)
-                              .animate()
-                              .fadeIn(
-                                duration: 500.ms,
-                                delay: (dataIndex * 50).ms,
-                              )
-                              .slideY(begin: 0.1, end: 0);
-                        } else {
-                          return _buildLoadingIndicator().animate().fadeIn();
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-          _buildSearchInput(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUserMessage(String content) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 20, left: 60),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppColors.primary, Color(0xFF5E5CE6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-            bottomLeft: Radius.circular(24),
-            bottomRight: Radius.circular(6),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Text(
-          content,
-          style: AppTypography.bodyMedium.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoadingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                AppColors.primary.withOpacity(0.5),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Text(
-            'SnapCal is thinking...',
-            style: AppTypography.bodyMedium.copyWith(
-              color: context.textMutedColor,
-              fontStyle: FontStyle.italic,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWelcomeHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ShaderMask(
-          shaderCallback:
-              (bounds) => const LinearGradient(
-                colors: [AppColors.primary, Color(0xFF6B4DFF)],
-              ).createShader(bounds),
-          child: Text(
-            'How can I help you today?',
-            style: AppTypography.heading3.copyWith(color: Colors.white),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Ask for recipes based on your macros or get coaching tips to stay on track.',
-          style: AppTypography.bodyMedium.copyWith(
-            color: context.textSecondaryColor,
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: 32),
-      ],
-    );
-  }
-
-  Widget _buildSearchInput() {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: GlassContainer(
-        borderRadius: 0,
-        blur: 20,
-        backgroundColor: context.surfaceColor.withOpacity(0.8),
-        borderColor: context.glassBorderColor.withOpacity(0.5),
-        padding: EdgeInsets.fromLTRB(
-          20,
-          16,
-          20,
-          16 + MediaQuery.of(context).padding.bottom,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Consumer<ConnectivityService>(
-                builder: (context, connectivity, _) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: context.backgroundColor.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(
-                        color:
-                            connectivity.isOnline
-                                ? context.glassBorderColor
-                                : AppColors.error.withOpacity(0.3),
-                      ),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      enabled: connectivity.isOnline,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: context.textPrimaryColor,
-                      ),
-                      decoration: InputDecoration(
-                        hintText:
-                            connectivity.isOnline
-                                ? 'Ask your personal nutritionist...'
-                                : '⚠️ Offline: AI features unavailable',
-                        hintStyle: AppTypography.bodySmall.copyWith(
-                          color:
-                              connectivity.isOnline
-                                  ? context.textMutedColor
-                                  : AppColors.error.withOpacity(0.7),
-                          fontWeight:
-                              connectivity.isOnline ? null : FontWeight.bold,
+                        const SizedBox(width: 16),
+                        Text(
+                          'Developing suggestions...',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 14,
-                        ),
-                        border: InputBorder.none,
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final item = assistant.history[index];
+              final isUser = item is Map && item['type'] == 'user';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.85,
+                    ),
+                    child: AppSectionCard(
+                      padding: const EdgeInsets.all(20),
+                      color: isUser 
+                        ? colorScheme.primaryContainer 
+                        : colorScheme.surfaceContainerLow,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!isUser) ...[
+                            Row(
+                              children: [
+                                Icon(
+                                  item.type == 'recipe' ? LucideIcons.utensils : LucideIcons.sparkles,
+                                  size: 16,
+                                  color: colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  item.title,
+                                  style: AppTypography.titleMedium.copyWith(
+                                    color: colorScheme.onSurface,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          Text(
+                            isUser ? (item['content'] as String) : (item.content as String),
+                            style: AppTypography.bodyLarge.copyWith(
+                              color: isUser 
+                                ? colorScheme.onPrimaryContainer 
+                                : colorScheme.onSurface,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
-                      onSubmitted: (_) => _handleSearch(),
                     ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: _handleSearch,
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, Color(0xFF6B4DFF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
-                child: const Icon(
-                  LucideIcons.send,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ),
-          ],
-        ),
+              );
+            },
+          );
+        },
       ),
-    );
-  }
-
-  Widget _buildRecommendationCard(dynamic item) {
-    final isRecipe = item.type == 'recipe';
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: GlassContainer(
-        padding: const EdgeInsets.all(20),
-        borderRadius: 24,
-        backgroundColor: context.surfaceColor.withOpacity(0.4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: (isRecipe ? AppColors.primary : Colors.orange)
-                        .withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    isRecipe ? LucideIcons.utensils : LucideIcons.lightbulb,
-                    color: isRecipe ? AppColors.primary : Colors.orange,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    item.title,
-                    style: AppTypography.labelLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              item.content,
-              style: AppTypography.bodyMedium.copyWith(
-                color: context.textPrimaryColor.withOpacity(0.9),
-                height: 1.6,
-              ),
-            ),
-            if (isRecipe && item.macros != null) ...[
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: context.backgroundColor.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: context.glassBorderColor.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildMacroSmall(
-                      'Calories',
-                      '${item.macros['calories']} kcal',
-                    ),
-                    _buildMacroSmall('Protein', '${item.macros['protein']}g'),
-                    _buildMacroSmall('Carbs', '${item.macros['carbs']}g'),
-                    _buildMacroSmall('Fat', '${item.macros['fat']}g'),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMacroSmall(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: AppTypography.labelMedium.copyWith(
-            color: AppColors.primary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: AppTypography.bodySmall.copyWith(
-            fontSize: 10,
-            color: context.textMutedColor,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
     );
   }
 }

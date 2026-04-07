@@ -1,93 +1,101 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// SnapCal Typography - Clean, modern sans-serif
-/// Text colors are NOT specified here - they come from the theme or are set explicitly
-/// using context.textPrimaryColor, context.textSecondaryColor from ThemeColors extension
+/// SnapCal Typography - Expressive Material 3
 class AppTypography {
   AppTypography._();
 
-  static const String _fontFamily = 'SF Pro Display';
+  static TextStyle get _font => GoogleFonts.plusJakartaSans();
 
-  // Headings - color comes from theme
-  static const TextStyle heading1 = TextStyle(
-    fontFamily: _fontFamily,
+  // Display - For large calorie numbers
+  static TextStyle get displayLarge => _font.copyWith(
+    fontSize: 57,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -1.5,
+  );
+
+  static TextStyle get displayMedium => _font.copyWith(
+    fontSize: 45,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -1.0,
+  );
+
+  static TextStyle get displaySmall => _font.copyWith(
+    fontSize: 36,
+    fontWeight: FontWeight.w800,
+  );
+
+  // Headlines - For section titles
+  static TextStyle get headlineLarge => _font.copyWith(
     fontSize: 32,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.5,
   );
 
-  static const TextStyle heading2 = TextStyle(
-    fontFamily: _fontFamily,
+  static TextStyle get headlineMedium => _font.copyWith(
+    fontSize: 28,
+    fontWeight: FontWeight.w700,
+  );
+
+  static TextStyle get headlineSmall => _font.copyWith(
     fontSize: 24,
     fontWeight: FontWeight.w600,
-    letterSpacing: -0.3,
   );
 
-  static const TextStyle heading3 = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 20,
+  // Titles - For cards and list items
+  static TextStyle get titleLarge => _font.copyWith(
+    fontSize: 22,
     fontWeight: FontWeight.w600,
   );
 
-  // Large Display Numbers (for calorie count)
-  static const TextStyle displayLarge = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 48,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -1,
-  );
-
-  static const TextStyle displayMedium = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 36,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -0.5,
-  );
-
-  // Body Text
-  static const TextStyle bodyLarge = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-  );
-
-  static const TextStyle bodyMedium = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-  );
-
-  static const TextStyle bodySmall = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 12,
-    fontWeight: FontWeight.w400,
-  );
-
-  // Labels
-  static const TextStyle labelLarge = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.5,
-  );
-
-  static const TextStyle labelMedium = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 12,
-    fontWeight: FontWeight.w500,
-  );
-
-  static const TextStyle labelSmall = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 10,
-    fontWeight: FontWeight.w500,
-  );
-
-  // Button Text
-  static const TextStyle button = TextStyle(
-    fontFamily: _fontFamily,
+  static TextStyle get titleMedium => _font.copyWith(
     fontSize: 16,
     fontWeight: FontWeight.w600,
-    letterSpacing: 0.3,
   );
+
+  static TextStyle get titleSmall => _font.copyWith(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+  );
+
+  // Body - For general text
+  static TextStyle get bodyLarge => _font.copyWith(
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+  );
+
+  static TextStyle get bodyMedium => _font.copyWith(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    height: 1.45,
+  );
+
+  static TextStyle get bodySmall => _font.copyWith(
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
+  );
+
+  // Labels - For small UI elements
+  static TextStyle get labelLarge => _font.copyWith(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+  );
+
+  static TextStyle get labelMedium => _font.copyWith(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+  );
+
+  static TextStyle get labelSmall => _font.copyWith(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+  );
+  
+  // Legacy aliases to avoid breaking existing code immediately
+  static TextStyle get heading1 => headlineLarge;
+  static TextStyle get heading2 => headlineMedium;
+  static TextStyle get heading3 => headlineSmall;
+  static TextStyle get button => labelLarge;
 }

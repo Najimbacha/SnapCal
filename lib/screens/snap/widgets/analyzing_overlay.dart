@@ -1,73 +1,49 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 
-/// Overlay shown while analyzing food image
 class AnalyzingOverlay extends StatelessWidget {
   const AnalyzingOverlay({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: context.backgroundColor.withAlpha(230),
+      color: Colors.black.withValues(alpha: 0.72),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Pulsing animation
-            Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primary.withAlpha(30),
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: AppColors.primaryGradient,
-                      ),
-                      child: Icon(
-                        Icons.auto_fix_high,
-                        color: context.backgroundColor,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                )
-                .animate(onPlay: (controller) => controller.repeat())
-                .scale(
-                  begin: const Offset(1.0, 1.0),
-                  end: const Offset(1.2, 1.2),
-                  duration: 800.ms,
-                  curve: Curves.easeInOut,
-                )
-                .then()
-                .scale(
-                  begin: const Offset(1.2, 1.2),
-                  end: const Offset(1.0, 1.0),
-                  duration: 800.ms,
-                  curve: Curves.easeInOut,
+        child: Container(
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A241F),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 42,
+                height: 42,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
-
-            const SizedBox(height: 32),
-
-            Text('Analyzing food...', style: AppTypography.heading3),
-
-            const SizedBox(height: 8),
-
-            Text(
-              'This will only take a moment',
-              style: AppTypography.bodyMedium.copyWith(
-                color: context.textSecondaryColor,
               ),
-            ),
-          ],
+              SizedBox(height: 18),
+              Text(
+                'Analyzing your meal',
+                style: AppTypography.heading3,
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Checking the image and preparing nutrition details.',
+                style: AppTypography.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/theme_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/services/subscription_service.dart';
+import '../../widgets/app_page_scaffold.dart';
+import '../../widgets/ui_blocks.dart';
 
 class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key});
@@ -21,235 +22,142 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   Future<void> _handlePurchase(BuildContext context) async {
     setState(() => _isLoading = true);
-
-    // Quick mock service instantiation since it's stateless wrapper around repo
-    final settingsRepo =
-        context.read<SettingsProvider>().repository; // Need access to repo
-    final subService = SubscriptionService(settingsRepo);
-
+    final settingsProvider = context.read<SettingsProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    final subService = SubscriptionService(settingsProvider.repository);
     final success = await subService.purchasePro();
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (success) {
-        context.read<SettingsProvider>().refresh(); // Ensure UI updates
-        context.pop(); // Close Paywall
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Welcome to SnapCal Pro! 🌟'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
-      }
-    }
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (!success) return;
+    settingsProvider.refresh();
+    router.pop();
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Welcome to SnapCal Pro')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.backgroundColor,
-      body: Stack(
-        children: [
-          // Background Gradient
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient:
-                    context.isDarkMode
-                        ? AppColors.premiumDarkGradient
-                        : AppColors.premiumLightGradient,
-              ),
-            ),
-          ),
-
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  // Close Button
-                  GestureDetector(
-                    onTap: () => context.pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: context.surfaceLightColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        LucideIcons.x,
-                        color: context.textPrimaryColor,
-                      ),
-                    ),
-                  ),
-
-                  const Spacer(flex: 1),
-
-                  // Header
-                  Center(
-                    child: Column(
-                      children: [
-                        Icon(
-                          LucideIcons.crown,
-                          size: 64,
-                          color: AppColors.primary,
-                        ).animate().scale(
-                          duration: 600.ms,
-                          curve: Curves.easeOutBack,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'SnapCal PRO',
-                          style: AppTypography.displayMedium.copyWith(
-                            color: context.textPrimaryColor,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Unlock your full potential',
-                          style: AppTypography.bodyLarge.copyWith(
-                            color: context.textSecondaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const Spacer(flex: 1),
-
-                  // Features List
-                  _buildFeatureRow(
-                    LucideIcons.chefHat,
-                    'Smart Meal Planner',
-                    'Generate weekly plans & grocery lists',
-                  ),
-                  _buildFeatureRow(
-                    LucideIcons.brainCircuit,
-                    'Advanced AI Models',
-                    'More accurate food analysis',
-                  ),
-                  _buildFeatureRow(
-                    LucideIcons.history,
-                    'Unlimited History',
-                    'Access your full calorie log',
-                  ),
-                  _buildFeatureRow(
-                    LucideIcons.zap,
-                    'Priority Support',
-                    'Get help faster',
-                  ),
-
-                  const Spacer(flex: 2),
-
-                  // CTA Button
-                  if (_isLoading)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    )
-                  else
-                    GestureDetector(
-                      onTap: () => _handlePurchase(context),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primary, Color(0xFF34D399)],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.4),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Unlock Pro for \$4.99/mo',
-                            style: TextStyle(
-                              color:
-                                  context.isDarkMode
-                                      ? Colors.black
-                                      : Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
-                      ).animate().shimmer(
-                        delay: 2.seconds,
-                        duration: 1.5.seconds,
-                      ),
-                    ),
-
-                  const SizedBox(height: 16),
-
-                  // Restore Purchase
-                  Center(
-                    child: TextButton(
-                      onPressed:
-                          () => _handlePurchase(context), // Same mock logic
-                      child: Text(
-                        'Restore Purchase',
-                        style: AppTypography.labelMedium.copyWith(
-                          color: context.textMutedColor,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
+    return AppPageScaffold(
+      title: 'SnapCal Pro',
+      subtitle: 'Unlock planning, deeper insights, and unlimited AI support.',
+      trailing: ActionChipButton(
+        icon: LucideIcons.x,
+        label: 'Close',
+        onTap: () => context.pop(),
       ),
-    );
-  }
-
-  Widget _buildFeatureRow(IconData icon, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
-      child: Row(
+      bottomBar: BottomActionBar(
+        child:
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : FilledButton(
+                  onPressed: () => _handlePurchase(context),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                  ),
+                  child: const Text('Unlock Pro for \$4.99/mo'),
+                ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: context.surfaceLightColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.glassBorderColor),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
+          AppSectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: AppTypography.labelLarge.copyWith(
-                    color: context.textPrimaryColor,
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    LucideIcons.crown,
+                    color: AppColors.primary,
+                    size: 30,
                   ),
                 ),
+                const SizedBox(height: 18),
                 Text(
-                  subtitle,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: context.textSecondaryColor,
-                  ),
+                  'Built for people who want more guidance and less friction.',
+                  style: AppTypography.heading2,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Keep your core tracking simple, then unlock planning and smarter coaching when you need it.',
+                  style: AppTypography.bodyMedium,
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 18),
+          ...const [
+            _FeatureRow(
+              icon: LucideIcons.chefHat,
+              title: 'Smart Meal Planner',
+              subtitle:
+                  'Generate weekly plans and grocery lists around your targets.',
+            ),
+            _FeatureRow(
+              icon: LucideIcons.brainCircuit,
+              title: 'Smarter AI support',
+              subtitle:
+                  'Get richer coaching, better recipe suggestions, and faster guidance.',
+            ),
+            _FeatureRow(
+              icon: LucideIcons.history,
+              title: 'Deeper tracking history',
+              subtitle: 'Keep more of your nutrition story in one place.',
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _FeatureRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _FeatureRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppSectionCard(
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTypography.labelLarge),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: AppTypography.bodySmall),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

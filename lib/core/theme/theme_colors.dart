@@ -8,27 +8,34 @@ extension ThemeColors on BuildContext {
   // Backgrounds
   Color get backgroundColor => Theme.of(this).scaffoldBackgroundColor;
   Color get surfaceColor => Theme.of(this).colorScheme.surface;
-  Color get surfaceLightColor =>
-      isDarkMode ? AppColors.darkSurfaceLight : AppColors.lightSurfaceLight;
+  Color get surfaceContainerColor => Theme.of(this).colorScheme.surfaceContainer;
+  Color get cardColor => Theme.of(this).colorScheme.surfaceContainerLowest;
+  Color get cardSoftColor => Theme.of(this).colorScheme.surfaceContainerHigh;
+  
+  Color get dividerColor => Theme.of(this).dividerColor;
+  
+  Color get overlayColor =>
+      isDarkMode
+          ? Colors.black.withValues(alpha: 0.32)
+          : Colors.white.withValues(alpha: 0.72);
 
   // Text
   Color get textPrimaryColor => Theme.of(this).colorScheme.onSurface;
-  Color get textSecondaryColor =>
-      isDarkMode ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-  Color get textMutedColor =>
-      isDarkMode ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+  Color get textSecondaryColor => Theme.of(this).colorScheme.onSurfaceVariant;
+  Color get textMutedColor => Theme.of(this).colorScheme.outline;
 
-  // Glass effects
-  Color get glassBackgroundColor =>
-      isDarkMode
-          ? AppColors.darkGlassBackground
-          : AppColors.lightGlassBackground;
-  Color get glassBorderColor =>
-      isDarkMode ? AppColors.darkGlassBorder : AppColors.lightGlassBorder;
+  // Glass effects (Expressive M3 often uses tonal elevations instead of raw glass)
+  Color get glassBackgroundColor => Theme.of(this).colorScheme.surfaceContainerHigh.withValues(alpha: 0.4);
+  Color get glassBorderColor => Theme.of(this).colorScheme.outlineVariant;
+
+  List<BoxShadow> get cardShadow => [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.05),
+      blurRadius: 24,
+      offset: const Offset(0, 8),
+    ),
+  ];
 
   // Gradients
-  LinearGradient get premiumGradient =>
-      isDarkMode
-          ? AppColors.premiumDarkGradient
-          : AppColors.premiumLightGradient;
+  LinearGradient get primaryGradient => AppColors.primaryGradient;
 }

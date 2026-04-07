@@ -316,7 +316,7 @@ class _EditMealModalState extends State<EditMealModal> {
       context: context,
       builder:
           (context) => AlertDialog(
-            backgroundColor: context.surfaceLightColor,
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),

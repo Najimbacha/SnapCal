@@ -1,23 +1,18 @@
+import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../core/theme/app_colors.dart';
-import '../../providers/settings_provider.dart';
+import 'package:provider/provider.dart';
 
-/// ============================================================================
-/// PREMIUM ONBOARDING SCREEN - CALORIE GOAL SETUP
-/// ============================================================================
-/// A beautiful first-launch screen where the user sets their daily calorie goal.
-/// Features:
-/// - Animated gradient background with floating particles
-/// - Smart preset cards (Lose Weight, Maintain, Build Muscle)
-/// - Custom slider for fine-tuning
-/// - Live-updating calorie display with animation
-/// - Premium glassmorphism aesthetic
-/// ============================================================================
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_typography.dart';
+import '../../core/theme/theme_colors.dart';
+import '../../data/services/calorie_onboarding_service.dart';
+import '../../providers/metrics_provider.dart';
+import '../../providers/settings_provider.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -28,740 +23,1145 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
-  // Animation controllers
-  late AnimationController _fadeController;
-  late AnimationController _pulseController;
-  late AnimationController _particleController;
+  static const int _totalScreens = 6;
 
-  // Animations
-  late Animation<double> _headerFade;
-  late Animation<Offset> _headerSlide;
-  late Animation<double> _presetsFade;
-  late Animation<double> _sliderFade;
-  late Animation<double> _ctaFade;
+  late final AnimationController _backgroundController;
+  late final AnimationController _pulseController;
+  late final TextEditingController _ageController;
+  late final TextEditingController _heightCmController;
+  late final TextEditingController _heightFtController;
+  late final TextEditingController _heightInController;
+  late final TextEditingController _currentWeightController;
+  late final TextEditingController _goalWeightController;
 
-  // State
-  int _selectedCalories = 2000;
-  int _selectedPresetIndex = 1; // Default: Maintain
-  bool _isSaving = false;
+  final CalorieOnboardingService _service = CalorieOnboardingService();
 
-  // Presets
-  static const _presets = [
-    _GoalPreset(
-      title: 'Lose Weight',
-      subtitle: 'Calorie deficit for healthy fat loss',
-      icon: LucideIcons.trendingDown,
-      calories: 1500,
-      color: Color(0xFFFF6B6B),
-      gradient: [Color(0xFFFF6B6B), Color(0xFFEE5A24)],
-    ),
-    _GoalPreset(
-      title: 'Maintain',
-      subtitle: 'Keep your current body composition',
-      icon: LucideIcons.equal,
-      calories: 2000,
-      color: Color(0xFF4ECDC4),
-      gradient: [Color(0xFF4ECDC4), Color(0xFF2ECC71)],
-    ),
-    _GoalPreset(
-      title: 'Build Muscle',
-      subtitle: 'Calorie surplus for muscle growth',
-      icon: LucideIcons.trendingUp,
-      calories: 2800,
-      color: Color(0xFF6C5CE7),
-      gradient: [Color(0xFF6C5CE7), Color(0xFFA29BFE)],
-    ),
-  ];
+  int _stepIndex = 0;
+  bool _isImperial = false;
+  String _gender = 'male';
+  String _activityLevel = 'active';
+  double _timelineMonths = 4;
+  bool _isLoadingResult = false;
+  bool _isCompleting = false;
+  String? _errorText;
+  Timer? _autoAdvanceTimer;
+  OnboardingRecommendation? _recommendation;
+  OnboardingProfileInput? _profile;
 
   @override
   void initState() {
     super.initState();
+    final locale = WidgetsBinding.instance.platformDispatcher.locale;
+    _isImperial = _usesImperial(locale.countryCode);
 
-    // Fade-in controller for staggered animations
-    _fadeController = AnimationController(
+    _backgroundController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    );
-
+      duration: const Duration(seconds: 14),
+    )..repeat();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
 
-    _particleController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 15),
-    )..repeat();
-
-    // Header: fade + slide up
-    _headerFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        curve: const Interval(0.0, 0.3, curve: Curves.easeOut),
-      ),
+    _ageController = TextEditingController(text: '28');
+    _heightCmController = TextEditingController(text: '170');
+    _heightFtController = TextEditingController(text: '5');
+    _heightInController = TextEditingController(text: '7');
+    _currentWeightController = TextEditingController(
+      text: _isImperial ? '170' : '77',
     );
-    _headerSlide = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        curve: const Interval(0.0, 0.35, curve: Curves.easeOutCubic),
-      ),
+    _goalWeightController = TextEditingController(
+      text: _isImperial ? '154' : '70',
     );
-
-    // Presets: fade in after header
-    _presetsFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        curve: const Interval(0.2, 0.5, curve: Curves.easeOut),
-      ),
-    );
-
-    // Slider: fade in after presets
-    _sliderFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        curve: const Interval(0.35, 0.65, curve: Curves.easeOut),
-      ),
-    );
-
-    // CTA: fade in last
-    _ctaFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        curve: const Interval(0.5, 0.8, curve: Curves.easeOut),
-      ),
-    );
-
-    _fadeController.forward();
-    HapticFeedback.lightImpact();
   }
 
   @override
   void dispose() {
-    _fadeController.dispose();
+    _autoAdvanceTimer?.cancel();
+    _backgroundController.dispose();
     _pulseController.dispose();
-    _particleController.dispose();
+    _ageController.dispose();
+    _heightCmController.dispose();
+    _heightFtController.dispose();
+    _heightInController.dispose();
+    _currentWeightController.dispose();
+    _goalWeightController.dispose();
     super.dispose();
   }
 
-  void _selectPreset(int index) {
+  bool _usesImperial(String? countryCode) {
+    return countryCode == 'US' || countryCode == 'LR' || countryCode == 'MM';
+  }
+
+  Future<void> _handleNext() async {
     HapticFeedback.selectionClick();
+    FocusScope.of(context).unfocus();
+
+    if (_stepIndex == 4) {
+      final profile = _validateAndBuildProfile();
+      if (profile == null) return;
+      setState(() {
+        _profile = profile;
+        _stepIndex = 5;
+        _isLoadingResult = true;
+        _errorText = null;
+        _recommendation = null;
+      });
+      await _generateRecommendation(profile);
+      return;
+    }
+
+    if (_stepIndex == 5) {
+      await _finishOnboarding();
+      return;
+    }
+
+    if (!_validateCurrentStep()) return;
     setState(() {
-      _selectedPresetIndex = index;
-      _selectedCalories = _presets[index].calories;
+      _errorText = null;
+      _stepIndex += 1;
     });
   }
 
-  void _onSliderChanged(double value) {
+  void _handleBack() {
+    if (_stepIndex == 0) return;
+    _autoAdvanceTimer?.cancel();
     HapticFeedback.selectionClick();
     setState(() {
-      _selectedCalories = value.round();
-      // Deselect preset if slider doesn't match any
-      _selectedPresetIndex = -1;
-      for (int i = 0; i < _presets.length; i++) {
-        if ((_selectedCalories - _presets[i].calories).abs() < 50) {
-          _selectedPresetIndex = i;
-          break;
+      _errorText = null;
+      _stepIndex -= 1;
+    });
+  }
+
+  bool _validateCurrentStep() {
+    switch (_stepIndex) {
+      case 0:
+        return true;
+      case 1:
+      case 2:
+      case 3:
+      case 4:
+        return _validateAndBuildProfile(upToStep: _stepIndex) != null;
+      default:
+        return true;
+    }
+  }
+
+  OnboardingProfileInput? _validateAndBuildProfile({int? upToStep}) {
+    final step = upToStep ?? 4;
+
+    final age = int.tryParse(_ageController.text.trim());
+    if (step >= 1 && (age == null || age < 13 || age > 100)) {
+      _setError('Enter an age between 13 and 100.');
+      return null;
+    }
+
+    final heightCm = _parseHeightCm();
+    if (step >= 1 && (heightCm == null || heightCm < 100 || heightCm > 250)) {
+      _setError('Enter a realistic height so we can calculate accurately.');
+      return null;
+    }
+
+    final currentWeightKg = _parseWeightKg(_currentWeightController.text);
+    if (step >= 2 &&
+        (currentWeightKg == null ||
+            currentWeightKg < 30 ||
+            currentWeightKg > 350)) {
+      _setError('Enter a realistic current weight.');
+      return null;
+    }
+
+    final goalWeightKg = _parseWeightKg(_goalWeightController.text);
+    if (step >= 3 &&
+        (goalWeightKg == null || goalWeightKg < 30 || goalWeightKg > 350)) {
+      _setError('Enter a realistic goal weight.');
+      return null;
+    }
+
+    if (step >= 3 && currentWeightKg != null && goalWeightKg != null) {
+      final rawWeeklyRate = _rawWeeklyRateKg(
+        currentWeightKg: currentWeightKg,
+        goalWeightKg: goalWeightKg,
+        months: _timelineMonths.round(),
+      );
+      if (rawWeeklyRate.isNaN || rawWeeklyRate.isInfinite) {
+        _setError('Adjust your timeline so we can build a valid plan.');
+        return null;
+      }
+    }
+
+    _errorText = null;
+    return OnboardingProfileInput(
+      age: age!,
+      gender: _gender,
+      heightCm: heightCm!,
+      currentWeightKg: currentWeightKg ?? 0,
+      goalWeightKg: goalWeightKg ?? currentWeightKg ?? 0,
+      timelineMonths: _timelineMonths.round(),
+      activityLevel: _activityLevel,
+      weightUnit: _isImperial ? 'lb' : 'kg',
+      heightUnit: _isImperial ? 'ft_in' : 'cm',
+    );
+  }
+
+  void _setError(String text) {
+    setState(() => _errorText = text);
+  }
+
+  double? _parseHeightCm() {
+    if (!_isImperial) {
+      return double.tryParse(_heightCmController.text.trim());
+    }
+
+    final feet = int.tryParse(_heightFtController.text.trim());
+    final inches = int.tryParse(_heightInController.text.trim());
+    if (feet == null || inches == null || feet < 3 || feet > 8) {
+      return null;
+    }
+    if (inches < 0 || inches > 11) return null;
+    return ((feet * 12) + inches) * 2.54;
+  }
+
+  double? _parseWeightKg(String value) {
+    final parsed = double.tryParse(value.trim());
+    if (parsed == null) return null;
+    if (_isImperial) return parsed * 0.45359237;
+    return parsed;
+  }
+
+  double _rawWeeklyRateKg({
+    required double currentWeightKg,
+    required double goalWeightKg,
+    required int months,
+  }) {
+    final days = (months * 30.4375).clamp(30, 366);
+    return (currentWeightKg - goalWeightKg).abs() / (days / 7);
+  }
+
+  void _toggleMeasurementSystem(bool toImperial) {
+    if (_isImperial == toImperial) return;
+
+    final currentHeightCm = _parseHeightCm();
+    final currentWeightKg = _parseWeightKg(_currentWeightController.text);
+    final goalWeightKg = _parseWeightKg(_goalWeightController.text);
+
+    setState(() {
+      _isImperial = toImperial;
+
+      if (currentHeightCm != null) {
+        if (toImperial) {
+          final totalInches = currentHeightCm / 2.54;
+          var feet = totalInches ~/ 12;
+          var inches = (totalInches - (feet * 12)).round();
+          if (inches == 12) {
+            feet += 1;
+            inches = 0;
+          }
+          _heightFtController.text = feet.toString();
+          _heightInController.text = inches.toString();
+        } else {
+          _heightCmController.text = currentHeightCm.round().toString();
         }
+      }
+
+      if (currentWeightKg != null) {
+        _currentWeightController.text =
+            toImperial
+                ? (currentWeightKg / 0.45359237).round().toString()
+                : currentWeightKg
+                    .toStringAsFixed(1)
+                    .replaceAll(RegExp(r'\.0$'), '');
+      }
+
+      if (goalWeightKg != null) {
+        _goalWeightController.text =
+            toImperial
+                ? (goalWeightKg / 0.45359237).round().toString()
+                : goalWeightKg
+                    .toStringAsFixed(1)
+                    .replaceAll(RegExp(r'\.0$'), '');
       }
     });
   }
 
-  Future<void> _completeOnboarding() async {
-    if (_isSaving) return;
-    setState(() => _isSaving = true);
-
-    HapticFeedback.heavyImpact();
-    final settings = context.read<SettingsProvider>();
-    await settings.completeOnboarding(_selectedCalories);
-
-    if (mounted) {
-      context.go('/');
+  Future<void> _generateRecommendation(OnboardingProfileInput profile) async {
+    try {
+      final recommendation = await _service.buildRecommendation(profile);
+      if (!mounted) return;
+      setState(() {
+        _recommendation = recommendation;
+        _isLoadingResult = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _recommendation = null;
+        _isLoadingResult = false;
+        _errorText = 'We could not build your plan. Please try again.';
+      });
     }
+  }
+
+  Future<void> _finishOnboarding() async {
+    final recommendation = _recommendation;
+    final profile = _profile;
+    if (recommendation == null || profile == null || _isCompleting) return;
+
+    setState(() => _isCompleting = true);
+
+    final settings = context.read<SettingsProvider>();
+    final metrics = context.read<MetricsProvider>();
+
+    await settings.completeOnboarding(
+      profile: profile,
+      recommendation: recommendation,
+    );
+    await metrics.logWeight(profile.currentWeightKg);
+
+    if (!mounted) return;
+    context.go('/');
+  }
+
+  void _setActivityLevel(String value) {
+    _autoAdvanceTimer?.cancel();
+    HapticFeedback.lightImpact();
+    setState(() => _activityLevel = value);
+    _autoAdvanceTimer = Timer(const Duration(milliseconds: 800), () {
+      if (mounted && _stepIndex == 4) {
+        _handleNext();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final size = MediaQuery.of(context).size;
-
-    final bg1 = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final bg2 = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? Colors.white : const Color(0xFF1E293B);
-    final textSecondary =
-        isDark ? Colors.white.withOpacity(0.6) : const Color(0xFF64748B);
-    final cardBg =
-        isDark ? Colors.white.withOpacity(0.06) : Colors.white.withOpacity(0.8);
-    final cardBorder =
-        isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final bgTop = colorScheme.surface;
+    final bgBottom = colorScheme.surfaceContainer;
+    final card = colorScheme.surfaceContainerHigh.withValues(alpha: 0.95);
+    final border = colorScheme.outlineVariant;
+    final textPrimary = colorScheme.onSurface;
+    final textSecondary = colorScheme.onSurfaceVariant;
 
     return Scaffold(
       body: Stack(
         children: [
-          // Animated gradient background
           AnimatedBuilder(
-            animation: _particleController,
-            builder:
-                (context, _) => Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        bg1,
-                        Color.lerp(
-                          bg2,
-                          bg1,
-                          (math.sin(_particleController.value * math.pi * 2) +
-                                  1) /
-                              2,
-                        )!,
-                        bg1,
-                      ],
-                    ),
+            animation: _backgroundController,
+            builder: (context, _) {
+              final shift =
+                  (math.sin(_backgroundController.value * math.pi * 2) + 1) / 2;
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color.lerp(bgTop, bgBottom, shift * 0.2)!,
+                      Color.lerp(bgBottom, bgTop, shift * 0.35)!,
+                      bgTop,
+                    ],
                   ),
                 ),
+              );
+            },
           ),
-
-          // Floating particles
-          AnimatedBuilder(
-            animation: _particleController,
-            builder:
-                (context, _) => CustomPaint(
-                  size: Size.infinite,
-                  painter: _ParticlePainter(
-                    animationValue: _particleController.value,
-                    color: AppColors.primary,
-                  ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _OnboardingGlowPainter(
+                  progress: _backgroundController.value,
+                  color: colorScheme.primary,
                 ),
+              ),
+            ),
           ),
-
-          // Main content
           SafeArea(
-            child: AnimatedBuilder(
-              animation: _fadeController,
-              builder:
-                  (context, _) => SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: size.height * 0.06),
-
-                        // ── Header ─────────────────────────────────────
-                        SlideTransition(
-                          position: _headerSlide,
-                          child: Opacity(
-                            opacity: _headerFade.value,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Welcome badge
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        AppColors.primary.withOpacity(0.15),
-                                        AppColors.primary.withOpacity(0.05),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: AppColors.primary.withOpacity(0.2),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        LucideIcons.sparkles,
-                                        size: 14,
-                                        color: AppColors.primary,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Welcome to SnapCal',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.primary,
-                                          letterSpacing: 0.5,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  "What's your\ncalorie goal?",
-                                  style: TextStyle(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.w900,
-                                    color: textPrimary,
-                                    letterSpacing: -1.5,
-                                    height: 1.15,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'Choose a plan or set your own daily target',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: textSecondary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 36),
-
-                        // ── Calorie Display ────────────────────────────
-                        Opacity(
-                          opacity: _presetsFade.value,
-                          child: Center(
-                            child: AnimatedBuilder(
-                              animation: _pulseController,
-                              builder: (context, _) {
-                                final pulse =
-                                    Tween<double>(
-                                      begin: 0.95,
-                                      end: 1.0,
-                                    ).animate(_pulseController).value;
-                                return Transform.scale(
-                                  scale: pulse,
-                                  child: Container(
-                                    width: 180,
-                                    height: 180,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors:
-                                            _selectedPresetIndex >= 0
-                                                ? _presets[_selectedPresetIndex]
-                                                    .gradient
-                                                : [
-                                                  AppColors.primary,
-                                                  AppColors.primary.withOpacity(
-                                                    0.7,
-                                                  ),
-                                                ],
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (_selectedPresetIndex >= 0
-                                                  ? _presets[_selectedPresetIndex]
-                                                      .color
-                                                  : AppColors.primary)
-                                              .withOpacity(0.4),
-                                          blurRadius: 40,
-                                          spreadRadius: 5,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        AnimatedSwitcher(
-                                          duration: const Duration(
-                                            milliseconds: 200,
-                                          ),
-                                          child: Text(
-                                            '$_selectedCalories',
-                                            key: ValueKey(_selectedCalories),
-                                            style: const TextStyle(
-                                              fontSize: 48,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
-                                              letterSpacing: -2,
-                                            ),
-                                          ),
-                                        ),
-                                        const Text(
-                                          'kcal / day',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white70,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 36),
-
-                        // ── Preset Cards ───────────────────────────────
-                        Opacity(
-                          opacity: _presetsFade.value,
-                          child: Row(
-                            children: List.generate(_presets.length, (index) {
-                              final preset = _presets[index];
-                              final isSelected = _selectedPresetIndex == index;
-                              return Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    left: index == 0 ? 0 : 6,
-                                    right: index == 2 ? 0 : 6,
-                                  ),
-                                  child: GestureDetector(
-                                    onTap: () => _selectPreset(index),
-                                    child: AnimatedContainer(
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      curve: Curves.easeOutCubic,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                        horizontal: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            isSelected
-                                                ? preset.color.withOpacity(0.15)
-                                                : cardBg,
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color:
-                                              isSelected
-                                                  ? preset.color.withOpacity(
-                                                    0.5,
-                                                  )
-                                                  : cardBorder,
-                                          width: isSelected ? 2 : 1,
-                                        ),
-                                        boxShadow:
-                                            isSelected
-                                                ? [
-                                                  BoxShadow(
-                                                    color: preset.color
-                                                        .withOpacity(0.2),
-                                                    blurRadius: 16,
-                                                    offset: const Offset(0, 4),
-                                                  ),
-                                                ]
-                                                : null,
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Container(
-                                            width: 40,
-                                            height: 40,
-                                            decoration: BoxDecoration(
-                                              gradient:
-                                                  isSelected
-                                                      ? LinearGradient(
-                                                        colors: preset.gradient,
-                                                      )
-                                                      : null,
-                                              color:
-                                                  isSelected
-                                                      ? null
-                                                      : preset.color
-                                                          .withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Icon(
-                                              preset.icon,
-                                              size: 20,
-                                              color:
-                                                  isSelected
-                                                      ? Colors.white
-                                                      : preset.color,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                            preset.title,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                              color:
-                                                  isSelected
-                                                      ? preset.color
-                                                      : textPrimary,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${preset.calories}',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w900,
-                                              color:
-                                                  isSelected
-                                                      ? preset.color
-                                                      : textPrimary.withOpacity(
-                                                        0.7,
-                                                      ),
-                                            ),
-                                          ),
-                                          Text(
-                                            'kcal',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: textSecondary,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // ── Slider Section ─────────────────────────────
-                        Opacity(
-                          opacity: _sliderFade.value,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Fine-tune your goal',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: textPrimary,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withOpacity(
-                                          0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '$_selectedCalories kcal',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  activeTrackColor:
-                                      _selectedPresetIndex >= 0
-                                          ? _presets[_selectedPresetIndex].color
-                                          : AppColors.primary,
-                                  inactiveTrackColor: (_selectedPresetIndex >= 0
-                                          ? _presets[_selectedPresetIndex].color
-                                          : AppColors.primary)
-                                      .withOpacity(0.15),
-                                  thumbColor: Colors.white,
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 14,
-                                    elevation: 4,
-                                  ),
-                                  overlayColor: AppColors.primary.withOpacity(
-                                    0.1,
-                                  ),
-                                  trackHeight: 6,
-                                ),
-                                child: Slider(
-                                  value: _selectedCalories.toDouble(),
-                                  min: 1000,
-                                  max: 5000,
-                                  divisions: 80, // Steps of 50
-                                  onChanged: _onSliderChanged,
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '1000',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: textSecondary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Text(
-                                      '5000',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: textSecondary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 36),
-
-                        // ── Info Card ──────────────────────────────────
-                        Opacity(
-                          opacity: _sliderFade.value,
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: AppColors.primary.withOpacity(0.12),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  child: Row(
+                    children: [
+                      _TopButton(
+                        icon: LucideIcons.chevronLeft,
+                        enabled: _stepIndex > 0,
+                        onTap: _handleBack,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: LinearProgressIndicator(
+                                value: (_stepIndex + 1) / _totalScreens,
+                                minHeight: 8,
+                                backgroundColor: colorScheme.outlineVariant.withValues(alpha: 0.2),
+                                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  LucideIcons.info,
-                                  size: 18,
-                                  color: AppColors.primary,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'You can always change this later in Settings',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: textSecondary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 28),
-
-                        // ── CTA Button ─────────────────────────────────
-                        Opacity(
-                          opacity: _ctaFade.value,
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 58,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors:
-                                      _selectedPresetIndex >= 0
-                                          ? _presets[_selectedPresetIndex]
-                                              .gradient
-                                          : [
-                                            AppColors.primary,
-                                            AppColors.primary.withOpacity(0.8),
-                                          ],
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: (_selectedPresetIndex >= 0
-                                            ? _presets[_selectedPresetIndex]
-                                                .color
-                                            : AppColors.primary)
-                                        .withOpacity(0.4),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: ElevatedButton(
-                                onPressed:
-                                    _isSaving ? null : _completeOnboarding,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                ),
-                                child:
-                                    _isSaving
-                                        ? const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                        : Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Text(
-                                              'Get Started',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.white,
-                                                letterSpacing: -0.3,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            const Icon(
-                                              LucideIcons.arrowRight,
-                                              color: Colors.white,
-                                              size: 20,
-                                            ),
-                                          ],
-                                        ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'STEP ${_stepIndex + 1} OF $_totalScreens',
+                              style: AppTypography.labelSmall.copyWith(
+                                color: textSecondary,
+                                letterSpacing: 1.5,
                               ),
                             ),
-                          ),
+                          ],
                         ),
-
-                        SizedBox(
-                          height: MediaQuery.of(context).padding.bottom + 32,
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      switchInCurve: Curves.easeOutQuart,
+                      switchOutCurve: Curves.easeInQuart,
+                      child: Container(
+                        key: ValueKey(_stepIndex),
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: card,
+                          borderRadius: BorderRadius.circular(40),
+                          border: Border.all(color: border),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                              blurRadius: 40,
+                              offset: const Offset(0, 20),
+                            ),
+                          ],
                         ),
-                      ],
+                        child: _buildStepContent(textPrimary, textSecondary),
+                      ),
                     ),
                   ),
+                ),
+                if (_stepIndex > 0 && _stepIndex < 5)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: _PrimaryButton(
+                      label: 'Continue',
+                      loading: false,
+                      onPressed: _handleNext,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepContent(Color textPrimary, Color textSecondary) {
+    switch (_stepIndex) {
+      case 0:
+        return _buildWelcome(textPrimary, textSecondary);
+      case 1:
+        return _buildBasicInfo(textPrimary, textSecondary);
+      case 2:
+        return _buildCurrentWeight(textPrimary, textSecondary);
+      case 3:
+        return _buildGoalTimeline(textPrimary, textSecondary);
+      case 4:
+        return _buildActivity(textPrimary, textSecondary);
+      case 5:
+        return _buildResult(textPrimary, textSecondary);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildWelcome(Color textPrimary, Color textSecondary) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: colorScheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            'SNAPCAL',
+            style: AppTypography.labelMedium.copyWith(
+              color: colorScheme.primary,
+              letterSpacing: 2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
+        Text(
+          'Your goal.\nYour calories.\nYour pace.',
+          style: AppTypography.displayMedium.copyWith(
+            color: textPrimary,
+            height: 1.0,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -2.0,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'Answer a few quick questions to set your personalized daily calorie target.',
+          style: AppTypography.bodyLarge.copyWith(
+            color: textSecondary,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 32),
+        const _FeatureStrip(),
+        const SizedBox(height: 48),
+        _PrimaryButton(label: 'Get Started', onPressed: _handleNext),
+      ],
+    );
+  }
+
+  Widget _buildBasicInfo(Color textPrimary, Color textSecondary) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionIntro(
+          eyebrow: 'PERSONAL DETAILS',
+          title: 'Set your baseline metrics.',
+          body: 'We use these to calculate your resting metabolic rate (RMR).',
+        ),
+        const SizedBox(height: 32),
+        _LabeledField(
+          label: 'Age',
+          child: _NumberInput(
+            controller: _ageController,
+            suffix: 'years',
+            hint: '28',
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'Gender',
+          style: AppTypography.titleMedium.copyWith(
+            color: textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _ChoiceChipCard(
+                label: 'Male',
+                icon: LucideIcons.user,
+                selected: _gender == 'male',
+                onTap: () => setState(() => _gender = 'male'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ChoiceChipCard(
+                label: 'Female',
+                icon: LucideIcons.user,
+                selected: _gender == 'female',
+                onTap: () => setState(() => _gender = 'female'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Text(
+              'Height',
+              style: AppTypography.titleMedium.copyWith(
+                color: textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Spacer(),
+            _UnitToggle(
+              leftLabel: 'cm',
+              rightLabel: 'ft/in',
+              isRightSelected: _isImperial,
+              onChanged: _toggleMeasurementSystem,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _isImperial
+            ? Row(
+               children: [
+                Expanded(
+                  child: _NumberInput(
+                    controller: _heightFtController,
+                    suffix: 'ft',
+                    hint: '5',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _NumberInput(
+                    controller: _heightInController,
+                    suffix: 'in',
+                    hint: '7',
+                  ),
+                ),
+              ],
+            )
+            : _NumberInput(
+              controller: _heightCmController,
+              suffix: 'cm',
+              hint: '170',
+            ),
+        _ErrorText(message: _errorText),
+      ],
+    );
+  }
+
+  Widget _buildCurrentWeight(Color textPrimary, Color textSecondary) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionIntro(
+          eyebrow: 'CURRENT STATUS',
+          title: 'What do you weigh today?',
+          body: 'This helps us understand your starting point.',
+        ),
+        const SizedBox(height: 48),
+        _LargeNumberField(
+          controller: _currentWeightController,
+          suffix: _isImperial ? 'lb' : 'kg',
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'No judgment. Every journey starts with an honest metric.',
+          style: AppTypography.bodyMedium.copyWith(
+            color: textSecondary,
+          ),
+        ),
+        _ErrorText(message: _errorText),
+      ],
+    );
+  }
+
+  Widget _buildGoalTimeline(Color textPrimary, Color textSecondary) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final currentWeightKg = _parseWeightKg(_currentWeightController.text);
+    final goalWeightKg = _parseWeightKg(_goalWeightController.text);
+    final deltaKg =
+        currentWeightKg != null && goalWeightKg != null
+            ? (goalWeightKg - currentWeightKg).abs()
+            : null;
+    final rawWeeklyRate =
+        currentWeightKg != null && goalWeightKg != null
+            ? _rawWeeklyRateKg(
+              currentWeightKg: currentWeightKg,
+              goalWeightKg: goalWeightKg,
+              months: _timelineMonths.round(),
+            )
+            : null;
+    final showWarning =
+        currentWeightKg != null &&
+        goalWeightKg != null &&
+        goalWeightKg < currentWeightKg &&
+        rawWeeklyRate != null &&
+        rawWeeklyRate > 1;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionIntro(
+          eyebrow: 'THE TARGET',
+          title: 'What is your goal weight?',
+          body:
+              'We will structure your calories to hit this target within your timeline.',
+        ),
+        const SizedBox(height: 32),
+        _LargeNumberField(
+          controller: _goalWeightController,
+          suffix: _isImperial ? 'lb' : 'kg',
+        ),
+        const SizedBox(height: 40),
+        Text(
+          'Target Timeline',
+          style: AppTypography.titleMedium.copyWith(
+            color: textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 16),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: colorScheme.primary,
+            inactiveTrackColor: colorScheme.primary.withValues(alpha: 0.1),
+            thumbColor: colorScheme.primary,
+            overlayColor: colorScheme.primary.withValues(alpha: 0.1),
+            trackHeight: 10,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
+          ),
+          child: Slider(
+            min: 1,
+            max: 12,
+            divisions: 11,
+            value: _timelineMonths,
+            onChanged: (value) => setState(() => _timelineMonths = value),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: Text(
+            '${_timelineMonths.round()} Month${_timelineMonths.round() == 1 ? '' : 's'}',
+            style: AppTypography.headlineSmall.copyWith(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
+        if (deltaKg != null)
+          _PreviewBanner(
+            text:
+                "Target: ${deltaKg.toStringAsFixed(1)} kg adjustment",
+          ),
+        if (showWarning) ...[
+          const SizedBox(height: 16),
+          const _SoftWarning(text: "We will suggest a healthy calorie buffer."),
+        ],
+        _ErrorText(message: _errorText),
+      ],
+    );
+  }
+
+  Widget _buildActivity(Color textPrimary, Color textSecondary) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionIntro(
+          eyebrow: 'Activity',
+          title: 'How active does your week look?',
+          body:
+              'Choose the pattern that matches most weeks. You can change it later.',
+        ),
+        const SizedBox(height: 20),
+        ..._activityCards.map(
+          (card) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _ActivityCard(
+              item: card,
+              selected: _activityLevel == card.value,
+              onTap: () => _setActivityLevel(card.value),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Active is selected by default. Tap once and we will keep moving.',
+          style: TextStyle(
+            color: textSecondary,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResult(Color textPrimary, Color textSecondary) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (_isLoadingResult) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionIntro(
+            eyebrow: 'AI Result',
+            title: 'Building your calorie target.',
+            body:
+                'We are combining your baseline, activity, and goal pace into a plan that is ready to use.',
+          ),
+          const SizedBox(height: 28),
+          Center(
+            child: AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, _) {
+                final scale = 0.92 + (_pulseController.value * 0.12);
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: 148,
+                    height: 148,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withValues(alpha: 0.24),
+                          const Color(0xFFFFA44B).withValues(alpha: 0.18),
+                        ],
+                      ),
+                    ),
+                    child: const Icon(
+                      LucideIcons.flame,
+                      color: AppColors.primary,
+                      size: 62,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Text(
+              'Calibrating your daily target...',
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final recommendation = _recommendation;
+    if (recommendation == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionIntro(
+            eyebrow: 'CALCULATION ERROR',
+            title: 'We could not finish your plan.',
+            body:
+                'Try the last step again or adjust your inputs.',
+          ),
+          _ErrorText(message: _errorText),
+          const SizedBox(height: 16),
+          _PrimaryButton(label: 'Try Again', onPressed: _handleBack),
+        ],
+      );
+    }
+
+    final weeklyText =
+        recommendation.goalMode == 'maintain'
+            ? 'Maintain Current Weight'
+            : '~${recommendation.weeklyRateKg.toStringAsFixed(1)} kg / week';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionIntro(
+          eyebrow: 'AI CALIBRATION COMPLETE',
+          title: 'Daily target is ready.',
+          body: 'This number is personalized for your body and target pace.',
+        ),
+        if (recommendation.isMinor) ...[
+          const SizedBox(height: 12),
+          const _SoftWarning(
+            text:
+                'Minor detection. Please consult a professional before starting any calorie restriction.',
+          ),
+        ],
+        if (recommendation.safetyNote.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _SoftWarning(text: recommendation.safetyNote),
+        ],
+        const SizedBox(height: 32),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${recommendation.dailyCalories}',
+                style: AppTypography.displayLarge.copyWith(
+                  color: colorScheme.primary,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'DAILY CALORIES',
+                style: AppTypography.labelLarge.copyWith(
+                  color: colorScheme.onPrimaryContainer,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Icon(LucideIcons.trendingUp, size: 16, color: colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    weeklyText,
+                    style: AppTypography.titleSmall.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Expanded(
+              child: _MacroTile(
+                label: 'Protein',
+                value: '${recommendation.proteinGrams}g',
+                color: const Color(0xFF64B5F6),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MacroTile(
+                label: 'Carbs',
+                value: '${recommendation.carbGrams}g',
+                color: const Color(0xFF81C784),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MacroTile(
+                label: 'Fats',
+                value: '${recommendation.fatGrams}g',
+                color: const Color(0xFFFFD54F),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _InsightCard(title: 'Strategy', body: recommendation.insight),
+        const SizedBox(height: 12),
+        _InsightCard(title: 'Recommendation', body: recommendation.tip),
+        const SizedBox(height: 32),
+        _PrimaryButton(
+          label: 'Start My Journey',
+          loading: _isCompleting,
+          onPressed: _handleNext,
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionIntro extends StatelessWidget {
+  final String eyebrow;
+  final String title;
+  final String body;
+
+  const _SectionIntro({
+    required this.eyebrow,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          eyebrow.toUpperCase(),
+          style: AppTypography.labelSmall.copyWith(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 2.0,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          title,
+          style: AppTypography.headlineMedium.copyWith(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.0,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          body,
+          style: AppTypography.bodyLarge.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TopButton extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _TopButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: enabled ? 0.12 : 0.06)
+                  : Colors.white.withValues(alpha: enabled ? 0.72 : 0.5),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: context.dividerColor),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color:
+              enabled
+                  ? context.textPrimaryColor
+                  : context.textMutedColor.withValues(alpha: 0.6),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrimaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+  final bool loading;
+
+  const _PrimaryButton({
+    required this.label,
+    required this.onPressed,
+    this.loading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      height: 64,
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: loading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
+        child:
+            loading
+                ? SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: colorScheme.onPrimary,
+                  ),
+                )
+                : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      label,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: colorScheme.onPrimary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(
+                      LucideIcons.arrowRight,
+                      color: colorScheme.onPrimary,
+                      size: 20,
+                    ),
+                  ],
+                ),
+      ),
+    );
+  }
+}
+
+class _FeatureStrip extends StatelessWidget {
+  const _FeatureStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: const [
+        _FeaturePill(icon: LucideIcons.flame, label: 'Personal calorie target'),
+        _FeaturePill(icon: LucideIcons.pieChart, label: 'Macro split'),
+        _FeaturePill(icon: LucideIcons.sparkles, label: 'AI insight'),
+      ],
+    );
+  }
+}
+
+class _FeaturePill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _FeaturePill({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: colorScheme.primary),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTypography.labelMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -770,59 +1170,558 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-/// Goal preset data class
-class _GoalPreset {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final int calories;
-  final Color color;
-  final List<Color> gradient;
+class _LabeledField extends StatelessWidget {
+  final String label;
+  final Widget child;
 
-  const _GoalPreset({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.calories,
-    required this.color,
-    required this.gradient,
-  });
+  const _LabeledField({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: context.textPrimaryColor,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
+  }
 }
 
-/// Floating particle painter (matches splash screen aesthetic)
-class _ParticlePainter extends CustomPainter {
-  final double animationValue;
+class _NumberInput extends StatelessWidget {
+  final TextEditingController controller;
+  final String suffix;
+  final String hint;
+
+  const _NumberInput({
+    required this.controller,
+    required this.suffix,
+    required this.hint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+      ],
+      decoration: InputDecoration(
+        hintText: hint,
+        suffixText: suffix,
+        filled: true,
+        fillColor: context.cardSoftColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 18,
+        ),
+      ),
+    );
+  }
+}
+
+class _LargeNumberField extends StatelessWidget {
+  final TextEditingController controller;
+  final String suffix;
+
+  const _LargeNumberField({required this.controller, required this.suffix});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: context.cardSoftColor,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+              ],
+              style: TextStyle(
+                fontSize: 42,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1.8,
+                color: context.textPrimaryColor,
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                hintText: '0',
+              ),
+            ),
+          ),
+          Text(
+            suffix,
+            style: TextStyle(
+              color: context.textSecondaryColor,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChoiceChipCard extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ChoiceChipCard({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color:
+              selected
+                  ? AppColors.primary.withValues(alpha: 0.14)
+                  : context.cardSoftColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color:
+                selected
+                    ? AppColors.primary.withValues(alpha: 0.5)
+                    : Colors.transparent,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: selected ? AppColors.primary : Colors.grey,
+              size: 18,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: context.textPrimaryColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnitToggle extends StatelessWidget {
+  final String leftLabel;
+  final String rightLabel;
+  final bool isRightSelected;
+  final ValueChanged<bool> onChanged;
+
+  const _UnitToggle({
+    required this.leftLabel,
+    required this.rightLabel,
+    required this.isRightSelected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: context.cardSoftColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _UnitOption(
+            label: leftLabel,
+            selected: !isRightSelected,
+            onTap: () => onChanged(false),
+          ),
+          _UnitOption(
+            label: rightLabel,
+            selected: isRightSelected,
+            onTap: () => onChanged(true),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UnitOption extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _UnitOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? colorScheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          style: AppTypography.labelLarge.copyWith(
+            color: selected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PreviewBanner extends StatelessWidget {
+  final String text;
+
+  const _PreviewBanner({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: AppTypography.labelLarge.copyWith(
+          color: colorScheme.primary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _SoftWarning extends StatelessWidget {
+  final String text;
+
+  const _SoftWarning({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            LucideIcons.shieldAlert,
+            size: 20,
+            color: colorScheme.error,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTypography.labelMedium.copyWith(
+                color: colorScheme.onErrorContainer,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorText extends StatelessWidget {
+  final String? message;
+
+  const _ErrorText({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    if (message == null || message!.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Text(
+        message!,
+        style: const TextStyle(
+          color: Color(0xFFD93B3B),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivityCard extends StatelessWidget {
+  final _ActivityItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ActivityCard({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color:
+              selected
+                  ? item.color.withValues(alpha: 0.14)
+                  : context.cardSoftColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color:
+                selected
+                    ? item.color.withValues(alpha: 0.5)
+                    : Colors.transparent,
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(item.emoji, style: const TextStyle(fontSize: 28)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: TextStyle(
+                      color: context.textPrimaryColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.subtitle,
+                    style: TextStyle(
+                      color: context.textSecondaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              selected ? LucideIcons.checkCircle2 : LucideIcons.circle,
+              color: selected ? item.color : Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MacroTile extends StatelessWidget {
+  final String label;
+  final String value;
   final Color color;
 
-  _ParticlePainter({required this.animationValue, required this.color});
+  const _MacroTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InsightCard extends StatelessWidget {
+  final String title;
+  final String body;
+
+  const _InsightCard({required this.title, required this.body});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: AppTypography.labelSmall.copyWith(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            body,
+            style: AppTypography.bodyMedium.copyWith(
+              color: colorScheme.onSurface,
+              height: 1.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OnboardingGlowPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _OnboardingGlowPainter({required this.progress, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
-    final random = math.Random(42); // Fixed seed for deterministic particles
-
-    for (int i = 0; i < 15; i++) {
-      final baseX = random.nextDouble();
-      final baseY = random.nextDouble();
-      final particleSize = random.nextDouble() * 3 + 1.5;
-      final speed = random.nextDouble() * 0.4 + 0.1;
-      final opacity = random.nextDouble() * 0.2 + 0.05;
-
-      final y = (baseY + animationValue * speed) % 1.0;
-      final x =
-          baseX + math.sin(animationValue * math.pi * 2 + baseY * 10) * 0.02;
-
-      paint.color = color.withOpacity(opacity);
-      canvas.drawCircle(
-        Offset(x * size.width, y * size.height),
-        particleSize,
-        paint,
-      );
+    for (var i = 0; i < 8; i++) {
+      final dx = (size.width / 7) * i;
+      final dy = 120 + (math.sin(progress * math.pi * 2 + i) * 18);
+      paint.color = color.withValues(alpha: 0.04);
+      canvas.drawCircle(Offset(dx, dy), 42, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ParticlePainter oldDelegate) {
-    return animationValue != oldDelegate.animationValue;
+  bool shouldRepaint(covariant _OnboardingGlowPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
+
+class _ActivityItem {
+  final String value;
+  final String emoji;
+  final String title;
+  final String subtitle;
+  final Color color;
+
+  const _ActivityItem({
+    required this.value,
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+  });
+}
+
+const List<_ActivityItem> _activityCards = [
+  _ActivityItem(
+    value: 'desk_life',
+    emoji: '🪑',
+    title: 'Desk Life',
+    subtitle: 'Little to no exercise',
+    color: Color(0xFF7C8796),
+  ),
+  _ActivityItem(
+    value: 'light_mover',
+    emoji: '🚶',
+    title: 'Light Mover',
+    subtitle: '1-3 days/week',
+    color: Color(0xFF25A870),
+  ),
+  _ActivityItem(
+    value: 'active',
+    emoji: '🏃',
+    title: 'Active',
+    subtitle: '3-5 days/week',
+    color: Color(0xFF6750A4), // M3 Royal Purple
+  ),
+  _ActivityItem(
+    value: 'athlete',
+    emoji: '🏋️',
+    title: 'Athlete',
+    subtitle: '6-7 days/week',
+    color: Color(0xFFFF8B1F),
+  ),
+];

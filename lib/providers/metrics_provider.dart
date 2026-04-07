@@ -81,6 +81,9 @@ class MetricsProvider with ChangeNotifier {
     }
 
     _loadMetrics();
+
+    // Auto-recalculate nutrition plan with new weight
+    _settingsProvider.recalculatePlan(currentWeightKg: weight);
   }
 
   /// Delete an entry

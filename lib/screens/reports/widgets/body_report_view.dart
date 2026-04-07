@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/theme_colors.dart';
-import '../../../../core/theme/app_typography.dart';
-import '../../../../providers/metrics_provider.dart';
+import 'package:provider/provider.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_colors.dart';
+import '../../../providers/metrics_provider.dart';
+import '../../../widgets/ui_blocks.dart';
 import '../../settings/widgets/weight_entry_modal.dart';
 
 class BodyReportView extends StatelessWidget {
@@ -14,281 +16,178 @@ class BodyReportView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<MetricsProvider>(
-      builder: (context, provider, child) {
-        if (provider.isLoading) {
+      builder: (context, metricsProvider, _) {
+        if (metricsProvider.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
-
-        final metrics = provider.metrics; // Sorted newest first
+        final metrics = metricsProvider.metrics;
         if (metrics.isEmpty) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  LucideIcons.scale,
-                  size: 64,
-                  color: context.textSecondaryColor,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No weight data yet',
-                  style: AppTypography.heading3.copyWith(
-                    color: context.textSecondaryColor,
+            child: AppEmptyState(
+              icon: LucideIcons.scale,
+              title: 'No weight entries yet',
+              body: 'Add your first entry so your body trend can start.',
+              actionLabel: 'Log weight',
+              onAction:
+                  () => showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const WeightEntryModal(),
                   ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => const WeightEntryModal(),
-                    );
-                  },
-                  icon: const Icon(LucideIcons.plus),
-                  label: const Text('Log Weight'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
             ),
           );
         }
 
-        return ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            _buildWeightSummary(context, provider),
-            const SizedBox(height: 32),
-            Text('Weight History', style: AppTypography.heading3),
-            const SizedBox(height: 16),
-            _buildWeightChart(context, metrics),
-            const SizedBox(height: 32),
-            Text('Recent Entries', style: AppTypography.heading3),
-            const SizedBox(height: 16),
-            _buildEntriesList(context, metrics),
-          ],
+        final current = metricsProvider.currentWeight;
+        final start = metricsProvider.startWeight;
+        final change = current != null && start != null ? current - start : 0;
+
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: MetricTile(
+                      label: 'Current',
+                      value: '${current?.toStringAsFixed(1) ?? '--'} kg',
+                      accent: AppColors.primary,
+                      icon: LucideIcons.scale,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: MetricTile(
+                      label: 'Change',
+                      value:
+                          '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)} kg',
+                      accent: change <= 0 ? AppColors.protein : AppColors.fat,
+                      icon: LucideIcons.trendingUp,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              AppSectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionLabel(title: 'Weight history'),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 220,
+                      child: _WeightChart(metrics: metrics),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppSectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionLabel(title: 'Recent entries'),
+                    const SizedBox(height: 12),
+                    ...metrics
+                        .take(5)
+                        .map(
+                          (metric) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.14,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    LucideIcons.scale,
+                                    color: AppColors.primary,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    '${metric.date.day}/${metric.date.month}/${metric.date.year}',
+                                    style: AppTypography.bodyMedium,
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      '${metric.weight.toStringAsFixed(1)} kg',
+                                      style: AppTypography.labelLarge,
+                                    ),
+                                    if (metric.bodyFat != null)
+                                      Text(
+                                        '${metric.bodyFat!.toStringAsFixed(1)}% body fat',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: context.textSecondaryColor,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
+}
 
-  Widget _buildWeightSummary(BuildContext context, MetricsProvider provider) {
-    final current = provider.currentWeight;
-    final start = provider.startWeight;
-    final change = (current != null && start != null) ? current - start : 0.0;
-    final isLoss = change <= 0;
+class _WeightChart extends StatelessWidget {
+  final List<dynamic> metrics;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.glassBorderColor),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStat(
-            'Current',
-            '${current?.toStringAsFixed(1) ?? "--"} kg',
-            context,
-          ),
-          Container(width: 1, height: 40, color: context.glassBorderColor),
-          _buildStat(
-            'Start',
-            '${start?.toStringAsFixed(1) ?? "--"} kg',
-            context,
-          ),
-          Container(width: 1, height: 40, color: context.glassBorderColor),
-          _buildStat(
-            'Change',
-            '${isLoss ? "" : "+"}${change.toStringAsFixed(1)} kg',
-            context,
-            color: isLoss ? AppColors.protein : AppColors.fat,
+  const _WeightChart({required this.metrics});
+
+  @override
+  Widget build(BuildContext context) {
+    final series = metrics.take(14).toList().reversed.toList();
+    final spots =
+        series
+            .asMap()
+            .entries
+            .map((entry) => FlSpot(entry.key.toDouble(), entry.value.weight))
+            .toList();
+
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (_) => FlLine(color: context.dividerColor),
+        ),
+        titlesData: const FlTitlesData(show: false),
+        borderData: FlBorderData(show: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            color: AppColors.primary,
+            barWidth: 4,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: AppColors.primary.withValues(alpha: 0.12),
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStat(
-    String label,
-    String value,
-    BuildContext context, {
-    Color? color,
-  }) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: AppTypography.heading2.copyWith(
-            color: color ?? context.textPrimaryColor,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: AppTypography.labelSmall.copyWith(
-            color: context.textSecondaryColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWeightChart(BuildContext context, List<dynamic> metrics) {
-    // metrics is newest first
-    final data = metrics.take(14).toList().reversed.toList();
-    if (data.length < 2) {
-      return SizedBox(
-        height: 100,
-        child: Center(
-          child: Text(
-            'Add more data to see chart',
-            style: TextStyle(color: context.textSecondaryColor),
-          ),
-        ),
-      );
-    }
-
-    final spots =
-        data
-            .asMap()
-            .entries
-            .map((e) => FlSpot(e.key.toDouble(), e.value.weight))
-            .toList();
-
-    return Container(
-      height: 240,
-      padding: const EdgeInsets.fromLTRB(16, 24, 24, 16),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.glassBorderColor),
-      ),
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: 1,
-            getDrawingHorizontalLine:
-                (value) => FlLine(
-                  color: context.glassBorderColor.withOpacity(0.5),
-                  strokeWidth: 1,
-                ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: TextStyle(
-                      color: context.textMutedColor,
-                      fontSize: 10,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              color: const Color(0xFF6B4DFF),
-              barWidth: 3,
-              isStrokeCapRound: true,
-              dotData: const FlDotData(show: true),
-              belowBarData: BarAreaData(
-                show: true,
-                color: const Color(0xFF6B4DFF).withOpacity(0.1),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEntriesList(BuildContext context, List<dynamic> metrics) {
-    return Column(
-      children:
-          metrics.take(5).map((m) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: context.surfaceColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6B4DFF).withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      LucideIcons.scale,
-                      color: Color(0xFF6B4DFF),
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    '${m.date.day}/${m.date.month}',
-                    style: TextStyle(
-                      color: context.textPrimaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${m.weight} kg',
-                        style: TextStyle(
-                          color: context.textPrimaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      if (m.bodyFat != null)
-                        Text(
-                          '${m.bodyFat}% Body Fat',
-                          style: TextStyle(
-                            color: context.textSecondaryColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
     );
   }
 }

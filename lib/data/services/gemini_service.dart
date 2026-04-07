@@ -65,11 +65,7 @@ class AIService {
         // 2. Fallback to Gemini
         return await _detectWithGeminiRetry(imageBytes, maxRetries: 2);
       } catch (e2) {
-        // 3. Last Resort: Manual Entry
-        String geminiError = _extractDioError(e2);
-        String combinedError = "Groq: $groqError | Gem: $geminiError";
-        print("All AIs failed. $combinedError");
-        return _getFallbackResult(combinedError);
+        return _getFallbackResult("AI Analysis failed. Please enter details manually.");
       }
     }
   }
@@ -184,6 +180,7 @@ class AIService {
       if (response.statusCode == 200) {
         final content = response.data['choices']?[0]?['message']?['content'];
         if (content != null) {
+          debugPrint("✅ Groq RAW Response: $content");
           return _parseResponse(content.toString());
         }
       }
@@ -195,7 +192,7 @@ class AIService {
 
   /// Shared JSON Parser (Runs in Background Isolate)
   Future<NutritionResult> _parseResponse(String text) async {
-    print("Raw API Response: $text"); // Requested Debug Log
+    debugPrint("🔍 Parsing JSON from: $text");
     try {
       return await compute(_parseNutritionJsonInIsolate, text);
     } catch (e) {

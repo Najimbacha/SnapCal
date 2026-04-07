@@ -8,11 +8,11 @@ class AppConstants {
     defaultValue: 'AIzaSyB97TgssKrR7fTOP0D4mdyjA4KBgHDlaB4',
   );
   static const String geminiApiUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent';
 
   static const String groqApiKey = String.fromEnvironment(
     'GROQ_API_KEY',
-    defaultValue: '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',
+    defaultValue: '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',
   );
   static const String groqApiUrl =
       'https://api.groq.com/openai/v1/chat/completions';
