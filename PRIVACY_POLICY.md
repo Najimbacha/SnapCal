@@ -38,4 +38,4 @@ We provide users with the ability to delete their account and associated data at
 *   **Online Request:** If you are unable to access the app and wish to request account deletion, please contact us at our support email. We will process your request within 30 days.
 
 ## 10. Contact Us
-If you have any questions about this Privacy Policy, please contact us.
+If you have any questions about this Privacy Policy or wish to request data deletion, please contact us at: **najimbacha1@gmail.com**
