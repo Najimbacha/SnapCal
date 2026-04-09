@@ -5,14 +5,14 @@ class AppConstants {
   // API Configuration
   static const String geminiApiKey = String.fromEnvironment(
     'GEMINI_API_KEY',
-    defaultValue: 'AIzaSyB97TgssKrR7fTOP0D4mdyjA4KBgHDlaB4',
+    defaultValue: 'My Gemini API',
   );
   static const String geminiApiUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent';
 
   static const String groqApiKey = String.fromEnvironment(
     'GROQ_API_KEY',
-    defaultValue: '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',
+    defaultValue: 'my groq Api',
   );
   static const String groqApiUrl =
       'https://api.groq.com/openai/v1/chat/completions';
