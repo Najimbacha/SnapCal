@@ -32,5 +32,10 @@ SnapCal is not intended for use by children under the age of 13. We do not knowi
 ## 8. Your Rights
 You have the right to access, update, or delete your personal information directly within the app.
 
-## 9. Contact Us
+## 9. Data Deletion
+We provide users with the ability to delete their account and associated data at any time.
+*   **In-App Deletion:** You can delete your account permanently by going to **Settings > Account > Delete Account**. This will immediately and permanently remove your profile, health metrics, and meal logs from our active databases.
+*   **Online Request:** If you are unable to access the app and wish to request account deletion, please contact us at our support email. We will process your request within 30 days.
+
+## 10. Contact Us
 If you have any questions about this Privacy Policy, please contact us.
