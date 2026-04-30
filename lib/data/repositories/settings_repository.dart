@@ -1,27 +1,85 @@
+import 'dart:async';
 import 'package:hive/hive.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_settings.dart';
 import '../../core/constants/app_constants.dart';
 
-/// Repository for managing user settings in Hive
+/// Repository for managing user settings in Hive and Firestore
 class SettingsRepository {
   late Box<UserSettings> _settingsBox;
+  final _settingsController = StreamController<UserSettings>.broadcast();
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+
+  /// Stream of user settings for reactive UI updates
+  Stream<UserSettings> get settingsStream => _settingsController.stream;
 
   /// Initialize the repository
   Future<void> init() async {
     _settingsBox = await Hive.openBox<UserSettings>(
       AppConstants.settingsBoxName,
     );
+    
+    // Emit initial value
+    final initialSettings = getSettings();
+    _settingsController.add(initialSettings);
+
+    // Initial sync check
+    if (_auth.currentUser != null) {
+      unawaited(syncFromFirestore());
+    }
   }
 
-  /// Get current user settings
+  /// Get current user settings (Sync)
   UserSettings getSettings() {
     return _settingsBox.get(AppConstants.settingsKey) ??
         UserSettings.defaults();
   }
 
-  /// Save user settings
+  /// Save user settings (Local + Cloud)
   Future<void> saveSettings(UserSettings settings) async {
+    // 1. Save to Local Hive
     await _settingsBox.put(AppConstants.settingsKey, settings);
+    
+    // 2. Push to Stream
+    _settingsController.add(settings);
+
+    // 3. Sync to Firestore if logged in
+    final user = _auth.currentUser;
+    if (user != null) {
+      try {
+        await _firestore.collection('users').doc(user.uid).set({
+          'settings': settings.toJson(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        // Silently fail or queue for later
+        print('Firestore Sync Error: $e');
+      }
+    }
+  }
+
+  /// Pull settings from Firestore
+  Future<void> syncFromFirestore() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data()?['settings'] != null) {
+        final cloudSettings = UserSettings.fromJson(doc.data()!['settings']);
+        final localSettings = getSettings();
+
+        // Simple conflict resolution: Cloud wins if it has data
+        if (cloudSettings != localSettings) {
+          await _settingsBox.put(AppConstants.settingsKey, cloudSettings);
+          _settingsController.add(cloudSettings);
+        }
+      }
+    } catch (e) {
+      print('Firestore Pull Error: $e');
+    }
   }
 
   /// Update daily calorie goal
@@ -63,12 +121,18 @@ class SettingsRepository {
   }
 
   /// Check if user is pro
-  bool isPro() {
-    return getSettings().isPro;
-  }
+  bool isPro() => getSettings().isPro;
 
   /// Get current streak
-  int getCurrentStreak() {
-    return getSettings().currentStreak;
+  int getCurrentStreak() => getSettings().currentStreak;
+
+  /// Clear all settings (logout)
+  Future<void> clear() async {
+    await _settingsBox.clear();
+    _settingsController.add(UserSettings.defaults());
+  }
+
+  void dispose() {
+    _settingsController.close();
   }
 }

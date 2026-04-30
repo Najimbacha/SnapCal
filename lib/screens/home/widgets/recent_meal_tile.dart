@@ -21,7 +21,7 @@ class RecentMealTile extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         margin: const EdgeInsets.only(bottom: 12),
         borderRadius: 24,
-        backgroundColor: context.surfaceColor.withOpacity(0.4),
+        backgroundColor: context.surfaceColor.withValues(alpha: 0.4),
         child: Row(
           children: [
             // Food icon container with glass effect
@@ -31,15 +31,15 @@ class RecentMealTile extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.primary.withOpacity(0.2),
-                    AppColors.primary.withOpacity(0.1),
+                    AppColors.primary.withValues(alpha: 0.2),
+                    AppColors.primary.withValues(alpha: 0.1),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: context.glassBorderColor.withOpacity(0.5),
+                  color: const Color(0xFF6B4DFF).withValues(alpha: 0.15),
                 ),
               ),
               child: Icon(

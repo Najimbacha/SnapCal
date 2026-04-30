@@ -11,6 +11,8 @@ class AppColors {
 
   // ============= SHARED ACCENT COLORS =============
   static const Color primary = Color(0xFF10B981);
+  static const Color emeraldLight = Color(0xFF6EE7B7);
+  static const Color emeraldDark = Color(0xFF065F46);
   static const Color protein = Color(0xFF7C9A6D);
   static const Color carbs = Color(0xFF4F8CC9);
   static const Color fat = Color(0xFFD18B47);
@@ -22,7 +24,7 @@ class AppColors {
 
   // Gradients for "Expressive" depth
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF10B981), Color(0xffee3ae1)],
+    colors: [Color(0xFF10B981), Color(0xFF34D399)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

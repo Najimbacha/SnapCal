@@ -20,12 +20,20 @@ class BodyMetric extends HiveObject {
   @HiveField(4)
   final String? note;
 
+  @HiveField(5)
+  final String? photoFrontPath;
+
+  @HiveField(6)
+  final String? photoSidePath;
+
   BodyMetric({
     String? id,
     required this.date,
     required this.weight,
     this.bodyFat,
     this.note,
+    this.photoFrontPath,
+    this.photoSidePath,
   }) : id = id ?? const Uuid().v4();
 
   BodyMetric copyWith({
@@ -33,6 +41,8 @@ class BodyMetric extends HiveObject {
     double? weight,
     double? bodyFat,
     String? note,
+    String? photoFrontPath,
+    String? photoSidePath,
   }) {
     return BodyMetric(
       id: id,
@@ -40,6 +50,8 @@ class BodyMetric extends HiveObject {
       weight: weight ?? this.weight,
       bodyFat: bodyFat ?? this.bodyFat,
       note: note ?? this.note,
+      photoFrontPath: photoFrontPath ?? this.photoFrontPath,
+      photoSidePath: photoSidePath ?? this.photoSidePath,
     );
   }
 }

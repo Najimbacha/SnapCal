@@ -59,7 +59,7 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
         20,
         MediaQuery.of(context).viewInsets.bottom > 0
             ? 20 + MediaQuery.of(context).viewInsets.bottom
-            : 110 + MediaQuery.of(context).padding.bottom,
+            : 90 + MediaQuery.of(context).padding.bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

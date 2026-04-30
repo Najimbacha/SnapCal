@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 
 /// Premium shutter button with emerald gradient and pulsing glow
@@ -62,6 +63,7 @@ class _ShutterButtonState extends State<ShutterButton>
       onTapUp:
           isEnabled
               ? (_) {
+                HapticFeedback.heavyImpact();
                 _pressController.reverse();
                 widget.onPressed!();
               }
@@ -86,8 +88,8 @@ class _ShutterButtonState extends State<ShutterButton>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: AppColors.primary.withOpacity(
-                            _pulseOpacity.value,
+                          color: AppColors.primary.withValues(
+                            alpha: _pulseOpacity.value,
                           ),
                           width: 3,
                         ),
@@ -121,7 +123,7 @@ class _ShutterButtonState extends State<ShutterButton>
                           isEnabled
                               ? [
                                 BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.4),
+                                  color: AppColors.primary.withValues(alpha: 0.4),
                                   blurRadius: 20,
                                   spreadRadius: 2,
                                 ),

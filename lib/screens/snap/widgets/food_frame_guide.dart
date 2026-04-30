@@ -97,7 +97,7 @@ class _VignettePainter extends CustomPainter {
           ..addRRect(guideRect);
     path.fillType = PathFillType.evenOdd;
 
-    canvas.drawPath(path, Paint()..color = Colors.black.withOpacity(0.25));
+    canvas.drawPath(path, Paint()..color = Colors.black.withValues(alpha: 0.25));
   }
 
   @override

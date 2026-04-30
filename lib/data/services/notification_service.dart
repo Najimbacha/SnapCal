@@ -1,7 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter/foundation.dart';
+import '../../core/theme/theme_colors.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -24,14 +26,14 @@ class NotificationService {
           requestSoundPermission: true,
         );
 
-    const InitializationSettings initializationSettings =
+    const InitializationSettings settings =
         InitializationSettings(
           android: initializationSettingsAndroid,
           iOS: initializationSettingsIOS,
         );
 
     await _notificationsPlugin.initialize(
-      initializationSettings,
+      settings: settings,
       onDidReceiveNotificationResponse: (details) {
         // Handle notification tap
       },
@@ -71,46 +73,51 @@ class NotificationService {
 
     try {
       await _notificationsPlugin.zonedSchedule(
-        id,
-        title,
-        body,
-        scheduledDate,
-        const NotificationDetails(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
-            'meal_reminders',
-            'Meal Reminders',
-            channelDescription: 'Reminders to log your meals',
+            'meal_reminders_v2',
+            'Emerald Meal Reminders',
+            channelDescription: 'Sophisticated reminders to log your daily nutrition.',
             importance: Importance.max,
             priority: Priority.high,
+            color: const Color(0xFF10B981),
+            ledColor: const Color(0xFF10B981),
+            ledOnMs: 1000,
+            ledOffMs: 500,
           ),
-          iOS: DarwinNotificationDetails(),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
       );
     } catch (e) {
       debugPrint('Error scheduling exact alarm: $e. Falling back to inexact.');
       // Fallback to inexact if permission denied
       await _notificationsPlugin.zonedSchedule(
-        id,
-        title,
-        body,
-        scheduledDate,
-        const NotificationDetails(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
-            'meal_reminders',
-            'Meal Reminders',
-            channelDescription: 'Reminders to log your meals',
+            'meal_reminders_v2',
+            'Emerald Meal Reminders',
+            channelDescription: 'Sophisticated reminders to log your daily nutrition.',
             importance: Importance.max,
             priority: Priority.high,
+            color: const Color(0xFF10B981),
           ),
           iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
       );
     }
@@ -122,19 +129,24 @@ class NotificationService {
     required String body,
   }) async {
     await _notificationsPlugin.show(
-      999, // Goal alert ID
-      title,
-      body,
-      const NotificationDetails(
+      id: 999, // Goal alert ID
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
-          'goal_alerts',
-          'Goal Alerts',
-          channelDescription: 'Alerts when you hit your nutrition goals',
+          'goal_alerts_v2',
+          'Premium Goal Achievements',
+          channelDescription: 'Alerts when you hit your premium nutrition milestones.',
           importance: Importance.max,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
+          color: const Color(0xFF10B981),
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
       ),
     );
   }
@@ -146,6 +158,6 @@ class NotificationService {
 
   /// Cancel a specific notification
   Future<void> cancelNotification(int id) async {
-    await _notificationsPlugin.cancel(id);
+    await _notificationsPlugin.cancel(id: id);
   }
 }

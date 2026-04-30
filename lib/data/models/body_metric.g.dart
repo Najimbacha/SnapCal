@@ -22,13 +22,15 @@ class BodyMetricAdapter extends TypeAdapter<BodyMetric> {
       weight: fields[2] as double,
       bodyFat: fields[3] as double?,
       note: fields[4] as String?,
+      photoFrontPath: fields[5] as String?,
+      photoSidePath: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, BodyMetric obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -38,7 +40,11 @@ class BodyMetricAdapter extends TypeAdapter<BodyMetric> {
       ..writeByte(3)
       ..write(obj.bodyFat)
       ..writeByte(4)
-      ..write(obj.note);
+      ..write(obj.note)
+      ..writeByte(5)
+      ..write(obj.photoFrontPath)
+      ..writeByte(6)
+      ..write(obj.photoSidePath);
   }
 
   @override

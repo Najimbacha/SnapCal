@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'gemini_service.dart'; // For NutritionResult
 
 /// Service for looking up food by barcode via OpenFoodFacts API
@@ -12,7 +13,7 @@ class BarcodeService {
   /// Fetches product data from OpenFoodFacts
   Future<NutritionResult?> fetchProductByBarcode(String barcode) async {
     try {
-      print("Looking up barcode: $barcode");
+      debugPrint("Looking up barcode: $barcode");
       final url =
           'https://world.openfoodfacts.org/api/v2/product/$barcode.json';
 
@@ -28,6 +29,7 @@ class BarcodeService {
 
           return NutritionResult(
             foodName: product['product_name'] ?? 'Unknown Product',
+            portion: product['serving_size'] ?? 'per serving/100g',
             calories: _toInt(
               nutriments['energy-kcal_serving'] ??
                   nutriments['energy-kcal_100g'] ??
@@ -51,7 +53,7 @@ class BarcodeService {
       }
       return null;
     } catch (e) {
-      print("Barcode lookup error: $e");
+      debugPrint("Barcode lookup error: $e");
       return null;
     }
   }

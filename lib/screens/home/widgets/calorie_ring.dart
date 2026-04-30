@@ -12,7 +12,7 @@ class CalorieRing extends StatelessWidget {
     super.key,
     required this.consumed,
     required this.goal,
-    this.size = 240,
+    this.size = 190,
   });
 
   @override
@@ -29,15 +29,15 @@ class CalorieRing extends StatelessWidget {
         children: [
           // Background Glow
           Container(
-            width: size * 0.85,
-            height: size * 0.85,
+            width: size * 0.8,
+            height: size * 0.8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: accent.withValues(alpha: 0.15),
-                  blurRadius: 50,
-                  spreadRadius: 10,
+                  color: accent.withValues(alpha: 0.12),
+                  blurRadius: 40,
+                  spreadRadius: 5,
                 ),
               ],
             ),
@@ -56,24 +56,26 @@ class CalorieRing extends StatelessWidget {
             children: [
               Text(
                 '${consumed.clamp(0, 99999)}',
-                style: AppTypography.displayLarge.copyWith(
+                style: AppTypography.displaySmall.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
                   height: 1.0,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 'of $goal kcal',
-                style: AppTypography.labelMedium.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                style: AppTypography.labelSmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                  horizontal: 12,
+                  vertical: 6,
                 ),
                 decoration: ShapeDecoration(
                   color: remaining < 0 
@@ -85,10 +87,11 @@ class CalorieRing extends StatelessWidget {
                   remaining < 0 
                       ? '${remaining.abs()} over' 
                       : '${remaining.abs()} left',
-                  style: AppTypography.labelLarge.copyWith(
+                  style: AppTypography.labelSmall.copyWith(
                     color: remaining < 0 
                       ? Theme.of(context).colorScheme.onErrorContainer 
                       : Theme.of(context).colorScheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -116,18 +119,18 @@ class _RingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - 24) / 2;
+    final radius = (size.width - 18) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
     
     final track = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 22
+      ..strokeWidth = 16
       ..strokeCap = StrokeCap.round
       ..color = trackColor;
 
     final active = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 22
+      ..strokeWidth = 16
       ..strokeCap = StrokeCap.round
       ..shader = SweepGradient(
         colors: [secondaryColor, activeColor],

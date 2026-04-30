@@ -1,12 +1,22 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/meal.dart';
 import '../../core/constants/app_constants.dart';
 
-/// Repository for managing meal data in Hive
+/// Repository for managing meal data in Hive and Firestore
 class MealRepository {
   late Box<Meal> _mealsBox;
   late Box<List<String>> _indexBox;
+  
+  final _mealsController = StreamController<List<Meal>>.broadcast();
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+
+  /// Stream of meals for the current date for reactive UI
+  Stream<List<Meal>> get todaysMealsStream => _mealsController.stream;
 
   /// Initialize the repository
   Future<void> init() async {
@@ -32,6 +42,18 @@ class MealRepository {
       await _indexBox.putAll(tempIndex);
       debugPrint('✅ MealRepository: Index rebuilt successfully');
     }
+
+    // Emit initial today's meals
+    _emitTodaysMeals();
+
+    // Initial cloud sync
+    if (_auth.currentUser != null) {
+      unawaited(syncFromFirestore());
+    }
+  }
+
+  void _emitTodaysMeals() {
+    _mealsController.add(getTodaysMeals());
   }
 
   /// Get all meals
@@ -55,12 +77,6 @@ class MealRepository {
     return getMealsByDate(today);
   }
 
-  /// Get meal count for today
-  int getTodaysMealCount() {
-    final today = _getDateString(DateTime.now());
-    return (_indexBox.get(today) ?? []).length;
-  }
-
   /// Add a new meal
   Future<void> addMeal(Meal meal) async {
     await _mealsBox.put(meal.id, meal);
@@ -72,6 +88,9 @@ class MealRepository {
       ids.add(meal.id);
       await _indexBox.put(date, ids);
     }
+    
+    _emitTodaysMeals();
+    await _syncMealToCloud(meal);
   }
 
   /// Update an existing meal
@@ -81,7 +100,6 @@ class MealRepository {
 
     // If date changed, update index
     if (oldMeal != null && oldMeal.dateString != meal.dateString) {
-      // Remove from old date index
       final oldDate = oldMeal.dateString;
       final oldIds = _indexBox.get(oldDate) ?? [];
       oldIds.remove(meal.id);
@@ -91,7 +109,6 @@ class MealRepository {
         await _indexBox.put(oldDate, oldIds);
       }
 
-      // Add to new date index
       final newDate = meal.dateString;
       final newIds = _indexBox.get(newDate) ?? [];
       if (!newIds.contains(meal.id)) {
@@ -99,6 +116,9 @@ class MealRepository {
         await _indexBox.put(newDate, newIds);
       }
     }
+    
+    _emitTodaysMeals();
+    await _syncMealToCloud(meal);
   }
 
   /// Delete a meal
@@ -113,49 +133,91 @@ class MealRepository {
       } else {
         await _indexBox.put(date, ids);
       }
+      
+      _emitTodaysMeals();
+      await _deleteMealFromCloud(id);
     }
     await _mealsBox.delete(id);
   }
 
-  /// Get meal by ID
-  Meal? getMealById(String id) {
-    return _mealsBox.get(id);
-  }
-
-  /// Calculate total calories for a date
-  int getTotalCalories(String dateString) {
-    final meals = getMealsByDate(dateString);
-    return meals.fold(0, (sum, meal) => sum + meal.calories);
-  }
-
-  /// Calculate total macros for a date
-  Macros getTotalMacros(String dateString) {
-    final meals = getMealsByDate(dateString);
-    int protein = 0;
-    int carbs = 0;
-    int fat = 0;
-
-    for (final meal in meals) {
-      protein += meal.macros.protein;
-      carbs += meal.macros.carbs;
-      fat += meal.macros.fat;
+  /// Sync single meal to Firestore
+  Future<void> _syncMealToCloud(Meal meal) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('meals')
+          .doc(meal.id)
+          .set(meal.toJson());
+    } catch (e) {
+      debugPrint('Meal Sync Error: $e');
     }
-
-    return Macros(protein: protein, carbs: carbs, fat: fat);
   }
 
-  /// Get recent meals (last N meals)
+  /// Delete meal from Firestore
+  Future<void> _deleteMealFromCloud(String id) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('meals')
+          .doc(id)
+          .delete();
+    } catch (e) {
+      debugPrint('Meal Delete Sync Error: $e');
+    }
+  }
+
+  /// Pull all meals from Firestore
+  Future<void> syncFromFirestore() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('meals')
+          .get();
+          
+      for (var doc in snapshot.docs) {
+        final cloudMeal = Meal.fromJson(doc.data());
+        if (!_mealsBox.containsKey(cloudMeal.id)) {
+          await addMeal(cloudMeal);
+        }
+      }
+    } catch (e) {
+      debugPrint('Meal Pull Error: $e');
+    }
+  }
+
+  /// Get meal by ID
+  Meal? getMealById(String id) => _mealsBox.get(id);
+
+  /// Get recent meals
   List<Meal> getRecentMeals({int count = 2}) {
     final allMeals = getAllMeals();
     return allMeals.take(count).toList();
   }
 
-  /// Clear all meals (for testing)
-  Future<void> clearAll() async {
-    await _mealsBox.clear();
-  }
-
   String _getDateString(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Clear all meals
+  Future<void> clearAll() async {
+    await _mealsBox.clear();
+    await _indexBox.clear();
+    _emitTodaysMeals();
+  }
+
+  void dispose() {
+    _mealsController.close();
   }
 }

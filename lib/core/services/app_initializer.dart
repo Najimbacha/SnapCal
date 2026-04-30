@@ -2,7 +2,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:snapcal/core/services/config_service.dart';
 import 'package:snapcal/data/services/notification_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
 import '../../data/models/water_log.dart';
@@ -16,8 +18,15 @@ import '../../data/repositories/assistant_repository.dart';
 
 import '../../data/services/gemini_service.dart';
 import '../../data/services/barcode_service.dart';
+import '../../data/services/subscription_service.dart';
+import '../../data/services/scan_gate_service.dart';
+import '../../data/services/ad_service.dart';
 
 class AppInitializer {
+  static Future<void> preInit() async {
+    await _initFirebase();
+  }
+
   static Future<void> init({
     required MealRepository mealRepository,
     required SettingsRepository settingsRepository,
@@ -27,26 +36,24 @@ class AppInitializer {
     final startTime = DateTime.now();
     debugPrint('🚀 AppInitializer: Starting initialization...');
 
-    // 1. Critical System UI (Mental Perceived Performance)
+    // 1. Critical System UI (Edge-to-Edge Support for Android 15+)
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: Color(0xFF1E1E1E),
         systemNavigationBarIconBrightness: Brightness.light,
       ),
     );
 
-    // 2. Parallel Initialization of Heavy Services
-    await Future.wait([
-      _initFirebase(),
-      _initHive(),
-      NotificationService().init(),
-      // Warm up AI and Barcode services (Dio initialization)
-      _warmupSingletons(),
-    ]);
+    // 2. Critical: Initialize Firebase FIRST before any dependent services
+    await _initFirebase();
 
-    // 3. Initialize Repositories (Dependent on Hive)
+    // 3. Initialize Hive first since repositories depend on it
+    await _initHive();
+
+    // 4. Initialize Repositories (CRITICAL)
     await Future.wait([
       mealRepository.init(),
       settingsRepository.init(),
@@ -54,8 +61,29 @@ class AppInitializer {
       assistantRepository.init(),
     ]);
 
+    // 5. Background Initialization for non-critical services
+    // We don't await this so the app can launch immediately
+    _initBackgroundServices(settingsRepository);
+
     final duration = DateTime.now().difference(startTime).inMilliseconds;
-    debugPrint('✅ AppInitializer: Completed in ${duration}ms');
+    debugPrint('✅ AppInitializer: Critical core ready in ${duration}ms');
+  }
+
+  static Future<void> _initBackgroundServices(SettingsRepository settingsRepository) async {
+    try {
+      await Future.wait([
+        NotificationService().init(),
+        ConfigService().init(),
+        GoogleSignIn.instance.initialize(),
+        SubscriptionService.init(settingsRepository),
+        ScanGateService().init(),
+        AdService().init(),
+        _warmupSingletons(),
+      ]);
+      debugPrint('⚡ Background services ready');
+    } catch (e) {
+      debugPrint('⚠️ Background service init warning: $e');
+    }
   }
 
   static Future<void> _warmupSingletons() async {

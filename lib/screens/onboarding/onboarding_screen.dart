@@ -11,6 +11,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../data/services/calorie_onboarding_service.dart';
+import '../../core/utils/responsive_utils.dart';
 import '../../providers/metrics_provider.dart';
 import '../../providers/settings_provider.dart';
 
@@ -24,6 +25,9 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
   static const int _totalScreens = 6;
+  
+  late final AnimationController _entranceController;
+  late final List<Animation<double>> _itemAnims;
 
   late final AnimationController _backgroundController;
   late final AnimationController _pulseController;
@@ -58,10 +62,26 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       vsync: this,
       duration: const Duration(seconds: 14),
     )..repeat();
+    
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
+
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _itemAnims = List.generate(5, (index) {
+      final start = index * 0.1;
+      return CurvedAnimation(
+        parent: _entranceController,
+        curve: Interval(start, (start + 0.4).clamp(0, 1.0), curve: Curves.easeOut),
+      );
+    });
+
+    _entranceController.forward();
 
     _ageController = TextEditingController(text: '28');
     _heightCmController = TextEditingController(text: '170');
@@ -80,6 +100,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _autoAdvanceTimer?.cancel();
     _backgroundController.dispose();
     _pulseController.dispose();
+    _entranceController.dispose();
     _ageController.dispose();
     _heightCmController.dispose();
     _heightFtController.dispose();
@@ -121,6 +142,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       _errorText = null;
       _stepIndex += 1;
     });
+    _entranceController.reset();
+    _entranceController.forward();
   }
 
   void _handleBack() {
@@ -131,6 +154,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       _errorText = null;
       _stepIndex -= 1;
     });
+    _entranceController.reset();
+    _entranceController.forward();
   }
 
   bool _validateCurrentStep() {
@@ -425,41 +450,51 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       duration: const Duration(milliseconds: 400),
                       switchInCurve: Curves.easeOutQuart,
                       switchOutCurve: Curves.easeInQuart,
-                      child: Container(
-                        key: ValueKey(_stepIndex),
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          color: card,
-                          borderRadius: BorderRadius.circular(40),
-                          border: Border.all(color: border),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                              blurRadius: 40,
-                              offset: const Offset(0, 20),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: Responsive.maxWidth(context) ?? double.infinity,
+                          ),
+                          child: Container(
+                            key: ValueKey(_stepIndex),
+                            padding: EdgeInsets.all(Responsive.size(context) == ScreenSize.small ? 20 : 32),
+                            decoration: BoxDecoration(
+                              color: card,
+                              borderRadius: BorderRadius.circular(40),
+                              border: Border.all(color: border),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                                  blurRadius: 40,
+                                  offset: const Offset(0, 20),
+                                ),
+                              ],
                             ),
-                          ],
+                            child: _buildStepContent(textPrimary, textSecondary),
+                          ),
                         ),
-                        child: _buildStepContent(textPrimary, textSecondary),
-                      ),
                     ),
                   ),
                 ),
-                if (_stepIndex > 0 && _stepIndex < 5)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    child: _PrimaryButton(
-                      label: 'Continue',
-                      loading: false,
-                      onPressed: _handleNext,
-                    ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: _PrimaryButton(
+                    label: _getStepButtonLabel(),
+                    loading: _isCompleting,
+                    onPressed: _isLoadingResult ? () {} : _handleNext,
                   ),
+                ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _getStepButtonLabel() {
+    if (_stepIndex == 0) return 'Get Started';
+    if (_stepIndex == 5) return 'Start My Journey';
+    return 'Continue';
   }
 
   Widget _buildStepContent(Color textPrimary, Color textSecondary) {
@@ -486,43 +521,56 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(999),
+        _staggeredSlide(
+          _itemAnims[0],
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'SNAPCAL',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: colorScheme.primary,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+            ],
           ),
-          child: Text(
-            'SNAPCAL',
-            style: AppTypography.labelMedium.copyWith(
-              color: colorScheme.primary,
-              letterSpacing: 2,
+        ),
+        const SizedBox(height: 32),
+        _staggeredSlide(
+          _itemAnims[1],
+          Text(
+            'Your goal.\nYour calories.\nYour pace.',
+            style: AppTypography.displayMedium.copyWith(
+              color: textPrimary,
+              height: 1.0,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -2.0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _staggeredSlide(
+          _itemAnims[2],
+          Text(
+            'Answer a few quick questions to set your personalized daily calorie target.',
+            style: AppTypography.bodyLarge.copyWith(
+              color: textSecondary,
+              height: 1.5,
             ),
           ),
         ),
         const SizedBox(height: 32),
-        Text(
-          'Your goal.\nYour calories.\nYour pace.',
-          style: AppTypography.displayMedium.copyWith(
-            color: textPrimary,
-            height: 1.0,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -2.0,
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Answer a few quick questions to set your personalized daily calorie target.',
-          style: AppTypography.bodyLarge.copyWith(
-            color: textSecondary,
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: 32),
-        const _FeatureStrip(),
-        const SizedBox(height: 48),
-        _PrimaryButton(label: 'Get Started', onPressed: _handleNext),
+        _staggeredSlide(_itemAnims[3], const _FeatureStrip()),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -531,95 +579,116 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionIntro(
-          eyebrow: 'PERSONAL DETAILS',
-          title: 'Set your baseline metrics.',
-          body: 'We use these to calculate your resting metabolic rate (RMR).',
+        _staggeredSlide(
+          _itemAnims[0],
+          const _SectionIntro(
+            eyebrow: 'PERSONAL DETAILS',
+            title: 'Set your baseline metrics.',
+            body: 'We use these to calculate your resting metabolic rate (RMR).',
+          ),
         ),
         const SizedBox(height: 32),
-        _LabeledField(
-          label: 'Age',
-          child: _NumberInput(
-            controller: _ageController,
-            suffix: 'years',
-            hint: '28',
+        _staggeredSlide(
+          _itemAnims[1],
+          _LabeledField(
+            label: 'Age',
+            child: _NumberInput(
+              controller: _ageController,
+              suffix: 'years',
+              hint: '28',
+            ),
           ),
         ),
         const SizedBox(height: 24),
-        Text(
-          'Gender',
-          style: AppTypography.titleMedium.copyWith(
-            color: textPrimary,
-            fontWeight: FontWeight.w700,
+        _staggeredSlide(
+          _itemAnims[2],
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Gender',
+                style: AppTypography.titleMedium.copyWith(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ChoiceChipCard(
+                      label: 'Male',
+                      icon: LucideIcons.user,
+                      selected: _gender == 'male',
+                      onTap: () => setState(() => _gender = 'male'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ChoiceChipCard(
+                      label: 'Female',
+                      icon: LucideIcons.user,
+                      selected: _gender == 'female',
+                      onTap: () => setState(() => _gender = 'female'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _ChoiceChipCard(
-                label: 'Male',
-                icon: LucideIcons.user,
-                selected: _gender == 'male',
-                onTap: () => setState(() => _gender = 'male'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ChoiceChipCard(
-                label: 'Female',
-                icon: LucideIcons.user,
-                selected: _gender == 'female',
-                onTap: () => setState(() => _gender = 'female'),
-              ),
-            ),
-          ],
-        ),
         const SizedBox(height: 24),
-        Row(
-          children: [
-            Text(
-              'Height',
-              style: AppTypography.titleMedium.copyWith(
-                color: textPrimary,
-                fontWeight: FontWeight.w700,
+        _staggeredSlide(
+          _itemAnims[3],
+          Column(
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Height',
+                    style: AppTypography.titleMedium.copyWith(
+                      color: textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  _UnitToggle(
+                    leftLabel: 'cm',
+                    rightLabel: 'ft/in',
+                    isRightSelected: _isImperial,
+                    onChanged: _toggleMeasurementSystem,
+                  ),
+                ],
               ),
-            ),
-            const Spacer(),
-            _UnitToggle(
-              leftLabel: 'cm',
-              rightLabel: 'ft/in',
-              isRightSelected: _isImperial,
-              onChanged: _toggleMeasurementSystem,
-            ),
-          ],
+              const SizedBox(height: 16),
+              _isImperial
+                  ? Row(
+                      children: [
+                        Expanded(
+                          child: _NumberInput(
+                            controller: _heightFtController,
+                            suffix: 'ft',
+                            hint: '5',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _NumberInput(
+                            controller: _heightInController,
+                            suffix: 'in',
+                            hint: '7',
+                          ),
+                        ),
+                      ],
+                    )
+                  : _NumberInput(
+                      controller: _heightCmController,
+                      suffix: 'cm',
+                      hint: '170',
+                    ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        _isImperial
-            ? Row(
-               children: [
-                Expanded(
-                  child: _NumberInput(
-                    controller: _heightFtController,
-                    suffix: 'ft',
-                    hint: '5',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _NumberInput(
-                    controller: _heightInController,
-                    suffix: 'in',
-                    hint: '7',
-                  ),
-                ),
-              ],
-            )
-            : _NumberInput(
-              controller: _heightCmController,
-              suffix: 'cm',
-              hint: '170',
-            ),
         _ErrorText(message: _errorText),
       ],
     );
@@ -629,21 +698,30 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionIntro(
-          eyebrow: 'CURRENT STATUS',
-          title: 'What do you weigh today?',
-          body: 'This helps us understand your starting point.',
+        _staggeredSlide(
+          _itemAnims[0],
+          const _SectionIntro(
+            eyebrow: 'CURRENT STATUS',
+            title: 'What do you weigh today?',
+            body: 'This helps us understand your starting point.',
+          ),
         ),
         const SizedBox(height: 48),
-        _LargeNumberField(
-          controller: _currentWeightController,
-          suffix: _isImperial ? 'lb' : 'kg',
+        _staggeredSlide(
+          _itemAnims[1],
+          _LargeNumberField(
+            controller: _currentWeightController,
+            suffix: _isImperial ? 'lb' : 'kg',
+          ),
         ),
         const SizedBox(height: 24),
-        Text(
-          'No judgment. Every journey starts with an honest metric.',
-          style: AppTypography.bodyMedium.copyWith(
-            color: textSecondary,
+        _staggeredSlide(
+          _itemAnims[2],
+          Text(
+            'No judgment. Every journey starts with an honest metric.',
+            style: AppTypography.bodyMedium.copyWith(
+              color: textSecondary,
+            ),
           ),
         ),
         _ErrorText(message: _errorText),
@@ -655,84 +733,76 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final currentWeightKg = _parseWeightKg(_currentWeightController.text);
     final goalWeightKg = _parseWeightKg(_goalWeightController.text);
-    final deltaKg =
-        currentWeightKg != null && goalWeightKg != null
-            ? (goalWeightKg - currentWeightKg).abs()
-            : null;
-    final rawWeeklyRate =
-        currentWeightKg != null && goalWeightKg != null
-            ? _rawWeeklyRateKg(
-              currentWeightKg: currentWeightKg,
-              goalWeightKg: goalWeightKg,
-              months: _timelineMonths.round(),
-            )
-            : null;
-    final showWarning =
-        currentWeightKg != null &&
-        goalWeightKg != null &&
-        goalWeightKg < currentWeightKg &&
-        rawWeeklyRate != null &&
-        rawWeeklyRate > 1;
+    
+    final isMaintenance = currentWeightKg != null && goalWeightKg != null && 
+        (currentWeightKg - goalWeightKg).abs() < 0.1;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionIntro(
-          eyebrow: 'THE TARGET',
-          title: 'What is your goal weight?',
-          body:
-              'We will structure your calories to hit this target within your timeline.',
+        _staggeredSlide(
+          _itemAnims[0],
+          _SectionIntro(
+            eyebrow: 'THE TARGET',
+            title: isMaintenance ? 'Maintain your weight' : 'What is your goal weight?',
+            body: isMaintenance 
+                ? 'We will build a plan to keep your weight stable while hitting your macros.'
+                : 'We will structure your calories to hit this target within your timeline.',
+          ),
         ),
         const SizedBox(height: 32),
-        _LargeNumberField(
-          controller: _goalWeightController,
-          suffix: _isImperial ? 'lb' : 'kg',
-        ),
-        const SizedBox(height: 40),
-        Text(
-          'Target Timeline',
-          style: AppTypography.titleMedium.copyWith(
-            color: textPrimary,
-            fontWeight: FontWeight.w700,
+        _staggeredSlide(
+          _itemAnims[1],
+          _LargeNumberField(
+            controller: _goalWeightController,
+            suffix: _isImperial ? 'lb' : 'kg',
           ),
         ),
-        const SizedBox(height: 16),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: colorScheme.primary,
-            inactiveTrackColor: colorScheme.primary.withValues(alpha: 0.1),
-            thumbColor: colorScheme.primary,
-            overlayColor: colorScheme.primary.withValues(alpha: 0.1),
-            trackHeight: 10,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
-          ),
-          child: Slider(
-            min: 1,
-            max: 12,
-            divisions: 11,
-            value: _timelineMonths,
-            onChanged: (value) => setState(() => _timelineMonths = value),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: Text(
-            '${_timelineMonths.round()} Month${_timelineMonths.round() == 1 ? '' : 's'}',
-            style: AppTypography.headlineSmall.copyWith(
-              color: colorScheme.primary,
-              fontWeight: FontWeight.w800,
+        if (!isMaintenance) ...[
+          const SizedBox(height: 40),
+          _staggeredSlide(
+            _itemAnims[2],
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Target Timeline',
+                  style: AppTypography.titleMedium.copyWith(
+                    color: textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: colorScheme.primary,
+                    inactiveTrackColor: colorScheme.primary.withValues(alpha: 0.1),
+                    thumbColor: colorScheme.primary,
+                    overlayColor: colorScheme.primary.withValues(alpha: 0.1),
+                    trackHeight: 10,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
+                  ),
+                  child: Slider(
+                    min: 1,
+                    max: 12,
+                    divisions: 11,
+                    value: _timelineMonths,
+                    onChanged: (value) => setState(() => _timelineMonths = value),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    '${_timelineMonths.round()} Month${_timelineMonths.round() == 1 ? '' : 's'}',
+                    style: AppTypography.headlineSmall.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: 32),
-        if (deltaKg != null)
-          _PreviewBanner(
-            text:
-                "Target: ${deltaKg.toStringAsFixed(1)} kg adjustment",
-          ),
-        if (showWarning) ...[
-          const SizedBox(height: 16),
-          const _SoftWarning(text: "We will suggest a healthy calorie buffer."),
         ],
         _ErrorText(message: _errorText),
       ],
@@ -743,30 +813,43 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionIntro(
-          eyebrow: 'Activity',
-          title: 'How active does your week look?',
-          body:
-              'Choose the pattern that matches most weeks. You can change it later.',
+        _staggeredSlide(
+          _itemAnims[0],
+          const _SectionIntro(
+            eyebrow: 'Activity',
+            title: 'How active does your week look?',
+            body:
+                'Choose the pattern that matches most weeks. You can change it later.',
+          ),
         ),
         const SizedBox(height: 20),
-        ..._activityCards.map(
-          (card) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _ActivityCard(
-              item: card,
-              selected: _activityLevel == card.value,
-              onTap: () => _setActivityLevel(card.value),
-            ),
+        _staggeredSlide(
+          _itemAnims[1],
+          Column(
+            children: _activityCards
+                .map(
+                  (card) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ActivityCard(
+                      item: card,
+                      selected: _activityLevel == card.value,
+                      onTap: () => _setActivityLevel(card.value),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ),
         const SizedBox(height: 12),
-        Text(
-          'Active is selected by default. Tap once and we will keep moving.',
-          style: TextStyle(
-            color: textSecondary,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+        _staggeredSlide(
+          _itemAnims[2],
+          Text(
+            'Active is selected by default. Tap once and we will keep moving.',
+            style: TextStyle(
+              color: textSecondary,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
@@ -856,10 +939,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionIntro(
-          eyebrow: 'AI CALIBRATION COMPLETE',
-          title: 'Daily target is ready.',
-          body: 'This number is personalized for your body and target pace.',
+        _staggeredSlide(
+          _itemAnims[0],
+          const _SectionIntro(
+            eyebrow: 'AI CALIBRATION COMPLETE',
+            title: 'Daily target is ready.',
+            body: 'This number is personalized for your body and target pace.',
+          ),
         ),
         if (recommendation.isMinor) ...[
           const SizedBox(height: 12),
@@ -873,89 +959,98 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           _SoftWarning(text: recommendation.safetyNote),
         ],
         const SizedBox(height: 32),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.1)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${recommendation.dailyCalories}',
-                style: AppTypography.displayLarge.copyWith(
-                  color: colorScheme.primary,
-                  height: 1,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -3,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'DAILY CALORIES',
-                style: AppTypography.labelLarge.copyWith(
-                  color: colorScheme.onPrimaryContainer,
-                  letterSpacing: 2,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Icon(LucideIcons.trendingUp, size: 16, color: colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    weeklyText,
-                    style: AppTypography.titleSmall.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                    ),
+        _staggeredSlide(
+          _itemAnims[1],
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: colorScheme.primary.withValues(alpha: 0.1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${recommendation.dailyCalories}',
+                  style: AppTypography.displayLarge.copyWith(
+                    color: colorScheme.primary,
+                    height: 1,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -3,
+                    fontSize: AppTypography.displayLarge.fontSize! * Responsive.fontScale(context),
                   ),
-                ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'DAILY CALORIES',
+                  style: AppTypography.labelLarge.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Icon(LucideIcons.trendingUp, size: 16, color: colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      weeklyText,
+                      style: AppTypography.titleSmall.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _staggeredSlide(
+          _itemAnims[2],
+          Row(
+            children: [
+              Expanded(
+                child: _MacroTile(
+                  label: 'Protein',
+                  value: '${recommendation.proteinGrams}g',
+                  color: const Color(0xFF64B5F6),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MacroTile(
+                  label: 'Carbs',
+                  value: '${recommendation.carbGrams}g',
+                  color: const Color(0xFF81C784),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MacroTile(
+                  label: 'Fats',
+                  value: '${recommendation.fatGrams}g',
+                  color: const Color(0xFFFFD54F),
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: _MacroTile(
-                label: 'Protein',
-                value: '${recommendation.proteinGrams}g',
-                color: const Color(0xFF64B5F6),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MacroTile(
-                label: 'Carbs',
-                value: '${recommendation.carbGrams}g',
-                color: const Color(0xFF81C784),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MacroTile(
-                label: 'Fats',
-                value: '${recommendation.fatGrams}g',
-                color: const Color(0xFFFFD54F),
-              ),
-            ),
-          ],
+        _staggeredSlide(
+          _itemAnims[3],
+          Column(
+            children: [
+              _InsightCard(title: 'Strategy', body: recommendation.insight),
+              const SizedBox(height: 12),
+              _InsightCard(title: 'Recommendation', body: recommendation.tip),
+            ],
+          ),
         ),
-        const SizedBox(height: 24),
-        _InsightCard(title: 'Strategy', body: recommendation.insight),
-        const SizedBox(height: 12),
-        _InsightCard(title: 'Recommendation', body: recommendation.tip),
-        const SizedBox(height: 32),
-        _PrimaryButton(
-          label: 'Start My Journey',
-          loading: _isCompleting,
-          onPressed: _handleNext,
-        ),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -1023,9 +1118,8 @@ class _TopButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
+    return _ScaleTap(
       onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(18),
       child: Container(
         width: 44,
         height: 44,
@@ -1064,32 +1158,25 @@ class _PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      height: 64,
-      decoration: BoxDecoration(
-        color: colorScheme.primary,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: loading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
+    return _ScaleTap(
+      onTap: loading ? null : onPressed,
+      child: Container(
+        width: double.infinity,
+        height: 64,
+        decoration: BoxDecoration(
+          color: colorScheme.primary,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.primary.withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
-        child:
-            loading
-                ? SizedBox(
+        child: Center(
+          child: loading
+              ? SizedBox(
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
@@ -1097,7 +1184,7 @@ class _PrimaryButton extends StatelessWidget {
                     color: colorScheme.onPrimary,
                   ),
                 )
-                : Row(
+              : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
@@ -1115,10 +1202,81 @@ class _PrimaryButton extends StatelessWidget {
                     ),
                   ],
                 ),
+        ),
       ),
     );
   }
 }
+
+class _ScaleTap extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const _ScaleTap({required this.child, this.onTap});
+
+  @override
+  State<_ScaleTap> createState() => _ScaleTapState();
+}
+
+class _ScaleTapState extends State<_ScaleTap>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.96).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: widget.onTap != null ? (_) => _controller.forward() : null,
+      onTapUp: widget.onTap != null
+          ? (_) {
+              _controller.reverse();
+              widget.onTap!();
+            }
+          : null,
+      onTapCancel: widget.onTap != null ? () => _controller.reverse() : null,
+      child: ScaleTransition(
+        scale: _scale,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+Widget _staggeredSlide(Animation<double> animation, Widget child) {
+  return AnimatedBuilder(
+    animation: animation,
+    builder: (context, child) {
+      return Opacity(
+        opacity: animation.value,
+        child: Transform.translate(
+          offset: Offset(0, 16 * (1 - animation.value)),
+          child: child,
+        ),
+      );
+    },
+    child: child,
+  );
+}
+
+
 
 class _FeatureStrip extends StatelessWidget {
   const _FeatureStrip();
@@ -1299,9 +1457,8 @@ class _ChoiceChipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return _ScaleTap(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1415,31 +1572,7 @@ class _UnitOption extends StatelessWidget {
   }
 }
 
-class _PreviewBanner extends StatelessWidget {
-  final String text;
 
-  const _PreviewBanner({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: AppTypography.labelLarge.copyWith(
-          color: colorScheme.primary,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
 
 class _SoftWarning extends StatelessWidget {
   final String text;
@@ -1513,9 +1646,8 @@ class _ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return _ScaleTap(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(18),

@@ -48,4 +48,11 @@ class WaterProvider with ChangeNotifier {
     // This isn't strictly necessary for MVP but good for testing
     // In a real app we might want to delete specific logs
   }
+
+  /// Clear all water data (logout)
+  Future<void> clear() async {
+    await _repository.clearAll();
+    _todaysWaterMl = 0;
+    notifyListeners();
+  }
 }

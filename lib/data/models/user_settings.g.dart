@@ -32,27 +32,30 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
       dinnerTime: fields[12] as String,
       height: fields[13] as double?,
       targetWeight: fields[14] as double?,
-      themeMode: (fields[15] as String?) ?? 'system',
-      onboardingComplete: (fields[16] as bool?) ?? false,
+      themeMode: fields[15] as String,
+      onboardingComplete: fields[16] as bool,
       age: fields[17] as int?,
       gender: fields[18] as String?,
       activityLevel: fields[19] as String?,
       goalTimelineMonths: fields[20] as int?,
       startingWeight: fields[21] as double?,
-      weightUnit: (fields[22] as String?) ?? 'kg',
-      heightUnit: (fields[23] as String?) ?? 'cm',
-      goalMode: (fields[24] as String?) ?? 'maintain',
-      weeklyRateKg: (fields[25] as num?)?.toDouble() ?? 0,
-      recommendationInsight: (fields[26] as String?) ?? '',
-      recommendationTip: (fields[27] as String?) ?? '',
-      recommendationSafetyNote: (fields[28] as String?) ?? '',
+      weightUnit: fields[22] as String?,
+      heightUnit: fields[23] as String?,
+      goalMode: fields[24] as String?,
+      weeklyRateKg: fields[25] as double?,
+      recommendationInsight: fields[26] as String?,
+      recommendationTip: fields[27] as String?,
+      recommendationSafetyNote: fields[28] as String?,
+      mealsPerDay: fields[29] as int?,
+      dietaryRestriction: fields[30] as String?,
+      cuisinePreference: fields[31] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserSettings obj) {
     writer
-      ..writeByte(29)
+      ..writeByte(32)
       ..writeByte(0)
       ..write(obj.dailyCalorieGoal)
       ..writeByte(1)
@@ -110,7 +113,13 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
       ..writeByte(27)
       ..write(obj.recommendationTip)
       ..writeByte(28)
-      ..write(obj.recommendationSafetyNote);
+      ..write(obj.recommendationSafetyNote)
+      ..writeByte(29)
+      ..write(obj.mealsPerDay)
+      ..writeByte(30)
+      ..write(obj.dietaryRestriction)
+      ..writeByte(31)
+      ..write(obj.cuisinePreference);
   }
 
   @override

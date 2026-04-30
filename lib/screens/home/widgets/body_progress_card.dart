@@ -47,7 +47,7 @@ class BodyProgressCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF6B4DFF).withOpacity(0.1),
+                            color: const Color(0xFF6B4DFF).withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -108,7 +108,7 @@ class BodyProgressCard extends StatelessWidget {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: _getBmiColor(bmi).withOpacity(0.1),
+                                color: _getBmiColor(bmi).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -180,7 +180,7 @@ class BodyProgressCard extends StatelessWidget {
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: const Color(0xFF6B4DFF).withOpacity(0.15),
+              color: const Color(0xFF6B4DFF).withValues(alpha: 0.15),
             ),
           ),
         ],

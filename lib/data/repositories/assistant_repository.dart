@@ -53,9 +53,43 @@ class AssistantRepository {
     await _box.put('last_calorie_snapshot', calories);
   }
 
-  /// Clear cache (e.g., on manual refresh)
+  /// Get full chat history
+  List<dynamic>? getChatHistory() {
+    final data = _box.get('chat_history');
+    if (data == null) return null;
+
+    try {
+      final List<dynamic> jsonList = jsonDecode(data);
+      return jsonList.map((e) {
+        final map = e as Map<String, dynamic>;
+        if (map['type'] == 'user') return map;
+        return AssistantResponse.fromJson(map);
+      }).toList();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Save full chat history
+  Future<void> saveChatHistory(List<dynamic> history) async {
+    final jsonList = history.map((e) {
+      if (e is Map) return e;
+      final res = e as AssistantResponse;
+      return {
+        'title': res.title,
+        'content': res.content,
+        'type': res.type,
+        'macros': res.macros,
+        'actions': res.actions?.map((a) => a.toJson()).toList(),
+      };
+    }).toList();
+    await _box.put('chat_history', jsonEncode(jsonList));
+  }
+
+  /// Clear all cache and history
   Future<void> clearCache() async {
     await _box.delete('cached_recommendations');
     await _box.delete('last_calorie_snapshot');
+    await _box.delete('chat_history');
   }
 }

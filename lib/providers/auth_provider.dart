@@ -1,13 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:google_sign_in/google_sign_in.dart'; 
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance; 
 
   User? _user;
   AuthStatus _status = AuthStatus.initial;
@@ -50,22 +50,23 @@ class AuthProvider with ChangeNotifier {
 
   /// Sign in with Google and link if anonymous
   Future<void> signInWithGoogle() async {
+    _errorMessage = null; // Clear previous errors
     _status = AuthStatus.loading;
     notifyListeners();
 
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final googleUser = await _googleSignIn.authenticate(); 
       if (googleUser == null) {
-        _status = AuthStatus.unauthenticated;
+        _status = AuthStatus.authenticated; // Revert to previous (likely guest)
         notifyListeners();
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth =
+      final GoogleSignInAuthentication authData =
           await googleUser.authentication;
+      
       final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+        idToken: authData.idToken,
       );
 
       if (isAnonymous) {
@@ -73,7 +74,7 @@ class AuthProvider with ChangeNotifier {
           // Link anonymous account to Google
           await _user?.linkWithCredential(credential);
         } on FirebaseAuthException catch (e) {
-          if (e.code == 'credential-already-in-use') {
+          if (e.code == 'credential-already-in-use' || e.code == 'email-already-in-use') {
             // Account exists, just sign in (switch to that account)
             await _auth.signInWithCredential(credential);
           } else {
@@ -92,6 +93,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Sign in with Facebook and link if anonymous
   Future<void> signInWithFacebook() async {
+    _errorMessage = null; // Clear previous errors
     _status = AuthStatus.loading;
     notifyListeners();
 
@@ -131,6 +133,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Sign up with email and password
   Future<void> registerWithEmail(String email, String password) async {
+    _errorMessage = null; // Clear previous errors
     _status = AuthStatus.loading;
     notifyListeners();
 
@@ -173,6 +176,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Sign in with email and password
   Future<void> signInWithEmail(String email, String password) async {
+    _errorMessage = null; // Clear previous errors
     _status = AuthStatus.loading;
     notifyListeners();
 
@@ -196,6 +200,7 @@ class AuthProvider with ChangeNotifier {
     required Function(String) onVerificationFailed,
     bool isMock = false, // Add isMock for WhatsApp simulation
   }) async {
+    _errorMessage = null;
     _status = AuthStatus.loading;
     notifyListeners();
 
@@ -240,6 +245,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Sign in with OTP (Step 2 of Phone Auth)
   Future<void> signInWithOTP(String verificationId, String smsCode) async {
+    _errorMessage = null;
     _status = AuthStatus.loading;
     notifyListeners();
 
@@ -273,19 +279,60 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = e.message;
       _status = AuthStatus.error;
       notifyListeners();
-      throw e;
+      rethrow;
     } catch (e) {
       _errorMessage = e.toString();
       _status = AuthStatus.error;
       notifyListeners();
-      throw e;
+      rethrow;
     }
   }
 
   /// Logout
   Future<void> signOut() async {
-    await _auth.signOut();
-    await _googleSignIn.signOut();
+    try {
+      // Run social sign-outs in background to avoid blocking the UI
+      _googleSignIn.signOut().catchError((_) => null);
+      FacebookAuth.instance.logOut().catchError((_) => null);
+      
+      // Sign out from Firebase
+      await _auth.signOut();
+      
+      // Status will be updated via _onAuthStateChanged listener
+    } catch (e) {
+      _errorMessage = e.toString();
+      _status = AuthStatus.error;
+      notifyListeners();
+    }
+  }
+
+  /// Delete Account (requires recent login)
+  Future<void> deleteAccount() async {
+    _status = AuthStatus.loading;
+    notifyListeners();
+
+    try {
+      if (_user != null) {
+        // If it's a social account, we might need to re-auth
+        // But for now we try to delete directly.
+        await _user!.delete();
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+      }
+    } on FirebaseAuthException catch (e) {
+      _errorMessage = e.message;
+      if (e.code == 'requires-recent-login') {
+        _errorMessage = "Please sign out and sign in again to verify your identity before deleting.";
+      }
+      _status = AuthStatus.error;
+      notifyListeners();
+      rethrow;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _status = AuthStatus.error;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   /// Send password reset email
@@ -307,6 +354,26 @@ class AuthProvider with ChangeNotifier {
       _status = AuthStatus.error;
       notifyListeners();
       rethrow;
+    }
+  }
+
+  /// Update display name
+  Future<void> updateDisplayName(String name) async {
+    _status = AuthStatus.loading;
+    notifyListeners();
+
+    try {
+      if (_user != null) {
+        await _user!.updateDisplayName(name);
+        await _user!.reload();
+        _user = _auth.currentUser;
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _status = AuthStatus.error;
+      notifyListeners();
     }
   }
 

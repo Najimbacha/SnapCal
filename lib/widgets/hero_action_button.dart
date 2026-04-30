@@ -19,23 +19,30 @@ class HeroActionButton extends StatefulWidget {
 class _HeroActionButtonState extends State<HeroActionButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _pulseAnimation;
-  late Animation<double> _outerPulseAnimation;
+  late Animation<double> _breathAnimation;
+  late Animation<double> _glowAnimation;
+  bool _isPressed = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 3000),
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.7, curve: Curves.easeOut)),
+    _breathAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 1.0, curve: Curves.easeInOut),
+      ),
     );
 
-    _outerPulseAnimation = Tween<double>(begin: 1.0, end: 1.4).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.2, 1.0, curve: Curves.easeOut)),
+    _glowAnimation = Tween<double>(begin: 0.3, end: 0.6).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 1.0, curve: Curves.easeInOut),
+      ),
     );
   }
 
@@ -50,68 +57,105 @@ class _HeroActionButtonState extends State<HeroActionButton>
     final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.heavyImpact();
+      onTapDown: (_) {
+        setState(() => _isPressed = true);
+        HapticFeedback.mediumImpact();
+      },
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
         widget.onTap();
       },
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              // Far Outer Pulse Glow
-              Container(
-                width: 76 * _outerPulseAnimation.value,
-                height: 76 * _outerPulseAnimation.value,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: colorScheme.primary.withValues(alpha: 0.05 * (1.0 - _controller.value)),
-                ),
-              ),
-              // Inner Pulse Glow
-              Container(
-                width: 70 * _pulseAnimation.value,
-                height: 70 * _pulseAnimation.value,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: colorScheme.primary.withValues(alpha: 0.15),
-                ),
-              ),
-              // Main Circular Button
-              Container(
-                width: 68,
-                height: 68,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: colorScheme.primary.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      colorScheme.primary,
-                      Color.lerp(colorScheme.primary, Colors.black, 0.1)!,
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 150),
+        scale: _isPressed ? 0.88 : 1.0,
+        curve: Curves.easeOutBack,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                // Deep Ambient Glow
+                Container(
+                  width: 76 * _breathAnimation.value,
+                  height: 76 * _breathAnimation.value,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withValues(alpha: _glowAnimation.value * 0.4),
+                        blurRadius: 24,
+                        spreadRadius: 4,
+                      ),
                     ],
                   ),
                 ),
-                child: Center(
-                  child: Icon(
-                    LucideIcons.camera,
-                    color: colorScheme.onPrimary,
-                    size: 32,
+                // Glassy Outer Rim
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      width: 1.5,
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.1),
+                        Colors.black.withValues(alpha: 0.05),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+                // Core Button Jewel
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      stops: const [0.0, 0.4, 1.0],
+                      colors: [
+                        Color.lerp(colorScheme.primary, Colors.white, 0.35)!, // Light Peak
+                        colorScheme.primary,
+                        Color.lerp(colorScheme.primary, Colors.black, 0.15)!, // Shadow
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        LucideIcons.camera,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

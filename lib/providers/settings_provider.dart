@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/models/user_settings.dart';
 import '../data/repositories/settings_repository.dart';
+import '../data/services/scan_gate_service.dart';
 import '../core/constants/app_constants.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/notification_service.dart';
@@ -13,10 +15,22 @@ class SettingsProvider with ChangeNotifier {
 
   late UserSettings _settings;
   final bool _isLoading = false;
+  StreamSubscription<UserSettings>? _settingsSubscription;
 
   SettingsProvider(this._repository) {
-    _loadSettings();
+    _settings = _repository.getSettings(); // Initial sync load
+    _settingsSubscription = _repository.settingsStream.listen((newSettings) {
+      _settings = newSettings;
+      _syncNotifications();
+      notifyListeners();
+    });
     _syncNotifications();
+  }
+
+  @override
+  void dispose() {
+    _settingsSubscription?.cancel();
+    super.dispose();
   }
 
   // Getters
@@ -24,7 +38,7 @@ class SettingsProvider with ChangeNotifier {
       _repository; // Expose for mock subscription service
   UserSettings get settings => _settings;
   bool get isLoading => _isLoading;
-  bool get isPro => _settings.isPro;
+  bool get isPro => _settings.isPro || kDebugMode;
   int get currentStreak => _settings.currentStreak;
 
   int get dailyCalorieGoal => _settings.dailyCalorieGoal;
@@ -38,19 +52,27 @@ class SettingsProvider with ChangeNotifier {
   String? get activityLevel => _settings.activityLevel;
   int? get goalTimelineMonths => _settings.goalTimelineMonths;
   double? get startingWeight => _settings.startingWeight;
-  String get weightUnit => _settings.weightUnit;
-  String get heightUnit => _settings.heightUnit;
-  String get goalMode => _settings.goalMode;
-  double get weeklyRateKg => _settings.weeklyRateKg;
-  String get recommendationInsight => _settings.recommendationInsight;
-  String get recommendationTip => _settings.recommendationTip;
-  String get recommendationSafetyNote => _settings.recommendationSafetyNote;
+  String get weightUnit => _settings.weightUnit ?? 'kg';
+  String get heightUnit => _settings.heightUnit ?? 'cm';
+  String get goalMode => _settings.goalMode ?? 'maintain';
+  double get weeklyRateKg => _settings.weeklyRateKg ?? 0.0;
+  String get recommendationInsight => _settings.recommendationInsight ?? '';
+  String get recommendationTip => _settings.recommendationTip ?? '';
+  String get recommendationSafetyNote => _settings.recommendationSafetyNote ?? '';
+
+  // Planner Preferences
+  int get mealsPerDay => _settings.mealsPerDay ?? 3;
+  String get dietaryRestriction => _settings.dietaryRestriction ?? 'none';
+  String get cuisinePreference => _settings.cuisinePreference ?? 'international';
 
   bool get notificationsEnabled => _settings.notificationsEnabled;
   bool get mealRemindersEnabled => _settings.mealRemindersEnabled;
   bool get goalAlertsEnabled => _settings.goalAlertsEnabled;
   String get themeMode => _settings.themeMode;
   bool get onboardingComplete => _settings.onboardingComplete;
+  String get breakfastTime => _settings.breakfastTime;
+  String get lunchTime => _settings.lunchTime;
+  String get dinnerTime => _settings.dinnerTime;
 
   /// Load settings from repository
   void _loadSettings() {
@@ -159,13 +181,14 @@ class SettingsProvider with ChangeNotifier {
   /// Check if user can add more meals today (free tier limit)
   bool canAddMeal(int currentMealCount) {
     if (_settings.isPro) return true;
-    return currentMealCount < AppConstants.freeTierDailyMealLimit;
+    return ScanGateService().canScan(false);
   }
 
   /// Get remaining free meals today
   int getRemainingFreeMeals(int currentMealCount) {
     if (_settings.isPro) return -1; // Unlimited
-    return AppConstants.freeTierDailyMealLimit - currentMealCount;
+    final count = ScanGateService().getTodayScanCount();
+    return (3 - count).clamp(0, 3);
   }
 
   /// Update calorie goal
@@ -203,11 +226,54 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Update body profile (height and target weight)
-  Future<void> updateBodyProfile({double? height, double? targetWeight}) async {
-    _settings = _settings.copyWith(height: height, targetWeight: targetWeight);
+  /// Update body profile (height, target weight, age, gender, activity)
+  Future<void> updateBodyProfile({
+    double? height,
+    double? targetWeight,
+    int? age,
+    String? gender,
+    String? activityLevel,
+  }) async {
+    _settings = _settings.copyWith(
+      height: height ?? _settings.height,
+      targetWeight: targetWeight ?? _settings.targetWeight,
+      age: age ?? _settings.age,
+      gender: gender ?? _settings.gender,
+      activityLevel: activityLevel ?? _settings.activityLevel,
+    );
     await _repository.saveSettings(_settings);
     notifyListeners();
+  }
+
+  /// Update planner preferences (meals per day, dietary restriction, cuisine)
+  Future<void> updatePlannerPreferences({
+    int? mealsPerDay,
+    String? dietaryRestriction,
+    String? cuisinePreference,
+  }) async {
+    _settings = _settings.copyWith(
+      mealsPerDay: mealsPerDay,
+      dietaryRestriction: dietaryRestriction,
+      cuisinePreference: cuisinePreference,
+    );
+    await _repository.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  /// Update units
+  Future<void> updateUnits({String? weightUnit, String? heightUnit}) async {
+    _settings = _settings.copyWith(
+      weightUnit: weightUnit ?? _settings.weightUnit,
+      heightUnit: heightUnit ?? _settings.heightUnit,
+    );
+    await _repository.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  /// Mock export data logic
+  Future<String> exportUserData() async {
+    await Future.delayed(const Duration(seconds: 2)); // Simulate processing
+    return "Exported data for ${_settings.gender ?? 'User'} - ${_settings.dailyCalorieGoal} kcal plan.";
   }
 
   /// Complete onboarding and persist the profile + recommendation result
@@ -289,41 +355,53 @@ class SettingsProvider with ChangeNotifier {
       return false; // Not enough data to recalculate
     }
 
-    final service = CalorieOnboardingService();
-    final input = OnboardingProfileInput(
-      age: age,
-      gender: gender,
-      heightCm: heightCm,
-      currentWeightKg: currentWeightKg,
-      goalWeightKg: targetWeight,
-      timelineMonths: _settings.goalTimelineMonths ?? 6,
-      activityLevel: _settings.activityLevel ?? 'active',
-      weightUnit: _settings.weightUnit,
-      heightUnit: _settings.heightUnit,
-    );
+    try {
+      final service = CalorieOnboardingService();
+      final input = OnboardingProfileInput(
+        age: age,
+        gender: gender,
+        heightCm: heightCm,
+        currentWeightKg: currentWeightKg,
+        goalWeightKg: targetWeight,
+        timelineMonths: _settings.goalTimelineMonths ?? 6,
+        activityLevel: _settings.activityLevel ?? 'active',
+        weightUnit: _settings.weightUnit ?? 'kg',
+        heightUnit: _settings.heightUnit ?? 'cm',
+      );
 
-    final recommendation = await service.buildRecommendation(input);
+      final recommendation = await service.buildRecommendation(input);
 
-    _settings = _settings.copyWith(
-      dailyCalorieGoal: recommendation.dailyCalories,
-      dailyProteinGoal: recommendation.proteinGrams,
-      dailyCarbGoal: recommendation.carbGrams,
-      dailyFatGoal: recommendation.fatGrams,
-      startingWeight: currentWeightKg,
-      goalMode: recommendation.goalMode,
-      weeklyRateKg: recommendation.weeklyRateKg,
-      recommendationInsight: recommendation.insight,
-      recommendationTip: recommendation.tip,
-      recommendationSafetyNote: recommendation.safetyNote,
-    );
+      _settings = _settings.copyWith(
+        dailyCalorieGoal: recommendation.dailyCalories,
+        dailyProteinGoal: recommendation.proteinGrams,
+        dailyCarbGoal: recommendation.carbGrams,
+        dailyFatGoal: recommendation.fatGrams,
+        startingWeight: currentWeightKg,
+        goalMode: recommendation.goalMode,
+        weeklyRateKg: recommendation.weeklyRateKg,
+        recommendationInsight: recommendation.insight,
+        recommendationTip: recommendation.tip,
+        recommendationSafetyNote: recommendation.safetyNote,
+      );
 
-    await _repository.saveSettings(_settings);
-    notifyListeners();
-    return true;
+      await _repository.saveSettings(_settings);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('❌ SettingsProvider: Recalculation failed: $e');
+      return false;
+    }
   }
 
   /// Refresh settings
   void refresh() {
     _loadSettings();
+  }
+
+  /// Clear settings on logout
+  Future<void> clear() async {
+    await _repository.clear();
+    _settings = UserSettings.defaults();
+    notifyListeners();
   }
 }

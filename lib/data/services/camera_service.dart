@@ -62,6 +62,16 @@ class CameraService extends ChangeNotifier {
     await warmup();
   }
 
+  /// Stop the camera and release hardware resources
+  Future<void> stop() async {
+    debugPrint('📸 CameraService: Stopping camera and releasing hardware');
+    await _controller?.dispose();
+    _controller = null;
+    _isInitialized = false;
+    _isInitializing = false;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _controller?.dispose();

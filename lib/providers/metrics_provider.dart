@@ -23,6 +23,9 @@ class MetricsProvider with ChangeNotifier {
   List<BodyMetric> _metrics = [];
   List<BodyMetric> get metrics => _metrics;
 
+  List<BodyMetric> get metricsWithPhotos =>
+      _metrics.where((m) => m.photoFrontPath != null || m.photoSidePath != null).toList();
+
   Future<void> _init() async {
     if (!Hive.isBoxOpen(_boxName)) {
       _box = await Hive.openBox<BodyMetric>(_boxName);
@@ -86,6 +89,61 @@ class MetricsProvider with ChangeNotifier {
     _settingsProvider.recalculatePlan(currentWeightKg: weight);
   }
 
+  /// Add a progress photo to a specific date's entry (or today)
+  Future<void> logProgressPhoto(
+    String photoPath, {
+    required bool isFront,
+    DateTime? date,
+  }) async {
+    final entryDate = date ?? DateTime.now();
+
+    // Check if entry exists for this day
+    final existingIndex = _metrics.indexWhere(
+      (m) =>
+          m.date.year == entryDate.year &&
+          m.date.month == entryDate.month &&
+          m.date.day == entryDate.day,
+    );
+
+    if (existingIndex != -1) {
+      final existing = _metrics[existingIndex];
+      final updated = existing.copyWith(
+        photoFrontPath: isFront ? photoPath : existing.photoFrontPath,
+        photoSidePath: !isFront ? photoPath : existing.photoSidePath,
+      );
+      await _box?.put(existing.key, updated);
+    } else {
+      // Must have a weight to create an entry, fallback to starting weight or 70.0
+      final weight = currentWeight ?? _settingsProvider.settings.startingWeight ?? 70.0;
+      final newMetric = BodyMetric(
+        date: entryDate,
+        weight: weight,
+        photoFrontPath: isFront ? photoPath : null,
+        photoSidePath: !isFront ? photoPath : null,
+      );
+      await _box?.add(newMetric);
+    }
+
+    _loadMetrics();
+  }
+
+  /// Check if user can add a photo based on premium status
+  bool get canAddPhoto {
+    if (_settingsProvider.isPro) return true;
+    
+    // Free tier: 1 photo per month
+    final currentMonth = DateTime.now().month;
+    final currentYear = DateTime.now().year;
+    
+    final photosThisMonth = _metrics.where((m) => 
+      (m.photoFrontPath != null || m.photoSidePath != null) &&
+      m.date.month == currentMonth &&
+      m.date.year == currentYear
+    ).length;
+    
+    return photosThisMonth < 1;
+  }
+
   /// Delete an entry
   Future<void> deleteMetric(String id) async {
     final metric = _metrics.firstWhere((m) => m.id == id);
@@ -129,5 +187,12 @@ class MetricsProvider with ChangeNotifier {
   /// Get weight trend data (last 30 days)
   List<BodyMetric> get recentTrend {
     return _metrics.take(30).toList(); // Already sorted newest first
+  }
+
+  /// Clear all metrics on logout
+  Future<void> clear() async {
+    await _box?.clear();
+    _metrics = [];
+    notifyListeners();
   }
 }

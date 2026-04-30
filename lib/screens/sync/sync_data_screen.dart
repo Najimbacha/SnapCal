@@ -6,7 +6,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_typography.dart';
+import '../../core/theme/theme_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/ui_blocks.dart';
 
 /// ============================================================================
 /// SYNC DATA SCREEN - WITH DIRECT AUTH OPTIONS
@@ -217,35 +220,10 @@ class _SyncDataScreenState extends State<SyncDataScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Theme colors
-    final backgroundColor =
-        isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textPrimary = isDark ? Colors.white : const Color(0xFF1E293B);
-    final textSecondary =
-        isDark ? Colors.white.withOpacity(0.7) : const Color(0xFF64748B);
-    final accentColor = AppColors.primary;
-    final borderColor =
-        isDark
-            ? AppColors.primary.withOpacity(0.3)
-            : AppColors.primary.withOpacity(0.2);
-    final iconBg =
-        isDark
-            ? AppColors.primary.withOpacity(0.15)
-            : AppColors.primary.withOpacity(0.1);
-    final buttonSecondaryBg =
-        isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F5F9);
-    final buttonSecondaryText =
-        isDark ? Colors.white.withOpacity(0.9) : const Color(0xFF1E293B);
-    final buttonSecondaryBorder =
-        isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2E8F0);
-    final skipTextColor =
-        isDark ? Colors.white.withOpacity(0.5) : const Color(0xFF94A3B8);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: context.backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -253,7 +231,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
             padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Column(
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 48),
 
                 // Animated Cloud Icon with Sync
                 AnimatedBuilder(
@@ -280,9 +258,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: accentColor.withOpacity(
-                                        isDark ? 0.3 : 0.2,
-                                      ),
+                                      color: colorScheme.primary.withValues(alpha: 0.3),
                                       blurRadius: 50 * _pulseAnimation.value,
                                       spreadRadius: 15 * _pulseAnimation.value,
                                     ),
@@ -296,16 +272,14 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                               height: 100,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: cardColor,
+                                color: context.cardColor,
                                 border: Border.all(
-                                  color: borderColor,
+                                  color: colorScheme.primary.withValues(alpha: 0.2),
                                   width: 2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(
-                                      isDark ? 0.3 : 0.1,
-                                    ),
+                                    color: Colors.black.withValues(alpha: 0.1),
                                     blurRadius: 20,
                                     offset: const Offset(0, 10),
                                   ),
@@ -317,7 +291,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                   Icon(
                                     LucideIcons.cloud,
                                     size: 40,
-                                    color: textPrimary,
+                                    color: colorScheme.onSurface,
                                   ),
                                   Positioned(
                                     bottom: 18,
@@ -329,12 +303,10 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                         height: 28,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: accentColor,
+                                          color: colorScheme.primary,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: accentColor.withOpacity(
-                                                0.4,
-                                              ),
+                                              color: colorScheme.primary.withValues(alpha: 0.4),
                                               blurRadius: 8,
                                             ),
                                           ],
@@ -368,12 +340,11 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                       child: Opacity(
                         opacity: _titleOpacity.value,
                         child: Text(
-                          'Save Your Progress',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: textPrimary,
-                            letterSpacing: -0.5,
+                          'Cloud Sync',
+                          style: AppTypography.headlineLarge.copyWith(
+                            color: context.textPrimaryColor,
+                            letterSpacing: -1.0,
+                            fontWeight: FontWeight.w900,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -391,10 +362,9 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                     return Opacity(
                       opacity: _subtitleOpacity.value,
                       child: Text(
-                        'Sign in to keep your data safe and synced.',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: textSecondary,
+                        'Keep your health data safe across all your devices with an account.',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: context.textSecondaryColor,
                           height: 1.5,
                         ),
                         textAlign: TextAlign.center,
@@ -403,53 +373,58 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                   },
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 32),
 
                 // Benefits List (compact)
-                ...List.generate(_benefits.length, (index) {
-                  return AnimatedBuilder(
-                    animation: _mainController,
-                    builder: (context, child) {
-                      return SlideTransition(
-                        position: _benefitSlides[index],
-                        child: Opacity(
-                          opacity: _benefitAnimations[index].value,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: iconBg,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    _benefits[index].icon,
-                                    color: accentColor,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Text(
-                                    _benefits[index].text,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: textPrimary,
-                                      fontWeight: FontWeight.w500,
+                AppSectionCard(
+                  glass: true,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Column(
+                    children: List.generate(_benefits.length, (index) {
+                      return AnimatedBuilder(
+                        animation: _mainController,
+                        builder: (context, child) {
+                          return SlideTransition(
+                            position: _benefitSlides[index],
+                            child: Opacity(
+                              opacity: _benefitAnimations[index].value,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.primary.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        _benefits[index].icon,
+                                        color: colorScheme.primary,
+                                        size: 18,
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Text(
+                                        _benefits[index].text,
+                                        style: AppTypography.bodyMedium.copyWith(
+                                          color: context.textPrimaryColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       );
-                    },
-                  );
-                }),
+                    }),
+                  ),
+                ),
 
                 const SizedBox(height: 32),
 
@@ -466,50 +441,53 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                             label: 'Continue with Google',
                             icon: FontAwesomeIcons.google,
                             onPressed: _handleGoogleSignIn,
-                            backgroundColor: accentColor,
+                            backgroundColor: colorScheme.primary,
                             foregroundColor: Colors.white,
                             isLoading: _isLoading,
                             isFaIcon: true,
                           ),
                           const SizedBox(height: 12),
 
-                          // Facebook Sign In
-                          _AuthButton(
-                            label: 'Continue with Facebook',
-                            icon: FontAwesomeIcons.facebook,
-                            onPressed: _handleFacebookSignIn,
-                            backgroundColor: buttonSecondaryBg,
-                            foregroundColor: buttonSecondaryText,
-                            borderColor: buttonSecondaryBorder,
-                            isFaIcon: true,
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Email Sign In
-                          _AuthButton(
-                            label: 'Sign in with Email',
-                            icon: LucideIcons.mail,
-                            onPressed: _handleEmailSignIn,
-                            backgroundColor: buttonSecondaryBg,
-                            foregroundColor: buttonSecondaryText,
-                            borderColor: buttonSecondaryBorder,
+                          // Secondary Buttons (Email/Facebook)
+                          AppSectionCard(
+                            glass: true,
+                            padding: const EdgeInsets.all(4),
+                            child: Column(
+                              children: [
+                                _AuthButton(
+                                  label: 'Continue with Facebook',
+                                  icon: FontAwesomeIcons.facebook,
+                                  onPressed: _handleFacebookSignIn,
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: context.textPrimaryColor,
+                                  isFaIcon: true,
+                                ),
+                                Divider(height: 1, color: context.dividerColor.withValues(alpha: 0.5)),
+                                _AuthButton(
+                                  label: 'Sign in with Email',
+                                  icon: LucideIcons.mail,
+                                  onPressed: _handleEmailSignIn,
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: context.textPrimaryColor,
+                                ),
+                              ],
+                            ),
                           ),
 
                           const SizedBox(height: 24),
 
                           // Skip Button
                           if (widget.onSkip != null)
-                            TextButton(
-                              onPressed: () {
+                            _ScaleTap(
+                              onTap: () {
                                 HapticFeedback.lightImpact();
                                 widget.onSkip?.call();
                               },
                               child: Text(
-                                'Maybe Later',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: skipTextColor,
+                                'Skip for now',
+                                style: AppTypography.titleSmall.copyWith(
+                                  color: context.textMutedColor,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -531,7 +509,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
 
 class _AuthButton extends StatelessWidget {
   final String label;
-  final IconData icon;
+  final dynamic icon;
   final VoidCallback onPressed;
   final Color backgroundColor;
   final Color foregroundColor;
@@ -552,15 +530,15 @@ class _AuthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAccent = backgroundColor == AppColors.primary;
+    final isAccent = backgroundColor == Theme.of(context).colorScheme.primary;
 
-    return GestureDetector(
-      onTap: isLoading ? null : onPressed,
+    return _ScaleTap(
+      onTap: isLoading ? () {} : onPressed,
       child: Container(
         width: double.infinity,
         height: 54,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           color: backgroundColor,
           border:
               borderColor != null
@@ -570,7 +548,7 @@ class _AuthButton extends StatelessWidget {
               isAccent
                   ? [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.35),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -591,22 +569,65 @@ class _AuthButton extends StatelessWidget {
               )
             else ...[
               isFaIcon
-                  ? FaIcon(icon, size: 16, color: foregroundColor)
-                  : Icon(icon, size: 18, color: foregroundColor),
+                  ? FaIcon(icon as FaIconData, size: 16, color: foregroundColor)
+                  : Icon(icon as IconData, size: 18, color: foregroundColor),
               const SizedBox(width: 12),
               Text(
                 label,
-                style: TextStyle(
+                style: AppTypography.titleSmall.copyWith(
                   color: foregroundColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  letterSpacing: -0.2,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
                 ),
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ScaleTap extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _ScaleTap({required this.child, required this.onTap});
+
+  @override
+  State<_ScaleTap> createState() => _ScaleTapState();
+}
+
+class _ScaleTapState extends State<_ScaleTap> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.96).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(scale: _scale, child: widget.child),
     );
   }
 }

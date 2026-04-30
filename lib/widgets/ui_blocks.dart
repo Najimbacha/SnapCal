@@ -1,36 +1,62 @@
 import 'package:flutter/material.dart';
-
-
+import 'package:flutter/services.dart';
 import '../core/theme/app_typography.dart';
 import '../core/theme/theme_colors.dart';
+import '../core/utils/responsive_utils.dart';
 
 class AppSectionCard extends StatelessWidget {
   final Widget child;
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
   final VoidCallback? onTap;
   final Color? color;
+  final bool glass;
+
+  final EdgeInsetsGeometry? margin;
 
   const AppSectionCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(22),
+    this.padding,
+    this.margin,
     this.onTap,
     this.color,
+    this.glass = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final hPadding = Responsive.hPadding(context);
+    final vPadding = Responsive.vPadding(context);
+    final resolvedPadding = padding ?? EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding);
     
+    final decoration = BoxDecoration(
+      color: color ?? (glass ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.3) : colorScheme.surfaceContainer),
+      gradient: glass ? LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          colorScheme.surfaceContainerLow.withValues(alpha: 0.6),
+        ],
+      ) : null,
+      borderRadius: BorderRadius.circular(32),
+      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: glass ? 0.3 : 0.5)),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.03),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    );
+
     final card = Container(
-      decoration: BoxDecoration(
-        color: color ?? colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
+      margin: margin,
+      decoration: decoration,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),
-        child: Padding(padding: padding, child: child),
+        child: Padding(padding: resolvedPadding, child: child),
       ),
     );
 
@@ -94,46 +120,73 @@ class MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     
-    return AppSectionCard(
-      padding: const EdgeInsets.all(20),
-      color: colorScheme.surfaceContainerLow,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: ShapeDecoration(
-              color: accent.withValues(alpha: 0.12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.surfaceContainerLow,
+            colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: ShapeDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Icon(icon, color: accent, size: 16),
+                ),
+                const Spacer(),
+                if (hint != null)
+                  Text(
+                    hint!,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: colorScheme.outline,
+                      fontSize: 10,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: AppTypography.headlineSmall.copyWith(
+                color: colorScheme.onSurface,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
               ),
             ),
-            child: Icon(icon, color: accent, size: 20),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            value,
-            style: AppTypography.headlineSmall.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: AppTypography.labelMedium.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if (hint != null) ...[
-            const SizedBox(height: 8),
             Text(
-              hint!,
-              style: AppTypography.labelSmall.copyWith(
-                color: colorScheme.outline,
+              label,
+              style: AppTypography.labelMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -158,39 +211,65 @@ class AppEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return AppSectionCard(
-      padding: const EdgeInsets.all(28),
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 72,
-            height: 72,
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.12),
+              color: colorScheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: colorScheme.primary, size: 32),
+            child: Icon(icon, size: 48, color: colorScheme.primary),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           Text(
             title,
             style: AppTypography.heading3.copyWith(
-              color: context.textPrimaryColor,
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w900,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             body,
             style: AppTypography.bodyMedium.copyWith(
-              color: context.textSecondaryColor,
+              color: colorScheme.onSurfaceVariant,
+              height: 1.5,
             ),
             textAlign: TextAlign.center,
           ),
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 18),
-            FilledButton(onPressed: onAction, child: Text(actionLabel!)),
+            const SizedBox(height: 32),
+            AppScaleTap(
+              onTap: onAction!,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  actionLabel!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -213,15 +292,14 @@ class ActionChipButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return InkWell(
+    return AppScaleTap(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: context.cardSoftColor,
+          color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: context.dividerColor),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -231,7 +309,8 @@ class ActionChipButton extends StatelessWidget {
             Text(
               label,
               style: AppTypography.labelMedium.copyWith(
-                color: context.textPrimaryColor,
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -241,25 +320,70 @@ class ActionChipButton extends StatelessWidget {
   }
 }
 
+class AppScaleTap extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const AppScaleTap({super.key, required this.child, required this.onTap});
+
+  @override
+  State<AppScaleTap> createState() => _AppScaleTapState();
+}
+
+class _AppScaleTapState extends State<AppScaleTap> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.95).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        HapticFeedback.selectionClick();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(scale: _scale, child: widget.child),
+    );
+  }
+}
+
 class BottomActionBar extends StatelessWidget {
   final Widget child;
+  final EdgeInsetsGeometry? padding;
 
-  const BottomActionBar({super.key, required this.child});
+  const BottomActionBar({super.key, required this.child, this.padding});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        12 + MediaQuery.of(context).padding.bottom,
-      ),
+      padding: padding ?? const EdgeInsets.fromLTRB(16, 8, 16, 24),
       decoration: BoxDecoration(
-        color: context.overlayColor,
-        border: Border(top: BorderSide(color: context.dividerColor)),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
-      child: child,
+      child: SafeArea(child: child),
     );
   }
 }

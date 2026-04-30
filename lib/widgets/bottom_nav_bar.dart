@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../core/utils/responsive_utils.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -15,39 +16,23 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final navHeight = Responsive.navBarHeight(context);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      child: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BottomAppBar(
-            elevation: 0,
-            notchMargin: 10,
-            height: 72,
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.95),
-            shape: const CircularNotchedRectangle(),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(context, 0, LucideIcons.home, 'Home'),
-                _buildNavItem(context, 1, LucideIcons.clipboardList, 'Log'),
-                const SizedBox(width: 48), // Space for FAB
-                _buildNavItem(context, 2, LucideIcons.barChart3, 'Stats'),
-                _buildNavItem(context, 3, LucideIcons.user, 'Profile'),
-              ],
-            ),
-          ),
-        ),
+    return BottomAppBar(
+      elevation: 8,
+      notchMargin: 10,
+      height: navHeight,
+      color: colorScheme.surface,
+      shape: const CircularNotchedRectangle(),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(context, 0, LucideIcons.home, 'Home'),
+          _buildNavItem(context, 1, LucideIcons.clipboardList, 'Log'),
+          const SizedBox(width: 48), // Space for FAB
+          _buildNavItem(context, 2, LucideIcons.barChart3, 'Stats'),
+          _buildNavItem(context, 3, LucideIcons.user, 'Profile'),
+        ],
       ),
     );
   }

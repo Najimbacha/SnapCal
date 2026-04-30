@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/services/config_service.dart';
 import '../models/meal.dart';
 import '../models/meal_plan.dart'; // MealPlan model
 import '../models/grocery_item.dart'; // GroceryItem model
@@ -12,27 +12,43 @@ import '../models/user_settings.dart'; // UserSettings model
 /// Generic Nutrition Result from AI, Barcode, or Manual Entry
 class NutritionResult {
   final String foodName;
+  final String portion;
   final int calories;
   final int protein;
   final int carbs;
   final int fat;
+  final int healthScore; // 1-10
+  final List<String> insights;
 
   NutritionResult({
     required this.foodName,
+    required this.portion,
     required this.calories,
     required this.protein,
     required this.carbs,
     required this.fat,
+    this.healthScore = 5,
+    this.insights = const [],
   });
 
   factory NutritionResult.fromJson(Map<String, dynamic> json) {
     return NutritionResult(
       foodName: json['food_name'] as String? ?? 'Unknown Food',
-      calories: json['calories'] as int? ?? 0,
-      protein: json['protein'] as int? ?? 0,
-      carbs: json['carbs'] as int? ?? 0,
-      fat: json['fat'] as int? ?? 0,
+      portion: json['portion'] as String? ?? 'Standard portion',
+      calories: _safeInt(json['calories']),
+      protein: _safeInt(json['protein']),
+      carbs: _safeInt(json['carbs']),
+      fat: _safeInt(json['fat']),
+      healthScore: _safeInt(json['health_score']) == 0 ? 5 : _safeInt(json['health_score']),
+      insights: (json['insights'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
+  }
+
+  static int _safeInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.round();
+    return int.tryParse(value.toString()) ?? 0;
   }
 }
 
@@ -40,38 +56,36 @@ class NutritionResult {
 class AIService {
   static final AIService _instance = AIService._internal();
   factory AIService() => _instance;
-  AIService._internal() : _dio = Dio() {
-    debugPrint(
-      '🔑 AIService: Gemini Key Length: ${AppConstants.geminiApiKey.length}',
-    );
-    debugPrint(
-      '🔑 AIService: Groq Key Length: ${AppConstants.groqApiKey.length}',
-    );
-  }
+  AIService._internal() : _dio = Dio();
 
   final Dio _dio;
 
   /// Main method: Tries Groq first (faster), falls back to Gemini, then Manual
-  Future<NutritionResult> analyzeFood(Uint8List imageBytes) async {
+  Future<List<NutritionResult>> analyzeFood(Uint8List imageBytes) async {
     String groqError = "Unknown";
     try {
       // 1. Try Groq first (faster, higher free limits)
-      print("Attempting analysis with Groq...");
+      debugPrint("Attempting analysis with Groq...");
       return await _detectWithGroq(imageBytes);
     } catch (e) {
       groqError = _extractDioError(e);
-      print("Groq failed ($groqError). Switching to Gemini...");
+      debugPrint("Groq failed ($groqError). Switching to Gemini...");
       try {
         // 2. Fallback to Gemini
         return await _detectWithGeminiRetry(imageBytes, maxRetries: 2);
       } catch (e2) {
-        return _getFallbackResult("AI Analysis failed. Please enter details manually.");
+        final geminiError = _extractDioError(e2);
+        return [
+          _getFallbackResult(
+            "AI Failed. Groq: $groqError | Gemini: $geminiError",
+          ),
+        ];
       }
     }
   }
 
   /// Gemini with automatic retry for 429 rate-limit errors
-  Future<NutritionResult> _detectWithGeminiRetry(
+  Future<List<NutritionResult>> _detectWithGeminiRetry(
     Uint8List imageBytes, {
     int maxRetries = 3,
   }) async {
@@ -81,7 +95,7 @@ class AIService {
       } on DioException catch (e) {
         if (e.response?.statusCode == 429 && attempt < maxRetries) {
           final waitSeconds = 15 * (attempt + 1); // 15s, 30s, 45s
-          print(
+          debugPrint(
             "⏳ Rate limited. Retrying in ${waitSeconds}s (attempt ${attempt + 1}/$maxRetries)...",
           );
           await Future.delayed(Duration(seconds: waitSeconds));
@@ -95,108 +109,138 @@ class AIService {
     );
   }
 
-  /// Primary: Google Gemini 2.0 Flash
-  Future<NutritionResult> _detectWithGemini(Uint8List imageBytes) async {
-    if (AppConstants.geminiApiKey.isEmpty) {
-      throw GeminiException(
-        'Gemini API key is missing. Ensure GEMINI_API_KEY is set via --dart-define.',
-      );
-    }
-    final base64Image = base64Encode(imageBytes);
+  /// Primary: Google Gemini (with Auto-Hunting)
+  Future<List<NutritionResult>> _detectWithGemini(Uint8List imageBytes) async {
+    final apiKey = ConfigService().geminiApiKey;
+    if (apiKey.isEmpty) throw GeminiException('API Key missing');
 
-    final response = await _dio.post(
-      '${AppConstants.geminiApiUrl}?key=${AppConstants.geminiApiKey}',
-      options: Options(headers: {'Content-Type': 'application/json'}),
-      data: {
-        'contents': [
-          {
-            'parts': [
-              {'text': AppConstants.geminiSystemPrompt},
+    final base64Image = await compute(base64Encode, imageBytes);
+
+    // Prioritize ultra-low-cost models first to save on API costs
+    final candidates = [
+      {'id': 'gemini-1.5-flash-8b', 'ver': 'v1'}, // Ultra-cheap, fast
+      {'id': 'gemini-1.5-flash', 'ver': 'v1'},
+      {'id': 'gemini-2.0-flash', 'ver': 'v1'},
+    ];
+
+    Object? lastError;
+
+    for (var candidate in candidates) {
+      final modelId = candidate['id']!;
+      final apiVer = candidate['ver']!;
+
+      try {
+        debugPrint('🧠 AIService: Hunting Gemini ($modelId on $apiVer)...');
+        final response = await _dio.post(
+          'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$apiKey',
+          options: Options(
+            headers: {'Content-Type': 'application/json'},
+            sendTimeout: const Duration(seconds: 10),
+          ),
+          data: {
+            'contents': [
               {
-                'inline_data': {'mime_type': 'image/jpeg', 'data': base64Image},
+                'parts': [
+                  {'text': AppConstants.geminiSystemPrompt},
+                  {
+                    'inline_data': {
+                      'mime_type': 'image/jpeg',
+                      'data': base64Image,
+                    },
+                  },
+                ],
+              },
+            ],
+            'generationConfig': {
+              'temperature': 0.4,
+              'maxOutputTokens': 512,
+            }, // Reduced max tokens for a simple JSON output
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final text =
+              response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
+                  as String?;
+          if (text != null) return await _parseResponse(text);
+        }
+      } catch (e) {
+        lastError = e;
+        debugPrint('❌ Hunting failed for $modelId: $e');
+        continue; // Try next candidate
+      }
+    }
+
+    throw lastError ?? GeminiException('All Gemini candidates failed');
+  }
+
+  /// Fallback: Groq (with Auto-Hunting)
+  Future<List<NutritionResult>> _detectWithGroq(Uint8List imageBytes) async {
+    final apiKey = ConfigService().groqApiKey;
+    if (apiKey.isEmpty) throw GeminiException('API Key missing');
+
+    final base64Image = await compute(base64Encode, imageBytes);
+    final imageUrl = "data:image/jpeg;base64,$base64Image";
+
+    // List of Vision models to hunt through
+    final candidates = [
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+      'llama-3.2-11b-vision',
+      'llama-3.2-90b-vision',
+    ];
+
+    Object? lastError;
+
+    for (var modelId in candidates) {
+      try {
+        debugPrint('🧠 AIService: Hunting Groq ($modelId)...');
+        final response = await _dio.post(
+          AppConstants.groqApiUrl,
+          options: Options(
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
+            },
+            sendTimeout: const Duration(seconds: 10),
+          ),
+          data: {
+            'model': modelId,
+            'messages': [
+              {
+                'role': 'user',
+                'content': [
+                  {'type': 'text', 'text': AppConstants.geminiSystemPrompt},
+                  {
+                    'type': 'image_url',
+                    'image_url': {'url': imageUrl},
+                  },
+                ],
               },
             ],
           },
-        ],
-        'generationConfig': {
-          'temperature': 0.4,
-          'topK': 32,
-          'topP': 1,
-          'maxOutputTokens': 1024,
-        },
-      },
-    );
+        );
 
-    if (response.statusCode == 200) {
-      final data = response.data;
-      final text =
-          data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
-
-      if (text != null) {
-        return _parseResponse(text);
-      }
-    }
-    throw GeminiException('Gemini returned empty response');
-  }
-
-  /// Fallback: Groq (Llama 3.2 11B Vision)
-  Future<NutritionResult> _detectWithGroq(Uint8List imageBytes) async {
-    if (AppConstants.groqApiKey.isEmpty) {
-      throw GeminiException(
-        'Groq API key is missing. Ensure GROQ_API_KEY is set via --dart-define.',
-      );
-    }
-    try {
-      final base64Image = base64Encode(imageBytes);
-      final imageUrl = "data:image/jpeg;base64,$base64Image";
-
-      final response = await _dio.post(
-        AppConstants.groqApiUrl,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer ${AppConstants.groqApiKey}',
-            'Content-Type': 'application/json',
-          },
-        ),
-        data: {
-          "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-          "messages": [
-            {
-              "role": "user",
-              "content": [
-                {"type": "text", "text": AppConstants.geminiSystemPrompt},
-                {
-                  "type": "image_url",
-                  "image_url": {"url": imageUrl},
-                },
-              ],
-            },
-          ],
-          "max_tokens": 1024,
-          "stream": false,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final content = response.data['choices']?[0]?['message']?['content'];
-        if (content != null) {
-          debugPrint("✅ Groq RAW Response: $content");
-          return _parseResponse(content.toString());
+        if (response.statusCode == 200) {
+          final content = response.data['choices']?[0]?['message']?['content'];
+          if (content != null) return await _parseResponse(content.toString());
         }
+      } catch (e) {
+        lastError = e;
+        debugPrint('❌ Hunting failed for $modelId: $e');
+        continue;
       }
-      throw GeminiException('Groq returned empty response');
-    } catch (e) {
-      rethrow;
     }
+
+    throw lastError ?? GeminiException('All Groq candidates failed');
   }
 
   /// Shared JSON Parser (Runs in Background Isolate)
-  Future<NutritionResult> _parseResponse(String text) async {
+  Future<List<NutritionResult>> _parseResponse(String text) async {
     debugPrint("🔍 Parsing JSON from: $text");
     try {
       return await compute(_parseNutritionJsonInIsolate, text);
     } catch (e) {
-      print("Parsing Error: $e");
+      debugPrint("Parsing Error: $e");
       throw GeminiException('Failed to parse JSON');
     }
   }
@@ -204,77 +248,173 @@ class AIService {
   NutritionResult _getFallbackResult([String? errorMessage]) {
     return NutritionResult(
       foodName: errorMessage != null ? 'Error: $errorMessage' : 'Unknown Food',
+      portion: 'Unknown portion',
       calories: 0,
       protein: 0,
       carbs: 0,
       fat: 0,
+      healthScore: 5,
+      insights: [],
     );
   }
 
-  /// Generate Weekly Meal Plan & Grocery List
+  /// Generate Weekly Meal Plan & Grocery List (with AI Hunter)
   Future<PlanGenerationResult?> generateWeeklyMealPlan(
     UserSettings settings,
   ) async {
-    try {
-      final prompt = _buildMealPlanPrompt(settings);
+    final prompt = _buildMealPlanPrompt(settings);
+    final apiKey = ConfigService().geminiApiKey;
+    if (apiKey.isEmpty) return null;
 
-      // We reuse the Gemini structure but with text input only
-      final response = await _dio.post(
-        '${AppConstants.geminiApiUrl}?key=${AppConstants.geminiApiKey}',
-        options: Options(headers: {'Content-Type': 'application/json'}),
-        data: {
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt},
-              ],
-            },
-          ],
-          'generationConfig': {
-            // Higher output tokens for a full week plan
-            'maxOutputTokens': 4096,
-            'temperature': 0.7, // More creativity for recipes
+    // Prioritize ultra-low-cost models first
+    final candidates = [
+      {'id': 'gemini-1.5-flash-8b', 'ver': 'v1'},
+      {'id': 'gemini-1.5-flash', 'ver': 'v1'},
+      {'id': 'gemini-2.0-flash', 'ver': 'v1'},
+    ];
+
+    for (var candidate in candidates) {
+      final modelId = candidate['id']!;
+      final apiVer = candidate['ver']!;
+      try {
+        debugPrint('🍽️ MealPlanner: Hunting $modelId...');
+        final response = await _dio.post(
+          'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$apiKey',
+          options: Options(headers: {'Content-Type': 'application/json'}),
+          data: {
+            'contents': [
+              {
+                'parts': [
+                  {'text': prompt},
+                ],
+              },
+            ],
+            'generationConfig': {
+              'maxOutputTokens': 4096,
+              'temperature': 0.7,
+            }, // Reduced from 8192 since meal plan JSON is relatively small
           },
-        },
-      );
+        );
+        if (response.statusCode == 200) {
+          final text =
+              response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
+                  as String?;
+          if (text != null)
+            return await compute(_parseMealPlanJsonInIsolate, text);
+        }
+      } catch (e) {
+        debugPrint('❌ MealPlanner failed for $modelId: $e');
+        continue;
+      }
+    }
+    return null;
+  }
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final text =
-            data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                as String?;
-        if (text != null) {
-          // Parse in background isolate
-          return await compute(_parseMealPlanJsonInIsolate, text);
+  /// Regenerate a single day's meals with context of existing meals
+  Future<PlanGenerationResult?> regenerateDay(
+    UserSettings settings,
+    int dayIndex,
+    Map<int, List<Meal>> existingWeeklyMeals,
+  ) async {
+    final existingMealsContext = <String>[];
+    final dayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    existingWeeklyMeals.forEach((day, meals) {
+      if (day != dayIndex) {
+        for (final m in meals) {
+          existingMealsContext.add('${m.foodName} (${dayNames[day]})');
         }
       }
-      return null;
-    } catch (e) {
-      print("Meal Planning Error: $e");
-      return null;
+    });
+
+    final calorieFloor = settings.gender == 'female' ? 1200 : 1500;
+    final safeTarget =
+        settings.dailyCalorieGoal < calorieFloor
+            ? calorieFloor
+            : settings.dailyCalorieGoal;
+
+    final prompt = '''
+You are a certified nutrition expert. Generate meals for ONE day only (${dayNames[dayIndex]}).
+User: Goal ${settings.goalMode} | $safeTarget kcal | P${settings.dailyProteinGoal}g C${settings.dailyCarbGoal}g F${settings.dailyFatGoal}g
+Meals/day: ${settings.mealsPerDay} | Restriction: ${settings.dietaryRestriction} | Cuisine: ${settings.cuisinePreference}
+Do NOT repeat: ${existingMealsContext.join(', ')}
+Output ONLY valid JSON:
+{"week_plan":{"$dayIndex":[{"meal_type":"Breakfast","name":"Name","portion":"1 bowl","calories":400,"protein_g":20,"carbs_g":45,"fat_g":12,"ingredients":["item"],"prep_time_mins":10}]},"grocery_list":[{"name":"Item","amount":"Qty","category":"Produce"}]}
+''';
+
+    final apiKey = ConfigService().geminiApiKey;
+    if (apiKey.isEmpty) return null;
+
+    // Prioritize ultra-low-cost models
+    final candidates = [
+      {'id': 'gemini-1.5-flash-8b', 'ver': 'v1'},
+      {'id': 'gemini-1.5-flash', 'ver': 'v1'},
+      {'id': 'gemini-2.0-flash', 'ver': 'v1'},
+    ];
+
+    for (var candidate in candidates) {
+      try {
+        final response = await _dio.post(
+          'https://generativelanguage.googleapis.com/${candidate['ver']}/models/${candidate['id']}:generateContent?key=$apiKey',
+          options: Options(headers: {'Content-Type': 'application/json'}),
+          data: {
+            'contents': [
+              {
+                'parts': [
+                  {'text': prompt},
+                ],
+              },
+            ],
+            'generationConfig': {'maxOutputTokens': 1024, 'temperature': 0.7},
+          },
+        );
+        if (response.statusCode == 200) {
+          final text =
+              response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
+                  as String?;
+          if (text != null)
+            return await compute(_parseMealPlanJsonInIsolate, text);
+        }
+      } catch (e) {
+        debugPrint('❌ Regen day failed: $e');
+        continue;
+      }
     }
+    return null;
   }
 
   String _buildMealPlanPrompt(UserSettings settings) {
+    final calorieFloor = settings.gender == 'female' ? 1200 : 1500;
+    final safeTarget =
+        settings.dailyCalorieGoal < calorieFloor
+            ? calorieFloor
+            : settings.dailyCalorieGoal;
     return '''
-    Generate a 7-day weekly meal plan and a consolidated grocery list.
-    Target Calories: ${settings.dailyCalorieGoal} kcal/day.
-    Target Macros: Protein ${settings.dailyProteinGoal}g, Carbs ${settings.dailyCarbGoal}g, Fat ${settings.dailyFatGoal}g.
-    
-    The output MUST be valid JSON with this exact structure:
-    {
-      "week_plan": {
-        "0": [{"name": "Breakfast name", "calories": 500}, ...], // 0 is Monday
-        ...
-        "6": [...] // 6 is Sunday
-      },
-      "grocery_list": [
-        {"name": "Item name", "amount": "Qty", "category": "Produce/Meat/Dairy/etc"}
-      ]
-    }
-    Include 3 meals (Breakfast, Lunch, Dinner) per day.
-    Keep names concise.
-    ''';
+You are a certified nutrition expert. Generate a realistic 7-day meal plan.
+Rules:
+- Everyday ingredients, practical meals, no chef-level cooking
+- Vary meals across 7 days (no repeats on consecutive days)
+- ${settings.mealsPerDay} meals per day
+- Respect restriction: ${settings.dietaryRestriction}
+- Cuisine: ${settings.cuisinePreference}
+- NEVER below $calorieFloor kcal/day
+- Output ONLY valid JSON
+
+User: Goal ${settings.goalMode} | Gender ${settings.gender ?? 'n/a'} | Age ${settings.age ?? 25}
+Weight ${settings.startingWeight ?? 70}kg | Height ${settings.height ?? 170}cm | Activity ${settings.activityLevel ?? 'active'}
+Target: $safeTarget kcal | P${settings.dailyProteinGoal}g C${settings.dailyCarbGoal}g F${settings.dailyFatGoal}g
+
+JSON:
+{"week_plan":{"0":[{"meal_type":"Breakfast","name":"Oatmeal with Banana","portion":"1 large bowl","calories":420,"protein_g":18,"carbs_g":55,"fat_g":14,"ingredients":["1 cup oats","1 banana","1 tbsp peanut butter"],"prep_time_mins":10}]},"grocery_list":[{"name":"Rolled oats","amount":"500g","category":"Grains"}]}
+Keys 0-6 = Monday-Sunday. Each day must have exactly ${settings.mealsPerDay} meals.
+''';
   }
 
   /// Extracts detailed error message from DioException
@@ -298,36 +438,51 @@ class AIService {
 
   // --- Static/Top-Level Functions for Compute ---
 
-  static NutritionResult _parseNutritionJsonInIsolate(String text) {
+  static List<NutritionResult> _parseNutritionJsonInIsolate(String text) {
     final String jsonString = _extractJsonStatic(text);
     final jsonResult = jsonDecode(jsonString) as Map<String, dynamic>;
-    return NutritionResult.fromJson(jsonResult);
+
+    // New format: {"items": [...]}
+    if (jsonResult.containsKey('items') && jsonResult['items'] is List) {
+      return (jsonResult['items'] as List)
+          .map((item) => NutritionResult.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    // Backward compat: single object {"food_name": ...}
+    return [NutritionResult.fromJson(jsonResult)];
   }
 
   static PlanGenerationResult _parseMealPlanJsonInIsolate(String text) {
     String jsonString = _extractJsonStatic(text);
     final json = jsonDecode(jsonString) as Map<String, dynamic>;
 
-    // Parse Plan
     final weekPlanMap = json['week_plan'] as Map<String, dynamic>;
     final Map<int, List<Meal>> weeklyMeals = {};
 
     weekPlanMap.forEach((key, value) {
       final dayIndex = int.parse(key);
-      final mealsList =
+      final List<Meal> mealsList =
           (value as List)
               .map(
                 (m) => Meal(
                   id: const Uuid().v4(),
-                  timestamp:
-                      DateTime.now().millisecondsSinceEpoch, // Placeholder
-                  dateString: 'Day $dayIndex', // Placeholder
-                  foodName: m['name'],
-                  calories:
-                      m['calories'] is int
-                          ? m['calories']
-                          : (m['calories'] as num).round(),
-                  macros: Macros.empty(), // Details not fetched to save tokens
+                  timestamp: DateTime.now().millisecondsSinceEpoch,
+                  dateString: 'Day $dayIndex',
+                  foodName: m['name'] ?? 'Unnamed Meal',
+                  portion: m['portion'] as String? ?? 'Standard portion',
+                  calories: _safeInt(m['calories']),
+                  macros: Macros(
+                    protein: _safeInt(m['protein_g']),
+                    carbs: _safeInt(m['carbs_g']),
+                    fat: _safeInt(m['fat_g']),
+                  ),
+                  mealType: m['meal_type'] as String?,
+                  ingredients:
+                      (m['ingredients'] as List?)
+                          ?.map((e) => e.toString())
+                          .toList(),
+                  prepTimeMins: _safeInt(m['prep_time_mins']),
                 ),
               )
               .toList();
@@ -336,20 +491,26 @@ class AIService {
 
     final plan = MealPlan.createEmpty().copyWith(weeklyMeals: weeklyMeals);
 
-    // Parse Grocery List
-    final groceryListJson = json['grocery_list'] as List;
+    final groceryListJson = json['grocery_list'] as List? ?? [];
     final groceryList =
         groceryListJson
             .map(
               (item) => GroceryItem(
-                name: item['name'],
-                amount: item['amount'],
-                category: item['category'],
+                name: item['name'] ?? '',
+                amount: item['amount'] ?? '',
+                category: item['category'] ?? 'Other',
               ),
             )
             .toList();
 
     return PlanGenerationResult(plan: plan, groceryList: groceryList);
+  }
+
+  static int _safeInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.round();
+    return int.tryParse(value.toString()) ?? 0;
   }
 
   static String _extractJsonStatic(String rawResponse) {

@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/meal.dart';
 import '../../../widgets/glass_container.dart';
 
@@ -28,6 +29,7 @@ class EditMealModal extends StatefulWidget {
 
 class _EditMealModalState extends State<EditMealModal> {
   late TextEditingController _nameController;
+  late TextEditingController _portionController;
   late TextEditingController _caloriesController;
   late TextEditingController _proteinController;
   late TextEditingController _carbsController;
@@ -37,6 +39,7 @@ class _EditMealModalState extends State<EditMealModal> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.meal.foodName);
+    _portionController = TextEditingController(text: widget.meal.portion ?? '');
     _caloriesController = TextEditingController(
       text: widget.meal.calories.toString(),
     );
@@ -54,6 +57,7 @@ class _EditMealModalState extends State<EditMealModal> {
   @override
   void dispose() {
     _nameController.dispose();
+    _portionController.dispose();
     _caloriesController.dispose();
     _proteinController.dispose();
     _carbsController.dispose();
@@ -66,6 +70,7 @@ class _EditMealModalState extends State<EditMealModal> {
       foodName:
           _nameController.text.isEmpty ? 'Unknown Food' : _nameController.text,
       calories: int.tryParse(_caloriesController.text) ?? 0,
+      portion: _portionController.text.isEmpty ? null : _portionController.text,
       macros: Macros(
         protein: int.tryParse(_proteinController.text) ?? 0,
         carbs: int.tryParse(_carbsController.text) ?? 0,
@@ -80,8 +85,8 @@ class _EditMealModalState extends State<EditMealModal> {
     return GlassContainer(
           padding: const EdgeInsets.all(24),
           borderRadius: 32,
-          backgroundColor: context.surfaceColor.withOpacity(0.9),
-          borderColor: context.glassBorderColor.withOpacity(0.5),
+          backgroundColor: context.surfaceColor.withValues(alpha: 0.9),
+          borderColor: context.glassBorderColor.withValues(alpha: 0.5),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -93,7 +98,7 @@ class _EditMealModalState extends State<EditMealModal> {
                     width: 48,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: context.textMutedColor.withOpacity(0.3),
+                      color: context.textMutedColor.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2.5),
                     ),
                   ),
@@ -118,6 +123,13 @@ class _EditMealModalState extends State<EditMealModal> {
                   controller: _nameController,
                   label: 'Food Name',
                   icon: LucideIcons.utensils,
+                ),
+                const SizedBox(height: 16),
+                _buildPremiumInput(
+                  controller: _portionController,
+                  label: 'Portion Description',
+                  icon: LucideIcons.scale,
+                  hint: 'e.g. 1 bowl, 200g, 1 slice',
                 ),
 
                 const SizedBox(height: 16),
@@ -185,7 +197,7 @@ class _EditMealModalState extends State<EditMealModal> {
                           color: AppColors.error,
                         ),
                         style: IconButton.styleFrom(
-                          backgroundColor: AppColors.error.withOpacity(0.1),
+                          backgroundColor: AppColors.error.withValues(alpha: 0.1),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -204,7 +216,7 @@ class _EditMealModalState extends State<EditMealModal> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.3),
+                                color: AppColors.primary.withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -225,7 +237,8 @@ class _EditMealModalState extends State<EditMealModal> {
                   ],
                 ),
 
-                const SizedBox(height: 16 + 16), // Extra bottom padding
+                const SizedBox(height: 12),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -239,12 +252,13 @@ class _EditMealModalState extends State<EditMealModal> {
     required TextEditingController controller,
     required String label,
     required IconData icon,
+    String? hint,
     TextInputType? keyboardType,
     Color? iconColor,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: context.backgroundColor.withOpacity(0.5),
+        color: context.backgroundColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: context.glassBorderColor),
       ),
@@ -254,6 +268,10 @@ class _EditMealModalState extends State<EditMealModal> {
         style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.bold),
         decoration: InputDecoration(
           labelText: label,
+          hintText: hint,
+          hintStyle: AppTypography.bodySmall.copyWith(
+            color: context.textMutedColor.withValues(alpha: 0.5),
+          ),
           labelStyle: AppTypography.bodySmall.copyWith(
             color: context.textMutedColor,
           ),
@@ -280,9 +298,9 @@ class _EditMealModalState extends State<EditMealModal> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.1)),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
       ),
       child: TextField(
         controller: controller,
@@ -297,7 +315,7 @@ class _EditMealModalState extends State<EditMealModal> {
           labelText: label,
           floatingLabelAlignment: FloatingLabelAlignment.center,
           labelStyle: AppTypography.labelSmall.copyWith(
-            color: color.withOpacity(0.7),
+            color: color.withValues(alpha: 0.7),
             fontSize: 9,
           ),
           contentPadding: EdgeInsets.zero,

@@ -73,25 +73,35 @@ class UserSettings extends HiveObject {
   final double? startingWeight;
 
   @HiveField(22)
-  final String weightUnit;
+  final String? weightUnit;
 
   @HiveField(23)
-  final String heightUnit;
+  final String? heightUnit;
 
   @HiveField(24)
-  final String goalMode;
+  final String? goalMode;
 
   @HiveField(25)
-  final double weeklyRateKg;
+  final double? weeklyRateKg;
 
   @HiveField(26)
-  final String recommendationInsight;
+  final String? recommendationInsight;
 
   @HiveField(27)
-  final String recommendationTip;
+  final String? recommendationTip;
 
   @HiveField(28)
-  final String recommendationSafetyNote;
+  final String? recommendationSafetyNote;
+
+  // Planner Preferences
+  @HiveField(29)
+  final int? mealsPerDay;
+
+  @HiveField(30)
+  final String? dietaryRestriction;
+
+  @HiveField(31)
+  final String? cuisinePreference;
 
   UserSettings({
     required this.dailyCalorieGoal,
@@ -123,6 +133,9 @@ class UserSettings extends HiveObject {
     this.recommendationInsight = '',
     this.recommendationTip = '',
     this.recommendationSafetyNote = '',
+    this.mealsPerDay = 3,
+    this.dietaryRestriction = 'none',
+    this.cuisinePreference = 'international',
   });
 
   UserSettings copyWith({
@@ -155,6 +168,9 @@ class UserSettings extends HiveObject {
     String? recommendationInsight,
     String? recommendationTip,
     String? recommendationSafetyNote,
+    int? mealsPerDay,
+    String? dietaryRestriction,
+    String? cuisinePreference,
   }) {
     return UserSettings(
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -188,6 +204,9 @@ class UserSettings extends HiveObject {
       recommendationTip: recommendationTip ?? this.recommendationTip,
       recommendationSafetyNote:
           recommendationSafetyNote ?? this.recommendationSafetyNote,
+      mealsPerDay: mealsPerDay ?? this.mealsPerDay,
+      dietaryRestriction: dietaryRestriction ?? this.dietaryRestriction,
+      cuisinePreference: cuisinePreference ?? this.cuisinePreference,
     );
   }
 
@@ -222,6 +241,9 @@ class UserSettings extends HiveObject {
       'recommendationInsight': recommendationInsight,
       'recommendationTip': recommendationTip,
       'recommendationSafetyNote': recommendationSafetyNote,
+      'mealsPerDay': mealsPerDay,
+      'dietaryRestriction': dietaryRestriction,
+      'cuisinePreference': cuisinePreference,
     };
   }
 
@@ -260,6 +282,9 @@ class UserSettings extends HiveObject {
       recommendationTip: json['recommendationTip'] as String? ?? '',
       recommendationSafetyNote:
           json['recommendationSafetyNote'] as String? ?? '',
+      mealsPerDay: json['mealsPerDay'] as int? ?? 3,
+      dietaryRestriction: json['dietaryRestriction'] as String? ?? 'none',
+      cuisinePreference: json['cuisinePreference'] as String? ?? 'international',
     );
   }
 
@@ -295,6 +320,9 @@ class UserSettings extends HiveObject {
       recommendationInsight: '',
       recommendationTip: '',
       recommendationSafetyNote: '',
+      mealsPerDay: 3,
+      dietaryRestriction: 'none',
+      cuisinePreference: 'international',
     );
   }
 }

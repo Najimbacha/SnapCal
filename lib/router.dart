@@ -14,117 +14,124 @@ import 'providers/settings_provider.dart';
 import 'screens/planner/meal_planner_screen.dart';
 import 'screens/paywall/paywall_screen.dart'; // Import
 import 'screens/onboarding/onboarding_screen.dart';
+import 'screens/progress/progress_screen.dart'; // Import
 import 'widgets/hero_action_button.dart';
+import 'core/utils/responsive_utils.dart';
 
-/// App router configuration
-final appRouter = GoRouter(
-  initialLocation: '/',
-  redirect: (context, state) {
-    final authProvider = context.read<AuthProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
-    final loggingIn = state.matchedLocation == '/auth';
-    final onboarding = state.matchedLocation == '/onboarding';
+/// Global route observer for managing hardware lifecycle across screens
+final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
 
-    // 1. Auth blocking (optional, but SnapCal allows anon access)
-    if (authProvider.isAuthenticated &&
-        !authProvider.isAnonymous &&
-        loggingIn) {
-      return '/';
-    }
+/// Factory function to create a reactive router
+GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
+  return GoRouter(
+    initialLocation: '/',
+    observers: [routeObserver],
+    refreshListenable: Listenable.merge([auth, settings]),
+    redirect: (context, state) {
+      final onboarding = state.matchedLocation == '/onboarding';
+      final loggingIn = state.matchedLocation == '/auth';
 
-    // 2. Onboarding Redirect
-    // If auth is initialized (even anon) and onboarding not complete,
-    // and they aren't already on the onboarding screen, send them there.
-    if (authProvider.isAuthenticated &&
-        !settingsProvider.onboardingComplete &&
-        !onboarding &&
-        !loggingIn) {
-      return '/onboarding';
-    }
+      // 1. Onboarding Redirect: Send to /onboarding if not complete (Full Users Only)
+      if (auth.isAuthenticated &&
+          !auth.isAnonymous &&
+          !settings.onboardingComplete &&
+          !onboarding &&
+          !loggingIn) {
+        return '/onboarding';
+      }
 
-    return null;
-  },
-  routes: [
-    GoRoute(
-      path: '/onboarding',
-      builder: (context, state) => const OnboardingScreen(),
-    ),
-    GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
-    GoRoute(
-      path: '/settings',
-      builder: (context, state) => const SettingsScreen(),
-    ),
-    GoRoute(
-      path: '/paywall', // New Route
-      builder: (context, state) => const PaywallScreen(),
-    ),
-    GoRoute(
-      path: '/assistant',
-      builder: (context, state) => const AssistantScreen(),
-    ),
-    GoRoute(
-      path: '/planner',
-      builder: (context, state) => const MealPlannerScreen(),
-    ),
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) {
-        return MainShell(navigationShell: navigationShell);
-      },
-      branches: [
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/',
-              pageBuilder:
-                  (context, state) =>
-                      const NoTransitionPage(child: HomeScreen()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/log',
-              pageBuilder:
-                  (context, state) =>
-                      const NoTransitionPage(child: LogScreen()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/snap',
-              pageBuilder:
-                  (context, state) =>
-                      const NoTransitionPage(child: SnapScreen()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/reports',
-              pageBuilder:
-                  (context, state) =>
-                      const NoTransitionPage(child: ReportsScreen()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/profile',
-              pageBuilder:
-                  (context, state) =>
-                      const NoTransitionPage(child: SettingsScreen()),
-            ),
-          ],
-        ),
-      ],
-    ),
-  ],
-);
+      // 2. Auth Redirect: Kick out of /auth if logged in as a full user
+      if (loggingIn && auth.isAuthenticated && !auth.isAnonymous) {
+        return '/settings';
+      }
+
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/paywall',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final limitReached = extra?['limitReached'] as bool? ?? false;
+          return PaywallScreen(limitReached: limitReached);
+        },
+      ),
+      GoRoute(
+        path: '/progress',
+        builder: (context, state) => const ProgressScreen(),
+      ),
+      GoRoute(
+        path: '/assistant',
+        builder: (context, state) => const AssistantScreen(),
+      ),
+      GoRoute(
+        path: '/planner',
+        builder: (context, state) => const MealPlannerScreen(),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return MainShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: HomeScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/log',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: LogScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/snap',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: SnapScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/reports',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: ReportsScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: SettingsScreen()),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+}
 
 /// Shell route for bottom navigation
 class MainShell extends StatefulWidget {
@@ -172,17 +179,15 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,
       body: widget.navigationShell,
-      floatingActionButton: HeroActionButton(
-        isActive: widget.navigationShell.currentIndex == 2,
-        onTap: () {
-          widget.navigationShell.goBranch(
-            2,
-            initialLocation: widget.navigationShell.currentIndex == 2,
-          );
-        },
-      ),
+      floatingActionButton: widget.navigationShell.currentIndex == 2
+          ? null
+          : HeroActionButton(
+              isActive: false,
+              onTap: () {
+                widget.navigationShell.goBranch(2, initialLocation: false);
+              },
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomNavBar(
         currentIndex: _lastNavIndex,

@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/meal.dart';
 import '../data/repositories/meal_repository.dart';
 import '../core/utils/date_utils.dart' as app_date;
+import '../data/services/gemini_service.dart';
 import 'settings_provider.dart';
 
 /// Provider for managing meal state
@@ -14,9 +16,29 @@ class MealProvider with ChangeNotifier {
   List<Meal> _selectedDateMeals = [];
   String _selectedDate = app_date.DateUtils.getTodayString();
   bool _isLoading = false;
+  StreamSubscription<List<Meal>>? _mealsSubscription;
+  
+  // Cache for AI analysis results to avoid redundant scans
+  final Map<String, List<NutritionResult>> _analysisCache = {};
 
   MealProvider(this._repository) {
-    _loadTodaysMeals();
+    _todaysMeals = _repository.getTodaysMeals();
+    _mealsSubscription = _repository.todaysMealsStream.listen((meals) {
+      _todaysMeals = meals;
+      _memoizedTodaysCalories = null;
+      _memoizedTodaysMacros = null;
+      
+      if (_selectedDate == app_date.DateUtils.getTodayString()) {
+        _selectedDateMeals = _todaysMeals;
+      }
+      notifyListeners();
+    });
+  }
+
+  @override
+  void dispose() {
+    _mealsSubscription?.cancel();
+    super.dispose();
   }
 
   // Getters
@@ -24,6 +46,26 @@ class MealProvider with ChangeNotifier {
   List<Meal> get selectedDateMeals => _selectedDateMeals;
   String get selectedDate => _selectedDate;
   bool get isLoading => _isLoading;
+
+  /// Check if we have a cached analysis for this image
+  List<NutritionResult>? getCachedAnalysis(Uint8List bytes) {
+    final key = _generateImageKey(bytes);
+    return _analysisCache[key];
+  }
+
+  /// Store analysis results in cache
+  void cacheAnalysis(Uint8List bytes, List<NutritionResult> results) {
+    final key = _generateImageKey(bytes);
+    // Keep cache small: only last 5 items
+    if (_analysisCache.length > 5) _analysisCache.remove(_analysisCache.keys.first);
+    _analysisCache[key] = results;
+  }
+
+  String _generateImageKey(Uint8List bytes) {
+    // Simple key: length + first 100 bytes sample
+    if (bytes.length < 100) return bytes.length.toString();
+    return '${bytes.length}_${bytes.sublist(0, 100).join("")}';
+  }
 
   int? _memoizedTodaysCalories;
   Macros? _memoizedTodaysMacros;
@@ -68,28 +110,36 @@ class MealProvider with ChangeNotifier {
   List<Meal> get recentMeals => _todaysMeals.take(2).toList();
 
   /// Load today's meals
-  Future<void> _loadTodaysMeals() async {
-    _isLoading = true;
-    notifyListeners();
+  Future<void> _loadTodaysMeals({bool notify = true}) async {
+    if (notify) {
+      _isLoading = true;
+      notifyListeners();
+    }
 
     _todaysMeals = _repository.getTodaysMeals();
     _memoizedTodaysCalories = null;
     _memoizedTodaysMacros = null;
 
-    _isLoading = false;
-    notifyListeners();
+    if (notify) {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Load meals for selected date
-  Future<void> loadMealsForDate(String dateString) async {
+  Future<void> loadMealsForDate(String dateString, {bool notify = true}) async {
     _selectedDate = dateString;
-    _isLoading = true;
-    notifyListeners();
+    if (notify) {
+      _isLoading = true;
+      notifyListeners();
+    }
 
     _selectedDateMeals = _repository.getMealsByDate(dateString);
 
-    _isLoading = false;
-    notifyListeners();
+    if (notify) {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Add a new meal
@@ -99,6 +149,7 @@ class MealProvider with ChangeNotifier {
     required int protein,
     required int carbs,
     required int fat,
+    String? portion,
     String? imageUri,
     SettingsProvider? settings,
   }) async {
@@ -115,10 +166,13 @@ class MealProvider with ChangeNotifier {
       calories: calories,
       macros: Macros(protein: protein, carbs: carbs, fat: fat),
       synced: false,
+      portion: portion,
     );
 
     await _repository.addMeal(meal);
-    await _loadTodaysMeals();
+    
+    // Refresh internal state without extra notifications
+    await _loadTodaysMeals(notify: false);
 
     // Trigger goal alerts if settings provided
     if (settings != null) {
@@ -142,9 +196,11 @@ class MealProvider with ChangeNotifier {
       }
     }
 
-    // Also refresh selected date if it's today
+    // Refresh selected date reference
     if (_selectedDate == app_date.DateUtils.getTodayString()) {
       _selectedDateMeals = _todaysMeals;
+    } else {
+      await loadMealsForDate(_selectedDate, notify: false);
     }
 
     notifyListeners();
@@ -197,6 +253,20 @@ class MealProvider with ChangeNotifier {
     return Macros(protein: protein, carbs: carbs, fat: fat);
   }
 
+  /// Get all meals for the last 7 days
+  List<Meal> getWeeklyMeals() {
+    final List<Meal> allWeeklyMeals = [];
+    final today = DateTime.now();
+    for (int i = 6; i >= 0; i--) {
+      final date = today.subtract(Duration(days: i));
+      final dateString = app_date.DateUtils.getDateString(date);
+      allWeeklyMeals.addAll(_repository.getMealsByDate(dateString));
+    }
+    // Sort by timestamp descending
+    allWeeklyMeals.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return allWeeklyMeals;
+  }
+
   /// Get weekly average calories
   int getWeeklyAverageCalories() {
     final trend = getWeeklyCalorieTrend();
@@ -243,5 +313,16 @@ class MealProvider with ChangeNotifier {
   /// Go to today
   void goToToday() {
     loadMealsForDate(app_date.DateUtils.getTodayString());
+  }
+
+  /// Clear all meal data (logout)
+  Future<void> clear() async {
+    await _repository.clearAll();
+    _todaysMeals = [];
+    _selectedDateMeals = [];
+    _memoizedTodaysCalories = null;
+    _memoizedTodaysMacros = null;
+    _selectedDate = app_date.DateUtils.getTodayString();
+    notifyListeners();
   }
 }

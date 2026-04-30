@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
-import '../../core/constants/app_constants.dart';
+import '../../core/services/config_service.dart';
 
 typedef OnboardingAiBuilder =
     Future<Map<String, dynamic>?> Function(
@@ -234,12 +234,15 @@ class CalorieOnboardingService {
     OnboardingProfileInput input,
     _ComputedPlan computed,
   ) async {
-    if (AppConstants.geminiApiKey.isEmpty) {
+    final apiKey = ConfigService().geminiApiKey;
+    final modelId = ConfigService().geminiModelId;
+
+    if (apiKey.isEmpty) {
       return null;
     }
 
     final response = await _dio.post(
-      '${AppConstants.geminiApiUrl}?key=${AppConstants.geminiApiKey}',
+      'https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$apiKey',
       options: Options(headers: {'Content-Type': 'application/json'}),
       data: {
         'contents': [

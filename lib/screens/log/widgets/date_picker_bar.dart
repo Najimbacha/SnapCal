@@ -30,7 +30,7 @@ class DatePickerBar extends StatelessWidget {
     return GlassContainer(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       borderRadius: 24,
-      backgroundColor: context.surfaceColor.withOpacity(0.5),
+      backgroundColor: context.surfaceColor.withValues(alpha: 0.5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -123,7 +123,7 @@ class _NavButton extends StatelessWidget {
           icon,
           color:
               isDisabled
-                  ? context.textMutedColor.withOpacity(0.5)
+                  ? context.textMutedColor.withValues(alpha: 0.5)
                   : context.textSecondaryColor,
           size: 20,
         ),

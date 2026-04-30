@@ -66,6 +66,19 @@ class Meal extends HiveObject {
   @HiveField(7)
   final bool synced;
 
+  // Planner-specific fields (nullable for backward compat)
+  @HiveField(8)
+  final List<String>? ingredients;
+
+  @HiveField(9)
+  final int? prepTimeMins;
+
+  @HiveField(10)
+  final String? mealType; // "Breakfast", "Lunch", "Dinner", "Snack"
+
+  @HiveField(11)
+  final String? portion;
+
   Meal({
     required this.id,
     required this.timestamp,
@@ -75,6 +88,10 @@ class Meal extends HiveObject {
     required this.calories,
     required this.macros,
     this.synced = false,
+    this.ingredients,
+    this.prepTimeMins,
+    this.mealType,
+    this.portion,
   });
 
   Meal copyWith({
@@ -86,6 +103,10 @@ class Meal extends HiveObject {
     int? calories,
     Macros? macros,
     bool? synced,
+    List<String>? ingredients,
+    int? prepTimeMins,
+    String? mealType,
+    String? portion,
   }) {
     return Meal(
       id: id ?? this.id,
@@ -96,6 +117,10 @@ class Meal extends HiveObject {
       calories: calories ?? this.calories,
       macros: macros ?? this.macros,
       synced: synced ?? this.synced,
+      ingredients: ingredients ?? this.ingredients,
+      prepTimeMins: prepTimeMins ?? this.prepTimeMins,
+      mealType: mealType ?? this.mealType,
+      portion: portion ?? this.portion,
     );
   }
 
@@ -122,6 +147,7 @@ class Meal extends HiveObject {
       calories: json['calories'] as int,
       macros: Macros.fromJson(json['macros'] as Map<String, dynamic>),
       synced: json['synced'] as bool? ?? false,
+      portion: json['portion'] as String?,
     );
   }
 
