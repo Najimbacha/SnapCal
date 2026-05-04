@@ -1,13 +1,15 @@
-import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'router.dart';
-import 'core/services/app_initializer.dart'; // Import AppInitializer
+import 'core/services/app_initializer.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'data/repositories/meal_repository.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/repositories/water_repository.dart';
@@ -106,6 +108,52 @@ class _SnapCalAppState extends State<SnapCalApp> {
           return const MaterialApp(
             home: SplashScreen(),
             debugShowCheckedModeBanner: false,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          );
+        }
+
+        // Handle Initialization Errors
+        if (snapshot.hasError) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            home: Scaffold(
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(LucideIcons.alertCircle, color: AppColors.error, size: 64),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Initialization Failed',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        snapshot.error.toString(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 32),
+                      FilledButton.icon(
+                        onPressed: () {
+                          // This will trigger a rebuild and retry init
+                          (context as Element).markNeedsBuild();
+                        },
+                        icon: const Icon(LucideIcons.refreshCw, size: 18),
+                        label: const Text('Retry Setup'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           );
         }
 
@@ -192,7 +240,7 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
             return DynamicColorBuilder(
               builder: (lightDynamic, darkDynamic) {
                 return MaterialApp.router(
-                  title: 'SnapCal',
+                  title: AppLocalizations.of(context)?.appTitle ?? 'SnapCal',
                   debugShowCheckedModeBanner: false,
                   theme: AppTheme.lightTheme.copyWith(
                     colorScheme: lightDynamic ?? AppTheme.lightTheme.colorScheme,
@@ -202,6 +250,19 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                   ),
                   themeMode: _getThemeMode(settingsProvider.themeMode),
                   routerConfig: _router,
+                  locale: Locale(settingsProvider.languageCode),
+                  localizationsDelegates: const [
+                    AppLocalizations.delegate,
+                    GlobalMaterialLocalizations.delegate,
+                    GlobalWidgetsLocalizations.delegate,
+                    GlobalCupertinoLocalizations.delegate,
+                  ],
+                  supportedLocales: const [
+                    Locale('en'), // English
+                    Locale('ar'), // Arabic
+                    Locale('es'), // Spanish
+                    Locale('fr'), // French
+                  ],
                   builder: (context, child) {
                     // Global Error Boundary
                     ErrorWidget.builder = (details) => _GlobalErrorView(details: details);
@@ -230,12 +291,12 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                                 const Icon(Icons.wifi_off_rounded, size: 64, color: Colors.orange),
                                 const SizedBox(height: 24),
                                 Text(
-                                  'Connection Issue',
+                                  AppLocalizations.of(context)?.appTitle ?? 'SnapCal',
                                   style: AppTheme.darkTheme.textTheme.headlineSmall,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  auth.errorMessage ?? 'Unable to initialize SnapCal. Please check your data or Wi-Fi.',
+                                  AppLocalizations.of(context)?.error_connection_title ?? 'Network Error',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(color: Colors.white70),
                                 ),
@@ -246,7 +307,7 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                                     auth.signInAnonymously();
                                   },
                                   icon: const Icon(Icons.refresh),
-                                  label: const Text('Try Again'),
+                                  label: Text(AppLocalizations.of(context)?.common_try_again ?? 'Try Again'),
                                 ),
                               ],
                             ),
@@ -294,7 +355,7 @@ class _GlobalErrorView extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
                 const Text(
-                  'Something went wrong',
+                  'Unexpected Error',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -302,11 +363,11 @@ class _GlobalErrorView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  'We encountered an unexpected error. Our team has been notified and we are working to fix it.',
+                const Text(
+                  'Something went wrong. Please try restarting the application.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: Colors.white60,
                     fontSize: 16,
                     height: 1.5,
                   ),
@@ -324,7 +385,7 @@ class _GlobalErrorView extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   icon: Icon(LucideIcons.refreshCcw, size: 20),
-                  label: const Text('Try to Reload', style: TextStyle(fontWeight: FontWeight.w800)),
+                  label: const Text('Reload App', style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
               ],
             ),

@@ -52,3 +52,7 @@ app.*.map.json
 # Firebase Config (contains project IDs)
 google-services.json
 GoogleService-Info.plist
+
+# Temp analysis and heap dumps
+*.txt
+*.hprof

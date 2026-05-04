@@ -1,5 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -63,33 +65,61 @@ class _MealCardState extends State<MealCard> {
   }
 
   Widget _buildLockedCard(Meal m, ColorScheme colorScheme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.1),
+      ),
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(LucideIcons.lock, color: colorScheme.primary, size: 14),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    m.foodName,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    'PRO',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 9,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: Icon(LucideIcons.lock, color: colorScheme.outline, size: 16),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              m.foodName,
-              style: AppTypography.bodyMedium.copyWith(
-                color: colorScheme.outline,
-                fontWeight: FontWeight.w600,
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colorScheme.surface.withValues(alpha: 0.1),
+                ),
               ),
-            ),
-          ),
-          Text(
-            '${m.calories} kcal',
-            style: AppTypography.labelLarge.copyWith(
-              color: colorScheme.outline,
-              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -124,7 +154,7 @@ class _MealCardState extends State<MealCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      m.mealType?.toUpperCase() ?? 'MEAL',
+                      _getLocalizedMealType(context, m.mealType).toUpperCase(),
                       style: AppTypography.labelSmall.copyWith(
                         color: _mealTypeColor(m.mealType!),
                         fontWeight: FontWeight.w900,
@@ -157,7 +187,7 @@ class _MealCardState extends State<MealCard> {
                   ),
                   if (m.prepTimeMins != null && m.prepTimeMins! > 0)
                     Text(
-                      '${m.prepTimeMins} MINS',
+                      '${m.prepTimeMins} ${AppLocalizations.of(context)!.common_mins.toUpperCase()}',
                       style: AppTypography.labelSmall.copyWith(
                         color: context.textMutedColor,
                         fontWeight: FontWeight.w900,
@@ -206,7 +236,7 @@ class _MealCardState extends State<MealCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'INGREDIENTS',
+                    AppLocalizations.of(context)!.planner_ingredients.toUpperCase(),
                     style: AppTypography.labelSmall.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w900,
@@ -313,5 +343,16 @@ class _MacroPill extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+String _getLocalizedMealType(BuildContext context, String? type) {
+  final l10n = AppLocalizations.of(context)!;
+  if (type == null) return l10n.planner_meal;
+  switch (type.toLowerCase()) {
+    case 'breakfast': return l10n.result_meal_breakfast;
+    case 'lunch': return l10n.result_meal_lunch;
+    case 'dinner': return l10n.result_meal_dinner;
+    case 'snack': return l10n.result_meal_snack;
+    default: return type;
   }
 }

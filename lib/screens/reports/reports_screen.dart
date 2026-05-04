@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
@@ -66,7 +66,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       
       final userName = authProvider.user?.displayName ?? 
                        authProvider.user?.email?.split('@').first ?? 
-                       'Valued User';
+                       AppLocalizations.of(context)!.report_guest_user;
 
       await ReportPdfService.generateAndShareReport(
         userName: userName,
@@ -77,7 +77,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate report: $e')),
+          SnackBar(content: Text('${AppLocalizations.of(context)!.report_failed}: $e')),
         );
       }
     } finally {
@@ -92,8 +92,23 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     return DefaultTabController(
       length: 2,
       child: AppPageScaffold(
-        title: 'Insights',
-        subtitle: 'Advanced analytics for your health journey.',
+        title: '',
+        leading: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppLocalizations.of(context)!.report_title,
+              style: AppTypography.titleLarge.copyWith(
+                color: context.textPrimaryColor,
+                fontWeight: FontWeight.w900,
+                fontSize: 22,
+                letterSpacing: -0.8,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
         padding: EdgeInsets.zero,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -119,9 +134,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               },
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               offset: const Offset(0, 48),
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'Weekly', child: Text('Weekly Review')),
-                PopupMenuItem(value: 'Monthly', child: Text('Monthly Audit')),
+              itemBuilder: (context) => [
+                PopupMenuItem(value: 'Weekly', child: Text(AppLocalizations.of(context)!.report_weekly_review)),
+                PopupMenuItem(value: 'Monthly', child: Text(AppLocalizations.of(context)!.report_monthly_audit)),
               ],
               child: _ScaleTap(
                 onTap: () {}, // Handled by PopupMenuButton
@@ -138,7 +153,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                       Icon(LucideIcons.calendarRange, size: 14, color: colorScheme.primary),
                       const SizedBox(width: 8),
                       Text(
-                        _timeRange,
+                        _timeRange == 'Weekly' 
+                          ? AppLocalizations.of(context)!.report_weekly 
+                          : AppLocalizations.of(context)!.report_monthly,
                         style: AppTypography.labelLarge.copyWith(
                           color: colorScheme.primary,
                           fontWeight: FontWeight.w900,
@@ -191,7 +208,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                       fontWeight: FontWeight.w600,
                     ),
                     dividerColor: Colors.transparent,
-                    tabs: const [Tab(text: 'Nutrition'), Tab(text: 'Body Metrics')],
+                    tabs: [
+                      Tab(text: AppLocalizations.of(context)!.report_tab_nutrition),
+                      Tab(text: AppLocalizations.of(context)!.report_tab_body),
+                    ],
                   ),
                 ),
               ),

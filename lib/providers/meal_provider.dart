@@ -151,16 +151,22 @@ class MealProvider with ChangeNotifier {
     required int fat,
     String? portion,
     String? imageUri,
+    String? dateString,
     SettingsProvider? settings,
   }) async {
-    final prevCal = todaysTotalCalories;
+    if (_isLoading) return;
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final prevCal = todaysTotalCalories;
     final prevPro = todaysTotalMacros.protein;
 
     final now = DateTime.now();
     final meal = Meal(
       id: _uuid.v4(),
       timestamp: now.millisecondsSinceEpoch,
-      dateString: app_date.DateUtils.getDateString(now),
+      dateString: dateString ?? app_date.DateUtils.getDateString(now),
       imageUri: imageUri,
       foodName: foodName,
       calories: calories,
@@ -174,25 +180,21 @@ class MealProvider with ChangeNotifier {
     // Refresh internal state without extra notifications
     await _loadTodaysMeals(notify: false);
 
-    // Trigger goal alerts if settings provided
+    // Update streak and Trigger goal alerts if settings provided
     if (settings != null) {
+      await settings.updateStreakOnMealLog(mealDate: meal.dateString);
+
       final newCal = todaysTotalCalories;
       final newPro = todaysTotalMacros.protein;
 
       if (prevCal < settings.dailyCalorieGoal &&
           newCal >= settings.dailyCalorieGoal) {
-        settings.triggerGoalAlert(
-          'Goal Reached! 🚀',
-          'You\'ve hit your daily calorie goal of ${settings.dailyCalorieGoal} kcal!',
-        );
+        settings.triggerCalorieGoalAlert(settings.dailyCalorieGoal);
       }
 
       if (prevPro < settings.dailyProteinGoal &&
           newPro >= settings.dailyProteinGoal) {
-        settings.triggerGoalAlert(
-          'Protein Goal Met! 💪',
-          'Great job! You\'ve reached your ${settings.dailyProteinGoal}g protein target.',
-        );
+        settings.triggerProteinGoalAlert(settings.dailyProteinGoal);
       }
     }
 
@@ -202,8 +204,10 @@ class MealProvider with ChangeNotifier {
     } else {
       await loadMealsForDate(_selectedDate, notify: false);
     }
-
-    notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Update an existing meal
@@ -214,8 +218,22 @@ class MealProvider with ChangeNotifier {
   }
 
   /// Delete a meal
-  Future<void> deleteMeal(String id) async {
+  Future<void> deleteMeal(String id, {SettingsProvider? settings}) async {
+    final meal = _repository.getMealById(id);
+    if (meal == null) return;
+
+    final date = meal.dateString;
     await _repository.deleteMeal(id);
+
+    // If it was the last meal for that date, adjust streak
+    if (settings != null) {
+      final remaining = _repository.getMealsByDate(date);
+      await settings.adjustStreakOnDeletion(
+        dateOfDeletedMeal: date,
+        wasLastMealOfDay: remaining.isEmpty,
+      );
+    }
+
     await _loadTodaysMeals();
     await loadMealsForDate(_selectedDate);
   }

@@ -4,9 +4,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/meal.dart';
 import '../../../widgets/glass_container.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 /// Modal for editing meal details
 class EditMealModal extends StatefulWidget {
@@ -68,7 +68,7 @@ class _EditMealModalState extends State<EditMealModal> {
   void _handleSave() {
     final updatedMeal = widget.meal.copyWith(
       foodName:
-          _nameController.text.isEmpty ? 'Unknown Food' : _nameController.text,
+          _nameController.text.isEmpty ? AppLocalizations.of(context)!.log_unknown_food : _nameController.text,
       calories: int.tryParse(_caloriesController.text) ?? 0,
       portion: _portionController.text.isEmpty ? null : _portionController.text,
       macros: Macros(
@@ -108,7 +108,9 @@ class _EditMealModalState extends State<EditMealModal> {
 
                 // Title
                 Text(
-                  widget.meal.id == 'temp' ? 'Log New Meal' : 'Edit Meal Entry',
+                  widget.meal.id == 'new' 
+              ? AppLocalizations.of(context)!.log_log_new_meal 
+              : AppLocalizations.of(context)!.log_edit_meal,
                   style: AppTypography.heading2.copyWith(
                     letterSpacing: -0.5,
                     fontWeight: FontWeight.w900,
@@ -121,15 +123,16 @@ class _EditMealModalState extends State<EditMealModal> {
                 // Food name
                 _buildPremiumInput(
                   controller: _nameController,
-                  label: 'Food Name',
+                  label: AppLocalizations.of(context)!.log_food_name,
+                  hint: AppLocalizations.of(context)!.log_food_hint,
                   icon: LucideIcons.utensils,
                 ),
                 const SizedBox(height: 16),
                 _buildPremiumInput(
                   controller: _portionController,
-                  label: 'Portion Description',
+                  label: AppLocalizations.of(context)!.log_portion_desc,
                   icon: LucideIcons.scale,
-                  hint: 'e.g. 1 bowl, 200g, 1 slice',
+                  hint: AppLocalizations.of(context)!.log_portion_hint,
                 ),
 
                 const SizedBox(height: 16),
@@ -137,7 +140,7 @@ class _EditMealModalState extends State<EditMealModal> {
                 // Calories
                 _buildPremiumInput(
                   controller: _caloriesController,
-                  label: 'Calories (kcal)',
+                  label: AppLocalizations.of(context)!.log_calories_kcal,
                   icon: LucideIcons.flame,
                   keyboardType: TextInputType.number,
                   iconColor: AppColors.primary,
@@ -147,7 +150,7 @@ class _EditMealModalState extends State<EditMealModal> {
 
                 // Macros Section
                 Text(
-                  'MACRONUTRIENTS',
+                  AppLocalizations.of(context)!.result_macronutrients.toUpperCase(),
                   style: AppTypography.labelSmall.copyWith(
                     color: context.textMutedColor,
                     fontWeight: FontWeight.w800,
@@ -161,7 +164,7 @@ class _EditMealModalState extends State<EditMealModal> {
                     Expanded(
                       child: _buildMacroField(
                         controller: _proteinController,
-                        label: 'Protein',
+                        label: AppLocalizations.of(context)!.result_protein,
                         color: AppColors.protein,
                       ),
                     ),
@@ -169,7 +172,7 @@ class _EditMealModalState extends State<EditMealModal> {
                     Expanded(
                       child: _buildMacroField(
                         controller: _carbsController,
-                        label: 'Carbs',
+                        label: AppLocalizations.of(context)!.result_carbs,
                         color: AppColors.carbs,
                       ),
                     ),
@@ -177,7 +180,7 @@ class _EditMealModalState extends State<EditMealModal> {
                     Expanded(
                       child: _buildMacroField(
                         controller: _fatController,
-                        label: 'Fat',
+                        label: AppLocalizations.of(context)!.result_fat,
                         color: AppColors.fat,
                       ),
                     ),
@@ -224,7 +227,7 @@ class _EditMealModalState extends State<EditMealModal> {
                           ),
                           child: Center(
                             child: Text(
-                              'Save Entry',
+                              AppLocalizations.of(context)!.log_save_entry,
                               style: AppTypography.labelLarge.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -338,9 +341,9 @@ class _EditMealModalState extends State<EditMealModal> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
-            title: Text('Delete Meal Entry?', style: AppTypography.heading3),
+            title: Text(AppLocalizations.of(context)!.log_delete_meal_title, style: AppTypography.heading3),
             content: Text(
-              'Are you sure you want to remove this meal from your log? This cannot be undone.',
+              AppLocalizations.of(context)!.log_delete_meal_body,
               style: AppTypography.bodyMedium.copyWith(
                 color: context.textSecondaryColor,
                 height: 1.5,
@@ -350,7 +353,7 @@ class _EditMealModalState extends State<EditMealModal> {
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(
-                  'Keep it',
+                  AppLocalizations.of(context)!.common_keep_it,
                   style: TextStyle(
                     color: context.textSecondaryColor,
                     fontWeight: FontWeight.bold,
@@ -362,8 +365,8 @@ class _EditMealModalState extends State<EditMealModal> {
                   Navigator.pop(context); // Close dialog
                   widget.onDelete();
                 },
-                child: const Text(
-                  'Delete',
+                child: Text(
+                  AppLocalizations.of(context)!.common_delete,
                   style: TextStyle(
                     color: AppColors.error,
                     fontWeight: FontWeight.bold,

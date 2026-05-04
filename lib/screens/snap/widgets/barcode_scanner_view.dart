@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import 'package:snapcal/l10n/generated/app_localizations.dart';
+
 class BarcodeScannerView extends StatefulWidget {
   final Function(String barcode) onBarcodeDetected;
   final VoidCallback onCancel;
@@ -72,22 +74,22 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
                   onTap: widget.onCancel,
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Scan barcode',
-                        style: TextStyle(
+                        AppLocalizations.of(context)!.snap_scan_barcode,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        'Place the barcode inside the frame.',
-                        style: TextStyle(color: Colors.white70),
+                        AppLocalizations.of(context)!.snap_barcode_hint,
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ],
                   ),
@@ -104,13 +106,13 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
               children: [
                 _RoundButton(
                   icon: LucideIcons.zap,
-                  label: 'Torch',
+                  label: AppLocalizations.of(context)!.snap_torch,
                   onTap: _controller.toggleTorch,
                 ),
                 const SizedBox(width: 16),
                 _RoundButton(
                   icon: LucideIcons.refreshCw,
-                  label: 'Flip',
+                  label: AppLocalizations.of(context)!.snap_flip,
                   onTap: _controller.switchCamera,
                 ),
               ],

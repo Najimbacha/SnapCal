@@ -1,13 +1,15 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/services/security_service.dart';
 import '../models/user_settings.dart';
 import '../../core/constants/app_constants.dart';
 
 /// Repository for managing user settings in Hive and Firestore
 class SettingsRepository {
-  late Box<UserSettings> _settingsBox;
+  Box<UserSettings>? _settingsBox;
   final _settingsController = StreamController<UserSettings>.broadcast();
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
@@ -17,9 +19,16 @@ class SettingsRepository {
 
   /// Initialize the repository
   Future<void> init() async {
-    _settingsBox = await Hive.openBox<UserSettings>(
-      AppConstants.settingsBoxName,
-    );
+    try {
+      final encryptionKey = await SecurityService().getEncryptionKey();
+      _settingsBox = await Hive.openBox<UserSettings>(
+        AppConstants.settingsBoxName,
+        encryptionCipher: HiveAesCipher(encryptionKey),
+      );
+    } catch (e) {
+      debugPrint('❌ SettingsRepository: Failed to open box: $e');
+      // If box fails to open, we'll fall back to defaults in getSettings
+    }
     
     // Emit initial value
     final initialSettings = getSettings();
@@ -33,14 +42,17 @@ class SettingsRepository {
 
   /// Get current user settings (Sync)
   UserSettings getSettings() {
-    return _settingsBox.get(AppConstants.settingsKey) ??
+    if (_settingsBox == null || !_settingsBox!.isOpen) {
+      return UserSettings.defaults();
+    }
+    return _settingsBox!.get(AppConstants.settingsKey) ??
         UserSettings.defaults();
   }
 
   /// Save user settings (Local + Cloud)
   Future<void> saveSettings(UserSettings settings) async {
     // 1. Save to Local Hive
-    await _settingsBox.put(AppConstants.settingsKey, settings);
+    await _settingsBox?.put(AppConstants.settingsKey, settings);
     
     // 2. Push to Stream
     _settingsController.add(settings);
@@ -55,7 +67,7 @@ class SettingsRepository {
         }, SetOptions(merge: true));
       } catch (e) {
         // Silently fail or queue for later
-        print('Firestore Sync Error: $e');
+        debugPrint('Firestore Sync Error: $e');
       }
     }
   }
@@ -73,12 +85,12 @@ class SettingsRepository {
 
         // Simple conflict resolution: Cloud wins if it has data
         if (cloudSettings != localSettings) {
-          await _settingsBox.put(AppConstants.settingsKey, cloudSettings);
+          await _settingsBox?.put(AppConstants.settingsKey, cloudSettings);
           _settingsController.add(cloudSettings);
         }
       }
     } catch (e) {
-      print('Firestore Pull Error: $e');
+      debugPrint('Firestore Pull Error: $e');
     }
   }
 
@@ -128,7 +140,7 @@ class SettingsRepository {
 
   /// Clear all settings (logout)
   Future<void> clear() async {
-    await _settingsBox.clear();
+    await _settingsBox?.clear();
     _settingsController.add(UserSettings.defaults());
   }
 

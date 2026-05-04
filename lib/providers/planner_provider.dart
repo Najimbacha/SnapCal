@@ -148,10 +148,17 @@ class PlannerProvider with ChangeNotifier {
   }
 
   Future<void> toggleGroceryItem(String id) async {
-    final item = _groceryList.firstWhere((i) => i.id == id);
-    item.isChecked = !item.isChecked;
-    await item.save();
-    notifyListeners();
+    try {
+      final index = _groceryList.indexWhere((i) => i.id == id);
+      if (index != -1) {
+        final item = _groceryList[index];
+        item.isChecked = !item.isChecked;
+        await item.save();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error toggling grocery item: $e');
+    }
   }
 
   Future<void> clearGroceryList() async {

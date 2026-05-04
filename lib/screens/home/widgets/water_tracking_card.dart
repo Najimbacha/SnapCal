@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../providers/water_provider.dart';
+import '../../../providers/settings_provider.dart';
 import '../../../widgets/ui_blocks.dart';
 
 class WaterTrackingCard extends StatefulWidget {
@@ -45,7 +47,7 @@ class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTicker
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionLabel(title: 'Hydration'),
+          SectionLabel(title: AppLocalizations.of(context)!.water_hydration),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -65,7 +67,7 @@ class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTicker
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hydration Tracker',
+                      AppLocalizations.of(context)!.water_tracker,
                       style: AppTypography.heading3.copyWith(
                         color: context.textPrimaryColor,
                         fontSize: 20,
@@ -73,7 +75,7 @@ class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTicker
                       ),
                     ),
                     Text(
-                      '$amount of $goal ml reached',
+                      AppLocalizations.of(context)!.water_reached(amount, goal),
                       style: AppTypography.bodySmall.copyWith(
                         color: context.textSecondaryColor,
                         fontWeight: FontWeight.w600,
@@ -112,7 +114,7 @@ class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTicker
                     animation: _waveController,
                     builder: (context, child) {
                       // Detect if we are hidden by a bottom nav tab switch
-                      final tickerActive = TickerMode.of(context);
+                      final tickerActive = TickerMode.valuesOf(context).enabled;
                       if (tickerActive != _waveController.isAnimating) {
                         if (tickerActive) {
                           _waveController.repeat();
@@ -142,7 +144,7 @@ class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTicker
             children: [
               _WaterButton(label: '+250 ml', amount: 250),
               _WaterButton(label: '+500 ml', amount: 500),
-              _WaterButton(label: 'Custom', amount: 0, isCustom: true),
+              _WaterButton(label: AppLocalizations.of(context)!.water_custom, amount: 0, isCustom: true),
             ],
           ),
         ],
@@ -218,7 +220,10 @@ class _WaterButton extends StatelessWidget {
         if (isCustom) {
           _showCustomWaterDialog(context);
         } else {
-          context.read<WaterProvider>().addWater(amount);
+          context.read<WaterProvider>().addWater(
+            amount,
+            settings: context.read<SettingsProvider>(),
+          );
         }
       },
     );
@@ -230,29 +235,32 @@ class _WaterButton extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Add Water'),
+          title: Text(AppLocalizations.of(context)!.water_add_water),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: 'Enter amount',
+            decoration: InputDecoration(
+              hintText: AppLocalizations.of(context)!.water_enter_amount,
               suffixText: 'ml',
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context)!.common_cancel),
             ),
             FilledButton(
               onPressed: () {
                 final value = int.tryParse(controller.text);
                 if (value != null && value > 0) {
-                  context.read<WaterProvider>().addWater(value);
+                  context.read<WaterProvider>().addWater(
+                    value,
+                    settings: context.read<SettingsProvider>(),
+                  );
                   Navigator.pop(dialogContext);
                 }
               },
-              child: const Text('Add'),
+              child: Text(AppLocalizations.of(context)!.water_add),
             ),
           ],
         );

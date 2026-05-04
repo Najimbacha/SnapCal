@@ -6,8 +6,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
-import '../../../core/utils/responsive_utils.dart';
 import '../../../data/services/gemini_service.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../../widgets/ad_banner.dart';
 
 /// Bottom sheet showing multiple detected food items with selection toggles.
@@ -120,11 +120,11 @@ class _MultiResultSheetState extends State<MultiResultSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Bento Plate',
+                      AppLocalizations.of(context)!.snap_bento_plate,
                       style: AppTypography.heading3.copyWith(fontWeight: FontWeight.w900),
                     ),
                     Text(
-                      '${widget.results.length} items detected on your plate.',
+                      AppLocalizations.of(context)!.snap_items_detected(widget.results.length),
                       style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor),
                     ),
                   ],
@@ -178,7 +178,7 @@ class _MultiResultSheetState extends State<MultiResultSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'TOTAL MEAL',
+                      AppLocalizations.of(context)!.snap_total_meal,
                       style: AppTypography.labelSmall.copyWith(
                         color: context.textSecondaryColor,
                         fontWeight: FontWeight.w800,
@@ -186,7 +186,7 @@ class _MultiResultSheetState extends State<MultiResultSheet> {
                       ),
                     ),
                     Text(
-                      '$_selectedCount item${_selectedCount != 1 ? 's' : ''} selected',
+                      AppLocalizations.of(context)!.snap_items_selected(_selectedCount),
                       style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -218,7 +218,7 @@ class _MultiResultSheetState extends State<MultiResultSheet> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   ),
                   child: Text(
-                    'Cancel',
+                    AppLocalizations.of(context)!.common_cancel,
                     style: AppTypography.bodyLarge.copyWith(
                       color: context.textSecondaryColor,
                       fontWeight: FontWeight.w700,
@@ -268,7 +268,7 @@ class _MultiResultSheetState extends State<MultiResultSheet> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                     ),
                     child: Text(
-                      'Log Meal',
+                      AppLocalizations.of(context)!.snap_log_meal,
                       style: AppTypography.titleMedium.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,

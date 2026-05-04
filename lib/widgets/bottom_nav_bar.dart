@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../core/utils/responsive_utils.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -27,11 +28,11 @@ class BottomNavBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(context, 0, LucideIcons.home, 'Home'),
-          _buildNavItem(context, 1, LucideIcons.clipboardList, 'Log'),
+          _buildNavItem(context, 0, LucideIcons.home, AppLocalizations.of(context)!.nav_home),
+          _buildNavItem(context, 1, LucideIcons.clipboardList, AppLocalizations.of(context)!.nav_log),
           const SizedBox(width: 48), // Space for FAB
-          _buildNavItem(context, 2, LucideIcons.barChart3, 'Stats'),
-          _buildNavItem(context, 3, LucideIcons.user, 'Profile'),
+          _buildNavItem(context, 2, LucideIcons.barChart3, AppLocalizations.of(context)!.nav_stats),
+          _buildNavItem(context, 3, LucideIcons.user, AppLocalizations.of(context)!.nav_profile),
         ],
       ),
     );

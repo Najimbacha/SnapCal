@@ -12,9 +12,22 @@ class ScanGateService {
 
   Future<void> init() async {
     if (!_initialized) {
-      _prefs = await SharedPreferences.getInstance();
-      _initialized = true;
+      try {
+        _prefs = await SharedPreferences.getInstance();
+        _initialized = true;
+      } catch (e) {
+        // Fallback or log
+      }
     }
+  }
+
+  bool _isInit() {
+    if (!_initialized) {
+      // Try to recover if somehow missed
+      init();
+      return false;
+    }
+    return true;
   }
 
   String _getTodayKey() {
@@ -23,23 +36,23 @@ class ScanGateService {
   }
 
   int getTodayScanCount() {
-    if (!_initialized) return 0;
+    if (!_isInit()) return 0;
     return _prefs.getInt(_getTodayKey()) ?? 0;
   }
 
   int getBonusScans() {
-    if (!_initialized) return 0;
+    if (!_isInit()) return 0;
     return _prefs.getInt(_bonusScansKey) ?? 0;
   }
 
   Future<void> addBonusScans(int count) async {
-    if (!_initialized) return;
+    if (!_isInit()) return;
     final current = getBonusScans();
     await _prefs.setInt(_bonusScansKey, current + count);
   }
 
   Future<void> incrementScanCount() async {
-    if (!_initialized) return;
+    if (!_isInit()) return;
     final currentCount = getTodayScanCount();
     await _prefs.setInt(_getTodayKey(), currentCount + 1);
   }

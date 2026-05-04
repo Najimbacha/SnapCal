@@ -11,6 +11,7 @@ import '../../../core/theme/theme_colors.dart';
 import '../../../data/services/gemini_service.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../../widgets/ad_banner.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class ResultModal extends StatefulWidget {
   final Uint8List? imageBytes;
@@ -63,10 +64,25 @@ class _ResultModalState extends State<ResultModal> {
 
   void _setMealTypeByTime() {
     final hour = DateTime.now().hour;
-    if (hour < 11) _selectedMealType = 'Breakfast';
-    else if (hour < 16) _selectedMealType = 'Lunch';
-    else if (hour < 21) _selectedMealType = 'Dinner';
-    else _selectedMealType = 'Snack';
+    if (hour < 11) {
+      _selectedMealType = 'breakfast';
+    } else if (hour < 16) {
+      _selectedMealType = 'lunch';
+    } else if (hour < 21) {
+      _selectedMealType = 'dinner';
+    } else {
+      _selectedMealType = 'snack';
+    }
+  }
+
+  String _getMealTypeLabel(String key) {
+    switch (key) {
+      case 'breakfast': return AppLocalizations.of(context)!.result_meal_breakfast;
+      case 'lunch': return AppLocalizations.of(context)!.result_meal_lunch;
+      case 'dinner': return AppLocalizations.of(context)!.result_meal_dinner;
+      case 'snack': return AppLocalizations.of(context)!.result_meal_snack;
+      default: return key;
+    }
   }
 
   void _updateValues() {
@@ -187,7 +203,7 @@ class _ResultModalState extends State<ResultModal> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    _selectedMealType.toUpperCase(),
+                                    _getMealTypeLabel(_selectedMealType).toUpperCase(),
                                     style: AppTypography.labelSmall.copyWith(
                                       color: AppColors.primary,
                                       fontWeight: FontWeight.w900,
@@ -228,7 +244,7 @@ class _ResultModalState extends State<ResultModal> {
                         const SizedBox(height: 24),
 
                         Text(
-                          'MACRONUTRIENTS',
+                          AppLocalizations.of(context)!.result_macronutrients,
                           style: AppTypography.labelSmall.copyWith(
                             color: context.textSecondaryColor,
                             fontWeight: FontWeight.w800,
@@ -240,37 +256,37 @@ class _ResultModalState extends State<ResultModal> {
                           children: [
                             Expanded(
                               child: _MacroCard(
-                                label: 'Protein',
+                                label: AppLocalizations.of(context)!.result_protein,
                                 controller: _proteinController,
                                 color: AppColors.protein,
                                 goal: settings.dailyProteinGoal,
                                 icon: LucideIcons.beef,
                                 isHero: _baseProtein >= 25,
-                                heroLabel: 'POWER',
+                                heroLabel: AppLocalizations.of(context)!.result_macro_power,
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _MacroCard(
-                                label: 'Carbs',
+                                label: AppLocalizations.of(context)!.result_carbs,
                                 controller: _carbsController,
                                 color: AppColors.carbs,
                                 goal: settings.dailyCarbGoal,
                                 icon: LucideIcons.wheat,
                                 isHero: _baseCarbs >= 60,
-                                heroLabel: 'ENERGY',
+                                heroLabel: AppLocalizations.of(context)!.result_macro_energy,
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _MacroCard(
-                                label: 'Fat',
+                                label: AppLocalizations.of(context)!.result_fat,
                                 controller: _fatController,
                                 color: AppColors.fat,
                                 goal: settings.dailyFatGoal,
                                 icon: LucideIcons.droplets,
                                 isHero: _baseFat <= 8 && _baseCalories >= 200,
-                                heroLabel: 'LEAN',
+                                heroLabel: AppLocalizations.of(context)!.result_macro_lean,
                               ),
                             ),
                           ],
@@ -280,7 +296,7 @@ class _ResultModalState extends State<ResultModal> {
 
                         _PortionSelector(
                           multiplier: _multiplier,
-                          portionText: widget.result?.portion ?? 'Standard serving',
+                          portionText: widget.result?.portion ?? AppLocalizations.of(context)!.result_portion,
                           onChanged: (val) {
                             HapticFeedback.lightImpact();
                             setState(() {
@@ -317,7 +333,7 @@ class _ResultModalState extends State<ResultModal> {
                     children: [
                       Expanded(
                         child: _SecondaryButton(
-                          label: 'Retake',
+                          label: AppLocalizations.of(context)!.snap_retake,
                           onPressed: () {
                             Navigator.pop(context);
                             widget.onCancel();
@@ -328,7 +344,7 @@ class _ResultModalState extends State<ResultModal> {
                       Expanded(
                         flex: 2,
                         child: _PrimaryButton(
-                          label: 'Log this meal',
+                          label: AppLocalizations.of(context)!.snap_log_meal,
                           onPressed: _save,
                         ),
                       ),
@@ -368,7 +384,7 @@ class _HealthCircle extends StatelessWidget {
               style: AppTypography.heading3.copyWith(color: color, fontWeight: FontWeight.w900, height: 1),
             ),
             Text(
-              'HEALTH',
+              AppLocalizations.of(context)!.result_health,
               style: AppTypography.labelSmall.copyWith(color: color, fontSize: 8, fontWeight: FontWeight.w900),
             ),
           ],
@@ -427,7 +443,7 @@ class _CalorieSpotlight extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'ENERGY',
+                AppLocalizations.of(context)!.result_energy,
                 style: AppTypography.labelSmall.copyWith(color: context.textSecondaryColor, fontWeight: FontWeight.w900, letterSpacing: 1.5),
               ),
               const Icon(LucideIcons.flame, color: AppColors.primary, size: 20),
@@ -448,7 +464,7 @@ class _CalorieSpotlight extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'KCAL',
+                AppLocalizations.of(context)!.result_kcal,
                 style: AppTypography.titleLarge.copyWith(color: context.textSecondaryColor, fontWeight: FontWeight.w900),
               ),
             ],
@@ -469,7 +485,7 @@ class _CalorieSpotlight extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'This meal is ${(percent * 100).round()}% of your daily energy goal.',
+            AppLocalizations.of(context)!.result_daily_goal_info((percent * 100).round()),
             style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor, fontWeight: FontWeight.w600),
           ),
         ],
@@ -577,7 +593,7 @@ class _MacroCard extends StatelessWidget {
                 ],
               ),
               child: Text(
-                heroLabel ?? 'HERO',
+                heroLabel ?? AppLocalizations.of(context)!.common_hero,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 8,
@@ -605,7 +621,7 @@ class _PortionSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'LOGGING PORTION',
+          AppLocalizations.of(context)!.result_logging_portion,
           style: AppTypography.labelSmall.copyWith(color: context.textSecondaryColor, fontWeight: FontWeight.w800, letterSpacing: 1.5),
         ),
         const SizedBox(height: 12),
@@ -623,7 +639,7 @@ class _PortionSelector extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(portionText, style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
-                    Text('${(multiplier * 100).round()}% of AI estimate', style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor)),
+                    Text(AppLocalizations.of(context)!.result_ai_estimate((multiplier * 100).round()), style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor)),
                   ],
                 ),
               ),

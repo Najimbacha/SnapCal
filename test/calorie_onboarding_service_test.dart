@@ -17,7 +17,7 @@ void main() {
 
     test('applies calorie floor for women', () async {
       final service = CalorieOnboardingService(
-        aiBuilder: (_, __, ___, ____) async => null,
+        aiBuilder: (p0, p1, p2, p3) async => null,
       );
 
       const input = OnboardingProfileInput(
@@ -40,7 +40,7 @@ void main() {
 
     test('caps aggressive loss pace to about one kilogram per week', () async {
       final service = CalorieOnboardingService(
-        aiBuilder: (_, __, ___, ____) async => null,
+        aiBuilder: (p0, p1, p2, p3) async => null,
       );
 
       final result = await service.buildRecommendation(baseInput);
@@ -53,7 +53,7 @@ void main() {
 
     test('caps bulk surplus at five hundred calories', () async {
       final service = CalorieOnboardingService(
-        aiBuilder: (_, __, ___, ____) async => null,
+        aiBuilder: (p0, p1, p2, p3) async => null,
       );
 
       const input = OnboardingProfileInput(
@@ -94,8 +94,8 @@ void main() {
 
     test('falls back when AI times out', () async {
       final service = CalorieOnboardingService(
-        aiBuilder: (_, __, ___, ____) async {
-          await Future<void>.delayed(const Duration(seconds: 4));
+        aiBuilder: (p0, p1, p2, p3) async {
+          await Future<void>.delayed(const Duration(seconds: 5));
           return {'insight': 'late', 'tip': 'late'};
         },
       );

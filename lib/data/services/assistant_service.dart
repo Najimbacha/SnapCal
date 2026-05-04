@@ -22,9 +22,18 @@ class AssistantResponse {
   });
 
   factory AssistantResponse.fromJson(Map<String, dynamic> json) {
+    // Handle content being either a String or a List of Strings
+    String parsedContent = '';
+    final rawContent = json['content'];
+    if (rawContent is String) {
+      parsedContent = rawContent;
+    } else if (rawContent is List) {
+      parsedContent = rawContent.map((e) => e.toString()).join('\n');
+    }
+
     return AssistantResponse(
       title: json['title'] as String? ?? '',
-      content: json['content'] as String? ?? '',
+      content: parsedContent,
       type: json['type'] as String? ?? 'coaching',
       macros: json['macros'] != null
           ? Map<String, int>.from(json['macros'] as Map)
@@ -78,6 +87,7 @@ class AssistantService {
     List<String> mealNames = const [],
     String dietaryRestriction = 'none',
     String? userQuery,
+    String language = 'en',
   }) async {
     try {
       final prompt = _buildPrompt(
@@ -88,6 +98,7 @@ class AssistantService {
         mealNames: mealNames,
         dietaryRestriction: dietaryRestriction,
         userQuery: userQuery,
+        language: language,
       );
 
       final response = await _dio.post(
@@ -119,10 +130,16 @@ class AssistantService {
           // Sanitize: Only escape newlines that are inside JSON strings.
           jsonString = _sanitizeJsonString(jsonString);
           
-          final jsonResult = jsonDecode(jsonString) as List<dynamic>;
-          return jsonResult
-              .map((e) => AssistantResponse.fromJson(e as Map<String, dynamic>))
-              .toList();
+          final dynamic decoded = jsonDecode(jsonString);
+          
+          if (decoded is List) {
+            return decoded
+                .map((e) => AssistantResponse.fromJson(e as Map<String, dynamic>))
+                .toList();
+          } else if (decoded is Map) {
+            return [AssistantResponse.fromJson(decoded as Map<String, dynamic>)];
+          }
+          return [];
         }
       }
 
@@ -156,6 +173,7 @@ class AssistantService {
     String? userQuery,
     required int currentCalories,
     required int targetCalories,
+    String language = 'en',
   }) async {
     try {
       final apiKey = ConfigService().geminiApiKey;
@@ -164,8 +182,11 @@ class AssistantService {
 
       final base64Image = base64Encode(imageBytes);
       
+      final languageName = AIService.languageNames[language] ?? 'English';
+      
       final prompt = """
 You are the SnapCal AI Wellness Coach.
+STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE.
 The user has sent a photo. ${userQuery != null ? "User says: $userQuery" : "Analyze what is in the photo."}
 
 ${userQuery == null ? "If it's food, provide nutrition info. If it's a body photo, provide encouragement and progress tips." : ""}
@@ -237,7 +258,9 @@ User Stats: $currentCalories / $targetCalories kcal.
     required List<String> mealNames,
     required String dietaryRestriction,
     String? userQuery,
+    String language = 'en',
   }) {
+    final languageName = AIService.languageNames[language] ?? 'English';
     final remainingCalories = targetCalories - currentCalories;
     final remainingProtein =
         targetMacros['protein']! - currentMacros['protein']!;
@@ -247,6 +270,7 @@ User Stats: $currentCalories / $targetCalories kcal.
     return """
 You are the SnapCal AI Nutritionist. 
 Your goal is to provide ultra-concise, direct nutritional feedback.
+STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE.
 
 STRICT BREVITY RULES:
 1. RESPONSE MUST BE 10-20 WORDS MAX.
@@ -256,7 +280,7 @@ STRICT BREVITY RULES:
 
 CURRENT USER STATUS:
 - Calories: $currentCalories / $targetCalories (${remainingCalories > 0 ? "Rem: $remainingCalories" : "Over: ${remainingCalories.abs()}"} kcal)
-- Macros: P:${currentMacros['protein']}g C:${currentMacros['carbs']}g F:${currentMacros['fat']}g
+- Macros: P:${currentMacros['protein']} / ${targetMacros['protein']}g (Rem: $remainingProtein g), C:${currentMacros['carbs']} / ${targetMacros['carbs']}g (Rem: $remainingCarbs g), F:${currentMacros['fat']} / ${targetMacros['fat']}g (Rem: $remainingFat g)
 
 ${userQuery != null ? "USER QUESTION: $userQuery" : "Provide one quick strategy."}
 
@@ -269,12 +293,30 @@ RESPONSE REQUIREMENTS:
   }
 
   String _extractJson(String text) {
-    // Look for the first '[' and last ']'
-    final regex = RegExp(r'\[[\s\S]*\]');
-    final match = regex.firstMatch(text);
-    if (match != null) {
-      return match.group(0)!;
+    // Find the first occurrence of either '[' or '{'
+    int startList = text.indexOf('[');
+    int startObject = text.indexOf('{');
+    
+    int start = -1;
+    if (startList != -1 && startObject != -1) {
+      start = startList < startObject ? startList : startObject;
+    } else if (startList != -1) {
+      start = startList;
+    } else if (startObject != -1) {
+      start = startObject;
     }
+
+    if (start != -1) {
+      // Find the last occurrence of the matching closing character
+      int endList = text.lastIndexOf(']');
+      int endObject = text.lastIndexOf('}');
+      int end = (start == startList) ? endList : endObject;
+      
+      if (end != -1 && end > start) {
+        return text.substring(start, end + 1);
+      }
+    }
+
     // Fallback to trimming backticks
     String cleaned = text.trim();
     if (cleaned.startsWith('```json')) {

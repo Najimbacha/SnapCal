@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/date_utils.dart' as app_date;
-import '../../core/utils/responsive_utils.dart';
 import '../../data/models/meal.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -16,6 +14,7 @@ import '../../widgets/ad_banner.dart';
 import 'widgets/date_picker_bar.dart';
 import 'widgets/edit_meal_modal.dart';
 import 'widgets/meal_list_tile.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class LogScreen extends StatefulWidget {
   const LogScreen({super.key});
@@ -72,7 +71,10 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
               onCancel: () => Navigator.pop(context),
               onDelete: () async {
                 Navigator.pop(context);
-                await context.read<MealProvider>().deleteMeal(meal.id);
+                await context.read<MealProvider>().deleteMeal(
+                  meal.id,
+                  settings: context.read<SettingsProvider>(),
+                );
               },
             ),
           ),
@@ -80,6 +82,10 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
   }
 
   void _showManualAddModal() {
+    if (!mounted) return;
+    final mealProvider = context.read<MealProvider>();
+    final selectedDate = mealProvider.selectedDate;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -93,7 +99,7 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
               meal: Meal(
                 id: 'temp',
                 timestamp: DateTime.now().millisecondsSinceEpoch,
-                dateString: app_date.DateUtils.getTodayString(),
+                dateString: selectedDate,
                 foodName: '',
                 calories: 0,
                 macros: Macros(protein: 0, carbs: 0, fat: 0),
@@ -108,6 +114,7 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
                   carbs: newMeal.macros.carbs,
                   fat: newMeal.macros.fat,
                   portion: newMeal.portion,
+                  dateString: newMeal.dateString,
                   settings: context.read<SettingsProvider>(),
                 );
               },
@@ -131,10 +138,11 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
     );
     final mealProvider = context.read<MealProvider>();
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return AppPageScaffold(
-      title: 'Daily Log',
-      subtitle: 'Track your nutrition journey',
+      title: l10n.log_title,
+      subtitle: l10n.log_subtitle,
       scrollable: true,
       floatingActionButton: _FloatingAddButton(onTap: _showManualAddModal),
       child: Column(
@@ -161,7 +169,7 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
                     children: [
                       Expanded(
                         child: MetricTile(
-                          label: 'ENTRIES',
+                          label: l10n.log_entries,
                           value: '${meals.length}',
                           accent: colorScheme.primary,
                           icon: LucideIcons.utensils,
@@ -170,7 +178,7 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
                       const SizedBox(width: 12),
                       Expanded(
                         child: MetricTile(
-                          label: 'TOTAL KCAL',
+                          label: l10n.log_total_kcal,
                           value: '$totalCalories',
                           accent: AppColors.carbs,
                           icon: LucideIcons.flame,
@@ -186,7 +194,7 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
           Padding(
             padding: const EdgeInsets.only(left: 4),
             child: Text(
-              'MEAL HISTORY',
+              l10n.log_history,
               style: AppTypography.labelSmall.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 letterSpacing: 1.5,
@@ -200,11 +208,11 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
               _itemAnims[4],
               AppEmptyState(
                 icon: LucideIcons.bookOpen,
-                title: app_date.DateUtils.isToday(selectedDate) ? 'No logs today' : 'Empty history',
+                title: app_date.DateUtils.isToday(selectedDate) ? l10n.log_no_entries_today : l10n.log_no_entries_history,
                 body: app_date.DateUtils.isToday(selectedDate)
-                    ? 'Track your meals to see them here.'
-                    : 'There is no data for this day.',
-                actionLabel: 'Add Manually',
+                    ? l10n.log_track_prompt
+                    : l10n.log_no_data_prompt,
+                actionLabel: l10n.log_add_manually,
                 onAction: _showManualAddModal,
               ),
             )
@@ -228,15 +236,18 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
                   onTap: () => _showEditModal(meal),
                   onDelete: () async {
                     final messenger = ScaffoldMessenger.of(context);
-                    await mealProvider.deleteMeal(meal.id);
+                    await mealProvider.deleteMeal(
+                      meal.id,
+                      settings: context.read<SettingsProvider>(),
+                    );
                     if (!mounted) return;
                     messenger.showSnackBar(
-                      SnackBar(content: Text('${meal.foodName} removed')),
+                      SnackBar(content: Text(l10n.log_removed_snackbar(meal.foodName))),
                     );
                   },
                 ),
               );
-            }).toList(),
+            }),
           const SizedBox(height: 16),
           const AdBanner(),
           const SizedBox(height: 80),

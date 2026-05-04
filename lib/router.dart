@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/snap/snap_screen.dart';
 import 'screens/log/log_screen.dart';
@@ -16,7 +16,6 @@ import 'screens/paywall/paywall_screen.dart'; // Import
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/progress/progress_screen.dart'; // Import
 import 'widgets/hero_action_button.dart';
-import 'core/utils/responsive_utils.dart';
 
 /// Global route observer for managing hardware lifecycle across screens
 final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
@@ -192,6 +191,7 @@ class _MainShellState extends State<MainShell> {
       bottomNavigationBar: BottomNavBar(
         currentIndex: _lastNavIndex,
         onTap: (index) {
+          HapticFeedback.selectionClick();
           final branchIndex = _mapNavToBranch(index);
           widget.navigationShell.goBranch(
             branchIndex,

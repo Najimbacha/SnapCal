@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_colors.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class PhotoComparisonSheet extends StatefulWidget {
   final dynamic current;
@@ -66,10 +67,12 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Comparison', style: AppTypography.heading3),
+                    Text(AppLocalizations.of(context)!.progress_comparison, style: AppTypography.heading3),
                     const SizedBox(height: 2),
                     Text(
-                      '${weightDiff > 0 ? '+' : ''}${weightDiff.toStringAsFixed(1)} kg difference',
+                      AppLocalizations.of(context)!.progress_weight_diff(
+                        weightDiff.toStringAsFixed(1),
+                      ),
                       style: AppTypography.bodySmall.copyWith(
                         color: weightDiff <= 0 ? AppColors.protein : AppColors.fat,
                         fontWeight: FontWeight.w700,
@@ -79,9 +82,9 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                 ),
                 if (hasBothFront && hasBothSide)
                   SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(value: false, label: Text('Front')),
-                      ButtonSegment(value: true, label: Text('Side')),
+                    segments: [
+                      ButtonSegment(value: false, label: Text(AppLocalizations.of(context)!.progress_front)),
+                      ButtonSegment(value: true, label: Text(AppLocalizations.of(context)!.progress_side)),
                     ],
                     selected: {_showSide},
                     onSelectionChanged: (set) => setState(() => _showSide = set.first),
@@ -164,11 +167,18 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                 // Date Labels
                 Positioned(
                   left: 12, top: 12,
-                  child: _DateChip(date: widget.previous.date, label: 'Before'),
+                  child: _DateChip(
+                    date: widget.previous.date,
+                    label: AppLocalizations.of(context)!.progress_before,
+                  ),
                 ),
                 Positioned(
-                  right: 12, top: 12,
-                  child: _DateChip(date: widget.current.date, label: 'After'),
+                  right: 12,
+                  top: 12,
+                  child: _DateChip(
+                    date: widget.current.date,
+                    label: AppLocalizations.of(context)!.progress_after,
+                  ),
                 ),
               ],
             ),
@@ -182,7 +192,7 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
     return Expanded(
       child: Center(
         child: Text(
-          'Missing photos for comparison.',
+          AppLocalizations.of(context)!.progress_missing_photos,
           style: AppTypography.bodyMedium.copyWith(color: context.textSecondaryColor),
         ),
       ),

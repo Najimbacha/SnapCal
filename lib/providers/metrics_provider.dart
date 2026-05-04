@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../core/services/security_service.dart';
 import '../data/models/body_metric.dart';
 import 'settings_provider.dart';
 
@@ -28,7 +29,11 @@ class MetricsProvider with ChangeNotifier {
 
   Future<void> _init() async {
     if (!Hive.isBoxOpen(_boxName)) {
-      _box = await Hive.openBox<BodyMetric>(_boxName);
+      final encryptionKey = await SecurityService().getEncryptionKey();
+      _box = await Hive.openBox<BodyMetric>(
+        _boxName,
+        encryptionCipher: HiveAesCipher(encryptionKey),
+      );
     } else {
       _box = Hive.box<BodyMetric>(_boxName);
     }
@@ -39,10 +44,11 @@ class MetricsProvider with ChangeNotifier {
 
   /// Sort/reload metrics from box without notifying listeners
   void _sortMetrics() {
-    if (_box == null) return;
-    _metrics =
-        _box!.values.toList()
-          ..sort((a, b) => b.date.compareTo(a.date)); // Newest first
+    if (_box == null) {
+      _metrics = [];
+      return;
+    }
+    _metrics = _box!.values.toList()..sort((a, b) => b.date.compareTo(a.date));
   }
 
   void _loadMetrics() {

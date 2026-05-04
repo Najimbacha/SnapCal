@@ -1,19 +1,25 @@
 import 'package:hive/hive.dart';
+import '../../core/services/security_service.dart';
 import '../models/water_log.dart';
 import '../../core/constants/app_constants.dart';
 
 /// Repository for managing water intake data in Hive
 class WaterRepository {
-  late Box<WaterLog> _waterBox;
+  Box<WaterLog>? _waterBox;
 
   /// Initialize the repository
   Future<void> init() async {
-    _waterBox = await Hive.openBox<WaterLog>(AppConstants.waterBoxName);
+    final encryptionKey = await SecurityService().getEncryptionKey();
+    _waterBox = await Hive.openBox<WaterLog>(
+      AppConstants.waterBoxName,
+      encryptionCipher: HiveAesCipher(encryptionKey),
+    );
   }
 
   /// Get water for a specific date
   List<WaterLog> getWaterByDate(String dateString) {
-    return _waterBox.values
+    if (_waterBox == null) return [];
+    return _waterBox!.values
         .where((log) => log.dateString == dateString)
         .toList()
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -27,11 +33,11 @@ class WaterRepository {
 
   /// Add water entry
   Future<void> addWater(WaterLog log) async {
-    await _waterBox.add(log);
+    await _waterBox?.add(log);
   }
 
   /// Clear all (for testing)
   Future<void> clearAll() async {
-    await _waterBox.clear();
+    await _waterBox?.clear();
   }
 }

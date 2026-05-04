@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Singleton service for managing camera hardware
 class CameraService extends ChangeNotifier {
@@ -27,7 +28,18 @@ class CameraService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Explicitly check for permission
+      final status = await Permission.camera.request();
+      if (status.isDenied || status.isPermanentlyDenied) {
+        _error = 'Camera permission denied. Please enable it in Settings.';
+        _isInitializing = false;
+        notifyListeners();
+        return;
+      }
+
       _cameras = await availableCameras();
+      if (!_isInitializing) return; // Stopped while getting cameras
+
       if (_cameras == null || _cameras!.isEmpty) {
         _error = 'No cameras available';
         _isInitializing = false;
@@ -43,11 +55,19 @@ class CameraService extends ChangeNotifier {
       );
 
       await _controller!.initialize();
+      if (!_isInitializing) {
+        // Stopped while initializing
+        await _controller?.dispose();
+        _controller = null;
+        return;
+      }
+
       _isInitialized = true;
       _isInitializing = false;
       debugPrint('📸 CameraService: Hardware warmed up and ready');
       notifyListeners();
     } catch (e) {
+      if (!_isInitializing) return; // Ignore errors if we've already stopped
       _error = 'Camera warmup failed: $e';
       _isInitializing = false;
       _isInitialized = false;
@@ -62,14 +82,31 @@ class CameraService extends ChangeNotifier {
     await warmup();
   }
 
-  /// Stop the camera and release hardware resources
   Future<void> stop() async {
+    if (_controller == null && !_isInitialized) return;
+
     debugPrint('📸 CameraService: Stopping camera and releasing hardware');
-    await _controller?.dispose();
+    
+    final controllerToDispose = _controller;
     _controller = null;
     _isInitialized = false;
     _isInitializing = false;
+    
+    // Notify listeners immediately so the UI stops using the controller 
+    // before we start the potentially slow disposal process.
     notifyListeners();
+
+    if (controllerToDispose != null) {
+      try {
+        // Stop any active image streams first to prevent frames being sent to a detaching engine
+        if (controllerToDispose.value.isStreamingImages) {
+          await controllerToDispose.stopImageStream();
+        }
+        await controllerToDispose.dispose();
+      } catch (e) {
+        debugPrint('📸 CameraService: Error during disposal: $e');
+      }
+    }
   }
 
   @override

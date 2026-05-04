@@ -5,11 +5,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/ui_blocks.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 /// ============================================================================
 /// SYNC DATA SCREEN - WITH DIRECT AUTH OPTIONS
@@ -48,17 +48,17 @@ class _SyncDataScreenState extends State<SyncDataScreen>
 
   bool _isLoading = false;
 
-  final List<_Benefit> _benefits = [
+  List<_Benefit> get _benefits => [
     _Benefit(
       icon: LucideIcons.smartphone,
-      text: 'Sync across all your devices',
+      text: AppLocalizations.of(context)!.sync_benefit_devices,
     ),
-    _Benefit(icon: LucideIcons.shield, text: 'Never lose your progress'),
+    _Benefit(icon: LucideIcons.shield, text: AppLocalizations.of(context)!.sync_benefit_progress),
     _Benefit(
       icon: LucideIcons.cloudOff,
-      text: 'Works offline, syncs when online',
+      text: AppLocalizations.of(context)!.sync_benefit_offline,
     ),
-    _Benefit(icon: LucideIcons.lock, text: 'Your data is encrypted & secure'),
+    _Benefit(icon: LucideIcons.lock, text: AppLocalizations.of(context)!.sync_benefit_secure),
   ];
 
   @override
@@ -137,7 +137,8 @@ class _SyncDataScreenState extends State<SyncDataScreen>
 
     _benefitAnimations = [];
     _benefitSlides = [];
-    for (int i = 0; i < _benefits.length; i++) {
+    final benefitCount = _benefits.length;
+    for (int i = 0; i < benefitCount; i++) {
       final start = 0.35 + (i * 0.08);
       final end = start + 0.15;
       _benefitAnimations.add(
@@ -230,6 +231,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 48),
 
@@ -340,7 +342,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                       child: Opacity(
                         opacity: _titleOpacity.value,
                         child: Text(
-                          'Cloud Sync',
+                          AppLocalizations.of(context)!.sync_title,
                           style: AppTypography.headlineLarge.copyWith(
                             color: context.textPrimaryColor,
                             letterSpacing: -1.0,
@@ -362,7 +364,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                     return Opacity(
                       opacity: _subtitleOpacity.value,
                       child: Text(
-                        'Keep your health data safe across all your devices with an account.',
+                        AppLocalizations.of(context)!.sync_subtitle,
                         style: AppTypography.bodyMedium.copyWith(
                           color: context.textSecondaryColor,
                           height: 1.5,
@@ -380,6 +382,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                   glass: true,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: List.generate(_benefits.length, (index) {
                       return AnimatedBuilder(
                         animation: _mainController,
@@ -435,10 +438,11 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                     return Opacity(
                       opacity: _buttonsOpacity.value,
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           // Google Sign In
                           _AuthButton(
-                            label: 'Continue with Google',
+                            label: AppLocalizations.of(context)!.sync_google,
                             icon: FontAwesomeIcons.google,
                             onPressed: _handleGoogleSignIn,
                             backgroundColor: colorScheme.primary,
@@ -453,9 +457,10 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                             glass: true,
                             padding: const EdgeInsets.all(4),
                             child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 _AuthButton(
-                                  label: 'Continue with Facebook',
+                                  label: AppLocalizations.of(context)!.sync_facebook,
                                   icon: FontAwesomeIcons.facebook,
                                   onPressed: _handleFacebookSignIn,
                                   backgroundColor: Colors.transparent,
@@ -464,7 +469,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                 ),
                                 Divider(height: 1, color: context.dividerColor.withValues(alpha: 0.5)),
                                 _AuthButton(
-                                  label: 'Sign in with Email',
+                                  label: AppLocalizations.of(context)!.sync_email,
                                   icon: LucideIcons.mail,
                                   onPressed: _handleEmailSignIn,
                                   backgroundColor: Colors.transparent,
@@ -484,7 +489,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                 widget.onSkip?.call();
                               },
                               child: Text(
-                                'Skip for now',
+                                AppLocalizations.of(context)!.sync_skip,
                                 style: AppTypography.titleSmall.copyWith(
                                   color: context.textMutedColor,
                                   fontWeight: FontWeight.w700,
@@ -513,7 +518,6 @@ class _AuthButton extends StatelessWidget {
   final VoidCallback onPressed;
   final Color backgroundColor;
   final Color foregroundColor;
-  final Color? borderColor;
   final bool isFaIcon;
   final bool isLoading;
 
@@ -523,7 +527,6 @@ class _AuthButton extends StatelessWidget {
     required this.onPressed,
     required this.backgroundColor,
     required this.foregroundColor,
-    this.borderColor,
     this.isFaIcon = false,
     this.isLoading = false,
   });
@@ -540,10 +543,6 @@ class _AuthButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: backgroundColor,
-          border:
-              borderColor != null
-                  ? Border.all(color: borderColor!, width: 1)
-                  : null,
           boxShadow:
               isAccent
                   ? [

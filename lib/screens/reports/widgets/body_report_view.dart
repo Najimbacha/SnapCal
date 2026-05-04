@@ -8,10 +8,10 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
-import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/metrics_provider.dart';
 import '../../../widgets/ui_blocks.dart';
 import '../../settings/widgets/weight_entry_modal.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class BodyReportView extends StatelessWidget {
   const BodyReportView({super.key});
@@ -28,9 +28,9 @@ class BodyReportView extends StatelessWidget {
           return Center(
             child: AppEmptyState(
               icon: LucideIcons.scale,
-              title: 'No weight entries yet',
-              body: 'Add your first entry so your body trend can start.',
-              actionLabel: 'Log weight',
+              title: AppLocalizations.of(context)!.report_no_weight_title,
+              body: AppLocalizations.of(context)!.report_no_weight_body,
+              actionLabel: AppLocalizations.of(context)!.report_log_weight,
               onAction:
                   () => showModalBottomSheet(
                     context: context,
@@ -58,7 +58,7 @@ class BodyReportView extends StatelessWidget {
                 children: [
                   Expanded(
                     child: MetricTile(
-                      label: 'Current',
+                      label: AppLocalizations.of(context)!.report_weight_current,
                       value: '${current?.toStringAsFixed(1) ?? '--'} kg',
                       accent: AppColors.primary,
                       icon: LucideIcons.scale,
@@ -67,7 +67,7 @@ class BodyReportView extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: MetricTile(
-                      label: 'Change',
+                      label: AppLocalizations.of(context)!.report_weight_change,
                       value:
                           '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)} kg',
                       accent: change <= 0 ? AppColors.protein : AppColors.fat,
@@ -94,11 +94,11 @@ class BodyReportView extends StatelessWidget {
                       child: const Icon(LucideIcons.camera, color: AppColors.primary, size: 20),
                     ),
                     title: Text(
-                      'Progress Timeline', 
+                      AppLocalizations.of(context)!.report_progress_timeline, 
                       style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w800)
                     ),
                     subtitle: Text(
-                      'Visual body-transformation gallery',
+                      AppLocalizations.of(context)!.report_progress_gallery,
                       style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor),
                     ),
                     trailing: Icon(LucideIcons.chevronRight, size: 18, color: context.textMutedColor),
@@ -111,7 +111,7 @@ class BodyReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SectionLabel(title: 'Weight analytics'),
+                    SectionLabel(title: AppLocalizations.of(context)!.report_weight_analytics),
                     const SizedBox(height: 16),
                     SizedBox(
                       height: 220,
@@ -126,7 +126,7 @@ class BodyReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SectionLabel(title: 'Recent history'),
+                    SectionLabel(title: AppLocalizations.of(context)!.report_recent_history),
                     const SizedBox(height: 16),
                     ...metrics
                         .take(5)
@@ -172,7 +172,7 @@ class BodyReportView extends StatelessWidget {
                                     ),
                                     if (metric.bodyFat != null)
                                       Text(
-                                        '${metric.bodyFat!.toStringAsFixed(1)}% Fat',
+                                        AppLocalizations.of(context)!.report_body_fat_pct(metric.bodyFat!.toStringAsFixed(1)),
                                         style: AppTypography.bodySmall.copyWith(
                                           color: context.textSecondaryColor,
                                           fontWeight: FontWeight.w600,
@@ -245,7 +245,7 @@ class _WeightChart extends StatelessWidget {
           ),
         ),
         lineBarsData: [
-          LineChartBarData(
+ LineChartBarData(
             spots: spots,
             isCurved: true,
             color: AppColors.primary,
@@ -276,22 +276,6 @@ class _WeightChart extends StatelessWidget {
       ),
     );
   }
-}
-
-Widget _staggeredSlide(Animation<double> animation, Widget child) {
-  return AnimatedBuilder(
-    animation: animation,
-    builder: (context, child) {
-      return Opacity(
-        opacity: animation.value,
-        child: Transform.translate(
-          offset: Offset(0, 15 * (1 - animation.value)),
-          child: child,
-        ),
-      );
-    },
-    child: child,
-  );
 }
 
 class _ScaleTap extends StatefulWidget {

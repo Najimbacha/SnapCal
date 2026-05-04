@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../core/services/config_service.dart';
 
@@ -89,7 +90,7 @@ class CalorieOnboardingService {
   Future<OnboardingRecommendation> buildRecommendation(
     OnboardingProfileInput input,
   ) async {
-    final computed = _computeBasePlan(input);
+    final computed = _computeBasePlanData(input);
 
     final startedAt = DateTime.now();
     final aiFuture =
@@ -103,14 +104,20 @@ class CalorieOnboardingService {
 
     Map<String, dynamic>? aiPayload;
     try {
-      aiPayload = await aiFuture.timeout(const Duration(seconds: 3));
-    } catch (_) {
+      // Reduced timeout to 2.5s for snappier onboarding feel
+      aiPayload = await aiFuture.timeout(const Duration(milliseconds: 2500));
+    } on DioException catch (e) {
+      debugPrint('CalorieOnboardingService: Dio Error: ${e.message}');
+      aiPayload = null;
+    } catch (e) {
+      debugPrint('CalorieOnboardingService: Unexpected Error: $e');
       aiPayload = null;
     }
 
     final elapsed = DateTime.now().difference(startedAt);
-    if (elapsed < const Duration(milliseconds: 1100)) {
-      await Future.delayed(const Duration(milliseconds: 1100) - elapsed);
+    // Minimal delay (200ms) for smoother UI transitions
+    if (elapsed < const Duration(milliseconds: 200)) {
+      await Future.delayed(const Duration(milliseconds: 200) - elapsed);
     }
 
     return OnboardingRecommendation(
@@ -135,7 +142,27 @@ class CalorieOnboardingService {
     );
   }
 
-  _ComputedPlan _computeBasePlan(OnboardingProfileInput input) {
+  OnboardingRecommendation computeBasePlan(OnboardingProfileInput input) {
+    final computed = _computeBasePlanData(input);
+    return OnboardingRecommendation(
+      dailyCalories: computed.dailyCalories,
+      proteinGrams: computed.proteinGrams,
+      carbGrams: computed.carbGrams,
+      fatGrams: computed.fatGrams,
+      insight: _fallbackInsight(input, computed.dailyCalories),
+      tip: _fallbackTip(input.activityLevel, computed.goalMode),
+      safetyNote: computed.safetyNote,
+      goalMode: computed.goalMode,
+      weeklyRateKg: computed.weeklyRateKg,
+      paceAdjusted: computed.paceAdjusted,
+      usedFallback: true,
+      isMinor: input.age < 16,
+      bmr: computed.bmr,
+      tdee: computed.tdee,
+    );
+  }
+
+  _ComputedPlan _computeBasePlanData(OnboardingProfileInput input) {
     final genderFactor = input.gender == 'male' ? 5 : -161;
     final bmr =
         (10 * input.currentWeightKg) +

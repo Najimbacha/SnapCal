@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -45,7 +46,7 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to open camera.')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.progress_failed_camera)),
         );
       }
     }
@@ -74,8 +75,8 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: 'Log Progress',
-      subtitle: 'Take photos to track your journey.',
+      title: AppLocalizations.of(context)!.progress_log_progress,
+      subtitle: AppLocalizations.of(context)!.progress_take_photos_desc,
       child: Column(
         children: [
           Expanded(
@@ -83,7 +84,7 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
               children: [
                 Expanded(
                   child: _CaptureSlot(
-                    title: 'Front View',
+                    title: AppLocalizations.of(context)!.progress_front_view,
                     path: _frontPath,
                     onTap: () => _takePhoto(true),
                     onClear: () => setState(() => _frontPath = null),
@@ -92,7 +93,7 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: _CaptureSlot(
-                    title: 'Side View',
+                    title: AppLocalizations.of(context)!.progress_side_view,
                     path: _sidePath,
                     onTap: () => _takePhoto(false),
                     onClear: () => setState(() => _sidePath = null),
@@ -109,7 +110,9 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
               icon: _isSaving 
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : const Icon(LucideIcons.check),
-              label: Text(_isSaving ? 'Saving...' : 'Save Progress'),
+              label: Text(_isSaving 
+                  ? AppLocalizations.of(context)!.progress_saving 
+                  : AppLocalizations.of(context)!.progress_save_progress),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(56),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -156,7 +159,7 @@ class _CaptureSlot extends StatelessWidget {
                         children: [
                           Icon(LucideIcons.camera, size: 32, color: context.textSecondaryColor),
                           const SizedBox(height: 8),
-                          Text('Tap to snap', style: AppTypography.labelMedium.copyWith(color: context.textSecondaryColor)),
+                          Text(AppLocalizations.of(context)!.progress_tap_to_snap, style: AppTypography.labelMedium.copyWith(color: context.textSecondaryColor)),
                         ],
                       ),
                     )

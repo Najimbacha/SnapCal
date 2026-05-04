@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_typography.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -118,6 +119,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -146,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen>
                         backgroundColor2,
                         backgroundColor1,
                         (math.sin(_particleController.value * math.pi * 2) + 1) / 2,
-                      )!,
+                      ) ?? backgroundColor1,
                       backgroundColor1,
                     ],
                   ),
@@ -172,6 +174,7 @@ class _SplashScreenState extends State<SplashScreen>
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 AnimatedBuilder(
                   animation: Listenable.merge([_mainController, _pulseController]),
@@ -243,7 +246,7 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Opacity(
                         opacity: _textOpacity.value,
                         child: Text(
-                          'SnapCal',
+                          l10n?.appTitle ?? 'SnapCal',
                           style: AppTypography.displayMedium.copyWith(
                             color: textPrimary,
                             fontWeight: FontWeight.w900,
@@ -263,7 +266,7 @@ class _SplashScreenState extends State<SplashScreen>
                     return Opacity(
                       opacity: _taglineOpacity.value,
                       child: Text(
-                        'Snap. Track. Thrive.',
+                        l10n?.splash_tagline ?? 'Smart Calorie Tracking',
                         style: AppTypography.labelLarge.copyWith(
                           color: textSecondary,
                           letterSpacing: 3,

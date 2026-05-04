@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -75,10 +76,10 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Meal Preferences', style: AppTypography.heading3),
+                      Text(AppLocalizations.of(context)!.planner_meal_preferences, style: AppTypography.heading3),
                       const SizedBox(height: 2),
                       Text(
-                        'Quick setup before your plan',
+                        AppLocalizations.of(context)!.planner_setup_desc,
                         style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor),
                       ),
                     ],
@@ -93,17 +94,17 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _MiniStat(label: 'Target', value: '${sp.dailyCalorieGoal}', unit: 'kcal'),
-                  _MiniStat(label: 'Protein', value: '${sp.dailyProteinGoal}', unit: 'g'),
-                  _MiniStat(label: 'Carbs', value: '${sp.dailyCarbGoal}', unit: 'g'),
-                  _MiniStat(label: 'Fat', value: '${sp.dailyFatGoal}', unit: 'g'),
+                  _MiniStat(label: AppLocalizations.of(context)!.planner_target, value: '${sp.dailyCalorieGoal}', unit: 'kcal'),
+                  _MiniStat(label: AppLocalizations.of(context)!.result_protein, value: '${sp.dailyProteinGoal}', unit: 'g'),
+                  _MiniStat(label: AppLocalizations.of(context)!.result_carbs, value: '${sp.dailyCarbGoal}', unit: 'g'),
+                  _MiniStat(label: AppLocalizations.of(context)!.result_fat, value: '${sp.dailyFatGoal}', unit: 'g'),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
             // Meals per day
-            Text('Meals per day', style: AppTypography.labelLarge.copyWith(
+            Text(AppLocalizations.of(context)!.planner_meals_per_day, style: AppTypography.labelLarge.copyWith(
               color: context.textPrimaryColor, fontWeight: FontWeight.w700,
             )),
             const SizedBox(height: 10),
@@ -122,7 +123,7 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
             const SizedBox(height: 20),
 
             // Dietary restriction
-            Text('Dietary restriction', style: AppTypography.labelLarge.copyWith(
+            Text(AppLocalizations.of(context)!.planner_dietary_restriction, style: AppTypography.labelLarge.copyWith(
               color: context.textPrimaryColor, fontWeight: FontWeight.w700,
             )),
             const SizedBox(height: 10),
@@ -130,7 +131,7 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
               spacing: 8, runSpacing: 8,
               children: ['none', 'vegetarian', 'vegan', 'gluten-free', 'keto', 'halal'].map((r) =>
                 _ChipButton(
-                  label: r[0].toUpperCase() + r.substring(1),
+                  label: _getRestrictionLabel(context, r),
                   selected: _restriction == r,
                   onTap: () => setState(() => _restriction = r),
                 ),
@@ -139,7 +140,7 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
             const SizedBox(height: 20),
 
             // Cuisine preference
-            Text('Cuisine style', style: AppTypography.labelLarge.copyWith(
+            Text(AppLocalizations.of(context)!.planner_cuisine_style, style: AppTypography.labelLarge.copyWith(
               color: context.textPrimaryColor, fontWeight: FontWeight.w700,
             )),
             const SizedBox(height: 10),
@@ -147,7 +148,7 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
               spacing: 8, runSpacing: 8,
               children: ['international', 'south asian', 'mediterranean', 'east asian', 'american', 'middle eastern'].map((c) =>
                 _ChipButton(
-                  label: c.split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' '),
+                  label: _getCuisineLabel(context, c),
                   selected: _cuisine == c,
                   onTap: () => setState(() => _cuisine = c),
                 ),
@@ -167,7 +168,7 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
                 widget.onGenerate();
               },
               icon: const Icon(LucideIcons.sparkles, size: 18),
-              label: const Text('Generate My Plan'),
+              label: Text(AppLocalizations.of(context)!.planner_generate_plan),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(54),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -176,7 +177,7 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                'This plan is AI-generated for general guidance only.',
+                AppLocalizations.of(context)!.planner_ai_disclaimer,
                 style: AppTypography.labelSmall.copyWith(color: context.textMutedColor),
               ),
             ),
@@ -184,6 +185,32 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
         ),
       ),
     );
+  }
+
+  String _getRestrictionLabel(BuildContext context, String restriction) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (restriction) {
+      case 'none': return l10n.planner_restriction_none;
+      case 'vegetarian': return l10n.planner_restriction_vegetarian;
+      case 'vegan': return l10n.planner_restriction_vegan;
+      case 'gluten-free': return l10n.planner_restriction_gluten_free;
+      case 'keto': return l10n.planner_restriction_keto;
+      case 'halal': return l10n.planner_restriction_halal;
+      default: return restriction;
+    }
+  }
+
+  String _getCuisineLabel(BuildContext context, String cuisine) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (cuisine) {
+      case 'international': return l10n.planner_cuisine_international;
+      case 'south asian': return l10n.planner_cuisine_south_asian;
+      case 'mediterranean': return l10n.planner_cuisine_mediterranean;
+      case 'east asian': return l10n.planner_cuisine_east_asian;
+      case 'american': return l10n.planner_cuisine_american;
+      case 'middle eastern': return l10n.planner_cuisine_middle_eastern;
+      default: return cuisine;
+    }
   }
 }
 

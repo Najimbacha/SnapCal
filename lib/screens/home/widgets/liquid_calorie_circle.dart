@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -78,7 +79,7 @@ class _LiquidCalorieCircleState extends State<LiquidCalorieCircle>
               animation: _waveController,
               builder: (context, child) {
     // Detect if we are hidden by a bottom nav tab switch
-    final tickerActive = TickerMode.of(context);
+    final tickerActive = TickerMode.valuesOf(context).enabled;
     if (tickerActive != _waveController.isAnimating) {
       if (tickerActive) {
         _waveController.repeat();
@@ -106,7 +107,7 @@ class _LiquidCalorieCircleState extends State<LiquidCalorieCircle>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                isSuccess ? 'GOAL' : '${widget.target - widget.current}',
+                isSuccess ? AppLocalizations.of(context)!.home_goal_reached : '${widget.target - widget.current}',
                 style: AppTypography.heading1.copyWith(
                   fontSize: isSuccess ? 32 : 52, // Massive, cinematic size
                   fontWeight: FontWeight.w900,
@@ -124,7 +125,7 @@ class _LiquidCalorieCircleState extends State<LiquidCalorieCircle>
               ),
               const SizedBox(height: 2),
               Text(
-                (isSuccess ? 'COMPLETED' : 'kcal left').toUpperCase(),
+                (isSuccess ? AppLocalizations.of(context)!.home_completed : AppLocalizations.of(context)!.home_kcal_left).toUpperCase(),
                 style: AppTypography.labelSmall.copyWith(
                   color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.5),
                   letterSpacing: 2.0, // High-end dashboard spacing

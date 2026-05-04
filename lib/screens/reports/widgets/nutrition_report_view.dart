@@ -5,10 +5,10 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
-import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/meal_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/ui_blocks.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class NutritionReportView extends StatelessWidget {
   const NutritionReportView({super.key});
@@ -33,7 +33,7 @@ class NutritionReportView extends StatelessWidget {
                 children: [
                   Expanded(
                     child: MetricTile(
-                      label: 'Avg. Calories',
+                      label: AppLocalizations.of(context)!.report_avg_calories,
                       value: '${meals.getWeeklyAverageCalories()}',
                       accent: AppColors.primary,
                       icon: Icons.local_fire_department,
@@ -42,7 +42,7 @@ class NutritionReportView extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: MetricTile(
-                      label: 'Consistency',
+                      label: AppLocalizations.of(context)!.report_consistency,
                       value: meals.getGoalConsistency(
                         settings.dailyCalorieGoal,
                       ),
@@ -58,7 +58,7 @@ class NutritionReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SectionLabel(title: 'Calorie trend'),
+                    SectionLabel(title: AppLocalizations.of(context)!.report_calorie_trend),
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 220,
@@ -75,7 +75,7 @@ class NutritionReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SectionLabel(title: 'Macro distribution'),
+                    SectionLabel(title: AppLocalizations.of(context)!.report_macro_dist),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -93,19 +93,19 @@ class NutritionReportView extends StatelessWidget {
                           child: Column(
                             children: [
                               _LegendRow(
-                                label: 'Protein',
+                                label: AppLocalizations.of(context)!.report_macro_protein,
                                 value: '${weeklyMacros.protein}g',
                                 color: AppColors.protein,
                               ),
                               const SizedBox(height: 10),
                               _LegendRow(
-                                label: 'Carbs',
+                                label: AppLocalizations.of(context)!.report_macro_carbs,
                                 value: '${weeklyMacros.carbs}g',
                                 color: AppColors.carbs,
                               ),
                               const SizedBox(height: 10),
                               _LegendRow(
-                                label: 'Fat',
+                                label: AppLocalizations.of(context)!.report_macro_fat,
                                 value: '${weeklyMacros.fat}g',
                                 color: AppColors.fat,
                               ),

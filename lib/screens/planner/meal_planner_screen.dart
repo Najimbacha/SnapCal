@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -31,7 +34,18 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   late final AnimationController _animController;
   final List<Animation<double>> _itemAnims = [];
 
-  static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  List<String> _getDayLabels(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      l10n.planner_day_mon,
+      l10n.planner_day_tue,
+      l10n.planner_day_wed,
+      l10n.planner_day_thu,
+      l10n.planner_day_fri,
+      l10n.planner_day_sat,
+      l10n.planner_day_sun,
+    ];
+  }
 
   @override
   void initState() {
@@ -62,8 +76,10 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   Widget build(BuildContext context) {
 
 
+    final l10n = AppLocalizations.of(context)!;
+
     return AppPageScaffold(
-      title: 'Smart Planner',
+      title: l10n.planner_smart_title,
       subtitle: null,
       trailing: _buildTrailingActions(context),
       child: Consumer2<PlannerProvider, SettingsProvider>(
@@ -110,7 +126,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                 children: [
                   Icon(LucideIcons.refreshCw, size: 14, color: colorScheme.onSurfaceVariant),
                   const SizedBox(width: 6),
-                  Text('Regen', style: AppTypography.labelLarge.copyWith(color: colorScheme.onSurfaceVariant)),
+                  Text(AppLocalizations.of(context)!.snap_retake.substring(0, 5), style: AppTypography.labelLarge.copyWith(color: colorScheme.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -129,7 +145,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
               children: [
                 Icon(LucideIcons.sparkles, size: 14, color: colorScheme.primary),
                 const SizedBox(width: 6),
-                Text('New', style: AppTypography.labelLarge.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
+                Text(AppLocalizations.of(context)!.common_done.substring(0, 3), style: AppTypography.labelLarge.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -139,40 +155,73 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   }
 
   Widget _buildGeneratingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const CircularProgressIndicator(
-              strokeWidth: 3,
-              color: AppColors.primary,
+    return Stack(
+      children: [
+        // Immersive blurred background
+        Positioned.fill(
+          child: Container(
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
             ),
           ),
-          const SizedBox(height: 32),
-          Text(
-            'Creating your plan',
-            style: AppTypography.heading3.copyWith(fontWeight: FontWeight.w900),
+        ),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Pulse animation container
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 1500),
+                builder: (context, value, child) {
+                  return Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.05 + (0.05 * math.sin(value * math.pi))),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.1 * math.sin(value * math.pi)),
+                          blurRadius: 40,
+                          spreadRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: child,
+                  );
+                },
+                child: const CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 48),
+              Text(
+                AppLocalizations.of(context)!.planner_creating,
+                style: AppTypography.heading3.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _GeneratingMessages(),
+            ],
           ),
-          const SizedBox(height: 12),
-          _GeneratingMessages(),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildErrorState(PlannerProvider planner) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: AppEmptyState(
         icon: LucideIcons.alertTriangle,
-        title: 'Planning error',
-        body: planner.error ?? 'Something went wrong while building your plan.',
-        actionLabel: 'Try Again',
+        title: l10n.error_generic,
+        body: planner.error ?? l10n.error_generic,
+        actionLabel: l10n.common_try_again,
         onAction: () => planner.generateWeeklyPlan(),
       ),
     );
@@ -182,9 +231,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
     return Center(
       child: AppEmptyState(
         icon: LucideIcons.sparkles,
-        title: 'Your personalized plan',
-        body: 'Tell us your goals and we\'ll build a custom 7-day meal plan for you.',
-        actionLabel: 'Generate Plan',
+        title: AppLocalizations.of(context)!.planner_smart_title,
+        body: AppLocalizations.of(context)!.planner_setup_body,
+        actionLabel: AppLocalizations.of(context)!.planner_generate,
         onAction: () => _showPreferences(context),
       ),
     );
@@ -205,7 +254,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
           child: Row(
             children: [
               _TabButton(
-                label: 'Weekly Plan',
+                label: AppLocalizations.of(context)!.planner_tab_weekly,
                 selected: _activeTab == 0,
                 onTap: () {
                   HapticFeedback.lightImpact();
@@ -214,7 +263,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
               ),
               const SizedBox(width: 4),
               _TabButton(
-                label: 'Grocery List',
+                label: AppLocalizations.of(context)!.planner_tab_grocery,
                 selected: _activeTab == 1,
                 onTap: () {
                   HapticFeedback.lightImpact();
@@ -252,7 +301,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: 7,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          separatorBuilder: (context, index) => const SizedBox(width: 8),
           itemBuilder: (context, index) {
             final isSelected = _selectedDay == index;
             return _ScaleTap(
@@ -284,7 +333,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                 ),
                 child: Center(
                   child: Text(
-                    _dayLabels[index],
+                    _getDayLabels(context)[index],
                     style: AppTypography.labelLarge.copyWith(
                       color: isSelected ? Colors.white : context.textSecondaryColor,
                       fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
@@ -311,8 +360,8 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
       return Center(
         child: AppEmptyState(
           icon: LucideIcons.utensils,
-          title: 'No meals for ${_dayLabels[_selectedDay]}',
-          body: 'Try regenerating this day.',
+          title: AppLocalizations.of(context)!.planner_no_meals(_getDayLabels(context)[_selectedDay]),
+          body: AppLocalizations.of(context)!.planner_no_meals_body,
         ),
       );
     }
@@ -361,17 +410,17 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                 children: [
                   const Icon(LucideIcons.crown, color: AppColors.warning, size: 36),
                   const SizedBox(height: 12),
-                  Text('Unlock full week', style: AppTypography.heading3),
+                  Text(AppLocalizations.of(context)!.planner_unlock_week, style: AppTypography.heading3),
                   const SizedBox(height: 6),
                   Text(
-                    'Free users can view Mon & Tue only.',
+                    AppLocalizations.of(context)!.planner_free_limit_body,
                     style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => _showPaywall(context),
-                    child: const Text('Upgrade to Pro'),
+                    child: Text(AppLocalizations.of(context)!.planner_upgrade_pro),
                   ),
                 ],
               ),
@@ -410,8 +459,8 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
       return Center(
         child: AppEmptyState(
           icon: LucideIcons.shoppingBag,
-          title: 'No grocery list yet',
-          body: 'Generate a weekly plan first and your grocery list will appear here.',
+          title: AppLocalizations.of(context)!.planner_grocery_empty,
+          body: AppLocalizations.of(context)!.planner_grocery_empty_body,
         ),
       );
     }
@@ -420,9 +469,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
       return Center(
         child: AppEmptyState(
           icon: LucideIcons.crown,
-          title: 'Grocery list is Pro',
-          body: 'Upgrade to view and manage your weekly grocery list.',
-          actionLabel: 'Upgrade to Pro',
+          title: AppLocalizations.of(context)!.planner_grocery_pro,
+          body: AppLocalizations.of(context)!.planner_grocery_pro_body,
+          actionLabel: AppLocalizations.of(context)!.planner_upgrade_pro,
           onAction: () => _showPaywall(context),
         ),
       );
@@ -473,7 +522,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
               }
             },
             icon: const Icon(LucideIcons.share2, size: 18),
-            label: const Text('Share'),
+            label: Text(AppLocalizations.of(context)!.planner_share),
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
           ),
@@ -486,6 +535,12 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   //  ACTIONS
   // ========================
   void _showPreferences(BuildContext context) {
+    final isPro = context.read<SettingsProvider>().isPro;
+    if (!isPro) {
+      _showPaywall(context);
+      return;
+    }
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -504,22 +559,21 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Regenerate ${_dayLabels[_selectedDay]}?'),
+        title: Text(AppLocalizations.of(context)!.planner_regenerate_day(_getDayLabels(context)[_selectedDay])),
         content: Text(
-          'This will replace ${_dayLabels[_selectedDay]}\'s meals with fresh options. '
-          '${planner.canRegenerate ? '' : 'You\'ve used all 3 regenerations this week.'}',
+          AppLocalizations.of(context)!.planner_regenerate_body(_getDayLabels(context)[_selectedDay]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.common_cancel),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               planner.regenerateDay(_selectedDay);
             },
-            child: const Text('Regenerate'),
+            child: Text(AppLocalizations.of(context)!.planner_regenerate),
           ),
         ],
       ),
@@ -723,27 +777,34 @@ class _GeneratingMessages extends StatefulWidget {
 
 class _GeneratingMessagesState extends State<_GeneratingMessages> {
   int _index = 0;
-  static const _messages = [
-    'Calculating your calorie needs...',
-    'Picking the best meals for your goal...',
-    'Balancing your macros...',
-    'Building your grocery list...',
-    'Almost ready...',
-  ];
+  List<String> _getMessages(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      l10n.planner_msg_calories,
+      l10n.planner_msg_meals,
+      l10n.planner_msg_macros,
+      l10n.planner_msg_grocery,
+      l10n.planner_msg_ready,
+    ];
+  }
+
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _cycle();
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted) {
+        HapticFeedback.selectionClick();
+        setState(() => _index = (_index + 1) % 5);
+      }
+    });
   }
 
-  void _cycle() async {
-    while (mounted) {
-      await Future.delayed(const Duration(seconds: 3));
-      if (mounted) {
-        setState(() => _index = (_index + 1) % _messages.length);
-      }
-    }
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -751,7 +812,7 @@ class _GeneratingMessagesState extends State<_GeneratingMessages> {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),
       child: Text(
-        _messages[_index],
+        _getMessages(context)[_index],
         key: ValueKey(_index),
         style: AppTypography.bodyMedium.copyWith(color: context.textSecondaryColor),
       ),

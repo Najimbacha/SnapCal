@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -48,7 +49,7 @@ class DaySummaryBar extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    ' / $targetCalories kcal',
+                    AppLocalizations.of(context)!.planner_kcal_total(targetCalories),
                     style: AppTypography.bodySmall.copyWith(
                       color: context.textSecondaryColor,
                     ),
@@ -67,10 +68,10 @@ class DaySummaryBar extends StatelessWidget {
                 ),
                 child: Text(
                   isOver
-                      ? '+${delta.abs()} over'
+                      ? AppLocalizations.of(context)!.planner_kcal_over(delta.abs())
                       : isUnder
-                          ? '${delta.abs()} under'
-                          : 'On target',
+                          ? AppLocalizations.of(context)!.planner_kcal_under(delta.abs())
+                          : AppLocalizations.of(context)!.planner_kcal_on_target,
                   style: AppTypography.labelSmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: isOver

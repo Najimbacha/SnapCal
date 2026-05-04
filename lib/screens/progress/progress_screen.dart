@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../providers/metrics_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
@@ -66,8 +67,10 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
         final trend = provider.recentTrend;
         final canAdd = provider.canAddPhoto;
         
+        final l10n = AppLocalizations.of(context)!;
+        
         return AppPageScaffold(
-          title: 'Progress',
+          title: l10n.report_tab_body,
           subtitle: null,
           trailing: _ScaleTap(
             onTap: () => _handleCapture(context, canAdd),
@@ -108,12 +111,13 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
   }
 
   Widget _buildEmpty(BuildContext context, bool canAdd) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: AppEmptyState(
         icon: LucideIcons.image,
-        title: 'No photos yet',
-        body: 'Take weekly progress photos to visually track your body transformation.',
-        actionLabel: canAdd ? 'Take first photo' : 'Upgrade to Pro',
+        title: l10n.report_no_weight_title,
+        body: l10n.progress_take_photos_desc,
+        actionLabel: canAdd ? l10n.progress_tap_to_snap : l10n.planner_upgrade_pro,
         onAction: () => _handleCapture(context, canAdd),
       ),
     );

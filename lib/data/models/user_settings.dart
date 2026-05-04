@@ -103,6 +103,9 @@ class UserSettings extends HiveObject {
   @HiveField(31)
   final String? cuisinePreference;
 
+  @HiveField(32)
+  final String? languageCode;
+
   UserSettings({
     required this.dailyCalorieGoal,
     required this.dailyProteinGoal,
@@ -136,7 +139,8 @@ class UserSettings extends HiveObject {
     this.mealsPerDay = 3,
     this.dietaryRestriction = 'none',
     this.cuisinePreference = 'international',
-  });
+    String? languageCode,
+  }) : languageCode = languageCode ?? 'en';
 
   UserSettings copyWith({
     int? dailyCalorieGoal,
@@ -171,6 +175,7 @@ class UserSettings extends HiveObject {
     int? mealsPerDay,
     String? dietaryRestriction,
     String? cuisinePreference,
+    String? languageCode,
   }) {
     return UserSettings(
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -207,6 +212,7 @@ class UserSettings extends HiveObject {
       mealsPerDay: mealsPerDay ?? this.mealsPerDay,
       dietaryRestriction: dietaryRestriction ?? this.dietaryRestriction,
       cuisinePreference: cuisinePreference ?? this.cuisinePreference,
+      languageCode: languageCode ?? this.languageCode,
     );
   }
 
@@ -244,6 +250,7 @@ class UserSettings extends HiveObject {
       'mealsPerDay': mealsPerDay,
       'dietaryRestriction': dietaryRestriction,
       'cuisinePreference': cuisinePreference,
+      'languageCode': languageCode,
     };
   }
 
@@ -285,6 +292,7 @@ class UserSettings extends HiveObject {
       mealsPerDay: json['mealsPerDay'] as int? ?? 3,
       dietaryRestriction: json['dietaryRestriction'] as String? ?? 'none',
       cuisinePreference: json['cuisinePreference'] as String? ?? 'international',
+      languageCode: json['languageCode'] as String? ?? 'en',
     );
   }
 
@@ -323,6 +331,7 @@ class UserSettings extends HiveObject {
       mealsPerDay: 3,
       dietaryRestriction: 'none',
       cuisinePreference: 'international',
+      languageCode: 'en',
     );
   }
 }

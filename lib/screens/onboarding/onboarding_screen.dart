@@ -7,14 +7,20 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_typography.dart';
-import '../../core/theme/theme_colors.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../data/services/calorie_onboarding_service.dart';
-import '../../core/utils/responsive_utils.dart';
 import '../../providers/metrics_provider.dart';
 import '../../providers/settings_provider.dart';
 
+// Custom Color Palette from the design reference
+const Color _bgColor = Color(0xFF07090E);
+const Color _greenColor = Color(0xFF20D96C);
+const Color _textPrimary = Color(0xFFEEF3FF);
+const Color _textSecondary = Color(0xB3EEF3FF);
+const Color _textMuted = Color(0x66EEF3FF);
+
+/// SnapCal Premium Onboarding
+/// Re-implemented from the high-fidelity dark design reference.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -24,22 +30,12 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
-  static const int _totalScreens = 6;
   
+  static const int _totalSteps = 6;
+  
+  late final AnimationController _bgController;
   late final AnimationController _entranceController;
-  late final List<Animation<double>> _itemAnims;
-
-  late final AnimationController _backgroundController;
-  late final AnimationController _pulseController;
-  late final TextEditingController _ageController;
-  late final TextEditingController _heightCmController;
-  late final TextEditingController _heightFtController;
-  late final TextEditingController _heightInController;
-  late final TextEditingController _currentWeightController;
-  late final TextEditingController _goalWeightController;
-
-  final CalorieOnboardingService _service = CalorieOnboardingService();
-
+  
   int _stepIndex = 0;
   bool _isImperial = false;
   String _gender = 'male';
@@ -47,10 +43,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   double _timelineMonths = 4;
   bool _isLoadingResult = false;
   bool _isCompleting = false;
-  String? _errorText;
-  Timer? _autoAdvanceTimer;
+
+  final CalorieOnboardingService _service = CalorieOnboardingService();
   OnboardingRecommendation? _recommendation;
   OnboardingProfileInput? _profile;
+
+  late final TextEditingController _ageController;
+  late final TextEditingController _heightCmController;
+  late final TextEditingController _heightFtController;
+  late final TextEditingController _heightInController;
+  late final TextEditingController _currentWeightController;
+  late final TextEditingController _goalWeightController;
+
+  String? _errorText;
+  Timer? _autoAdvanceTimer;
 
   @override
   void initState() {
@@ -58,30 +64,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final locale = WidgetsBinding.instance.platformDispatcher.locale;
     _isImperial = _usesImperial(locale.countryCode);
 
-    _backgroundController = AnimationController(
+    _bgController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 14),
+      duration: const Duration(seconds: 12),
     )..repeat();
-    
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
 
     _entranceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-
-    _itemAnims = List.generate(5, (index) {
-      final start = index * 0.1;
-      return CurvedAnimation(
-        parent: _entranceController,
-        curve: Interval(start, (start + 0.4).clamp(0, 1.0), curve: Curves.easeOut),
-      );
-    });
-
-    _entranceController.forward();
+      duration: const Duration(milliseconds: 600),
+    )..forward();
 
     _ageController = TextEditingController(text: '28');
     _heightCmController = TextEditingController(text: '170');
@@ -97,9 +88,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   void dispose() {
-    _autoAdvanceTimer?.cancel();
-    _backgroundController.dispose();
-    _pulseController.dispose();
+    _bgController.dispose();
     _entranceController.dispose();
     _ageController.dispose();
     _heightCmController.dispose();
@@ -107,6 +96,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _heightInController.dispose();
     _currentWeightController.dispose();
     _goalWeightController.dispose();
+    _autoAdvanceTimer?.cancel();
     super.dispose();
   }
 
@@ -114,8 +104,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return countryCode == 'US' || countryCode == 'LR' || countryCode == 'MM';
   }
 
+  // --- Logic Methods ---
+
   Future<void> _handleNext() async {
-    HapticFeedback.selectionClick();
+    HapticFeedback.mediumImpact();
     FocusScope.of(context).unfocus();
 
     if (_stepIndex == 4) {
@@ -128,7 +120,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         _errorText = null;
         _recommendation = null;
       });
-      await _generateRecommendation(profile);
+      _generateRecommendation(profile);
       return;
     }
 
@@ -138,9 +130,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
 
     if (!_validateCurrentStep()) return;
+    
     setState(() {
       _errorText = null;
-      _stepIndex += 1;
+      _stepIndex++;
     });
     _entranceController.reset();
     _entranceController.forward();
@@ -148,11 +141,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _handleBack() {
     if (_stepIndex == 0) return;
-    _autoAdvanceTimer?.cancel();
-    HapticFeedback.selectionClick();
+    HapticFeedback.lightImpact();
     setState(() {
       _errorText = null;
-      _stepIndex -= 1;
+      _stepIndex--;
     });
     _entranceController.reset();
     _entranceController.forward();
@@ -160,111 +152,73 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   bool _validateCurrentStep() {
     switch (_stepIndex) {
-      case 0:
-        return true;
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        return _validateAndBuildProfile(upToStep: _stepIndex) != null;
-      default:
-        return true;
+      case 0: return true;
+      default: return _validateAndBuildProfile(upToStep: _stepIndex) != null;
     }
   }
 
   OnboardingProfileInput? _validateAndBuildProfile({int? upToStep}) {
     final step = upToStep ?? 4;
+    final l10n = AppLocalizations.of(context)!;
 
     final age = int.tryParse(_ageController.text.trim());
     if (step >= 1 && (age == null || age < 13 || age > 100)) {
-      _setError('Enter an age between 13 and 100.');
+      _setError(l10n.onboarding_error_age);
       return null;
     }
 
     final heightCm = _parseHeightCm();
     if (step >= 1 && (heightCm == null || heightCm < 100 || heightCm > 250)) {
-      _setError('Enter a realistic height so we can calculate accurately.');
+      _setError(l10n.onboarding_error_height);
       return null;
     }
 
     final currentWeightKg = _parseWeightKg(_currentWeightController.text);
-    if (step >= 2 &&
-        (currentWeightKg == null ||
-            currentWeightKg < 30 ||
-            currentWeightKg > 350)) {
-      _setError('Enter a realistic current weight.');
+    if (step >= 2 && (currentWeightKg == null || currentWeightKg < 30 || currentWeightKg > 350)) {
+      _setError(l10n.onboarding_error_weight);
       return null;
     }
 
     final goalWeightKg = _parseWeightKg(_goalWeightController.text);
-    if (step >= 3 &&
-        (goalWeightKg == null || goalWeightKg < 30 || goalWeightKg > 350)) {
-      _setError('Enter a realistic goal weight.');
+    if (step >= 3 && (goalWeightKg == null || goalWeightKg < 30 || goalWeightKg > 350)) {
+      _setError(l10n.onboarding_error_goal_weight);
       return null;
-    }
-
-    if (step >= 3 && currentWeightKg != null && goalWeightKg != null) {
-      final rawWeeklyRate = _rawWeeklyRateKg(
-        currentWeightKg: currentWeightKg,
-        goalWeightKg: goalWeightKg,
-        months: _timelineMonths.round(),
-      );
-      if (rawWeeklyRate.isNaN || rawWeeklyRate.isInfinite) {
-        _setError('Adjust your timeline so we can build a valid plan.');
-        return null;
-      }
     }
 
     _errorText = null;
     return OnboardingProfileInput(
-      age: age!,
+      age: age ?? 28,
       gender: _gender,
-      heightCm: heightCm!,
+      heightCm: heightCm ?? 170,
       currentWeightKg: currentWeightKg ?? 0,
       goalWeightKg: goalWeightKg ?? currentWeightKg ?? 0,
       timelineMonths: _timelineMonths.round(),
       activityLevel: _activityLevel,
       weightUnit: _isImperial ? 'lb' : 'kg',
-      heightUnit: _isImperial ? 'ft_in' : 'cm',
+      heightUnit: _isImperial ? 'in' : 'cm',
     );
   }
 
-  void _setError(String text) {
-    setState(() => _errorText = text);
-  }
+  void _setError(String text) => setState(() => _errorText = text);
 
   double? _parseHeightCm() {
-    if (!_isImperial) {
-      return double.tryParse(_heightCmController.text.trim());
-    }
-
+    if (!_isImperial) return double.tryParse(_heightCmController.text.trim());
     final feet = int.tryParse(_heightFtController.text.trim());
     final inches = int.tryParse(_heightInController.text.trim());
-    if (feet == null || inches == null || feet < 3 || feet > 8) {
-      return null;
-    }
-    if (inches < 0 || inches > 11) return null;
+    if (feet == null || inches == null) return null;
     return ((feet * 12) + inches) * 2.54;
   }
 
   double? _parseWeightKg(String value) {
     final parsed = double.tryParse(value.trim());
     if (parsed == null) return null;
-    if (_isImperial) return parsed * 0.45359237;
-    return parsed;
+    return _isImperial ? parsed * 0.45359237 : parsed;
   }
 
-  double _rawWeeklyRateKg({
-    required double currentWeightKg,
-    required double goalWeightKg,
-    required int months,
-  }) {
-    final days = (months * 30.4375).clamp(30, 366);
-    return (currentWeightKg - goalWeightKg).abs() / (days / 7);
-  }
 
   void _toggleMeasurementSystem(bool toImperial) {
     if (_isImperial == toImperial) return;
+    HapticFeedback.lightImpact();
 
     final currentHeightCm = _parseHeightCm();
     final currentWeightKg = _parseWeightKg(_currentWeightController.text);
@@ -272,147 +226,108 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
     setState(() {
       _isImperial = toImperial;
-
       if (currentHeightCm != null) {
         if (toImperial) {
           final totalInches = currentHeightCm / 2.54;
-          var feet = totalInches ~/ 12;
-          var inches = (totalInches - (feet * 12)).round();
-          if (inches == 12) {
-            feet += 1;
-            inches = 0;
-          }
-          _heightFtController.text = feet.toString();
-          _heightInController.text = inches.toString();
+          final f = totalInches ~/ 12;
+          final i = (totalInches % 12).round();
+          _heightFtController.text = f.toString();
+          _heightInController.text = i.toString();
         } else {
           _heightCmController.text = currentHeightCm.round().toString();
         }
       }
-
       if (currentWeightKg != null) {
-        _currentWeightController.text =
-            toImperial
-                ? (currentWeightKg / 0.45359237).round().toString()
-                : currentWeightKg
-                    .toStringAsFixed(1)
-                    .replaceAll(RegExp(r'\.0$'), '');
+        _currentWeightController.text = toImperial 
+          ? (currentWeightKg / 0.45359237).round().toString()
+          : currentWeightKg.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
       }
-
       if (goalWeightKg != null) {
-        _goalWeightController.text =
-            toImperial
-                ? (goalWeightKg / 0.45359237).round().toString()
-                : goalWeightKg
-                    .toStringAsFixed(1)
-                    .replaceAll(RegExp(r'\.0$'), '');
+        _goalWeightController.text = toImperial
+          ? (goalWeightKg / 0.45359237).round().toString()
+          : goalWeightKg.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
       }
     });
   }
 
   Future<void> _generateRecommendation(OnboardingProfileInput profile) async {
+    // 1. Calculate local results immediately for instant UI feedback
+    final localResult = _service.computeBasePlan(profile);
+    
+    if (!mounted) return;
+    setState(() {
+      _recommendation = localResult;
+      _isLoadingResult = false; // Transition to Result view immediately
+    });
+
+    // 2. Load AI-enhanced layer in the background
     try {
-      final recommendation = await _service.buildRecommendation(profile);
+      final aiRecommendation = await _service.buildRecommendation(profile);
       if (!mounted) return;
+      
+      // Update with AI insights if they differ (they will have better text)
       setState(() {
-        _recommendation = recommendation;
-        _isLoadingResult = false;
+        _recommendation = aiRecommendation;
       });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _recommendation = null;
-        _isLoadingResult = false;
-        _errorText = 'We could not build your plan. Please try again.';
-      });
+    } catch (e) {
+      debugPrint('OnboardingScreen: AI enhancement failed (using local): $e');
+      // We already have the local result shown, so no need to error out
     }
   }
 
   Future<void> _finishOnboarding() async {
-    final recommendation = _recommendation;
-    final profile = _profile;
-    if (recommendation == null || profile == null || _isCompleting) return;
-
+    if (_isCompleting) return;
     setState(() => _isCompleting = true);
-
+    HapticFeedback.heavyImpact();
+    
     final settings = context.read<SettingsProvider>();
     final metrics = context.read<MetricsProvider>();
 
-    await settings.completeOnboarding(
-      profile: profile,
-      recommendation: recommendation,
+    // Fire and forget the persistence to make the transition instant
+    settings.completeOnboarding(
+      profile: _profile!,
+      recommendation: _recommendation!,
     );
-    await metrics.logWeight(profile.currentWeightKg);
+    metrics.logWeight(_profile!.currentWeightKg);
 
+    // Give a tiny moment for haptics/UI state to settle then jump
+    await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return;
     context.go('/');
   }
 
-  void _setActivityLevel(String value) {
-    _autoAdvanceTimer?.cancel();
-    HapticFeedback.lightImpact();
-    setState(() => _activityLevel = value);
-    _autoAdvanceTimer = Timer(const Duration(milliseconds: 800), () {
-      if (mounted && _stepIndex == 4) {
-        _handleNext();
-      }
-    });
-  }
+  // --- UI Components ---
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final bgTop = colorScheme.surface;
-    final bgBottom = colorScheme.surfaceContainer;
-    final card = colorScheme.surfaceContainerHigh.withValues(alpha: 0.95);
-    final border = colorScheme.outlineVariant;
-    final textPrimary = colorScheme.onSurface;
-    final textSecondary = colorScheme.onSurfaceVariant;
-
+    final l10n = AppLocalizations.of(context)!;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    
     return Scaffold(
+      backgroundColor: _bgColor,
       body: Stack(
         children: [
-          AnimatedBuilder(
-            animation: _backgroundController,
-            builder: (context, _) {
-              final shift =
-                  (math.sin(_backgroundController.value * math.pi * 2) + 1) / 2;
-              return Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color.lerp(bgTop, bgBottom, shift * 0.2)!,
-                      Color.lerp(bgBottom, bgTop, shift * 0.35)!,
-                      bgTop,
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+          // Animated Mesh Background
           Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: _OnboardingGlowPainter(
-                  progress: _backgroundController.value,
-                  color: colorScheme.primary,
-                ),
+            child: AnimatedBuilder(
+              animation: _bgController,
+              builder: (context, _) => CustomPaint(
+                painter: _MeshPainter(progress: _bgController.value),
               ),
             ),
           ),
+
           SafeArea(
             child: Column(
               children: [
+                // Header
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  padding: const EdgeInsets.only(top: 32, bottom: 12, left: 24, right: 24),
                   child: Row(
                     children: [
-                      _TopButton(
+                      _HeaderButton(
                         icon: LucideIcons.chevronLeft,
-                        enabled: _stepIndex > 0,
+                        visible: _stepIndex > 0,
                         onTap: _handleBack,
                       ),
                       const SizedBox(width: 16),
@@ -420,21 +335,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(999),
-                              child: LinearProgressIndicator(
-                                value: (_stepIndex + 1) / _totalScreens,
-                                minHeight: 8,
-                                backgroundColor: colorScheme.outlineVariant.withValues(alpha: 0.2),
-                                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
+                            _ProgressBar(progress: (_stepIndex + 1) / _totalSteps),
+                            const SizedBox(height: 8),
                             Text(
-                              'STEP ${_stepIndex + 1} OF $_totalScreens',
-                              style: AppTypography.labelSmall.copyWith(
-                                color: textSecondary,
-                                letterSpacing: 1.5,
+                              l10n.onboarding_step(_stepIndex + 1, _totalSteps).toUpperCase(),
+                              style: const TextStyle(
+                                color: _textMuted,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
                               ),
                             ),
                           ],
@@ -443,44 +352,28 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ],
                   ),
                 ),
+
+                // Step Content
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400),
-                      switchInCurve: Curves.easeOutQuart,
-                      switchOutCurve: Curves.easeInQuart,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: Responsive.maxWidth(context) ?? double.infinity,
-                          ),
-                          child: Container(
-                            key: ValueKey(_stepIndex),
-                            padding: EdgeInsets.all(Responsive.size(context) == ScreenSize.small ? 20 : 32),
-                            decoration: BoxDecoration(
-                              color: card,
-                              borderRadius: BorderRadius.circular(40),
-                              border: Border.all(color: border),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                                  blurRadius: 40,
-                                  offset: const Offset(0, 20),
-                                ),
-                              ],
-                            ),
-                            child: _buildStepContent(textPrimary, textSecondary),
-                          ),
-                        ),
+                  child: _StepTransition(
+                    child: Container(
+                      key: ValueKey(_stepIndex),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: _buildStepContent(),
+                      ),
                     ),
                   ),
                 ),
+
+                // Footer CTA
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  padding: EdgeInsets.fromLTRB(24, 0, 24, math.max(24.0, bottomPadding + 12.0)),
                   child: _PrimaryButton(
-                    label: _getStepButtonLabel(),
+                    text: _getButtonLabel(l10n),
                     loading: _isCompleting,
-                    onPressed: _isLoadingResult ? () {} : _handleNext,
+                    onTap: _isLoadingResult ? () {} : _handleNext,
                   ),
                 ),
               ],
@@ -491,653 +384,437 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  String _getStepButtonLabel() {
-    if (_stepIndex == 0) return 'Get Started';
-    if (_stepIndex == 5) return 'Start My Journey';
-    return 'Continue';
+  String _getButtonLabel(AppLocalizations l10n) {
+    if (_stepIndex == 0) return l10n.onboarding_get_started;
+    if (_stepIndex == 5) return l10n.onboarding_start_journey;
+    return l10n.onboarding_continue;
   }
 
-  Widget _buildStepContent(Color textPrimary, Color textSecondary) {
+  Widget _buildStepContent() {
+    final l10n = AppLocalizations.of(context)!;
     switch (_stepIndex) {
-      case 0:
-        return _buildWelcome(textPrimary, textSecondary);
-      case 1:
-        return _buildBasicInfo(textPrimary, textSecondary);
-      case 2:
-        return _buildCurrentWeight(textPrimary, textSecondary);
-      case 3:
-        return _buildGoalTimeline(textPrimary, textSecondary);
-      case 4:
-        return _buildActivity(textPrimary, textSecondary);
-      case 5:
-        return _buildResult(textPrimary, textSecondary);
-      default:
-        return const SizedBox.shrink();
+      case 0: return _buildWelcome(l10n);
+      case 1: return _buildStep1(l10n);
+      case 2: return _buildStep2(l10n);
+      case 3: return _buildActivity(l10n);
+      case 4: return _buildTimeline(l10n);
+      case 5: return _buildResult(l10n);
+      default: return const SizedBox.shrink();
     }
   }
 
-  Widget _buildWelcome(Color textPrimary, Color textSecondary) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _buildWelcome(AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _staggeredSlide(
-          _itemAnims[0],
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  'SNAPCAL',
-                  style: AppTypography.labelMedium.copyWith(
-                    color: colorScheme.primary,
-                    letterSpacing: 2,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 32),
-        _staggeredSlide(
-          _itemAnims[1],
-          Text(
-            'Your goal.\nYour calories.\nYour pace.',
-            style: AppTypography.displayMedium.copyWith(
-              color: textPrimary,
-              height: 1.0,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -2.0,
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        _staggeredSlide(
-          _itemAnims[2],
-          Text(
-            'Answer a few quick questions to set your personalized daily calorie target.',
-            style: AppTypography.bodyLarge.copyWith(
-              color: textSecondary,
-              height: 1.5,
-            ),
-          ),
-        ),
-        const SizedBox(height: 32),
-        _staggeredSlide(_itemAnims[3], const _FeatureStrip()),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  Widget _buildBasicInfo(Color textPrimary, Color textSecondary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _staggeredSlide(
-          _itemAnims[0],
-          const _SectionIntro(
-            eyebrow: 'PERSONAL DETAILS',
-            title: 'Set your baseline metrics.',
-            body: 'We use these to calculate your resting metabolic rate (RMR).',
-          ),
-        ),
-        const SizedBox(height: 32),
-        _staggeredSlide(
-          _itemAnims[1],
-          _LabeledField(
-            label: 'Age',
-            child: _NumberInput(
-              controller: _ageController,
-              suffix: 'years',
-              hint: '28',
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        _staggeredSlide(
-          _itemAnims[2],
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Gender',
-                style: AppTypography.titleMedium.copyWith(
-                  color: textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ChoiceChipCard(
-                      label: 'Male',
-                      icon: LucideIcons.user,
-                      selected: _gender == 'male',
-                      onTap: () => setState(() => _gender = 'male'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _ChoiceChipCard(
-                      label: 'Female',
-                      icon: LucideIcons.user,
-                      selected: _gender == 'female',
-                      onTap: () => setState(() => _gender = 'female'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        _staggeredSlide(
-          _itemAnims[3],
-          Column(
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'Height',
-                    style: AppTypography.titleMedium.copyWith(
-                      color: textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  _UnitToggle(
-                    leftLabel: 'cm',
-                    rightLabel: 'ft/in',
-                    isRightSelected: _isImperial,
-                    onChanged: _toggleMeasurementSystem,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _isImperial
-                  ? Row(
-                      children: [
-                        Expanded(
-                          child: _NumberInput(
-                            controller: _heightFtController,
-                            suffix: 'ft',
-                            hint: '5',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _NumberInput(
-                            controller: _heightInController,
-                            suffix: 'in',
-                            hint: '7',
-                          ),
-                        ),
-                      ],
-                    )
-                  : _NumberInput(
-                      controller: _heightCmController,
-                      suffix: 'cm',
-                      hint: '170',
-                    ),
-            ],
-          ),
-        ),
-        _ErrorText(message: _errorText),
-      ],
-    );
-  }
-
-  Widget _buildCurrentWeight(Color textPrimary, Color textSecondary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _staggeredSlide(
-          _itemAnims[0],
-          const _SectionIntro(
-            eyebrow: 'CURRENT STATUS',
-            title: 'What do you weigh today?',
-            body: 'This helps us understand your starting point.',
-          ),
-        ),
-        const SizedBox(height: 48),
-        _staggeredSlide(
-          _itemAnims[1],
-          _LargeNumberField(
-            controller: _currentWeightController,
-            suffix: _isImperial ? 'lb' : 'kg',
-          ),
-        ),
-        const SizedBox(height: 24),
-        _staggeredSlide(
-          _itemAnims[2],
-          Text(
-            'No judgment. Every journey starts with an honest metric.',
-            style: AppTypography.bodyMedium.copyWith(
-              color: textSecondary,
-            ),
-          ),
-        ),
-        _ErrorText(message: _errorText),
-      ],
-    );
-  }
-
-  Widget _buildGoalTimeline(Color textPrimary, Color textSecondary) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final currentWeightKg = _parseWeightKg(_currentWeightController.text);
-    final goalWeightKg = _parseWeightKg(_goalWeightController.text);
-    
-    final isMaintenance = currentWeightKg != null && goalWeightKg != null && 
-        (currentWeightKg - goalWeightKg).abs() < 0.1;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _staggeredSlide(
-          _itemAnims[0],
-          _SectionIntro(
-            eyebrow: 'THE TARGET',
-            title: isMaintenance ? 'Maintain your weight' : 'What is your goal weight?',
-            body: isMaintenance 
-                ? 'We will build a plan to keep your weight stable while hitting your macros.'
-                : 'We will structure your calories to hit this target within your timeline.',
-          ),
-        ),
-        const SizedBox(height: 32),
-        _staggeredSlide(
-          _itemAnims[1],
-          _LargeNumberField(
-            controller: _goalWeightController,
-            suffix: _isImperial ? 'lb' : 'kg',
-          ),
-        ),
-        if (!isMaintenance) ...[
-          const SizedBox(height: 40),
-          _staggeredSlide(
-            _itemAnims[2],
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Target Timeline',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: colorScheme.primary,
-                    inactiveTrackColor: colorScheme.primary.withValues(alpha: 0.1),
-                    thumbColor: colorScheme.primary,
-                    overlayColor: colorScheme.primary.withValues(alpha: 0.1),
-                    trackHeight: 10,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
-                  ),
-                  child: Slider(
-                    min: 1,
-                    max: 12,
-                    divisions: 11,
-                    value: _timelineMonths,
-                    onChanged: (value) => setState(() => _timelineMonths = value),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    '${_timelineMonths.round()} Month${_timelineMonths.round() == 1 ? '' : 's'}',
-                    style: AppTypography.headlineSmall.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-        _ErrorText(message: _errorText),
-      ],
-    );
-  }
-
-  Widget _buildActivity(Color textPrimary, Color textSecondary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _staggeredSlide(
-          _itemAnims[0],
-          const _SectionIntro(
-            eyebrow: 'Activity',
-            title: 'How active does your week look?',
-            body:
-                'Choose the pattern that matches most weeks. You can change it later.',
+        const SizedBox(height: 20),
+        const Text('SnapCal', style: TextStyle(color: _greenColor, fontWeight: FontWeight.w800, letterSpacing: 1.5, fontSize: 11)),
+        const SizedBox(height: 12),
+        Text(
+          l10n.onboarding_welcome_title.toUpperCase(),
+          style: const TextStyle(
+            color: _textPrimary,
+            fontSize: 42,
+            // DESIGN: relaxed letter-spacing and taller line-height for legibility
+            height: 1.05,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.2,
+            fontFamily: 'Syne',
           ),
         ),
         const SizedBox(height: 20),
-        _staggeredSlide(
-          _itemAnims[1],
-          Column(
-            children: _activityCards
-                .map(
-                  (card) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _ActivityCard(
-                      item: card,
-                      selected: _activityLevel == card.value,
-                      onTap: () => _setActivityLevel(card.value),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
+        Text(
+          l10n.onboarding_welcome_body,
+          style: const TextStyle(color: _textSecondary, fontSize: 16, height: 1.5),
         ),
-        const SizedBox(height: 12),
-        _staggeredSlide(
-          _itemAnims[2],
-          Text(
-            'Active is selected by default. Tap once and we will keep moving.',
-            style: TextStyle(
-              color: textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+        const SizedBox(height: 32),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _FeaturePill(emoji: '🔥', label: l10n.onboarding_feature_target),
+            _FeaturePill(emoji: '📊', label: l10n.onboarding_feature_macros),
+            _FeaturePill(emoji: '✨', label: l10n.onboarding_feature_insight),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildResult(Color textPrimary, Color textSecondary) {
-    final colorScheme = Theme.of(context).colorScheme;
-    if (_isLoadingResult) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionIntro(
-            eyebrow: 'AI Result',
-            title: 'Building your calorie target.',
-            body:
-                'We are combining your baseline, activity, and goal pace into a plan that is ready to use.',
-          ),
-          const SizedBox(height: 28),
-          Center(
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, _) {
-                final scale = 0.92 + (_pulseController.value * 0.12);
-                return Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    width: 148,
-                    height: 148,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primary.withValues(alpha: 0.24),
-                          const Color(0xFFFFA44B).withValues(alpha: 0.18),
-                        ],
-                      ),
-                    ),
-                    child: const Icon(
-                      LucideIcons.flame,
-                      color: AppColors.primary,
-                      size: 62,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 24),
-          Center(
-            child: Text(
-              'Calibrating your daily target...',
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    final recommendation = _recommendation;
-    if (recommendation == null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionIntro(
-            eyebrow: 'CALCULATION ERROR',
-            title: 'We could not finish your plan.',
-            body:
-                'Try the last step again or adjust your inputs.',
-          ),
-          _ErrorText(message: _errorText),
-          const SizedBox(height: 16),
-          _PrimaryButton(label: 'Try Again', onPressed: _handleBack),
-        ],
-      );
-    }
-
-    final weeklyText =
-        recommendation.goalMode == 'maintain'
-            ? 'Maintain Current Weight'
-            : '~${recommendation.weeklyRateKg.toStringAsFixed(1)} kg / week';
-
+  Widget _buildStep1(AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _staggeredSlide(
-          _itemAnims[0],
-          const _SectionIntro(
-            eyebrow: 'AI CALIBRATION COMPLETE',
-            title: 'Daily target is ready.',
-            body: 'This number is personalized for your body and target pace.',
-          ),
+        _StepHeader(
+          eyebrow: l10n.onboarding_basic_intro_eyebrow,
+          title: l10n.onboarding_basic_intro_title,
+          body: l10n.onboarding_basic_intro_body,
         ),
-        if (recommendation.isMinor) ...[
-          const SizedBox(height: 12),
-          const _SoftWarning(
-            text:
-                'Minor detection. Please consult a professional before starting any calorie restriction.',
-          ),
-        ],
-        if (recommendation.safetyNote.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _SoftWarning(text: recommendation.safetyNote),
-        ],
-        const SizedBox(height: 32),
-        _staggeredSlide(
-          _itemAnims[1],
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: colorScheme.primary.withValues(alpha: 0.1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${recommendation.dailyCalories}',
-                  style: AppTypography.displayLarge.copyWith(
-                    color: colorScheme.primary,
-                    height: 1,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -3,
-                    fontSize: AppTypography.displayLarge.fontSize! * Responsive.fontScale(context),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'DAILY CALORIES',
-                  style: AppTypography.labelLarge.copyWith(
-                    color: colorScheme.onPrimaryContainer,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Icon(LucideIcons.trendingUp, size: 16, color: colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Text(
-                      weeklyText,
-                      style: AppTypography.titleSmall.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+        const SizedBox(height: 18),
+        _InputLabel(l10n.onboarding_age),
+        _NumberInput(
+          controller: _ageController,
+          unit: l10n.onboarding_age_suffix,
         ),
-        const SizedBox(height: 24),
-        _staggeredSlide(
-          _itemAnims[2],
+        const SizedBox(height: 12),
+        _InputLabel(l10n.onboarding_gender),
+        Row(
+          children: [
+            Expanded(child: _ChoiceCard(label: l10n.onboarding_male, emoji: '♂️', selected: _gender == 'male', onTap: () => setState(() => _gender = 'male'))),
+            const SizedBox(width: 12),
+            Expanded(child: _ChoiceCard(label: l10n.onboarding_female, emoji: '♀️', selected: _gender == 'female', onTap: () => setState(() => _gender = 'female'))),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _InputLabel(l10n.onboarding_height),
+            _UnitToggle(isImperial: _isImperial, leftLabel: 'CM', rightLabel: 'FT/IN', onChanged: _toggleMeasurementSystem),
+          ],
+        ),
+        const SizedBox(height: 4),
+        if (!_isImperial)
+          _NumberInput(controller: _heightCmController, unit: 'cm')
+        else
           Row(
             children: [
-              Expanded(
-                child: _MacroTile(
-                  label: 'Protein',
-                  value: '${recommendation.proteinGrams}g',
-                  color: const Color(0xFF64B5F6),
-                ),
-              ),
+              Expanded(child: _InputBox(controller: _heightFtController, suffix: 'ft')),
               const SizedBox(width: 12),
-              Expanded(
-                child: _MacroTile(
-                  label: 'Carbs',
-                  value: '${recommendation.carbGrams}g',
-                  color: const Color(0xFF81C784),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _MacroTile(
-                  label: 'Fats',
-                  value: '${recommendation.fatGrams}g',
-                  color: const Color(0xFFFFD54F),
-                ),
-              ),
+              Expanded(child: _InputBox(controller: _heightInController, suffix: 'in')),
             ],
           ),
-        ),
-        const SizedBox(height: 24),
-        _staggeredSlide(
-          _itemAnims[3],
-          Column(
-            children: [
-              _InsightCard(title: 'Strategy', body: recommendation.insight),
-              const SizedBox(height: 12),
-              _InsightCard(title: 'Recommendation', body: recommendation.tip),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
+        _ErrorMessage(message: _errorText),
       ],
     );
   }
-}
 
-class _SectionIntro extends StatelessWidget {
-  final String eyebrow;
-  final String title;
-  final String body;
-
-  const _SectionIntro({
-    required this.eyebrow,
-    required this.title,
-    required this.body,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _buildStep2(AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          eyebrow.toUpperCase(),
-          style: AppTypography.labelSmall.copyWith(
-            color: colorScheme.primary,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2.0,
+        _StepHeader(
+          eyebrow: l10n.onboarding_weight_intro_eyebrow,
+          title: l10n.onboarding_weight_intro_title,
+          body: l10n.onboarding_weight_intro_body,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _InputLabel(l10n.settings_current_weight),
+            _UnitToggle(isImperial: _isImperial, leftLabel: 'KG', rightLabel: 'LBS', onChanged: _toggleMeasurementSystem),
+          ],
+        ),
+        const SizedBox(height: 4),
+        _NumberInput(controller: _currentWeightController, unit: _isImperial ? 'lbs' : 'kg'),
+        const SizedBox(height: 12),
+        _InputLabel(l10n.settings_target_weight),
+        _NumberInput(controller: _goalWeightController, unit: _isImperial ? 'lbs' : 'kg', isAccent: true),
+        const SizedBox(height: 16),
+        Center(
+          child: Text(
+            l10n.onboarding_target_intro_body,
+            style: const TextStyle(color: Color(0x99EEF3FF), fontSize: 12, height: 1.4),
+            textAlign: TextAlign.center,
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          title,
-          style: AppTypography.headlineMedium.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1.0,
-            height: 1.1,
+        _ErrorMessage(message: _errorText),
+      ],
+    );
+  }
+
+  Widget _buildTimeline(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _StepHeader(
+          eyebrow: l10n.onboarding_target_intro_eyebrow,
+          title: l10n.onboarding_timeline,
+          body: l10n.onboarding_target_intro_body,
+        ),
+        const SizedBox(height: 40),
+        Center(
+          child: Column(
+            children: [
+              Text(
+                _timelineMonths.round().toString(),
+                // DESIGN: tighter line-height on display number for deliberate compact feel
+                style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w900, color: _greenColor, fontFamily: 'Syne', height: 0.9),
+              ),
+              // DESIGN: small gap between number and unit label
+              const SizedBox(height: 4),
+              Text(
+                l10n.onboarding_months(_timelineMonths.round()).split(' ').last.toUpperCase(),
+                style: const TextStyle(color: _textMuted, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          body,
-          style: AppTypography.bodyLarge.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            height: 1.5,
+        // DESIGN: optimized vertical grouping — number and slider now feel like one cohesive unit
+        const SizedBox(height: 24),
+        SliderTheme(
+          data: SliderThemeData(
+            activeTrackColor: _greenColor,
+            inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
+            thumbColor: _greenColor,
+            overlayColor: _greenColor.withValues(alpha: 0.1),
+            trackHeight: 4,
+          ),
+          child: Slider(
+            value: _timelineMonths,
+            min: 1,
+            max: 12,
+            divisions: 11,
+            onChanged: (v) {
+              HapticFeedback.selectionClick();
+              setState(() => _timelineMonths = v);
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('1 ${l10n.onboarding_months(1).split(' ').last.toUpperCase()}', style: const TextStyle(color: Color(0xB3EEF3FF), fontSize: 10, fontWeight: FontWeight.w700)),
+              Text('12 ${l10n.onboarding_months(12).split(' ').last.toUpperCase()}', style: const TextStyle(color: Color(0xB3EEF3FF), fontSize: 10, fontWeight: FontWeight.w700)),
+            ],
           ),
         ),
       ],
     );
   }
+
+  Widget _buildActivity(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _StepHeader(
+          eyebrow: l10n.onboarding_activity_eyebrow,
+          title: l10n.onboarding_activity_title,
+          body: l10n.onboarding_activity_body,
+        ),
+        const SizedBox(height: 18),
+        _ActivityCard(
+          value: 'desk_life',
+          emoji: '🪑',
+          title: l10n.onboarding_activity_desk_life,
+          subtitle: l10n.onboarding_activity_desk_life_desc,
+          color: const Color(0xFF7C8796),
+          selected: _activityLevel == 'desk_life',
+          onTap: () => _setActivity('desk_life'),
+        ),
+        _ActivityCard(
+          value: 'light_mover',
+          emoji: '🚶',
+          title: l10n.onboarding_activity_light_mover,
+          subtitle: l10n.onboarding_activity_light_mover_desc,
+          color: const Color(0xFF25D96C),
+          selected: _activityLevel == 'light_mover',
+          onTap: () => _setActivity('light_mover'),
+        ),
+        _ActivityCard(
+          value: 'active',
+          emoji: '🏃',
+          title: l10n.onboarding_activity_active_title,
+          subtitle: l10n.onboarding_activity_active_desc,
+          color: const Color(0xFF7C5CEF),
+          selected: _activityLevel == 'active',
+          onTap: () => _setActivity('active'),
+        ),
+        _ActivityCard(
+          value: 'athlete',
+          emoji: '🏋️',
+          title: l10n.onboarding_activity_athlete,
+          subtitle: l10n.onboarding_activity_athlete_desc,
+          color: const Color(0xFFFF8C38),
+          selected: _activityLevel == 'athlete',
+          onTap: () => _setActivity('athlete'),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: Text(
+            l10n.onboarding_activity_footer,
+            style: const TextStyle(color: _textMuted, fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _setActivity(String val) {
+    HapticFeedback.selectionClick();
+    setState(() => _activityLevel = val);
+    _autoAdvanceTimer?.cancel();
+    _autoAdvanceTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted && _stepIndex == 4) _handleNext();
+    });
+  }
+
+  Widget _buildResult(AppLocalizations l10n) {
+    if (_isLoadingResult) {
+      return _buildLoadingResult(l10n);
+    }
+    
+    final res = _recommendation;
+    if (res == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _StepHeader(
+          eyebrow: l10n.onboarding_result_success_eyebrow,
+          title: l10n.onboarding_result_success_title,
+          body: l10n.onboarding_result_success_body,
+        ),
+        const SizedBox(height: 18),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _greenColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _greenColor.withValues(alpha: 0.12)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                res.dailyCalories.toString(),
+                // DESIGN: tighter line-height on large display number for intentional compactness
+                style: const TextStyle(fontSize: 72, fontWeight: FontWeight.w900, color: _greenColor, fontFamily: 'Syne', height: 0.9),
+              ),
+              // DESIGN: explicit gap between number and its label
+              const SizedBox(height: 4),
+              const Text('DAILY CALORIES', style: TextStyle(color: _textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: _greenColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(99)),
+                // DESIGN: use _isImperial to show correct unit in weekly rate pill
+                child: Text(
+                  _isImperial
+                    ? '📈 ~${(res.weeklyRateKg / 0.45359237).toStringAsFixed(1)} lbs / week'
+                    : '📈 ~${res.weeklyRateKg.toStringAsFixed(1)} kg / week',
+                  style: const TextStyle(color: _greenColor, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _MacroBox(label: l10n.result_protein, value: '${res.proteinGrams}g', color: const Color(0xFF60A5FA))),
+            const SizedBox(width: 8),
+            Expanded(child: _MacroBox(label: l10n.result_carbs, value: '${res.carbGrams}g', color: const Color(0xFF4ADE80))),
+            const SizedBox(width: 8),
+            Expanded(child: _MacroBox(label: l10n.result_fat, value: '${res.fatGrams}g', color: const Color(0xFFFBBF24))),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _ResultInfoCard(title: l10n.onboarding_result_strategy, body: res.insight),
+        const SizedBox(height: 8),
+        _ResultInfoCard(title: l10n.onboarding_result_recommendation, body: res.tip),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildLoadingResult(AppLocalizations l10n) {
+    return Center(
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          // DESIGN: dedicated loading eyebrow key — use onboarding_result_loading_eyebrow
+          Text(l10n.onboarding_result_loading_eyebrow.toUpperCase(), style: const TextStyle(color: _greenColor, fontWeight: FontWeight.w800, letterSpacing: 1.5, fontSize: 11)),
+          const SizedBox(height: 12),
+          // DESIGN: use a dedicated calculating title key so this doesn't reuse welcome copy
+          Text(
+            l10n.onboarding_result_calibrating,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: _textPrimary,
+              fontSize: 38,
+              fontWeight: FontWeight.w800,
+              fontFamily: 'Syne',
+              height: 1.1,
+              letterSpacing: -1.2,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            l10n.onboarding_welcome_body,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _textSecondary, fontSize: 16, height: 1.5),
+          ),
+          const SizedBox(height: 48),
+          const _LoadingOrb(),
+          const SizedBox(height: 32),
+          const _DotRunner(),
+          const SizedBox(height: 20),
+          Text(l10n.onboarding_result_calibrating, style: const TextStyle(color: _textMuted, fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
 }
 
-class _TopButton extends StatelessWidget {
+// --- Internal Helper Widgets ---
+
+class _HeaderButton extends StatelessWidget {
   final IconData icon;
-  final bool enabled;
+  final bool visible;
   final VoidCallback onTap;
 
-  const _TopButton({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-  });
+  const _HeaderButton({required this.icon, required this.visible, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return _ScaleTap(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: enabled ? 0.12 : 0.06)
-                  : Colors.white.withValues(alpha: enabled ? 0.72 : 0.5),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: context.dividerColor),
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: visible ? 1 : 0,
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+            ),
+            child: Icon(icon, size: 20, color: Colors.white),
+          ),
         ),
-        child: Icon(
-          icon,
-          size: 20,
-          color:
-              enabled
-                  ? context.textPrimaryColor
-                  : context.textMutedColor.withValues(alpha: 0.6),
+      ),
+    );
+  }
+}
+
+class _ProgressBar extends StatelessWidget {
+  final double progress;
+  const _ProgressBar({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 6,
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(99)),
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: progress,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF20D96C),
+            borderRadius: BorderRadius.circular(99),
+            boxShadow: [
+              BoxShadow(color: const Color(0xFF20D96C).withValues(alpha: 0.6), blurRadius: 12, spreadRadius: 1)
+            ],
+          ),
         ),
       ),
     );
@@ -1145,62 +822,44 @@ class _TopButton extends StatelessWidget {
 }
 
 class _PrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
+  final String text;
+  final VoidCallback onTap;
   final bool loading;
 
-  const _PrimaryButton({
-    required this.label,
-    required this.onPressed,
-    this.loading = false,
-  });
+  const _PrimaryButton({required this.text, required this.onTap, this.loading = false});
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return _ScaleTap(
-      onTap: loading ? null : onPressed,
-      child: Container(
-        width: double.infinity,
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
         height: 64,
         decoration: BoxDecoration(
-          color: colorScheme.primary,
-          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF20D96C), Color(0xFF16A34A)],
+            // DESIGN: top-to-bottom gradient reads as natural lighting, not a diagonal slash
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
+              // DESIGN: bumped shadow opacity from 0.35 → 0.45 for more perceived lift on dark bg
+              color: const Color(0xFF20D96C).withValues(alpha: 0.45),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+              spreadRadius: -2,
+            )
           ],
         ),
         child: Center(
           child: loading
-              ? SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: colorScheme.onPrimary,
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      label,
-                      style: AppTypography.titleMedium.copyWith(
-                        color: colorScheme.onPrimary,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(
-                      LucideIcons.arrowRight,
-                      color: colorScheme.onPrimary,
-                      size: 20,
-                    ),
-                  ],
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              : Text(
+                  text,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: 0.5),
                 ),
         ),
       ),
@@ -1208,286 +867,102 @@ class _PrimaryButton extends StatelessWidget {
   }
 }
 
-class _ScaleTap extends StatefulWidget {
-  final Widget child;
-  final VoidCallback? onTap;
-
-  const _ScaleTap({required this.child, this.onTap});
-
-  @override
-  State<_ScaleTap> createState() => _ScaleTapState();
-}
-
-class _ScaleTapState extends State<_ScaleTap>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.96).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: widget.onTap != null ? (_) => _controller.forward() : null,
-      onTapUp: widget.onTap != null
-          ? (_) {
-              _controller.reverse();
-              widget.onTap!();
-            }
-          : null,
-      onTapCancel: widget.onTap != null ? () => _controller.reverse() : null,
-      child: ScaleTransition(
-        scale: _scale,
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-Widget _staggeredSlide(Animation<double> animation, Widget child) {
-  return AnimatedBuilder(
-    animation: animation,
-    builder: (context, child) {
-      return Opacity(
-        opacity: animation.value,
-        child: Transform.translate(
-          offset: Offset(0, 16 * (1 - animation.value)),
-          child: child,
-        ),
-      );
-    },
-    child: child,
-  );
-}
-
-
-
-class _FeatureStrip extends StatelessWidget {
-  const _FeatureStrip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: const [
-        _FeaturePill(icon: LucideIcons.flame, label: 'Personal calorie target'),
-        _FeaturePill(icon: LucideIcons.pieChart, label: 'Macro split'),
-        _FeaturePill(icon: LucideIcons.sparkles, label: 'AI insight'),
-      ],
-    );
-  }
-}
-
 class _FeaturePill extends StatelessWidget {
-  final IconData icon;
+  final String emoji;
   final String label;
-
-  const _FeaturePill({required this.icon, required this.label});
+  const _FeaturePill({required this.emoji, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(999),
+        color: Colors.white.withValues(alpha: 0.04),
+        // DESIGN: bumped border opacity 0.07 → 0.12 so pills read as distinct against the mesh bg
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        borderRadius: BorderRadius.circular(99),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: colorScheme.primary),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: AppTypography.labelMedium.copyWith(
-              fontWeight: FontWeight.w700,
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
+          Text(emoji, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 7),
+          Text(label, style: const TextStyle(color: Color(0xFFEEF3FF), fontSize: 13, fontWeight: FontWeight.w600)),
         ],
       ),
     );
   }
 }
 
-class _LabeledField extends StatelessWidget {
-  final String label;
-  final Widget child;
-
-  const _LabeledField({required this.label, required this.child});
+class _StepHeader extends StatelessWidget {
+  final String eyebrow;
+  final String title;
+  final String body;
+  const _StepHeader({required this.eyebrow, required this.title, required this.body});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: context.textPrimaryColor,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        child,
+        const SizedBox(height: 4),
+        Text(eyebrow.toUpperCase(), style: const TextStyle(color: Color(0xFF20D96C), fontWeight: FontWeight.w800, letterSpacing: 1.5, fontSize: 10)),
+        const SizedBox(height: 8),
+        // DESIGN: Syne applied consistently to all step titles for editorial punch
+        Text(title, style: const TextStyle(color: Color(0xFFEEF3FF), fontSize: 26, fontWeight: FontWeight.w800, fontFamily: 'Syne', height: 1.1, letterSpacing: -0.5)),
+        const SizedBox(height: 8),
+        Text(body, style: const TextStyle(color: Color(0xB3EEF3FF), fontSize: 14, height: 1.5, fontWeight: FontWeight.w400)),
       ],
     );
   }
 }
 
-class _NumberInput extends StatelessWidget {
-  final TextEditingController controller;
-  final String suffix;
-  final String hint;
-
-  const _NumberInput({
-    required this.controller,
-    required this.suffix,
-    required this.hint,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
-      ],
-      decoration: InputDecoration(
-        hintText: hint,
-        suffixText: suffix,
-        filled: true,
-        fillColor: context.cardSoftColor,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 18,
-        ),
-      ),
-    );
-  }
-}
-
-class _LargeNumberField extends StatelessWidget {
-  final TextEditingController controller;
-  final String suffix;
-
-  const _LargeNumberField({required this.controller, required this.suffix});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        color: context.cardSoftColor,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
-              ],
-              style: TextStyle(
-                fontSize: 42,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1.8,
-                color: context.textPrimaryColor,
-              ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: '0',
-              ),
-            ),
-          ),
-          Text(
-            suffix,
-            style: TextStyle(
-              color: context.textSecondaryColor,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChoiceChipCard extends StatelessWidget {
+class _ChoiceCard extends StatelessWidget {
   final String label;
-  final IconData icon;
+  final String emoji;
   final bool selected;
   final VoidCallback onTap;
 
-  const _ChoiceChipCard({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
+  const _ChoiceCard({required this.label, required this.emoji, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return _ScaleTap(
+    return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutQuint,
+        padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color:
-              selected
-                  ? AppColors.primary.withValues(alpha: 0.14)
-                  : context.cardSoftColor,
-          borderRadius: BorderRadius.circular(20),
+          // DESIGN: full-opacity card bg so unselected state reads against the mesh background
+          color: selected ? const Color(0x1720D96C) : const Color(0xFF131923),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color:
-                selected
-                    ? AppColors.primary.withValues(alpha: 0.5)
-                    : Colors.transparent,
+            color: selected ? const Color(0xFF20D96C) : Colors.white.withValues(alpha: 0.08),
+            width: selected ? 2.0 : 1.2,
           ),
+          boxShadow: selected ? [
+            BoxShadow(color: const Color(0xFF20D96C).withValues(alpha: 0.15), blurRadius: 20, offset: Offset.zero)
+          ] : [],
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              color: selected ? AppColors.primary : Colors.grey,
-              size: 18,
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: selected ? const Color(0x2020D96C) : Colors.white.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Center(child: Text(emoji, style: const TextStyle(fontSize: 24))),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
               label,
               style: TextStyle(
-                color: context.textPrimaryColor,
-                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : _textPrimary,
+                fontSize: 15,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
               ),
             ),
           ],
@@ -1498,73 +973,64 @@ class _ChoiceChipCard extends StatelessWidget {
 }
 
 class _UnitToggle extends StatelessWidget {
+  final bool isImperial;
+  final ValueChanged<bool> onChanged;
   final String leftLabel;
   final String rightLabel;
-  final bool isRightSelected;
-  final ValueChanged<bool> onChanged;
 
-  const _UnitToggle({
-    required this.leftLabel,
-    required this.rightLabel,
-    required this.isRightSelected,
-    required this.onChanged,
-  });
+  const _UnitToggle({required this.isImperial, required this.onChanged, required this.leftLabel, required this.rightLabel});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: 140,
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: context.cardSoftColor,
-        borderRadius: BorderRadius.circular(14),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFF131923), borderRadius: BorderRadius.circular(14)),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          _UnitOption(
-            label: leftLabel,
-            selected: !isRightSelected,
-            onTap: () => onChanged(false),
-          ),
-          _UnitOption(
-            label: rightLabel,
-            selected: isRightSelected,
-            onTap: () => onChanged(true),
-          ),
+          Expanded(child: _ToggleBtn(label: leftLabel, active: !isImperial, onTap: () => onChanged(false))),
+          Expanded(child: _ToggleBtn(label: rightLabel, active: isImperial, onTap: () => onChanged(true))),
         ],
       ),
     );
   }
 }
 
-class _UnitOption extends StatelessWidget {
+class _ToggleBtn extends StatelessWidget {
   final String label;
-  final bool selected;
+  final bool active;
   final VoidCallback onTap;
-
-  const _UnitOption({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _ToggleBtn({required this.label, required this.active, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? colorScheme.primary : Colors.transparent,
+          gradient: active ? const LinearGradient(
+            colors: [Color(0xFF20D96C), Color(0xFF16A34A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ) : null,
+          color: active ? null : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
+          boxShadow: active ? [
+            BoxShadow(color: const Color(0xFF20D96C).withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 2))
+          ] : [],
         ),
-        child: Text(
-          label,
-          style: AppTypography.labelLarge.copyWith(
-            color: selected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w700,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: active ? const Color(0xFF020B06) : const Color(0x66EEF3FF),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ),
@@ -1572,120 +1038,236 @@ class _UnitOption extends StatelessWidget {
   }
 }
 
+class _NumberInput extends StatefulWidget {
+  final TextEditingController controller;
+  final String unit;
+  final bool isAccent;
+  const _NumberInput({required this.controller, this.unit = '', this.isAccent = false});
 
+  @override
+  State<_NumberInput> createState() => _NumberInputState();
+}
 
-class _SoftWarning extends StatelessWidget {
-  final String text;
+class _NumberInputState extends State<_NumberInput> {
+  final FocusNode _focusNode = FocusNode();
+  bool _isFocused = false;
 
-  const _SoftWarning({required this.text});
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() => setState(() => _isFocused = _focusNode.hasFocus));
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+    final bgColor = widget.isAccent 
+        ? (_isFocused ? const Color(0x2220D96C) : const Color(0x1120D96C))
+        : (_isFocused ? const Color(0x1A20D96C) : const Color(0xFF131923));
+    
+    final borderColor = widget.isAccent
+        ? const Color(0xFF20D96C).withValues(alpha: 0.4)
+        : (_isFocused ? const Color(0xFF20D96C) : Colors.white.withValues(alpha: 0.1));
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      width: 200,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
-        color: colorScheme.errorContainer.withValues(alpha: 0.4),
+        color: bgColor,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _isFocused ? const Color(0xFF20D96C) : borderColor,
+          width: _isFocused ? 1.6 : 1.2,
+        ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: [
-          Icon(
-            LucideIcons.shieldAlert,
-            size: 20,
-            color: colorScheme.error,
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              text,
-              style: AppTypography.labelMedium.copyWith(
-                color: colorScheme.onErrorContainer,
-                fontWeight: FontWeight.w700,
+            child: TextField(
+              controller: widget.controller,
+              focusNode: _focusNode,
+              keyboardType: TextInputType.number,
+              cursorColor: const Color(0xFF20D96C),
+              textAlignVertical: TextAlignVertical.center,
+              style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w900, color: Color(0xFFEEF3FF), fontFamily: 'Syne', letterSpacing: -1.5),
+              decoration: InputDecoration(
+                filled: false,
+                fillColor: Colors.transparent,
+                border: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                hintText: '0',
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.05)),
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
               ),
             ),
           ),
+          if (widget.unit.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: Text(widget.unit, style: const TextStyle(color: Color(0xB3EEF3FF), fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
         ],
       ),
     );
   }
 }
 
-class _ErrorText extends StatelessWidget {
-  final String? message;
+class _InputBox extends StatefulWidget {
+  final TextEditingController controller;
+  final String suffix;
+  const _InputBox({required this.controller, required this.suffix});
 
-  const _ErrorText({required this.message});
+  @override
+  State<_InputBox> createState() => _InputBoxState();
+}
+
+class _InputBoxState extends State<_InputBox> {
+  final FocusNode _focusNode = FocusNode();
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() => setState(() => _isFocused = _focusNode.hasFocus));
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (message == null || message!.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Text(
-        message!,
-        style: const TextStyle(
-          color: Color(0xFFD93B3B),
-          fontWeight: FontWeight.w700,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      decoration: BoxDecoration(
+        color: _isFocused ? const Color(0x1A20D96C) : const Color(0xFF131923),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _isFocused ? const Color(0xFF20D96C) : Colors.white.withValues(alpha: 0.1),
+          width: _isFocused ? 1.6 : 1.2,
         ),
       ),
+      child: TextField(
+        controller: widget.controller,
+        focusNode: _focusNode,
+        keyboardType: TextInputType.number,
+        cursorColor: const Color(0xFF20D96C),
+        style: const TextStyle(color: Color(0xFFEEF3FF), fontSize: 22, fontWeight: FontWeight.w800, fontFamily: 'Syne'),
+        decoration: InputDecoration(
+          filled: false,
+          fillColor: Colors.transparent,
+          border: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+          suffixText: widget.suffix,
+          suffixStyle: const TextStyle(color: Color(0xB3EEF3FF), fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+}
+
+class _InputLabel extends StatelessWidget {
+  final String label;
+  const _InputLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10, left: 4),
+      child: Text(label.toUpperCase(), style: const TextStyle(color: Color(0x66EEF3FF), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
     );
   }
 }
 
 class _ActivityCard extends StatelessWidget {
-  final _ActivityItem item;
+  final String value;
+  final String emoji;
+  final String title;
+  final String subtitle;
+  final Color color;
   final bool selected;
   final VoidCallback onTap;
 
   const _ActivityCard({
-    required this.item,
+    required this.value,
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.color,
     required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return _ScaleTap(
+    return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(18),
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutQuint,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color:
-              selected
-                  ? item.color.withValues(alpha: 0.14)
-                  : context.cardSoftColor,
+          // DESIGN: full-opacity card bg for unselected state
+          color: selected ? color.withValues(alpha: 0.15) : const Color(0xFF131923),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color:
-                selected
-                    ? item.color.withValues(alpha: 0.5)
-                    : Colors.transparent,
+            color: selected ? color : Colors.white.withValues(alpha: 0.08),
+            width: selected ? 2.0 : 1.2,
           ),
+          boxShadow: selected ? [
+            // DESIGN: symmetric halo (offset: zero) reads better on dark backgrounds
+            BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 20, offset: Offset.zero)
+          ] : [],
         ),
         child: Row(
           children: [
-            Text(item.emoji, style: const TextStyle(fontSize: 28)),
-            const SizedBox(width: 14),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: selected ? color.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(child: Text(emoji, style: const TextStyle(fontSize: 26))),
+            ),
+            const SizedBox(width: 18),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.title,
+                    title,
                     style: TextStyle(
-                      color: context.textPrimaryColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
+                      color: selected ? Colors.white : _textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    item.subtitle,
+                    subtitle,
                     style: TextStyle(
-                      color: context.textSecondaryColor,
-                      fontWeight: FontWeight.w500,
+                      color: selected ? Colors.white.withValues(alpha: 0.7) : _textSecondary,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -1693,7 +1275,8 @@ class _ActivityCard extends StatelessWidget {
             ),
             Icon(
               selected ? LucideIcons.checkCircle2 : LucideIcons.circle,
-              color: selected ? item.color : Colors.grey,
+              color: selected ? color : _textMuted,
+              size: 22,
             ),
           ],
         ),
@@ -1702,158 +1285,186 @@ class _ActivityCard extends StatelessWidget {
   }
 }
 
-class _MacroTile extends StatelessWidget {
+class _StepTransition extends StatelessWidget {
+  final Widget child;
+  const _StepTransition({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 600),
+      switchInCurve: Curves.easeOutQuart,
+      switchOutCurve: Curves.easeInQuart,
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        // DESIGN: slight vertical component added for natural parallax feel on mobile
+        final offsetAnimation = Tween<Offset>(
+          begin: const Offset(0.03, 0.015),
+          end: Offset.zero,
+        ).animate(animation);
+
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class _MacroBox extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-
-  const _MacroTile({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _MacroBox({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(18),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.04), borderRadius: BorderRadius.circular(14)),
       child: Column(
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w900,
-              fontSize: 18,
-            ),
-          ),
+          Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w900, fontFamily: 'Syne')),
+          // DESIGN: explicit gap between value and label so 10px label isn't flush under the number
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).hintColor,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
+          Text(label.toUpperCase(), style: const TextStyle(color: Color(0x47EEF3FF), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
         ],
       ),
     );
   }
 }
 
-class _InsightCard extends StatelessWidget {
+class _ResultInfoCard extends StatelessWidget {
   final String title;
   final String body;
-
-  const _InsightCard({required this.title, required this.body});
+  const _ResultInfoCard({required this.title, required this.body});
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(24),
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: const Color(0xFF131923), borderRadius: BorderRadius.circular(17)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: AppTypography.labelSmall.copyWith(
-              color: colorScheme.primary,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            body,
-            style: AppTypography.bodyMedium.copyWith(
-              color: colorScheme.onSurface,
-              height: 1.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text(title.toUpperCase(), style: const TextStyle(color: Color(0xFF20D96C), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+          const SizedBox(height: 6),
+          Text(body, style: const TextStyle(color: Color(0x80EEF3FF), fontSize: 14, height: 1.5, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 }
 
-class _OnboardingGlowPainter extends CustomPainter {
-  final double progress;
-  final Color color;
+class _ErrorMessage extends StatelessWidget {
+  final String? message;
+  const _ErrorMessage({this.message});
 
-  _OnboardingGlowPainter({required this.progress, required this.color});
+  @override
+  Widget build(BuildContext context) {
+    if (message == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(color: const Color(0x14F87171), borderRadius: BorderRadius.circular(11)),
+        child: Text(message!, style: const TextStyle(color: Color(0xFFF87171), fontSize: 13, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+}
+
+class _MeshPainter extends CustomPainter {
+  final double progress;
+  _MeshPainter({required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..style = PaintingStyle.fill;
-    for (var i = 0; i < 8; i++) {
-      final dx = (size.width / 7) * i;
-      final dy = 120 + (math.sin(progress * math.pi * 2 + i) * 18);
-      paint.color = color.withValues(alpha: 0.04);
-      canvas.drawCircle(Offset(dx, dy), 42, paint);
-    }
+    final paint = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 80);
+    
+    // Emerald blob top-left
+    final c1 = Offset(size.width * 0.25 + math.sin(progress * 2 * math.pi) * 30, size.height * 0.2 + math.cos(progress * 2 * math.pi) * 20);
+    canvas.drawCircle(c1, size.width * 0.6, paint..color = const Color(0xFF20D96C).withValues(alpha: 0.06));
+
+    // DESIGN: bumped orange blob opacity 0.04 → 0.06 so warm accent reads subtly in the corner
+    final c2 = Offset(size.width * 0.8 + math.cos(progress * 2 * math.pi) * 40, size.height * 0.8 + math.sin(progress * 2 * math.pi) * 30);
+    canvas.drawCircle(c2, size.width * 0.5, paint..color = const Color(0xFFFF8C38).withValues(alpha: 0.06));
   }
 
   @override
-  bool shouldRepaint(covariant _OnboardingGlowPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _MeshPainter oldDelegate) => oldDelegate.progress != progress;
+}
+
+class _LoadingOrb extends StatefulWidget {
+  const _LoadingOrb();
+  @override
+  State<_LoadingOrb> createState() => _LoadingOrbState();
+}
+
+class _LoadingOrbState extends State<_LoadingOrb> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) => Container(
+        width: 100, height: 100,
+        // DESIGN: increased pulse scale 0.1 → 0.15 so the breathing feels more alive
+        transform: Matrix4.diagonal3Values(1.0 + _ctrl.value * 0.15, 1.0 + _ctrl.value * 0.15, 1.0),
+        transformAlignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [const Color(0xFF20D96C).withValues(alpha: 0.2), Colors.transparent]),
+        ),
+        child: const Center(child: Text('🔥', style: TextStyle(fontSize: 44))),
+      ),
+    );
   }
 }
 
-class _ActivityItem {
-  final String value;
-  final String emoji;
-  final String title;
-  final String subtitle;
-  final Color color;
-
-  const _ActivityItem({
-    required this.value,
-    required this.emoji,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-  });
+class _DotRunner extends StatefulWidget {
+  const _DotRunner();
+  @override
+  State<_DotRunner> createState() => _DotRunnerState();
 }
 
-const List<_ActivityItem> _activityCards = [
-  _ActivityItem(
-    value: 'desk_life',
-    emoji: '🪑',
-    title: 'Desk Life',
-    subtitle: 'Little to no exercise',
-    color: Color(0xFF7C8796),
-  ),
-  _ActivityItem(
-    value: 'light_mover',
-    emoji: '🚶',
-    title: 'Light Mover',
-    subtitle: '1-3 days/week',
-    color: Color(0xFF25A870),
-  ),
-  _ActivityItem(
-    value: 'active',
-    emoji: '🏃',
-    title: 'Active',
-    subtitle: '3-5 days/week',
-    color: Color(0xFF6750A4), // M3 Royal Purple
-  ),
-  _ActivityItem(
-    value: 'athlete',
-    emoji: '🏋️',
-    title: 'Athlete',
-    subtitle: '6-7 days/week',
-    color: Color(0xFFFF8B1F),
-  ),
-];
+class _DotRunnerState extends State<_DotRunner> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (i) => AnimatedBuilder(
+        animation: _ctrl,
+        builder: (context, _) {
+          final p = (_ctrl.value + (i * 0.2)) % 1.0;
+          final opacity = math.sin(p * math.pi).clamp(0.2, 1.0);
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            width: 6, height: 6,
+            decoration: BoxDecoration(color: const Color(0xFF20D96C).withValues(alpha: opacity), shape: BoxShape.circle),
+          );
+        },
+      )),
+    );
+  }
+}

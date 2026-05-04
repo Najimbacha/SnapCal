@@ -1,18 +1,23 @@
 import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../core/services/security_service.dart';
 import '../../core/constants/app_constants.dart';
 import '../services/assistant_service.dart';
 
 class AssistantRepository {
-  late Box _box;
+  Box? _box;
 
   Future<void> init() async {
-    _box = await Hive.openBox(AppConstants.assistantBoxName);
+    final encryptionKey = await SecurityService().getEncryptionKey();
+    _box = await Hive.openBox(
+      AppConstants.assistantBoxName,
+      encryptionCipher: HiveAesCipher(encryptionKey),
+    );
   }
 
   /// Get cached recommendations if they exist
   List<AssistantResponse>? getCachedRecommendations() {
-    final data = _box.get('cached_recommendations');
+    final data = _box?.get('cached_recommendations');
     if (data == null) return null;
 
     try {
@@ -40,22 +45,22 @@ class AssistantRepository {
               },
             )
             .toList();
-    await _box.put('cached_recommendations', jsonEncode(jsonList));
+    await _box?.put('cached_recommendations', jsonEncode(jsonList));
   }
 
   /// Get the calorie snapshot from the last fetch
   int getLastCalorieSnapshot() {
-    return _box.get('last_calorie_snapshot') ?? -999;
+    return _box?.get('last_calorie_snapshot') ?? -999;
   }
 
   /// Save current calorie snapshot
   Future<void> saveCalorieSnapshot(int calories) async {
-    await _box.put('last_calorie_snapshot', calories);
+    await _box?.put('last_calorie_snapshot', calories);
   }
 
   /// Get full chat history
   List<dynamic>? getChatHistory() {
-    final data = _box.get('chat_history');
+    final data = _box?.get('chat_history');
     if (data == null) return null;
 
     try {
@@ -83,13 +88,13 @@ class AssistantRepository {
         'actions': res.actions?.map((a) => a.toJson()).toList(),
       };
     }).toList();
-    await _box.put('chat_history', jsonEncode(jsonList));
+    await _box?.put('chat_history', jsonEncode(jsonList));
   }
 
   /// Clear all cache and history
   Future<void> clearCache() async {
-    await _box.delete('cached_recommendations');
-    await _box.delete('last_calorie_snapshot');
-    await _box.delete('chat_history');
+    await _box?.delete('cached_recommendations');
+    await _box?.delete('last_calorie_snapshot');
+    await _box?.delete('chat_history');
   }
 }

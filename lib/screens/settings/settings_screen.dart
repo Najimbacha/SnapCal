@@ -18,7 +18,7 @@ import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/ui_blocks.dart';
 import '../sync/sync_data_screen.dart';
 import 'widgets/weight_entry_modal.dart';
-import '../../core/utils/responsive_utils.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -26,7 +26,8 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: 'Settings',
+      title: AppLocalizations.of(context)!.settings_title,
+      isPremium: context.select<SettingsProvider, bool>((p) => p.isPro),
       forceShowBackButton: true,
       scrollable: true,
       padding: const EdgeInsets.fromLTRB(0, 4, 0, 40),
@@ -43,18 +44,21 @@ class SettingsScreen extends StatelessWidget {
                 ),
             builder: (context, auth, _) => _ProfileCard(auth: auth),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Selector<SettingsProvider, bool>(
             selector: (_, s) => s.isPro,
             builder: (context, isPro, _) {
               if (isPro) return const SizedBox.shrink();
-              return const _UpgradeProCard();
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: _UpgradeProCard(),
+              );
             },
           ),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: const SectionLabel(title: 'Core Configuration'),
+            child: SectionLabel(title: AppLocalizations.of(context)!.settings_core_config),
           ),
           const SizedBox(height: 12),
           AppSectionCard(
@@ -66,8 +70,8 @@ class SettingsScreen extends StatelessWidget {
                 _CategoryRow(
                   icon: LucideIcons.user,
                   accent: AppColors.primary,
-                  title: 'Body Profile',
-                  subtitle: 'Update your stats and goals',
+                  title: AppLocalizations.of(context)!.settings_body_profile,
+                  subtitle: AppLocalizations.of(context)!.settings_body_profile_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -79,8 +83,8 @@ class SettingsScreen extends StatelessWidget {
                 _CategoryRow(
                   icon: LucideIcons.flame,
                   accent: AppColors.primary,
-                  title: 'Nutrition Goals',
-                  subtitle: 'Daily calorie and macro targets',
+                  title: AppLocalizations.of(context)!.settings_nutrition_goals,
+                  subtitle: AppLocalizations.of(context)!.settings_nutrition_goals_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -92,8 +96,8 @@ class SettingsScreen extends StatelessWidget {
                 _CategoryRow(
                   icon: LucideIcons.settings,
                   accent: AppColors.primary,
-                  title: 'Preferences',
-                  subtitle: 'App theme and notification settings',
+                  title: AppLocalizations.of(context)!.settings_preferences,
+                  subtitle: AppLocalizations.of(context)!.settings_preferences_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -108,7 +112,7 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: const SectionLabel(title: 'Data & Security'),
+            child: SectionLabel(title: AppLocalizations.of(context)!.settings_data_security),
           ),
           const SizedBox(height: 12),
           AppSectionCard(
@@ -120,8 +124,8 @@ class SettingsScreen extends StatelessWidget {
                 _CategoryRow(
                   icon: LucideIcons.userCircle,
                   accent: AppColors.primary,
-                  title: 'Account',
-                  subtitle: 'Membership and profile security',
+                  title: AppLocalizations.of(context)!.settings_account,
+                  subtitle: AppLocalizations.of(context)!.settings_account_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -133,8 +137,8 @@ class SettingsScreen extends StatelessWidget {
                 _CategoryRow(
                   icon: LucideIcons.hardDrive,
                   accent: AppColors.primary,
-                  title: 'Data & Sync',
-                  subtitle: 'Export and cloud backup options',
+                  title: AppLocalizations.of(context)!.settings_data_sync,
+                  subtitle: AppLocalizations.of(context)!.settings_data_sync_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -149,7 +153,7 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: const SectionLabel(title: 'Information'),
+            child: SectionLabel(title: AppLocalizations.of(context)!.settings_information),
           ),
           const SizedBox(height: 12),
           AppSectionCard(
@@ -161,8 +165,8 @@ class SettingsScreen extends StatelessWidget {
                 _CategoryRow(
                   icon: LucideIcons.info,
                   accent: AppColors.primary,
-                  title: 'About',
-                  subtitle: 'Terms, privacy, and app info',
+                  title: AppLocalizations.of(context)!.settings_about,
+                  subtitle: AppLocalizations.of(context)!.settings_about_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -177,7 +181,7 @@ class SettingsScreen extends StatelessWidget {
             child: Opacity(
               opacity: 0.5,
               child: Text(
-                'SNAPCAL PREMIUM v1.0.0',
+                '${AppLocalizations.of(context)!.snap_pro_unlimited.toUpperCase()} v1.0.0',
                 style: AppTypography.labelSmall.copyWith(
                   color: Theme.of(context).hintColor,
                   letterSpacing: 2.0,
@@ -219,7 +223,7 @@ void _showNumberDialog(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Enter your $title below',
+                AppLocalizations.of(context)!.settings_enter_value(title),
                 style: AppTypography.bodySmall.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -254,7 +258,7 @@ void _showNumberDialog(
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
-                'Cancel',
+                AppLocalizations.of(context)!.common_cancel,
                 style: TextStyle(color: colorScheme.onSurfaceVariant),
               ),
             ),
@@ -270,7 +274,7 @@ void _showNumberDialog(
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: const Text('Confirm'),
+              child: Text(AppLocalizations.of(context)!.common_confirm),
             ),
           ],
         ),
@@ -289,7 +293,7 @@ void _showNameDialog(BuildContext context, String currentName) {
             borderRadius: BorderRadius.circular(28),
           ),
           title: Text(
-            'Display Name',
+            AppLocalizations.of(context)!.settings_display_name,
             style: AppTypography.heading3.copyWith(fontSize: 22),
           ),
           content: Column(
@@ -297,7 +301,7 @@ void _showNameDialog(BuildContext context, String currentName) {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'How should we call you?',
+                AppLocalizations.of(context)!.settings_how_to_call,
                 style: AppTypography.bodySmall.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -330,7 +334,7 @@ void _showNameDialog(BuildContext context, String currentName) {
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
-                'Cancel',
+                AppLocalizations.of(context)!.common_cancel,
                 style: TextStyle(color: colorScheme.onSurfaceVariant),
               ),
             ),
@@ -346,11 +350,316 @@ void _showNameDialog(BuildContext context, String currentName) {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: const Text('Save Name'),
+              child: Text(AppLocalizations.of(context)!.settings_save_name),
             ),
           ],
         ),
   );
+}
+
+void _showGenderSelector(BuildContext context, SettingsProvider settings) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (context) => _SelectionSheet(
+      title: AppLocalizations.of(context)!.settings_gender,
+      options: const ['male', 'female', 'other'],
+      currentValue: settings.gender ?? 'male',
+      onSelect: (value) => settings.updateBodyProfile(gender: value),
+    ),
+  );
+}
+
+void _showUnitSelector(BuildContext context, SettingsProvider settings) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (context) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _SelectionSheet(
+          title: AppLocalizations.of(context)!.settings_weight_unit,
+          options: const ['kg', 'lb'],
+          currentValue: settings.weightUnit,
+          onSelect: (value) => settings.updateUnits(weightUnit: value),
+        ),
+        _SelectionSheet(
+          title: AppLocalizations.of(context)!.settings_height_unit,
+          options: const ['cm', 'in'],
+          currentValue: settings.heightUnit,
+          onSelect: (value) => settings.updateUnits(heightUnit: value),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> _selectTime(BuildContext context, SettingsProvider settings, String type) async {
+  final current = type == 'breakfast' 
+      ? settings.breakfastTime 
+      : type == 'lunch' 
+          ? settings.lunchTime 
+          : settings.dinnerTime;
+          
+  final parts = current.split(':');
+  final initial = TimeOfDay(
+    hour: int.tryParse(parts[0]) ?? 8,
+    minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0,
+  );
+
+  final picked = await showTimePicker(
+    context: context,
+    initialTime: initial,
+    builder: (context, child) {
+      return Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(primary: AppColors.primary),
+        ),
+        child: child!,
+      );
+    },
+  );
+
+  if (picked != null) {
+    final timeStr = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    if (type == 'breakfast') {
+      await settings.updateReminderTimes(breakfast: timeStr);
+    } else if (type == 'lunch') {
+      await settings.updateReminderTimes(lunch: timeStr);
+    } else {
+      await settings.updateReminderTimes(dinner: timeStr);
+    }
+  }
+}
+
+class _SelectionSheet extends StatelessWidget {
+  final String title;
+  final List<String> options;
+  final String currentValue;
+  final Function(String) onSelect;
+
+  const _SelectionSheet({
+    required this.title,
+    required this.options,
+    required this.currentValue,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTypography.heading3),
+          const SizedBox(height: 20),
+          ...options.map((opt) => ListTile(
+            title: Text(opt.toUpperCase(), style: AppTypography.titleMedium),
+            trailing: opt == currentValue 
+                ? const Icon(LucideIcons.check, color: AppColors.primary) 
+                : null,
+            onTap: () {
+              onSelect(opt);
+              Navigator.pop(context);
+            },
+          )),
+        ],
+      ),
+    );
+  }
+}
+
+String _getLanguageName(String code) {
+  switch (code) {
+    case 'ar':
+      return 'العربية';
+    case 'es':
+      return 'Español';
+    case 'fr':
+      return 'Français';
+    default:
+      return 'English';
+  }
+}
+
+void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) => Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 24,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                AppLocalizations.of(context)!.settings_select_language,
+                style: AppTypography.heading3,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                AppLocalizations.of(context)!.settings_language_desc,
+                style: AppTypography.bodySmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _LanguageTile(
+                title: 'English',
+                subtitle: AppLocalizations.of(context)!.settings_lang_en_desc,
+                code: 'en',
+                selected: settings.languageCode == 'en',
+                onTap: () {
+                  settings.setLanguage('en');
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _LanguageTile(
+                title: 'العربية',
+                subtitle: AppLocalizations.of(context)!.settings_lang_ar_desc,
+                code: 'ar',
+                selected: settings.languageCode == 'ar',
+                onTap: () {
+                  settings.setLanguage('ar');
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _LanguageTile(
+                title: 'Español',
+                subtitle: AppLocalizations.of(context)!.settings_lang_es_desc,
+                code: 'es',
+                selected: settings.languageCode == 'es',
+                onTap: () {
+                  settings.setLanguage('es');
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _LanguageTile(
+                title: 'Français',
+                subtitle: AppLocalizations.of(context)!.settings_lang_fr_desc,
+                code: 'fr',
+                selected: settings.languageCode == 'fr',
+                onTap: () {
+                  settings.setLanguage('fr');
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _LanguageTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String code;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LanguageTile({
+    required this.title,
+    required this.subtitle,
+    required this.code,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: selected 
+              ? AppColors.primary.withValues(alpha: 0.1) 
+              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.primary : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.primary : colorScheme.outlineVariant,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                code.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: selected ? AppColors.primary : colorScheme.onSurface,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              const Icon(LucideIcons.checkCircle2, color: AppColors.primary),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 
@@ -404,12 +713,10 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           child: Row(
@@ -418,16 +725,16 @@ class _SettingRow extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [accent.withValues(alpha: 0.2), accent.withValues(alpha: 0.05)],
+                    colors: [accent.withValues(alpha: 0.15), accent.withValues(alpha: 0.05)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: accent.withValues(alpha: 0.2), width: 1),
+                  border: Border.all(color: accent.withValues(alpha: 0.15), width: 1.5),
                 ),
                 child: Icon(icon, color: accent, size: 22),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 18),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,24 +743,25 @@ class _SettingRow extends StatelessWidget {
                       title,
                       style: AppTypography.titleMedium.copyWith(
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                        letterSpacing: -0.3,
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       value,
-                      style: AppTypography.labelMedium.copyWith(
+                      style: AppTypography.labelSmall.copyWith(
                         color: accent,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
+                        fontSize: 11,
                       ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
@@ -461,7 +769,7 @@ class _SettingRow extends StatelessWidget {
                 child: Icon(
                   LucideIcons.chevronRight,
                   size: 14,
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
                 ),
               ),
             ],
@@ -489,7 +797,6 @@ class _SwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
@@ -515,7 +822,8 @@ class _SwitchRow extends StatelessWidget {
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
+            activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
           ),
         ],
       ),
@@ -553,7 +861,7 @@ class _ThemeRow extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
-                  'App Appearance',
+                  AppLocalizations.of(context)!.settings_appearance,
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.1,
@@ -565,10 +873,10 @@ class _ThemeRow extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              for (final option in const [
-                ('system', 'System'),
-                ('light', 'Light'),
-                ('dark', 'Dark'),
+              for (final option in [
+                ('system', AppLocalizations.of(context)!.settings_theme_system),
+                ('light', AppLocalizations.of(context)!.settings_theme_light),
+                ('dark', AppLocalizations.of(context)!.settings_theme_dark),
               ])
                 Expanded(
                   child: Padding(
@@ -639,7 +947,7 @@ class _RecalculateButtonState extends State<_RecalculateButton> {
 
     if (currentWeight == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Log your weight first to recalculate.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.settings_log_weight_first)),
       );
       return;
     }
@@ -672,12 +980,12 @@ class _RecalculateButtonState extends State<_RecalculateButton> {
             mealNames: context.read<MealProvider>().recentMeals.map((m) => m.foodName).toList(),
             dietaryRestriction: context.read<SettingsProvider>().dietaryRestriction,
             userQuery:
-                "I just optimized my nutrition plan. Please explain why these specific calories and macros were chosen for me based on my profile.",
+                AppLocalizations.of(context)!.settings_recalculate_query,
           );
     } else if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Complete your profile first (age, gender, height, target).'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.settings_complete_profile_first),
         ),
       );
     }
@@ -685,8 +993,6 @@ class _RecalculateButtonState extends State<_RecalculateButton> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
@@ -714,7 +1020,9 @@ class _RecalculateButtonState extends State<_RecalculateButton> {
                   )
                   : const Icon(LucideIcons.sparkles, size: 20),
           label: Text(
-            _isLoading ? 'Optimizing Plan…' : 'Optimize My Nutrition Plan',
+            _isLoading 
+              ? AppLocalizations.of(context)!.settings_optimizing 
+              : AppLocalizations.of(context)!.settings_optimize_btn,
             style: AppTypography.labelLarge.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -735,28 +1043,28 @@ class _RecalculateButtonState extends State<_RecalculateButton> {
 
 class _ProfileCard extends StatelessWidget {
   final _AuthSnapshot auth;
-  const _ProfileCard({required this.auth, super.key});
+  const _ProfileCard({required this.auth});
 
   @override
   Widget build(BuildContext context) {
     final hasName = auth.displayName != null && auth.displayName!.isNotEmpty;
     final isGuest = auth.isAnonymous;
+    final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
     
     String displayName = auth.displayName ?? '';
     if (!hasName && auth.email != null) {
       displayName = auth.email!.split('@')[0];
-      // Capitalize first letter
       if (displayName.isNotEmpty) {
         displayName = displayName[0].toUpperCase() + displayName.substring(1);
       }
     }
-    if (displayName.isEmpty) displayName = 'SnapCal Member';
+    if (displayName.isEmpty) displayName = AppLocalizations.of(context)!.settings_member;
 
     return GestureDetector(
       onTap: isGuest ? () => context.push('/auth') : null,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           gradient: isGuest 
             ? LinearGradient(
@@ -764,13 +1072,21 @@ class _ProfileCard extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
-            : AppColors.wellnessGlow,
-          borderRadius: BorderRadius.circular(24),
+            : LinearGradient(
+                colors: [
+                  AppColors.primary,
+                  AppColors.primary.withValues(alpha: 0.8),
+                  const Color(0xFF064E3B),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
               color: (isGuest ? Colors.black : AppColors.primary).withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              blurRadius: 25,
+              offset: const Offset(0, 12),
             ),
           ],
         ),
@@ -778,105 +1094,118 @@ class _ProfileCard extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Positioned(
-              right: -10,
-              bottom: -10,
+              right: -15,
+              top: -15,
               child: Icon(
                 isGuest ? LucideIcons.userPlus : LucideIcons.sparkles,
-                size: 100,
-                color: Colors.white.withValues(alpha: 0.1),
+                size: 120,
+                color: Colors.white.withValues(alpha: 0.08),
               ),
             ),
             Row(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 68,
+                  height: 68,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(34),
                     child: auth.photoURL != null
                         ? Image.network(auth.photoURL!, fit: BoxFit.cover)
                         : Center(
                             child: Icon(
                               LucideIcons.user,
-                              color: AppColors.primary,
-                              size: 26,
+                              color: isGuest ? Colors.grey : AppColors.primary,
+                              size: 32,
                             ),
                           ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 20),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        isGuest ? 'Guest Account' : displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.heading3.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
+                      Row(
                         children: [
-                          if (context.select<SettingsProvider, bool>((p) => p.isPro))
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
+                          Expanded(
+                            child: Text(
+                              isGuest ? AppLocalizations.of(context)!.settings_guest_account : displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.heading3.copyWith(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'PRO',
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 10,
-                                ),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 22,
+                                letterSpacing: -0.8,
                               ),
                             ),
-                          if (isGuest)
-                            _ActionPill(
-                              label: 'Sign up or Sign in',
-                              icon: LucideIcons.userPlus,
-                              onTap: () => context.push('/auth'),
-                            )
-                          else
+                          ),
+                          if (isPro)
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
+                              margin: const EdgeInsets.only(left: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                auth.email ?? 'Premium Life',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.2,
+                                color: const Color(0xFFFCD34D).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(100),
+                                border: Border.all(
+                                  color: const Color(0xFFFCD34D).withValues(alpha: 0.5),
+                                  width: 1,
                                 ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    LucideIcons.gem,
+                                    color: Color(0xFFFCD34D),
+                                    size: 10,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'EMERALD',
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: const Color(0xFFFCD34D),
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 9,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                         ],
                       ),
+                      const SizedBox(height: 6),
+                      if (isGuest)
+                        _ActionPill(
+                          label: AppLocalizations.of(context)!.settings_auth_cta,
+                          icon: LucideIcons.userPlus,
+                          onTap: () => context.push('/auth'),
+                        )
+                      else
+                        Text(
+                          auth.email ?? 'Premium Nutrition',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -949,7 +1278,6 @@ class _CategoryRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    super.key,
   });
 
   @override
@@ -959,22 +1287,26 @@ class _CategoryRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
+                  gradient: LinearGradient(
+                    colors: [accent.withValues(alpha: 0.15), accent.withValues(alpha: 0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: accent.withValues(alpha: 0.2),
-                    width: 1,
+                    color: accent.withValues(alpha: 0.15),
+                    width: 1.5,
                   ),
                 ),
                 child: Icon(icon, color: accent, size: 22),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 18),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -982,25 +1314,34 @@ class _CategoryRow extends StatelessWidget {
                     Text(
                       title,
                       style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                        fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       subtitle,
                       style: AppTypography.labelSmall.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                LucideIcons.chevronRight,
-                size: 18,
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  LucideIcons.chevronRight,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+                ),
               ),
             ],
           ),
@@ -1011,12 +1352,12 @@ class _CategoryRow extends StatelessWidget {
 }
 
 class _BodyProfileScreen extends StatelessWidget {
-  const _BodyProfileScreen({super.key});
+  const _BodyProfileScreen();
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: 'Body Profile',
-      subtitle: 'Manage your physical metrics and goals.',
+      title: AppLocalizations.of(context)!.settings_body_profile_title,
+      subtitle: AppLocalizations.of(context)!.settings_body_profile_desc,
       scrollable: true,
       child: Column(
         children: [
@@ -1028,82 +1369,122 @@ class _BodyProfileScreen extends StatelessWidget {
                     (context, name, _) => _SettingRow(
                       icon: LucideIcons.user,
                       accent: AppColors.primary,
-                      title: 'Display Name',
-                      value: name ?? 'Set name',
+                      title: AppLocalizations.of(context)!.settings_display_name_label,
+                      value: name ?? AppLocalizations.of(context)!.settings_set_name,
                       onTap: () => _showNameDialog(context, name ?? ''),
                     ),
               ),
-              Selector<MetricsProvider, double?>(
-                selector: (_, metrics) => metrics.currentWeight,
-                builder:
-                    (context, weight, _) => _SettingRow(
-                      icon: LucideIcons.scale,
-                      accent: AppColors.primary,
-                      title: 'Current weight',
-                      value:
-                          weight != null
-                              ? '${weight.toStringAsFixed(1)} kg'
-                              : 'Set weight',
-                      onTap:
-                          () => showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) => const WeightEntryModal(),
-                          ),
+              Selector<MetricsProvider, (double?, String)>(
+                selector: (_, m) => (m.currentWeight, context.read<SettingsProvider>().weightUnit),
+                builder: (context, data, _) {
+                  double? displayWeight = data.$1;
+                  if (displayWeight != null && data.$2 == 'lb') {
+                    displayWeight = displayWeight * 2.20462;
+                  }
+                  return _SettingRow(
+                    icon: LucideIcons.scale,
+                    accent: AppColors.primary,
+                    title: AppLocalizations.of(context)!.settings_current_weight,
+                    value: displayWeight != null
+                        ? '${displayWeight.toStringAsFixed(1)} ${data.$2}'
+                        : AppLocalizations.of(context)!.settings_set_weight,
+                    onTap: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => const WeightEntryModal(),
                     ),
+                  );
+                },
               ),
-              Selector<SettingsProvider, double?>(
-                selector: (_, s) => s.height,
-                builder:
-                    (context, height, _) => _SettingRow(
-                      icon: LucideIcons.ruler,
-                      accent: AppColors.primary,
-                      title: 'Height',
-                      value:
-                          height != null
-                              ? '${height.round()} cm'
-                              : 'Set height',
-                      onTap:
-                          () => _showNumberDialog(
-                            context,
-                            title: 'Height',
-                            currentValue: height?.round() ?? 170,
-                            unit: 'cm',
-                            onSave:
-                                (value) => context
-                                    .read<SettingsProvider>()
-                                    .updateBodyProfile(
-                                      height: value.toDouble(),
-                                    ),
-                          ),
+              Selector<SettingsProvider, (double?, String)>(
+                selector: (_, s) => (s.height, s.heightUnit),
+                builder: (context, data, _) {
+                  double? displayHeight = data.$1;
+                  if (displayHeight != null && data.$2 == 'in') {
+                    displayHeight = displayHeight / 2.54;
+                  }
+                  return _SettingRow(
+                    icon: LucideIcons.ruler,
+                    accent: AppColors.primary,
+                    title: AppLocalizations.of(context)!.settings_height,
+                    value: displayHeight != null
+                        ? '${displayHeight.round()} ${data.$2}'
+                        : AppLocalizations.of(context)!.settings_set_height,
+                    onTap: () => _showNumberDialog(
+                      context,
+                      title: AppLocalizations.of(context)!.settings_height,
+                      currentValue: displayHeight?.round() ?? (data.$2 == 'in' ? 67 : 170),
+                      unit: data.$2,
+                      onSave: (value) {
+                        double cm = value.toDouble();
+                        if (data.$2 == 'in') cm = value * 2.54;
+                        return context.read<SettingsProvider>().updateBodyProfile(height: cm);
+                      },
                     ),
+                  );
+                },
               ),
-              Selector<SettingsProvider, double?>(
-                selector: (_, s) => s.targetWeight,
-                builder:
-                    (context, targetWeight, _) => _SettingRow(
-                      icon: LucideIcons.target,
-                      accent: AppColors.primary,
-                      title: 'Target weight',
-                      value:
-                          targetWeight != null
-                              ? '${targetWeight.toStringAsFixed(1)} kg'
-                              : 'Set target',
-                      onTap:
-                          () => _showNumberDialog(
-                            context,
-                            title: 'Target weight',
-                            currentValue: targetWeight?.round() ?? 70,
-                            unit: 'kg',
-                            onSave:
-                                (value) => context
-                                    .read<SettingsProvider>()
-                                    .updateBodyProfile(
-                                      targetWeight: value.toDouble(),
-                                    ),
-                          ),
+              Selector<SettingsProvider, (double?, String)>(
+                selector: (_, s) => (s.targetWeight, s.weightUnit),
+                builder: (context, data, _) {
+                  double? displayTarget = data.$1;
+                  if (displayTarget != null && data.$2 == 'lb') {
+                    displayTarget = displayTarget * 2.20462;
+                  }
+                  return _SettingRow(
+                    icon: LucideIcons.target,
+                    accent: AppColors.primary,
+                    title: AppLocalizations.of(context)!.settings_target_weight,
+                    value: displayTarget != null
+                        ? '${displayTarget.toStringAsFixed(1)} ${data.$2}'
+                        : AppLocalizations.of(context)!.settings_set_target,
+                    onTap: () => _showNumberDialog(
+                      context,
+                      title: AppLocalizations.of(context)!.settings_target_weight,
+                      currentValue: displayTarget?.round() ?? (data.$2 == 'lb' ? 154 : 70),
+                      unit: data.$2,
+                      onSave: (value) {
+                        double kg = value.toDouble();
+                        if (data.$2 == 'lb') kg = value / 2.20462;
+                        return context.read<SettingsProvider>().updateBodyProfile(targetWeight: kg);
+                      },
                     ),
+                  );
+                },
+              ),
+              Consumer<SettingsProvider>(
+                builder: (context, settings, _) => Column(
+                  children: [
+                    _SettingRow(
+                      icon: LucideIcons.calendar,
+                      accent: AppColors.primary,
+                      title: AppLocalizations.of(context)!.settings_age,
+                      value: settings.age?.toString() ?? '--',
+                      onTap: () => _showNumberDialog(
+                        context,
+                        title: AppLocalizations.of(context)!.settings_age,
+                        currentValue: settings.age ?? 25,
+                        unit: 'yrs',
+                        onSave: (value) => settings.updateBodyProfile(age: value),
+                      ),
+                    ),
+                    _SettingRow(
+                      icon: LucideIcons.userCircle,
+                      accent: AppColors.primary,
+                      title: AppLocalizations.of(context)!.settings_gender,
+                      value: settings.gender?.toUpperCase() ?? '--',
+                      onTap: () => _showGenderSelector(context, settings),
+                    ),
+                    _SettingRow(
+                      icon: LucideIcons.settings,
+                      accent: AppColors.primary,
+                      title: AppLocalizations.of(context)!.settings_units,
+                      value: '${settings.weightUnit.toUpperCase()} / ${settings.heightUnit.toUpperCase()}',
+                      onTap: () => _showUnitSelector(context, settings),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1114,11 +1495,11 @@ class _BodyProfileScreen extends StatelessWidget {
 }
 
 class _NutritionGoalsScreen extends StatelessWidget {
-  const _NutritionGoalsScreen({super.key});
+  const _NutritionGoalsScreen();
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: 'Nutrition Goals',
+      title: AppLocalizations.of(context)!.settings_nutrition_goals_title,
       scrollable: true,
       child: Column(
         children: [
@@ -1130,12 +1511,12 @@ class _NutritionGoalsScreen extends StatelessWidget {
                     (context, value, _) => _SettingRow(
                       icon: LucideIcons.flame,
                       accent: AppColors.primary,
-                      title: 'Daily calories',
+                      title: AppLocalizations.of(context)!.settings_daily_calories,
                       value: '$value kcal',
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title: 'Daily calories',
+                            title: AppLocalizations.of(context)!.settings_daily_calories,
                             currentValue: value,
                             unit: 'kcal',
                             onSave:
@@ -1151,12 +1532,12 @@ class _NutritionGoalsScreen extends StatelessWidget {
                     (context, value, _) => _SettingRow(
                       icon: LucideIcons.beef,
                       accent: AppColors.primary,
-                      title: 'Protein',
+                      title: AppLocalizations.of(context)!.settings_protein,
                       value: '${value}g',
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title: 'Protein',
+                            title: AppLocalizations.of(context)!.settings_protein,
                             currentValue: value,
                             unit: 'g',
                             onSave:
@@ -1172,12 +1553,12 @@ class _NutritionGoalsScreen extends StatelessWidget {
                     (context, value, _) => _SettingRow(
                       icon: LucideIcons.wheat,
                       accent: AppColors.primary,
-                      title: 'Carbs',
+                      title: AppLocalizations.of(context)!.settings_carbs,
                       value: '${value}g',
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title: 'Carbs',
+                            title: AppLocalizations.of(context)!.settings_carbs,
                             currentValue: value,
                             unit: 'g',
                             onSave:
@@ -1191,12 +1572,12 @@ class _NutritionGoalsScreen extends StatelessWidget {
                     (context, value, _) => _SettingRow(
                       icon: LucideIcons.droplets,
                       accent: AppColors.primary,
-                      title: 'Fat',
+                      title: AppLocalizations.of(context)!.settings_fat,
                       value: '${value}g',
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title: 'Fat',
+                            title: AppLocalizations.of(context)!.settings_fat,
                             currentValue: value,
                             unit: 'g',
                             onSave:
@@ -1216,11 +1597,11 @@ class _NutritionGoalsScreen extends StatelessWidget {
 }
 
 class _PreferencesScreen extends StatelessWidget {
-  const _PreferencesScreen({super.key});
+  const _PreferencesScreen();
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: 'Preferences',
+      title: AppLocalizations.of(context)!.settings_preferences_title,
       scrollable: true,
       child: Column(
         children: [
@@ -1232,7 +1613,7 @@ class _PreferencesScreen extends StatelessWidget {
                     (context, value, _) => _SwitchRow(
                       icon: LucideIcons.bell,
                       accent: AppColors.primary,
-                      title: 'Notifications',
+                      title: AppLocalizations.of(context)!.settings_notifications,
                       value: value,
                       onChanged:
                           context.read<SettingsProvider>().toggleNotifications,
@@ -1244,15 +1625,48 @@ class _PreferencesScreen extends StatelessWidget {
                     (context, value, _) => _SwitchRow(
                       icon: LucideIcons.clock3,
                       accent: AppColors.primary,
-                      title: 'Meal reminders',
+                      title: AppLocalizations.of(context)!.settings_meal_reminders,
                       value: value,
                       onChanged:
                           context.read<SettingsProvider>().toggleMealReminders,
                     ),
               ),
-              Selector<SettingsProvider, String>(
-                selector: (_, s) => s.themeMode,
-                builder: (context, mode, _) => _ThemeRow(currentMode: mode),
+              Consumer<SettingsProvider>(
+                builder: (context, settings, _) => Column(
+                  children: [
+                    _ThemeRow(currentMode: settings.themeMode),
+                    _SettingRow(
+                      icon: LucideIcons.languages,
+                      accent: AppColors.primary,
+                      title: AppLocalizations.of(context)!.settings_language,
+                      value: _getLanguageName(settings.languageCode),
+                      onTap: () => _showLanguageSelector(context, settings),
+                    ),
+                    if (settings.mealRemindersEnabled) ...[
+                      _SettingRow(
+                        icon: LucideIcons.egg,
+                        accent: AppColors.primary,
+                        title: AppLocalizations.of(context)!.settings_breakfast_time,
+                        value: settings.breakfastTime,
+                        onTap: () => _selectTime(context, settings, 'breakfast'),
+                      ),
+                      _SettingRow(
+                        icon: LucideIcons.utensils,
+                        accent: AppColors.primary,
+                        title: AppLocalizations.of(context)!.settings_lunch_time,
+                        value: settings.lunchTime,
+                        onTap: () => _selectTime(context, settings, 'lunch'),
+                      ),
+                      _SettingRow(
+                        icon: LucideIcons.moon,
+                        accent: AppColors.primary,
+                        title: AppLocalizations.of(context)!.settings_dinner_time,
+                        value: settings.dinnerTime,
+                        onTap: () => _selectTime(context, settings, 'dinner'),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -1263,11 +1677,11 @@ class _PreferencesScreen extends StatelessWidget {
 }
 
 class _AccountScreen extends StatelessWidget {
-  const _AccountScreen({super.key});
+  const _AccountScreen();
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: 'Account',
+      title: AppLocalizations.of(context)!.settings_account_title,
       scrollable: true,
       child: Column(
         children: [
@@ -1279,8 +1693,8 @@ class _AccountScreen extends StatelessWidget {
                     (context, isPro, _) => _SettingRow(
                       icon: LucideIcons.crown,
                       accent: AppColors.warning,
-                      title: 'Subscription',
-                      value: isPro ? 'Pro active' : 'Manage plan',
+                      title: AppLocalizations.of(context)!.settings_subscription,
+                      value: isPro ? AppLocalizations.of(context)!.settings_pro_active : AppLocalizations.of(context)!.settings_manage_plan,
                       onTap: () => context.push('/paywall'),
                     ),
               ),
@@ -1293,11 +1707,11 @@ class _AccountScreen extends StatelessWidget {
                               ? LucideIcons.userPlus
                               : LucideIcons.logOut,
                       accent: isAnonymous ? AppColors.primary : AppColors.error,
-                      title: isAnonymous ? 'Create account' : 'Sign out',
+                      title: isAnonymous ? AppLocalizations.of(context)!.settings_create_account : AppLocalizations.of(context)!.common_sign_out,
                       value:
                           isAnonymous
-                              ? 'Sync your data'
-                              : 'Leave this device session',
+                              ? AppLocalizations.of(context)!.settings_sync_data_desc
+                              : AppLocalizations.of(context)!.settings_sign_out_desc,
                       onTap: () => _handleSignOut(context),
                     ),
               ),
@@ -1308,8 +1722,8 @@ class _AccountScreen extends StatelessWidget {
                   return _SettingRow(
                     icon: LucideIcons.trash2,
                     accent: AppColors.error,
-                    title: 'Delete Account',
-                    value: 'Permanently remove all data',
+                    title: AppLocalizations.of(context)!.common_delete_account,
+                    value: AppLocalizations.of(context)!.common_delete_account_confirm,
                     onTap: () => _showDeleteConfirmation(context),
                   );
                 },
@@ -1332,14 +1746,14 @@ class _AccountScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
+        title: Text(AppLocalizations.of(context)!.common_sign_out),
+        content: Text(AppLocalizations.of(context)!.common_sign_out_confirm),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppLocalizations.of(context)!.common_cancel)),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Sign Out'),
+            child: Text(AppLocalizations.of(context)!.common_sign_out),
           ),
         ],
       ),
@@ -1349,15 +1763,21 @@ class _AccountScreen extends StatelessWidget {
 
     await auth.signOut();
     if (context.mounted) {
-      // Clear all local data providers
-      await context.read<SettingsProvider>().clear();
-      await context.read<MealProvider>().clear();
-      await context.read<WaterProvider>().clear();
-      await context.read<MetricsProvider>().clear();
-      await context.read<AssistantProvider>().clear();
-      await context.read<PlannerProvider>().clear();
+      final settings = context.read<SettingsProvider>();
+      final meal = context.read<MealProvider>();
+      final water = context.read<WaterProvider>();
+      final metrics = context.read<MetricsProvider>();
+      final assistant = context.read<AssistantProvider>();
+      final planner = context.read<PlannerProvider>();
+
+      await settings.clear();
+      await meal.clear();
+      await water.clear();
+      await metrics.clear();
+      await assistant.clear();
+      await planner.clear();
       
-      context.go('/auth');
+      if (context.mounted) context.go('/auth');
     }
   }
 
@@ -1365,16 +1785,16 @@ class _AccountScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Account?'),
-        content: const Text(
-          'This action is permanent and will delete all your meal logs, weight history, and settings from our servers. This cannot be undone.',
+        title: Text(AppLocalizations.of(context)!.common_delete_account),
+        content: Text(
+          AppLocalizations.of(context)!.common_delete_account_confirm,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppLocalizations.of(context)!.common_cancel)),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Delete Permanently'),
+            child: Text(AppLocalizations.of(context)!.common_delete_permanently),
           ),
         ],
       ),
@@ -1386,15 +1806,21 @@ class _AccountScreen extends StatelessWidget {
         await auth.deleteAccount();
         
         if (context.mounted) {
-          // Clear all local data after successful deletion
-          await context.read<SettingsProvider>().clear();
-          await context.read<MealProvider>().clear();
-          await context.read<WaterProvider>().clear();
-          await context.read<MetricsProvider>().clear();
-          await context.read<AssistantProvider>().clear();
-          await context.read<PlannerProvider>().clear();
+          final settings = context.read<SettingsProvider>();
+          final meal = context.read<MealProvider>();
+          final water = context.read<WaterProvider>();
+          final metrics = context.read<MetricsProvider>();
+          final assistant = context.read<AssistantProvider>();
+          final planner = context.read<PlannerProvider>();
+
+          await settings.clear();
+          await meal.clear();
+          await water.clear();
+          await metrics.clear();
+          await assistant.clear();
+          await planner.clear();
           
-          context.go('/auth');
+          if (context.mounted) context.go('/auth');
         }
       } catch (e) {
         if (context.mounted) {
@@ -1415,7 +1841,7 @@ class _DataSyncScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: 'Data & Sync',
+      title: AppLocalizations.of(context)!.settings_data_sync_title,
       scrollable: true,
       child: Column(
         children: [
@@ -1424,8 +1850,8 @@ class _DataSyncScreen extends StatelessWidget {
               _SettingRow(
                 icon: LucideIcons.download,
                 accent: AppColors.primary,
-                title: 'Export data',
-                value: 'Download your meals & metrics',
+                title: AppLocalizations.of(context)!.settings_export_data,
+                value: AppLocalizations.of(context)!.settings_export_desc,
                 onTap: () async {
                   final mealProvider = context.read<MealProvider>();
                   final settingsProvider = context.read<SettingsProvider>();
@@ -1446,8 +1872,8 @@ class _DataSyncScreen extends StatelessWidget {
               _SettingRow(
                 icon: LucideIcons.cloud,
                 accent: AppColors.primary,
-                title: 'Cloud sync',
-                value: 'Sign in to back up your data',
+                title: AppLocalizations.of(context)!.settings_data_sync_title,
+                value: AppLocalizations.of(context)!.settings_cloud_sync_desc,
                 onTap:
                     () => Navigator.push(
                       context,
@@ -1473,7 +1899,7 @@ class _AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: 'About',
+      title: AppLocalizations.of(context)!.settings_about_title,
       scrollable: true,
       child: Column(
         children: [
@@ -1482,8 +1908,8 @@ class _AboutScreen extends StatelessWidget {
               _SettingRow(
                 icon: LucideIcons.shield,
                 accent: AppColors.primary,
-                title: 'Privacy policy',
-                value: 'How we handle your data',
+                title: AppLocalizations.of(context)!.settings_privacy,
+                value: AppLocalizations.of(context)!.settings_privacy_desc,
                 onTap:
                     () => launchUrl(
                       Uri.parse('https://snapcal.app/privacy'),
@@ -1493,8 +1919,8 @@ class _AboutScreen extends StatelessWidget {
               _SettingRow(
                 icon: LucideIcons.fileText,
                 accent: AppColors.primary,
-                title: 'Terms of service',
-                value: 'Usage terms & conditions',
+                title: AppLocalizations.of(context)!.settings_terms,
+                value: AppLocalizations.of(context)!.settings_terms_desc,
                 onTap:
                     () => launchUrl(
                       Uri.parse('https://snapcal.app/terms'),
@@ -1504,7 +1930,7 @@ class _AboutScreen extends StatelessWidget {
               _SettingRow(
                 icon: LucideIcons.sparkles,
                 accent: AppColors.primary,
-                title: 'About SnapCal',
+                title: AppLocalizations.of(context)!.settings_about_app,
                 value: 'v1.0.0',
                 onTap:
                     () => showAboutDialog(
@@ -1512,7 +1938,7 @@ class _AboutScreen extends StatelessWidget {
                       applicationName: 'SnapCal',
                       applicationVersion: '1.0.0',
                       applicationLegalese:
-                          '© 2026 SnapCal. All rights reserved.',
+                          AppLocalizations.of(context)!.settings_legalese,
                     ),
               ),
             ],
@@ -1524,7 +1950,7 @@ class _AboutScreen extends StatelessWidget {
 }
 
 class _UpgradeProCard extends StatelessWidget {
-  const _UpgradeProCard({super.key});
+  const _UpgradeProCard();
 
   @override
   Widget build(BuildContext context) {
@@ -1568,14 +1994,14 @@ class _UpgradeProCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Upgrade to Pro',
+                    AppLocalizations.of(context)!.settings_upgrade_pro,
                     style: AppTypography.heading3.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   Text(
-                    'Unlock unlimited scans & AI coach',
+                    AppLocalizations.of(context)!.settings_upgrade_desc,
                     style: AppTypography.labelSmall.copyWith(
                       color: Colors.white.withValues(alpha: 0.9),
                       fontWeight: FontWeight.w700,

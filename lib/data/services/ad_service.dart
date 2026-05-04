@@ -21,10 +21,7 @@ class AdService {
 
   /// Returns the correct banner ad unit ID based on platform and build mode.
   static String get bannerAdUnitId {
-    if (kDebugMode) {
-      // Always use test ads during development to avoid policy violations
-      return Platform.isAndroid ? _testBannerAndroid : _testBannerIos;
-    }
+    // Forced to production as requested by user
     return _prodBannerAndroid;
   }
 

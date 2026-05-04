@@ -5,13 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../core/services/preload_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../core/utils/responsive_utils.dart';
 import '../../data/models/meal.dart';
-import '../../data/services/connectivity_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -74,12 +74,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final streak = context.select<SettingsProvider, int>((p) => p.currentStreak);
     final user = context.select<AuthProvider, User?>((p) => p.user);
     final isAnonymous = context.select<AuthProvider, bool>((p) => p.isAnonymous);
-    final isOnline = context.select<ConnectivityService, bool>((p) => p.isOnline);
     final recentMeals = context.select<MealProvider, List<Meal>>((p) => p.recentMeals);
 
-    final name = user?.displayName?.split(' ').first ?? user?.email?.split('@').first ?? 'Friend';
+    final l10n = AppLocalizations.of(context)!;
+    final name = user?.displayName?.split(' ').first ?? user?.email?.split('@').first ?? l10n.home_default_name;
     final size = Responsive.size(context) == ScreenSize.small ? 160.0 : 190.0;
-    final timeOfDay = _getTimeOfDay();
+    final greeting = _getGreeting(l10n);
 
     return AppPageScaffold(
       title: '',
@@ -88,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Good $timeOfDay,',
+            '$greeting,',
             style: AppTypography.titleSmall.copyWith(
               color: context.textSecondaryColor, 
               fontWeight: FontWeight.w600,
@@ -166,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const SizedBox(height: 4),
 
           // 1: Today Labels
-          _staggeredSlide(_itemAnims[1], const SectionLabel(title: 'Today at a glance')),
+          _staggeredSlide(_itemAnims[1], SectionLabel(title: l10n.home_calories_remaining)),
           const SizedBox(height: 2),
 
           // 2: Metric Tiles
@@ -176,9 +176,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               children: [
                 Expanded(
                   child: MetricTile(
-                    label: 'Goal',
+                    label: l10n.home_metric_goal,
                     value: '$calorieGoal kcal',
-                    hint: 'Daily target',
+                    hint: l10n.home_metric_goal_hint,
                     accent: AppColors.primary,
                     icon: LucideIcons.flame,
                   ),
@@ -186,9 +186,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 const SizedBox(width: 12),
                 Expanded(
                   child: MetricTile(
-                    label: 'Meals',
+                    label: l10n.home_metric_meals,
                     value: '${context.select<MealProvider, int>((p) => p.todaysMealCount)}',
-                    hint: 'Logged today',
+                    hint: l10n.home_metric_meals_hint,
                     accent: AppColors.carbs,
                     icon: LucideIcons.utensils,
                   ),
@@ -199,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const SizedBox(height: 10),
 
           // 3: Macros Label
-          _staggeredSlide(_itemAnims[3], const SectionLabel(title: 'Macros')),
+          _staggeredSlide(_itemAnims[3], SectionLabel(title: l10n.home_section_macros)),
           const SizedBox(height: 6),
 
           // 4: Macro Cards
@@ -208,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Row(
               children: [
                 MacroCard(
-                  label: 'Protein',
+                  label: AppLocalizations.of(context)!.result_protein,
                   consumed: macros.protein,
                   goal: context.select<SettingsProvider, int>((p) => p.dailyProteinGoal),
                   color: AppColors.protein,
@@ -216,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(width: 10),
                 MacroCard(
-                  label: 'Carbs',
+                  label: AppLocalizations.of(context)!.result_carbs,
                   consumed: macros.carbs,
                   goal: context.select<SettingsProvider, int>((p) => p.dailyCarbGoal),
                   color: AppColors.carbs,
@@ -224,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(width: 10),
                 MacroCard(
-                  label: 'Fat',
+                  label: AppLocalizations.of(context)!.result_fat,
                   consumed: macros.fat,
                   goal: context.select<SettingsProvider, int>((p) => p.dailyFatGoal),
                   color: AppColors.fat,
@@ -238,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const SizedBox(height: 16),
 
           // 5: Quick Actions
-          _staggeredSlide(_itemAnims[5], const SectionLabel(title: 'Quick actions')),
+          _staggeredSlide(_itemAnims[5], SectionLabel(title: l10n.home_section_actions)),
           const SizedBox(height: 6),
           _staggeredSlide(
             _itemAnims[5],
@@ -248,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               children: [
                 ActionChipButton(
                   icon: LucideIcons.camera,
-                  label: 'Snap a meal',
+                  label: l10n.snap_log_meal,
                   onTap: () {
                     HapticFeedback.mediumImpact();
                     context.go('/snap');
@@ -256,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 ActionChipButton(
                   icon: LucideIcons.clipboardList,
-                  label: 'Open log',
+                  label: l10n.home_action_log,
                   onTap: () {
                     HapticFeedback.lightImpact();
                     context.go('/log');
@@ -264,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 ActionChipButton(
                   icon: LucideIcons.barChart3,
-                  label: 'See reports',
+                  label: l10n.home_action_reports,
                   onTap: () {
                     HapticFeedback.lightImpact();
                     context.go('/reports');
@@ -286,13 +286,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Create an account to sync your progress.',
+                        l10n.home_sync_prompt,
                         style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurface),
                       ),
                     ),
                     TextButton(
                       onPressed: () => AuthModal.show(context),
-                      child: const Text('Save'),
+                      child: Text(l10n.common_save),
                     ),
                   ],
                 ),
@@ -301,16 +301,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
 
           const SizedBox(height: 12),
-          _staggeredSlide(_itemAnims[7], const SectionLabel(title: 'Recent meals')),
+          _staggeredSlide(_itemAnims[7], SectionLabel(title: l10n.home_recent_meals)),
           const SizedBox(height: 6),
           _staggeredSlide(
             _itemAnims[7],
             recentMeals.isEmpty
                 ? AppEmptyState(
                     icon: LucideIcons.camera,
-                    title: 'No meals logged yet',
-                    body: 'Start with one quick snap.',
-                    actionLabel: 'Snap first meal',
+                    title: l10n.home_no_meals_title,
+                    body: l10n.home_no_meals_body,
+                    actionLabel: l10n.snap_log_meal,
                     onAction: () => context.go('/snap'),
                   )
                 : Column(
@@ -325,11 +325,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  String _getTimeOfDay() {
+  String _getGreeting(AppLocalizations l10n) {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'morning';
-    if (hour < 17) return 'afternoon';
-    return 'evening';
+    if (hour < 12) return l10n.home_greeting_morning;
+    if (hour < 17) return l10n.home_greeting_afternoon;
+    return l10n.home_greeting_evening;
   }
 }
 
@@ -373,7 +373,7 @@ class _StreakBadge extends StatelessWidget {
           Icon(LucideIcons.flame, color: colorScheme.primary, size: 14),
           const SizedBox(width: 6),
           Text(
-            '$streak Day Streak',
+            AppLocalizations.of(context)!.home_streak_days(streak),
             style: AppTypography.labelMedium.copyWith(
               color: colorScheme.onPrimaryContainer,
               fontWeight: FontWeight.w700,

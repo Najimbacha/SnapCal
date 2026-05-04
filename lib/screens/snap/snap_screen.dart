@@ -1,16 +1,14 @@
-import 'dart:ui';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/utils/responsive_utils.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/gemini_service.dart';
 import '../../providers/meal_provider.dart';
@@ -22,6 +20,7 @@ import 'widgets/food_frame_guide.dart';
 import 'widgets/multi_result_sheet.dart';
 import 'widgets/result_modal.dart';
 import 'widgets/shutter_button.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../data/services/scan_gate_service.dart';
 import '../../data/services/camera_service.dart';
 import '../../router.dart';
@@ -70,7 +69,7 @@ class _SnapScreenState extends State<SnapScreen>
       routeObserver.subscribe(this, modalRoute as ModalRoute<dynamic>);
     }
 
-    final tickerActive = TickerMode.of(context);
+    final tickerActive = TickerMode.valuesOf(context).enabled;
     if (_isTickerActive != tickerActive) {
       _isTickerActive = tickerActive;
       if (!tickerActive) {
@@ -93,6 +92,7 @@ class _SnapScreenState extends State<SnapScreen>
     WidgetsBinding.instance.removeObserver(this);
     _focusAnimController?.dispose();
     _controller.dispose();
+    CameraService().stop(); // Stop camera when leaving the screen
     super.dispose();
   }
 
@@ -120,6 +120,7 @@ class _SnapScreenState extends State<SnapScreen>
   }
 
   void _showResultModal() {
+    if (!mounted) return;
     final results = _controller.analysisResults;
 
     if (results != null && results.length > 1) {
@@ -152,6 +153,7 @@ class _SnapScreenState extends State<SnapScreen>
   }
 
   void _showManualInputModal() {
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -191,7 +193,7 @@ class _SnapScreenState extends State<SnapScreen>
 
     // 4. Perform database work in background
     await mealProvider.addMeal(
-      foodName: name.isEmpty ? 'Unknown Food' : name,
+      foodName: name.isEmpty ? AppLocalizations.of(context)!.log_unknown_food : name,
       calories: calories,
       protein: protein,
       carbs: carbs,
@@ -199,7 +201,6 @@ class _SnapScreenState extends State<SnapScreen>
       portion: portion,
       settings: settingsProvider,
     );
-    await settingsProvider.updateStreakOnMealLog();
     
     // 5. Reset camera controller state for next time
     _controller.reset();
@@ -227,7 +228,7 @@ class _SnapScreenState extends State<SnapScreen>
 
     for (final item in selectedItems) {
       await mealProvider.addMeal(
-        foodName: item.foodName.isEmpty ? 'Unknown Food' : item.foodName,
+        foodName: item.foodName.isEmpty ? AppLocalizations.of(context)!.log_unknown_food : item.foodName,
         calories: item.calories,
         protein: item.protein,
         carbs: item.carbs,
@@ -236,8 +237,6 @@ class _SnapScreenState extends State<SnapScreen>
         settings: settingsProvider,
       );
     }
-    
-    await settingsProvider.updateStreakOnMealLog();
     _controller.reset();
   }
 
@@ -257,6 +256,7 @@ class _SnapScreenState extends State<SnapScreen>
                       onBarcodeDetected:
                           (code) => controller.handleBarcodeDetected(
                             code,
+                            context: context,
                             settingsProvider: context.read<SettingsProvider>(),
                             onShowPaywall: _showPaywall,
                             onShowResult: _showResultModal,
@@ -282,16 +282,21 @@ class _SnapScreenState extends State<SnapScreen>
                         _focusAnimController?.reset();
                         _focusAnimController?.forward();
                       },
-                      child: CameraPreview(controller.cameraController!),
+                      child: (controller.cameraController?.value.isInitialized ?? false)
+                          ? CameraPreview(
+                              controller.cameraController!,
+                              key: ObjectKey(controller.cameraController),
+                            )
+                          : const _CameraShimmerSkeleton(),
                     ),
                   )
                 else if (controller.errorMessage != null)
                   Positioned.fill(
                     child: _StatePanel(
                       icon: LucideIcons.cameraOff,
-                      title: 'Camera unavailable',
+                      title: AppLocalizations.of(context)!.error_camera,
                       body: controller.errorMessage!,
-                      actionLabel: 'Retry',
+                      actionLabel: AppLocalizations.of(context)!.assistant_retry,
                       onAction: _controller.initializeCamera,
                     ),
                   )
@@ -395,9 +400,10 @@ class _SnapScreenState extends State<SnapScreen>
                             children: [
                               _controlButton(
                                 icon: LucideIcons.image,
-                                label: 'Gallery',
+                                label: AppLocalizations.of(context)!.snap_gallery,
                                 onTap:
                                     () => controller.pickFromGallery(
+                                      context: context,
                                       mealProvider:
                                           context.read<MealProvider>(),
                                       settingsProvider:
@@ -412,6 +418,7 @@ class _SnapScreenState extends State<SnapScreen>
                               ShutterButton(
                                 onPressed:
                                     () => controller.captureAndAnalyze(
+                                      context: context,
                                       mealProvider:
                                           context.read<MealProvider>(),
                                       settingsProvider:
@@ -426,7 +433,7 @@ class _SnapScreenState extends State<SnapScreen>
                               ),
                               _controlButton(
                                 icon: LucideIcons.scan,
-                                label: 'Barcode',
+                                label: AppLocalizations.of(context)!.snap_barcode,
                                 onTap:
                                     () => controller.isScanningBarcode = true,
                               ),
@@ -510,7 +517,7 @@ class _SnapScreenState extends State<SnapScreen>
             ),
           ),
           child: Text(
-            settingsProvider.isPro ? '∞ Pro' : '$scanCount/3',
+            settingsProvider.isPro ? AppLocalizations.of(context)!.snap_pro_unlimited : '$scanCount/3',
             style: AppTypography.labelSmall.copyWith(
               color: settingsProvider.isPro ? const Color(0xFF10B981) : Colors.white,
               fontWeight: FontWeight.w700,
@@ -555,12 +562,13 @@ class _SnapScreenState extends State<SnapScreen>
   }
 
   Widget _statusText() {
+    final l10n = AppLocalizations.of(context)!;
     return Consumer<ConnectivityService>(
       builder: (context, connectivity, _) {
         return Text(
           connectivity.isOnline
-              ? 'Center the food inside the guide.'
-              : 'Offline: AI analysis unavailable.',
+              ? l10n.snap_align_food
+              : l10n.snap_offline_error,
           textAlign: TextAlign.center,
           style: AppTypography.labelLarge.copyWith(
             color: connectivity.isOnline ? Colors.white70 : AppColors.error,

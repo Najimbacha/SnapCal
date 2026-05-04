@@ -11,6 +11,7 @@ import '../../data/services/connectivity_service.dart';
 import '../../data/services/scan_gate_service.dart';
 
 import '../../data/services/camera_service.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class SnapController extends ChangeNotifier {
   bool _isCapturing = false;
@@ -26,12 +27,9 @@ class SnapController extends ChangeNotifier {
   final BarcodeService _barcodeService = BarcodeService();
 
   SnapController() {
-    // Listen to camera service changes so the UI rebuilds when 
-    // initialization finishes or flash mode changes.
     CameraService().addListener(notifyListeners);
   }
 
-  // Getters
   CameraController? get cameraController => CameraService().controller;
   bool get isInitialized => CameraService().isInitialized;
   bool get isCapturing => _isCapturing;
@@ -40,7 +38,6 @@ class SnapController extends ChangeNotifier {
   FlashMode get flashMode => _flashMode;
   Uint8List? get capturedImageBytes => _capturedImageBytes;
   List<NutritionResult>? get analysisResults => _analysisResults;
-  /// Backward-compat: first result for single-item flows
   NutritionResult? get analysisResult => _analysisResults?.isNotEmpty == true ? _analysisResults!.first : null;
   String? get errorMessage => _errorMessage;
 
@@ -48,8 +45,6 @@ class SnapController extends ChangeNotifier {
     if (_isScanningBarcode == value) return;
     _isScanningBarcode = value;
     
-    // Safety: Ensure hardware is released when switching to barcode
-    // and re-initialized when coming back to food scanner.
     if (_isScanningBarcode) {
       CameraService().stop();
     } else {
@@ -59,7 +54,6 @@ class SnapController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Cycle flash mode: off → auto → always → torch → off
   Future<void> toggleFlash() async {
     final modes = [
       FlashMode.off,
@@ -76,7 +70,6 @@ class SnapController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Tap-to-focus: set focus and exposure point on the camera
   Future<void> setFocusPoint(Offset point) async {
     try {
       final ctrl = CameraService().controller;
@@ -98,11 +91,11 @@ class SnapController extends ChangeNotifier {
   @override
   void dispose() {
     CameraService().removeListener(notifyListeners);
-    // We don't dispose the global CameraService here to keep it warmed up
     super.dispose();
   }
 
   Future<void> captureAndAnalyze({
+    required BuildContext context,
     required MealProvider mealProvider,
     required SettingsProvider settingsProvider,
     required ConnectivityService connectivity,
@@ -110,9 +103,11 @@ class SnapController extends ChangeNotifier {
     required Function() onShowResult,
     required Function() onShowManualInput,
   }) async {
+    if (_isCapturing || _isAnalyzing) return;
+
     if (!connectivity.isOnline) {
       HapticFeedback.vibrate();
-      _errorMessage = 'Working offline. AI analysis requires internet.';
+      _errorMessage = AppLocalizations.of(context)!.snap_offline_error;
       notifyListeners();
       return;
     }
@@ -132,68 +127,51 @@ class SnapController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    // Increment count because we are starting the AI scan process
     await ScanGateService().incrementScanCount();
 
     try {
-      final timer = Stopwatch()..start();
-      
       final XFile imageFile = await CameraService().controller!.takePicture();
-      final capturedTime = timer.elapsedMilliseconds;
-      debugPrint('📸 SnapController: Captured in ${capturedTime}ms');
-      
       final bytes = await imageFile.readAsBytes();
-      final readTime = timer.elapsedMilliseconds - capturedTime;
-      debugPrint('📂 SnapController: Read in ${readTime}ms');
-
-      // Async Compression
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
-      final compressTime = timer.elapsedMilliseconds - (capturedTime + readTime);
-      debugPrint('🗜️ SnapController: Compressed in ${compressTime}ms');
       
       _isCapturing = false;
       _isAnalyzing = true;
       notifyListeners();
 
       try {
-        debugPrint('🧠 SnapController: Starting AI Analysis...');
-        
-        // 1. Check Cache first
         final cached = mealProvider.getCachedAnalysis(_capturedImageBytes!);
         if (cached != null) {
-          debugPrint('♻️ SnapController: Using cached analysis results');
           _analysisResults = cached;
         } else {
-          // 2. Perform AI Scan
-          final aiStartTime = timer.elapsedMilliseconds;
           _analysisResults = await _geminiService.analyzeFood(
             _capturedImageBytes!,
+            language: settingsProvider.languageCode,
           );
-          final aiDuration = timer.elapsedMilliseconds - aiStartTime;
-          debugPrint('✅ SnapController: AI finished in ${aiDuration}ms');
-          
-          // 3. Store in cache
           mealProvider.cacheAnalysis(_capturedImageBytes!, _analysisResults!);
         }
         
         _isAnalyzing = false;
         notifyListeners();
         onShowResult();
-      } on GeminiException catch (e) {
+      } on GeminiException catch (_) {
         _isAnalyzing = false;
-        _errorMessage = 'AI logic check: ${e.message}';
+        if (!context.mounted) return;
+        _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
         notifyListeners();
         onShowManualInput();
       }
     } catch (e) {
       _isCapturing = false;
-      _errorMessage = 'Scan failed: ${e.toString()}';
+      _isAnalyzing = false;
+      if (!context.mounted) return;
+      _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
       notifyListeners();
       onShowManualInput();
     }
   }
 
   Future<void> pickFromGallery({
+    required BuildContext context,
     required MealProvider mealProvider,
     required SettingsProvider settingsProvider,
     required ConnectivityService connectivity,
@@ -201,9 +179,11 @@ class SnapController extends ChangeNotifier {
     required Function() onShowResult,
     required Function() onShowManualInput,
   }) async {
+    if (_isAnalyzing) return;
+
     if (!connectivity.isOnline) {
       HapticFeedback.vibrate();
-      _errorMessage = 'AI analysis requires internet connection.';
+      _errorMessage = AppLocalizations.of(context)!.snap_offline_error;
       notifyListeners();
       return;
     }
@@ -232,42 +212,48 @@ class SnapController extends ChangeNotifier {
       notifyListeners();
 
       await ScanGateService().incrementScanCount();
-
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
 
       try {
         _analysisResults = await _geminiService.analyzeFood(
           _capturedImageBytes!,
+          language: settingsProvider.languageCode,
         );
         _isAnalyzing = false;
         notifyListeners();
         onShowResult();
-      } on GeminiException catch (e) {
+      } on GeminiException catch (_) {
         _isAnalyzing = false;
-        _errorMessage = e.message;
+        if (!context.mounted) return;
+        _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
         notifyListeners();
         onShowManualInput();
       }
     } catch (e) {
-      _errorMessage = 'Failed to pick image';
+      _isAnalyzing = false;
+      if (!context.mounted) return;
+      _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
       notifyListeners();
     }
   }
 
   Future<void> handleBarcodeDetected(
     String code, {
+    required BuildContext context,
     required SettingsProvider settingsProvider,
     required Function() onShowPaywall,
     required Function() onShowResult,
     required Function() onShowManualInput,
   }) async {
+    if (_isAnalyzing) return;
+
     if (!ScanGateService().canScan(settingsProvider.isPro)) {
       isScanningBarcode = false;
       onShowPaywall();
       return;
     }
 
-    isScanningBarcode = false; // Use setter to restart camera
+    isScanningBarcode = false;
     _isAnalyzing = true;
     _errorMessage = null;
     notifyListeners();
@@ -283,13 +269,15 @@ class SnapController extends ChangeNotifier {
         onShowResult();
       } else {
         _isAnalyzing = false;
-        _errorMessage = "Product not found. Try manual entry.";
+        if (!context.mounted) return;
+        _errorMessage = AppLocalizations.of(context)!.error_barcode_not_found;
         notifyListeners();
         onShowManualInput();
       }
     } catch (e) {
       _isAnalyzing = false;
-      _errorMessage = "Barcode error: $e";
+      if (!context.mounted) return;
+      _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
       notifyListeners();
       onShowManualInput();
     }
@@ -299,6 +287,8 @@ class SnapController extends ChangeNotifier {
     _capturedImageBytes = null;
     _analysisResults = null;
     _errorMessage = null;
+    _isAnalyzing = false;
+    _isCapturing = false;
     notifyListeners();
   }
 

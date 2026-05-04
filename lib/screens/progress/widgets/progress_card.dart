@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
@@ -48,11 +49,11 @@ class ProgressCard extends StatelessWidget {
           Row(
             children: [
               if (metric.photoFrontPath != null)
-                Expanded(child: _PhotoThumbnail(path: metric.photoFrontPath!, label: 'Front')),
+                Expanded(child: _PhotoThumbnail(path: metric.photoFrontPath!, label: AppLocalizations.of(context)!.progress_front)),
               if (metric.photoFrontPath != null && metric.photoSidePath != null)
                 const SizedBox(width: 12),
               if (metric.photoSidePath != null)
-                Expanded(child: _PhotoThumbnail(path: metric.photoSidePath!, label: 'Side')),
+                Expanded(child: _PhotoThumbnail(path: metric.photoSidePath!, label: AppLocalizations.of(context)!.progress_side)),
             ],
           ),
           if (onCompare != null) ...[
@@ -60,7 +61,7 @@ class ProgressCard extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onCompare,
               icon: const Icon(LucideIcons.slidersHorizontal, size: 16),
-              label: const Text('Compare with previous'),
+              label: Text(AppLocalizations.of(context)!.progress_compare_previous),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(44),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

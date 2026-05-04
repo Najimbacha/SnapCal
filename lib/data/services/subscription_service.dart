@@ -71,7 +71,11 @@ class SubscriptionService {
   }
 
   void _processCustomerInfo(CustomerInfo customerInfo) {
-    final isActive = customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
+    bool isActive = customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
+    
+    // Pro status is derived solely from RevenueCat entitlements
+
+    
     debugPrint("🏆 Pro Entitlement Active: $isActive");
     _settingsRepository?.updateProStatus(isActive);
   }
@@ -87,9 +91,8 @@ class SubscriptionService {
 
   Future<bool> purchasePackage(Package package) async {
     try {
-      final purchaseResult = await Purchases.purchasePackage(package);
-      final customerInfo = purchaseResult.customerInfo;
-      final isActive = customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
+      final purchaseResult = await Purchases.purchase(PurchaseParams.package(package));
+      final isActive = purchaseResult.customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
       await _settingsRepository?.updateProStatus(isActive);
       return isActive;
     } catch (e) {

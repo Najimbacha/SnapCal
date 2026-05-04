@@ -1,0 +1,665 @@
+{
+  "@@locale": "en",
+  "appTitle": "SnapCal",
+  "@appTitle": {
+    "description": "The name of the application"
+  },
+  "ads_label": "ADVERTISEMENT",
+  "ads_remove_prompt": "Remove ads — Go Pro",
+  
+  "common_save": "Save",
+  "common_cancel": "Cancel",
+  "common_delete": "Delete",
+  "common_edit": "Edit",
+  "common_skip": "Skip",
+  "common_next": "Next",
+  "common_back": "Back",
+  "common_done": "Done",
+  "common_loading": "Loading...",
+  "common_offline_mode": "Offline Mode",
+  "error_scan_failed": "Scan failed. Please try again or enter manually.",
+  "error_barcode_not_found": "Product not found. Please try manual entry.",
+  "nav_home": "Home",
+  "nav_log": "Log",
+  "nav_stats": "Stats",
+  "nav_profile": "Profile",
+  
+  "home_greeting_morning": "Good Morning",
+  "home_greeting_afternoon": "Good Afternoon",
+  "home_greeting_evening": "Good Evening",
+  "home_calories_remaining": "Calories remaining",
+  "home_calories_eaten": "Eaten",
+  "home_calories_burned": "Burned",
+  "home_water_title": "Water Intake",
+  "home_water_goal": "Goal: {goal}ml",
+  "@home_water_goal": {
+    "placeholders": {
+      "goal": {
+        "type": "int"
+      }
+    }
+  },
+  "home_recent_meals": "Recent Meals",
+  "home_view_all": "View All",
+  "home_streak_days": "{count} Day Streak",
+  "@home_streak_days": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "home_section_macros": "Macros",
+  "home_section_actions": "Quick actions",
+  "home_action_log": "Open log",
+  "home_action_reports": "See reports",
+  "home_sync_prompt": "Create an account to sync your progress.",
+  
+  "log_title": "Daily Log",
+  "log_subtitle": "Track your nutrition journey",
+  "log_entries": "ENTRIES",
+  "log_total_kcal": "TOTAL KCAL",
+  "log_history": "MEAL HISTORY",
+  "log_no_entries_today": "No logs today",
+  "log_no_entries_history": "Empty history",
+  "log_track_prompt": "Track your meals to see them here.",
+  "log_no_data_prompt": "There is no data for this day.",
+  "log_add_manually": "Add Manually",
+  "log_removed_snackbar": "{food} removed",
+  "@log_removed_snackbar": {
+    "placeholders": {
+      "food": {
+        "type": "String"
+      }
+    }
+  },
+
+  "assistant_title": "AI Coach",
+  "assistant_status": "Always active",
+  "assistant_initial_prompt": "How can I help you today?",
+  "assistant_initial_body": "Your personal SnapCal coach is ready to assist with recipes, goals, and nutrition advice.",
+  "assistant_preparing": "Preparing your wellness journey...",
+  "assistant_input_hint": "Type a message...",
+  "assistant_input_listening": "Listening...",
+  "assistant_needs_connection": "Assistant needs connection.",
+  "assistant_clear_title": "Clear Chat?",
+  "assistant_clear_body": "This will delete your conversation history with the coach.",
+  "assistant_clear_confirm": "Clear",
+  "assistant_starter_meal_title": "Meal Ideas",
+  "assistant_starter_meal_desc": "High-protein dinners",
+  "assistant_starter_cal_title": "Calorie Check",
+  "assistant_starter_cal_desc": "How am I doing today?",
+  "assistant_starter_tips_title": "Tips",
+  "assistant_starter_tips_desc": "Curbing late-night cravings",
+  "assistant_starter_plans_title": "Plans",
+  "assistant_starter_plans_desc": "Create a 3-day meal plan",
+  
+  "premium_welcome": "Welcome to SnapCal Pro! 🎉",
+  "premium_restore_success": "Purchases Restored! 🎉",
+  "premium_restore_empty": "No previous purchases found.",
+  "premium_restore_fail": "Failed to restore purchases.",
+  "premium_plan_yearly": "Yearly",
+  "premium_plan_6months": "6 Months",
+  "premium_plan_3months": "3 Months",
+  "premium_plan_2months": "2 Months",
+  "premium_plan_monthly": "Monthly",
+  "premium_plan_weekly": "Weekly",
+  "premium_plan_lifetime": "Lifetime",
+  "premium_per_month": "/mo",
+  "premium_free_trial": "free trial",
+  "premium_start_trial": "Start Free Trial",
+  "premium_start_plan": "Start {plan} — {price}",
+  "premium_loading": "Loading...",
+  "@premium_start_plan": {
+    "placeholders": {
+      "plan": { "type": "String" },
+      "price": { "type": "String" }
+    }
+  },
+  
+  "snap_align_food": "Align food in the frame",
+  "snap_analyzing": "Analyzing your meal...",
+  "snap_retake": "Retake",
+  "snap_log_meal": "Log this meal",
+  
+  "result_energy": "Energy",
+  "result_protein": "Protein",
+  "result_carbs": "Carbs",
+  "result_fat": "Fat",
+  "result_portion": "Portion Size",
+  "result_save_success": "Meal logged successfully!",
+  "result_health": "HEALTH",
+  "result_kcal": "KCAL",
+  "result_macronutrients": "MACRONUTRIENTS",
+  "result_logging_portion": "LOGGING PORTION",
+  "result_ai_estimate": "{percent}% of AI estimate",
+  "@result_ai_estimate": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "result_daily_goal_info": "This meal is {percent}% of your daily energy goal.",
+  "@result_daily_goal_info": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  
+  "planner_title": "Meal Planner",
+  "planner_smart_title": "Smart Planner",
+  "planner_empty_state": "No plan for today",
+  "planner_generate": "Generate AI Plan",
+  "planner_daily_goal": "Daily Goal",
+  "planner_tab_weekly": "Weekly Plan",
+  "planner_tab_grocery": "Grocery List",
+  "planner_day_mon": "Mon",
+  "planner_day_tue": "Tue",
+  "planner_day_wed": "Wed",
+  "planner_day_thu": "Thu",
+  "planner_day_fri": "Fri",
+  "planner_day_sat": "Sat",
+  "planner_day_sun": "Sun",
+  "planner_no_meals": "No meals for {day}",
+  "planner_regenerate_day": "Regenerate {day}?",
+  "planner_grocery_empty": "No grocery list yet",
+  "planner_grocery_pro": "Grocery list is Pro",
+  "planner_share": "Share",
+  "planner_creating": "Creating your plan",
+  "planner_msg_calories": "Calculating your calorie needs...",
+  "planner_msg_meals": "Picking the best meals for your goal...",
+  "planner_msg_macros": "Balancing your macros...",
+  "planner_msg_grocery": "Building your grocery list...",
+  "planner_msg_ready": "Almost ready...",
+  
+  "error_offline": "Offline: AI analysis unavailable",
+  "error_camera": "Camera unavailable",
+  "error_generic": "Something went wrong",
+  
+  "sync_title": "Cloud Sync",
+  "sync_subtitle": "Keep your health data safe across all your devices with an account.",
+  "sync_benefit_devices": "Sync across all your devices",
+  "sync_benefit_progress": "Never lose your progress",
+  "sync_benefit_offline": "Works offline, syncs when online",
+  "sync_benefit_secure": "Your data is encrypted & secure",
+  "sync_google": "Continue with Google",
+  "sync_facebook": "Continue with Facebook",
+  "sync_email": "Sign in with Email",
+  "sync_skip": "Skip for now",
+  
+  "splash_tagline": "Snap. Track. Thrive.",
+  
+  "notif_breakfast_title": "Breakfast Reminder",
+  "notif_breakfast_body": "Time to log your healthy breakfast!",
+  "notif_lunch_title": "Lunch Reminder",
+  "notif_lunch_body": "Don't forget to track your lunch.",
+  "notif_dinner_title": "Dinner Reminder",
+  "notif_dinner_body": "End the day strong—log your dinner now.",
+  
+  "auth_title": "Your Journey\nStarts Here",
+  "auth_subtitle": "Scan, Track, and Master your nutrition in seconds.",
+  "auth_divider_email": "Or use email",
+  "auth_hint_email": "Email Address",
+  "auth_hint_password": "Password",
+  "auth_btn_signup": "Create My Account",
+  "auth_btn_signin": "Sign In with Email",
+  "auth_footer_member": "Already a member? ",
+  "auth_footer_new": "New to SnapCal? ",
+  "auth_action_signin": "Sign In",
+  "auth_action_join": "Join Now",
+  "auth_msg_success": "Login successful!",
+  "auth_msg_welcome": "Welcome back, {name}!",
+  "@auth_msg_welcome": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  
+  "result_meal_breakfast": "Breakfast",
+  "result_meal_lunch": "Lunch",
+  "result_meal_dinner": "Dinner",
+  "result_meal_snack": "Snack",
+  
+  "result_macro_power": "POWER",
+  "result_macro_energy": "ENERGY",
+  "result_macro_lean": "LEAN",
+  "common_hero": "HERO",
+  
+  "notif_goal_calories_title": "Goal Reached! 🚀",
+  "notif_goal_calories_body": "You've hit your daily calorie goal of {goal} kcal!",
+  "notif_goal_protein_title": "Protein Goal Met! 💪",
+  "notif_goal_protein_body": "Great job! You've reached your {goal}g protein target.",
+  
+  "common_confirm": "Confirm",
+  "common_save": "Save",
+  "common_save_progress": "Save progress",
+  "common_cancel": "Cancel",
+  "common_delete": "Delete",
+  "common_delete_permanently": "Delete Permanently",
+  "common_try_again": "Try Again",
+  "common_try_reload": "Try to Reload",
+  "common_sign_out": "Sign Out",
+  "common_sign_out_confirm": "Are you sure you want to sign out?",
+  "common_delete_account": "Delete Account?",
+  "common_delete_account_confirm": "This action is permanent. All your data will be lost.",
+  "common_done": "Done",
+  
+  "settings_save_name": "Save Name",
+  "settings_log_weight_first": "Log your weight first to recalculate.",
+  "settings_complete_profile_first": "Complete your profile first (age, gender, height, target).",
+  "settings_age": "Age",
+  "settings_gender": "Gender",
+  "settings_units": "Units",
+  "settings_weight_unit": "Weight Unit",
+  "settings_height_unit": "Height Unit",
+  "settings_breakfast_time": "Breakfast Reminder",
+  "settings_lunch_time": "Lunch Reminder",
+  "settings_dinner_time": "Dinner Reminder",
+  
+  "planner_unlock_week": "Unlock full week",
+  "planner_upgrade_pro": "Upgrade to Pro",
+  "planner_regenerate": "Regenerate",
+  "planner_meal_preferences": "Meal Preferences",
+  "planner_meals_per_day": "Meals per day",
+  "planner_dietary_restriction": "Dietary restriction",
+  "planner_cuisine_style": "Cuisine style",
+  "planner_generate_plan": "Generate My Plan",
+  
+  "assistant_mic_permission": "Microphone permission is required for voice input.",
+  "assistant_added_to_diary": "Added to your diary! 🍎",
+  "assistant_plan_updated": "Plan updated: {key} is now {value}",
+  "@assistant_plan_updated": {
+    "placeholders": {
+      "key": { "type": "String" },
+      "value": { "type": "String" }
+    }
+  },
+  
+  "water_add_water": "Add Water",
+  "water_add": "Add",
+  "water_hydration": "Hydration",
+  "water_tracker": "Hydration Tracker",
+  "water_reached": "{amount} of {goal} ml reached",
+  "@water_reached": {
+    "placeholders": {
+      "amount": { "type": "int" },
+      "goal": { "type": "int" }
+    }
+  },
+  "water_custom": "Custom",
+  "water_enter_amount": "Enter amount",
+  "progress_tap_to_snap": "Tap to snap",
+  "progress_compare_previous": "Compare with previous",
+  "log_delete_meal_title": "Delete Meal Entry?",
+  "log_delete_meal_body": "This will permanently remove this meal from your diary.",
+  
+  "settings_title": "Settings",
+  "settings_display_name": "Display Name",
+  "settings_how_to_call": "How should we call you?",
+  "settings_enter_value": "Enter your {title} below",
+  "@settings_enter_value": {
+    "placeholders": {
+      "title": { "type": "String" }
+    }
+  },
+  
+  "settings_core_config": "Core Configuration",
+  "settings_data_security": "Data & Security",
+  "settings_information": "Information",
+  
+  "settings_body_profile": "Body Profile",
+  "settings_body_profile_sub": "Update your stats and goals",
+  "settings_nutrition_goals": "Nutrition Goals",
+  "settings_nutrition_goals_sub": "Daily calorie and macro targets",
+  "settings_preferences": "Preferences",
+  "settings_preferences_sub": "App theme and notification settings",
+  "settings_account": "Account",
+  "settings_account_sub": "Membership and profile security",
+  "settings_data_sync": "Data & Sync",
+  "settings_data_sync_sub": "Export and cloud backup options",
+  "settings_about": "About",
+  "settings_about_sub": "Terms, privacy, and app info",
+  
+  "report_title": "Reports",
+  "report_subtitle": "Track your long-term success",
+  "report_tab_nutrition": "Nutrition",
+  "report_tab_body": "Body",
+  "report_weekly_review": "Weekly Review",
+  "report_monthly_audit": "Monthly Audit",
+  "report_failed": "Failed to generate report",
+  
+  "paywall_welcome": "Welcome to SnapCal Pro! 🎉",
+  
+  "progress_log_progress": "Log Progress",
+  "progress_take_photos_desc": "Take photos to track your journey.",
+  "progress_front_view": "Front View",
+  "progress_side_view": "Side View",
+  "progress_saving": "Saving...",
+  "progress_save_progress": "Save Progress",
+  "progress_comparison": "Comparison",
+  "progress_weight_diff": "{diff} kg difference",
+  "@progress_weight_diff": {
+    "placeholders": {
+      "diff": { "type": "String" }
+    }
+  },
+  "progress_before": "Before",
+  "progress_after": "After",
+  "progress_missing_photos": "Missing photos for comparison.",
+  "progress_front": "Front",
+  "progress_side": "Side",
+  "progress_failed_camera": "Failed to open camera.",
+  
+  "assistant_attached_image": "Attached image",
+  "home_body_stats": "Body Stats",
+  
+  "log_edit_meal": "Edit Meal Entry",
+  "log_log_new_meal": "Log New Meal",
+  "log_food_name": "Food Name",
+  "log_portion_desc": "Portion Description",
+  "log_calories_kcal": "Calories (kcal)",
+  "log_save_entry": "Save Entry",
+  "log_delete_entry": "Delete Entry",
+  "log_food_hint": "e.g. Avocado Toast",
+  "log_protein_g": "Protein (g)",
+  "log_carbs_g": "Carbs (g)",
+  "log_fat_g": "Fat (g)",
+  "common_keep_it": "Keep it",
+  
+  "planner_target": "Target",
+  "planner_setup_desc": "Quick setup before your plan",
+  "planner_ai_disclaimer": "This plan is AI-generated for general guidance only.",
+  
+  "planner_restriction_none": "None",
+  "planner_restriction_vegetarian": "Vegetarian",
+  "planner_restriction_vegan": "Vegan",
+  "planner_restriction_gluten_free": "Gluten-free",
+  "planner_restriction_keto": "Keto",
+  "planner_restriction_halal": "Halal",
+  
+  "planner_cuisine_international": "International",
+  "planner_cuisine_south_asian": "South Asian",
+  "planner_cuisine_mediterranean": "Mediterranean",
+  "planner_cuisine_east_asian": "East Asian",
+  "planner_cuisine_american": "American",
+  "planner_cuisine_middle_eastern": "Middle Eastern",
+  
+  "snap_offline_error": "AI analysis requires internet connection.",
+  "home_metric_goal": "Goal",
+  "home_metric_meals": "Meals",
+  "home_metric_goal_hint": "Daily target",
+  "home_metric_meals_hint": "Logged today",
+  "home_no_meals_title": "No meals logged yet",
+  "home_no_meals_body": "Start with one quick snap.",
+  "home_default_name": "Friend",
+  "log_portion_hint": "e.g. 1 bowl, 200g, 1 slice",
+  "log_unknown_food": "Unknown Food",
+  "home_goal_reached": "GOAL",
+  "home_completed": "COMPLETED",
+  "home_kcal_left": "kcal left",
+  "assistant_typing": "Coach is typing...",
+  "assistant_retry": "Retry",
+  "assistant_speech_not_available": "Speech recognition not available on this device",
+  "paywall_pro_plan": "PRO PLAN",
+  "paywall_unlock_unlimited": "Unlock Unlimited",
+  "paywall_subtitle": "Experience the full power of AI nutrition coaching.",
+  "paywall_feature_unlimited": "Unlimited",
+  "paywall_feature_scans": "Daily Scans",
+  "paywall_feature_smart": "Smart",
+  "paywall_feature_plans": "Meal Plans",
+  "paywall_feature_coach": "AI Coach",
+  "paywall_feature_advice": "Proactive Advice",
+  "paywall_feature_ads": "Ad-Free",
+  "paywall_feature_no_ads": "Zero Interrupts",
+  "paywall_best_value": "BEST VALUE",
+  "paywall_restore": "Restore Purchases",
+  "paywall_purchase_failed": "Purchase failed. Please try again.",
+  "paywall_save_percent": "SAVE {percent}%",
+  "paywall_trial_title": "How your trial works",
+  "paywall_trial_today": "Today",
+  "paywall_trial_today_desc": "You get full access to all Pro features.",
+  "paywall_trial_reminder": "Day {day}",
+  "paywall_trial_reminder_desc": "We send you a reminder that your trial is ending.",
+  "paywall_trial_end": "Day {day}",
+  "paywall_trial_end_desc": "You are charged. Cancel anytime before this to avoid charges.",
+  "paywall_referral_title": "Want it for free?",
+  "paywall_referral_subtitle": "Invite friends to get bonus scans.",
+  "paywall_then": "Then {price}",
+  "settings_select_language": "Select Language",
+  "settings_language_desc": "Choose your preferred language for the interface",
+  "settings_lang_en_desc": "Default language",
+  "settings_lang_ar_desc": "Arabic (RTL Support)",
+  "settings_lang_es_desc": "Spanish",
+  "settings_lang_fr_desc": "French",
+  "settings_appearance": "App Appearance",
+  "settings_theme_system": "System",
+  "settings_theme_light": "Light",
+  "settings_theme_dark": "Dark",
+  "settings_data_sync_title": "Data & Sync",
+  "settings_export_data": "Export data",
+  "settings_export_desc": "Download your meals & metrics",
+  "settings_cloud_sync_desc": "Sign in to back up your data",
+  "settings_about_title": "About",
+  "settings_privacy": "Privacy policy",
+  "settings_privacy_desc": "How we handle your data",
+  "settings_terms": "Terms of service",
+  "settings_terms_desc": "Usage terms & conditions",
+  "settings_about_snapcal": "About SnapCal",
+  "settings_upgrade_pro": "Upgrade to Pro",
+  "settings_upgrade_desc": "Unlock unlimited scans & AI coach",
+  "planner_free_limit_body": "Free users can view Mon & Tue only.",
+  "planner_grocery_empty_body": "Generate a weekly plan first and your grocery list will appear here.",
+  "planner_grocery_pro_body": "Upgrade to view and manage your weekly grocery list.",
+  "planner_regenerate_body": "This will replace {day}'s meals with fresh options.",
+  "@planner_regenerate_body": {
+    "placeholders": {
+      "day": { "type": "String" }
+    }
+  },
+  "planner_setup_body": "Tell us your goals and we'll build a custom 7-day meal plan for you.",
+  "planner_no_meals_body": "Try regenerating this day.",
+  "report_weekly": "Weekly",
+  "report_monthly": "Monthly",
+  "onboarding_step": "STEP {current} OF {total}",
+  "@onboarding_step": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "onboarding_get_started": "Get Started",
+  "onboarding_start_journey": "Start My Journey",
+  "onboarding_continue": "Continue",
+  "onboarding_welcome_title": "Your goal.\nYour calories.\nYour pace.",
+  "onboarding_welcome_body": "Answer a few quick questions to set your personalized daily calorie target.",
+  "onboarding_basic_intro_eyebrow": "PERSONAL DETAILS",
+  "onboarding_basic_intro_title": "Set your baseline metrics.",
+  "onboarding_basic_intro_body": "We use these to calculate your resting metabolic rate (RMR).",
+  "onboarding_age": "Age",
+  "onboarding_age_suffix": "years",
+  "onboarding_gender": "Gender",
+  "onboarding_male": "Male",
+  "onboarding_female": "Female",
+  "onboarding_height": "Height",
+  "onboarding_weight_intro_eyebrow": "CURRENT STATUS",
+  "onboarding_weight_intro_title": "What do you weigh today?",
+  "onboarding_weight_intro_body": "This helps us understand your starting point.",
+  "onboarding_weight_footer": "No judgment. Every journey starts with an honest metric.",
+  "onboarding_target_intro_eyebrow": "THE TARGET",
+  "onboarding_target_intro_title": "What is your goal weight?",
+  "onboarding_target_intro_body": "We will structure your calories to hit this target within your timeline.",
+  "onboarding_target_maintain_title": "Maintain your weight",
+  "onboarding_target_maintain_body": "We will build a plan to keep your weight stable while hitting your macros.",
+  "onboarding_timeline": "Target Timeline",
+  "onboarding_months": "{count} {count, plural, =1{Month} other{Months}}",
+  "@onboarding_months": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "onboarding_activity_eyebrow": "LIFESTYLE",
+  "onboarding_activity_title": "How active are you?",
+  "onboarding_activity_body": "Be honest—this is the biggest factor in your calorie burn.",
+  "onboarding_activity_sedentary": "Sedentary",
+  "onboarding_activity_sedentary_desc": "Office job, little exercise",
+  "onboarding_activity_lightly": "Lightly Active",
+  "onboarding_activity_lightly_desc": "1-3 days of exercise/week",
+  "onboarding_activity_moderately": "Moderately Active",
+  "onboarding_activity_moderately_desc": "3-5 days of exercise/week",
+  "onboarding_activity_active": "Very Active",
+  "onboarding_activity_active_desc": "6-7 days of hard exercise/week",
+  "onboarding_result_eyebrow": "YOUR PLAN",
+  "onboarding_result_title": "Your target is ready.",
+  "onboarding_result_kcal_day": "kcal / day",
+  "onboarding_result_reach_by": "You'll reach your goal by {date}",
+  "@onboarding_result_reach_by": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "onboarding_result_pace": "Pace: {pace} {unit} / week",
+  "@onboarding_result_pace": {
+    "placeholders": {
+      "pace": { "type": "String" },
+      "unit": { "type": "String" }
+    }
+  },
+  "onboarding_error_age": "Enter an age between 13 and 100.",
+  "onboarding_error_height": "Enter a realistic height so we can calculate accurately.",
+  "onboarding_error_weight": "Enter a realistic current weight.",
+  "onboarding_error_goal_weight": "Enter a realistic goal weight.",
+  "onboarding_error_timeline": "Adjust your timeline so we can build a valid plan.",
+  "onboarding_error_generic": "We could not build your plan. Please try again.",
+  "onboarding_result_loading_eyebrow": "AI Result",
+  "onboarding_result_loading_title": "Building your calorie target.",
+  "onboarding_result_loading_body": "We are combining your baseline, activity, and goal pace into a plan that is ready to use.",
+  "onboarding_result_calibrating": "Calibrating your daily target...",
+  "onboarding_result_error_eyebrow": "CALCULATION ERROR",
+  "onboarding_result_error_title": "We could not finish your plan.",
+  "onboarding_result_error_body": "Try the last step again or adjust your inputs.",
+  "onboarding_result_success_eyebrow": "AI CALIBRATION COMPLETE",
+  "onboarding_result_success_title": "Daily target is ready.",
+  "onboarding_result_success_body": "This number is personalized for your body and target pace.",
+  "onboarding_result_minor_warning": "Minor detection. Please consult a professional before starting any calorie restriction.",
+  "onboarding_result_daily_calories": "DAILY CALORIES",
+  "onboarding_result_strategy": "Strategy",
+  "onboarding_result_recommendation": "Recommendation",
+  "onboarding_activity_desk_life": "Desk Life",
+  "onboarding_activity_desk_life_desc": "Little to no exercise",
+  "onboarding_activity_light_mover": "Light Mover",
+  "onboarding_activity_light_mover_desc": "1-3 days/week",
+  "onboarding_activity_active_title": "Active",
+  "onboarding_activity_active_desc": "3-5 days/week",
+  "onboarding_activity_athlete": "Athlete",
+  "onboarding_activity_athlete_desc": "6-7 days/week",
+  "onboarding_activity_footer": "Active is selected by default. Tap once and we will keep moving.",
+  "onboarding_feature_target": "Personal calorie target",
+  "onboarding_feature_macros": "Macro split",
+  "onboarding_feature_insight": "AI insight",
+  "planner_meal": "Meal",
+  "planner_ingredients": "Ingredients",
+  "common_mins": "mins",
+  "planner_kcal_total": "/ {goal} kcal",
+  "@planner_kcal_total": {
+    "placeholders": {
+      "goal": { "type": "int" }
+    }
+  },
+  "planner_kcal_over": "+{delta} over",
+  "@planner_kcal_over": {
+    "placeholders": {
+      "delta": { "type": "int" }
+    }
+  },
+  "planner_kcal_under": "{delta} under",
+  "@planner_kcal_under": {
+    "placeholders": {
+      "delta": { "type": "int" }
+    }
+  },
+  "planner_kcal_on_target": "On target",
+  "snap_gallery": "Gallery",
+  "snap_barcode": "Barcode",
+  "snap_pro_unlimited": "∞ Pro",
+  "snap_bento_plate": "Bento Plate",
+  "snap_items_detected": "{count} {count, plural, =1{item} other{items}} detected on your plate.",
+  "snap_total_meal": "TOTAL MEAL",
+  "snap_items_selected": "{count} {count, plural, =1{item} other{items}} selected",
+  "settings_body_profile_title": "Body Profile",
+  "settings_body_profile_desc": "Manage your physical metrics and goals.",
+  "settings_display_name_label": "Display Name",
+  "settings_set_name": "Set name",
+  "settings_current_weight": "Current weight",
+  "settings_set_weight": "Set weight",
+  "settings_height": "Height",
+  "settings_set_height": "Set height",
+  "settings_target_weight": "Target weight",
+  "settings_set_target": "Set target",
+  "settings_nutrition_goals_title": "Nutrition Goals",
+  "settings_daily_calories": "Daily calories",
+  "settings_protein": "Protein",
+  "settings_carbs": "Carbs",
+  "settings_fat": "Fat",
+  "settings_optimize_btn": "Optimize My Nutrition Plan",
+  "settings_optimizing": "Optimizing Plan...",
+  "settings_recalculate_query": "I just optimized my nutrition plan. Please explain why these specific calories and macros were chosen for me based on my profile.",
+  "settings_guest_account": "Guest Account",
+  "settings_member": "SnapCal Member",
+  "settings_auth_cta": "Sign up or Sign in",
+  "settings_preferences_title": "Preferences",
+  "settings_notifications": "Notifications",
+  "settings_meal_reminders": "Meal reminders",
+  "settings_language": "Language",
+  "settings_account_title": "Account",
+  "settings_subscription": "Subscription",
+  "settings_pro_active": "Pro active",
+  "settings_manage_plan": "Manage plan",
+  "settings_create_account": "Create account",
+  "settings_sign_out_desc": "Leave this device session",
+  "settings_sync_data_desc": "Sync your data",
+  "settings_about_app": "About SnapCal",
+  "settings_legalese": "© 2026 SnapCal. All rights reserved.",
+  "onboarding_result_maintain": "Maintain Current Weight",
+  "onboarding_result_weekly_rate": "~{rate} kg / week",
+  "@onboarding_result_weekly_rate": {
+    "placeholders": {
+      "rate": { "type": "String" }
+    }
+  },
+  "error_connection_title": "Connection Issue",
+  "error_connection_body": "Unable to initialize SnapCal. Please check your data or Wi-Fi.",
+  "error_unexpected_title": "Something went wrong",
+  "error_unexpected_body": "We encountered an unexpected error. Our team has been notified and we are working to fix it.",
+  "report_guest_user": "Valued User",
+  "report_avg_calories": "Avg. Calories",
+  "report_consistency": "Consistency",
+  "report_calorie_trend": "Calorie trend",
+  "report_macro_dist": "Macro distribution",
+  "report_macro_protein": "Protein",
+  "report_macro_carbs": "Carbs",
+  "report_macro_fat": "Fat",
+  "report_no_weight_title": "No weight entries yet",
+  "report_no_weight_body": "Add your first entry so your body trend can start.",
+  "report_log_weight": "Log weight",
+  "report_weight_current": "Current",
+  "report_weight_change": "Change",
+  "report_progress_timeline": "Progress Timeline",
+  "report_progress_gallery": "Visual body-transformation gallery",
+  "report_weight_analytics": "Weight analytics",
+  "report_recent_history": "Recent history",
+  "report_body_fat_pct": "{percent}% Fat",
+  "@report_body_fat_pct": {
+    "placeholders": {
+      "percent": { "type": "String" }
+    }
+  },
+  "weight_hint": "Weight",
+  "body_fat_hint": "Body fat (optional)",
+  "snap_scan_barcode": "Scan barcode",
+  "snap_barcode_hint": "Place the barcode inside the frame.",
+  "snap_torch": "Torch",
+  "snap_flip": "Flip"
+}

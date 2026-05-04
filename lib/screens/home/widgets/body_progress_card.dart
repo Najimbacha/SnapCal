@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../../providers/metrics_provider.dart';
 import '../../../../core/theme/theme_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -57,7 +58,7 @@ class BodyProgressCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text('Body Stats', style: AppTypography.heading3),
+                        Text(AppLocalizations.of(context)!.home_body_stats, style: AppTypography.heading3),
                       ],
                     ),
                     Icon(

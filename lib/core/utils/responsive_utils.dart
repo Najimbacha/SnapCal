@@ -49,7 +49,7 @@ class Responsive {
 
   /// Bottom nav bar height adjustment
   static double navBarHeight(BuildContext context) {
-    if (size(context) == ScreenSize.small) return 64.0;
-    return 72.0;
+    if (size(context) == ScreenSize.small) return 72.0;
+    return 80.0;
   }
 }

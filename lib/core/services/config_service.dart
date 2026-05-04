@@ -31,8 +31,10 @@ class ConfigService {
       
       // REAL TRACE: confirm what is actually inside Remote Config
       _initialized = true; // Set this BEFORE logging so the getters work
-      debugPrint('🔑 ConfigService: Gemini Key (Prefix): ${geminiApiKey.substring(0, 5)}...');
-      debugPrint('🔑 ConfigService: Groq Key (Prefix): ${groqApiKey.substring(0, 4)}...');
+      final gKey = geminiApiKey;
+      final grKey = groqApiKey;
+      debugPrint('🔑 ConfigService: Gemini Key (Prefix): ${gKey.length >= 5 ? gKey.substring(0, 5) : gKey}...');
+      debugPrint('🔑 ConfigService: Groq Key (Prefix): ${grKey.length >= 4 ? grKey.substring(0, 4) : grKey}...');
     } catch (e) {
       debugPrint('❌ ConfigService: Initialization failed: $e');
     }

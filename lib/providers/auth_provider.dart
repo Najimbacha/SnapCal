@@ -56,14 +56,15 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final googleUser = await _googleSignIn.authenticate(); 
+      /* 
       if (googleUser == null) {
         _status = AuthStatus.authenticated; // Revert to previous (likely guest)
         notifyListeners();
         return;
       }
+      */
 
-      final GoogleSignInAuthentication authData =
-          await googleUser.authentication;
+      final GoogleSignInAuthentication authData = googleUser.authentication;
       
       final AuthCredential credential = GoogleAuthProvider.credential(
         idToken: authData.idToken,

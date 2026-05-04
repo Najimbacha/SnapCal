@@ -40,6 +40,7 @@ class AssistantProvider with ChangeNotifier {
     Uint8List? imageBytes, // New: Image support
     bool clearPrevious = false,
     bool forceFetch = false,
+    String language = 'en',
   }) async {
     if (clearPrevious) {
       _history = [];
@@ -81,6 +82,7 @@ class AssistantProvider with ChangeNotifier {
           userQuery: userQuery,
           currentCalories: currentCalories,
           targetCalories: targetCalories,
+          language: language,
         );
       } else {
         newRecs = await _service.getRecommendations(
@@ -91,6 +93,7 @@ class AssistantProvider with ChangeNotifier {
           mealNames: mealNames,
           dietaryRestriction: dietaryRestriction,
           userQuery: userQuery,
+          language: language,
         );
       }
 

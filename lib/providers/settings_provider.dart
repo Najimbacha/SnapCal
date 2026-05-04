@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../data/models/user_settings.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/services/scan_gate_service.dart';
-import '../core/constants/app_constants.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/notification_service.dart';
 import '../data/services/calorie_onboarding_service.dart';
@@ -14,11 +13,36 @@ class SettingsProvider with ChangeNotifier {
   final NotificationService _notificationService = NotificationService();
 
   late UserSettings _settings;
-  final bool _isLoading = false;
+  bool _isLoading = false;
   StreamSubscription<UserSettings>? _settingsSubscription;
 
   SettingsProvider(this._repository) {
-    _settings = _repository.getSettings(); // Initial sync load
+    _loadInitialSettings();
+    _validateStreakOnStart();
+  }
+
+  /// Ensure streak isn't stale when app opens
+  void _validateStreakOnStart() {
+    final today = app_date.DateUtils.getTodayString();
+    final yesterday = app_date.DateUtils.getPreviousDay(today);
+    final lastLogged = _settings.lastLoggedDate;
+
+    if (lastLogged != null && lastLogged != today && lastLogged != yesterday) {
+      // Streak broken due to inactivity
+      _settings = _settings.copyWith(currentStreak: 0);
+      _repository.saveSettings(_settings);
+      notifyListeners();
+    }
+  }
+
+  void _loadInitialSettings() {
+    try {
+      _settings = _repository.getSettings();
+    } catch (e) {
+      debugPrint('⚠️ SettingsProvider: Error loading initial settings: $e');
+      _settings = UserSettings.defaults();
+    }
+    
     _settingsSubscription = _repository.settingsStream.listen((newSettings) {
       _settings = newSettings;
       _syncNotifications();
@@ -38,7 +62,7 @@ class SettingsProvider with ChangeNotifier {
       _repository; // Expose for mock subscription service
   UserSettings get settings => _settings;
   bool get isLoading => _isLoading;
-  bool get isPro => _settings.isPro || kDebugMode;
+  bool get isPro => _settings.isPro;
   int get currentStreak => _settings.currentStreak;
 
   int get dailyCalorieGoal => _settings.dailyCalorieGoal;
@@ -73,6 +97,14 @@ class SettingsProvider with ChangeNotifier {
   String get breakfastTime => _settings.breakfastTime;
   String get lunchTime => _settings.lunchTime;
   String get dinnerTime => _settings.dinnerTime;
+  String get languageCode => _settings.languageCode ?? 'en';
+
+  /// Update language
+  Future<void> setLanguage(String code) async {
+    _settings = _settings.copyWith(languageCode: code);
+    await _repository.saveSettings(_settings);
+    notifyListeners();
+  }
 
   /// Load settings from repository
   void _loadSettings() {
@@ -96,23 +128,25 @@ class SettingsProvider with ChangeNotifier {
     }
   }
 
+  /// Schedule daily meal reminders
   Future<void> _scheduleReminders() async {
     final times = {
       1: _settings.breakfastTime,
       2: _settings.lunchTime,
       3: _settings.dinnerTime,
     };
-
-    final labels = {
-      1: 'Breakfast Reminder',
-      2: 'Lunch Reminder',
-      3: 'Dinner Reminder',
+    final lang = languageCode;
+    
+    final titles = {
+      1: _getNotifString(lang, 'breakfast_title'),
+      2: _getNotifString(lang, 'lunch_title'),
+      3: _getNotifString(lang, 'dinner_title'),
     };
 
     final bodies = {
-      1: 'Time to log your healthy breakfast!',
-      2: 'Don\'t forget to track your lunch.',
-      3: 'End the day strong—log your dinner now.',
+      1: _getNotifString(lang, 'breakfast_body'),
+      2: _getNotifString(lang, 'lunch_body'),
+      3: _getNotifString(lang, 'dinner_body'),
     };
 
     for (var entry in times.entries) {
@@ -123,13 +157,68 @@ class SettingsProvider with ChangeNotifier {
 
         await _notificationService.scheduleDailyReminder(
           id: entry.key,
-          title: labels[entry.key]!,
+          title: titles[entry.key]!,
           body: bodies[entry.key]!,
           hour: hour,
           minute: minute,
         );
       }
     }
+  }
+
+  String _getNotifString(String lang, String key) {
+    final map = {
+      'en': {
+        'breakfast_title': 'Breakfast Reminder',
+        'breakfast_body': 'Time to log your healthy breakfast!',
+        'lunch_title': 'Lunch Reminder',
+        'lunch_body': 'Don\'t forget to track your lunch.',
+        'dinner_title': 'Dinner Reminder',
+        'dinner_body': 'End the day strong—log your dinner now.',
+        'goal_calories_title': 'Goal Reached! 🚀',
+        'goal_calories_body': "You've hit your daily calorie goal of {goal} kcal!",
+        'goal_protein_title': 'Protein Goal Met! 💪',
+        'goal_protein_body': "Great job! You've reached your {goal}g protein target.",
+      },
+      'ar': {
+        'breakfast_title': 'تذكير الفطور',
+        'breakfast_body': 'حان الوقت لتسجيل فطورك الصحي!',
+        'lunch_title': 'تذكير الغداء',
+        'lunch_body': 'لا تنسَ تتبع وجبة الغداء.',
+        'dinner_title': 'تذكير العشاء',
+        'dinner_body': 'أنهِ يومك بقوة - سجل عشاءك الآن.',
+        'goal_calories_title': 'تحقق الهدف! 🚀',
+        'goal_calories_body': 'لقد وصلت إلى هدفك اليومي من السعرات الحرارية: {goal} سعرة!',
+        'goal_protein_title': 'تم تحقيق هدف البروتين! 💪',
+        'goal_protein_body': 'عمل رائع! لقد وصلت إلى هدفك البالغ {goal} جرام من البروتين.',
+      },
+      'es': {
+        'breakfast_title': 'Recordatorio de Desayuno',
+        'breakfast_body': '¡Es hora de registrar tu desayuno saludable!',
+        'lunch_title': 'Recordatorio de Almuerzo',
+        'lunch_body': 'No olvides registrar tu almuerzo.',
+        'dinner_title': 'Recordatorio de Cena',
+        'dinner_body': 'Termina el día con fuerza: registra tu cena ahora.',
+        'goal_calories_title': '¡Objetivo Alcanzado! 🚀',
+        'goal_calories_body': '¡Has alcanzado tu objetivo diario de {goal} kcal!',
+        'goal_protein_title': '¡Meta de Proteína Cumplida! 💪',
+        'goal_protein_body': '¡Buen trabajo! Has alcanzado tu meta de {goal}g de proteína.',
+      },
+      'fr': {
+        'breakfast_title': 'Rappel du Petit-déjeuner',
+        'breakfast_body': "C'est l'heure d'enregistrer votre petit-déjeuner sain !",
+        'lunch_title': 'Rappel du Déjeuner',
+        'lunch_body': "N'oubliez pas de suivre votre déjeuner.",
+        'dinner_title': 'Rappel du Dîner',
+        'dinner_body': 'Finissez la journée en beauté — enregistrez votre dîner dès maintenant.',
+        'goal_calories_title': 'Objectif atteint ! 🚀',
+        'goal_calories_body': 'Vous avez atteint votre objectif quotidien de {goal} kcal !',
+        'goal_protein_title': 'Objectif protéines rempli ! 💪',
+        'goal_protein_body': 'Beau travail ! Vous avez atteint votre cible de {goal}g de protéines.',
+      },
+    };
+
+    return map[lang]?[key] ?? map['en']![key]!;
   }
 
   /// Toggle global notifications
@@ -155,9 +244,22 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Trigger goal alert if enabled
-  Future<void> triggerGoalAlert(String title, String body) async {
+  /// Trigger calorie goal alert
+  Future<void> triggerCalorieGoalAlert(int goal) async {
     if (_settings.notificationsEnabled && _settings.goalAlertsEnabled) {
+      final lang = languageCode;
+      final title = _getNotifString(lang, 'goal_calories_title');
+      final body = _getNotifString(lang, 'goal_calories_body').replaceAll('{goal}', goal.toString());
+      await _notificationService.showGoalAlert(title: title, body: body);
+    }
+  }
+
+  /// Trigger protein goal alert
+  Future<void> triggerProteinGoalAlert(int goal) async {
+    if (_settings.notificationsEnabled && _settings.goalAlertsEnabled) {
+      final lang = languageCode;
+      final title = _getNotifString(lang, 'goal_protein_title');
+      final body = _getNotifString(lang, 'goal_protein_body').replaceAll('{goal}', goal.toString());
       await _notificationService.showGoalAlert(title: title, body: body);
     }
   }
@@ -219,7 +321,7 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Upgrade to pro
+  /// Upgrade to pro (Manual/Mock fallback)
   Future<void> upgradeToPro() async {
     _settings = _settings.copyWith(isPro: true);
     await _repository.saveSettings(_settings);
@@ -313,28 +415,30 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Update streak when user logs a meal
-  Future<void> updateStreakOnMealLog() async {
+  /// Update streak when user logs a meal. 
+  /// Now date-aware to allow retroactive logging.
+  Future<void> updateStreakOnMealLog({String? mealDate}) async {
     final today = app_date.DateUtils.getTodayString();
+    final logDate = mealDate ?? today;
     final lastLogged = _settings.lastLoggedDate;
 
     if (lastLogged == null) {
       // First time logging
-      _settings = _settings.copyWith(currentStreak: 1, lastLoggedDate: today);
-    } else if (lastLogged == today) {
-      // Already logged today, no change
+      _settings = _settings.copyWith(currentStreak: 1, lastLoggedDate: logDate);
+    } else if (lastLogged == logDate) {
+      // Already logged for this date, no streak increment
       return;
     } else {
-      final yesterday = app_date.DateUtils.getPreviousDay(today);
-      if (lastLogged == yesterday) {
-        // Logged yesterday, increment streak
+      final dayBeforeLog = app_date.DateUtils.getPreviousDay(logDate);
+      if (lastLogged == dayBeforeLog) {
+        // Continuous streak
         _settings = _settings.copyWith(
           currentStreak: _settings.currentStreak + 1,
-          lastLoggedDate: today,
+          lastLoggedDate: logDate,
         );
       } else {
-        // Streak broken, reset to 1
-        _settings = _settings.copyWith(currentStreak: 1, lastLoggedDate: today);
+        // Gap in logging, reset to 1
+        _settings = _settings.copyWith(currentStreak: 1, lastLoggedDate: logDate);
       }
     }
 
@@ -342,9 +446,37 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Called when a meal is deleted. If it was the only meal for that day,
+  /// we may need to adjust the streak backwards.
+  Future<void> adjustStreakOnDeletion({
+    required String dateOfDeletedMeal,
+    required bool wasLastMealOfDay,
+  }) async {
+    if (!wasLastMealOfDay) return;
+
+    final lastLogged = _settings.lastLoggedDate;
+    if (lastLogged == dateOfDeletedMeal) {
+      // We deleted the most recent meal date anchor
+      final newStreak = (_settings.currentStreak - 1).clamp(0, 9999);
+      final previousDay = app_date.DateUtils.getPreviousDay(dateOfDeletedMeal);
+      
+      _settings = _settings.copyWith(
+        currentStreak: newStreak,
+        lastLoggedDate: newStreak == 0 ? null : previousDay,
+      );
+      
+      await _repository.saveSettings(_settings);
+      notifyListeners();
+    }
+  }
+
   /// Recalculate nutrition plan based on current weight
   /// Uses Mifflin-St Jeor via CalorieOnboardingService
   Future<bool> recalculatePlan({required double currentWeightKg}) async {
+    if (_isLoading) return false;
+    _isLoading = true;
+    notifyListeners();
+
     // Guard: need minimum profile data
     final age = _settings.age;
     final gender = _settings.gender;
@@ -390,6 +522,9 @@ class SettingsProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('❌ SettingsProvider: Recalculation failed: $e');
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

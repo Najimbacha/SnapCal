@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
@@ -6,6 +8,7 @@ import '../core/theme/app_typography.dart';
 import '../core/theme/theme_colors.dart';
 import '../data/services/ad_service.dart';
 import '../providers/settings_provider.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class AdBanner extends StatefulWidget {
   final double height;
@@ -82,36 +85,42 @@ class _AdBannerState extends State<AdBanner> {
     }
 
     // Fallback placeholder while ad is loading
-    return Container(
-      width: double.infinity,
-      height: widget.height,
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      decoration: BoxDecoration(
-        color: context.backgroundColor.withValues(alpha: 0.5),
-        border: Border.all(color: context.dividerColor.withValues(alpha: 0.2)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'ADVERTISEMENT',
-              style: AppTypography.labelSmall.copyWith(
-                color: context.textMutedColor,
-                letterSpacing: 2,
-                fontSize: 10,
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        context.push('/paywall');
+      },
+      child: Container(
+        width: double.infinity,
+        height: widget.height,
+        margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: context.backgroundColor.withValues(alpha: 0.5),
+          border: Border.all(color: context.dividerColor.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                AppLocalizations.of(context)!.ads_label,
+                style: AppTypography.labelSmall.copyWith(
+                  color: context.textMutedColor,
+                  letterSpacing: 2,
+                  fontSize: 10,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Remove ads — Go Pro',
-              style: AppTypography.labelMedium.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
+              const SizedBox(height: 4),
+              Text(
+                AppLocalizations.of(context)!.ads_remove_prompt,
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

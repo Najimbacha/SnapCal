@@ -60,19 +60,26 @@ class AIService {
 
   final Dio _dio;
 
+  static const Map<String, String> languageNames = {
+    'en': 'English',
+    'ar': 'Arabic',
+    'es': 'Spanish',
+    'fr': 'French',
+  };
+
   /// Main method: Tries Groq first (faster), falls back to Gemini, then Manual
-  Future<List<NutritionResult>> analyzeFood(Uint8List imageBytes) async {
+  Future<List<NutritionResult>> analyzeFood(Uint8List imageBytes, {String language = 'en'}) async {
     String groqError = "Unknown";
     try {
       // 1. Try Groq first (faster, higher free limits)
       debugPrint("Attempting analysis with Groq...");
-      return await _detectWithGroq(imageBytes);
+      return await _detectWithGroq(imageBytes, language: language);
     } catch (e) {
       groqError = _extractDioError(e);
       debugPrint("Groq failed ($groqError). Switching to Gemini...");
       try {
         // 2. Fallback to Gemini
-        return await _detectWithGeminiRetry(imageBytes, maxRetries: 2);
+        return await _detectWithGeminiRetry(imageBytes, language: language, maxRetries: 2);
       } catch (e2) {
         final geminiError = _extractDioError(e2);
         return [
@@ -87,11 +94,12 @@ class AIService {
   /// Gemini with automatic retry for 429 rate-limit errors
   Future<List<NutritionResult>> _detectWithGeminiRetry(
     Uint8List imageBytes, {
+    String language = 'en',
     int maxRetries = 3,
   }) async {
     for (int attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        return await _detectWithGemini(imageBytes);
+        return await _detectWithGemini(imageBytes, language: language);
       } on DioException catch (e) {
         if (e.response?.statusCode == 429 && attempt < maxRetries) {
           final waitSeconds = 15 * (attempt + 1); // 15s, 30s, 45s
@@ -110,7 +118,7 @@ class AIService {
   }
 
   /// Primary: Google Gemini (with Auto-Hunting)
-  Future<List<NutritionResult>> _detectWithGemini(Uint8List imageBytes) async {
+  Future<List<NutritionResult>> _detectWithGemini(Uint8List imageBytes, {String language = 'en'}) async {
     final apiKey = ConfigService().geminiApiKey;
     if (apiKey.isEmpty) throw GeminiException('API Key missing');
 
@@ -141,7 +149,7 @@ class AIService {
             'contents': [
               {
                 'parts': [
-                  {'text': AppConstants.geminiSystemPrompt},
+                  {'text': AppConstants.getGeminiSystemPrompt(language)},
                   {
                     'inline_data': {
                       'mime_type': 'image/jpeg',
@@ -162,7 +170,9 @@ class AIService {
           final text =
               response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
                   as String?;
-          if (text != null) return await _parseResponse(text);
+          if (text != null) {
+            return await _parseResponse(text);
+          }
         }
       } catch (e) {
         lastError = e;
@@ -175,7 +185,7 @@ class AIService {
   }
 
   /// Fallback: Groq (with Auto-Hunting)
-  Future<List<NutritionResult>> _detectWithGroq(Uint8List imageBytes) async {
+  Future<List<NutritionResult>> _detectWithGroq(Uint8List imageBytes, {String language = 'en'}) async {
     final apiKey = ConfigService().groqApiKey;
     if (apiKey.isEmpty) throw GeminiException('API Key missing');
 
@@ -209,7 +219,7 @@ class AIService {
               {
                 'role': 'user',
                 'content': [
-                  {'type': 'text', 'text': AppConstants.geminiSystemPrompt},
+                  {'type': 'text', 'text': AppConstants.getGeminiSystemPrompt(language)},
                   {
                     'type': 'image_url',
                     'image_url': {'url': imageUrl},
@@ -222,7 +232,9 @@ class AIService {
 
         if (response.statusCode == 200) {
           final content = response.data['choices']?[0]?['message']?['content'];
-          if (content != null) return await _parseResponse(content.toString());
+          if (content != null) {
+            return await _parseResponse(content.toString());
+          }
         }
       } catch (e) {
         lastError = e;
@@ -299,8 +311,9 @@ class AIService {
           final text =
               response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
                   as String?;
-          if (text != null)
+          if (text != null) {
             return await compute(_parseMealPlanJsonInIsolate, text);
+          }
         }
       } catch (e) {
         debugPrint('❌ MealPlanner failed for $modelId: $e');
@@ -379,8 +392,9 @@ Output ONLY valid JSON:
           final text =
               response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
                   as String?;
-          if (text != null)
+          if (text != null) {
             return await compute(_parseMealPlanJsonInIsolate, text);
+          }
         }
       } catch (e) {
         debugPrint('❌ Regen day failed: $e');
@@ -391,6 +405,7 @@ Output ONLY valid JSON:
   }
 
   String _buildMealPlanPrompt(UserSettings settings) {
+    final languageName = languageNames[settings.languageCode] ?? 'English';
     final calorieFloor = settings.gender == 'female' ? 1200 : 1500;
     final safeTarget =
         settings.dailyCalorieGoal < calorieFloor
@@ -398,6 +413,7 @@ Output ONLY valid JSON:
             : settings.dailyCalorieGoal;
     return '''
 You are a certified nutrition expert. Generate a realistic 7-day meal plan.
+STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE. All meal names, descriptions, and ingredients MUST be in $languageName.
 Rules:
 - Everyday ingredients, practical meals, no chef-level cooking
 - Vary meals across 7 days (no repeats on consecutive days)

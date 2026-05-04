@@ -15,8 +15,15 @@ class AppConstants {
       'https://api.groq.com/openai/v1/chat/completions';
 
   // System Prompt for Gemini
-  static const String geminiSystemPrompt = '''
+  static String getGeminiSystemPrompt(String languageCode) {
+    final languageName = _getLanguageName(languageCode);
+    return '''
 You are a Nutritionist AI analyzing food images.
+
+STRICT LANGUAGE RULE:
+- YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE.
+- All fields like "food_name", "portion", and "insights" MUST be in $languageName.
+- Use native, common culinary terms for $languageName.
 
 Output ONLY a raw JSON object with no markdown formatting, no code blocks, no explanatory text.
 
@@ -40,15 +47,22 @@ Rules:
 - Each distinct food item visible on the plate gets its own entry in the "items" array
 - health_score is based on nutritional density (10 = superfood, 1 = junk food)
 - insights should be short (1-2 words) positive or cautionary highlights
-- If only one food item is visible, still wrap it in the "items" array
 - All nutritional values are for a typical single serving of that specific item
 - protein, carbs, fat are in grams
-- If unclear or partially visible food, provide your best estimate
-- If NOT food at all, return: {"items": [{"food_name": "Not food", "health_score": 0, "insights": ["Invalid Object"], "calories": 0, "protein": 0, "carbs": 0, "fat": 0}]}
-
-Example for a plate with rice and chicken:
-{"items": [{"food_name": "Steamed white rice", "health_score": 6, "insights": ["Complex Carbs"], "calories": 206, "protein": 4, "carbs": 45, "fat": 0}, {"food_name": "Grilled chicken breast", "health_score": 9, "insights": ["High Protein", "Lean Meat"], "calories": 165, "protein": 31, "carbs": 0, "fat": 4}]}
+- If NOT food at all, return: {"items": [{"food_name": "Not food", "health_score": 0, "insights": ["Invalid Object"], "calories": 0, "protein": 0, "carbs": 0, "fat": 0}]} (Translate "Not food" and "Invalid Object" to $languageName)
 ''';
+  }
+
+  static String _getLanguageName(String code) {
+    switch (code) {
+      case 'ar': return 'Arabic';
+      case 'es': return 'Spanish';
+      case 'fr': return 'French';
+      default: return 'English';
+    }
+  }
+
+  static const String geminiSystemPrompt = ''; // Deprecated in favor of getGeminiSystemPrompt
 
   // Storage Keys
   static const String mealsBoxName = 'meals_box';

@@ -1,49 +1,38 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
-/// Basic Connectivity Service to track online/offline status.
-/// In a production environment, this would use `connectivity_plus`.
+/// Enhanced Connectivity Service using connectivity_plus for stable network tracking.
 class ConnectivityService with ChangeNotifier {
   bool _isOnline = true;
-  Timer? _timer;
+  final Connectivity _connectivity = Connectivity();
+  late StreamSubscription<List<ConnectivityResult>> _subscription;
 
   ConnectivityService() {
     _checkInitialStatus();
-    // Periodically check connection every 30 seconds
-    _timer = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) => _checkConnectivity(),
-    );
+    _subscription = _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
   }
 
   bool get isOnline => _isOnline;
 
   Future<void> _checkInitialStatus() async {
-    await _checkConnectivity();
+    final result = await _connectivity.checkConnectivity();
+    _onConnectivityChanged(result);
   }
 
-  Future<void> _checkConnectivity() async {
-    try {
-      final result = await InternetAddress.lookup(
-        'google.com',
-      ).timeout(const Duration(seconds: 5));
-      final online = result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-      if (online != _isOnline) {
-        _isOnline = online;
-        notifyListeners();
-      }
-    } catch (_) {
-      if (_isOnline) {
-        _isOnline = false;
-        notifyListeners();
-      }
+  void _onConnectivityChanged(List<ConnectivityResult> results) {
+    // connectivity_plus 6.0+ returns a List of results (e.g. WiFi + VPN)
+    final online = results.any((r) => r != ConnectivityResult.none);
+    
+    if (online != _isOnline) {
+      _isOnline = online;
+      notifyListeners();
     }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _subscription.cancel();
     super.dispose();
   }
 }

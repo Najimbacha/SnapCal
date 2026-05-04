@@ -31,33 +31,48 @@ class AppSectionCard extends StatelessWidget {
     final resolvedPadding = padding ?? EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding);
     
     final decoration = BoxDecoration(
-      color: color ?? (glass ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.3) : colorScheme.surfaceContainer),
-      gradient: glass ? LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-          colorScheme.surfaceContainerLow.withValues(alpha: 0.6),
-        ],
-      ) : null,
-      borderRadius: BorderRadius.circular(32),
-      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: glass ? 0.3 : 0.5)),
+      color: color ?? (glass 
+          ? (Theme.of(context).brightness == Brightness.dark 
+              ? Colors.white.withValues(alpha: 0.03) 
+              : Colors.black.withValues(alpha: 0.01))
+          : colorScheme.surfaceContainer),
+      borderRadius: BorderRadius.circular(28),
+      border: Border.all(
+        color: colorScheme.outlineVariant.withValues(alpha: glass ? 0.2 : 0.5),
+        width: glass ? 1.5 : 1.0,
+      ),
       boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.03),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
+        if (!glass)
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
       ],
     );
+
+    Widget cardContent = ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: Padding(padding: resolvedPadding, child: child),
+    );
+
+    if (glass) {
+      cardContent = ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ColorFilter.mode(
+            colorScheme.surface.withValues(alpha: 0.1),
+            BlendMode.srcOver,
+          ),
+          child: Padding(padding: resolvedPadding, child: child),
+        ),
+      );
+    }
 
     final card = Container(
       margin: margin,
       decoration: decoration,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Padding(padding: resolvedPadding, child: child),
-      ),
+      child: cardContent,
     );
 
     if (onTap == null) return card;
@@ -89,7 +104,9 @@ class SectionLabel extends StatelessWidget {
           title.toUpperCase(),
           style: AppTypography.labelSmall.copyWith(
             color: context.textMutedColor,
-            letterSpacing: 1.1,
+            letterSpacing: 2.0,
+            fontWeight: FontWeight.w900,
+            fontSize: 10,
           ),
         ),
         const Spacer(),
@@ -159,11 +176,15 @@ class MetricTile extends StatelessWidget {
                 ),
                 const Spacer(),
                 if (hint != null)
-                  Text(
-                    hint!,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: colorScheme.outline,
-                      fontSize: 10,
+                  Flexible(
+                    child: Text(
+                      hint!,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: colorScheme.outline,
+                        fontSize: 10,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
               ],
@@ -215,6 +236,7 @@ class AppEmptyState extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
