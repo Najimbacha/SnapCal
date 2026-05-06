@@ -11,6 +11,8 @@ import '../../data/models/water_log.dart';
 import '../../data/models/body_metric.dart';
 import '../../data/models/grocery_item.dart';
 import '../../data/models/meal_plan.dart';
+import '../../data/models/meal_template.dart';
+import '../../data/models/achievement.dart';
 import '../../data/repositories/meal_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/water_repository.dart';
@@ -21,6 +23,7 @@ import '../../data/services/barcode_service.dart';
 import '../../data/services/subscription_service.dart';
 import '../../data/services/scan_gate_service.dart';
 import '../../data/services/ad_service.dart';
+import '../../data/services/widget_service.dart';
 
 class AppInitializer {
   static Future<void> preInit() async {
@@ -78,6 +81,7 @@ class AppInitializer {
         SubscriptionService.init(settingsRepository),
         ScanGateService().init(),
         AdService().init(),
+        WidgetService.init(),
         _warmupSingletons(),
       ]);
       debugPrint('⚡ Background services ready');
@@ -113,6 +117,9 @@ class AppInitializer {
     Hive.registerAdapter(BodyMetricAdapter());
     Hive.registerAdapter(GroceryItemAdapter());
     Hive.registerAdapter(MealPlanAdapter());
+    Hive.registerAdapter(TemplateItemAdapter());
+    Hive.registerAdapter(MealTemplateAdapter());
+    Hive.registerAdapter(AchievementAdapter());
 
     debugPrint('📦 Hive initialized');
   }

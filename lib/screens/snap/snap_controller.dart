@@ -127,8 +127,6 @@ class SnapController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    await ScanGateService().incrementScanCount();
-
     try {
       final XFile imageFile = await CameraService().controller!.takePicture();
       final bytes = await imageFile.readAsBytes();
@@ -211,7 +209,6 @@ class SnapController extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      await ScanGateService().incrementScanCount();
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
 
       try {
@@ -257,8 +254,6 @@ class SnapController extends ChangeNotifier {
     _isAnalyzing = true;
     _errorMessage = null;
     notifyListeners();
-
-    await ScanGateService().incrementScanCount();
 
     try {
       final result = await _barcodeService.fetchProductByBarcode(code);

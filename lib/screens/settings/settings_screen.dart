@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -13,12 +14,13 @@ import '../../providers/water_provider.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/planner_provider.dart';
 import '../../providers/metrics_provider.dart';
+import '../../providers/activity_provider.dart';
+import '../../providers/achievements_provider.dart';
 import '../../data/services/report_pdf_service.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/ui_blocks.dart';
 import '../sync/sync_data_screen.dart';
 import 'widgets/weight_entry_modal.dart';
-import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -105,6 +107,13 @@ class SettingsScreen extends StatelessWidget {
                           builder: (_) => const _PreferencesScreen(),
                         ),
                       ),
+                ),
+                _CategoryRow(
+                  icon: LucideIcons.trophy,
+                  accent: Colors.orange,
+                  title: AppLocalizations.of(context)!.feature_achievements_title,
+                  subtitle: '${context.watch<AchievementsProvider>().totalUnlocked} Unlocked',
+                  onTap: () => context.push('/achievements'),
                 ),
               ],
             ),
@@ -784,6 +793,7 @@ class _SwitchRow extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final String title;
+  final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -791,6 +801,7 @@ class _SwitchRow extends StatelessWidget {
     required this.icon,
     required this.accent,
     required this.title,
+    this.subtitle,
     required this.value,
     required this.onChanged,
   });
@@ -811,12 +822,27 @@ class _SwitchRow extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              title,
-              style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.1,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                  ),
+              ],
             ),
           ),
           Switch.adaptive(
@@ -1067,8 +1093,8 @@ class _ProfileCard extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           gradient: isGuest 
-            ? LinearGradient(
-                colors: [Colors.grey.shade800, Colors.grey.shade900],
+            ? const LinearGradient(
+                colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFFC026D3)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
@@ -1097,9 +1123,9 @@ class _ProfileCard extends StatelessWidget {
               right: -15,
               top: -15,
               child: Icon(
-                isGuest ? LucideIcons.userPlus : LucideIcons.sparkles,
+                isGuest ? LucideIcons.cloud : LucideIcons.sparkles,
                 size: 120,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: Colors.white.withValues(alpha: 0.1),
               ),
             ),
             Row(
@@ -1142,14 +1168,14 @@ class _ProfileCard extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              isGuest ? AppLocalizations.of(context)!.settings_guest_account : displayName,
+                              isGuest ? AppLocalizations.of(context)!.settings_guest_title : displayName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppTypography.heading3.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w900,
-                                fontSize: 22,
-                                letterSpacing: -0.8,
+                                fontSize: 20,
+                                letterSpacing: -0.5,
                               ),
                             ),
                           ),
@@ -1189,13 +1215,21 @@ class _ProfileCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      if (isGuest)
+                      if (isGuest) ...[
+                        Text(
+                          AppLocalizations.of(context)!.settings_guest_subtitle,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         _ActionPill(
                           label: AppLocalizations.of(context)!.settings_auth_cta,
                           icon: LucideIcons.userPlus,
                           onTap: () => context.push('/auth'),
-                        )
-                      else
+                        ),
+                      ] else
                         Text(
                           auth.email ?? 'Premium Nutrition',
                           maxLines: 1,
@@ -1631,6 +1665,20 @@ class _PreferencesScreen extends StatelessWidget {
                           context.read<SettingsProvider>().toggleMealReminders,
                     ),
               ),
+              Consumer<ActivityProvider>(
+                builder: (context, activity, _) => _SwitchRow(
+                  icon: LucideIcons.activity,
+                  accent: Colors.orange,
+                  title: AppLocalizations.of(context)!.settings_health_sync,
+                  subtitle: AppLocalizations.of(context)!.settings_health_sync_sub,
+                  value: activity.isAuthorized,
+                  onChanged: (val) {
+                    if (val) {
+                      activity.authorize();
+                    }
+                  },
+                ),
+              ),
               Consumer<SettingsProvider>(
                 builder: (context, settings, _) => Column(
                   children: [
@@ -1958,61 +2006,111 @@ class _UpgradeProCard extends StatelessWidget {
       onTap: () => context.push('/paywall'),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF10B981), Color(0xFF0EA5E9)],
+            colors: [Color(0xFF064E3B), Color(0xFF065F46), Color(0xFF0F172A)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF10B981).withValues(alpha: 0.3),
-              blurRadius: 15,
+              color: const Color(0xFF064E3B).withValues(alpha: 0.4),
+              blurRadius: 20,
               offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: Row(
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                LucideIcons.crown,
-                color: Colors.white,
-                size: 28,
+            // Background Motif
+            Positioned(
+              right: -20,
+              bottom: -20,
+              child: Icon(
+                LucideIcons.gem,
+                size: 140,
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.settings_upgrade_pro,
-                    style: AppTypography.heading3.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
+            Row(
+              children: [
+                // Glowing Icon
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFCD34D).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFFCD34D).withValues(alpha: 0.3),
+                      width: 1,
                     ),
                   ),
-                  Text(
-                    AppLocalizations.of(context)!.settings_upgrade_desc,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: const Icon(
+                    LucideIcons.crown,
+                    color: Color(0xFFFCD34D),
+                    size: 30,
                   ),
-                ],
-              ),
-            ),
-            const Icon(
-              LucideIcons.chevronRight,
-              color: Colors.white,
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              AppLocalizations.of(context)!.settings_upgrade_pro,
+                              style: AppTypography.heading3.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 22,
+                                letterSpacing: -0.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFCD34D),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'PRO',
+                              style: TextStyle(
+                                color: Color(0xFF064E3B),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 10,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        AppLocalizations.of(context)!.settings_upgrade_desc,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  LucideIcons.chevronRight,
+                  color: Colors.white54,
+                  size: 20,
+                ),
+              ],
             ),
           ],
         ),

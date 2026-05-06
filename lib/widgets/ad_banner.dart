@@ -74,12 +74,40 @@ class _AdBannerState extends State<AdBanner> {
     if (_isAdLoaded && _bannerAd != null) {
       return Container(
         width: double.infinity,
-        height: _bannerAd!.size.height.toDouble(),
         margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-        alignment: Alignment.center,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: AdWidget(ad: _bannerAd!),
+        decoration: BoxDecoration(
+          color: context.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.glassBorderColor, width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 2),
+              child: Text(
+                AppLocalizations.of(context)!.ads_label.toUpperCase(),
+                style: AppTypography.labelSmall.copyWith(
+                  color: context.textMutedColor.withValues(alpha: 0.5),
+                  letterSpacing: 1.5,
+                  fontSize: 8,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: _bannerAd!.size.height.toDouble(),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(15),
+                  bottomRight: Radius.circular(15),
+                ),
+                child: AdWidget(
+                  key: ValueKey(_bannerAd.hashCode),
+                  ad: _bannerAd!,
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -92,35 +120,44 @@ class _AdBannerState extends State<AdBanner> {
       },
       child: Container(
         width: double.infinity,
-        height: widget.height,
+        height: widget.height + 20, // Add space for the label
         margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         decoration: BoxDecoration(
-          color: context.backgroundColor.withValues(alpha: 0.5),
-          border: Border.all(color: context.dividerColor.withValues(alpha: 0.2)),
-          borderRadius: BorderRadius.circular(12),
+          color: context.surfaceColor.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.glassBorderColor, width: 1),
         ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                AppLocalizations.of(context)!.ads_label,
-                style: AppTypography.labelSmall.copyWith(
-                  color: context.textMutedColor,
-                  letterSpacing: 2,
-                  fontSize: 10,
-                ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              AppLocalizations.of(context)!.ads_label.toUpperCase(),
+              style: AppTypography.labelSmall.copyWith(
+                color: context.textMutedColor.withValues(alpha: 0.4),
+                letterSpacing: 2,
+                fontSize: 9,
               ),
-              const SizedBox(height: 4),
-              Text(
-                AppLocalizations.of(context)!.ads_remove_prompt,
-                style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.stars_rounded,
+                  size: 16,
+                  color: AppColors.primary.withValues(alpha: 0.7),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 8),
+                Text(
+                  AppLocalizations.of(context)!.ads_remove_prompt,
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

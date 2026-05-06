@@ -201,8 +201,13 @@ class _SnapScreenState extends State<SnapScreen>
       portion: portion,
       settings: settingsProvider,
     );
+
+    // 5. Increment scan count only ON SUCCESSFUL SAVE
+    if (!settingsProvider.isPro) {
+      await ScanGateService().incrementScanCount();
+    }
     
-    // 5. Reset camera controller state for next time
+    // 6. Reset camera controller state for next time
     _controller.reset();
   }
 
@@ -218,14 +223,6 @@ class _SnapScreenState extends State<SnapScreen>
     HapticFeedback.heavyImpact();
     router.go('/');
 
-    final currentMeals = mealProvider.todaysMealCount;
-    final maxAllowed = AppConstants.freeTierDailyMealLimit;
-    if (!settingsProvider.isPro && (currentMeals + selectedItems.length > maxAllowed)) {
-      _showPaywall();
-      _controller.reset();
-      return;
-    }
-
     for (final item in selectedItems) {
       await mealProvider.addMeal(
         foodName: item.foodName.isEmpty ? AppLocalizations.of(context)!.log_unknown_food : item.foodName,
@@ -237,6 +234,12 @@ class _SnapScreenState extends State<SnapScreen>
         settings: settingsProvider,
       );
     }
+
+    // Increment scan count once for the whole "session"
+    if (!settingsProvider.isPro) {
+      await ScanGateService().incrementScanCount();
+    }
+
     _controller.reset();
   }
 

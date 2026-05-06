@@ -27,6 +27,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   bool _googleLoading = false;
   bool _facebookLoading = false;
   bool _emailLoading = false;
+  bool _showEmailForm = false;
 
   late final AnimationController _animController;
   List<Animation<double>>? _staggeredAnims;
@@ -150,10 +151,41 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     final isDark = context.isDarkMode;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFFCFCF9),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
+      body: Stack(
+        children: [
+          // ── Premium Mesh Background ──
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(-0.8, -0.6),
+                  radius: 1.5,
+                  colors: [
+                    AppColors.primary.withValues(alpha: isDark ? 0.25 : 0.08),
+                    isDark ? const Color(0xFF090D11) : const Color(0xFFF8FAFC),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0.8, 1.2),
+                  radius: 1.2,
+                  colors: [
+                    AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.04),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
@@ -164,13 +196,38 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                   _StaggeredFade(
                     animation: _staggeredAnims![0],
                     child: Container(
-                      width: 64,
-                      height: 64,
+                      width: 80,
+                      height: 80,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.25),
+                            AppColors.primary.withValues(alpha: 0.05),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.4),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                            blurRadius: 30,
+                            spreadRadius: 4,
+                          ),
+                        ],
                       ),
-                      child: const Icon(LucideIcons.leaf, color: AppColors.primary, size: 32),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/icon/icon.png',
+                          fit: BoxFit.cover,
+                          width: 80,
+                          height: 80,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -179,142 +236,204 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                   _StaggeredFade(
                     animation: _staggeredAnims![1],
                     child: Text(
-                      _isSignUp ? "Create your account" : "Welcome back",
-                      style: AppTypography.displaySmall.copyWith(
+                      _showEmailForm 
+                          ? (_isSignUp ? "Create account" : "Welcome back")
+                          : "Let's dive in",
+                      style: AppTypography.displayMedium.copyWith(
                         color: context.textPrimaryColor,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1.0,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1.5,
+                        height: 1.1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _StaggeredFade(
+                    animation: _staggeredAnims![1],
+                    child: Text(
+                      "Your journey to a healthier you starts here.",
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: context.textSecondaryColor,
                       ),
                       textAlign: TextAlign.center,
                     ),
                   ),
                   const SizedBox(height: 48),
 
-                  // ── Social Buttons Stack ──
-                  _StaggeredFade(
-                    animation: _staggeredAnims![2],
-                    child: _AuthSocialButton(
-                      label: "Continue with Google",
-                      icon: FontAwesomeIcons.google,
-                      isLoading: _googleLoading,
-                      onTap: _handleGoogle,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _StaggeredFade(
-                    animation: _staggeredAnims![3],
-                    child: _AuthSocialButton(
-                      label: "Continue with Facebook",
-                      icon: FontAwesomeIcons.facebook,
-                      isLoading: _facebookLoading,
-                      onTap: _handleFacebook,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // ── Divider ──
-                  _StaggeredFade(
-                    animation: _staggeredAnims![4],
-                    child: Row(
-                      children: [
-                        Expanded(child: Divider(color: context.dividerColor)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            "OR",
-                            style: AppTypography.labelSmall.copyWith(color: context.textMutedColor),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: context.dividerColor)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // ── Email Form ──
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        _StaggeredFade(
-                          animation: _staggeredAnims![5],
-                          child: _AuthTextField(
-                            controller: _emailController,
-                            hint: "Email address",
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _StaggeredFade(
-                          animation: _staggeredAnims![6],
-                          child: _AuthTextField(
-                            controller: _passwordController,
-                            hint: "Password",
-                            isPassword: true,
-                            showPassword: _showPassword,
-                            onTogglePassword: () => setState(() => _showPassword = !_showPassword),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        _StaggeredFade(
-                          animation: _staggeredAnims![7],
-                          child: AppScaleTap(
-                            onTap: _emailLoading ? () {} : _handleEmailSubmit,
-                            child: Container(
-                              height: 54,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.white : const Color(0xFF1E293B),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: _emailLoading
-                                    ? SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          color: isDark ? Colors.black : Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(
-                                        "Continue",
-                                        style: AppTypography.titleMedium.copyWith(
-                                          color: isDark ? Colors.black : Colors.white,
-                                          fontWeight: FontWeight.w700,
+                  // ── Auth Options ──
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOutBack,
+                    child: _showEmailForm
+                        ? Form(
+                            key: _formKey,
+                            child: Column(
+                              children: [
+                                _StaggeredFade(
+                                  animation: _staggeredAnims![5],
+                                  child: _AuthTextField(
+                                    controller: _emailController,
+                                    hint: "Email address",
+                                    keyboardType: TextInputType.emailAddress,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _StaggeredFade(
+                                  animation: _staggeredAnims![6],
+                                  child: _AuthTextField(
+                                    controller: _passwordController,
+                                    hint: "Password",
+                                    isPassword: true,
+                                    showPassword: _showPassword,
+                                    onTogglePassword: () => setState(() => _showPassword = !_showPassword),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                _StaggeredFade(
+                                  animation: _staggeredAnims![7],
+                                  child: AppScaleTap(
+                                    onTap: _emailLoading ? () {} : _handleEmailSubmit,
+                                    child: Container(
+                                      height: 54,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                        borderRadius: BorderRadius.circular(100),
+                                      ),
+                                      child: Center(
+                                        child: _emailLoading
+                                            ? SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(
+                                                  color: isDark ? Colors.black : Colors.white,
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
+                                            : Text(
+                                                _isSignUp ? "Sign Up" : "Log In",
+                                                style: AppTypography.titleMedium.copyWith(
+                                                  color: isDark ? Colors.black : Colors.white,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                // ── Footer ──
+                                _StaggeredFade(
+                                  animation: _staggeredAnims![8],
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _isSignUp ? "Already have an account? " : "Don't have an account? ",
+                                        style: AppTypography.bodyMedium.copyWith(color: context.textSecondaryColor),
+                                      ),
+                                      AppScaleTap(
+                                        onTap: () => setState(() => _isSignUp = !_isSignUp),
+                                        child: Text(
+                                          _isSignUp ? "Log in" : "Sign up",
+                                          style: AppTypography.titleMedium.copyWith(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
                                       ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                TextButton(
+                                  onPressed: () => setState(() => _showEmailForm = false),
+                                  child: Text("Back to Social Login", style: AppTypography.bodyMedium.copyWith(color: context.textMutedColor)),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Column(
+                            children: [
+                              // ── Google (Primary) ──
+                              _StaggeredFade(
+                                animation: _staggeredAnims![2],
+                                child: _AuthSocialButton(
+                                  label: "Continue with Google",
+                                  backgroundColor: isDark ? Colors.white : Colors.white,
+                                  textColor: Colors.black,
+                                  borderColor: Colors.transparent,
+                                  iconWidget: Image.asset(
+                                    'assets/images/google_logo.png',
+                                    width: 20,
+                                    height: 20,
+                                  ),
+                                  isLoading: _googleLoading,
+                                  onTap: _handleGoogle,
+                                ),
                               ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 48),
+                              const SizedBox(height: 16),
+                              
+                              // ── Divider ──
+                              _StaggeredFade(
+                                animation: _staggeredAnims![3],
+                                child: Row(
+                                  children: [
+                                    Expanded(child: Divider(color: context.dividerColor.withValues(alpha: 0.1))),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      child: Text(
+                                        "or",
+                                        style: AppTypography.labelSmall.copyWith(
+                                          color: context.textMutedColor.withValues(alpha: 0.5),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(child: Divider(color: context.dividerColor.withValues(alpha: 0.1))),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
 
-                  // ── Footer ──
-                  _StaggeredFade(
-                    animation: _staggeredAnims![8],
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _isSignUp ? "Already have an account? " : "Don't have an account? ",
-                          style: AppTypography.bodyMedium.copyWith(color: context.textSecondaryColor),
-                        ),
-                        AppScaleTap(
-                          onTap: () => setState(() => _isSignUp = !_isSignUp),
-                          child: Text(
-                            _isSignUp ? "Log in" : "Sign up",
-                            style: AppTypography.titleMedium.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
+                              // ── Secondary Actions (Facebook & Email) ──
+                              _StaggeredFade(
+                                animation: _staggeredAnims![4],
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _AuthSocialButton(
+                                        label: "Facebook",
+                                        backgroundColor: const Color(0xFF1877F2),
+                                        textColor: Colors.white,
+                                        borderColor: Colors.transparent,
+                                        iconWidget: const FaIcon(FontAwesomeIcons.facebookF, size: 16, color: Colors.white),
+                                        isLoading: _facebookLoading,
+                                        onTap: _handleFacebook,
+                                        small: true,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _AuthSocialButton(
+                                        label: "Email",
+                                        backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                                        textColor: isDark ? Colors.white : Colors.black,
+                                        borderColor: Colors.transparent,
+                                        iconWidget: Icon(LucideIcons.mail, size: 16, color: isDark ? Colors.white : Colors.black),
+                                        isLoading: false,
+                                        onTap: () => setState(() {
+                                          _showEmailForm = true;
+                                          _isSignUp = false;
+                                        }),
+                                        small: true,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -323,21 +442,31 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-    );
+    ],
+  ),
+);
   }
 }
 
 class _AuthSocialButton extends StatelessWidget {
   final String label;
-  final dynamic icon;
+  final Widget iconWidget;
   final bool isLoading;
   final VoidCallback onTap;
+  final bool small;
+  final Color? backgroundColor;
+  final Color? textColor;
+  final Color? borderColor;
 
   const _AuthSocialButton({
     required this.label,
-    required this.icon,
-    required this.isLoading,
+    required this.iconWidget,
     required this.onTap,
+    this.backgroundColor,
+    this.textColor,
+    this.borderColor,
+    this.isLoading = false,
+    this.small = false,
   });
 
   @override
@@ -346,14 +475,21 @@ class _AuthSocialButton extends StatelessWidget {
     return AppScaleTap(
       onTap: isLoading ? () {} : onTap,
       child: Container(
-        height: 54,
+        height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: backgroundColor ?? (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.8)),
+          borderRadius: BorderRadius.circular(100),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[300]!,
+            color: borderColor ?? (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.04)),
           ),
+          boxShadow: isDark && backgroundColor == null ? null : [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -365,15 +501,27 @@ class _AuthSocialButton extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else ...[
-              FaIcon(icon as FaIconData?, size: 18, color: isDark ? Colors.white : Colors.black),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: AppTypography.titleSmall.copyWith(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.w600,
+              iconWidget,
+              if (!small) ...[
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: textColor ?? (isDark ? Colors.white : Colors.black),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
-              ),
+              ] else ...[
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: AppTypography.labelLarge.copyWith(
+                    color: textColor ?? (isDark ? Colors.white : Colors.black),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -404,11 +552,18 @@ class _AuthTextField extends StatelessWidget {
     final isDark = context.isDarkMode;
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[300]!,
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.04),
         ),
+        boxShadow: isDark ? null : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextFormField(
         controller: controller,

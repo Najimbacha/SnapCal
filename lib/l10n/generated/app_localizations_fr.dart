@@ -1647,4 +1647,232 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get snap_flip => 'Retourner';
+
+  @override
+  String get settings_health_sync => 'Sync santé';
+
+  @override
+  String get settings_health_sync_sub =>
+      'Synchroniser les pas et calories brûlées';
+
+  @override
+  String get home_metric_activity => 'Activité';
+
+  @override
+  String get home_metric_activity_sync => 'Sync';
+
+  @override
+  String get home_metric_activity_enable => 'Activer Santé';
+
+  @override
+  String get progress_generate_video => 'Générer la vidéo du parcours';
+
+  @override
+  String get progress_video_failed =>
+      'Échec de la génération de la vidéo. Réessayez.';
+
+  @override
+  String get progress_video_min_photos =>
+      'Prenez au moins 2 photos de progression d\'abord !';
+
+  @override
+  String get progress_video_share_text =>
+      'Mon parcours de transformation SnapCal ! 🚀';
+
+  @override
+  String get widget_status_on_track => 'Sur la bonne voie';
+
+  @override
+  String get widget_status_over_goal => 'Objectif dépassé';
+
+  @override
+  String get widget_status_almost_there => 'Presque arrivé';
+
+  @override
+  String get feature_insights_title => 'Bilan Hebdo';
+
+  @override
+  String get feature_insights_desc => 'Votre semaine en revue';
+
+  @override
+  String feature_insights_avg_cal(String cal) {
+    return 'Moy $cal kcal/jour';
+  }
+
+  @override
+  String feature_insights_on_track(String days) {
+    return '$days jours sur la bonne voie';
+  }
+
+  @override
+  String get feature_insights_generating => 'Génération des conseils...';
+
+  @override
+  String get feature_insights_share => 'Partager ma semaine';
+
+  @override
+  String get feature_templates_title => 'Mes Routines';
+
+  @override
+  String get feature_templates_empty =>
+      'Enregistrez votre première routine ! Enregistrez un repas, puis appuyez sur \'Enregistrer comme routine\'.';
+
+  @override
+  String get feature_templates_save_prompt => 'Enregistrer comme routine ?';
+
+  @override
+  String get feature_templates_name_hint => 'ex: Petit-déjeuner';
+
+  @override
+  String get feature_templates_save_btn => 'Enregistrer la routine';
+
+  @override
+  String get feature_templates_update_btn => 'Mettre à jour la routine';
+
+  @override
+  String get feature_templates_limit_reached =>
+      'Limite gratuite atteinte. Passez à la version Pro pour des routines illimitées !';
+
+  @override
+  String get feature_templates_logged => 'Routine enregistrée avec succès !';
+
+  @override
+  String get feature_achievements_title => 'Succès';
+
+  @override
+  String feature_achievements_unlocked(String count) {
+    return '$count débloqués';
+  }
+
+  @override
+  String get achievement_first_flame => 'Première Flamme';
+
+  @override
+  String get achievement_first_flame_desc => 'Enregistrez votre premier repas';
+
+  @override
+  String get achievement_consistency_king => 'Roi de la Constance';
+
+  @override
+  String get achievement_consistency_king_desc => 'Série de 7 jours';
+
+  @override
+  String get achievement_iron_will => 'Volonté de Fer';
+
+  @override
+  String get achievement_iron_will_desc => 'Série de 30 jours';
+
+  @override
+  String get achievement_unstoppable => 'Inarrêtable';
+
+  @override
+  String get achievement_unstoppable_desc => 'Série de 100 jours';
+
+  @override
+  String get achievement_bullseye => 'Dans le Mille';
+
+  @override
+  String get achievement_bullseye_desc =>
+      'Atteignez exactement l\'objectif de calories';
+
+  @override
+  String get achievement_precision_pro => 'Pro de la Précision';
+
+  @override
+  String get achievement_precision_pro_desc =>
+      'Objectif de calories atteint 7 jours de suite';
+
+  @override
+  String get achievement_macro_master => 'Maître des Macros';
+
+  @override
+  String get achievement_macro_master_desc =>
+      'Atteignez tous les macros en un jour';
+
+  @override
+  String get achievement_perfect_week => 'Semaine Parfaite';
+
+  @override
+  String get achievement_perfect_week_desc =>
+      'Atteignez tous les objectifs pendant 7 jours';
+
+  @override
+  String get achievement_first_sip => 'Première Gorgée';
+
+  @override
+  String get achievement_first_sip_desc =>
+      'Enregistrez de l\'eau pour la première fois';
+
+  @override
+  String get achievement_hydration_hero => 'Héros de l\'Hydratation';
+
+  @override
+  String get achievement_hydration_hero_desc =>
+      'Objectif d\'eau atteint 30 jours';
+
+  @override
+  String get achievement_ocean_mode => 'Mode Océan';
+
+  @override
+  String get achievement_ocean_mode_desc => 'Objectif d\'eau atteint 100 jours';
+
+  @override
+  String get achievement_first_snap => 'Premier Snap';
+
+  @override
+  String get achievement_first_snap_desc =>
+      'Enregistrez 1 repas via l\'appareil photo';
+
+  @override
+  String get achievement_snap_master => 'Maître du Snap';
+
+  @override
+  String get achievement_snap_master_desc => 'Enregistrez 100 repas';
+
+  @override
+  String get achievement_snap_legend => 'Légende du Snap';
+
+  @override
+  String get achievement_snap_legend_desc => 'Enregistrez 500 repas';
+
+  @override
+  String get achievement_first_checkin => 'Premier Point';
+
+  @override
+  String get achievement_first_checkin_desc =>
+      'Enregistrez une première photo de corps';
+
+  @override
+  String get achievement_transformation => 'Transformation';
+
+  @override
+  String get achievement_transformation_desc =>
+      'Enregistrez 10 photos de corps';
+
+  @override
+  String get achievement_journey_video => 'Vidéo du Parcours';
+
+  @override
+  String get achievement_journey_video_desc =>
+      'Générez une vidéo de transformation';
+
+  @override
+  String get feature_achievements_unlocked_title => 'Succès Débloqué !';
+
+  @override
+  String get common_continue => 'Continuer';
+
+  @override
+  String get feature_insights_subtitle =>
+      'Votre résumé nutritionnel hebdomadaire par IA est prêt !';
+
+  @override
+  String get feature_insights_share_text =>
+      'Découvrez mon résumé nutritionnel hebdomadaire de SnapCal ! 📊';
+
+  @override
+  String get settings_guest_title => 'Protect Your Progress';
+
+  @override
+  String get settings_guest_subtitle => 'Sign in to sync your data securely.';
 }

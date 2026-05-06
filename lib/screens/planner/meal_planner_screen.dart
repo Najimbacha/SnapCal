@@ -586,7 +586,7 @@ Widget _staggeredSlide(Animation<double> animation, Widget child) {
     animation: animation,
     builder: (context, child) {
       return Opacity(
-        opacity: animation.value,
+        opacity: animation.value.clamp(0.0, 1.0),
         child: Transform.translate(
           offset: Offset(0, 15 * (1 - animation.value)),
           child: child,

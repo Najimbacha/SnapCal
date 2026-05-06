@@ -101,127 +101,138 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final settings = context.watch<SettingsProvider>();
+    final colorScheme = Theme.of(context).colorScheme;
+    final isPro = settings.isPro;
+    final bgColor = isPro ? colorScheme.surface : const Color(0xFF0F172A);
 
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    colorScheme.surface,
-                    colorScheme.primary.withValues(alpha: 0.04),
-                    colorScheme.surface,
-                    AppColors.primary.withValues(alpha: 0.06),
-                  ],
-                  stops: const [0.0, 0.3, 0.7, 1.0],
+      backgroundColor: bgColor,
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: !isPro ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isPro ? [
+                      colorScheme.surface,
+                      colorScheme.primary.withValues(alpha: 0.04),
+                      colorScheme.surface,
+                      AppColors.primary.withValues(alpha: 0.06),
+                    ] : [
+                      const Color(0xFF0F172A),
+                      const Color(0xFF1E1B4B),
+                      const Color(0xFF0F172A),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          
-          Column(
-            children: [
-              _ChatAppBar(
-                onRefresh: () => _fetchRecommendations(clearPrevious: true, forceFetch: true),
-              ),
-              
-              Expanded(
-                child: Consumer<AssistantProvider>(
-                  builder: (context, assistant, _) {
-                    final content = _buildChatContent(context, assistant);
-                    
-                    if (!settings.isPro) {
-                      return Stack(
-                        children: [
-                          content,
-                          Positioned.fill(
-                            child: ClipRect(
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                child: Container(
-                                  color: context.backgroundColor.withValues(alpha: 0.6),
-                                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(24),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.15),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
-                                        ),
-                                        child: const Icon(LucideIcons.crown, color: AppColors.primary, size: 48),
+            Column(
+              children: [
+                _ChatAppBar(
+                  isElite: !isPro,
+                  onRefresh: () => _fetchRecommendations(clearPrevious: true, forceFetch: true),
+                ),
+                Expanded(
+                  child: Consumer<AssistantProvider>(
+                    builder: (context, assistant, _) {
+                      final content = _buildChatContent(context, assistant);
+                      if (!isPro) {
+                        return Stack(
+                          children: [
+                            content,
+                            Positioned.fill(
+                              child: ClipRect(
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.transparent,
+                                          const Color(0xFF0F172A).withValues(alpha: 0.1),
+                                          const Color(0xFF0F172A).withValues(alpha: 0.8),
+                                        ],
                                       ),
-                                      const SizedBox(height: 24),
-                                      Text(
-                                        "Unlock Your AI Coach",
-                                        style: AppTypography.displaySmall.copyWith(
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 28,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        "Get 24/7 expert nutrition guidance, deep meal insights, and personalized coaching to reach your goals faster.",
-                                        style: AppTypography.bodyLarge.copyWith(
-                                          color: context.textSecondaryColor,
-                                          height: 1.5,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 32),
-                                      AppScaleTap(
-                                        onTap: () => context.push('/paywall'),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
-                                          decoration: BoxDecoration(
-                                            gradient: AppColors.primaryGradient,
-                                            borderRadius: BorderRadius.circular(20),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: AppColors.primary.withValues(alpha: 0.4),
-                                                blurRadius: 20,
-                                                offset: const Offset(0, 8),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Text(
-                                            "Upgrade to SnapCal Pro",
-                                            style: AppTypography.titleMedium.copyWith(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w900,
+                                    ),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(20),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFBBF24).withValues(alpha: 0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              LucideIcons.crown, 
+                                              color: Color(0xFFFBBF24), 
+                                              size: 32,
                                             ),
                                           ),
-                                        ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            "ELITE FEATURE",
+                                            style: AppTypography.displaySmall.copyWith(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 16,
+                                              letterSpacing: 4,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      );
-                    }
-                    
-                    return content;
-                  },
+                          ],
+                        );
+                      }
+                      return content;
+                    },
+                  ),
                 ),
-              ),
-              
-              if (settings.isPro) _buildInputArea(context),
-            ],
-          ),
-        ],
+                _buildInputArea(context, isPro),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildProBenefit(BuildContext context, IconData icon, String label, {bool isGold = false}) {
+    final accentColor = isGold ? const Color(0xFFFBBF24) : AppColors.primary;
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: accentColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: accentColor, size: 16),
+        ),
+        const SizedBox(width: 16),
+        Text(
+          label,
+          style: AppTypography.bodyMedium.copyWith(
+            color: Colors.white.withValues(alpha: 0.9),
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
+        ),
+      ],
     );
   }
 
@@ -237,11 +248,9 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
         ),
       );
     }
-
     if (assistant.history.isEmpty && assistant.isLoading) {
       return const Center(child: _ThinkingPulse());
     }
-
     if (assistant.history.isEmpty) {
       return Center(
         child: SingleChildScrollView(
@@ -270,7 +279,6 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
         ),
       );
     }
-
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
@@ -281,7 +289,44 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildInputArea(BuildContext context) {
+  Widget _buildInputArea(BuildContext context, bool isPro) {
+    if (!isPro) {
+      return Container(
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + MediaQuery.of(context).padding.bottom),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+        ),
+        child: AppScaleTap(
+          onTap: () => context.push('/paywall'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                "UNLOCK ELITE COACHING",
+                style: AppTypography.titleMedium.copyWith(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Container(
       padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + MediaQuery.of(context).padding.bottom),
       decoration: BoxDecoration(
@@ -338,7 +383,8 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
 
 class _ChatAppBar extends StatelessWidget {
   final VoidCallback onRefresh;
-  const _ChatAppBar({required this.onRefresh});
+  final bool isElite;
+  const _ChatAppBar({required this.onRefresh, this.isElite = false});
 
   @override
   Widget build(BuildContext context) {
@@ -350,7 +396,10 @@ class _ChatAppBar extends StatelessWidget {
           children: [
             Text(
               "AI Coach",
-              style: AppTypography.heading3.copyWith(fontWeight: FontWeight.w900),
+              style: AppTypography.heading3.copyWith(
+                fontWeight: FontWeight.w900,
+                color: isElite ? Colors.white : context.textPrimaryColor,
+              ),
             ),
             const Spacer(),
             AppScaleTap(
@@ -358,10 +407,14 @@ class _ChatAppBar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: context.backgroundColor,
+                  color: isElite ? Colors.white.withValues(alpha: 0.1) : context.backgroundColor,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(LucideIcons.refreshCw, size: 20),
+                child: Icon(
+                  LucideIcons.refreshCw, 
+                  size: 20,
+                  color: isElite ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ),
           ],

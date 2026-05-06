@@ -38,7 +38,7 @@ class CameraService extends ChangeNotifier {
       }
 
       _cameras = await availableCameras();
-      if (!_isInitializing) return; // Stopped while getting cameras
+      if (!_isInitializing) return;
 
       if (_cameras == null || _cameras!.isEmpty) {
         _error = 'No cameras available';
@@ -47,18 +47,19 @@ class CameraService extends ChangeNotifier {
         return;
       }
 
-      _controller = CameraController(
+      final newController = CameraController(
         _cameras![0],
         ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
+      
+      _controller = newController;
 
-      await _controller!.initialize();
+      await newController.initialize();
       if (!_isInitializing) {
-        // Stopped while initializing
-        await _controller?.dispose();
-        _controller = null;
+        await newController.dispose();
+        if (_controller == newController) _controller = null;
         return;
       }
 

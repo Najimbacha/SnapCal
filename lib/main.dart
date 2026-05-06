@@ -21,7 +21,12 @@ import 'providers/auth_provider.dart';
 import 'providers/assistant_provider.dart';
 import 'providers/metrics_provider.dart';
 import 'providers/planner_provider.dart';
-import 'providers/water_provider.dart'; // Re-added
+import 'providers/water_provider.dart';
+import 'providers/activity_provider.dart';
+import 'providers/widget_sync_provider.dart';
+import 'providers/template_provider.dart';
+import 'providers/achievements_provider.dart';
+import 'providers/insights_provider.dart';
 import 'data/services/connectivity_service.dart';
 import 'screens/splash/splash_screen.dart';
 
@@ -162,11 +167,15 @@ class _SnapCalAppState extends State<SnapCalApp> {
           providers: [
             ChangeNotifierProvider(create: (_) => ConnectivityService()),
             ChangeNotifierProvider(create: (_) => AuthProvider()),
+            ChangeNotifierProvider(create: (_) => ActivityProvider()),
             ChangeNotifierProvider(
               create: (_) => SettingsProvider(_settingsRepository),
             ),
             ChangeNotifierProvider(
               create: (_) => MealProvider(_mealRepository),
+            ),
+            Provider<WaterRepository>.value(
+              value: _waterRepository,
             ),
             ChangeNotifierProvider(
               create: (_) => WaterProvider(_waterRepository),
@@ -191,6 +200,20 @@ class _SnapCalAppState extends State<SnapCalApp> {
               update:
                   (context, settings, planner) =>
                       planner!..updateSettings(settings),
+            ),
+            ProxyProvider3<MealProvider, SettingsProvider, ActivityProvider, WidgetSyncProvider>(
+              update: (context, meal, settings, activity, previous) =>
+                  previous ?? WidgetSyncProvider(meal, settings, activity),
+              dispose: (context, sync) => sync.dispose(),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => TemplateProvider()..init(),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => AchievementsProvider()..init(),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => InsightsProvider(),
             ),
           ],
           child: const AppRouterWrapper(),
@@ -267,9 +290,8 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                     // Global Error Boundary
                     ErrorWidget.builder = (details) => _GlobalErrorView(details: details);
                     
-                    // 1. Handle Unauthenticated / Initial / Loading states
-                    if (auth.status == AuthStatus.initial ||
-                        auth.status == AuthStatus.loading) {
+                    // 1. Handle Initial state
+                    if (auth.status == AuthStatus.initial) {
                       return const SplashScreen();
                     }
 

@@ -21,7 +21,7 @@ class AdService {
 
   /// Returns the correct banner ad unit ID based on platform and build mode.
   static String get bannerAdUnitId {
-    // Forced to production as requested by user
+    // Production IDs for publishing
     return _prodBannerAndroid;
   }
 
@@ -29,6 +29,12 @@ class AdService {
   Future<void> init() async {
     if (_initialized) return;
     try {
+      // Set up test device configuration to allow ads to show on this specific phone
+      final requestConfiguration = RequestConfiguration(
+        testDeviceIds: ['9A0C5E3D8D3CDA1A32AC1AD64966811C'],
+      );
+      await MobileAds.instance.updateRequestConfiguration(requestConfiguration);
+      
       await MobileAds.instance.initialize();
       _initialized = true;
       debugPrint('📢 AdService: Google Mobile Ads initialized');

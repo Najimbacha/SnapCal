@@ -123,6 +123,7 @@ class MetricTile extends StatelessWidget {
   final String? hint;
   final Color accent;
   final IconData icon;
+  final VoidCallback? onTap;
 
   const MetricTile({
     super.key,
@@ -131,13 +132,14 @@ class MetricTile extends StatelessWidget {
     required this.accent,
     required this.icon,
     this.hint,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     
-    return Container(
+    final content = Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -210,6 +212,11 @@ class MetricTile extends StatelessWidget {
         ),
       ),
     );
+
+    if (onTap != null) {
+      return AppScaleTap(onTap: onTap!, child: content);
+    }
+    return content;
   }
 }
 

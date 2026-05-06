@@ -16,9 +16,12 @@ import 'screens/paywall/paywall_screen.dart'; // Import
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/progress/progress_screen.dart'; // Import
 import 'widgets/hero_action_button.dart';
+import 'screens/achievements/achievements_screen.dart';
+import 'screens/insights/weekly_wrap_screen.dart';
 
 /// Global route observer for managing hardware lifecycle across screens
-final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
+final RouteObserver<ModalRoute<dynamic>> routeObserver =
+    RouteObserver<ModalRoute<dynamic>>();
 
 /// Factory function to create a reactive router
 GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
@@ -76,6 +79,14 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
         path: '/planner',
         builder: (context, state) => const MealPlannerScreen(),
       ),
+      GoRoute(
+        path: '/achievements',
+        builder: (context, state) => const AchievementsScreen(),
+      ),
+      GoRoute(
+        path: '/insights',
+        builder: (context, state) => const WeeklyWrapScreen(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainShell(navigationShell: navigationShell);
@@ -85,8 +96,9 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
             routes: [
               GoRoute(
                 path: '/',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: HomeScreen()),
+                pageBuilder:
+                    (context, state) =>
+                        const NoTransitionPage(child: HomeScreen()),
               ),
             ],
           ),
@@ -94,8 +106,9 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
             routes: [
               GoRoute(
                 path: '/log',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: LogScreen()),
+                pageBuilder:
+                    (context, state) =>
+                        const NoTransitionPage(child: LogScreen()),
               ),
             ],
           ),
@@ -103,8 +116,9 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
             routes: [
               GoRoute(
                 path: '/snap',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: SnapScreen()),
+                pageBuilder:
+                    (context, state) =>
+                        const NoTransitionPage(child: SnapScreen()),
               ),
             ],
           ),
@@ -112,8 +126,9 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
             routes: [
               GoRoute(
                 path: '/reports',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: ReportsScreen()),
+                pageBuilder:
+                    (context, state) =>
+                        const NoTransitionPage(child: ReportsScreen()),
               ),
             ],
           ),
@@ -121,8 +136,9 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
             routes: [
               GoRoute(
                 path: '/profile',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: SettingsScreen()),
+                pageBuilder:
+                    (context, state) =>
+                        const NoTransitionPage(child: SettingsScreen()),
               ),
             ],
           ),
@@ -178,15 +194,20 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: widget.navigationShell,
-      floatingActionButton: widget.navigationShell.currentIndex == 2
-          ? null
-          : HeroActionButton(
-              isActive: false,
-              onTap: () {
-                widget.navigationShell.goBranch(2, initialLocation: false);
-              },
-            ),
+      floatingActionButton:
+          widget.navigationShell.currentIndex == 2
+              ? null
+              : Transform.translate(
+                offset: const Offset(0, 18),
+                child: HeroActionButton(
+                  isActive: false,
+                  onTap: () {
+                    widget.navigationShell.goBranch(2, initialLocation: false);
+                  },
+                ),
+              ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomNavBar(
         currentIndex: _lastNavIndex,

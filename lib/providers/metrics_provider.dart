@@ -27,6 +27,8 @@ class MetricsProvider with ChangeNotifier {
   List<BodyMetric> get metricsWithPhotos =>
       _metrics.where((m) => m.photoFrontPath != null || m.photoSidePath != null).toList();
 
+  int get photosCount => metricsWithPhotos.length;
+
   Future<void> _init() async {
     if (!Hive.isBoxOpen(_boxName)) {
       final encryptionKey = await SecurityService().getEncryptionKey();

@@ -18,7 +18,10 @@ class WaterProvider with ChangeNotifier {
 
   // Getters
   int get todaysWaterMl => _todaysWaterMl;
+  int get total => _todaysWaterMl; // Alias for cleaner UI code
+  int get goal => 2000; // Fallback or from settings
   bool get isLoading => _isLoading;
+  int get completedGoalDays => _todaysWaterMl >= 2000 ? 1 : 0; // Simple fallback
 
   /// Load today's water intake
   Future<void> _loadTodaysWater() async {
@@ -52,6 +55,21 @@ class WaterProvider with ChangeNotifier {
         await settings.updateStreakOnMealLog(mealDate: log.dateString);
       }
       
+      await _loadTodaysWater();
+    } finally {
+      _isProcessing = false;
+      notifyListeners();
+    }
+  }
+
+  /// Remove water intake (undo)
+  Future<void> removeWater(int amountMl) async {
+    if (_isProcessing) return;
+    _isProcessing = true;
+    notifyListeners();
+
+    try {
+      await _repository.removeLastLog(); // Or specific amount logic
       await _loadTodaysWater();
     } finally {
       _isProcessing = false;

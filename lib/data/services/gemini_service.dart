@@ -67,6 +67,59 @@ class AIService {
     'fr': 'French',
   };
 
+  /// Generate text-only response from Gemini (for Weekly Insights, etc.)
+  Future<String> generateText(String prompt) async {
+    final apiKey = ConfigService().geminiApiKey;
+    if (apiKey.isEmpty) throw GeminiException('API Key missing');
+
+    final candidates = [
+      {'id': 'gemini-1.5-flash-8b', 'ver': 'v1'},
+      {'id': 'gemini-1.5-flash', 'ver': 'v1'},
+      {'id': 'gemini-2.0-flash', 'ver': 'v1'},
+    ];
+
+    Object? lastError;
+
+    for (var candidate in candidates) {
+      final modelId = candidate['id']!;
+      final apiVer = candidate['ver']!;
+
+      try {
+        final response = await _dio.post(
+          'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$apiKey',
+          options: Options(
+            headers: {'Content-Type': 'application/json'},
+            sendTimeout: const Duration(seconds: 15),
+          ),
+          data: {
+            'contents': [
+              {
+                'parts': [
+                  {'text': prompt},
+                ],
+              },
+            ],
+            'generationConfig': {
+              'temperature': 0.7,
+              'maxOutputTokens': 1024,
+            },
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final text = response.data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+          if (text != null) return text;
+        }
+      } catch (e) {
+        lastError = e;
+        debugPrint('❌ Text generation failed for $modelId: $e');
+        continue;
+      }
+    }
+
+    throw lastError ?? GeminiException('All text generation candidates failed');
+  }
+
   /// Main method: Tries Groq first (faster), falls back to Gemini, then Manual
   Future<List<NutritionResult>> analyzeFood(Uint8List imageBytes, {String language = 'en'}) async {
     String groqError = "Unknown";

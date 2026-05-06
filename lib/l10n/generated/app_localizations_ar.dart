@@ -1649,4 +1649,220 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get snap_flip => 'قلب الكاميرا';
+
+  @override
+  String get settings_health_sync => 'مزامنة الصحة';
+
+  @override
+  String get settings_health_sync_sub =>
+      'مزامنة الخطوات والسعرات الحرارية المحروقة';
+
+  @override
+  String get home_metric_activity => 'النشاط';
+
+  @override
+  String get home_metric_activity_sync => 'مزامنة';
+
+  @override
+  String get home_metric_activity_enable => 'تفعيل الصحة';
+
+  @override
+  String get progress_generate_video => 'إنشاء فيديو الرحلة';
+
+  @override
+  String get progress_video_failed => 'فشل إنشاء الفيديو. حاول مرة أخرى.';
+
+  @override
+  String get progress_video_min_photos =>
+      'التقط صورتين للتقدم على الأقل أولاً!';
+
+  @override
+  String get progress_video_share_text => 'رحلة تحول SnapCal الخاصة بي! 🚀';
+
+  @override
+  String get widget_status_on_track => 'على المسار الصحيح';
+
+  @override
+  String get widget_status_over_goal => 'فوق الهدف';
+
+  @override
+  String get widget_status_almost_there => 'على وشك الوصول';
+
+  @override
+  String get feature_insights_title => 'ملخص الأسبوع';
+
+  @override
+  String get feature_insights_desc => 'مراجعة أسبوعك';
+
+  @override
+  String feature_insights_avg_cal(String cal) {
+    return 'متوسط $cal سعرة/يوم';
+  }
+
+  @override
+  String feature_insights_on_track(String days) {
+    return '$days أيام على المسار';
+  }
+
+  @override
+  String get feature_insights_generating => 'جاري توليد الرؤى...';
+
+  @override
+  String get feature_insights_share => 'شارك أسبوعي';
+
+  @override
+  String get feature_templates_title => 'روتينياتي';
+
+  @override
+  String get feature_templates_empty =>
+      'احفظ روتينك الأول! سجل وجبة، ثم اضغط على \'حفظ كروتين\'.';
+
+  @override
+  String get feature_templates_save_prompt => 'حفظ كروتين؟';
+
+  @override
+  String get feature_templates_name_hint => 'مثال: فطور الصباح';
+
+  @override
+  String get feature_templates_save_btn => 'حفظ الروتين';
+
+  @override
+  String get feature_templates_update_btn => 'تحديث الروتين';
+
+  @override
+  String get feature_templates_limit_reached =>
+      'تم الوصول للحد المجاني. قم بالترقية لروتينات لا محدودة!';
+
+  @override
+  String get feature_templates_logged => 'تم تسجيل الروتين بنجاح!';
+
+  @override
+  String get feature_achievements_title => 'الإنجازات';
+
+  @override
+  String feature_achievements_unlocked(String count) {
+    return 'تم فتح $count';
+  }
+
+  @override
+  String get achievement_first_flame => 'الشعلة الأولى';
+
+  @override
+  String get achievement_first_flame_desc => 'سجل وجبتك الأولى';
+
+  @override
+  String get achievement_consistency_king => 'ملك الاستمرارية';
+
+  @override
+  String get achievement_consistency_king_desc => 'سلسلة من 7 أيام';
+
+  @override
+  String get achievement_iron_will => 'إرادة حديدية';
+
+  @override
+  String get achievement_iron_will_desc => 'سلسلة من 30 يوماً';
+
+  @override
+  String get achievement_unstoppable => 'لا يمكن إيقافه';
+
+  @override
+  String get achievement_unstoppable_desc => 'سلسلة من 100 يوم';
+
+  @override
+  String get achievement_bullseye => 'في الهدف';
+
+  @override
+  String get achievement_bullseye_desc => 'حقق هدف السعرات بالضبط';
+
+  @override
+  String get achievement_precision_pro => 'محترف الدقة';
+
+  @override
+  String get achievement_precision_pro_desc => 'حقق هدف السعرات لـ 7 أيام';
+
+  @override
+  String get achievement_macro_master => 'سيد الماكرو';
+
+  @override
+  String get achievement_macro_master_desc => 'حقق جميع الماكرو في يوم';
+
+  @override
+  String get achievement_perfect_week => 'أسبوع مثالي';
+
+  @override
+  String get achievement_perfect_week_desc => 'حقق كل الأهداف لـ 7 أيام';
+
+  @override
+  String get achievement_first_sip => 'الرشفة الأولى';
+
+  @override
+  String get achievement_first_sip_desc => 'سجل الماء لأول مرة';
+
+  @override
+  String get achievement_hydration_hero => 'بطل الترطيب';
+
+  @override
+  String get achievement_hydration_hero_desc => 'هدف الماء لـ 30 يوماً';
+
+  @override
+  String get achievement_ocean_mode => 'وضع المحيط';
+
+  @override
+  String get achievement_ocean_mode_desc => 'هدف الماء لـ 100 يوم';
+
+  @override
+  String get achievement_first_snap => 'اللقطة الأولى';
+
+  @override
+  String get achievement_first_snap_desc => 'سجل وجبة واحدة بالكاميرا';
+
+  @override
+  String get achievement_snap_master => 'سيد اللقطات';
+
+  @override
+  String get achievement_snap_master_desc => 'سجل 100 وجبة';
+
+  @override
+  String get achievement_snap_legend => 'أسطورة اللقطات';
+
+  @override
+  String get achievement_snap_legend_desc => 'سجل 500 وجبة';
+
+  @override
+  String get achievement_first_checkin => 'الفحص الأول';
+
+  @override
+  String get achievement_first_checkin_desc => 'سجل أول صورة للجسم';
+
+  @override
+  String get achievement_transformation => 'التحول';
+
+  @override
+  String get achievement_transformation_desc => 'سجل 10 صور للجسم';
+
+  @override
+  String get achievement_journey_video => 'فيديو الرحلة';
+
+  @override
+  String get achievement_journey_video_desc => 'توليد فيديو التحول';
+
+  @override
+  String get feature_achievements_unlocked_title => 'تم فتح إنجاز!';
+
+  @override
+  String get common_continue => 'استمرار';
+
+  @override
+  String get feature_insights_subtitle =>
+      'ملخصك الأسبوعي للتغذية بالذكاء الاصطناعي جاهز!';
+
+  @override
+  String get feature_insights_share_text =>
+      'اطلع على ملخصي الأسبوعي للتغذية من سناب كال! 📊';
+
+  @override
+  String get settings_guest_title => 'Protect Your Progress';
+
+  @override
+  String get settings_guest_subtitle => 'Sign in to sync your data securely.';
 }

@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -10,8 +9,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 // Correct Internal Imports
 import 'package:snapcal/core/theme/app_colors.dart';
-import 'package:snapcal/core/theme/app_typography.dart';
-import 'package:snapcal/core/theme/theme_colors.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/widgets/ui_blocks.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
@@ -139,7 +136,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
@@ -153,7 +149,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
               child: Image.asset(
                 'assets/images/mesh_bg.png', // Fallback to a custom painter if missing
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (context, error, stackTrace) => Container(
                   decoration: const BoxDecoration(
                     gradient: RadialGradient(
                       center: Alignment(-0.8, -0.6),
@@ -221,7 +217,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             child: Image.asset(
                               'assets/images/premium_hero.png', // User's premium hero image
                               fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(LucideIcons.sparkles, size: 160, color: Color(0xFFE0E7FF)),
+                              errorBuilder: (context, error, stackTrace) => const Icon(LucideIcons.sparkles, size: 160, color: Color(0xFFE0E7FF)),
                             ),
                           ),
                         ),

@@ -3107,6 +3107,414 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Flip'**
   String get snap_flip;
+
+  /// No description provided for @settings_health_sync.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Sync'**
+  String get settings_health_sync;
+
+  /// No description provided for @settings_health_sync_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync steps and calories burned'**
+  String get settings_health_sync_sub;
+
+  /// No description provided for @home_metric_activity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get home_metric_activity;
+
+  /// No description provided for @home_metric_activity_sync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get home_metric_activity_sync;
+
+  /// No description provided for @home_metric_activity_enable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Health'**
+  String get home_metric_activity_enable;
+
+  /// No description provided for @progress_generate_video.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate Journey Video'**
+  String get progress_generate_video;
+
+  /// No description provided for @progress_video_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Video generation failed. Try again.'**
+  String get progress_video_failed;
+
+  /// No description provided for @progress_video_min_photos.
+  ///
+  /// In en, this message translates to:
+  /// **'Take at least 2 progress photos first!'**
+  String get progress_video_min_photos;
+
+  /// No description provided for @progress_video_share_text.
+  ///
+  /// In en, this message translates to:
+  /// **'My SnapCal Transformation Journey! 🚀'**
+  String get progress_video_share_text;
+
+  /// No description provided for @widget_status_on_track.
+  ///
+  /// In en, this message translates to:
+  /// **'On Track'**
+  String get widget_status_on_track;
+
+  /// No description provided for @widget_status_over_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Over Goal'**
+  String get widget_status_over_goal;
+
+  /// No description provided for @widget_status_almost_there.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost There'**
+  String get widget_status_almost_there;
+
+  /// No description provided for @feature_insights_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly Wrap'**
+  String get feature_insights_title;
+
+  /// No description provided for @feature_insights_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Your week in review'**
+  String get feature_insights_desc;
+
+  /// No description provided for @feature_insights_avg_cal.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg {cal} kcal/day'**
+  String feature_insights_avg_cal(String cal);
+
+  /// No description provided for @feature_insights_on_track.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} Days on Track'**
+  String feature_insights_on_track(String days);
+
+  /// No description provided for @feature_insights_generating.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating Insights...'**
+  String get feature_insights_generating;
+
+  /// No description provided for @feature_insights_share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share My Week'**
+  String get feature_insights_share;
+
+  /// No description provided for @feature_templates_title.
+  ///
+  /// In en, this message translates to:
+  /// **'My Routines'**
+  String get feature_templates_title;
+
+  /// No description provided for @feature_templates_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your first routine! Log a combo, then tap \'Save as Routine\'.'**
+  String get feature_templates_empty;
+
+  /// No description provided for @feature_templates_save_prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as Routine?'**
+  String get feature_templates_save_prompt;
+
+  /// No description provided for @feature_templates_name_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., Morning Fuel'**
+  String get feature_templates_name_hint;
+
+  /// No description provided for @feature_templates_save_btn.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Routine'**
+  String get feature_templates_save_btn;
+
+  /// No description provided for @feature_templates_update_btn.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Routine'**
+  String get feature_templates_update_btn;
+
+  /// No description provided for @feature_templates_limit_reached.
+  ///
+  /// In en, this message translates to:
+  /// **'Free limit reached. Upgrade to Pro for unlimited routines!'**
+  String get feature_templates_limit_reached;
+
+  /// No description provided for @feature_templates_logged.
+  ///
+  /// In en, this message translates to:
+  /// **'Routine logged successfully!'**
+  String get feature_templates_logged;
+
+  /// No description provided for @feature_achievements_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get feature_achievements_title;
+
+  /// No description provided for @feature_achievements_unlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Unlocked'**
+  String feature_achievements_unlocked(String count);
+
+  /// No description provided for @achievement_first_flame.
+  ///
+  /// In en, this message translates to:
+  /// **'First Flame'**
+  String get achievement_first_flame;
+
+  /// No description provided for @achievement_first_flame_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Log your first meal'**
+  String get achievement_first_flame_desc;
+
+  /// No description provided for @achievement_consistency_king.
+  ///
+  /// In en, this message translates to:
+  /// **'Consistency King'**
+  String get achievement_consistency_king;
+
+  /// No description provided for @achievement_consistency_king_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'7-day logging streak'**
+  String get achievement_consistency_king_desc;
+
+  /// No description provided for @achievement_iron_will.
+  ///
+  /// In en, this message translates to:
+  /// **'Iron Will'**
+  String get achievement_iron_will;
+
+  /// No description provided for @achievement_iron_will_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'30-day logging streak'**
+  String get achievement_iron_will_desc;
+
+  /// No description provided for @achievement_unstoppable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unstoppable'**
+  String get achievement_unstoppable;
+
+  /// No description provided for @achievement_unstoppable_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'100-day logging streak'**
+  String get achievement_unstoppable_desc;
+
+  /// No description provided for @achievement_bullseye.
+  ///
+  /// In en, this message translates to:
+  /// **'Bullseye'**
+  String get achievement_bullseye;
+
+  /// No description provided for @achievement_bullseye_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit calorie goal exactly'**
+  String get achievement_bullseye_desc;
+
+  /// No description provided for @achievement_precision_pro.
+  ///
+  /// In en, this message translates to:
+  /// **'Precision Pro'**
+  String get achievement_precision_pro;
+
+  /// No description provided for @achievement_precision_pro_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit calorie goal 7 days straight'**
+  String get achievement_precision_pro_desc;
+
+  /// No description provided for @achievement_macro_master.
+  ///
+  /// In en, this message translates to:
+  /// **'Macro Master'**
+  String get achievement_macro_master;
+
+  /// No description provided for @achievement_macro_master_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit all macros in one day'**
+  String get achievement_macro_master_desc;
+
+  /// No description provided for @achievement_perfect_week.
+  ///
+  /// In en, this message translates to:
+  /// **'Perfect Week'**
+  String get achievement_perfect_week;
+
+  /// No description provided for @achievement_perfect_week_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit all goals for 7 days'**
+  String get achievement_perfect_week_desc;
+
+  /// No description provided for @achievement_first_sip.
+  ///
+  /// In en, this message translates to:
+  /// **'First Sip'**
+  String get achievement_first_sip;
+
+  /// No description provided for @achievement_first_sip_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Log water for the first time'**
+  String get achievement_first_sip_desc;
+
+  /// No description provided for @achievement_hydration_hero.
+  ///
+  /// In en, this message translates to:
+  /// **'Hydration Hero'**
+  String get achievement_hydration_hero;
+
+  /// No description provided for @achievement_hydration_hero_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit water goal 30 days'**
+  String get achievement_hydration_hero_desc;
+
+  /// No description provided for @achievement_ocean_mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Ocean Mode'**
+  String get achievement_ocean_mode;
+
+  /// No description provided for @achievement_ocean_mode_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit water goal 100 days'**
+  String get achievement_ocean_mode_desc;
+
+  /// No description provided for @achievement_first_snap.
+  ///
+  /// In en, this message translates to:
+  /// **'First Snap'**
+  String get achievement_first_snap;
+
+  /// No description provided for @achievement_first_snap_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1 meal via camera'**
+  String get achievement_first_snap_desc;
+
+  /// No description provided for @achievement_snap_master.
+  ///
+  /// In en, this message translates to:
+  /// **'Snap Master'**
+  String get achievement_snap_master;
+
+  /// No description provided for @achievement_snap_master_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 meals'**
+  String get achievement_snap_master_desc;
+
+  /// No description provided for @achievement_snap_legend.
+  ///
+  /// In en, this message translates to:
+  /// **'Snap Legend'**
+  String get achievement_snap_legend;
+
+  /// No description provided for @achievement_snap_legend_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 meals'**
+  String get achievement_snap_legend_desc;
+
+  /// No description provided for @achievement_first_checkin.
+  ///
+  /// In en, this message translates to:
+  /// **'First Check-In'**
+  String get achievement_first_checkin;
+
+  /// No description provided for @achievement_first_checkin_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Log first body photo'**
+  String get achievement_first_checkin_desc;
+
+  /// No description provided for @achievement_transformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Transformation'**
+  String get achievement_transformation;
+
+  /// No description provided for @achievement_transformation_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 body photos'**
+  String get achievement_transformation_desc;
+
+  /// No description provided for @achievement_journey_video.
+  ///
+  /// In en, this message translates to:
+  /// **'Journey Video'**
+  String get achievement_journey_video;
+
+  /// No description provided for @achievement_journey_video_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate transformation video'**
+  String get achievement_journey_video_desc;
+
+  /// No description provided for @feature_achievements_unlocked_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievement Unlocked!'**
+  String get feature_achievements_unlocked_title;
+
+  /// No description provided for @common_continue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get common_continue;
+
+  /// No description provided for @feature_insights_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your AI-powered weekly nutrition summary is ready!'**
+  String get feature_insights_subtitle;
+
+  /// No description provided for @feature_insights_share_text.
+  ///
+  /// In en, this message translates to:
+  /// **'Check out my weekly nutrition summary from SnapCal! 📊'**
+  String get feature_insights_share_text;
+
+  /// No description provided for @settings_guest_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Protect Your Progress'**
+  String get settings_guest_title;
+
+  /// No description provided for @settings_guest_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to sync your data securely.'**
+  String get settings_guest_subtitle;
 }
 
 class _AppLocalizationsDelegate

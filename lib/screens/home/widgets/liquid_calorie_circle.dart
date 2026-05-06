@@ -113,7 +113,7 @@ class _LiquidCalorieCircleState extends State<LiquidCalorieCircle>
                   fontWeight: FontWeight.w900,
                   height: 1.0,
                   letterSpacing: -2.0,
-                  color: isDark ? Colors.white : Colors.black,
+                  color: Theme.of(context).colorScheme.onSurface,
                   shadows: [
                     Shadow(
                       color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
@@ -127,7 +127,7 @@ class _LiquidCalorieCircleState extends State<LiquidCalorieCircle>
               Text(
                 (isSuccess ? AppLocalizations.of(context)!.home_completed : AppLocalizations.of(context)!.home_kcal_left).toUpperCase(),
                 style: AppTypography.labelSmall.copyWith(
-                  color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.5),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                   letterSpacing: 2.0, // High-end dashboard spacing
                   fontSize: 10,
                   fontWeight: FontWeight.w800,

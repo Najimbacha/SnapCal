@@ -14,6 +14,8 @@ import '../../widgets/ad_banner.dart';
 import 'widgets/date_picker_bar.dart';
 import 'widgets/edit_meal_modal.dart';
 import 'widgets/meal_list_tile.dart';
+import 'widgets/routines_carousel.dart';
+import 'widgets/save_routine_sheet.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class LogScreen extends StatefulWidget {
@@ -125,6 +127,15 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
     );
   }
 
+  void _showSaveRoutineModal(List<Meal> meals) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SaveRoutineSheet(meals: meals),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final meals = context.select<MealProvider, List<Meal>>(
@@ -191,15 +202,46 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
             ),
           ),
           const SizedBox(height: 24),
+          const RoutinesCarousel(),
           Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: Text(
-              l10n.log_history,
-              style: AppTypography.labelSmall.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                letterSpacing: 1.5,
-                fontWeight: FontWeight.w900,
-              ),
+            padding: const EdgeInsets.only(left: 4, right: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.log_history,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (meals.length >= 2 && app_date.DateUtils.isToday(selectedDate))
+                  AppScaleTap(
+                    onTap: () => _showSaveRoutineModal(meals),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(LucideIcons.save, size: 14, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            l10n.feature_templates_save_prompt,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -291,7 +333,7 @@ Widget _staggeredSlide(Animation<double> animation, Widget child) {
     animation: animation,
     builder: (context, child) {
       return Opacity(
-        opacity: animation.value,
+        opacity: animation.value.clamp(0.0, 1.0),
         child: Transform.translate(
           offset: Offset(0, 15 * (1 - animation.value)),
           child: child,

@@ -36,6 +36,35 @@ class WaterRepository {
     await _waterBox?.add(log);
   }
 
+  /// Remove the most recent water log
+  Future<void> removeLastLog() async {
+    if (_waterBox == null || _waterBox!.isEmpty) return;
+    
+    final logs = _waterBox!.values.toList();
+    logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    
+    if (logs.isNotEmpty) {
+      final latest = logs.first;
+      final key = _waterBox!.keys.firstWhere(
+        (k) => _waterBox!.get(k)?.timestamp == latest.timestamp,
+        orElse: () => null,
+      );
+      if (key != null) {
+        await _waterBox!.delete(key);
+      }
+    }
+  }
+
+  /// Get water logs for the last 7 days
+  List<WaterLog> getWeeklyWater() {
+    if (_waterBox == null) return [];
+    final now = DateTime.now();
+    final weekAgo = now.subtract(const Duration(days: 7));
+    return _waterBox!.values
+        .where((log) => DateTime.fromMillisecondsSinceEpoch(log.timestamp).isAfter(weekAgo))
+        .toList();
+  }
+
   /// Clear all (for testing)
   Future<void> clearAll() async {
     await _waterBox?.clear();
