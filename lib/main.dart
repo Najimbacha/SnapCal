@@ -33,36 +33,9 @@ import 'screens/splash/splash_screen.dart';
 import 'dart:ui';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  bool firebaseInitialized = false;
-
-  // Fast init for Firebase/Crashlytics
-  try {
-    await AppInitializer.preInit();
-    firebaseInitialized = true;
-  } catch (e) {
-    debugPrint('Firebase pre-init failed: $e');
-  }
-  
-  FlutterError.onError = (errorDetails) {
-    if (firebaseInitialized) {
-      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-    } else {
-      FlutterError.presentError(errorDetails);
-    }
-  };
-  
-  PlatformDispatcher.instance.onError = (error, stack) {
-    if (firebaseInitialized) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    } else {
-      debugPrint('Error before Firebase init: $error');
-    }
-    return true;
-  };
-
+  debugPrint('🏗️ MAIN: Starting App...');
   runApp(const SnapCalApp());
 }
 
@@ -82,77 +55,98 @@ class _SnapCalAppState extends State<SnapCalApp> {
   late final AIService _aiService;
 
   // Initialization State
-  late final Future<void> _initFuture;
+  late Future<void> _initFuture;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('🎬 SnapCalApp: Initializing State...');
     // 1. Create instances immediately (sync)
     _mealRepository = MealRepository();
     _settingsRepository = SettingsRepository();
     _waterRepository = WaterRepository();
     _assistantRepository = AssistantRepository();
     _aiService = AIService();
-
+    
     // 2. Start Async Initialization
-    _initFuture = AppInitializer.init(
-      mealRepository: _mealRepository,
-      settingsRepository: _settingsRepository,
-      waterRepository: _waterRepository,
-      assistantRepository: _assistantRepository,
-    );
+    _initialize();
+  }
+
+  void _initialize() {
+    debugPrint('🎬 SnapCalApp: Starting _initialize()...');
+    setState(() {
+      _initFuture = AppInitializer.init(
+        mealRepository: _mealRepository,
+        settingsRepository: _settingsRepository,
+        waterRepository: _waterRepository,
+        assistantRepository: _assistantRepository,
+      ).timeout(
+        const Duration(seconds: 30), // Increased slightly to accommodate all inner timeouts
+        onTimeout: () {
+          debugPrint('❌ SnapCalApp: Initialization Timed Out!');
+          throw TimeoutException('Initialization timed out. Please check your internet connection or restart the app.');
+        },
+      ).then((_) {
+        debugPrint('✅ SnapCalApp: Initialization Complete');
+      }).catchError((e) {
+        debugPrint('❌ SnapCalApp: Initialization Error: $e');
+        throw e;
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Set up Global Error Boundary
+    ErrorWidget.builder = (details) => _GlobalErrorView(details: details);
+
     return FutureBuilder(
       future: _initFuture,
       builder: (context, snapshot) {
         // Show Splash while initializing
         if (snapshot.connectionState != ConnectionState.done) {
           return const MaterialApp(
-            home: SplashScreen(),
             debugShowCheckedModeBanner: false,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
+            home: SplashScreen(),
           );
         }
 
-        // Handle Initialization Errors
+        // Handle Initialization Errors (Network, Storage, etc.)
         if (snapshot.hasError) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
+            theme: AppTheme.darkTheme,
             home: Scaffold(
+              backgroundColor: const Color(0xFF0F172A),
               body: Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(32),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(LucideIcons.alertCircle, color: AppColors.error, size: 64),
+                      const Icon(LucideIcons.alertCircle, color: Colors.orangeAccent, size: 64),
                       const SizedBox(height: 24),
                       const Text(
-                        'Initialization Failed',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                        'Launch Encountered an Issue',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        snapshot.error.toString(),
+                        snapshot.error is TimeoutException 
+                          ? 'Initialization is taking longer than expected.' 
+                          : 'Something went wrong while setting up the app. Please try again.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.grey),
+                        style: const TextStyle(color: Colors.white60),
                       ),
                       const SizedBox(height: 32),
                       FilledButton.icon(
-                        onPressed: () {
-                          // This will trigger a rebuild and retry init
-                          (context as Element).markNeedsBuild();
-                        },
+                        onPressed: _initialize,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                        ),
                         icon: const Icon(LucideIcons.refreshCw, size: 18),
-                        label: const Text('Retry Setup'),
+                        label: const Text('Retry Launch'),
                       ),
                     ],
                   ),
@@ -167,7 +161,6 @@ class _SnapCalAppState extends State<SnapCalApp> {
           providers: [
             ChangeNotifierProvider(create: (_) => ConnectivityService()),
             ChangeNotifierProvider(create: (_) => AuthProvider()),
-            ChangeNotifierProvider(create: (_) => ActivityProvider()),
             ChangeNotifierProvider(
               create: (_) => SettingsProvider(_settingsRepository),
             ),
@@ -190,6 +183,10 @@ class _SnapCalAppState extends State<SnapCalApp> {
               update:
                   (context, settings, metrics) =>
                       metrics!..updateSettings(settings),
+            ),
+            ChangeNotifierProxyProvider<MetricsProvider, ActivityProvider>(
+              create: (context) => ActivityProvider(),
+              update: (context, metrics, activity) => activity!..updateWeight(metrics.currentWeight),
             ),
             ChangeNotifierProxyProvider<SettingsProvider, PlannerProvider>(
               create:
@@ -287,11 +284,8 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                     Locale('fr'), // French
                   ],
                   builder: (context, child) {
-                    // Global Error Boundary
-                    ErrorWidget.builder = (details) => _GlobalErrorView(details: details);
-                    
-                    // 1. Handle Initial state
-                    if (auth.status == AuthStatus.initial) {
+                    // 1. Handle Initial/Loading state
+                    if (auth.status == AuthStatus.initial || auth.status == AuthStatus.loading) {
                       return const SplashScreen();
                     }
 
@@ -370,44 +364,34 @@ class _GlobalErrorView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
+                    color: Colors.red.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(LucideIcons.alertTriangle, size: 64, color: Colors.redAccent),
+                  child: const Icon(Icons.report_problem_rounded, size: 64, color: Colors.redAccent),
                 ),
                 const SizedBox(height: 32),
                 const Text(
-                  'Unexpected Error',
+                  'Initialization Error',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Something went wrong. Please try restarting the application.',
+                  'The application encountered a startup error. Please try restarting.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white60,
+                    color: Colors.white70,
                     fontSize: 16,
-                    height: 1.5,
                   ),
                 ),
                 const SizedBox(height: 40),
-                FilledButton.icon(
-                  onPressed: () {
-                    // Force restart or reload
-                    // In a real app, you might want to clear some cache
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  icon: Icon(LucideIcons.refreshCcw, size: 20),
-                  label: const Text('Reload App', style: TextStyle(fontWeight: FontWeight.w800)),
+                TextButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.refresh, color: Colors.white),
+                  label: const Text('Reload', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),

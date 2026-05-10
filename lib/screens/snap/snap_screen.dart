@@ -127,6 +127,7 @@ class _SnapScreenState extends State<SnapScreen>
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
+        useRootNavigator: true,
         backgroundColor: Colors.transparent,
         isDismissible: false,
         builder: (context) => MultiResultSheet(
@@ -139,6 +140,7 @@ class _SnapScreenState extends State<SnapScreen>
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
+        useRootNavigator: true,
         backgroundColor: Colors.transparent,
         isDismissible: false,
         builder:
@@ -157,6 +159,7 @@ class _SnapScreenState extends State<SnapScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isDismissible: false,
       builder:

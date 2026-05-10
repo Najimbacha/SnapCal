@@ -12,6 +12,9 @@ extension ThemeColors on BuildContext {
   Color get cardColor => Theme.of(this).colorScheme.surfaceContainerLowest;
   Color get cardSoftColor => Theme.of(this).colorScheme.surfaceContainerHigh;
   
+  Color get primaryColor => Theme.of(this).colorScheme.primary;
+  Color get primaryContainer => Theme.of(this).colorScheme.primaryContainer;
+  
   Color get dividerColor => Theme.of(this).dividerColor;
   
   Color get overlayColor =>

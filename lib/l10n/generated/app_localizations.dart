@@ -366,6 +366,12 @@ abstract class AppLocalizations {
   /// **'There is no data for this day.'**
   String get log_no_data_prompt;
 
+  /// No description provided for @log_return_today.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to Today'**
+  String get log_return_today;
+
   /// No description provided for @log_add_manually.
   ///
   /// In en, this message translates to:
@@ -3515,6 +3521,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign in to sync your data securely.'**
   String get settings_guest_subtitle;
+
+  /// No description provided for @activity_tracking_status.
+  ///
+  /// In en, this message translates to:
+  /// **'TRACKING STATUS'**
+  String get activity_tracking_status;
+
+  /// No description provided for @activity_active.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activity_active;
+
+  /// No description provided for @activity_description.
+  ///
+  /// In en, this message translates to:
+  /// **'Your phone sensors are actively tracking your steps for today\'s calorie burn.'**
+  String get activity_description;
+
+  /// No description provided for @activity_authorize_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'To track your steps automatically, please authorize activity recognition.'**
+  String get activity_authorize_desc;
+
+  /// No description provided for @activity_authorize_btn.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorize Tracking'**
+  String get activity_authorize_btn;
+
+  /// No description provided for @activity_motivation_low.
+  ///
+  /// In en, this message translates to:
+  /// **'Every step counts. Let\'s get moving today!'**
+  String get activity_motivation_low;
+
+  /// No description provided for @activity_motivation_mid.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on your way! A quick walk could help you reach your goal.'**
+  String get activity_motivation_mid;
+
+  /// No description provided for @activity_motivation_high.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost there! You\'re crushing your activity goals.'**
+  String get activity_motivation_high;
+
+  /// No description provided for @activity_motivation_elite.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding! You\'re in the elite active zone today.'**
+  String get activity_motivation_elite;
 }
 
 class _AppLocalizationsDelegate

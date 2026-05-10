@@ -151,10 +151,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get log_no_entries_history => 'السجل فارغ';
 
   @override
-  String get log_track_prompt => 'تتبع وجباتك لتراها هنا.';
+  String get log_track_prompt => 'قم بتتبع وجباتك لتراها هنا.';
 
   @override
   String get log_no_data_prompt => 'لا توجد بيانات لهذا اليوم.';
+
+  @override
+  String get log_return_today => 'العودة إلى اليوم';
 
   @override
   String get log_add_manually => 'إضافة يدوياً';
@@ -1861,8 +1864,40 @@ class AppLocalizationsAr extends AppLocalizations {
       'اطلع على ملخصي الأسبوعي للتغذية من سناب كال! 📊';
 
   @override
-  String get settings_guest_title => 'Protect Your Progress';
+  String get settings_guest_title => 'احمِ تقدمك';
 
   @override
-  String get settings_guest_subtitle => 'Sign in to sync your data securely.';
+  String get settings_guest_subtitle => 'سجل الدخول لمزامنة بياناتك بأمان.';
+
+  @override
+  String get activity_tracking_status => 'حالة التتبع';
+
+  @override
+  String get activity_active => 'نشط';
+
+  @override
+  String get activity_description =>
+      'أجهزة الاستشعار في هاتفك تتبع خطواتك بنشاط لحرق السعرات الحرارية اليوم.';
+
+  @override
+  String get activity_authorize_desc =>
+      'لتتبع خطواتك تلقائيًا، يرجى السماح بالتعرف على النشاط.';
+
+  @override
+  String get activity_authorize_btn => 'السماح بالتتبع';
+
+  @override
+  String get activity_motivation_low => 'كل خطوة مهمة. دعنا نتحرك اليوم!';
+
+  @override
+  String get activity_motivation_mid =>
+      'أنت في طريقك! المشي السريع قد يساعدك في الوصول إلى هدفك.';
+
+  @override
+  String get activity_motivation_high =>
+      'اقتربت من الوصول! أنت تحقق أهداف نشاطك.';
+
+  @override
+  String get activity_motivation_elite =>
+      'رائع! أنت في منطقة النشاط النخبة اليوم.';
 }

@@ -13,14 +13,16 @@ class MealRepository {
   Box<List<String>>? _indexBox;
   
   final _mealsController = StreamController<List<Meal>>.broadcast();
-  final _firestore = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  late final FirebaseFirestore _firestore;
+  late final FirebaseAuth _auth;
 
   /// Stream of meals for the current date for reactive UI
   Stream<List<Meal>> get todaysMealsStream => _mealsController.stream;
 
   /// Initialize the repository
   Future<void> init() async {
+    _firestore = FirebaseFirestore.instance;
+    _auth = FirebaseAuth.instance;
     final encryptionKey = await SecurityService().getEncryptionKey();
     final cipher = HiveAesCipher(encryptionKey);
 

@@ -148,6 +148,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get log_no_data_prompt => 'Il n\'y a pas de données pour ce jour.';
 
   @override
+  String get log_return_today => 'Retour à aujourd\'hui';
+
+  @override
   String get log_add_manually => 'Ajouter Manuellement';
 
   @override
@@ -1075,7 +1078,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settings_export_desc => 'Téléchargez vos repas et métriques';
 
   @override
-  String get settings_cloud_sync_desc => 'Connectez-vous pour sauvegarder';
+  String get settings_cloud_sync_desc => 'Sign in to back up your data';
 
   @override
   String get settings_about_title => 'À propos';
@@ -1871,8 +1874,42 @@ class AppLocalizationsFr extends AppLocalizations {
       'Découvrez mon résumé nutritionnel hebdomadaire de SnapCal ! 📊';
 
   @override
-  String get settings_guest_title => 'Protect Your Progress';
+  String get settings_guest_title => 'Protégez vos progrès';
 
   @override
-  String get settings_guest_subtitle => 'Sign in to sync your data securely.';
+  String get settings_guest_subtitle =>
+      'Connectez-vous pour synchroniser vos données en toute sécurité.';
+
+  @override
+  String get activity_tracking_status => 'ÉTAT DU SUIVI';
+
+  @override
+  String get activity_active => 'Actif';
+
+  @override
+  String get activity_description =>
+      'Les capteurs de votre téléphone suivent activement vos pas pour la dépense calorique d\'aujourd\'hui.';
+
+  @override
+  String get activity_authorize_desc =>
+      'Pour suivre vos pas automatiquement, veuillez autoriser la reconnaissance d\'activité.';
+
+  @override
+  String get activity_authorize_btn => 'Autoriser le Suivi';
+
+  @override
+  String get activity_motivation_low =>
+      'Chaque pas compte. Bougeons aujourd\'hui !';
+
+  @override
+  String get activity_motivation_mid =>
+      'Vous êtes sur la bonne voie ! Une marche rapide pourrait vous aider à atteindre votre objectif.';
+
+  @override
+  String get activity_motivation_high =>
+      'Presque là ! Vous dépassez vos objectifs d\'activité.';
+
+  @override
+  String get activity_motivation_elite =>
+      'Exceptionnel ! Vous êtes dans la zone active d\'élite aujourd\'hui.';
 }

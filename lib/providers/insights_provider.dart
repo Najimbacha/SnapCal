@@ -115,6 +115,8 @@ class InsightsProvider with ChangeNotifier {
         aiInsights = _getFallbackInsights(avgCal, calorieGoal, daysOnTrack);
       }
 
+      final weeklySteps = await activity.getWeeklySteps();
+
       _currentReport = WeeklyReport(
         weekStart: weekStart,
         weekEnd: now,
@@ -123,7 +125,7 @@ class InsightsProvider with ChangeNotifier {
         avgCarbs: avgCarb,
         avgFat: avgFatVal,
         avgWater: avgWaterVal,
-        totalSteps: activity.steps,
+        totalSteps: weeklySteps,
         daysOnTrack: daysOnTrack,
         daysLogged: daysLogged,
         currentStreak: settings.currentStreak,

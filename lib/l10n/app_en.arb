@@ -64,6 +64,7 @@
   "log_no_entries_history": "Empty history",
   "log_track_prompt": "Track your meals to see them here.",
   "log_no_data_prompt": "There is no data for this day.",
+  "log_return_today": "Return to Today",
   "log_add_manually": "Add Manually",
   "log_removed_snackbar": "{food} removed",
   "@log_removed_snackbar": {
@@ -732,5 +733,14 @@
   "feature_insights_subtitle": "Your AI-powered weekly nutrition summary is ready!",
   "feature_insights_share_text": "Check out my weekly nutrition summary from SnapCal! 📊",
   "settings_guest_title": "Protect Your Progress",
-  "settings_guest_subtitle": "Sign in to sync your data securely."
+  "settings_guest_subtitle": "Sign in to sync your data securely.",
+  "activity_tracking_status": "TRACKING STATUS",
+  "activity_active": "Active",
+  "activity_description": "Your phone sensors are actively tracking your steps for today's calorie burn.",
+  "activity_authorize_desc": "To track your steps automatically, please authorize activity recognition.",
+  "activity_authorize_btn": "Authorize Tracking",
+  "activity_motivation_low": "Every step counts. Let's get moving today!",
+  "activity_motivation_mid": "You're on your way! A quick walk could help you reach your goal.",
+  "activity_motivation_high": "Almost there! You're crushing your activity goals.",
+  "activity_motivation_elite": "Outstanding! You're in the elite active zone today."
 }

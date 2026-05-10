@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/theme/theme_colors.dart';
 import '../core/utils/responsive_utils.dart';
@@ -137,86 +139,76 @@ class MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     final content = Container(
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.surfaceContainerLow,
-            colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
-          ],
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: accent.withValues(alpha: isDark ? 0.2 : 0.1),
+          width: 1.5,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: accent.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: ShapeDecoration(
-                    color: accent.withValues(alpha: 0.12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Icon(icon, color: accent, size: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                const Spacer(),
-                if (hint != null)
-                  Flexible(
-                    child: Text(
-                      hint!,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: colorScheme.outline,
-                        fontSize: 10,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                child: Icon(icon, color: accent, size: 18),
+              ),
+              if (hint != null)
+                Text(
+                  hint!,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: accent.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
                   ),
-              ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: AppTypography.heading2.copyWith(
+              fontWeight: FontWeight.w900,
+              color: context.textPrimaryColor,
+              letterSpacing: -1,
+              fontSize: 28,
             ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: AppTypography.headlineSmall.copyWith(
-                color: colorScheme.onSurface,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label.toUpperCase(),
+            style: AppTypography.labelSmall.copyWith(
+              color: context.textMutedColor,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+              fontSize: 10,
             ),
-            Text(
-              label,
-              style: AppTypography.labelMedium.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
 
-    if (onTap != null) {
-      return AppScaleTap(onTap: onTap!, child: content);
-    }
-    return content;
+    if (onTap == null) return content;
+    return AppScaleTap(onTap: onTap!, child: content);
   }
 }
 
@@ -238,28 +230,35 @@ class AppEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.1),
+              gradient: LinearGradient(
+                colors: [
+                  context.primaryColor.withValues(alpha: 0.15),
+                  context.primaryColor.withValues(alpha: 0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               shape: BoxShape.circle,
+              border: Border.all(color: context.primaryColor.withValues(alpha: 0.1)),
             ),
-            child: Icon(icon, size: 48, color: colorScheme.primary),
-          ),
-          const SizedBox(height: 24),
+            child: Icon(icon, size: 48, color: context.primaryColor),
+          ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 3.seconds, color: Colors.white.withValues(alpha: 0.2)),
+          const SizedBox(height: 32),
           Text(
             title,
-            style: AppTypography.heading3.copyWith(
-              color: colorScheme.onSurface,
+            style: AppTypography.heading2.copyWith(
+              color: context.textPrimaryColor,
               fontWeight: FontWeight.w900,
+              letterSpacing: -1,
             ),
             textAlign: TextAlign.center,
           ),
@@ -267,34 +266,37 @@ class AppEmptyState extends StatelessWidget {
           Text(
             body,
             style: AppTypography.bodyMedium.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              height: 1.5,
+              color: context.textSecondaryColor,
+              height: 1.6,
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
           ),
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 32),
+            const SizedBox(height: 40),
             AppScaleTap(
               onTap: onAction!,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary,
-                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, Color(0xFF8B73FF)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: colorScheme.primary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
                 child: Text(
                   actionLabel!,
-                  style: const TextStyle(
+                  style: AppTypography.labelLarge.copyWith(
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
                   ),
                 ),
               ),
@@ -351,9 +353,15 @@ class ActionChipButton extends StatelessWidget {
 
 class AppScaleTap extends StatefulWidget {
   final Widget child;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
-  const AppScaleTap({super.key, required this.child, required this.onTap});
+  const AppScaleTap({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.onLongPress,
+  });
 
   @override
   State<AppScaleTap> createState() => _AppScaleTapState();
@@ -370,7 +378,9 @@ class _AppScaleTapState extends State<AppScaleTap> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.95).animate(_controller);
+    _scale = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -382,13 +392,20 @@ class _AppScaleTapState extends State<AppScaleTap> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
+      onTapDown: (_) {
+        if (widget.onTap != null || widget.onLongPress != null) {
+          _controller.forward();
+        }
+      },
       onTapUp: (_) {
         _controller.reverse();
-        HapticFeedback.selectionClick();
-        widget.onTap();
+        widget.onTap?.call();
       },
       onTapCancel: () => _controller.reverse(),
+      onLongPress: () {
+        _controller.reverse();
+        widget.onLongPress?.call();
+      },
       child: ScaleTransition(scale: _scale, child: widget.child),
     );
   }
@@ -414,5 +431,43 @@ class BottomActionBar extends StatelessWidget {
       ),
       child: SafeArea(child: child),
     );
+  }
+}
+class AppPulse extends StatefulWidget {
+  final Widget child;
+  final bool pulsing;
+
+  const AppPulse({super.key, required this.child, this.pulsing = true});
+
+  @override
+  State<AppPulse> createState() => _AppPulseState();
+}
+
+class _AppPulseState extends State<AppPulse> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.03).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.pulsing) return widget.child;
+    return ScaleTransition(scale: _scale, child: widget.child);
   }
 }

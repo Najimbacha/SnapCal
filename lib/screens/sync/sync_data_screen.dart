@@ -191,8 +191,18 @@ class _SyncDataScreenState extends State<SyncDataScreen>
 
     try {
       await context.read<AuthProvider>().signInWithGoogle();
-      if (mounted && context.read<AuthProvider>().isAuthenticated) {
-        widget.onAuthSuccess?.call();
+      if (mounted) {
+        final auth = context.read<AuthProvider>();
+        if (auth.isAuthenticated) {
+          widget.onAuthSuccess?.call();
+        } else if (auth.status == AuthStatus.error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(auth.errorMessage ?? 'Google Sign-In failed'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -206,8 +216,18 @@ class _SyncDataScreenState extends State<SyncDataScreen>
 
     try {
       await context.read<AuthProvider>().signInWithFacebook();
-      if (mounted && context.read<AuthProvider>().isAuthenticated) {
-        widget.onAuthSuccess?.call();
+      if (mounted) {
+        final auth = context.read<AuthProvider>();
+        if (auth.isAuthenticated) {
+          widget.onAuthSuccess?.call();
+        } else if (auth.status == AuthStatus.error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(auth.errorMessage ?? 'Facebook Sign-In failed'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

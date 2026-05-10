@@ -147,6 +147,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get log_no_data_prompt => 'There is no data for this day.';
 
   @override
+  String get log_return_today => 'Return to Today';
+
+  @override
   String get log_add_manually => 'Add Manually';
 
   @override
@@ -1851,4 +1854,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_guest_subtitle => 'Sign in to sync your data securely.';
+
+  @override
+  String get activity_tracking_status => 'TRACKING STATUS';
+
+  @override
+  String get activity_active => 'Active';
+
+  @override
+  String get activity_description =>
+      'Your phone sensors are actively tracking your steps for today\'s calorie burn.';
+
+  @override
+  String get activity_authorize_desc =>
+      'To track your steps automatically, please authorize activity recognition.';
+
+  @override
+  String get activity_authorize_btn => 'Authorize Tracking';
+
+  @override
+  String get activity_motivation_low =>
+      'Every step counts. Let\'s get moving today!';
+
+  @override
+  String get activity_motivation_mid =>
+      'You\'re on your way! A quick walk could help you reach your goal.';
+
+  @override
+  String get activity_motivation_high =>
+      'Almost there! You\'re crushing your activity goals.';
+
+  @override
+  String get activity_motivation_elite =>
+      'Outstanding! You\'re in the elite active zone today.';
 }

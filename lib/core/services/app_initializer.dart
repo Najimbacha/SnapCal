@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -39,37 +42,47 @@ class AppInitializer {
     final startTime = DateTime.now();
     debugPrint('🚀 AppInitializer: Starting initialization...');
 
-    // 1. Critical System UI (Edge-to-Edge Support for Android 15+)
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
-    );
+    try {
+      debugPrint('🚀 AppInitializer: Setting System UI...');
+      // 1. Critical System UI (Edge-to-Edge Support for Android 15+)
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          systemNavigationBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
+      );
 
-    // 2. Critical: Initialize Firebase FIRST before any dependent services
-    await _initFirebase();
+      debugPrint('🚀 AppInitializer: Initializing Firebase...');
+      // 2. Critical: Initialize Firebase FIRST
+      await _initFirebase();
 
-    // 3. Initialize Hive first since repositories depend on it
-    await _initHive();
+      debugPrint('🚀 AppInitializer: Initializing Hive...');
+      // 3. Initialize Hive
+      await _initHive();
 
-    // 4. Initialize Repositories (CRITICAL)
-    await Future.wait([
-      mealRepository.init(),
-      settingsRepository.init(),
-      waterRepository.init(),
-      assistantRepository.init(),
-    ]);
+      debugPrint('🚀 AppInitializer: Initializing Repositories...');
+      // 4. Initialize Repositories (CRITICAL)
+      await Future.wait([
+        mealRepository.init(),
+        settingsRepository.init(),
+        waterRepository.init(),
+        assistantRepository.init(),
+      ]).timeout(const Duration(seconds: 20));
 
-    // 5. Background Initialization for non-critical services
-    // We don't await this so the app can launch immediately
-    _initBackgroundServices(settingsRepository);
+      debugPrint('🚀 AppInitializer: Starting background services...');
+      // 5. Background Initialization
+      _initBackgroundServices(settingsRepository);
 
-    final duration = DateTime.now().difference(startTime).inMilliseconds;
-    debugPrint('✅ AppInitializer: Critical core ready in ${duration}ms');
+      final duration = DateTime.now().difference(startTime).inMilliseconds;
+      debugPrint('✅ AppInitializer: Critical core ready in ${duration}ms');
+    } catch (e, stack) {
+      debugPrint('❌ AppInitializer: Fatal error during initialization: $e');
+      debugPrint(stack.toString());
+      rethrow;
+    }
   }
 
   static Future<void> _initBackgroundServices(SettingsRepository settingsRepository) async {
@@ -77,21 +90,36 @@ class AppInitializer {
       await Future.wait([
         NotificationService().init(),
         ConfigService().init(),
-        GoogleSignIn.instance.initialize(),
+        _initGoogleSignIn(), // Isolated initialization with timeout
         SubscriptionService.init(settingsRepository),
         ScanGateService().init(),
         AdService().init(),
         WidgetService.init(),
         _warmupSingletons(),
-      ]);
+      ]).timeout(const Duration(seconds: 15));
       debugPrint('⚡ Background services ready');
     } catch (e) {
       debugPrint('⚠️ Background service init warning: $e');
     }
   }
 
+  static Future<void> _initGoogleSignIn() async {
+    try {
+      debugPrint('🎬 AppInitializer: Initializing GoogleSignIn...');
+      await GoogleSignIn.instance.initialize(
+        serverClientId: '183409999145-2p9nqjrr8d07ulal61nupsefkh7pt9on.apps.googleusercontent.com',
+      ).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('⚠️ AppInitializer: GoogleSignIn initialization timed out');
+        },
+      );
+    } catch (e) {
+      debugPrint('⚠️ AppInitializer: GoogleSignIn initialization warning: $e');
+    }
+  }
+
   static Future<void> _warmupSingletons() async {
-    // Simply instantiating the singletons triggers their Dio/internal setup
     AIService();
     BarcodeService();
     debugPrint('⚡ Services warmed up');
@@ -99,11 +127,45 @@ class AppInitializer {
 
   static Future<void> _initFirebase() async {
     try {
-      await Firebase.initializeApp();
-      debugPrint('🔥 Firebase initialized');
+      debugPrint('🔥 Firebase: Checking if already initialized...');
+      if (Firebase.apps.isEmpty) {
+        debugPrint('🔥 Firebase: Calling initializeApp()...');
+        await Firebase.initializeApp().timeout(const Duration(seconds: 15));
+        debugPrint('🔥 Firebase: initializeApp() completed');
+        
+        // Enable Crashlytics in Release mode
+        if (!kDebugMode) {
+          debugPrint('🔥 Firebase: Enabling Crashlytics collection...');
+          await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+          debugPrint('🔥 Firebase: Crashlytics collection enabled');
+        }
+        
+        // Setup Global Error Handling now that Firebase is ready
+        debugPrint('🔥 Firebase: Setting up error reporting...');
+        _setupErrorReporting();
+        
+        debugPrint('🔥 Firebase initialized and Error Reporting active');
+      } else {
+        debugPrint('🔥 Firebase already initialized');
+      }
     } catch (e) {
       debugPrint('❌ Firebase initialization failed: $e');
+      // Rethrow to ensure the UI shows the retry screen instead of hanging in a half-initialized state
+      rethrow;
     }
+  }
+
+  static void _setupErrorReporting() {
+    FlutterError.onError = (errorDetails) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+      FlutterError.presentError(errorDetails);
+    };
+    
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+    debugPrint('🛡️ Crashlytics Error Reporting configured');
   }
 
   static Future<void> _initHive() async {

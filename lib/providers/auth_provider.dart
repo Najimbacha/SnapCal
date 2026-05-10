@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart'; 
@@ -40,7 +41,10 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _auth.signInAnonymously();
+      await _auth.signInAnonymously().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('Sign-in timed out. Please check your connection.'),
+      );
     } catch (e) {
       _errorMessage = e.toString();
       _status = AuthStatus.error;
@@ -55,37 +59,49 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('🔑 AuthProvider: Starting Google Auth...');
+      // In v7.2.0+, use authenticate() instead of signIn()
       final googleUser = await _googleSignIn.authenticate(); 
-      /* 
+      
       if (googleUser == null) {
-        _status = AuthStatus.authenticated; // Revert to previous (likely guest)
+        debugPrint('🔑 AuthProvider: Google Auth cancelled by user (googleUser is null)');
+        _status = AuthStatus.unauthenticated;
+        if (_user != null) _status = AuthStatus.authenticated;
         notifyListeners();
         return;
       }
-      */
 
-      final GoogleSignInAuthentication authData = googleUser.authentication;
+      debugPrint('🔑 AuthProvider: Google Auth success, getting authentication data...');
+      final GoogleSignInAuthentication authData = await googleUser.authentication;
       
+      debugPrint('🔑 AuthProvider: Creating Firebase credential...');
       final AuthCredential credential = GoogleAuthProvider.credential(
         idToken: authData.idToken,
+        // accessToken is no longer directly available in v7.x authentication object
+        // but idToken is sufficient for Firebase Google Sign-In.
       );
 
       if (isAnonymous) {
+        debugPrint('🔑 AuthProvider: Linking anonymous account...');
         try {
-          // Link anonymous account to Google
           await _user?.linkWithCredential(credential);
+          debugPrint('🔑 AuthProvider: Linking success');
         } on FirebaseAuthException catch (e) {
           if (e.code == 'credential-already-in-use' || e.code == 'email-already-in-use') {
-            // Account exists, just sign in (switch to that account)
+            debugPrint('🔑 AuthProvider: Credential in use, signing in directly...');
             await _auth.signInWithCredential(credential);
           } else {
+            debugPrint('❌ AuthProvider: Linking error: ${e.code} - ${e.message}');
             rethrow;
           }
         }
       } else {
+        debugPrint('🔑 AuthProvider: Signing in with credential...');
         await _auth.signInWithCredential(credential);
       }
+      debugPrint('✅ AuthProvider: Google Sign-In Complete');
     } catch (e) {
+      debugPrint('❌ AuthProvider: Google Sign-In Error: $e');
       _errorMessage = e.toString();
       _status = AuthStatus.error;
       notifyListeners();

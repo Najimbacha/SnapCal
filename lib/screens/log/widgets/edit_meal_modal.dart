@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/theme_colors.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../data/models/meal.dart';
-import '../../../widgets/glass_container.dart';
+import 'package:provider/provider.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_colors.dart';
+import '../../../../data/models/meal.dart';
+import '../../../providers/settings_provider.dart';
+import '../../../widgets/ui_blocks.dart';
 
-/// Modal for editing meal details
 class EditMealModal extends StatefulWidget {
   final Meal meal;
   final Function(Meal) onSave;
-  final VoidCallback onCancel;
   final VoidCallback onDelete;
+  final VoidCallback? onCancel;
 
   const EditMealModal({
     super.key,
     required this.meal,
     required this.onSave,
-    required this.onCancel,
     required this.onDelete,
+    this.onCancel,
   });
 
   @override
@@ -29,8 +29,8 @@ class EditMealModal extends StatefulWidget {
 
 class _EditMealModalState extends State<EditMealModal> {
   late TextEditingController _nameController;
-  late TextEditingController _portionController;
   late TextEditingController _caloriesController;
+  late TextEditingController _portionController;
   late TextEditingController _proteinController;
   late TextEditingController _carbsController;
   late TextEditingController _fatController;
@@ -39,26 +39,18 @@ class _EditMealModalState extends State<EditMealModal> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.meal.foodName);
+    _caloriesController = TextEditingController(text: widget.meal.calories.toString());
     _portionController = TextEditingController(text: widget.meal.portion ?? '');
-    _caloriesController = TextEditingController(
-      text: widget.meal.calories.toString(),
-    );
-    _proteinController = TextEditingController(
-      text: widget.meal.macros.protein.toString(),
-    );
-    _carbsController = TextEditingController(
-      text: widget.meal.macros.carbs.toString(),
-    );
-    _fatController = TextEditingController(
-      text: widget.meal.macros.fat.toString(),
-    );
+    _proteinController = TextEditingController(text: widget.meal.macros.protein.toString());
+    _carbsController = TextEditingController(text: widget.meal.macros.carbs.toString());
+    _fatController = TextEditingController(text: widget.meal.macros.fat.toString());
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _portionController.dispose();
     _caloriesController.dispose();
+    _portionController.dispose();
     _proteinController.dispose();
     _carbsController.dispose();
     _fatController.dispose();
@@ -67,314 +59,330 @@ class _EditMealModalState extends State<EditMealModal> {
 
   void _handleSave() {
     final updatedMeal = widget.meal.copyWith(
-      foodName:
-          _nameController.text.isEmpty ? AppLocalizations.of(context)!.log_unknown_food : _nameController.text,
+      foodName: _nameController.text.isEmpty ? 'Unknown Meal' : _nameController.text,
       calories: int.tryParse(_caloriesController.text) ?? 0,
-      portion: _portionController.text.isEmpty ? null : _portionController.text,
-      macros: Macros(
+      portion: _portionController.text,
+      macros: widget.meal.macros.copyWith(
         protein: int.tryParse(_proteinController.text) ?? 0,
         carbs: int.tryParse(_carbsController.text) ?? 0,
         fat: int.tryParse(_fatController.text) ?? 0,
       ),
     );
     widget.onSave(updatedMeal);
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(
-          padding: const EdgeInsets.all(24),
-          borderRadius: 32,
-          backgroundColor: context.surfaceColor.withValues(alpha: 0.9),
-          borderColor: context.glassBorderColor.withValues(alpha: 0.5),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Handle bar
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: context.textMutedColor.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2.5),
-                    ),
-                  ),
-                ),
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
 
-                const SizedBox(height: 32),
-
-                // Title
-                Text(
-                  widget.meal.id == 'new' 
-              ? AppLocalizations.of(context)!.log_log_new_meal 
-              : AppLocalizations.of(context)!.log_edit_meal,
-                  style: AppTypography.heading2.copyWith(
-                    letterSpacing: -0.5,
-                    fontWeight: FontWeight.w900,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 32),
-
-                // Food name
-                _buildPremiumInput(
-                  controller: _nameController,
-                  label: AppLocalizations.of(context)!.log_food_name,
-                  hint: AppLocalizations.of(context)!.log_food_hint,
-                  icon: LucideIcons.utensils,
-                ),
-                const SizedBox(height: 16),
-                _buildPremiumInput(
-                  controller: _portionController,
-                  label: AppLocalizations.of(context)!.log_portion_desc,
-                  icon: LucideIcons.scale,
-                  hint: AppLocalizations.of(context)!.log_portion_hint,
-                ),
-
-                const SizedBox(height: 16),
-
-                // Calories
-                _buildPremiumInput(
-                  controller: _caloriesController,
-                  label: AppLocalizations.of(context)!.log_calories_kcal,
-                  icon: LucideIcons.flame,
-                  keyboardType: TextInputType.number,
-                  iconColor: AppColors.primary,
-                ),
-
-                const SizedBox(height: 24),
-
-                // Macros Section
-                Text(
-                  AppLocalizations.of(context)!.result_macronutrients.toUpperCase(),
-                  style: AppTypography.labelSmall.copyWith(
-                    color: context.textMutedColor,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5,
-                    fontSize: 10,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMacroField(
-                        controller: _proteinController,
-                        label: AppLocalizations.of(context)!.result_protein,
-                        color: AppColors.protein,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildMacroField(
-                        controller: _carbsController,
-                        label: AppLocalizations.of(context)!.result_carbs,
-                        color: AppColors.carbs,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildMacroField(
-                        controller: _fatController,
-                        label: AppLocalizations.of(context)!.result_fat,
-                        color: AppColors.fat,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 32),
-
-                // Action buttons
-                Row(
-                  children: [
-                    if (widget.meal.id != 'temp') ...[
-                      IconButton(
-                        onPressed: () => _showDeleteConfirmation(context),
-                        icon: const Icon(
-                          LucideIcons.trash2,
-                          color: AppColors.error,
+    return Container(
+      decoration: BoxDecoration(
+        color: context.surfaceContainerColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag Handle
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: context.textMutedColor.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          
+          Flexible(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 24, 
+                right: 24, 
+                bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 120,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.log_edit_meal,
+                        style: AppTypography.heading3.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: context.textPrimaryColor,
                         ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: AppColors.error.withValues(alpha: 0.1),
+                      ),
+                      IconButton(
+                        onPressed: widget.onCancel ?? () => Navigator.pop(context),
+                        icon: const Icon(LucideIcons.x),
+                        color: context.textSecondaryColor,
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 24),
+
+                  // CALORIES INPUT SECTION
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: context.dividerColor.withValues(alpha: 0.1)),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          l10n.log_calories_kcal.toUpperCase(),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: context.textMutedColor,
+                            letterSpacing: 1.2,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        IntrinsicWidth(
+                          child: TextField(
+                            controller: _caloriesController,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            style: AppTypography.displayMedium.copyWith(
+                              color: context.primaryColor,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 48,
+                            ),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                              suffixText: ' kcal',
+                              suffixStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // MAIN DETAILS
+                  _MinimalistInput(
+                    controller: _nameController,
+                    label: l10n.log_food_name,
+                    icon: LucideIcons.utensils,
+                    hint: l10n.log_food_hint,
+                  ),
+                  const SizedBox(height: 16),
+                  _MinimalistInput(
+                    controller: _portionController,
+                    label: l10n.log_portion_desc,
+                    icon: LucideIcons.scale,
+                    hint: l10n.log_portion_hint,
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // MACRO GRID
+                  Text(
+                    l10n.result_macronutrients,
+                    style: AppTypography.titleSmall.copyWith(
+                      color: context.textSecondaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _MinimalistMacroInput(
+                          label: l10n.result_protein,
+                          controller: _proteinController,
+                          unit: 'g',
                         ),
                       ),
                       const SizedBox(width: 12),
-                    ],
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _handleSave,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppColors.primary, Color(0xFF6B4DFF)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              AppLocalizations.of(context)!.log_save_entry,
-                              style: AppTypography.labelLarge.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                      Expanded(
+                        child: _MinimalistMacroInput(
+                          label: l10n.result_carbs,
+                          controller: _carbsController,
+                          unit: 'g',
                         ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _MinimalistMacroInput(
+                          label: l10n.result_fat,
+                          controller: _fatController,
+                          unit: 'g',
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // ACTIONS
+                  ElevatedButton(
+                    onPressed: _handleSave,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: context.primaryColor,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(56),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      l10n.log_save_entry,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                  
+                  if (widget.meal.id != 'temp' && widget.meal.id != 'new') ...[
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => _showDeleteConfirmation(context),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: Text(
+                        l10n.log_delete_entry,
+                        style: TextStyle(color: colorScheme.error),
                       ),
                     ),
                   ],
-                ),
-
-                const SizedBox(height: 12),
-                const SizedBox(height: 24),
-              ],
+                ],
+              ),
             ),
           ),
-        )
-        .animate()
-        .slideY(begin: 0.1, duration: 400.ms, curve: Curves.easeOutCubic)
-        .fadeIn(duration: 400.ms);
-  }
-
-  Widget _buildPremiumInput({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    String? hint,
-    TextInputType? keyboardType,
-    Color? iconColor,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.backgroundColor.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.glassBorderColor),
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.bold),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          hintStyle: AppTypography.bodySmall.copyWith(
-            color: context.textMutedColor.withValues(alpha: 0.5),
-          ),
-          labelStyle: AppTypography.bodySmall.copyWith(
-            color: context.textMutedColor,
-          ),
-          prefixIcon: Icon(
-            icon,
-            color: iconColor ?? context.textSecondaryColor,
-            size: 18,
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMacroField({
-    required TextEditingController controller,
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.1)),
-      ),
-      child: TextField(
-        controller: controller,
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        style: AppTypography.bodyLarge.copyWith(
-          fontWeight: FontWeight.bold,
-          color: color,
-        ),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          labelText: label,
-          floatingLabelAlignment: FloatingLabelAlignment.center,
-          labelStyle: AppTypography.labelSmall.copyWith(
-            color: color.withValues(alpha: 0.7),
-            fontSize: 9,
-          ),
-          contentPadding: EdgeInsets.zero,
-          suffixText: 'g',
-          suffixStyle: AppTypography.bodySmall.copyWith(
-            color: color,
-            fontSize: 10,
-          ),
-        ),
+        ],
       ),
     );
   }
 
   void _showDeleteConfirmation(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            title: Text(AppLocalizations.of(context)!.log_delete_meal_title, style: AppTypography.heading3),
-            content: Text(
-              AppLocalizations.of(context)!.log_delete_meal_body,
-              style: AppTypography.bodyMedium.copyWith(
-                color: context.textSecondaryColor,
-                height: 1.5,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  AppLocalizations.of(context)!.common_keep_it,
-                  style: TextStyle(
-                    color: context.textSecondaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close dialog
-                  widget.onDelete();
-                },
-                child: Text(
-                  AppLocalizations.of(context)!.common_delete,
-                  style: TextStyle(
-                    color: AppColors.error,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        backgroundColor: context.surfaceContainerColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(l10n.log_delete_meal_title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(l10n.log_delete_meal_body),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.common_keep_it)),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              widget.onDelete();
+            },
+            child: Text(l10n.common_delete, style: TextStyle(color: colorScheme.error, fontWeight: FontWeight.bold)),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MinimalistInput extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final String? hint;
+
+  const _MinimalistInput({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.hint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: context.textMutedColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          style: AppTypography.bodyLarge,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon, size: 20),
+            filled: true,
+            fillColor: colorScheme.surfaceContainerLow,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MinimalistMacroInput extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final String unit;
+
+  const _MinimalistMacroInput({
+    required this.label,
+    required this.controller,
+    required this.unit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: context.textMutedColor,
+            fontWeight: FontWeight.bold,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: colorScheme.surfaceContainerLow,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            suffixText: unit,
+            suffixStyle: TextStyle(color: context.textMutedColor, fontSize: 12),
+          ),
+        ),
+      ],
     );
   }
 }

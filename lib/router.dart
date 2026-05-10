@@ -8,6 +8,7 @@ import 'screens/auth/auth_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/assistant/assistant_screen.dart';
+import 'screens/home/activity_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'providers/auth_provider.dart';
 import 'providers/settings_provider.dart';
@@ -86,6 +87,10 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
       GoRoute(
         path: '/insights',
         builder: (context, state) => const WeeklyWrapScreen(),
+      ),
+      GoRoute(
+        path: '/activity',
+        builder: (context, state) => const ActivityScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

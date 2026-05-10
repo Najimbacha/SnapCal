@@ -117,10 +117,11 @@ class RecentMealTile extends StatelessWidget {
             ),
             // Calorie Counter
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -130,15 +131,17 @@ class RecentMealTile extends StatelessWidget {
                     style: AppTypography.titleMedium.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w900,
-                      fontSize: 14,
+                      fontSize: 15,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   Text(
-                    'kcal',
+                    'KCAL',
                     style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.primary.withValues(alpha: 0.7),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary.withValues(alpha: 0.8),
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],

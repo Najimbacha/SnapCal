@@ -1665,20 +1665,7 @@ class _PreferencesScreen extends StatelessWidget {
                           context.read<SettingsProvider>().toggleMealReminders,
                     ),
               ),
-              Consumer<ActivityProvider>(
-                builder: (context, activity, _) => _SwitchRow(
-                  icon: LucideIcons.activity,
-                  accent: Colors.orange,
-                  title: AppLocalizations.of(context)!.settings_health_sync,
-                  subtitle: AppLocalizations.of(context)!.settings_health_sync_sub,
-                  value: activity.isAuthorized,
-                  onChanged: (val) {
-                    if (val) {
-                      activity.authorize();
-                    }
-                  },
-                ),
-              ),
+
               Consumer<SettingsProvider>(
                 builder: (context, settings, _) => Column(
                   children: [

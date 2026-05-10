@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive/hive.dart';
 
@@ -13,25 +15,47 @@ class SecurityService {
   static const _secureStorage = FlutterSecureStorage();
 
   Uint8List? _encryptionKey;
+  Future<Uint8List>? _encryptionKeyFuture;
 
   /// Get or create an encryption key for Hive boxes
   Future<Uint8List> getEncryptionKey() async {
     if (_encryptionKey != null) return _encryptionKey!;
+    
+    // Prevent concurrent calls to secure storage which can cause hangs on Android
+    _encryptionKeyFuture ??= _getOrCreateKey();
+    return _encryptionKeyFuture!;
+  }
 
-    final encodedKey = await _secureStorage.read(key: _encryptionKeyName);
-    if (encodedKey == null) {
-      // Create new key
-      final key = Hive.generateSecureKey();
-      await _secureStorage.write(
-        key: _encryptionKeyName,
-        value: base64UrlEncode(key),
+  Future<Uint8List> _getOrCreateKey() async {
+    try {
+      final encodedKey = await _secureStorage.read(key: _encryptionKeyName).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => throw TimeoutException('Secure storage read timed out'),
       );
-      _encryptionKey = Uint8List.fromList(key);
-    } else {
-      _encryptionKey = base64Url.decode(encodedKey);
+      
+      if (encodedKey == null) {
+        final key = Hive.generateSecureKey();
+        await _secureStorage.write(
+          key: _encryptionKeyName,
+          value: base64UrlEncode(key),
+        ).timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => throw TimeoutException('Secure storage write timed out'),
+        );
+        _encryptionKey = Uint8List.fromList(key);
+      } else {
+        _encryptionKey = base64Url.decode(encodedKey);
+      }
+      return _encryptionKey!;
+    } catch (e) {
+      debugPrint('❌ SecurityService: Secure storage error or timeout: $e');
+      // Fallback to a non-persisted key if secure storage fails, 
+      // but note that this means data will be lost on next launch.
+      // Better than a permanent hang/blank screen.
+      final fallbackKey = Hive.generateSecureKey();
+      _encryptionKey = Uint8List.fromList(fallbackKey);
+      return _encryptionKey!;
     }
-
-    return _encryptionKey!;
   }
 
   /// Securely clear keys (e.g. on factory reset)

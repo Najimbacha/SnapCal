@@ -205,79 +205,85 @@ class _MultiResultSheetState extends State<MultiResultSheet> {
           const SizedBox(height: 24),
 
           // ── Action Buttons ──
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    widget.onCancel();
-                  },
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                  ),
-                  child: Text(
-                    AppLocalizations.of(context)!.common_cancel,
-                    style: AppTypography.bodyLarge.copyWith(
-                      color: context.textSecondaryColor,
-                      fontWeight: FontWeight.w700,
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        widget.onCancel();
+                      },
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context)!.common_cancel,
+                        style: AppTypography.bodyLarge.copyWith(
+                          color: context.textSecondaryColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: FilledButton(
-                    onPressed: _selectedCount > 0
-                        ? () {
-                            final selectedResults = <NutritionResult>[];
-                            for (int i = 0; i < widget.results.length; i++) {
-                              if (_selected[i]) {
-                                final m = _multipliers[i];
-                                final base = widget.results[i];
-                                selectedResults.add(NutritionResult(
-                                  foodName: base.foodName,
-                                  portion: base.portion,
-                                  calories: (base.calories * m).round(),
-                                  protein: (base.protein * m).round(),
-                                  carbs: (base.carbs * m).round(),
-                                  fat: (base.fat * m).round(),
-                                ));
+                      child: FilledButton(
+                        onPressed: _selectedCount > 0
+                            ? () {
+                                final selectedResults = <NutritionResult>[];
+                                for (int i = 0; i < widget.results.length; i++) {
+                                  if (_selected[i]) {
+                                    final m = _multipliers[i];
+                                    final base = widget.results[i];
+                                    selectedResults.add(NutritionResult(
+                                      foodName: base.foodName,
+                                      portion: base.portion,
+                                      calories: (base.calories * m).round(),
+                                      protein: (base.protein * m).round(),
+                                      carbs: (base.carbs * m).round(),
+                                      fat: (base.fat * m).round(),
+                                    ));
+                                  }
+                                }
+                                Navigator.pop(context);
+                                widget.onSaveAll(selectedResults);
                               }
-                            }
-                            Navigator.pop(context);
-                            widget.onSaveAll(selectedResults);
-                          }
-                        : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      minimumSize: const Size.fromHeight(60),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                    ),
-                    child: Text(
-                      AppLocalizations.of(context)!.snap_log_meal,
-                      style: AppTypography.titleMedium.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
+                            : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          minimumSize: const Size.fromHeight(60),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context)!.snap_log_meal,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ).animate().fadeIn(delay: 600.ms),
         ],
       ),

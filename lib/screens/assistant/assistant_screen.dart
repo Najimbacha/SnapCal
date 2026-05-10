@@ -106,9 +106,15 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
     final isPro = settings.isPro;
     final bgColor = isPro ? colorScheme.surface : const Color(0xFF0F172A);
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: AnnotatedRegion<SystemUiOverlayStyle>(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.pop();
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: !isPro ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
         child: Stack(
           children: [
@@ -208,8 +214,9 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildProBenefit(BuildContext context, IconData icon, String label, {bool isGold = false}) {
     final accentColor = isGold ? const Color(0xFFFBBF24) : AppColors.primary;
@@ -388,12 +395,29 @@ class _ChatAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+        padding: const EdgeInsets.fromLTRB(16, 8, 20, 8),
         child: Row(
           children: [
+            AppScaleTap(
+              onTap: () => context.pop(),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isElite ? Colors.white.withValues(alpha: 0.1) : context.backgroundColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded, 
+                  size: 16, 
+                  color: isElite ? Colors.white : colorScheme.onSurface,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
             Text(
               "AI Coach",
               style: AppTypography.heading3.copyWith(

@@ -427,15 +427,28 @@ class _CalorieSpotlight extends StatelessWidget {
     final double percent = (val / dailyGoal).clamp(0.0, 1.0);
 
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [context.cardColor, context.cardColor.withValues(alpha: 0.5)],
+          colors: [
+            context.cardColor,
+            context.cardColor.withValues(alpha: 0.5),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: context.textMutedColor.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: context.textMutedColor.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -443,13 +456,25 @@ class _CalorieSpotlight extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                AppLocalizations.of(context)!.result_energy,
-                style: AppTypography.labelSmall.copyWith(color: context.textSecondaryColor, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                AppLocalizations.of(context)!.result_energy.toUpperCase(),
+                style: AppTypography.labelSmall.copyWith(
+                  color: context.textSecondaryColor,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                  fontSize: 10,
+                ),
               ),
-              const Icon(LucideIcons.flame, color: AppColors.primary, size: 20),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(LucideIcons.flame, color: AppColors.primary, size: 16),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -458,27 +483,57 @@ class _CalorieSpotlight extends StatelessWidget {
                 child: TextField(
                   controller: controller,
                   keyboardType: TextInputType.number,
-                  style: AppTypography.displayMedium.copyWith(fontWeight: FontWeight.w900, fontSize: 64, height: 1),
-                  decoration: const InputDecoration(border: InputBorder.none, isDense: true),
+                  style: AppTypography.displayMedium.copyWith(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 72,
+                    height: 1,
+                    letterSpacing: -2,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 AppLocalizations.of(context)!.result_kcal,
-                style: AppTypography.titleLarge.copyWith(color: context.textSecondaryColor, fontWeight: FontWeight.w900),
+                style: AppTypography.titleLarge.copyWith(
+                  color: context.textMutedColor,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 24),
           Stack(
             children: [
-              Container(height: 8, width: double.infinity, decoration: BoxDecoration(color: context.textMutedColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4))),
+              Container(
+                height: 10,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: context.textMutedColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
               AnimatedContainer(
                 duration: 500.ms,
-                height: 8, width: (MediaQuery.of(context).size.width - 104) * percent,
+                height: 10,
+                width: (MediaQuery.of(context).size.width - 96) * percent,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFFF59E0B)]),
-                  borderRadius: BorderRadius.circular(4),
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, Color(0xFF8B73FF)],
+                  ),
+                  borderRadius: BorderRadius.circular(5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -486,7 +541,10 @@ class _CalorieSpotlight extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             AppLocalizations.of(context)!.result_daily_goal_info((percent * 100).round()),
-            style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor, fontWeight: FontWeight.w600),
+            style: AppTypography.bodySmall.copyWith(
+              color: context.textSecondaryColor,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -528,19 +586,27 @@ class _MacroCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: isHero ? color.withValues(alpha: 0.4) : color.withValues(alpha: 0.15),
-              width: isHero ? 2 : 1,
+              width: isHero ? 2.5 : 1.5,
             ),
           ),
           child: Column(
             children: [
-              Icon(icon, color: color, size: 20),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 16),
+              ),
               const SizedBox(height: 12),
               Text(
                 label.toUpperCase(),
                 style: AppTypography.labelSmall.copyWith(
-                  color: color,
+                  color: color.withValues(alpha: 0.8),
                   fontWeight: FontWeight.w900,
                   fontSize: 10,
+                  letterSpacing: 0.5,
                 ),
               ),
               const SizedBox(height: 4),
@@ -548,26 +614,28 @@ class _MacroCard extends StatelessWidget {
                 controller: controller,
                 textAlign: TextAlign.center,
                 keyboardType: TextInputType.number,
-                style: AppTypography.titleLarge.copyWith(
+                style: AppTypography.heading3.copyWith(
                   fontWeight: FontWeight.w900,
-                  fontSize: 20,
+                  fontSize: 22,
+                  color: context.isDarkMode ? Colors.white : color,
                 ),
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   isDense: true,
+                  contentPadding: EdgeInsets.zero,
                   suffixText: 'g',
                   suffixStyle: AppTypography.labelSmall.copyWith(
-                    color: context.textSecondaryColor,
-                    fontWeight: FontWeight.bold,
+                    color: color.withValues(alpha: 0.4),
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
               const SizedBox(height: 12),
               ClipRRect(
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(3),
                 child: LinearProgressIndicator(
                   value: percent,
-                  minHeight: 3,
+                  minHeight: 4,
                   backgroundColor: color.withValues(alpha: 0.1),
                   color: color,
                 ),
@@ -577,18 +645,18 @@ class _MacroCard extends StatelessWidget {
         ),
         if (isHero)
           Positioned(
-            top: -10,
-            right: -4,
+            top: -12,
+            right: -6,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
                     color: color.withValues(alpha: 0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -598,10 +666,10 @@ class _MacroCard extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 8,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.8,
                 ),
               ),
-            ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds, color: Colors.white.withValues(alpha: 0.4)),
+            ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds, color: Colors.white.withValues(alpha: 0.5)),
           ),
       ],
     );

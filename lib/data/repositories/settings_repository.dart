@@ -11,14 +11,16 @@ import '../../core/constants/app_constants.dart';
 class SettingsRepository {
   Box<UserSettings>? _settingsBox;
   final _settingsController = StreamController<UserSettings>.broadcast();
-  final _firestore = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  late final FirebaseFirestore _firestore;
+  late final FirebaseAuth _auth;
 
   /// Stream of user settings for reactive UI updates
   Stream<UserSettings> get settingsStream => _settingsController.stream;
 
   /// Initialize the repository
   Future<void> init() async {
+    _firestore = FirebaseFirestore.instance;
+    _auth = FirebaseAuth.instance;
     try {
       final encryptionKey = await SecurityService().getEncryptionKey();
       _settingsBox = await Hive.openBox<UserSettings>(

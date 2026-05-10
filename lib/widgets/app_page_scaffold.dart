@@ -125,7 +125,7 @@ class AppPageScaffold extends StatelessWidget {
       ),
     );
 
-    final isOnline = context.watch<ConnectivityService>().isOnline;
+    final isOnline = context.select<ConnectivityService, bool>((s) => s.isOnline);
 
     Widget body = Column(
       children: [

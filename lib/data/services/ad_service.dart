@@ -29,12 +29,7 @@ class AdService {
   Future<void> init() async {
     if (_initialized) return;
     try {
-      // Set up test device configuration to allow ads to show on this specific phone
-      final requestConfiguration = RequestConfiguration(
-        testDeviceIds: ['9A0C5E3D8D3CDA1A32AC1AD64966811C'],
-      );
-      await MobileAds.instance.updateRequestConfiguration(requestConfiguration);
-      
+      // Initialize the Mobile Ads SDK without forcing test mode on any device
       await MobileAds.instance.initialize();
       _initialized = true;
       debugPrint('📢 AdService: Google Mobile Ads initialized');
