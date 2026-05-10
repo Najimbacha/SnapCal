@@ -70,56 +70,33 @@ class NotificationService {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    try {
-      await _notificationsPlugin.zonedSchedule(
-        id: id,
-        title: title,
-        body: body,
-        scheduledDate: scheduledDate,
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'meal_reminders_v2',
-            'Emerald Meal Reminders',
-            channelDescription: 'Sophisticated reminders to log your daily nutrition.',
-            importance: Importance.max,
-            priority: Priority.high,
-            color: Color(0xFF10B981),
-            ledColor: Color(0xFF10B981),
-            ledOnMs: 1000,
-            ledOffMs: 500,
-          ),
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
+    // Use inexact scheduling for better battery efficiency and Google Play compliance
+    await _notificationsPlugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: scheduledDate,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'meal_reminders_v2',
+          'Emerald Meal Reminders',
+          channelDescription: 'Sophisticated reminders to log your daily nutrition.',
+          importance: Importance.max,
+          priority: Priority.high,
+          color: Color(0xFF10B981),
+          ledColor: Color(0xFF10B981),
+          ledOnMs: 1000,
+          ledOffMs: 500,
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
-    } catch (e) {
-      debugPrint('Error scheduling exact alarm: $e. Falling back to inexact.');
-      // Fallback to inexact if permission denied
-      await _notificationsPlugin.zonedSchedule(
-        id: id,
-        title: title,
-        body: body,
-        scheduledDate: scheduledDate,
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'meal_reminders_v2',
-            'Emerald Meal Reminders',
-            channelDescription: 'Sophisticated reminders to log your daily nutrition.',
-            importance: Importance.max,
-            priority: Priority.high,
-            color: Color(0xFF10B981),
-          ),
-          iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
         ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
-    }
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
   }
 
   /// Show an instant notification for goal completion
