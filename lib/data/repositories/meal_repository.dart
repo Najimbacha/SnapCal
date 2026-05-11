@@ -11,7 +11,7 @@ import '../../core/constants/app_constants.dart';
 class MealRepository {
   Box<Meal>? _mealsBox;
   Box<List<String>>? _indexBox;
-  
+
   final _mealsController = StreamController<List<Meal>>.broadcast();
   late final FirebaseFirestore _firestore;
   late final FirebaseAuth _auth;
@@ -45,7 +45,10 @@ class MealRepository {
     }
 
     // Initial migration: if meals exist but index is empty
-    if (_mealsBox != null && _mealsBox!.isNotEmpty && _indexBox != null && _indexBox!.isEmpty) {
+    if (_mealsBox != null &&
+        _mealsBox!.isNotEmpty &&
+        _indexBox != null &&
+        _indexBox!.isEmpty) {
       debugPrint('📦 MealRepository: Rebuilding date index...');
       final Map<String, List<String>> tempIndex = {};
 
@@ -113,7 +116,7 @@ class MealRepository {
         await _indexBox!.put(date, ids);
       }
     }
-    
+
     _emitTodaysMeals();
     await _syncMealToCloud(meal);
   }
@@ -124,7 +127,9 @@ class MealRepository {
     await _mealsBox?.put(meal.id, meal);
 
     // If date changed, update index
-    if (oldMeal != null && oldMeal.dateString != meal.dateString && _indexBox != null) {
+    if (oldMeal != null &&
+        oldMeal.dateString != meal.dateString &&
+        _indexBox != null) {
       final oldDate = oldMeal.dateString;
       final oldIds = _indexBox!.get(oldDate) ?? [];
       oldIds.remove(meal.id);
@@ -141,7 +146,7 @@ class MealRepository {
         await _indexBox!.put(newDate, newIds);
       }
     }
-    
+
     _emitTodaysMeals();
     await _syncMealToCloud(meal);
   }
@@ -158,7 +163,7 @@ class MealRepository {
       } else {
         await _indexBox!.put(date, ids);
       }
-      
+
       _emitTodaysMeals();
       await _deleteMealFromCloud(id);
     }
@@ -169,7 +174,7 @@ class MealRepository {
   Future<void> _syncMealToCloud(Meal meal) async {
     final user = _auth.currentUser;
     if (user == null) return;
-    
+
     try {
       await _firestore
           .collection('users')
@@ -186,7 +191,7 @@ class MealRepository {
   Future<void> _deleteMealFromCloud(String id) async {
     final user = _auth.currentUser;
     if (user == null) return;
-    
+
     try {
       await _firestore
           .collection('users')
@@ -205,12 +210,13 @@ class MealRepository {
     if (user == null) return;
 
     try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('meals')
-          .get();
-          
+      final snapshot =
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('meals')
+              .get();
+
       for (var doc in snapshot.docs) {
         final cloudMeal = Meal.fromJson(doc.data());
         if (_mealsBox != null && !_mealsBox!.containsKey(cloudMeal.id)) {

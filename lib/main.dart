@@ -67,7 +67,7 @@ class _SnapCalAppState extends State<SnapCalApp> {
     _waterRepository = WaterRepository();
     _assistantRepository = AssistantRepository();
     _aiService = AIService();
-    
+
     // 2. Start Async Initialization
     _initialize();
   }
@@ -76,22 +76,29 @@ class _SnapCalAppState extends State<SnapCalApp> {
     debugPrint('🎬 SnapCalApp: Starting _initialize()...');
     setState(() {
       _initFuture = AppInitializer.init(
-        mealRepository: _mealRepository,
-        settingsRepository: _settingsRepository,
-        waterRepository: _waterRepository,
-        assistantRepository: _assistantRepository,
-      ).timeout(
-        const Duration(seconds: 30), // Increased slightly to accommodate all inner timeouts
-        onTimeout: () {
-          debugPrint('❌ SnapCalApp: Initialization Timed Out!');
-          throw TimeoutException('Initialization timed out. Please check your internet connection or restart the app.');
-        },
-      ).then((_) {
-        debugPrint('✅ SnapCalApp: Initialization Complete');
-      }).catchError((e) {
-        debugPrint('❌ SnapCalApp: Initialization Error: $e');
-        throw e;
-      });
+            mealRepository: _mealRepository,
+            settingsRepository: _settingsRepository,
+            waterRepository: _waterRepository,
+            assistantRepository: _assistantRepository,
+          )
+          .timeout(
+            const Duration(
+              seconds: 30,
+            ), // Increased slightly to accommodate all inner timeouts
+            onTimeout: () {
+              debugPrint('❌ SnapCalApp: Initialization Timed Out!');
+              throw TimeoutException(
+                'Initialization timed out. Please check your internet connection or restart the app.',
+              );
+            },
+          )
+          .then((_) {
+            debugPrint('✅ SnapCalApp: Initialization Complete');
+          })
+          .catchError((e) {
+            debugPrint('❌ SnapCalApp: Initialization Error: $e');
+            throw e;
+          });
     });
   }
 
@@ -124,17 +131,25 @@ class _SnapCalAppState extends State<SnapCalApp> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(LucideIcons.alertCircle, color: Colors.orangeAccent, size: 64),
+                      const Icon(
+                        LucideIcons.alertCircle,
+                        color: Colors.orangeAccent,
+                        size: 64,
+                      ),
                       const SizedBox(height: 24),
                       const Text(
                         'Launch Encountered an Issue',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        snapshot.error is TimeoutException 
-                          ? 'Initialization is taking longer than expected.' 
-                          : 'Something went wrong while setting up the app. Please try again.',
+                        snapshot.error is TimeoutException
+                            ? 'Initialization is taking longer than expected.'
+                            : 'Something went wrong while setting up the app. Please try again.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.white60),
                       ),
@@ -167,9 +182,7 @@ class _SnapCalAppState extends State<SnapCalApp> {
             ChangeNotifierProvider(
               create: (_) => MealProvider(_mealRepository),
             ),
-            Provider<WaterRepository>.value(
-              value: _waterRepository,
-            ),
+            Provider<WaterRepository>.value(value: _waterRepository),
             ChangeNotifierProvider(
               create: (_) => WaterProvider(_waterRepository),
             ),
@@ -186,7 +199,9 @@ class _SnapCalAppState extends State<SnapCalApp> {
             ),
             ChangeNotifierProxyProvider<MetricsProvider, ActivityProvider>(
               create: (context) => ActivityProvider(),
-              update: (context, metrics, activity) => activity!..updateWeight(metrics.currentWeight),
+              update:
+                  (context, metrics, activity) =>
+                      activity!..updateWeight(metrics.currentWeight),
             ),
             ChangeNotifierProxyProvider<SettingsProvider, PlannerProvider>(
               create:
@@ -198,20 +213,22 @@ class _SnapCalAppState extends State<SnapCalApp> {
                   (context, settings, planner) =>
                       planner!..updateSettings(settings),
             ),
-            ProxyProvider3<MealProvider, SettingsProvider, ActivityProvider, WidgetSyncProvider>(
-              update: (context, meal, settings, activity, previous) =>
-                  previous ?? WidgetSyncProvider(meal, settings, activity),
+            ProxyProvider3<
+              MealProvider,
+              SettingsProvider,
+              ActivityProvider,
+              WidgetSyncProvider
+            >(
+              update:
+                  (context, meal, settings, activity, previous) =>
+                      previous ?? WidgetSyncProvider(meal, settings, activity),
               dispose: (context, sync) => sync.dispose(),
             ),
-            ChangeNotifierProvider(
-              create: (_) => TemplateProvider()..init(),
-            ),
+            ChangeNotifierProvider(create: (_) => TemplateProvider()..init()),
             ChangeNotifierProvider(
               create: (_) => AchievementsProvider()..init(),
             ),
-            ChangeNotifierProvider(
-              create: (_) => InsightsProvider(),
-            ),
+            ChangeNotifierProvider(create: (_) => InsightsProvider()),
           ],
           child: const AppRouterWrapper(),
         );
@@ -263,7 +280,8 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                   title: AppLocalizations.of(context)?.appTitle ?? 'SnapCal',
                   debugShowCheckedModeBanner: false,
                   theme: AppTheme.lightTheme.copyWith(
-                    colorScheme: lightDynamic ?? AppTheme.lightTheme.colorScheme,
+                    colorScheme:
+                        lightDynamic ?? AppTheme.lightTheme.colorScheme,
                   ),
                   darkTheme: AppTheme.darkTheme.copyWith(
                     colorScheme: darkDynamic ?? AppTheme.darkTheme.colorScheme,
@@ -285,12 +303,14 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                   ],
                   builder: (context, child) {
                     // 1. Handle Initial/Loading state
-                    if (auth.status == AuthStatus.initial || auth.status == AuthStatus.loading) {
+                    if (auth.status == AuthStatus.initial ||
+                        auth.status == AuthStatus.loading) {
                       return const SplashScreen();
                     }
 
                     // Trigger anonymous sign-in if completely unauthenticated
-                    if (auth.status == AuthStatus.unauthenticated && auth.user == null) {
+                    if (auth.status == AuthStatus.unauthenticated &&
+                        auth.user == null) {
                       auth.signInAnonymously();
                       return const SplashScreen();
                     }
@@ -304,15 +324,27 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.wifi_off_rounded, size: 64, color: Colors.orange),
+                                const Icon(
+                                  Icons.wifi_off_rounded,
+                                  size: 64,
+                                  color: Colors.orange,
+                                ),
                                 const SizedBox(height: 24),
                                 Text(
-                                  AppLocalizations.of(context)?.appTitle ?? 'SnapCal',
-                                  style: AppTheme.darkTheme.textTheme.headlineSmall,
+                                  AppLocalizations.of(context)?.appTitle ??
+                                      'SnapCal',
+                                  style:
+                                      AppTheme
+                                          .darkTheme
+                                          .textTheme
+                                          .headlineSmall,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  AppLocalizations.of(context)?.error_connection_title ?? 'Network Error',
+                                  AppLocalizations.of(
+                                        context,
+                                      )?.error_connection_title ??
+                                      'Network Error',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(color: Colors.white70),
                                 ),
@@ -323,7 +355,12 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                                     auth.signInAnonymously();
                                   },
                                   icon: const Icon(Icons.refresh),
-                                  label: Text(AppLocalizations.of(context)?.common_try_again ?? 'Try Again'),
+                                  label: Text(
+                                    AppLocalizations.of(
+                                          context,
+                                        )?.common_try_again ??
+                                        'Try Again',
+                                  ),
                                 ),
                               ],
                             ),
@@ -367,7 +404,11 @@ class _GlobalErrorView extends StatelessWidget {
                     color: Colors.red.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.report_problem_rounded, size: 64, color: Colors.redAccent),
+                  child: const Icon(
+                    Icons.report_problem_rounded,
+                    size: 64,
+                    color: Colors.redAccent,
+                  ),
                 ),
                 const SizedBox(height: 32),
                 const Text(
@@ -382,16 +423,16 @@ class _GlobalErrorView extends StatelessWidget {
                 const Text(
                   'The application encountered a startup error. Please try restarting.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),
                 const SizedBox(height: 40),
                 TextButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.refresh, color: Colors.white),
-                  label: const Text('Reload', style: TextStyle(color: Colors.white)),
+                  label: const Text(
+                    'Reload',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),

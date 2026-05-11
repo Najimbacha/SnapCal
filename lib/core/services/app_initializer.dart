@@ -85,7 +85,9 @@ class AppInitializer {
     }
   }
 
-  static Future<void> _initBackgroundServices(SettingsRepository settingsRepository) async {
+  static Future<void> _initBackgroundServices(
+    SettingsRepository settingsRepository,
+  ) async {
     try {
       await Future.wait([
         NotificationService().init(),
@@ -106,14 +108,19 @@ class AppInitializer {
   static Future<void> _initGoogleSignIn() async {
     try {
       debugPrint('🎬 AppInitializer: Initializing GoogleSignIn...');
-      await GoogleSignIn.instance.initialize(
-        serverClientId: '183409999145-2p9nqjrr8d07ulal61nupsefkh7pt9on.apps.googleusercontent.com',
-      ).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          debugPrint('⚠️ AppInitializer: GoogleSignIn initialization timed out');
-        },
-      );
+      await GoogleSignIn.instance
+          .initialize(
+            serverClientId:
+                '183409999145-2p9nqjrr8d07ulal61nupsefkh7pt9on.apps.googleusercontent.com',
+          )
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              debugPrint(
+                '⚠️ AppInitializer: GoogleSignIn initialization timed out',
+              );
+            },
+          );
     } catch (e) {
       debugPrint('⚠️ AppInitializer: GoogleSignIn initialization warning: $e');
     }
@@ -132,18 +139,20 @@ class AppInitializer {
         debugPrint('🔥 Firebase: Calling initializeApp()...');
         await Firebase.initializeApp().timeout(const Duration(seconds: 15));
         debugPrint('🔥 Firebase: initializeApp() completed');
-        
+
         // Enable Crashlytics in Release mode
         if (!kDebugMode) {
           debugPrint('🔥 Firebase: Enabling Crashlytics collection...');
-          await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+          await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+            true,
+          );
           debugPrint('🔥 Firebase: Crashlytics collection enabled');
         }
-        
+
         // Setup Global Error Handling now that Firebase is ready
         debugPrint('🔥 Firebase: Setting up error reporting...');
         _setupErrorReporting();
-        
+
         debugPrint('🔥 Firebase initialized and Error Reporting active');
       } else {
         debugPrint('🔥 Firebase already initialized');
@@ -160,7 +169,7 @@ class AppInitializer {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
       FlutterError.presentError(errorDetails);
     };
-    
+
     PlatformDispatcher.instance.onError = (error, stack) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
