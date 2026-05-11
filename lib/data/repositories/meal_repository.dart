@@ -26,22 +26,27 @@ class MealRepository {
     final encryptionKey = await SecurityService().getEncryptionKey();
     final cipher = HiveAesCipher(encryptionKey);
 
-    if (!Hive.isBoxOpen(AppConstants.mealsBoxName)) {
-      _mealsBox = await Hive.openBox<Meal>(
-        AppConstants.mealsBoxName,
-        encryptionCipher: cipher,
-      );
-    } else {
-      _mealsBox = Hive.box<Meal>(AppConstants.mealsBoxName);
-    }
+    try {
+      if (!Hive.isBoxOpen(AppConstants.mealsBoxName)) {
+        _mealsBox = await Hive.openBox<Meal>(
+          AppConstants.mealsBoxName,
+          encryptionCipher: cipher,
+        ).timeout(const Duration(seconds: 10));
+      } else {
+        _mealsBox = Hive.box<Meal>(AppConstants.mealsBoxName);
+      }
 
-    if (!Hive.isBoxOpen(AppConstants.mealIndexBoxName)) {
-      _indexBox = await Hive.openBox<List<String>>(
-        AppConstants.mealIndexBoxName,
-        encryptionCipher: cipher,
-      );
-    } else {
-      _indexBox = Hive.box<List<String>>(AppConstants.mealIndexBoxName);
+      if (!Hive.isBoxOpen(AppConstants.mealIndexBoxName)) {
+        _indexBox = await Hive.openBox<List<String>>(
+          AppConstants.mealIndexBoxName,
+          encryptionCipher: cipher,
+        ).timeout(const Duration(seconds: 10));
+      } else {
+        _indexBox = Hive.box<List<String>>(AppConstants.mealIndexBoxName);
+      }
+    } catch (e) {
+      debugPrint('❌ MealRepository: Box open failed or timed out: $e');
+      rethrow; // Pass to AppInitializer for safe handling
     }
 
     // Initial migration: if meals exist but index is empty

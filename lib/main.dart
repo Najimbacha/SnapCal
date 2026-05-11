@@ -303,15 +303,21 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                   ],
                   builder: (context, child) {
                     // 1. Handle Initial/Loading state
-                    if (auth.status == AuthStatus.initial ||
-                        auth.status == AuthStatus.loading) {
+                    final isHanging = auth.status == AuthStatus.initial ||
+                        auth.status == AuthStatus.loading;
+
+                    if (isHanging) {
                       return const SplashScreen();
                     }
 
                     // Trigger anonymous sign-in if completely unauthenticated
                     if (auth.status == AuthStatus.unauthenticated &&
                         auth.user == null) {
-                      auth.signInAnonymously();
+                      // Use a zero-delay future to move the side-effect out of the build method
+                      Future.delayed(
+                        Duration.zero,
+                        () => auth.signInAnonymously(),
+                      );
                       return const SplashScreen();
                     }
 

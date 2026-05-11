@@ -63,14 +63,17 @@ class AppInitializer {
       // 3. Initialize Hive
       await _initHive();
 
-      debugPrint('🚀 AppInitializer: Initializing Repositories...');
+      debugPrint('🚀 AppInitializer: Initializing Repositories (Meal, Settings, Water, Assistant)...');
       // 4. Initialize Repositories (CRITICAL)
       await Future.wait([
-        mealRepository.init(),
-        settingsRepository.init(),
-        waterRepository.init(),
-        assistantRepository.init(),
-      ]).timeout(const Duration(seconds: 20));
+        mealRepository.init().then((_) => debugPrint('✅ AppInitializer: MealRepo ready')),
+        settingsRepository.init().then((_) => debugPrint('✅ AppInitializer: SettingsRepo ready')),
+        waterRepository.init().then((_) => debugPrint('✅ AppInitializer: WaterRepo ready')),
+        assistantRepository.init().then((_) => debugPrint('✅ AppInitializer: AssistantRepo ready')),
+      ]).timeout(const Duration(seconds: 15), onTimeout: () {
+        debugPrint('⚠️ AppInitializer: Repository initialization timed out after 15s');
+        throw TimeoutException('Core data services are taking too long to respond.');
+      });
 
       debugPrint('🚀 AppInitializer: Starting background services...');
       // 5. Background Initialization
