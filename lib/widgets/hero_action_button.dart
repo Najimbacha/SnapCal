@@ -33,7 +33,7 @@ class _HeroActionButtonState extends State<HeroActionButton>
     super.initState();
     _breatheController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 650),
     )..repeat(reverse: true);
     _breatheController.addListener(_syncIconWithBreathCycle);
     _breatheGlow = Tween<double>(begin: 0.05, end: 0.15).animate(
@@ -88,52 +88,42 @@ class _HeroActionButtonState extends State<HeroActionButton>
           animation: _breatheGlow,
           builder: (context, child) {
             return Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
+              width: 82,
+              height: 82,
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: colorScheme.surface.withValues(
-                  alpha: isDark ? 0.82 : 0.95,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                  // Breathing glow (restrained)
-                  BoxShadow(
-                    color: colorScheme.primary.withValues(
-                      alpha: _breatheGlow.value,
-                    ),
-                    blurRadius: 12,
-                    spreadRadius: 0,
-                  ),
-                ],
+                color: Colors.transparent,
               ),
               child: Center(
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOutCubic,
-                  width: _isPressed ? 52 : 58,
-                  height: _isPressed ? 52 : 58,
+                  width: _isPressed ? 62 : 68,
+                  height: _isPressed ? 62 : 68,
                   clipBehavior: Clip.hardEdge,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppColors.primaryGradient,
+                    gradient: AppColors.premiumGradient,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: isDark ? 0.25 : 0.4),
+                      width: 0.8,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: colorScheme.primary.withValues(alpha: 0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        color: colorScheme.primary.withValues(alpha: 0.25),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
+                      // Subtle Shimmer
+                      _ShimmerOverlay(animation: _breatheController),
+                      
                       AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 420),
+                        duration: const Duration(milliseconds: 240),
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeInCubic,
                         transitionBuilder: (child, animation) {
@@ -170,7 +160,7 @@ class _HeroActionButtonState extends State<HeroActionButton>
                               : LucideIcons.camera,
                           key: ValueKey(_showScanIcon),
                           color: colorScheme.onPrimary,
-                          size: 36,
+                          size: 40,
                         ),
                       ),
                     ],
@@ -181,6 +171,39 @@ class _HeroActionButtonState extends State<HeroActionButton>
           },
         ),
       ),
+    );
+  }
+}
+
+class _ShimmerOverlay extends StatelessWidget {
+  final Animation<double> animation;
+  const _ShimmerOverlay({required this.animation});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(-80 + (animation.value * 160), -80 + (animation.value * 160)),
+          child: Transform.rotate(
+            angle: math.pi / 4,
+            child: Container(
+              width: 100,
+              height: 25,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.15),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

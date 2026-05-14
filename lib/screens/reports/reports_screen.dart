@@ -14,6 +14,8 @@ import '../../data/services/report_pdf_service.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/premium_prompt_modal.dart';
+import '../../data/services/premium_gate_service.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -45,6 +47,22 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       );
     }
     _animController.forward();
+
+    // Smart Premium Encouragement
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        if (mounted) {
+          PremiumPromptModal.show(
+            context,
+            title: 'YOUR WEEKLY REPORT IS READY',
+            subtitle:
+                'Unlock a deeper look at why some days went over target and how to improve next week.',
+            buttonText: 'Unlock Weekly Report',
+            icon: LucideIcons.fileBarChart,
+          );
+        }
+      });
+    });
   }
 
   @override

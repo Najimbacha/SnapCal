@@ -209,6 +209,11 @@ class _SnapScreenState extends State<SnapScreen>
         fat: fat,
         portion: portion,
         settings: settingsProvider,
+        scanConfidence: 0.82,
+        scanSource: 'ai_scan',
+        aiRationale:
+            'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
+        originalCalories: calories,
       );
 
       if (!settingsProvider.isPro) {
@@ -245,6 +250,11 @@ class _SnapScreenState extends State<SnapScreen>
           fat: item.fat,
           portion: item.portion,
           settings: settingsProvider,
+          scanConfidence: 0.82,
+          scanSource: 'ai_scan',
+          aiRationale:
+              'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
+          originalCalories: item.calories,
         );
       }
 

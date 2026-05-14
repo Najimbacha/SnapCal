@@ -24,6 +24,7 @@ import '../../data/services/gemini_service.dart';
 import '../../data/services/barcode_service.dart';
 import '../../data/services/subscription_service.dart';
 import '../../data/services/scan_gate_service.dart';
+import '../../data/services/premium_gate_service.dart';
 import '../../data/services/ad_service.dart';
 import '../../data/services/widget_service.dart';
 import '../utils/async_guard.dart';
@@ -65,6 +66,9 @@ class AppInitializer {
 
       debugPrint('🚀 AppInitializer: Initializing scan gate...');
       await ScanGateService().init();
+
+      debugPrint('🚀 AppInitializer: Initializing premium gate...');
+      await PremiumGateService().init();
 
       debugPrint(
         '🚀 AppInitializer: Initializing Repositories (Meal, Settings, Water, Assistant)...',

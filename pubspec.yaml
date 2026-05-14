@@ -38,6 +38,7 @@ dependencies:
   flutter_facebook_auth: ^7.1.1
 
   # UI Components
+  animations: ^2.2.0
   google_fonts: ^8.0.2
   dynamic_color: ^1.7.0
   lucide_icons: ^0.257.0
@@ -98,3 +99,4 @@ flutter:
   assets:
     - assets/icon/
     - assets/images/
+    - assets/images/paywall/

@@ -450,6 +450,18 @@ class SettingsProvider with ChangeNotifier {
       // Already logged for this date, no streak increment
       return;
     } else {
+      // Check if the log is in the past relative to the last recorded date
+      try {
+        final lastDate = DateTime.parse(lastLogged);
+        final currentDate = DateTime.parse(logDate);
+        if (currentDate.isBefore(lastDate)) {
+          // Retroactive log - do not change the forward-moving streak
+          return;
+        }
+      } catch (_) {
+        // Fallback for unexpected date formats
+      }
+
       final dayBeforeLog = app_date.DateUtils.getPreviousDay(logDate);
       if (lastLogged == dayBeforeLog) {
         // Continuous streak

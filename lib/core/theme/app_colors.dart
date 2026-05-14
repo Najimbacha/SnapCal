@@ -40,19 +40,19 @@ class AppColors {
   );
 
   // ============= DARK THEME OVERRIDES (Expressive Tones) =============
-  static const Color darkBackground = Color(0xFF060E0B); // Deeper, cinematic
-  static const Color darkSurface = Color(0xFF0A1511); // Slightly darker for contrast
-  static const Color darkCard = Color(0xFF0F1E19); // Closer to surface = subtler
-  static const Color darkTextPrimary = Color(0xFFF1F5F3);
-  static const Color darkTextSecondary = Color(0xFF8B9CAF); // Warmer
+  static const Color darkBackground = Color(0xFF09090B); // Deep zinc/charcoal (Apple-esque)
+  static const Color darkSurface = Color(0xFF111113); // Subtle elevation
+  static const Color darkCard = Color(0xFF161618); // Elevated card
+  static const Color darkTextPrimary = Color(0xFFFAFAFA);
+  static const Color darkTextSecondary = Color(0xFFA1A1AA); // Neutral zinc grey
 
   // ============= LIGHT THEME OVERRIDES (Expressive Tones) =============
-  static const Color lightBackground = Color(0xFFF0F7F4); // Warmer mint tint
+  static const Color lightBackground = Color(0xFFF8F9FA); // Ultra-subtle pristine off-white
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightCardBorder = Color(0xFFD4E8DE); // Visible emerald-tinted border
-  static const Color lightTextPrimary = Color(0xFF0C1714); // Richer dark
-  static const Color lightTextSecondary = Color(0xFF5B6D7E); // Warmer gray
+  static const Color lightCardBorder = Color(0xFFE5E7EB); // Neutral gray border
+  static const Color lightTextPrimary = Color(0xFF0C1714);
+  static const Color lightTextSecondary = Color(0xFF5B6D7E);
 
   // Premium Wellness Glow
   static const LinearGradient wellnessGlow = LinearGradient(

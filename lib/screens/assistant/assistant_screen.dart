@@ -18,6 +18,8 @@ import '../../core/theme/theme_colors.dart';
 import '../../widgets/async_state_widgets.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/ui_blocks.dart';
+import '../../widgets/premium_prompt_card.dart';
+import '../../data/services/premium_gate_service.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -130,7 +132,28 @@ class _AssistantScreenState extends State<AssistantScreen>
         child: Consumer<AssistantProvider>(
           builder: (context, assistant, _) {
             final content = _buildChatContent(context, assistant);
-            if (!isPro) {
+            final hasReachedLimit = PremiumGateService().hasReachedAiLimit(isPro);
+            if (!isPro && hasReachedLimit) {
+              return Stack(
+                children: [
+                  content,
+                  Positioned(
+                    bottom: 20,
+                    left: 20,
+                    right: 20,
+                    child: PremiumPromptCard(
+                      style: PremiumPromptStyle.glass,
+                      title: 'DAILY LIMIT REACHED',
+                      subtitle: 'Go Premium for unlimited coaching and smarter meal guidance tailored to your goals.',
+                      buttonText: 'Upgrade for Unlimited Chat',
+                      icon: LucideIcons.sparkles,
+                      onTap: () => context.push('/paywall'),
+                    ),
+                  ),
+                ],
+              );
+            }
+            if (!isPro && assistant.history.isEmpty) {
               return const _LockedCoachPreview();
             }
             return content;
@@ -209,6 +232,9 @@ class _AssistantScreenState extends State<AssistantScreen>
   }
 
   Widget _buildInputArea(BuildContext context, bool isPro) {
+    if (!isPro && PremiumGateService().hasReachedAiLimit(isPro)) {
+      return const SizedBox.shrink();
+    }
     if (!isPro) {
       return Container(
         padding: EdgeInsets.fromLTRB(
@@ -292,13 +318,16 @@ class _AssistantScreenState extends State<AssistantScreen>
           ),
           const SizedBox(width: 12),
           AppScaleTap(
-            onTap: () {
-              final q = _searchController.text;
-              if (q.trim().isNotEmpty) {
-                _fetchRecommendations(query: q);
-                _searchController.clear();
-              }
-            },
+              onTap: () async {
+                final q = _searchController.text;
+                if (q.trim().isNotEmpty) {
+                  _fetchRecommendations(query: q);
+                  _searchController.clear();
+                  if (!isPro) {
+                    await PremiumGateService().incrementAiMessages();
+                  }
+                }
+              },
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: const BoxDecoration(

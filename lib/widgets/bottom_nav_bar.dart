@@ -29,7 +29,7 @@ class BottomNavBar extends StatelessWidget {
         child: BottomAppBar(
           height: navHeight + 8,
           elevation: 0,
-          notchMargin: 8,
+          notchMargin: 12,
           shape: const CircularNotchedRectangle(),
           color: colorScheme.surface.withValues(alpha: isDark ? 0.86 : 0.94),
           surfaceTintColor: Colors.transparent,
@@ -122,15 +122,16 @@ class BottomNavBar extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: activeColor,
                     shape: BoxShape.circle,
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: activeColor.withValues(alpha: 0.5),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
+                    boxShadow:
+                        isSelected
+                            ? [
+                              BoxShadow(
+                                color: activeColor.withValues(alpha: 0.5),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                            : null,
                   ),
                 ),
                 const SizedBox(height: 3),

@@ -79,6 +79,21 @@ class Meal extends HiveObject {
   @HiveField(11)
   final String? portion;
 
+  @HiveField(12)
+  final double? scanConfidence;
+
+  @HiveField(13)
+  final String? scanSource;
+
+  @HiveField(14)
+  final String? aiRationale;
+
+  @HiveField(15)
+  final int? originalCalories;
+
+  @HiveField(16)
+  final bool userCorrected;
+
   Meal({
     required this.id,
     required this.timestamp,
@@ -92,6 +107,11 @@ class Meal extends HiveObject {
     this.prepTimeMins,
     this.mealType,
     this.portion,
+    this.scanConfidence,
+    this.scanSource,
+    this.aiRationale,
+    this.originalCalories,
+    this.userCorrected = false,
   });
 
   Meal copyWith({
@@ -107,6 +127,11 @@ class Meal extends HiveObject {
     int? prepTimeMins,
     String? mealType,
     String? portion,
+    double? scanConfidence,
+    String? scanSource,
+    String? aiRationale,
+    int? originalCalories,
+    bool? userCorrected,
   }) {
     return Meal(
       id: id ?? this.id,
@@ -121,6 +146,11 @@ class Meal extends HiveObject {
       prepTimeMins: prepTimeMins ?? this.prepTimeMins,
       mealType: mealType ?? this.mealType,
       portion: portion ?? this.portion,
+      scanConfidence: scanConfidence ?? this.scanConfidence,
+      scanSource: scanSource ?? this.scanSource,
+      aiRationale: aiRationale ?? this.aiRationale,
+      originalCalories: originalCalories ?? this.originalCalories,
+      userCorrected: userCorrected ?? this.userCorrected,
     );
   }
 
@@ -134,6 +164,15 @@ class Meal extends HiveObject {
       'calories': calories,
       'macros': macros.toJson(),
       'synced': synced,
+      'ingredients': ingredients,
+      'prepTimeMins': prepTimeMins,
+      'mealType': mealType,
+      'portion': portion,
+      'scanConfidence': scanConfidence,
+      'scanSource': scanSource,
+      'aiRationale': aiRationale,
+      'originalCalories': originalCalories,
+      'userCorrected': userCorrected,
     };
   }
 
@@ -147,7 +186,15 @@ class Meal extends HiveObject {
       calories: json['calories'] as int,
       macros: Macros.fromJson(json['macros'] as Map<String, dynamic>),
       synced: json['synced'] as bool? ?? false,
+      ingredients: (json['ingredients'] as List?)?.cast<String>(),
+      prepTimeMins: json['prepTimeMins'] as int?,
+      mealType: json['mealType'] as String?,
       portion: json['portion'] as String?,
+      scanConfidence: (json['scanConfidence'] as num?)?.toDouble(),
+      scanSource: json['scanSource'] as String?,
+      aiRationale: json['aiRationale'] as String?,
+      originalCalories: json['originalCalories'] as int?,
+      userCorrected: json['userCorrected'] as bool? ?? false,
     );
   }
 

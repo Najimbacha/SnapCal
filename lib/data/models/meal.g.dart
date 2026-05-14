@@ -69,13 +69,18 @@ class MealAdapter extends TypeAdapter<Meal> {
       prepTimeMins: fields[9] as int?,
       mealType: fields[10] as String?,
       portion: fields[11] as String?,
+      scanConfidence: fields[12] as double?,
+      scanSource: fields[13] as String?,
+      aiRationale: fields[14] as String?,
+      originalCalories: fields[15] as int?,
+      userCorrected: fields[16] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, Meal obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -99,7 +104,17 @@ class MealAdapter extends TypeAdapter<Meal> {
       ..writeByte(10)
       ..write(obj.mealType)
       ..writeByte(11)
-      ..write(obj.portion);
+      ..write(obj.portion)
+      ..writeByte(12)
+      ..write(obj.scanConfidence)
+      ..writeByte(13)
+      ..write(obj.scanSource)
+      ..writeByte(14)
+      ..write(obj.aiRationale)
+      ..writeByte(15)
+      ..write(obj.originalCalories)
+      ..writeByte(16)
+      ..write(obj.userCorrected);
   }
 
   @override

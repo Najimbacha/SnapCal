@@ -22,23 +22,35 @@ class AnalyzingOverlay extends StatelessWidget {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ── Blurred Source Image ──
+          // ── Semi-Clear Source Image ──
           if (imageBytes != null)
             Positioned.fill(
               child: Image.memory(
                 imageBytes,
                 fit: BoxFit.cover,
-              ).animate().fadeIn(duration: 800.ms),
-            ),
-          
-          // Dark Glass Overlay
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.6),
               ),
             ),
+          
+          // Subtle Dark Overlay (No heavy blur)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.4),
+                    Colors.black.withValues(alpha: 0.2),
+                    Colors.black.withValues(alpha: 0.6),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Neural Scan Layer (Points & Laser) ──
+          const Positioned.fill(
+            child: _NeuralScanEffects(),
           ),
 
           // ── Premium Content ──
@@ -47,47 +59,65 @@ class AnalyzingOverlay extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // ── AI Scanner Animation ──
-                _ScannerVisualizer().animate().scale(delay: 200.ms, duration: 600.ms, curve: Curves.easeOutBack),
+                _ScannerStatus().animate().fadeIn(duration: 600.ms),
                 
-                const SizedBox(height: 60),
+                const SizedBox(height: 40),
                 
-                // ── Dynamic Text ──
-                Column(
-                  children: [
-                    Text(
-                      'Identifying Food',
-                      style: AppTypography.heading3.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                // ── Dynamic Text (Glass Card for visibility) ──
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Column(
+                        children: [
+                          Text(
+                            'AI VISION SCANNING',
+                            style: AppTypography.labelLarge.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 3.0,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                          ).animate(onPlay: (c) => c.repeat(reverse: true))
+                           .shimmer(duration: 2.seconds, color: AppColors.primary),
+                          
+                          const SizedBox(height: 16),
+                          
+                          Text(
+                            'Detecting ingredients and calculating\nnutritional density with Gemini...',
+                            textAlign: TextAlign.center,
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              height: 1.6,
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                            ),
+                          ).animate().fadeIn(delay: 400.ms),
+                        ],
                       ),
-                    ).animate(onPlay: (c) => c.repeat(reverse: true))
-                     .shimmer(duration: 2.seconds, color: Colors.white24),
-                    
-                    const SizedBox(height: 12),
-                    
-                    Text(
-                      'Gemini AI is calculating portions\nand nutritional density...',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        height: 1.5,
-                      ),
-                    ).animate().fadeIn(delay: 400.ms),
-                  ],
+                    ),
+                  ),
                 ),
 
-                const SizedBox(height: 80),
-                
-                // ── Shimmer Bento Preview ──
-                _BentoSkeleton().animate().fadeIn(delay: 600.ms).slideY(begin: 0.1),
-                
-                const SizedBox(height: 60),
+                const SizedBox(height: 40),
 
                 // ── Manual Fallback (Subtle) ──
                 if (onManualEntry != null)
                   _ManualFallbackButton(onTap: onManualEntry!)
-                      .animate().fadeIn(delay: 1000.ms),
+                      .animate().fadeIn(delay: 1500.ms),
               ],
             ),
           ),
@@ -97,64 +127,121 @@ class AnalyzingOverlay extends StatelessWidget {
   }
 }
 
-class _ScannerVisualizer extends StatelessWidget {
+class _ScannerStatus extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 60, height: 60,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+          const Icon(LucideIcons.scan, color: Colors.white, size: 20),
+        ],
+      ),
+    );
+  }
+}
+
+class _NeuralScanEffects extends StatelessWidget {
+  const _NeuralScanEffects();
+
   @override
   Widget build(BuildContext context) {
     return Stack(
-      alignment: Alignment.center,
       children: [
-        // Outer pulsing ring
-        Container(
-          width: 120, height: 120,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1),
+        // ── The Laser Sweep ──
+        const _LaserSweep(),
+        
+        // ── Neural Detection Nodes ──
+        ...List.generate(6, (index) => _NeuralNode(
+          delay: (index * 400).ms,
+          alignment: Alignment(
+            (index % 3 == 0) ? -0.4 : (index % 2 == 0 ? 0.3 : -0.1),
+            (index % 2 == 0) ? -0.2 : (index % 3 == 0 ? 0.4 : -0.5),
           ),
-        ).animate(onPlay: (c) => c.repeat())
-         .scale(duration: 2.seconds, begin: const Offset(1, 1), end: const Offset(1.5, 1.5))
-         .fadeOut(),
-
-        // Inner glowing core
-        Container(
-          width: 80, height: 80,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.4),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: const Center(
-            child: Icon(LucideIcons.sparkles, color: Colors.white, size: 32),
-          ),
-        ).animate(onPlay: (c) => c.repeat(reverse: true))
-         .scale(duration: 1.seconds, begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1)),
+        )),
       ],
     );
   }
 }
 
-class _BentoSkeleton extends StatelessWidget {
+class _LaserSweep extends StatelessWidget {
+  const _LaserSweep();
+
   @override
   Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: Colors.white.withValues(alpha: 0.05),
-      highlightColor: Colors.white.withValues(alpha: 0.1),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(3, (i) => Container(
-          width: 80, height: 100,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-        )),
-      ),
+    return Container().animate(onPlay: (c) => c.repeat()).custom(
+      duration: 2.5.seconds,
+      builder: (context, value, child) {
+        return Stack(
+          children: [
+            Positioned(
+              top: MediaQuery.of(context).size.height * value,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.8),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      AppColors.primary.withValues(alpha: 0.8),
+                      AppColors.primary,
+                      AppColors.primary.withValues(alpha: 0.8),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _NeuralNode extends StatelessWidget {
+  final Duration delay;
+  final Alignment alignment;
+  
+  const _NeuralNode({required this.delay, required this.alignment});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignment,
+      child: Container(
+        width: 12, height: 12,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.8),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.6),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+      ).animate(onPlay: (c) => c.repeat())
+       .scale(delay: delay, duration: 1.seconds, begin: const Offset(0, 0), end: const Offset(1, 1))
+       .fadeOut(delay: delay + 600.ms, duration: 400.ms),
     );
   }
 }
@@ -170,16 +257,16 @@ class _ManualFallbackButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Text(
-          'Log manually instead',
+          'LOG MANUALLY',
           style: AppTypography.labelSmall.copyWith(
-            color: Colors.white.withValues(alpha: 0.4),
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
+            color: Colors.white.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
           ),
         ),
       ),

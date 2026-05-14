@@ -110,11 +110,16 @@ class MealProvider with ChangeNotifier {
     return _selectedDateMeals.fold<int>(0, (sum, meal) => sum + meal.calories);
   }
 
+  /// Read meals for date without changing the selected log date.
+  List<Meal> getMealsForDate(String dateString) {
+    return _repository.getMealsByDate(dateString);
+  }
+
   /// Get today's meal count
   int get todaysMealCount => _todaysMeals.length;
 
   /// Get recent meals for home screen
-  List<Meal> get recentMeals => _todaysMeals.take(2).toList();
+  List<Meal> get recentMeals => _todaysMeals.take(3).toList();
 
   /// Load today's meals
   Future<void> _loadTodaysMeals({bool notify = true}) async {
@@ -172,6 +177,10 @@ class MealProvider with ChangeNotifier {
     String? imageUri,
     String? dateString,
     SettingsProvider? settings,
+    double? scanConfidence,
+    String? scanSource,
+    String? aiRationale,
+    int? originalCalories,
   }) async {
     if (_isMutating) return;
     _isMutating = true;
@@ -192,6 +201,11 @@ class MealProvider with ChangeNotifier {
         macros: Macros(protein: protein, carbs: carbs, fat: fat),
         synced: false,
         portion: portion,
+        scanConfidence: scanConfidence,
+        scanSource: scanSource,
+        aiRationale: aiRationale,
+        originalCalories: originalCalories,
+        userCorrected: false,
       );
 
       await _repository.addMeal(meal);

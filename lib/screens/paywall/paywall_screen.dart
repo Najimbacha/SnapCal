@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -210,29 +211,33 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         ),
                       ),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(height: tight ? 2 : 6),
-                            _ProHero(
-                              compact: compact,
-                              limitReached: widget.limitReached,
-                            ).animate().fadeIn().scale(
-                              delay: 120.ms,
-                              curve: Curves.easeOutBack,
-                            ),
-                            SizedBox(height: compact ? 10 : 14),
-                            _BenefitGrid(compact: compact),
-                            SizedBox(height: compact ? 8 : 12),
-                            const _BenefitChipRow(),
-                            const Spacer(),
-                            _buildPricingRow(compact),
-                          ],
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(height: tight ? 4 : 8),
+                              const _FoodScanShowcase().animate().fadeIn().scale(
+                                delay: 100.ms,
+                                curve: Curves.easeOutBack,
+                              ),
+                              SizedBox(height: tight ? 8 : 12),
+                              _BenefitGrid(compact: compact),
+                              SizedBox(height: compact ? 8 : 10),
+                              const _BenefitChipRow(),
+                              SizedBox(height: compact ? 14 : 18),
+                              _buildPricingRow(compact),
+                              SizedBox(height: compact ? 8 : 12),
+                            ],
+                          ),
                         ),
                       ),
                       SizedBox(height: tight ? 10 : 14),
                       _LuxeButton(
-                        text: "Subscribe",
+                        text:
+                            _selectedPackage?.packageType == PackageType.annual
+                                ? "Start 7-day free trial"
+                                : "Unlock Pro",
                         isLoading: _isLoading,
                         height: tight ? 52 : 58,
                         onTap: _handlePurchase,
@@ -288,138 +293,63 @@ class _PaywallScreenState extends State<PaywallScreen> {
       );
     }
 
-    return Row(
-      children: [
-        Expanded(
-          child: _PricingOption(
-            package: _packages.firstWhere(
-              (p) => p.packageType == PackageType.monthly,
-              orElse: () => _packages.first,
-            ),
-            isSelected: _selectedPackage?.packageType == PackageType.monthly,
-            onTap:
-                () => setState(
-                  () =>
-                      _selectedPackage = _packages.firstWhere(
-                        (p) => p.packageType == PackageType.monthly,
-                      ),
-                ),
-            label: "Monthly",
-            subLabel: "Flexible plan",
-            compact: compact,
-          ),
+    Package packageFor(PackageType type, Package fallback) {
+      return _packages.firstWhere(
+        (p) => p.packageType == type,
+        orElse: () => fallback,
+      );
+    }
+
+    final monthly = packageFor(PackageType.monthly, _packages.first);
+    final yearly = packageFor(PackageType.annual, _packages.last);
+    Package? lifetime;
+    for (final package in _packages) {
+      if (package.packageType == PackageType.lifetime) {
+        lifetime = package;
+        break;
+      }
+    }
+    final options = <Widget>[
+      Expanded(
+        child: _PricingOption(
+          package: monthly,
+          isSelected: _selectedPackage == monthly,
+          onTap: () => setState(() => _selectedPackage = monthly),
+          label: "Monthly",
+          subLabel: "\$9.99 target",
+          compact: compact,
         ),
-        const SizedBox(width: 14),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: _PricingOption(
+          package: yearly,
+          isSelected: _selectedPackage == yearly,
+          onTap: () => setState(() => _selectedPackage = yearly),
+          label: "Yearly",
+          subLabel: "7-day trial",
+          showBadge: true,
+          compact: compact,
+        ),
+      ),
+      if (lifetime != null) ...[
+        const SizedBox(width: 10),
         Expanded(
           child: _PricingOption(
-            package: _packages.firstWhere(
-              (p) => p.packageType == PackageType.annual,
-              orElse: () => _packages.last,
-            ),
-            isSelected: _selectedPackage?.packageType == PackageType.annual,
-            onTap:
-                () => setState(
-                  () =>
-                      _selectedPackage = _packages.firstWhere(
-                        (p) => p.packageType == PackageType.annual,
-                      ),
-                ),
-            label: "Yearly",
-            subLabel: "Best value",
-            showBadge: true,
+            package: lifetime,
+            isSelected: _selectedPackage == lifetime,
+            onTap: () => setState(() => _selectedPackage = lifetime),
+            label: "Lifetime",
+            subLabel: "\$149.99 target",
             compact: compact,
           ),
         ),
       ],
+    ];
+
+    return Row(
+      children: options,
     ).animate().fadeIn(delay: 260.ms).slideY(begin: 0.08, end: 0);
-  }
-}
-
-class _ProHero extends StatelessWidget {
-  final bool compact;
-  final bool limitReached;
-
-  const _ProHero({required this.compact, required this.limitReached});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: EdgeInsets.all(compact ? 16 : 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        color: context.cardColor,
-        border: Border.all(color: context.cardBorderColor),
-        boxShadow: context.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 9 : 10,
-                  vertical: compact ? 5 : 6,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  "SnapCal Pro",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-              if (limitReached) ...[
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "You used today's free scans.",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: context.textSecondaryColor,
-                      fontSize: compact ? 11 : 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          SizedBox(height: compact ? 8 : 10),
-          Text(
-            "Eat smarter every day.",
-            style: TextStyle(
-              color: context.textPrimaryColor,
-              fontSize: compact ? 23 : 27,
-              fontWeight: FontWeight.w900,
-              height: 1.04,
-            ),
-          ),
-          SizedBox(height: compact ? 5 : 6),
-          Text(
-            "Unlimited scans, AI coaching, smart planning, and no ads.",
-            maxLines: compact ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: context.textSecondaryColor,
-              fontSize: compact ? 13 : 14,
-              fontWeight: FontWeight.w600,
-              height: 1.32,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -446,8 +376,8 @@ class _BenefitGrid extends StatelessWidget {
             Expanded(
               child: _BenefitCard(
                 icon: LucideIcons.sparkles,
-                title: "AI Coach",
-                body: "Food advice",
+                title: "AI guidance",
+                body: "Next best meal",
                 compact: compact,
               ),
             ),
@@ -459,17 +389,17 @@ class _BenefitGrid extends StatelessWidget {
             Expanded(
               child: _BenefitCard(
                 icon: LucideIcons.calendarDays,
-                title: "Smart planner",
-                body: "Week + grocery",
+                title: "Full history",
+                body: "Beyond 14 days",
                 compact: compact,
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: _BenefitCard(
-                icon: LucideIcons.badgeX,
-                title: "No ads",
-                body: "Zero interrupts",
+                icon: LucideIcons.fileText,
+                title: "Reports",
+                body: "Weekly + export",
                 compact: compact,
               ),
             ),
@@ -496,26 +426,35 @@ class _BenefitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: EdgeInsets.all(compact ? 10 : 12),
+      padding: EdgeInsets.all(compact ? 12 : 14),
       decoration: BoxDecoration(
         color: context.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.cardBorderColor),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: compact ? 30 : 34,
-            height: compact ? 30 : 34,
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: colorScheme.primary, size: 16),
+            child: Icon(icon, color: AppColors.primary, size: 18)
+                .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                .scale(
+                  begin: const Offset(1, 1),
+                  end: const Offset(1.15, 1.15),
+                  duration: 2.seconds,
+                  curve: Curves.easeInOut,
+                ),
           ),
-          SizedBox(width: compact ? 7 : 9),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,24 +462,19 @@ class _BenefitCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: context.textPrimaryColor,
-                    fontSize: compact ? 11.5 : 13,
-                    fontWeight: FontWeight.w800,
-                    height: 1.08,
+                    fontSize: compact ? 12 : 13.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
                   ),
                 ),
-                SizedBox(height: compact ? 2 : 3),
                 Text(
                   body,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: context.textSecondaryColor,
                     fontSize: compact ? 10 : 11,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -561,9 +495,9 @@ class _BenefitChipRow extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _BenefitPill(label: "Progress photos"),
-        _BenefitPill(label: "Meal routines"),
-        _BenefitPill(label: "Grocery list"),
+        _BenefitPill(label: "Smart reminders"),
+        _BenefitPill(label: "Recipe analysis"),
+        _BenefitPill(label: "Saved meals"),
       ],
     );
   }
@@ -618,6 +552,7 @@ class _PricingOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -625,105 +560,166 @@ class _PricingOption extends StatelessWidget {
         GestureDetector(
           onTap: onTap,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            height: compact ? 108 : 124,
-            padding: EdgeInsets.symmetric(
-              vertical: compact ? 10 : 14,
-              horizontal: compact ? 12 : 16,
-            ),
+            duration: const Duration(milliseconds: 300),
+            height: compact ? 116 : 132,
             decoration: BoxDecoration(
-              color:
-                  isSelected
-                      ? colorScheme.primaryContainer.withValues(alpha: 0.5)
-                      : context.cardColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color:
-                    isSelected ? colorScheme.primary : context.cardBorderColor,
-                width: 2,
-              ),
-              boxShadow:
-                  isSelected
-                      ? [
-                        BoxShadow(
-                          color: colorScheme.primary.withValues(alpha: 0.18),
-                          blurRadius: 18,
-                          offset: const Offset(0, 7),
-                        ),
-                      ]
-                      : null,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ]
+                  : null,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color:
-                        isSelected
-                            ? colorScheme.onPrimaryContainer
-                            : context.textSecondaryColor,
-                    fontSize: compact ? 12 : 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: compact ? 4 : 5),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    package.storeProduct.priceString,
-                    style: TextStyle(
-                      color: context.textPrimaryColor,
-                      fontSize: compact ? 22 : 25,
-                      fontWeight: FontWeight.w900,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Stack(
+                children: [
+                  // Base Background
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? (isDark ? const Color(0xFF252525) : Colors.white)
+                          : context.cardColor,
                     ),
                   ),
-                ),
-                SizedBox(height: compact ? 2 : 3),
-                Text(
-                  subLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: context.textMutedColor,
-                    fontSize: compact ? 9 : 10,
-                    fontWeight: FontWeight.w700,
+                  
+                  // Selected State: Gradient Border + Shimmer
+                  if (isSelected) ...[
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.transparent, width: 2),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.primary,
+                              const Color(0xFF8B5CF6),
+                            ],
+                          ),
+                        ),
+                      )
+                          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                          .shimmer(duration: 3.seconds, color: Colors.white.withValues(alpha: 0.2)),
+                    ),
+                    // Content "Shield" to create the border effect
+                    Positioned.fill(
+                      child: Container(
+                        margin: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF252525) : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    // Normal State Border
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: context.cardBorderColor,
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // Text Content
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            label.toUpperCase(),
+                            style: TextStyle(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : context.textSecondaryColor,
+                              fontSize: compact ? 10 : 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          SizedBox(height: compact ? 6 : 8),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              package.storeProduct.priceString,
+                              style: TextStyle(
+                                color: context.textPrimaryColor,
+                                fontSize: compact ? 22 : 26,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: compact ? 2 : 4),
+                          Text(
+                            subLabel,
+                            style: TextStyle(
+                              color: isSelected 
+                                  ? context.textSecondaryColor 
+                                  : context.textMutedColor,
+                              fontSize: compact ? 10 : 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
         if (showBadge)
           Positioned(
-            top: -10,
+            top: -14,
             left: 0,
             right: 0,
             child: Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+                  horizontal: 14,
+                  vertical: 7,
                 ),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF10B981), Color(0xFF0D9BD8)],
-                  ),
+                  gradient: AppColors.premiumGradient,
                   borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Text(
-                  "Save 80%",
+                  "BEST VALUE",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
                   ),
                 ),
               ),
             ),
           ),
       ],
-    );
+    )
+        .animate(target: isSelected ? 1 : 0)
+        .scale(begin: const Offset(1, 1), end: const Offset(1.02, 1.02), duration: 200.ms);
   }
 }
 
@@ -747,40 +743,66 @@ class _LuxeButton extends StatelessWidget {
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF10B981), Color(0xFF0D9BD8)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
+          gradient: AppColors.premiumGradient,
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.24),
+              color: AppColors.primary.withValues(alpha: 0.3),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
           ],
         ),
-        child: Center(
-          child:
-              isLoading
-                  ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                  : Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (!isLoading)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      stops: const [0.0, 0.45, 0.5, 0.55, 1.0],
+                      colors: [
+                        Colors.white.withValues(alpha: 0.0),
+                        Colors.white.withValues(alpha: 0.0),
+                        Colors.white.withValues(alpha: 0.4),
+                        Colors.white.withValues(alpha: 0.0),
+                        Colors.white.withValues(alpha: 0.0),
+                      ],
                     ),
                   ),
+                )
+                    .animate(onPlay: (controller) => controller.repeat())
+                    .shimmer(
+                      delay: 2.seconds,
+                      duration: 1500.ms,
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
+              ),
+            Center(
+              child: isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+            ),
+          ],
         ),
       ),
     );
@@ -804,6 +826,247 @@ class _FooterLink extends StatelessWidget {
           decoration: TextDecoration.underline,
         ),
       ),
+    );
+  }
+}
+
+class _FoodScanShowcase extends StatefulWidget {
+  const _FoodScanShowcase();
+
+  @override
+  State<_FoodScanShowcase> createState() => _FoodScanShowcaseState();
+}
+
+class _FoodScanShowcaseState extends State<_FoodScanShowcase> {
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      height: 190,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // The Healthy Plate Image
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/paywall/showcase_plate.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+
+            // Neural Gradient Overlay
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.5),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // 1. Scanner Line
+            const _ScannerLine(),
+
+            // 2. Popping Calorie Labels (Timed to Scanner Position)
+            const _CalorieBubble(
+              top: 35,
+              left: 100,
+              label: "Avocado",
+              calories: "140 kcal",
+              delay: 400, // Top section
+            ),
+            const _CalorieBubble(
+              top: 100,
+              right: 40,
+              label: "Quinoa",
+              calories: "180 kcal",
+              delay: 1400, // Middle section
+            ),
+            const _CalorieBubble(
+              bottom: 45,
+              left: 80,
+              label: "Salmon",
+              calories: "320 kcal",
+              delay: 2400, // Bottom section
+            ),
+            
+            // AI Vision Badge
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.scan, color: Colors.white, size: 12),
+                    const SizedBox(width: 5),
+                    const Text(
+                      "AI VISION LIVE",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScannerLine extends StatelessWidget {
+  const _ScannerLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: Column(
+        children: [
+          const Spacer(),
+          Container(
+            height: 80,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.4),
+                  AppColors.primary.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            height: 3,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary,
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+          ),
+        ],
+      )
+          .animate(onPlay: (controller) => controller.repeat())
+          .moveY(
+            begin: -200,
+            end: 0,
+            duration: 3.5.seconds,
+            curve: Curves.easeInOut,
+          ),
+    );
+  }
+}
+
+class _CalorieBubble extends StatelessWidget {
+  final double? top;
+  final double? bottom;
+  final double? left;
+  final double? right;
+  final String label;
+  final String calories;
+  final int delay;
+
+  const _CalorieBubble({
+    this.top,
+    this.bottom,
+    this.left,
+    this.right,
+    required this.label,
+    required this.calories,
+    required this.delay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 15,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 8,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+            Text(
+              calories,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      )
+          .animate(onPlay: (controller) => controller.repeat())
+          .scale(
+            begin: const Offset(0, 0),
+            end: const Offset(1, 1),
+            duration: 600.ms,
+            delay: delay.ms,
+            curve: Curves.easeOutBack,
+          )
+          .fadeOut(delay: (delay + 3000).ms, duration: 400.ms),
     );
   }
 }

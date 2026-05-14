@@ -1,6 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:go_router/go_router.dart';
+import '../../../widgets/premium_prompt_card.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -131,6 +134,17 @@ class NutritionReportView extends StatelessWidget {
                   ],
                 ),
               ),
+              if (!settings.isPro) ...[
+                const SizedBox(height: 16),
+                PremiumPromptCard(
+                  title: 'WEEKLY PROGRESS REPORT',
+                  subtitle:
+                      'See why some days went over target and get personalized suggestions to fix it.',
+                  buttonText: 'Unlock Weekly Report',
+                  icon: LucideIcons.fileBarChart,
+                  onTap: () => context.push('/paywall'),
+                ),
+              ],
             ],
           ),
         );

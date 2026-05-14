@@ -4,6 +4,10 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../../data/models/meal.dart';
+import '../../../../providers/settings_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import '../../../widgets/premium_prompt_card.dart';
 
 class EditMealModal extends StatefulWidget {
   final Meal meal;
@@ -239,7 +243,18 @@ class _EditMealModalState extends State<EditMealModal> {
                     ],
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 32),
+                  if (!context.read<SettingsProvider>().isPro) ...[
+                    PremiumPromptCard(
+                      title: 'PREMIUM ANALYSIS',
+                      subtitle:
+                          'Get a better version of this meal based on your goal with AI suggestions.',
+                      buttonText: 'Unlock Suggestions',
+                      icon: LucideIcons.wand2,
+                      onTap: () => context.push('/paywall'),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
 
                   // ACTIONS
                   ElevatedButton(

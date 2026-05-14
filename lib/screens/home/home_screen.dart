@@ -1,21 +1,18 @@
 import 'dart:math' as math;
-import 'package:flutter_animate/flutter_animate.dart';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:snapcal/widgets/ad_banner.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/meal.dart';
-import '../../data/repositories/water_repository.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/insights_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
@@ -23,6 +20,7 @@ import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/auth_modal.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/recent_meal_tile.dart';
+import '../../widgets/premium_prompt_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,11 +31,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  static const int _animatedItemCount = 9;
+  static const int _animatedItemCount = 8;
+  static bool _hasPlayedInitialAnimation = false;
 
   late final AnimationController _animController;
   late final List<Animation<double>> _itemAnims;
-  bool _openingInsights = false;
 
   @override
   void initState() {
@@ -53,7 +51,13 @@ class _HomeScreenState extends State<HomeScreen>
         curve: Interval(start, 1, curve: Curves.easeOutCubic),
       );
     });
-    _animController.forward();
+
+    if (!_hasPlayedInitialAnimation) {
+      _animController.forward();
+      _hasPlayedInitialAnimation = true;
+    } else {
+      _animController.value = 1.0;
+    }
   }
 
   @override
@@ -85,13 +89,15 @@ class _HomeScreenState extends State<HomeScreen>
     final recentMeals = context.select<MealProvider, List<Meal>>(
       (provider) => provider.recentMeals,
     );
+    final weeklyCalories = context.select<MealProvider, List<double>>(
+      (provider) => provider.getWeeklyCalorieTrend(),
+    );
 
     final settings = context.watch<SettingsProvider>();
     final auth = context.watch<AuthProvider>();
     final activity = context.watch<ActivityProvider>();
     final water = context.watch<WaterProvider>();
 
-    final greeting = _getGreeting(l10n);
     final displayName = auth.user?.displayName;
     final userName =
         (displayName != null && displayName.isNotEmpty)
@@ -100,8 +106,28 @@ class _HomeScreenState extends State<HomeScreen>
 
     final calorieGoal = math.max(settings.dailyCalorieGoal, 1);
     final remaining = calorieGoal - totalCalories;
-    final progress = (totalCalories / calorieGoal).clamp(0.0, 1.0);
-    final hasMealsToday = mealCount > 0 || totalCalories > 0;
+    final yesterdayCalories =
+        weeklyCalories.length >= 2
+            ? weeklyCalories[weeklyCalories.length - 2].round()
+            : 0;
+    final waterProgress = (water.total / math.max(water.goal, 1)).clamp(
+      0.0,
+      1.0,
+    );
+    final steps = activity.isTracking ? activity.steps : 0;
+    final stepsProgress = (steps / 10000).clamp(0.0, 1.0);
+    final calorieProgress = (totalCalories / calorieGoal).clamp(0.0, 1.4);
+    final proteinProgress = (macros.protein /
+            math.max(settings.dailyProteinGoal, 1))
+        .clamp(0.0, 1.0);
+    final dailyScore = _dailyScore(
+      mealCount: mealCount,
+      calorieProgress: calorieProgress,
+      proteinProgress: proteinProgress,
+      waterProgress: waterProgress,
+      stepsProgress: stepsProgress,
+    );
+
     final showFirstLoadSkeleton =
         mealState.loading && totalCalories == 0 && recentMeals.isEmpty;
     return AppPageScaffold(
@@ -112,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen>
       child: ListView(
         padding: EdgeInsets.only(
           top: MediaQuery.of(context).padding.top + 12,
-          bottom: 110,
+          bottom: 160,
         ),
         physics: const BouncingScrollPhysics(),
         children: [
@@ -120,12 +146,10 @@ class _HomeScreenState extends State<HomeScreen>
             _itemAnims[0],
             _HomeInset(
               child: _HomeDashboardHeader(
-                greeting: greeting,
                 userName: userName,
+                streak: settings.currentStreak,
                 isRefreshing: mealState.refreshing,
                 onSettingsTap: () => context.go('/settings'),
-                onAssistantTap: () => context.push('/assistant'),
-                assistantLabel: l10n.assistant_title,
               ),
             ),
           ),
@@ -138,28 +162,40 @@ class _HomeScreenState extends State<HomeScreen>
                   consumed: totalCalories,
                   goal: calorieGoal,
                   remaining: remaining,
-                  progress: progress,
-                  streak: settings.currentStreak,
                   mealCount: mealCount,
+                  protein: macros.protein,
+                  proteinGoal: settings.dailyProteinGoal,
+                  yesterdayCalories: yesterdayCalories,
+                  onAssistantTap: () => context.push('/assistant'),
                 ),
           ),
-          if (!showFirstLoadSkeleton && !hasMealsToday) ...[
+          if (!settings.isPro) ...[
             const SizedBox(height: 10),
             _staggeredSlide(
-              _itemAnims[2],
+              _itemAnims[1],
               _HomeInset(
-                child: _FirstMealPrompt(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    context.go('/snap');
-                  },
+                child: PremiumPromptCard(
+                  style: PremiumPromptStyle.mini,
+                  title: 'GO DEEPER WITH PREMIUM',
+                  subtitle:
+                      'Unlock smarter calorie insights and macro trends.',
+                  buttonText: 'Elite',
+                  icon: LucideIcons.trendingUp,
+                  onTap: () => context.push('/paywall'),
                 ),
               ),
             ),
           ],
           const SizedBox(height: 10),
           _staggeredSlide(
-            _itemAnims[hasMealsToday ? 2 : 3],
+            _itemAnims[2],
+            _HomeInset(
+              child: _ScanFoodButton(onTap: () => context.go('/snap')),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _staggeredSlide(
+            _itemAnims[3],
             _MacroOverviewCard(
               macros: macros,
               proteinGoal: settings.dailyProteinGoal,
@@ -169,11 +205,23 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const SizedBox(height: 10),
           _staggeredSlide(
-            _itemAnims[hasMealsToday ? 3 : 4],
+            _itemAnims[4],
+            _HomeInset(
+              child: _TodayMealsPreviewCard(
+                meals: recentMeals,
+                onViewAll: () => context.go('/log'),
+                onScan: () => context.go('/snap'),
+                onManual: () => context.go('/log'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _staggeredSlide(
+            _itemAnims[5],
             _SecondaryDashboardGrid(
               waterTotal: water.total,
               waterGoal: water.goal,
-              steps: activity.isTracking ? activity.steps : 0,
+              steps: steps,
               stepsUnit: l10n.home_steps_today,
               activityLive: activity.status == 'walking',
               onWaterAdd: () => _addWater(water),
@@ -181,87 +229,66 @@ class _HomeScreenState extends State<HomeScreen>
               onActivityTap: () => context.push('/activity'),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 10),
           _staggeredSlide(
-            _itemAnims[hasMealsToday ? 4 : 5],
+            _itemAnims[6],
             _HomeInset(
-              child: _QuickActionRow(
-                onReportsTap: () {
-                  HapticFeedback.lightImpact();
-                  context.go('/reports');
-                },
-                onInsightsTap: _openInsights,
+              child: _CalendarProgressStrip(
+                weeklyCalories: weeklyCalories,
+                calorieGoal: calorieGoal,
+                dailyScore: dailyScore,
+                onTap: () => context.go('/reports'),
               ),
             ),
           ),
           if (auth.isAnonymous && recentMeals.isNotEmpty) ...[
             const SizedBox(height: 18),
             _staggeredSlide(
-              _itemAnims[5],
+              _itemAnims[7],
               _SyncPromptCard(onSaveTap: () => AuthModal.show(context)),
             ),
           ],
-          const SizedBox(height: 22),
-          _staggeredSlide(
-            _itemAnims[6],
-            _HomeInset(
-              child: SectionLabel(
-                title: l10n.home_recent_meals,
-                action: recentMeals.isEmpty ? null : l10n.home_view_all,
-                onActionTap:
-                    recentMeals.isEmpty ? null : () => context.go('/log'),
+          if (!settings.isPro && recentMeals.isEmpty) ...[
+            const SizedBox(height: 18),
+            _staggeredSlide(
+              _itemAnims[7],
+              _HomeInset(
+                child: PremiumPromptCard(
+                  style: PremiumPromptStyle.mini,
+                  title: 'START TRACKING',
+                  subtitle:
+                      'Premium users get smarter reports after logging meals.',
+                  buttonText: 'Elite',
+                  icon: LucideIcons.rocket,
+                  onTap: () => context.push('/paywall'),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 10),
-          _staggeredSlide(
-            _itemAnims[7],
-            _HomeInset(
-              child:
-                  recentMeals.isEmpty
-                      ? const _EmptyMealsCard()
-                      : Column(
-                        children:
-                            recentMeals
-                                .take(3)
-                                .map((meal) => RecentMealTile(meal: meal))
-                                .toList(),
-                      ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          _staggeredSlide(_itemAnims[8], _HomeInset(child: AdBanner())),
+          ],
           const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  String _getGreeting(AppLocalizations l10n) {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return l10n.home_greeting_morning;
-    if (hour < 17) return l10n.home_greeting_afternoon;
-    return l10n.home_greeting_evening;
-  }
-
-  void _openInsights() {
-    if (_openingInsights) return;
-    _openingInsights = true;
-    HapticFeedback.lightImpact();
-    final insights = context.read<InsightsProvider>();
-    if (!insights.hasReport) {
-      insights.generateWeeklyReport(
-        meals: context.read<MealProvider>(),
-        settings: context.read<SettingsProvider>(),
-        activity: context.read<ActivityProvider>(),
-        waterRepo: context.read<WaterRepository>(),
-        languageCode: Localizations.localeOf(context).languageCode,
-      );
+  int _dailyScore({
+    required int mealCount,
+    required double calorieProgress,
+    required double proteinProgress,
+    required double waterProgress,
+    required double stepsProgress,
+  }) {
+    var score = 0;
+    if (mealCount > 0) score += 20;
+    if (calorieProgress >= 0.65 && calorieProgress <= 1.08) {
+      score += 30;
+    } else if (calorieProgress > 0.0 && calorieProgress < 1.18) {
+      score += 16;
     }
-    context.push('/insights');
-    Future<void>.delayed(const Duration(milliseconds: 450), () {
-      if (mounted) _openingInsights = false;
-    });
+    score += (proteinProgress.clamp(0.0, 1.0) * 20).round();
+    score += (waterProgress.clamp(0.0, 1.0) * 15).round();
+    score += (stepsProgress.clamp(0.0, 1.0) * 15).round();
+    return score.clamp(0, 100);
   }
 
   void _addWater(WaterProvider water) {
@@ -305,28 +332,76 @@ class _HomeInset extends StatelessWidget {
   }
 }
 
+class _ScanFoodButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ScanFoodButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.18),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+              spreadRadius: -6,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(LucideIcons.scanLine, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Text(
+              'Scan food',
+              style: AppTypography.titleMedium.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Icon(
+              LucideIcons.arrowRight,
+              color: colorScheme.onPrimary.withValues(alpha: 0.9),
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeDashboardHeader extends StatelessWidget {
-  final String greeting;
   final String userName;
+  final int streak;
   final bool isRefreshing;
   final VoidCallback onSettingsTap;
-  final VoidCallback onAssistantTap;
-  final String assistantLabel;
 
   const _HomeDashboardHeader({
-    required this.greeting,
     required this.userName,
+    required this.streak,
     required this.isRefreshing,
     required this.onSettingsTap,
-    required this.onAssistantTap,
-    required this.assistantLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     return SizedBox(
-      height: 35,
+      height: 36,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -341,37 +416,16 @@ class _HomeDashboardHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        greeting,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.92,
-                          ),
-                          fontWeight: FontWeight.w900,
-                          fontSize: 10,
-                          letterSpacing: 0,
-                          height: 0.9,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        userName,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.94),
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3,
-                          height: 1.0,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  child: Text(
+                    userName,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.94),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.2,
+                      height: 1.0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 AnimatedSwitcher(
@@ -395,10 +449,10 @@ class _HomeDashboardHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (streak > 0) _HeaderStreakBadge(label: l10n.home_streak_days(streak)),
           const SizedBox(width: 6),
-          _HomeHeaderAiButton(label: assistantLabel, onTap: onAssistantTap),
-          const SizedBox(width: 6),
-          _HomeHeaderSettingsButton(
+          _HomeHeaderButton(
+            icon: LucideIcons.settings,
             label: MaterialLocalizations.of(context).showMenuTooltip,
             onTap: onSettingsTap,
           ),
@@ -454,123 +508,40 @@ class _HomeHeaderButton extends StatelessWidget {
   }
 }
 
-class _HomeHeaderAiButton extends StatelessWidget {
+class _HeaderStreakBadge extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
 
-  const _HomeHeaderAiButton({required this.label, required this.onTap});
+  const _HeaderStreakBadge({required this.label});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return AppScaleTap(
-      onTap: onTap,
-      child: Tooltip(
-        message: label,
-        child: Container(
-          height: 35,
-          padding: const EdgeInsets.symmetric(horizontal: 11),
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withValues(alpha: isDark ? 0.16 : 0.12),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: colorScheme.primary.withValues(
-                alpha: isDark ? 0.28 : 0.18,
-              ),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-              BoxShadow(
-                color: colorScheme.primary.withValues(
-                  alpha: isDark ? 0.10 : 0.06,
-                ),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(LucideIcons.sparkles, color: colorScheme.primary, size: 14),
-              const SizedBox(width: 5),
-              Text(
-                'Coach',
-                style: AppTypography.labelLarge.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-          ),
+    return Container(
+      height: 35,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppColors.sky.withValues(alpha: isDark ? 0.12 : 0.09),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: AppColors.sky.withValues(alpha: isDark ? 0.22 : 0.14),
         ),
       ),
-    );
-  }
-}
-
-class _HomeHeaderSettingsButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _HomeHeaderSettingsButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return AppScaleTap(
-      onTap: onTap,
-      child: Tooltip(
-        message: label,
-        child: Container(
-          height: 35,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.30),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color:
-                  isDark
-                      ? colorScheme.outlineVariant.withValues(alpha: 0.18)
-                      : AppColors.lightCardBorder,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(LucideIcons.calendarCheck, color: AppColors.sky, size: 14),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: AppTypography.labelLarge.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.90),
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+              letterSpacing: 0,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                LucideIcons.settings,
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.9),
-                size: 14,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Settings',
-                style: AppTypography.labelLarge.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.88),
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -580,17 +551,21 @@ class _CalorieDashboardCard extends StatelessWidget {
   final int consumed;
   final int goal;
   final int remaining;
-  final double progress;
-  final int streak;
   final int mealCount;
+  final int protein;
+  final int proteinGoal;
+  final int yesterdayCalories;
+  final VoidCallback onAssistantTap;
 
   const _CalorieDashboardCard({
     required this.consumed,
     required this.goal,
     required this.remaining,
-    required this.progress,
-    required this.streak,
     required this.mealCount,
+    required this.protein,
+    required this.proteinGoal,
+    required this.yesterdayCalories,
+    required this.onAssistantTap,
   });
 
   @override
@@ -602,46 +577,16 @@ class _CalorieDashboardCard extends StatelessWidget {
 
     return _DashboardSectionFrame(
       accentColor: statusColor,
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       margin: EdgeInsets.zero,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 360;
-          final ringSize = compact ? 78.0 : 88.0;
+          final goalProgress = (consumed / goal).clamp(0.0, 1.25);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Flexible(
-                    fit: FlexFit.loose,
-                    child: _StatusPill(
-                      icon: LucideIcons.sparkle,
-                      label:
-                          isOverGoal
-                              ? l10n.home_goal_reached
-                              : l10n.home_calories_remaining,
-                      color: statusColor,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // Streak pill with subtle pulse
-                  _StatusPill(
-                        icon: LucideIcons.calendarCheck,
-                        label: l10n.home_streak_days(streak),
-                        color: AppColors.sky,
-                      )
-                      .animate(onPlay: (c) => c.repeat(reverse: true))
-                      .scaleXY(
-                        begin: 1.0,
-                        end: 1.02,
-                        duration: 3000.ms,
-                        curve: Curves.easeInOut,
-                      ),
-                ],
-              ),
-              const SizedBox(height: 14),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -649,7 +594,7 @@ class _CalorieDashboardCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ★ Gradient hero number — the single biggest "wow" detail
+                        // Gradient hero number: the main visual hierarchy anchor.
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
@@ -668,21 +613,21 @@ class _CalorieDashboardCard extends StatelessWidget {
                             child: Text(
                               '${remaining.abs()}',
                               style: AppTypography.displayLarge.copyWith(
-                                color: Colors.white, // Shader needs white
-                                fontSize: compact ? 54 : 64,
+                                color: Colors.white,
+                                fontSize: compact ? 66 : 78,
                                 fontWeight: FontWeight.w900,
-                                height: 0.92,
+                                height: 0.9,
                                 letterSpacing: 0,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 7),
+                        const SizedBox(height: 8),
                         Text(
                           isOverGoal ? 'kcal over' : l10n.home_kcal_left,
-                          style: AppTypography.titleSmall.copyWith(
+                          style: AppTypography.titleMedium.copyWith(
                             color: colorScheme.onSurface.withValues(
-                              alpha: 0.86,
+                              alpha: 0.88,
                             ),
                             fontWeight: FontWeight.w900,
                             letterSpacing: 0,
@@ -693,25 +638,31 @@ class _CalorieDashboardCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  // Calorie ring with ambient glow
-                  _GlowingCalorieRing(
-                    size: ringSize,
-                    progress: progress,
-                    color: statusColor,
-                    center: '${(progress * 100).round()}%',
-                    label: l10n.home_eaten_progress,
+                  const SizedBox(width: 12),
+                  _CalorieInsightPill(
+                    isOverGoal: isOverGoal,
+                    remaining: remaining,
+                    progress: goalProgress,
+                    statusColor: statusColor,
+                    compact: compact,
+                    onTap: onAssistantTap,
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              // Progress rail with shimmer on completion
-              _ModernProgressRail(progress: progress, color: statusColor),
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
               _DashboardStatsStrip(
                 consumed: consumed,
                 goal: goal,
                 mealCount: mealCount,
+                statusColor: statusColor,
+              ),
+              const SizedBox(height: 12),
+              _YesterdayInsightRow(
+                consumed: consumed,
+                remaining: remaining,
+                protein: protein,
+                proteinGoal: proteinGoal,
+                yesterdayCalories: yesterdayCalories,
                 statusColor: statusColor,
               ),
             ],
@@ -722,84 +673,259 @@ class _CalorieDashboardCard extends StatelessWidget {
   }
 }
 
-class _FirstMealPrompt extends StatelessWidget {
-  final VoidCallback onTap;
+class _YesterdayInsightRow extends StatelessWidget {
+  final int consumed;
+  final int remaining;
+  final int protein;
+  final int proteinGoal;
+  final int yesterdayCalories;
+  final Color statusColor;
 
-  const _FirstMealPrompt({required this.onTap});
+  const _YesterdayInsightRow({
+    required this.consumed,
+    required this.remaining,
+    required this.protein,
+    required this.proteinGoal,
+    required this.yesterdayCalories,
+    required this.statusColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
+    final insight = _insightText;
+    final comparison = _comparisonText;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: colorScheme.primary.withValues(alpha: 0.18),
+    return Row(
+      children: [
+        Expanded(
+          child: _MiniHeroChip(
+            icon: LucideIcons.sparkles,
+            label: insight,
+            color: statusColor,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _MiniHeroChip(
+            icon: LucideIcons.history,
+            label: comparison,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String get _insightText {
+    if (consumed == 0) return 'Scan your first meal';
+    if (remaining < 0) return 'Go lighter next meal';
+    if (proteinGoal > 0 && protein < proteinGoal * 0.55) {
+      return 'Protein is behind';
+    }
+    return 'Next meal fits today';
+  }
+
+  String get _comparisonText {
+    if (yesterdayCalories <= 0) return 'Build your baseline';
+    final diff = consumed - yesterdayCalories;
+    if (diff == 0) return 'Same as yesterday';
+    if (diff < 0) return '${diff.abs()} kcal below yesterday';
+    return '$diff kcal above yesterday';
+  }
+}
+
+class _MiniHeroChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _MiniHeroChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.82),
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
+        ],
+      ),
+    );
+  }
+}
+
+class _CalorieInsightPill extends StatelessWidget {
+  final bool isOverGoal;
+  final int remaining;
+  final double progress;
+  final Color statusColor;
+  final bool compact;
+  final VoidCallback onTap;
+
+  const _CalorieInsightPill({
+    required this.isOverGoal,
+    required this.remaining,
+    required this.progress,
+    required this.statusColor,
+    required this.compact,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+
+    return AppScaleTap(
+      onTap: onTap,
+      child: Tooltip(
+        message: l10n.assistant_title,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: (isDark ? Colors.white : colorScheme.primary).withValues(
+                  alpha: isDark ? 0.08 : 0.04,
                 ),
-                child: Icon(
-                  LucideIcons.camera,
-                  color: colorScheme.primary,
-                  size: 21,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: (isDark ? Colors.white : colorScheme.primary)
+                      .withValues(alpha: isDark ? 0.15 : 0.12),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    blurRadius: 20,
+                    spreadRadius: -5,
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.home_first_meal_cta_title,
-                      style: AppTypography.titleSmall.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _AnimatedSparkleIcon(color: statusColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'AI Coach',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.95),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.2,
+                      fontSize: 13,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      l10n.home_first_meal_cta_body,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Icon(
-                LucideIcons.chevronRight,
-                color: colorScheme.primary,
-                size: 18,
-              ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AnimatedSparkleIcon extends StatefulWidget {
+  final Color color;
+  const _AnimatedSparkleIcon({required this.color});
+
+  @override
+  State<_AnimatedSparkleIcon> createState() => _AnimatedSparkleIconState();
+}
+
+class _AnimatedSparkleIconState extends State<_AnimatedSparkleIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Outer Glow
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.color.withValues(
+                      alpha: 0.2 + (_controller.value * 0.3),
+                    ),
+                    blurRadius: 10 + (_controller.value * 10),
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+            // The Icon
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [widget.color, AppColors.sky],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                LucideIcons.sparkles,
+                color: Colors.white,
+                size: 15,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -808,14 +934,12 @@ class _DashboardSectionFrame extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
-  final double radius;
   final Color? accentColor;
 
   const _DashboardSectionFrame({
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.margin = EdgeInsets.zero,
-    this.radius = 28,
     this.accentColor,
   });
 
@@ -835,17 +959,17 @@ class _DashboardSectionFrame extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             Color.alphaBlend(
-              accent.withValues(alpha: isDark ? 0.09 : 0.06),
+              accent.withValues(alpha: isDark ? 0.07 : 0.045),
               colorScheme.surfaceContainerHighest.withValues(
-                alpha: isDark ? 0.38 : 0.74,
+                alpha: isDark ? 0.34 : 0.66,
               ),
             ),
             colorScheme.surfaceContainerHighest.withValues(
-              alpha: isDark ? 0.20 : 0.56,
+              alpha: isDark ? 0.17 : 0.48,
             ),
           ],
         ),
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(
           color:
               isDark
@@ -856,113 +980,19 @@ class _DashboardSectionFrame extends StatelessWidget {
           // Depth shadow
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.06),
-            blurRadius: 24,
+            blurRadius: 22,
             offset: const Offset(0, 12),
           ),
           // Accent edge glow — premium depth
           BoxShadow(
-            color: accent.withValues(alpha: isDark ? 0.08 : 0.05),
-            blurRadius: 32,
+            color: accent.withValues(alpha: isDark ? 0.055 : 0.032),
+            blurRadius: 28,
             offset: const Offset(-6, -6),
             spreadRadius: -4,
           ),
         ],
       ),
       child: child,
-    );
-  }
-}
-
-class _ModernProgressRail extends StatelessWidget {
-  final double progress;
-  final Color color;
-
-  const _ModernProgressRail({required this.progress, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 560),
-      curve: Curves.easeOutCubic,
-      tween: Tween<double>(begin: 0, end: progress),
-      builder: (context, value, child) {
-        return Container(
-          height: 14,
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.38),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: value.clamp(0.0, 1.0),
-              child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          color,
-                          Color.lerp(color, AppColors.sky, 0.42)!,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  )
-                  // ★ Shimmer sweep after the bar fills
-                  .animate(delay: 800.ms)
-                  .shimmer(
-                    duration: 1200.ms,
-                    color: Colors.white.withValues(alpha: 0.18),
-                  ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _StatusPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: AppTypography.labelSmall.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1043,10 +1073,17 @@ class _FlatStat extends StatelessWidget {
       height: 68,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: isDark ? 0.08 : 0.06),
-        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: isDark ? 0.10 : 0.07),
+            colorScheme.surface.withValues(alpha: isDark ? 0.16 : 0.30),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: color.withValues(alpha: isDark ? 0.12 : 0.10),
+          color: color.withValues(alpha: isDark ? 0.12 : 0.09),
         ),
       ),
       child: Column(
@@ -1102,196 +1139,6 @@ class _FlatStat extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _AnimatedCalorieRing extends StatelessWidget {
-  final double size;
-  final double progress;
-  final Color color;
-  final String center;
-  final String label;
-
-  const _AnimatedCalorieRing({
-    required this.size,
-    required this.progress,
-    required this.color,
-    required this.center,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 720),
-      curve: Curves.easeOutCubic,
-      tween: Tween<double>(begin: 0, end: progress),
-      builder: (context, animatedProgress, child) {
-        return SizedBox(
-          width: size,
-          height: size,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: Size.square(size),
-                painter: _CalorieRingPainter(
-                  progress: animatedProgress,
-                  color: color,
-                  trackColor: colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.62,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        center,
-                        style: AppTypography.headlineSmall.copyWith(
-                          color: colorScheme.onSurface,
-                          fontSize: 23,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0,
-                          height: 1,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      label,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Calorie ring wrapped with an ambient glow that intensifies with progress
-class _GlowingCalorieRing extends StatelessWidget {
-  final double size;
-  final double progress;
-  final Color color;
-  final String center;
-  final String label;
-
-  const _GlowingCalorieRing({
-    required this.size,
-    required this.progress,
-    required this.color,
-    required this.center,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Ambient glow — always present at a subtle base, scales with progress
-    final glowAlpha =
-        progress < 0.1
-            ? 0.03
-            : (progress < 0.3
-                ? 0.045
-                : (progress < 0.7 ? 0.075 : (progress >= 1.0 ? 0.16 : 0.10)));
-    final glowRadius =
-        progress < 0.1
-            ? 12.0
-            : (progress < 0.3
-                ? 16.0
-                : (progress < 0.7 ? 24.0 : (progress >= 1.0 ? 40.0 : 32.0)));
-
-    Widget ring = _AnimatedCalorieRing(
-      size: size,
-      progress: progress,
-      color: color,
-      center: center,
-      label: label,
-    );
-
-    // Celebration shimmer when 100%
-    if (progress >= 1.0) {
-      ring = ring
-          .animate(onPlay: (c) => c.repeat())
-          .shimmer(
-            duration: 2400.ms,
-            color: Colors.white.withValues(alpha: 0.12),
-          );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: glowAlpha),
-            blurRadius: glowRadius,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: ring,
-    );
-  }
-}
-
-class _CalorieRingPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  final Color trackColor;
-
-  const _CalorieRingPainter({
-    required this.progress,
-    required this.color,
-    required this.trackColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final stroke = size.width < 140 ? 6.5 : 8.0;
-    final radius = (size.width - stroke) / 2;
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final track =
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = stroke
-          ..strokeCap = StrokeCap.round
-          ..color = trackColor;
-    final active =
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = stroke
-          ..strokeCap = StrokeCap.round
-          ..color = color;
-
-    canvas.drawCircle(center, radius, track);
-    if (progress <= 0) return;
-    canvas.drawArc(rect, -math.pi / 2, math.pi * 2 * progress, false, active);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CalorieRingPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.color != color ||
-        oldDelegate.trackColor != trackColor;
   }
 }
 
@@ -1402,10 +1249,18 @@ class _MacroMeter extends StatelessWidget {
 
     return Container(
       height: 102,
-      padding: const EdgeInsets.all(11),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colorScheme.surface.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: 0.075),
+            colorScheme.surface.withValues(alpha: 0.22),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.10)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1442,9 +1297,7 @@ class _MacroMeter extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 4),
-          const SizedBox(height: 7),
-          // ★ Gradient macro bar instead of flat color
+          const SizedBox(height: 10),
           TweenAnimationBuilder<double>(
             duration: const Duration(milliseconds: 520),
             curve: Curves.easeOutCubic,
@@ -1508,7 +1361,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
     final stepsProgress = (steps / 10000).clamp(0.0, 1.0);
 
     return _DashboardSectionFrame(
-      accentColor: AppColors.sky,
+      accentColor: AppColors.primary,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       margin: EdgeInsets.zero,
       child: Column(
@@ -1517,7 +1370,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
           Row(
             children: [
               Text(
-                '${l10n.water_hydration} • ${l10n.home_metric_activity}',
+                'Daily Wellness',
                 style: AppTypography.titleMedium.copyWith(
                   color: colorScheme.onSurface,
                   fontWeight: FontWeight.w900,
@@ -1544,6 +1397,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
                   secondaryMetric: 'Goal: $waterGoal ml',
                   progress: waterProgress,
                   footerText: '+250ml per tap',
+                  liquidFill: true,
                   onTap: onWaterAdd,
                 ),
               ),
@@ -1553,12 +1407,14 @@ class _SecondaryDashboardGrid extends StatelessWidget {
                   pulsing: activityLive,
                   child: _ModernMetricPanel(
                     icon: LucideIcons.footprints,
-                    color: AppColors.sky,
+                    color: AppColors.primary,
                     title: l10n.home_metric_activity,
                     primaryMetric: '$steps',
                     secondaryMetric: 'Goal: 10,000',
                     progress: stepsProgress,
                     footerText: activityLive ? 'Walking • Live' : 'Steps today',
+                    motionTrail: true,
+                    motionActive: activityLive,
                     onTap: onActivityTap,
                   ),
                 ),
@@ -1571,7 +1427,326 @@ class _SecondaryDashboardGrid extends StatelessWidget {
   }
 }
 
-class _ModernMetricPanel extends StatelessWidget {
+class _TodayMealsPreviewCard extends StatelessWidget {
+  final List<Meal> meals;
+  final VoidCallback onViewAll;
+  final VoidCallback onScan;
+  final VoidCallback onManual;
+
+  const _TodayMealsPreviewCard({
+    required this.meals,
+    required this.onViewAll,
+    required this.onScan,
+    required this.onManual,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return _DashboardSectionFrame(
+      accentColor: AppColors.primary,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Today\'s Meals',
+                style: AppTypography.titleMedium.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: onViewAll,
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor: AppColors.primary,
+                  textStyle: AppTypography.labelLarge.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+                ),
+                child: Text(meals.isEmpty ? 'Open log' : l10n.home_view_all),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (meals.isEmpty)
+            _EmptyMealsInline(onScan: onScan, onManual: onManual)
+          else
+            Column(
+              children:
+                  meals
+                      .take(3)
+                      .map(
+                        (meal) => RecentMealTile(meal: meal, onTap: onViewAll),
+                      )
+                      .toList(),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyMealsInline extends StatelessWidget {
+  final VoidCallback onScan;
+  final VoidCallback onManual;
+
+  const _EmptyMealsInline({required this.onScan, required this.onManual});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              LucideIcons.utensilsCrossed,
+              color: AppColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No meals logged yet',
+              style: AppTypography.bodyMedium.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+          TextButton(onPressed: onManual, child: const Text('Add')),
+          FilledButton(
+            onPressed: onScan,
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Scan'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CalendarProgressStrip extends StatelessWidget {
+  final List<double> weeklyCalories;
+  final int calorieGoal;
+  final int dailyScore;
+  final VoidCallback onTap;
+
+  const _CalendarProgressStrip({
+    required this.weeklyCalories,
+    required this.calorieGoal,
+    required this.dailyScore,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final today = DateTime.now();
+    final days = List.generate(7, (index) {
+      final date = today.subtract(Duration(days: 6 - index));
+      final calories =
+          index < weeklyCalories.length ? weeklyCalories[index].round() : 0;
+      return (date: date, calories: calories);
+    });
+
+    return AppScaleTap(
+      onTap: onTap,
+      child: _DashboardSectionFrame(
+        accentColor: AppColors.primary,
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 62,
+              height: 62,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CircularProgressIndicator(
+                    value: dailyScore / 100,
+                    strokeWidth: 6,
+                    backgroundColor: colorScheme.outlineVariant.withValues(
+                      alpha: 0.18,
+                    ),
+                    color: _scoreColor(dailyScore),
+                    strokeCap: StrokeCap.round,
+                  ),
+                  Center(
+                    child: Text(
+                      '$dailyScore',
+                      style: AppTypography.titleMedium.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Daily score',
+                          style: AppTypography.titleSmall.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        LucideIcons.chevronRight,
+                        color: colorScheme.onSurfaceVariant,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children:
+                        days
+                            .map(
+                              (day) => Expanded(
+                                child: _CalendarDayDot(
+                                  label: _dayLabel(day.date),
+                                  calories: day.calories,
+                                  goal: calorieGoal,
+                                  isToday:
+                                      day.date.day == today.day &&
+                                      day.date.month == today.month &&
+                                      day.date.year == today.year,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _scoreColor(int score) {
+    if (score >= 75) return AppColors.primary;
+    if (score >= 45) return AppColors.amber;
+    return AppColors.error;
+  }
+
+  String _dayLabel(DateTime date) {
+    const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    return labels[date.weekday - 1];
+  }
+}
+
+class _CalendarDayDot extends StatelessWidget {
+  final String label;
+  final int calories;
+  final int goal;
+  final bool isToday;
+
+  const _CalendarDayDot({
+    required this.label,
+    required this.calories,
+    required this.goal,
+    required this.isToday,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = _statusColor;
+    return Column(
+      children: [
+        Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(height: 6),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          width: isToday ? 25 : 20,
+          height: isToday ? 25 : 20,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: calories == 0 ? 0.10 : 0.18),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isToday ? color : color.withValues(alpha: 0.22),
+              width: isToday ? 2 : 1,
+            ),
+          ),
+          child:
+              calories == 0
+                  ? null
+                  : Center(
+                    child: Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+        ),
+      ],
+    );
+  }
+
+  Color get _statusColor {
+    if (calories == 0) return AppColors.lightTextSecondary;
+    final ratio = calories / math.max(goal, 1);
+    if (ratio >= 0.75 && ratio <= 1.08) return AppColors.primary;
+    if (ratio <= 1.18) return AppColors.amber;
+    return AppColors.error;
+  }
+}
+
+class _ModernMetricPanel extends StatefulWidget {
   final IconData icon;
   final Color color;
   final String title;
@@ -1579,6 +1754,9 @@ class _ModernMetricPanel extends StatelessWidget {
   final String secondaryMetric;
   final double progress;
   final String footerText;
+  final bool liquidFill;
+  final bool motionTrail;
+  final bool motionActive;
   final VoidCallback onTap;
 
   const _ModernMetricPanel({
@@ -1589,110 +1767,229 @@ class _ModernMetricPanel extends StatelessWidget {
     required this.secondaryMetric,
     required this.progress,
     required this.footerText,
+    this.liquidFill = false,
+    this.motionTrail = false,
+    this.motionActive = false,
     required this.onTap,
   });
 
   @override
+  State<_ModernMetricPanel> createState() => _ModernMetricPanelState();
+}
+
+class _ModernMetricPanelState extends State<_ModernMetricPanel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _waveController;
+
+  @override
+  void initState() {
+    super.initState();
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+    if (_shouldAnimateOverlay) _waveController.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ModernMetricPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_shouldAnimateOverlay && !_waveController.isAnimating) {
+      _waveController.repeat();
+    } else if (!_shouldAnimateOverlay && _waveController.isAnimating) {
+      _waveController.stop();
+    }
+  }
+
+  bool get _shouldAnimateOverlay {
+    return widget.liquidFill || (widget.motionTrail && widget.motionActive);
+  }
+
+  @override
+  void dispose() {
+    _waveController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final barEndColor = Color.lerp(color, Colors.white, 0.35)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final barEndColor = Color.lerp(widget.color, Colors.white, 0.35)!;
 
     return AppScaleTap(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: colorScheme.surface.withValues(alpha: 0.28),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withValues(alpha: 0.12)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              widget.color.withValues(alpha: widget.liquidFill ? 0.08 : 0.07),
+              colorScheme.surface.withValues(alpha: 0.22),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: widget.color.withValues(alpha: 0.10)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
           children: [
-            Row(
-              children: [
-                Icon(icon, size: 16, color: color),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    title,
+            if (widget.liquidFill)
+              Positioned.fill(
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 720),
+                  curve: Curves.easeOutCubic,
+                  tween: Tween<double>(end: widget.progress),
+                  builder: (context, animatedProgress, child) {
+                    return AnimatedBuilder(
+                      animation: _waveController,
+                      builder: (context, child) {
+                        return CustomPaint(
+                          painter: _MetricLiquidFillPainter(
+                            animationValue: _waveController.value,
+                            progress: animatedProgress,
+                            color: widget.color,
+                            isDark: isDark,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            if (widget.motionTrail)
+              Positioned.fill(
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 620),
+                  curve: Curves.easeOutCubic,
+                  tween: Tween<double>(end: widget.progress),
+                  builder: (context, animatedProgress, child) {
+                    if (widget.motionActive) {
+                      return AnimatedBuilder(
+                        animation: _waveController,
+                        builder: (context, child) {
+                          return CustomPaint(
+                            painter: _MetricStepTrailPainter(
+                              animationValue: _waveController.value,
+                              progress: animatedProgress,
+                              color: widget.color,
+                              isDark: isDark,
+                              active: true,
+                            ),
+                          );
+                        },
+                      );
+                    }
+
+                    return CustomPaint(
+                      painter: _MetricStepTrailPainter(
+                        animationValue: 0,
+                        progress: animatedProgress,
+                        color: widget.color,
+                        isDark: isDark,
+                        active: false,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 13, 12, 13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Icon(widget.icon, size: 16, color: widget.color),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          widget.title,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      widget.primaryMetric,
+                      style: AppTypography.titleLarge.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.secondaryMetric,
                     style: AppTypography.labelSmall.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0,
+                      color: colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.7,
+                      ),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                primaryMetric,
-                style: AppTypography.titleLarge.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                  height: 1,
-                ),
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              secondaryMetric,
-              style: AppTypography.labelSmall.copyWith(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                fontWeight: FontWeight.w700,
-                fontSize: 10,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 520),
-              curve: Curves.easeOutCubic,
-              tween: Tween<double>(begin: 0, end: progress),
-              builder: (context, value, child) {
-                return Container(
-                  height: 5,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: value.clamp(0.0, 1.0),
-                      child: DecoratedBox(
+                  const SizedBox(height: 8),
+                  TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 520),
+                    curve: Curves.easeOutCubic,
+                    tween: Tween<double>(begin: 0, end: widget.progress),
+                    builder: (context, value, child) {
+                      return Container(
+                        height: 5,
+                        clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [color, barEndColor],
-                          ),
+                          color: widget.color.withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(999),
                         ),
-                      ),
-                    ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: FractionallySizedBox(
+                            widthFactor: value.clamp(0.0, 1.0),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [widget.color, barEndColor],
+                                ),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            Text(
-              footerText,
-              style: AppTypography.labelSmall.copyWith(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w700,
-                fontSize: 10,
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.footerText,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.8,
+                      ),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -1701,34 +1998,184 @@ class _ModernMetricPanel extends StatelessWidget {
   }
 }
 
-class _QuickActionRow extends StatelessWidget {
-  final VoidCallback onReportsTap;
-  final VoidCallback onInsightsTap;
+class _MetricLiquidFillPainter extends CustomPainter {
+  final double animationValue;
+  final double progress;
+  final Color color;
+  final bool isDark;
 
-  const _QuickActionRow({
-    required this.onReportsTap,
-    required this.onInsightsTap,
+  const _MetricLiquidFillPainter({
+    required this.animationValue,
+    required this.progress,
+    required this.color,
+    required this.isDark,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        ActionChipButton(
-          icon: LucideIcons.barChart3,
-          label: l10n.home_action_reports,
-          onTap: onReportsTap,
-        ),
-        ActionChipButton(
-          icon: LucideIcons.sparkles,
-          label: l10n.feature_insights_title,
-          onTap: onInsightsTap,
-        ),
-      ],
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+
+    final fillTop = size.height * (1 - progress.clamp(0.0, 1.0));
+    final waveAmplitude = size.height * 0.045;
+    final path = Path()..moveTo(0, size.height);
+
+    for (double x = 0; x <= size.width; x++) {
+      final wave = math.sin((x / 18) + animationValue * math.pi * 2);
+      path.lineTo(x, fillTop + wave * waveAmplitude);
+    }
+
+    path
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    final paint =
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.bottomLeft,
+            end: Alignment.topRight,
+            colors: [
+              color.withValues(alpha: isDark ? 0.22 : 0.17),
+              AppColors.sky.withValues(alpha: isDark ? 0.16 : 0.12),
+            ],
+          ).createShader(Offset.zero & size);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MetricLiquidFillPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue ||
+        oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.isDark != isDark;
+  }
+}
+
+class _MetricStepTrailPainter extends CustomPainter {
+  final double animationValue;
+  final double progress;
+  final Color color;
+  final bool isDark;
+  final bool active;
+
+  const _MetricStepTrailPainter({
+    required this.animationValue,
+    required this.progress,
+    required this.color,
+    required this.isDark,
+    required this.active,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+
+    final clampedProgress = progress.clamp(0.0, 1.0);
+    final visibleSteps = 4 + (clampedProgress * 5).round();
+    final phase = active ? animationValue : 0.0;
+    final baseAlpha = isDark ? 0.26 : 0.18;
+    final glowAlpha = active ? (isDark ? 0.16 : 0.10) : 0.0;
+
+    final glowPaint =
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              color.withValues(alpha: glowAlpha),
+              color.withValues(alpha: 0),
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.74, size.height * 0.34),
+              radius: size.width * 0.52,
+            ),
+          );
+
+    if (active) {
+      canvas.drawRect(Offset.zero & size, glowPaint);
+    }
+
+    final pathPaint =
+        Paint()
+          ..color = color.withValues(alpha: isDark ? 0.15 : 0.11)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.3
+          ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    for (double x = -size.width * 0.12; x <= size.width * 1.04; x += 6) {
+      final normalizedX = x / size.width;
+      final y =
+          size.height * 0.62 -
+          math.sin((normalizedX * math.pi * 1.6) + phase * math.pi * 2) *
+              size.height *
+              0.085;
+      if (x == -size.width * 0.12) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, pathPaint);
+
+    for (int i = 0; i < visibleSteps; i++) {
+      final t = visibleSteps == 1 ? 0.0 : i / (visibleSteps - 1);
+      final shiftedT = active ? (t + phase * 0.18) % 1.0 : t;
+      final x = size.width * (0.12 + shiftedT * 0.76);
+      final y =
+          size.height * 0.60 -
+          math.sin((shiftedT * math.pi * 1.6) + phase * math.pi * 2) *
+              size.height *
+              0.095;
+      final fade =
+          active ? (0.65 + 0.35 * math.sin((phase + t) * math.pi * 2)) : 0.72;
+      final footAlpha = baseAlpha * fade;
+      final footprintPaint =
+          Paint()
+            ..color = Color.lerp(
+              color,
+              AppColors.primary,
+              0.35,
+            )!.withValues(alpha: footAlpha);
+
+      _drawFootprint(
+        canvas,
+        Offset(x, y),
+        footprintPaint,
+        mirrored: i.isOdd,
+        scale: active ? 1.0 + (0.05 * fade) : 0.95,
+      );
+    }
+  }
+
+  void _drawFootprint(
+    Canvas canvas,
+    Offset center,
+    Paint paint, {
+    required bool mirrored,
+    required double scale,
+  }) {
+    final direction = mirrored ? -1.0 : 1.0;
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(direction * 0.36);
+    canvas.scale(scale, scale);
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset.zero, width: 8, height: 12),
+      paint,
     );
+    canvas.drawCircle(const Offset(-2.5, -7.0), 1.4, paint);
+    canvas.drawCircle(const Offset(0, -8.6), 1.3, paint);
+    canvas.drawCircle(const Offset(2.4, -7.0), 1.2, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _MetricStepTrailPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue ||
+        oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.isDark != isDark ||
+        oldDelegate.active != active;
   }
 }
 
@@ -1804,56 +2251,6 @@ class _SyncPromptCard extends StatelessWidget {
               ),
             ),
             child: Text(l10n.common_save),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyMealsCard extends StatelessWidget {
-  const _EmptyMealsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    return AppSectionCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              LucideIcons.utensilsCrossed,
-              color: colorScheme.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            l10n.home_no_meals_title,
-            style: AppTypography.titleMedium.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.log_track_prompt,
-            style: AppTypography.bodyMedium.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0,
-            ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),

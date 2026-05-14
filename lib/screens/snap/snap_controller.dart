@@ -140,7 +140,6 @@ class SnapController extends ChangeNotifier {
       final XFile imageFile = await CameraService().controller!.takePicture();
       final bytes = await imageFile.readAsBytes();
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
-
       _isCapturing = false;
       _isAnalyzing = true;
       notifyListeners();
@@ -219,11 +218,10 @@ class SnapController extends ChangeNotifier {
       HapticFeedback.selectionClick();
       final bytes = await imageFile.readAsBytes();
 
+      _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
       _isAnalyzing = true;
       _errorMessage = null;
       notifyListeners();
-
-      _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
 
       try {
         _analysisResults = await _geminiService

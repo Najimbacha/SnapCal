@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:animations/animations.dart';
 import 'package:go_router/go_router.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/snap/snap_screen.dart';
@@ -53,44 +54,63 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
     routes: [
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const OnboardingScreen()),
       ),
-      GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
+      GoRoute(
+        path: '/auth',
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const AuthScreen()),
+      ),
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const SettingsScreen(),
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const SettingsScreen()),
       ),
       GoRoute(
         path: '/paywall',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
           final limitReached = extra?['limitReached'] as bool? ?? false;
-          return PaywallScreen(limitReached: limitReached);
+          return _sharedAxisPage(
+            state,
+            PaywallScreen(limitReached: limitReached),
+          );
         },
       ),
       GoRoute(
         path: '/progress',
-        builder: (context, state) => const ProgressScreen(),
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const ProgressScreen()),
       ),
       GoRoute(
         path: '/assistant',
-        builder: (context, state) => const AssistantScreen(),
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const AssistantScreen()),
       ),
       GoRoute(
         path: '/planner',
-        builder: (context, state) => const MealPlannerScreen(),
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const MealPlannerScreen()),
       ),
       GoRoute(
         path: '/achievements',
-        builder: (context, state) => const AchievementsScreen(),
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const AchievementsScreen()),
       ),
       GoRoute(
         path: '/insights',
-        builder: (context, state) => const WeeklyWrapScreen(),
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const WeeklyWrapScreen()),
       ),
       GoRoute(
         path: '/activity',
-        builder: (context, state) => const ActivityScreen(),
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const ActivityScreen()),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -153,6 +173,24 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
   );
 }
 
+CustomTransitionPage<void> _sharedAxisPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 220),
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return SharedAxisTransition(
+        animation: animation,
+        secondaryAnimation: secondaryAnimation,
+        transitionType: SharedAxisTransitionType.scaled,
+        fillColor: Theme.of(context).colorScheme.surface,
+        child: child,
+      );
+    },
+  );
+}
+
 /// Shell route for bottom navigation
 class MainShell extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -186,7 +224,7 @@ class _MainShellState extends State<MainShell> {
           widget.navigationShell.currentIndex == 2
               ? null
               : Transform.translate(
-                offset: const Offset(0, 32),
+                offset: const Offset(0, 28),
                 child: HeroActionButton(
                   isActive: false,
                   onTap: () {

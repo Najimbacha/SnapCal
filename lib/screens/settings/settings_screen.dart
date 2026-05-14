@@ -19,6 +19,7 @@ import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/ui_blocks.dart';
 import '../sync/sync_data_screen.dart';
 import 'widgets/weight_entry_modal.dart';
+import '../../widgets/premium_prompt_card.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -49,9 +50,16 @@ class SettingsScreen extends StatelessWidget {
             selector: (_, s) => s.isPro,
             builder: (context, isPro, _) {
               if (isPro) return const SizedBox.shrink();
-              return const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: _UpgradeProCard(),
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: PremiumPromptCard(
+                  title: 'SNAPCAL ELITE',
+                  subtitle:
+                      'Unlimited scans, AI coach, deeper insights, and detailed progress reports.',
+                  buttonText: 'Manage Premium',
+                  icon: LucideIcons.crown,
+                  onTap: () => context.push('/paywall'),
+                ),
               );
             },
           ),

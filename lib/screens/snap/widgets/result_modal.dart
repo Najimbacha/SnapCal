@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/settings_provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../widgets/premium_prompt_card.dart';
+import '../../../widgets/premium_prompt_modal.dart';
 import '../../../data/services/gemini_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
@@ -67,6 +73,22 @@ class _ResultModalState extends State<ResultModal> {
     _mealTitleController = TextEditingController(
       text: _items.length == 1 ? _items.first.name : 'Feast',
     );
+
+    // Smart Premium Encouragement
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          PremiumPromptModal.show(
+            context,
+            title: 'TURN MEALS INTO PROGRESS',
+            subtitle:
+                'Get unlimited scans, smarter suggestions, and see how this meal fits into your weekly goals.',
+            buttonText: 'Scan Without Limits',
+            icon: LucideIcons.zap,
+          );
+        }
+      });
+    });
   }
 
   @override
@@ -326,93 +348,87 @@ class _ReviewSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
-        color: context.backgroundColor,
+        color: isDark ? AppColors.darkBackground : const Color(0xFFFDFDFD),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
-      child: Column(
+      child: Stack(
         children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(26, 28, 26, 22),
+          if (!isDark)
+            const Positioned(top: 0, left: 0, right: 0, child: _ZigZagEdge()),
+          Column(
+            children: [
+              Expanded(
+                child: ListView(
+              padding: const EdgeInsets.fromLTRB(26, 14, 26, 22),
               physics: const BouncingScrollPhysics(),
               children: [
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        mealTitleController.text.trim().isEmpty
-                            ? 'Feast'
-                            : mealTitleController.text.trim(),
-                        style: AppTypography.headlineSmall.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            mealTitleController.text.trim().isEmpty
+                                ? 'FEAST'
+                                : mealTitleController.text.trim().toUpperCase(),
+                            style: AppTypography.headlineSmall.copyWith(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
                     InkWell(
                       onTap: onEditTitle,
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(8),
                         child: Icon(
                           LucideIcons.edit3,
                           color: colorScheme.onSurfaceVariant,
-                          size: 22,
+                          size: 20,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _SummaryTile(
-                        label: l10n?.result_calories ?? 'Calories',
-                        value: '${totalCalories}kcal',
-                        color: const Color(0xFFEAF4FF),
-                        textColor: const Color(0xFF0F2A44),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _SummaryTile(
-                        label: l10n?.result_carbs ?? 'Carbs',
-                        value: '${totalCarbs.toStringAsFixed(0)}g',
-                        color: const Color(0xFFE5F7D5),
-                        textColor: const Color(0xFF274B24),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _SummaryTile(
-                        label: l10n?.result_protein ?? 'Protein',
-                        value: '${totalProtein.toStringAsFixed(0)}g',
-                        color: const Color(0xFFFBE8D8),
-                        textColor: const Color(0xFF4B2B17),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _SummaryTile(
-                        label: l10n?.result_fat ?? 'Fat',
-                        value: '${totalFat.toStringAsFixed(0)}g',
-                        color: const Color(0xFFFFF4D3),
-                        textColor: const Color(0xFF4D3A0F),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 14),
+                const _ReceiptDivider(),
+                const SizedBox(height: 12),
+                _MacroBillSummary(
+                  calories: totalCalories,
+                  carbs: totalCarbs,
+                  protein: totalProtein,
+                  fat: totalFat,
                 ),
-                const SizedBox(height: 34),
+                if (!settings.isPro) ...[
+                  const SizedBox(height: 16),
+                  PremiumPromptCard(
+                    title: 'PREMIUM INSIGHT',
+                    subtitle:
+                        'Your meal is higher in carbs than usual. Unlock AI suggestions to balance this feast.',
+                    buttonText: 'Unlock Insight',
+                    icon: LucideIcons.sparkles,
+                    onTap: () => context.push('/paywall'),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                const _ReceiptDivider(),
+                const SizedBox(height: 10),
+                // Perforated Divider
+                const _ReceiptDivider(),
+                const SizedBox(height: 12),
+                
                 ...List.generate(items.length, (index) {
                   final item = items[index];
                   return _FoodReviewRow(
@@ -420,45 +436,137 @@ class _ReviewSheet extends StatelessWidget {
                     onTap: () => onEditItem(index),
                   );
                 }),
+                
+                const SizedBox(height: 8),
+                const _ReceiptDivider(),
                 const SizedBox(height: 18),
                 _MoreFoodButton(onTap: onAddFood),
               ],
             ),
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(26, 12, 26, bottomPadding + 18),
-            child: SizedBox(
-              width: double.infinity,
-              height: 58,
-              child: FilledButton(
-                onPressed: isSaving ? null : onSave,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E88E5),
-                  disabledBackgroundColor: const Color(
-                    0xFF1E88E5,
-                  ).withValues(alpha: 0.68),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+            padding: EdgeInsets.fromLTRB(26, 8, 26, bottomPadding + 12),
+            child: Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 58,
+                  child: FilledButton(
+                    onPressed: isSaving ? null : onSave,
+                    style: FilledButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.premiumGradient,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Container(
+                        alignment: Alignment.center,
+                        child: isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                l10n?.snap_log_meal ?? 'Log this meal',
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                      ),
+                    ),
                   ),
                 ),
-                child:
-                    isSaving
-                        ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: Colors.white,
-                          ),
-                        )
-                        : Text(
-                          l10n?.snap_log_meal ?? 'Log this meal',
-                          style: AppTypography.titleMedium.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0,
-                          ),
-                        ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ], // End of Column children
+      ), // End of Column
+    ], // End of Stack children
+  ), // End of Stack
+); // End of Container
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _SummaryTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 90),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: isDark ? 0.15 : 0.08),
+            colorScheme.surface.withValues(alpha: isDark ? 0.4 : 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.25 : 0.15),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: color.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w900,
+              fontSize: 10,
+              letterSpacing: 0.5,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: AppTypography.titleLarge.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
               ),
             ),
           ),
@@ -468,67 +576,117 @@ class _ReviewSheet extends StatelessWidget {
   }
 }
 
-class _SummaryTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final Color textColor;
+class _ScanTrustPanel extends StatelessWidget {
+  final int itemCount;
+  final int calories;
+  final int protein;
 
-  const _SummaryTile({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.textColor,
+  const _ScanTrustPanel({
+    required this.itemCount,
+    required this.calories,
+    required this.protein,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final confidence = _confidenceValue;
+
     return Container(
-      constraints: const BoxConstraints(minHeight: 90),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color:
-            Theme.of(context).brightness == Brightness.dark
-                ? color.withValues(alpha: 0.18)
-                : color,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: AppTypography.labelMedium.copyWith(
-              color:
-                  Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white70
-                      : textColor.withValues(alpha: 0.68),
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primary.withValues(alpha: isDark ? 0.12 : 0.06),
+            colorScheme.surface.withValues(alpha: 0.4),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: isDark ? 0.2 : 0.12),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: AppTypography.titleLarge.copyWith(
-                color:
-                    Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white
-                        : textColor,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0,
-              ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _AnimatedAIIcon(color: colorScheme.primary),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Review before logging',
+                        style: AppTypography.titleSmall.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${(confidence * 100).round()}%',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _rationale,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  double get _confidenceValue {
+    if (calories <= 0) return 0.48;
+    if (itemCount > 1) return 0.76;
+    if (protein > 0) return 0.84;
+    return 0.72;
+  }
+
+  String get _rationale {
+    if (calories <= 0) {
+      return 'The estimate needs a calorie value. Tap the item to edit portion and macros.';
+    }
+    if (itemCount > 1) {
+      return 'AI split this photo into $itemCount foods. Check each portion before saving.';
+    }
+    return 'AI estimated calories from the visible portion and macros. Tap any row to correct it.';
   }
 }
 
@@ -541,51 +699,185 @@ class _FoodReviewRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
     return InkWell(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.22),
-            ),
-          ),
-        ),
-        child: Row(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                item.name,
-                style: AppTypography.titleMedium.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  item.name.toUpperCase(),
+                  style: AppTypography.titleSmall.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: _DottedLeader(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${item.calories}',
+                  style: AppTypography.titleMedium.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'monospace', // Gives it that receipt feel
+                  ),
+                ),
+                Text(
+                  ' KCAL',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
+            const SizedBox(height: 2),
             Text(
-              '${item.calories}kcal / ${item.portion}',
-              style: AppTypography.titleMedium.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0,
+              item.portion.toLowerCase(),
+              style: AppTypography.labelSmall.copyWith(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w700,
+                fontStyle: FontStyle.italic,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              LucideIcons.chevronRight,
-              size: 20,
-              color: colorScheme.onSurfaceVariant,
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DottedLeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boxWidth = constraints.constrainWidth();
+        const dashWidth = 2.0;
+        const dashSpace = 4.0;
+        final dashCount = (boxWidth / (dashWidth + dashSpace)).floor();
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(dashCount, (_) {
+            return SizedBox(
+              width: dashWidth,
+              height: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class _ReceiptDivider extends StatelessWidget {
+  const _ReceiptDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(40, (index) => Expanded(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          height: 1.5,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(1),
+          ),
+        ),
+      )),
+    );
+  }
+}
+
+class _AnimatedAIIcon extends StatefulWidget {
+  final Color color;
+  const _AnimatedAIIcon({required this.color});
+
+  @override
+  State<_AnimatedAIIcon> createState() => _AnimatedAIIconState();
+}
+
+class _AnimatedAIIconState extends State<_AnimatedAIIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
+          ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.color.withValues(
+                      alpha: 0.15 + (_controller.value * 0.2),
+                    ),
+                    blurRadius: 8 + (_controller.value * 8),
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [widget.color, AppColors.sky],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                LucideIcons.sparkles,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -600,45 +892,260 @@ class _MoreFoodButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: CustomPaint(
-        painter: _DashedBorderPainter(
-          color: colorScheme.outline.withValues(alpha: 0.36),
-          radius: 18,
-        ),
-        child: Container(
-          height: 74,
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1E88E5),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  LucideIcons.plus,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                AppLocalizations.of(context)?.log_add_manually ??
-                    'Add manually',
-                style: AppTypography.titleLarge.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 54,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            style: BorderStyle.solid,
           ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.plus, color: colorScheme.primary, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'ADD NEW ITEM',
+              style: AppTypography.labelLarge.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _MacroBillSummary extends StatelessWidget {
+  final int calories, carbs, protein, fat;
+  const _MacroBillSummary({
+    required this.calories,
+    required this.carbs,
+    required this.protein,
+    required this.fat,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _SummaryLine(
+          label: 'TOTAL CALORIES',
+          value: '$calories',
+          unit: 'KCAL',
+          color: AppColors.primary,
+          isHero: true,
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: _SummaryLine(
+                label: 'CARBS',
+                value: '${carbs}g',
+                color: AppColors.carbs,
+                icon: LucideIcons.wheat,
+                small: true,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _SummaryLine(
+                label: 'PROTEIN',
+                value: '${protein}g',
+                color: AppColors.protein,
+                icon: LucideIcons.beef,
+                small: true,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _SummaryLine(
+                label: 'FAT',
+                value: '${fat}g',
+                color: AppColors.fat,
+                icon: LucideIcons.droplets,
+                small: true,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryLine extends StatelessWidget {
+  final String label, value;
+  final String? unit;
+  final Color color;
+  final bool small;
+  final bool isHero;
+  final IconData? icon;
+
+  const _SummaryLine({
+    required this.label,
+    required this.value,
+    this.unit,
+    required this.color,
+    this.small = false,
+    this.isHero = false,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (isHero) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDark ? 0.12 : 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.15), width: 1.2),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                fontWeight: FontWeight.w900,
+                color: color,
+                letterSpacing: 1.2,
+                fontSize: 9,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  value,
+                  style: AppTypography.displaySmall.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'monospace',
+                    fontSize: 28,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  unit ?? '',
+                  style: AppTypography.titleSmall.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.1 : 0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.1), width: 1),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: AppTypography.titleSmall.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'monospace',
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: color.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w900,
+              fontSize: 8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ZigZagEdge extends StatelessWidget {
+  const _ZigZagEdge();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 8,
+      child: Row(
+        children: List.generate(20, (index) => Expanded(
+          child: CustomPaint(painter: _TrianglePainter()),
+        )),
+      ),
+    );
+  }
+}
+
+class _TrianglePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = const Color(0xFFFDFDFD)..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+  @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _ReceiptBarcode extends StatelessWidget {
+  const _ReceiptBarcode();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(40, (index) => Container(
+            width: (index % 3 == 0) ? 3 : 1.5,
+            height: 24,
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            color: colorScheme.onSurface.withValues(alpha: 0.2),
+          )),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'SNAPCAL-INTEL-2024',
+          style: AppTypography.labelSmall.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            fontFamily: 'monospace',
+            fontSize: 8,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -779,11 +1286,37 @@ class _FoodEditSheetState extends State<_FoodEditSheet> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
-            height: 52,
-            child: FilledButton(onPressed: _submit, child: const Text('Done')),
+            height: 54,
+            child: FilledButton(
+              onPressed: _submit,
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.zero,
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Ink(
+                decoration: BoxDecoration(
+                  gradient: AppColors.premiumGradient,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Container(
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Done',
+                    style: AppTypography.titleMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -846,13 +1379,22 @@ class _EditSheetFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
+        padding: const EdgeInsets.fromLTRB(26, 12, 26, 26),
         decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+              blurRadius: 30,
+              offset: const Offset(0, -10),
+            ),
+          ],
         ),
         child: SafeArea(
           top: false,
@@ -873,9 +1415,10 @@ class _EditSheetFrame extends StatelessWidget {
               const SizedBox(height: 18),
               Text(
                 title,
-                style: AppTypography.titleLarge.copyWith(
+                style: AppTypography.headlineSmall.copyWith(
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 18),
@@ -905,13 +1448,57 @@ class _EditField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        autofocus: autofocus,
-        decoration: InputDecoration(labelText: label, hintText: hintText),
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
+              label.toUpperCase(),
+              style: AppTypography.labelSmall.copyWith(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+                fontSize: 10,
+              ),
+            ),
+          ),
+          TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            autofocus: autofocus,
+            style: AppTypography.bodyLarge.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              filled: true,
+              fillColor: colorScheme.surfaceContainerHighest.withValues(
+                alpha: isDark ? 0.3 : 0.4,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
