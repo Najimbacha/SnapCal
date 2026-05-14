@@ -303,6 +303,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get result_kcal => 'KCAL';
 
   @override
+  String get result_calories => 'Calories';
+
+  @override
   String get result_macronutrients => 'MACRONUTRIENTS';
 
   @override
@@ -646,6 +649,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get water_add => 'Add';
 
   @override
+  String get water_remove => 'Remove';
+
+  @override
   String get water_hydration => 'Hydration';
 
   @override
@@ -910,6 +916,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get home_no_meals_body => 'Start with one quick snap.';
+
+  @override
+  String get home_first_meal_cta_title => 'Scan a meal to start today';
+
+  @override
+  String get home_first_meal_cta_body =>
+      'Use the camera to log calories and macros automatically.';
+
+  @override
+  String get home_section_macros_today => 'Macros today';
+
+  @override
+  String get home_eaten_progress => 'EATEN';
+
+  @override
+  String get home_steps_today => 'steps today';
 
   @override
   String get home_default_name => 'Friend';

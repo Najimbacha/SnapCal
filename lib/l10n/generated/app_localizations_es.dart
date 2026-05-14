@@ -304,6 +304,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get result_kcal => 'KCAL';
 
   @override
+  String get result_calories => 'Calorías';
+
+  @override
   String get result_macronutrients => 'MACRONUTRIENTES';
 
   @override
@@ -652,6 +655,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get water_add => 'Añadir';
 
   @override
+  String get water_remove => 'Quitar';
+
+  @override
   String get water_hydration => 'Hidratación';
 
   @override
@@ -920,6 +926,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get home_no_meals_body => 'Empieza con una foto rápida.';
 
   @override
+  String get home_first_meal_cta_title => 'Escanea una comida para empezar hoy';
+
+  @override
+  String get home_first_meal_cta_body =>
+      'Usa la cámara para registrar calorías y macros automáticamente.';
+
+  @override
+  String get home_section_macros_today => 'Macros de hoy';
+
+  @override
+  String get home_eaten_progress => 'CONSUMIDO';
+
+  @override
+  String get home_steps_today => 'pasos hoy';
+
+  @override
   String get home_default_name => 'Amigo';
 
   @override
@@ -1076,7 +1098,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_export_desc => 'Descarga tus comidas y métricas';
 
   @override
-  String get settings_cloud_sync_desc => 'Sign in to back up your data';
+  String get settings_cloud_sync_desc =>
+      'Inicia sesión para respaldar tus datos';
 
   @override
   String get settings_about_title => 'Acerca de';

@@ -313,6 +313,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get result_kcal => 'سعرة';
 
   @override
+  String get result_calories => 'السعرات';
+
+  @override
   String get result_macronutrients => 'العناصر الغذائية الكبرى';
 
   @override
@@ -653,6 +656,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get water_add => 'إضافة';
 
   @override
+  String get water_remove => 'إزالة';
+
+  @override
   String get water_hydration => 'الترطيب';
 
   @override
@@ -917,6 +923,22 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get home_no_meals_body => 'ابدأ بالتقاط صورة سريعة.';
+
+  @override
+  String get home_first_meal_cta_title => 'امسح وجبة لبدء يومك';
+
+  @override
+  String get home_first_meal_cta_body =>
+      'استخدم الكاميرا لتسجيل السعرات والعناصر الغذائية تلقائياً.';
+
+  @override
+  String get home_section_macros_today => 'عناصر اليوم';
+
+  @override
+  String get home_eaten_progress => 'المتناول';
+
+  @override
+  String get home_steps_today => 'خطوات اليوم';
 
   @override
   String get home_default_name => 'صديقي';

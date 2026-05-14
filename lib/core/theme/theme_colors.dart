@@ -31,11 +31,27 @@ extension ThemeColors on BuildContext {
   Color get glassBackgroundColor => Theme.of(this).colorScheme.surfaceContainerHigh.withValues(alpha: 0.4);
   Color get glassBorderColor => Theme.of(this).colorScheme.outlineVariant;
 
+  // Card border — visible in light mode, subtle in dark
+  Color get cardBorderColor =>
+      isDarkMode
+          ? Theme.of(this).colorScheme.outlineVariant.withValues(alpha: 0.18)
+          : AppColors.lightCardBorder;
+
   List<BoxShadow> get cardShadow => [
     BoxShadow(
       color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.05),
       blurRadius: 24,
       offset: const Offset(0, 8),
+    ),
+  ];
+
+  // Accent edge glow for cards
+  List<BoxShadow> accentGlow(Color accent) => [
+    BoxShadow(
+      color: accent.withValues(alpha: isDarkMode ? 0.08 : 0.05),
+      blurRadius: 32,
+      offset: const Offset(-8, -8),
+      spreadRadius: -4,
     ),
   ];
 

@@ -1,26 +1,23 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-// Correct Internal Imports
 import 'package:snapcal/core/theme/app_colors.dart';
-import 'package:snapcal/l10n/generated/app_localizations.dart';
-import 'package:snapcal/widgets/ui_blocks.dart';
+import 'package:snapcal/core/theme/theme_colors.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/providers/settings_provider.dart';
+import 'package:snapcal/widgets/ui_blocks.dart';
 
 class PaywallScreen extends StatefulWidget {
   final bool limitReached;
-  
-  const PaywallScreen({
-    super.key,
-    this.limitReached = false,
-  });
+
+  const PaywallScreen({super.key, this.limitReached = false});
 
   @override
   State<PaywallScreen> createState() => _PaywallScreenState();
@@ -39,12 +36,18 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   Future<void> _loadOfferings() async {
     try {
-      final offerings = await SubscriptionService().getOfferings();
-      if (mounted && offerings?.current != null && offerings!.current!.availablePackages.isNotEmpty) {
+      final offerings = await SubscriptionService().getOfferings().timeout(
+        const Duration(seconds: 8),
+      );
+      if (mounted &&
+          offerings?.current != null &&
+          offerings!.current!.availablePackages.isNotEmpty) {
         setState(() {
           _packages = offerings.current!.availablePackages;
           try {
-            _selectedPackage = _packages.firstWhere((p) => p.packageType == PackageType.annual);
+            _selectedPackage = _packages.firstWhere(
+              (p) => p.packageType == PackageType.annual,
+            );
           } catch (_) {
             _selectedPackage = _packages.isNotEmpty ? _packages.first : null;
           }
@@ -56,18 +59,20 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Future<void> _handlePurchase() async {
-    if (_selectedPackage == null) return;
+    if (_isLoading || _selectedPackage == null) return;
     HapticFeedback.heavyImpact();
     setState(() => _isLoading = true);
-    
+
     final settingsProvider = context.read<SettingsProvider>();
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     final subService = SubscriptionService();
     final l10n = AppLocalizations.of(context)!;
-    
+
     try {
-      final success = await subService.purchasePackage(_selectedPackage!);
+      final success = await subService
+          .purchasePackage(_selectedPackage!)
+          .timeout(const Duration(seconds: 25));
       if (!mounted) return;
       if (success) {
         settingsProvider.refresh();
@@ -77,7 +82,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
             content: Text(l10n.premium_welcome),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         );
       }
@@ -91,17 +98,20 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Future<void> _handleRestore() async {
+    if (_isLoading) return;
     HapticFeedback.mediumImpact();
     setState(() => _isLoading = true);
     final settingsProvider = context.read<SettingsProvider>();
     final messenger = ScaffoldMessenger.of(context);
     final subService = SubscriptionService();
     final l10n = AppLocalizations.of(context)!;
-    
+
     try {
-      final success = await subService.restorePurchases();
+      final success = await subService.restorePurchases().timeout(
+        const Duration(seconds: 20),
+      );
       if (!mounted) return;
-      
+
       if (success) {
         settingsProvider.refresh();
         context.pop();
@@ -110,7 +120,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
             content: Text(l10n.premium_restore_success),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         );
       } else {
@@ -137,186 +149,272 @@ class _PaywallScreenState extends State<PaywallScreen> {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF07090E),
+      backgroundColor: colorScheme.surface,
       body: Stack(
         children: [
-          // Background Gradient Mesh
           Positioned.fill(
-            child: Opacity(
-              opacity: 0.4,
-              child: Image.asset(
-                'assets/images/mesh_bg.png', // Fallback to a custom painter if missing
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment(-0.8, -0.6),
-                      radius: 1.5,
-                      colors: [Color(0xFF1A1F35), Color(0xFF07090E)],
-                    ),
-                  ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    colorScheme.primary.withValues(alpha: 0.10),
+                    colorScheme.surface,
+                    colorScheme.surface,
+                  ],
+                  stops: const [0, 0.28, 1],
                 ),
               ),
             ),
           ),
-
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Top Bar
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          onPressed: () => context.pop(),
-                          icon: const Icon(LucideIcons.x, color: Colors.white54),
-                        ),
-                        TextButton(
-                          onPressed: _handleRestore,
-                          child: const Text(
-                            "Restore Purchase",
-                            style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 12,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            child: LayoutBuilder(
+              builder: (context, viewport) {
+                final compact = viewport.maxHeight < 760;
+                final tight = viewport.maxHeight < 700;
+                final horizontalPadding = compact ? 20.0 : 24.0;
 
-                  const SizedBox(height: 12),
-
-                  // Hero Card (Dreamify Style)
-                  Container(
-                    height: 180,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFFFFFF), Color(0xFFF0F4FF)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Stack(
-                      children: [
-                        // Futuristic Character Image
-                        Positioned(
-                          right: -20, bottom: -10, top: -10,
-                          child: Opacity(
-                            opacity: 0.9,
-                            child: Image.asset(
-                              'assets/images/premium_hero.png', // User's premium hero image
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) => const Icon(LucideIcons.sparkles, size: 160, color: Color(0xFFE0E7FF)),
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(top: compact ? 2 : 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton(
+                              onPressed: () => context.pop(),
+                              icon: Icon(
+                                LucideIcons.x,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                        ),
-                        // Branding Text
-                        Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ShaderMask(
-                                shaderCallback: (bounds) => const LinearGradient(
-                                  colors: [Color(0xFFFF8C38), Color(0xFFB066FE)],
-                                ).createShader(bounds),
-                                child: const Text(
-                                  "SnapCal",
-                                  style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1),
+                            TextButton(
+                              onPressed: _handleRestore,
+                              child: Text(
+                                "Restore Purchase",
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 12,
+                                  decoration: TextDecoration.underline,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                "Upgrade to\nPremium",
-                                style: TextStyle(color: Color(0xFF1A1F35), fontSize: 24, fontWeight: FontWeight.w800, height: 1.1),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ).animate().fadeIn().scale(delay: 200.ms, curve: Curves.easeOutBack),
-
-                  const SizedBox(height: 32),
-
-                  // Feature List (Ultra Minimalist)
-                  const _FeatureItem(icon: LucideIcons.sparkles, label: "Unlimited AI Food Scans"),
-                  const _FeatureItem(icon: LucideIcons.zap, label: "Faster Processing"),
-                  const _FeatureItem(icon: LucideIcons.layout, label: "Smart Meal Planner"),
-                  const _FeatureItem(icon: LucideIcons.shieldCheck, label: "No Ads"),
-                  const _FeatureItem(icon: LucideIcons.userCheck, label: "Elite AI Coach Access"),
-
-                  const Spacer(),
-
-                  // Pricing Selection (Side-by-Side)
-                  if (_packages.isNotEmpty)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _PricingOption(
-                            package: _packages.firstWhere((p) => p.packageType == PackageType.monthly, orElse: () => _packages.first),
-                            isSelected: _selectedPackage?.packageType == PackageType.monthly,
-                            onTap: () => setState(() => _selectedPackage = _packages.firstWhere((p) => p.packageType == PackageType.monthly)),
-                            label: "Monthly",
-                            subLabel: "Basic",
-                          ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(height: tight ? 2 : 6),
+                            _ProHero(
+                              compact: compact,
+                              limitReached: widget.limitReached,
+                            ).animate().fadeIn().scale(
+                              delay: 120.ms,
+                              curve: Curves.easeOutBack,
+                            ),
+                            SizedBox(height: compact ? 10 : 14),
+                            _BenefitGrid(compact: compact),
+                            SizedBox(height: compact ? 8 : 12),
+                            const _BenefitChipRow(),
+                            const Spacer(),
+                            _buildPricingRow(compact),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _PricingOption(
-                            package: _packages.firstWhere((p) => p.packageType == PackageType.annual, orElse: () => _packages.last),
-                            isSelected: _selectedPackage?.packageType == PackageType.annual,
-                            onTap: () => setState(() => _selectedPackage = _packages.firstWhere((p) => p.packageType == PackageType.annual)),
-                            label: "Yearly",
-                            subLabel: "Best Value",
-                            showBadge: true,
+                      ),
+                      SizedBox(height: tight ? 10 : 14),
+                      _LuxeButton(
+                        text: "Subscribe",
+                        isLoading: _isLoading,
+                        height: tight ? 52 : 58,
+                        onTap: _handlePurchase,
+                      ).animate().fadeIn(delay: 360.ms),
+                      SizedBox(height: tight ? 8 : 10),
+                      Text(
+                        "Cancel anytime.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.72,
                           ),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0)
-                  else
-                    const Center(child: CircularProgressIndicator(color: Color(0xFFB066FE))),
-
-                  const SizedBox(height: 24),
-
-                  // Continue Button (Dreamify Gradient)
-                  _LuxeButton(
-                    text: "Continue",
-                    isLoading: _isLoading,
-                    onTap: _handlePurchase,
-                  ).animate().fadeIn(delay: 600.ms),
-
-                  const SizedBox(height: 16),
-
-                  // Compliance Footer
-                  const Text(
-                    "No Commitment. Cancel anytime",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _FooterLink(label: "Privacy Policy", onTap: () {}),
-                      const Text("  |  ", style: TextStyle(color: Colors.white12)),
-                      _FooterLink(label: "Terms & Conditions", onTap: () {}),
+                      ),
+                      SizedBox(height: tight ? 5 : 7),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _FooterLink(label: "Privacy Policy", onTap: () {}),
+                          Text(
+                            "  |  ",
+                            style: TextStyle(color: colorScheme.outlineVariant),
+                          ),
+                          _FooterLink(
+                            label: "Terms & Conditions",
+                            onTap: () {},
+                          ),
+                        ],
+                      ),
+                      SizedBox(
+                        height: math.max(tight ? 6.0 : 10.0, bottomPadding),
+                      ),
                     ],
                   ),
-                  SizedBox(height: math.max(12.0, bottomPadding)),
-                ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPricingRow(bool compact) {
+    if (_packages.isEmpty) {
+      return SizedBox(
+        height: compact ? 108 : 122,
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: _PricingOption(
+            package: _packages.firstWhere(
+              (p) => p.packageType == PackageType.monthly,
+              orElse: () => _packages.first,
+            ),
+            isSelected: _selectedPackage?.packageType == PackageType.monthly,
+            onTap:
+                () => setState(
+                  () =>
+                      _selectedPackage = _packages.firstWhere(
+                        (p) => p.packageType == PackageType.monthly,
+                      ),
+                ),
+            label: "Monthly",
+            subLabel: "Flexible plan",
+            compact: compact,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: _PricingOption(
+            package: _packages.firstWhere(
+              (p) => p.packageType == PackageType.annual,
+              orElse: () => _packages.last,
+            ),
+            isSelected: _selectedPackage?.packageType == PackageType.annual,
+            onTap:
+                () => setState(
+                  () =>
+                      _selectedPackage = _packages.firstWhere(
+                        (p) => p.packageType == PackageType.annual,
+                      ),
+                ),
+            label: "Yearly",
+            subLabel: "Best value",
+            showBadge: true,
+            compact: compact,
+          ),
+        ),
+      ],
+    ).animate().fadeIn(delay: 260.ms).slideY(begin: 0.08, end: 0);
+  }
+}
+
+class _ProHero extends StatelessWidget {
+  final bool compact;
+  final bool limitReached;
+
+  const _ProHero({required this.compact, required this.limitReached});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: EdgeInsets.all(compact ? 16 : 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        color: context.cardColor,
+        border: Border.all(color: context.cardBorderColor),
+        boxShadow: context.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 9 : 10,
+                  vertical: compact ? 5 : 6,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  "SnapCal Pro",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
+                ),
               ),
+              if (limitReached) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "You used today's free scans.",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: context.textSecondaryColor,
+                      fontSize: compact ? 11 : 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          SizedBox(height: compact ? 8 : 10),
+          Text(
+            "Eat smarter every day.",
+            style: TextStyle(
+              color: context.textPrimaryColor,
+              fontSize: compact ? 23 : 27,
+              fontWeight: FontWeight.w900,
+              height: 1.04,
+            ),
+          ),
+          SizedBox(height: compact ? 5 : 6),
+          Text(
+            "Unlimited scans, AI coaching, smart planning, and no ads.",
+            maxLines: compact ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: context.textSecondaryColor,
+              fontSize: compact ? 13 : 14,
+              fontWeight: FontWeight.w600,
+              height: 1.32,
             ),
           ),
         ],
@@ -325,26 +423,176 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 }
 
-class _FeatureItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _FeatureItem({required this.icon, required this.label});
+class _BenefitGrid extends StatelessWidget {
+  final bool compact;
+
+  const _BenefitGrid({required this.compact});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _BenefitCard(
+                icon: LucideIcons.scanLine,
+                title: "Unlimited scans",
+                body: "No 3/day limit",
+                compact: compact,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _BenefitCard(
+                icon: LucideIcons.sparkles,
+                title: "AI Coach",
+                body: "Food advice",
+                compact: compact,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _BenefitCard(
+                icon: LucideIcons.calendarDays,
+                title: "Smart planner",
+                body: "Week + grocery",
+                compact: compact,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _BenefitCard(
+                icon: LucideIcons.badgeX,
+                title: "No ads",
+                body: "Zero interrupts",
+                compact: compact,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _BenefitCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+  final bool compact;
+
+  const _BenefitCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: EdgeInsets.all(compact ? 10 : 12),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.cardBorderColor),
+      ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white54, size: 18),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+          Container(
+            width: compact ? 30 : 34,
+            height: compact ? 30 : 34,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: colorScheme.primary, size: 16),
+          ),
+          SizedBox(width: compact ? 7 : 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.textPrimaryColor,
+                    fontSize: compact ? 11.5 : 13,
+                    fontWeight: FontWeight.w800,
+                    height: 1.08,
+                  ),
+                ),
+                SizedBox(height: compact ? 2 : 3),
+                Text(
+                  body,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.textSecondaryColor,
+                    fontSize: compact ? 10 : 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.05, end: 0);
+    );
+  }
+}
+
+class _BenefitChipRow extends StatelessWidget {
+  const _BenefitChipRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _BenefitPill(label: "Progress photos"),
+        _BenefitPill(label: "Meal routines"),
+        _BenefitPill(label: "Grocery list"),
+      ],
+    );
+  }
+}
+
+class _BenefitPill extends StatelessWidget {
+  final String label;
+  const _BenefitPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.46),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: context.cardBorderColor),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: context.textSecondaryColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
   }
 }
 
@@ -355,6 +603,7 @@ class _PricingOption extends StatelessWidget {
   final String label;
   final String subLabel;
   final bool showBadge;
+  final bool compact;
 
   const _PricingOption({
     required this.package,
@@ -362,11 +611,14 @@ class _PricingOption extends StatelessWidget {
     required this.onTap,
     required this.label,
     required this.subLabel,
+    required this.compact,
     this.showBadge = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -374,36 +626,69 @@ class _PricingOption extends StatelessWidget {
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            height: compact ? 108 : 124,
+            padding: EdgeInsets.symmetric(
+              vertical: compact ? 10 : 14,
+              horizontal: compact ? 12 : 16,
+            ),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF1A1F35) : const Color(0xFF11141D),
+              color:
+                  isSelected
+                      ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+                      : context.cardColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? const Color(0xFFB066FE) : Colors.white.withValues(alpha: 0.05),
+                color:
+                    isSelected ? colorScheme.primary : context.cardBorderColor,
                 width: 2,
               ),
-              boxShadow: isSelected ? [
-                BoxShadow(color: const Color(0xFFB066FE).withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 5))
-              ] : null,
+              boxShadow:
+                  isSelected
+                      ? [
+                        BoxShadow(
+                          color: colorScheme.primary.withValues(alpha: 0.18),
+                          blurRadius: 18,
+                          offset: const Offset(0, 7),
+                        ),
+                      ]
+                      : null,
             ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   label,
-                  style: TextStyle(color: isSelected ? Colors.white : Colors.white54, fontSize: 14, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color:
+                        isSelected
+                            ? colorScheme.onPrimaryContainer
+                            : context.textSecondaryColor,
+                    fontSize: compact ? 12 : 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: compact ? 4 : 5),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     package.storeProduct.priceString,
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      color: context.textPrimaryColor,
+                      fontSize: compact ? 22 : 25,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: compact ? 2 : 3),
                 Text(
                   subLabel,
-                  style: const TextStyle(color: Colors.white24, fontSize: 11, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.textMutedColor,
+                    fontSize: compact ? 9 : 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -412,17 +697,27 @@ class _PricingOption extends StatelessWidget {
         if (showBadge)
           Positioned(
             top: -10,
-            left: 0, right: 0,
+            left: 0,
+            right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFFFF8C38), Color(0xFFB066FE)]),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF10B981), Color(0xFF0D9BD8)],
+                  ),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
                   "Save 80%",
-                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),
@@ -436,37 +731,56 @@ class _LuxeButton extends StatelessWidget {
   final String text;
   final bool isLoading;
   final VoidCallback onTap;
+  final double height;
 
-  const _LuxeButton({required this.text, required this.isLoading, required this.onTap});
+  const _LuxeButton({
+    required this.text,
+    required this.isLoading,
+    required this.onTap,
+    required this.height,
+  });
 
   @override
   Widget build(BuildContext context) {
     return AppScaleTap(
       onTap: isLoading ? () {} : onTap,
       child: Container(
-        height: 60,
+        height: height,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFFFF8C38), Color(0xFFB066FE)],
+            colors: [Color(0xFF10B981), Color(0xFF0D9BD8)],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFB066FE).withValues(alpha: 0.3),
+              color: AppColors.primary.withValues(alpha: 0.24),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
           ],
         ),
         child: Center(
-          child: isLoading
-              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : Text(
-                  text,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                ),
+          child:
+              isLoading
+                  ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                  : Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
         ),
       ),
     );
@@ -484,11 +798,12 @@ class _FooterLink extends StatelessWidget {
       onTap: onTap,
       child: Text(
         label,
-        style: const TextStyle(color: Colors.white24, fontSize: 11, decoration: TextDecoration.underline),
+        style: TextStyle(
+          color: context.textMutedColor,
+          fontSize: 11,
+          decoration: TextDecoration.underline,
+        ),
       ),
     );
   }
 }
-
-
-

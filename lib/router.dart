@@ -164,40 +164,21 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _lastNavIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _updateNavIndex();
-  }
-
-  @override
-  void didUpdateWidget(MainShell oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _updateNavIndex();
-  }
-
-  void _updateNavIndex() {
-    final mapped = _mapBranchToNav(widget.navigationShell.currentIndex);
-    if (mapped != -1) {
-      _lastNavIndex = mapped;
-    }
-  }
-
   int _mapBranchToNav(int branchIndex) {
     if (branchIndex < 2) return branchIndex;
-    if (branchIndex == 2) return -1; // Snap is FAB
-    return branchIndex - 1;
+    return -1;
   }
 
   int _mapNavToBranch(int navIndex) {
-    if (navIndex < 2) return navIndex;
-    return navIndex + 1;
+    return navIndex;
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentNavIndex = _mapBranchToNav(
+      widget.navigationShell.currentIndex,
+    );
+
     return Scaffold(
       extendBody: true,
       body: widget.navigationShell,
@@ -205,7 +186,7 @@ class _MainShellState extends State<MainShell> {
           widget.navigationShell.currentIndex == 2
               ? null
               : Transform.translate(
-                offset: const Offset(0, 18),
+                offset: const Offset(0, 32),
                 child: HeroActionButton(
                   isActive: false,
                   onTap: () {
@@ -215,7 +196,7 @@ class _MainShellState extends State<MainShell> {
               ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomNavBar(
-        currentIndex: _lastNavIndex,
+        currentIndex: currentNavIndex,
         onTap: (index) {
           HapticFeedback.selectionClick();
           final branchIndex = _mapNavToBranch(index);
@@ -223,6 +204,7 @@ class _MainShellState extends State<MainShell> {
             branchIndex,
             initialLocation: branchIndex == widget.navigationShell.currentIndex,
           );
+          if (mounted) setState(() {});
         },
       ),
     );

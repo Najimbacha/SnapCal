@@ -16,7 +16,6 @@ class ActivityScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activity = context.watch<ActivityProvider>();
-    final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final isWalking = activity.status == 'walking';
 
@@ -29,7 +28,7 @@ class ActivityScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 32),
-            
+
             // --- MAIN STEP COUNT ---
             Column(
               children: [
@@ -51,7 +50,10 @@ class ActivityScreen extends StatelessWidget {
                     Text(
                       isWalking ? 'LIVE TRACKING' : 'STATIONARY',
                       style: AppTypography.labelSmall.copyWith(
-                        color: isWalking ? AppColors.primary : context.textMutedColor,
+                        color:
+                            isWalking
+                                ? AppColors.primary
+                                : context.textMutedColor,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2,
                       ),
@@ -60,15 +62,17 @@ class ActivityScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  '${activity.steps}',
-                  style: AppTypography.displayLarge.copyWith(
-                    fontSize: 84,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -4,
-                    height: 1,
-                    color: context.textPrimaryColor,
-                  ),
-                ).animate(key: ValueKey(activity.steps)).scale(duration: 200.ms, curve: Curves.easeOut),
+                      '${activity.steps}',
+                      style: AppTypography.displayLarge.copyWith(
+                        fontSize: 84,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -4,
+                        height: 1,
+                        color: context.textPrimaryColor,
+                      ),
+                    )
+                    .animate(key: ValueKey(activity.steps))
+                    .scale(duration: 200.ms, curve: Curves.easeOut),
                 Text(
                   'steps today'.toUpperCase(),
                   style: AppTypography.labelMedium.copyWith(
@@ -88,7 +92,9 @@ class ActivityScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: context.surfaceContainerColor,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: context.dividerColor.withValues(alpha: 0.1)),
+                border: Border.all(
+                  color: context.dividerColor.withValues(alpha: 0.1),
+                ),
               ),
               child: Row(
                 children: [
@@ -126,7 +132,11 @@ class ActivityScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(LucideIcons.sparkles, color: AppColors.primary, size: 20),
+                  const Icon(
+                    LucideIcons.sparkles,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
@@ -159,8 +169,11 @@ class ActivityScreen extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        activity.isTracking ? LucideIcons.shieldCheck : LucideIcons.shieldAlert,
-                        color: activity.isTracking ? Colors.green : Colors.orange,
+                        activity.isTracking
+                            ? LucideIcons.shieldCheck
+                            : LucideIcons.shieldAlert,
+                        color:
+                            activity.isTracking ? Colors.green : Colors.orange,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -168,12 +181,20 @@ class ActivityScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              activity.isTracking ? 'Active & Encrypted' : 'Permission Required',
-                              style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.bold),
+                              activity.isTracking
+                                  ? 'Active & Encrypted'
+                                  : 'Permission Required',
+                              style: AppTypography.titleSmall.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             Text(
-                              activity.isTracking ? 'Your steps are synced in real-time.' : 'Enable tracking to see your progress.',
-                              style: AppTypography.bodySmall.copyWith(color: context.textMutedColor),
+                              activity.isTracking
+                                  ? 'Your steps are synced in real-time.'
+                                  : 'Enable tracking to see your progress.',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: context.textMutedColor,
+                              ),
                             ),
                           ],
                         ),
@@ -188,10 +209,15 @@ class ActivityScreen extends StatelessWidget {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
-                      child: const Text('Authorize Tracking', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Authorize Tracking',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ],

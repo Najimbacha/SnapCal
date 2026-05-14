@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:snapcal/core/services/config_service.dart';
 import 'package:snapcal/data/services/notification_service.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
 import '../../data/models/water_log.dart';
@@ -27,6 +26,7 @@ import '../../data/services/subscription_service.dart';
 import '../../data/services/scan_gate_service.dart';
 import '../../data/services/ad_service.dart';
 import '../../data/services/widget_service.dart';
+import '../utils/async_guard.dart';
 
 class AppInitializer {
   static Future<void> preInit() async {
@@ -63,21 +63,41 @@ class AppInitializer {
       // 3. Initialize Hive
       await _initHive();
 
-      debugPrint('🚀 AppInitializer: Initializing Repositories (Meal, Settings, Water, Assistant)...');
+      debugPrint('🚀 AppInitializer: Initializing scan gate...');
+      await ScanGateService().init();
+
+      debugPrint(
+        '🚀 AppInitializer: Initializing Repositories (Meal, Settings, Water, Assistant)...',
+      );
       // 4. Initialize Repositories (CRITICAL)
       await Future.wait([
-        mealRepository.init().then((_) => debugPrint('✅ AppInitializer: MealRepo ready')),
-        settingsRepository.init().then((_) => debugPrint('✅ AppInitializer: SettingsRepo ready')),
-        waterRepository.init().then((_) => debugPrint('✅ AppInitializer: WaterRepo ready')),
-        assistantRepository.init().then((_) => debugPrint('✅ AppInitializer: AssistantRepo ready')),
-      ]).timeout(const Duration(seconds: 15), onTimeout: () {
-        debugPrint('⚠️ AppInitializer: Repository initialization timed out after 15s');
-        throw TimeoutException('Core data services are taking too long to respond.');
-      });
+        mealRepository.init().then(
+          (_) => debugPrint('✅ AppInitializer: MealRepo ready'),
+        ),
+        settingsRepository.init().then(
+          (_) => debugPrint('✅ AppInitializer: SettingsRepo ready'),
+        ),
+        waterRepository.init().then(
+          (_) => debugPrint('✅ AppInitializer: WaterRepo ready'),
+        ),
+        assistantRepository.init().then(
+          (_) => debugPrint('✅ AppInitializer: AssistantRepo ready'),
+        ),
+      ]).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint(
+            '⚠️ AppInitializer: Repository initialization timed out after 15s',
+          );
+          throw TimeoutException(
+            'Core data services are taking too long to respond.',
+          );
+        },
+      );
 
       debugPrint('🚀 AppInitializer: Starting background services...');
       // 5. Background Initialization
-      _initBackgroundServices(settingsRepository);
+      unawaited(_initBackgroundServices(settingsRepository));
 
       final duration = DateTime.now().difference(startTime).inMilliseconds;
       debugPrint('✅ AppInitializer: Critical core ready in ${duration}ms');
@@ -93,39 +113,19 @@ class AppInitializer {
   ) async {
     try {
       await Future.wait([
-        NotificationService().init(),
-        ConfigService().init(),
-        _initGoogleSignIn(), // Isolated initialization with timeout
-        SubscriptionService.init(settingsRepository),
-        ScanGateService().init(),
-        AdService().init(),
-        WidgetService.init(),
-        _warmupSingletons(),
+        runSilently('Notification init', () => NotificationService().init()),
+        runSilently('Remote config init', () => ConfigService().init()),
+        runSilently(
+          'Subscription init',
+          () => SubscriptionService.init(settingsRepository),
+        ),
+        runSilently('Ad init', () => AdService().init()),
+        runSilently('Widget init', WidgetService.init),
+        runSilently('Service warmup', _warmupSingletons),
       ]).timeout(const Duration(seconds: 15));
       debugPrint('⚡ Background services ready');
     } catch (e) {
       debugPrint('⚠️ Background service init warning: $e');
-    }
-  }
-
-  static Future<void> _initGoogleSignIn() async {
-    try {
-      debugPrint('🎬 AppInitializer: Initializing GoogleSignIn...');
-      await GoogleSignIn.instance
-          .initialize(
-            serverClientId:
-                '183409999145-2p9nqjrr8d07ulal61nupsefkh7pt9on.apps.googleusercontent.com',
-          )
-          .timeout(
-            const Duration(seconds: 5),
-            onTimeout: () {
-              debugPrint(
-                '⚠️ AppInitializer: GoogleSignIn initialization timed out',
-              );
-            },
-          );
-    } catch (e) {
-      debugPrint('⚠️ AppInitializer: GoogleSignIn initialization warning: $e');
     }
   }
 
@@ -169,31 +169,67 @@ class AppInitializer {
 
   static void _setupErrorReporting() {
     FlutterError.onError = (errorDetails) {
+      if (_isNonFatalMouseTrackerAssertion(
+        errorDetails.exception,
+        errorDetails.stack,
+      )) {
+        FirebaseCrashlytics.instance.recordFlutterError(errorDetails);
+        FlutterError.presentError(errorDetails);
+        return;
+      }
+
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
       FlutterError.presentError(errorDetails);
     };
 
     PlatformDispatcher.instance.onError = (error, stack) {
+      if (_isNonFatalMouseTrackerAssertion(error, stack)) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
+        return true;
+      }
+
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
     debugPrint('🛡️ Crashlytics Error Reporting configured');
   }
 
+  static bool _isNonFatalMouseTrackerAssertion(
+    Object error,
+    StackTrace? stack,
+  ) {
+    final message = error.toString();
+    final stackText = stack?.toString() ?? '';
+
+    return message.contains('mouse_tracker.dart') ||
+        message.contains('!_debugDuringDeviceUpdate') ||
+        stackText.contains('MouseTracker.updateAllDevices');
+  }
+
   static Future<void> _initHive() async {
     await Hive.initFlutter();
 
     // Register Adapters
-    Hive.registerAdapter(MacrosAdapter());
-    Hive.registerAdapter(MealAdapter());
-    Hive.registerAdapter(UserSettingsAdapter());
-    Hive.registerAdapter(WaterLogAdapter());
-    Hive.registerAdapter(BodyMetricAdapter());
-    Hive.registerAdapter(GroceryItemAdapter());
-    Hive.registerAdapter(MealPlanAdapter());
-    Hive.registerAdapter(TemplateItemAdapter());
-    Hive.registerAdapter(MealTemplateAdapter());
-    Hive.registerAdapter(AchievementAdapter());
+    if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(MacrosAdapter());
+    if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(MealAdapter());
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(UserSettingsAdapter());
+    }
+    if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(WaterLogAdapter());
+    if (!Hive.isAdapterRegistered(4)) Hive.registerAdapter(BodyMetricAdapter());
+    if (!Hive.isAdapterRegistered(5)) {
+      Hive.registerAdapter(GroceryItemAdapter());
+    }
+    if (!Hive.isAdapterRegistered(6)) Hive.registerAdapter(MealPlanAdapter());
+    if (!Hive.isAdapterRegistered(10)) {
+      Hive.registerAdapter(TemplateItemAdapter());
+    }
+    if (!Hive.isAdapterRegistered(11)) {
+      Hive.registerAdapter(MealTemplateAdapter());
+    }
+    if (!Hive.isAdapterRegistered(12)) {
+      Hive.registerAdapter(AchievementAdapter());
+    }
 
     debugPrint('📦 Hive initialized');
   }

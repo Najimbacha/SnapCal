@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
@@ -30,37 +29,56 @@ class AppSectionCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final hPadding = Responsive.hPadding(context);
     final vPadding = Responsive.vPadding(context);
-    final resolvedPadding = padding ?? EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding);
-    
+    final resolvedPadding =
+        padding ??
+        EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding);
+    final radius = BorderRadius.circular(22);
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final decoration = BoxDecoration(
-      color: color ?? (glass 
-          ? (Theme.of(context).brightness == Brightness.dark 
-              ? Colors.white.withValues(alpha: 0.03) 
-              : Colors.black.withValues(alpha: 0.01))
-          : colorScheme.surfaceContainer),
-      borderRadius: BorderRadius.circular(28),
+      color:
+          color ??
+          (glass
+              ? (isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white.withValues(alpha: 0.65))
+              : colorScheme.surfaceContainer),
+      borderRadius: radius,
       border: Border.all(
-        color: colorScheme.outlineVariant.withValues(alpha: glass ? 0.2 : 0.5),
+        color: glass
+            ? colorScheme.outlineVariant.withValues(alpha: 0.24)
+            : (isDark
+                ? colorScheme.outlineVariant.withValues(alpha: 0.3)
+                : AppColors.lightCardBorder),
         width: glass ? 1.5 : 1.0,
       ),
       boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(
+            alpha: isDark ? 0.18 : 0.06,
+          ),
+          blurRadius: glass ? 22 : 14,
+          offset: const Offset(0, 10),
+        ),
+        // Subtle accent glow
         if (!glass)
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: colorScheme.primary.withValues(alpha: isDark ? 0.04 : 0.03),
+            blurRadius: 24,
+            offset: const Offset(0, -2),
           ),
       ],
     );
 
     Widget cardContent = ClipRRect(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: radius,
       child: Padding(padding: resolvedPadding, child: child),
     );
 
     if (glass) {
       cardContent = ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: radius,
         child: BackdropFilter(
           filter: ColorFilter.mode(
             colorScheme.surface.withValues(alpha: 0.1),
@@ -78,11 +96,7 @@ class AppSectionCard extends StatelessWidget {
     );
 
     if (onTap == null) return card;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(32),
-      child: card,
-    );
+    return InkWell(onTap: onTap, borderRadius: radius, child: card);
   }
 }
 
@@ -102,6 +116,16 @@ class SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        // Accent dash — premium detail
+        Container(
+          width: 3,
+          height: 12,
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            gradient: AppColors.primaryGradient,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
         Text(
           title.toUpperCase(),
           style: AppTypography.labelSmall.copyWith(
@@ -140,7 +164,7 @@ class MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     final content = Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -237,21 +261,28 @@ class AppEmptyState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  context.primaryColor.withValues(alpha: 0.15),
-                  context.primaryColor.withValues(alpha: 0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      context.primaryColor.withValues(alpha: 0.15),
+                      context.primaryColor.withValues(alpha: 0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: context.primaryColor.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Icon(icon, size: 48, color: context.primaryColor),
+              )
+              .animate(onPlay: (c) => c.repeat())
+              .shimmer(
+                duration: 3.seconds,
+                color: Colors.white.withValues(alpha: 0.2),
               ),
-              shape: BoxShape.circle,
-              border: Border.all(color: context.primaryColor.withValues(alpha: 0.1)),
-            ),
-            child: Icon(icon, size: 48, color: context.primaryColor),
-          ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 3.seconds, color: Colors.white.withValues(alpha: 0.2)),
           const SizedBox(height: 32),
           Text(
             title,
@@ -277,7 +308,10 @@ class AppEmptyState extends StatelessWidget {
             AppScaleTap(
               onTap: onAction!,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 18,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.primary, Color(0xFF8B73FF)],
@@ -323,14 +357,29 @@ class ActionChipButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return AppScaleTap(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+          color: isDark 
+              ? colorScheme.primary.withValues(alpha: 0.08)
+              : colorScheme.primary.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: isDark 
+                ? colorScheme.primary.withValues(alpha: 0.15)
+                : AppColors.lightCardBorder,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.primary.withValues(alpha: isDark ? 0.04 : 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -367,7 +416,44 @@ class AppScaleTap extends StatefulWidget {
   State<AppScaleTap> createState() => _AppScaleTapState();
 }
 
-class _AppScaleTapState extends State<AppScaleTap> with SingleTickerProviderStateMixin {
+class AppAnimatedPressable extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const AppAnimatedPressable({super.key, required this.child, this.onTap});
+
+  @override
+  State<AppAnimatedPressable> createState() => _AppAnimatedPressableState();
+}
+
+class _AppAnimatedPressableState extends State<AppAnimatedPressable> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap?.call();
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        child: AnimatedOpacity(
+          opacity: _pressed ? 0.86 : 1,
+          duration: const Duration(milliseconds: 120),
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+class _AppScaleTapState extends State<AppScaleTap>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 
@@ -378,9 +464,10 @@ class _AppScaleTapState extends State<AppScaleTap> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -392,6 +479,7 @@ class _AppScaleTapState extends State<AppScaleTap> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) {
         if (widget.onTap != null || widget.onLongPress != null) {
           _controller.forward();
@@ -399,8 +487,8 @@ class _AppScaleTapState extends State<AppScaleTap> with SingleTickerProviderStat
       },
       onTapUp: (_) {
         _controller.reverse();
-        widget.onTap?.call();
       },
+      onTap: widget.onTap,
       onTapCancel: () => _controller.reverse(),
       onLongPress: () {
         _controller.reverse();
@@ -425,7 +513,9 @@ class BottomActionBar extends StatelessWidget {
         color: Theme.of(context).colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -433,6 +523,7 @@ class BottomActionBar extends StatelessWidget {
     );
   }
 }
+
 class AppPulse extends StatefulWidget {
   final Widget child;
   final bool pulsing;
@@ -443,7 +534,8 @@ class AppPulse extends StatefulWidget {
   State<AppPulse> createState() => _AppPulseState();
 }
 
-class _AppPulseState extends State<AppPulse> with SingleTickerProviderStateMixin {
+class _AppPulseState extends State<AppPulse>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 
@@ -454,9 +546,10 @@ class _AppPulseState extends State<AppPulse> with SingleTickerProviderStateMixin
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    _scale = Tween<double>(begin: 1.0, end: 1.03).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 1.03,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override

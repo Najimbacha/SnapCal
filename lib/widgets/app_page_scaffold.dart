@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -21,6 +23,9 @@ class AppPageScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
   final bool isPremium;
   final bool? forceShowBackButton; // New: To override auto-detection
+  final Decoration? headerDecoration;
+  final bool showHeader;
+  final bool extendBehindStatusBar;
 
   const AppPageScaffold({
     super.key,
@@ -35,6 +40,9 @@ class AppPageScaffold extends StatelessWidget {
     this.padding,
     this.isPremium = false,
     this.forceShowBackButton,
+    this.headerDecoration,
+    this.showHeader = true,
+    this.extendBehindStatusBar = false,
   });
 
   @override
@@ -45,19 +53,29 @@ class AppPageScaffold extends StatelessWidget {
     final canPop = context.canPop();
     final shouldShowBack = forceShowBackButton ?? canPop;
 
-    final resolvedPadding = padding ?? EdgeInsets.fromLTRB(hPadding, 0, hPadding, 24);
-    
-    final content = scrollable
-        ? SingleChildScrollView(
-            padding: resolvedPadding,
-            physics: const BouncingScrollPhysics(),
-            child: child,
-          )
-        : Padding(padding: resolvedPadding, child: child);
+    final resolvedPadding =
+        padding ?? EdgeInsets.fromLTRB(hPadding, 0, hPadding, 24);
 
-    Widget header = Container(
-      height: 64, // Compact height
-      padding: EdgeInsets.symmetric(horizontal: hPadding),
+    final content =
+        scrollable
+            ? SingleChildScrollView(
+              padding: resolvedPadding,
+              physics: const BouncingScrollPhysics(),
+              child: child,
+            )
+            : Padding(padding: resolvedPadding, child: child);
+
+    final isOnline = context.select<ConnectivityService, bool>(
+      (s) => s.isOnline,
+    );
+
+    final statusBarTopInset =
+        extendBehindStatusBar ? MediaQuery.of(context).padding.top : 0.0;
+
+    final header = Container(
+      height: 72 + statusBarTopInset,
+      padding: EdgeInsets.fromLTRB(hPadding, statusBarTopInset, hPadding, 0),
+      decoration: headerDecoration,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -67,74 +85,103 @@ class AppPageScaffold extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    title,
-                    style: AppTypography.titleLarge.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      letterSpacing: -0.5,
+                  Flexible(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder:
+                          (child, animation) => FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 0.08),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          ),
+                      child: Text(
+                        title,
+                        key: ValueKey(title),
+                        style: AppTypography.titleLarge.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          letterSpacing: 0,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
                   ),
                   if (isPremium) ...[
                     const SizedBox(width: 6),
-                    Icon(
-                      LucideIcons.gem,
-                      color: AppColors.primary,
-                      size: 14,
-                    ),
+                    Icon(LucideIcons.gem, color: AppColors.primary, size: 14),
                   ],
                 ],
               ),
             ),
-          
+
           // ── Leading ──
           Positioned(
             left: 0,
-            child: leading ?? (shouldShowBack ? AppScaleTap(
-              onTap: () {
-                if (context.canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/');
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.arrow_back_ios_new_rounded, 
-                  size: 16, 
-                  color: colorScheme.onSurface,
-                ),
-              ),
-            ) : const SizedBox.shrink()),
+            child:
+                leading ??
+                (shouldShowBack
+                    ? AppScaleTap(
+                      onTap: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/');
+                        }
+                      },
+                      child: _HeaderIconButton(
+                        icon: Icons.arrow_back_ios_new_rounded,
+                        colorScheme: colorScheme,
+                      ),
+                    )
+                    : const SizedBox.shrink()),
           ),
-          
+
           // ── Trailing ──
-          if (trailing != null)
-            Positioned(
-              right: 0,
-              child: trailing!,
-            ),
+          if (trailing != null) Positioned(right: 0, child: trailing!),
         ],
       ),
     );
 
-    final isOnline = context.select<ConnectivityService, bool>((s) => s.isOnline);
-
-    Widget body = Column(
-      children: [
-        if (!isOnline)
-          _OfflineBanner(),
-        header,
-        Expanded(child: content),
-        if (bottomBar != null) bottomBar!,
-      ],
+    Widget body = DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            colorScheme.primary.withValues(alpha: 0.10),
+            colorScheme.surface,
+            colorScheme.surface,
+          ],
+          stops: const [0, 0.28, 1],
+        ),
+      ),
+      child: Column(
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 240),
+            child: isOnline ? const SizedBox.shrink() : _OfflineBanner(),
+          ),
+          if (showHeader)
+            header.animate().fadeIn(duration: 220.ms).slideY(begin: -0.08),
+          Expanded(
+            child: content
+                .animate()
+                .fadeIn(duration: 260.ms)
+                .slideY(begin: 0.03),
+          ),
+          if (bottomBar != null) bottomBar!,
+        ],
+      ),
     );
 
     // Apply tablet max-width and centering
@@ -147,15 +194,52 @@ class AppPageScaffold extends StatelessWidget {
       );
     }
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      body: SafeArea(
-        child: body,
+    final overlayStyle =
+        Theme.of(context).brightness == Brightness.dark
+            ? SystemUiOverlayStyle.light.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: colorScheme.surface,
+            )
+            : SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: colorScheme.surface,
+            );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle,
+      child: Scaffold(
+        extendBodyBehindAppBar: extendBehindStatusBar,
+        backgroundColor: colorScheme.surface,
+        body: SafeArea(top: !extendBehindStatusBar, bottom: true, child: body),
+        floatingActionButton: floatingActionButton,
       ),
-      floatingActionButton: floatingActionButton,
     );
   }
 }
+
+class _HeaderIconButton extends StatelessWidget {
+  final IconData icon;
+  final ColorScheme colorScheme;
+
+  const _HeaderIconButton({required this.icon, required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Icon(icon, size: 16, color: colorScheme.onSurface),
+    );
+  }
+}
+
 class _OfflineBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -167,7 +251,11 @@ class _OfflineBanner extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.wifiOff, size: 12, color: colorScheme.onErrorContainer),
+          Icon(
+            LucideIcons.wifiOff,
+            size: 12,
+            color: colorScheme.onErrorContainer,
+          ),
           const SizedBox(width: 8),
           Text(
             AppLocalizations.of(context)?.common_offline_mode ?? "Offline Mode",

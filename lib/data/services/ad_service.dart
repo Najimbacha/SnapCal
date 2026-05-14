@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -13,15 +12,22 @@ class AdService {
 
   // ── Ad Unit IDs ──────────────────────────────────────────────
   // Production banner ID
-  static const String _prodBannerAndroid = 'ca-app-pub-9095390056353710/5681833011';
+  static const String _prodBannerAndroid =
+      'ca-app-pub-9095390056353710/5681833011';
 
   // Google-provided test IDs (used in debug builds)
-  static const String _testBannerAndroid = 'ca-app-pub-3940256099942544/6300978111';
-  static const String _testBannerIos     = 'ca-app-pub-3940256099942544/2934735716';
+  static const String _testBannerAndroid =
+      'ca-app-pub-3940256099942544/6300978111';
+  static const String _testBannerIos = 'ca-app-pub-3940256099942544/2934735716';
 
   /// Returns the correct banner ad unit ID based on platform and build mode.
   static String get bannerAdUnitId {
-    // Production IDs for publishing
+    if (kDebugMode) {
+      return defaultTargetPlatform == TargetPlatform.iOS
+          ? _testBannerIos
+          : _testBannerAndroid;
+    }
+
     return _prodBannerAndroid;
   }
 

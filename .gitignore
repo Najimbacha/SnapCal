@@ -50,7 +50,7 @@ app.*.map.json
 *.env
 
 # Firebase Config (contains project IDs)
-google-services.json
+*google-services*.json
 GoogleService-Info.plist
 
 # Temp analysis and heap dumps

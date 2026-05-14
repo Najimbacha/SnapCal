@@ -306,6 +306,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get result_kcal => 'KCAL';
 
   @override
+  String get result_calories => 'Calories';
+
+  @override
   String get result_macronutrients => 'MACRONUTRIMENTS';
 
   @override
@@ -653,6 +656,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get water_add => 'Ajouter';
 
   @override
+  String get water_remove => 'Retirer';
+
+  @override
   String get water_hydration => 'Hydratation';
 
   @override
@@ -924,6 +930,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get home_no_meals_body => 'Commencez par une photo rapide.';
 
   @override
+  String get home_first_meal_cta_title => 'Scannez un repas pour commencer';
+
+  @override
+  String get home_first_meal_cta_body =>
+      'Utilisez l\'appareil photo pour enregistrer calories et macros automatiquement.';
+
+  @override
+  String get home_section_macros_today => 'Macros du jour';
+
+  @override
+  String get home_eaten_progress => 'CONSOMMÉ';
+
+  @override
+  String get home_steps_today => 'pas aujourd\'hui';
+
+  @override
   String get home_default_name => 'Ami';
 
   @override
@@ -1078,7 +1100,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settings_export_desc => 'Téléchargez vos repas et métriques';
 
   @override
-  String get settings_cloud_sync_desc => 'Sign in to back up your data';
+  String get settings_cloud_sync_desc =>
+      'Connectez-vous pour sauvegarder vos données';
 
   @override
   String get settings_about_title => 'À propos';

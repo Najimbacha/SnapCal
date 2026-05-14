@@ -5,6 +5,7 @@ import '../data/models/meal.dart';
 import '../data/repositories/meal_repository.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/gemini_service.dart';
+import '../core/state/async_ui_state.dart';
 import 'settings_provider.dart';
 
 /// Provider for managing meal state
@@ -15,9 +16,10 @@ class MealProvider with ChangeNotifier {
   List<Meal> _todaysMeals = [];
   List<Meal> _selectedDateMeals = [];
   String _selectedDate = app_date.DateUtils.getTodayString();
-  bool _isLoading = false;
+  AsyncUiState _uiState = const AsyncUiState.success();
+  bool _isMutating = false;
   StreamSubscription<List<Meal>>? _mealsSubscription;
-  
+
   // Cache for AI analysis results to avoid redundant scans
   final Map<String, List<NutritionResult>> _analysisCache = {};
 
@@ -27,7 +29,7 @@ class MealProvider with ChangeNotifier {
       _todaysMeals = meals;
       _memoizedTodaysCalories = null;
       _memoizedTodaysMacros = null;
-      
+
       if (_selectedDate == app_date.DateUtils.getTodayString()) {
         _selectedDateMeals = _todaysMeals;
       }
@@ -45,7 +47,10 @@ class MealProvider with ChangeNotifier {
   List<Meal> get todaysMeals => _todaysMeals;
   List<Meal> get selectedDateMeals => _selectedDateMeals;
   String get selectedDate => _selectedDate;
-  bool get isLoading => _isLoading;
+  bool get isLoading => _uiState.isBlocking;
+  bool get isRefreshing => _uiState.isRefreshing;
+  bool get isMutating => _isMutating;
+  AsyncUiState get uiState => _uiState;
 
   /// Check if we have a cached analysis for this image
   List<NutritionResult>? getCachedAnalysis(Uint8List bytes) {
@@ -57,7 +62,9 @@ class MealProvider with ChangeNotifier {
   void cacheAnalysis(Uint8List bytes, List<NutritionResult> results) {
     final key = _generateImageKey(bytes);
     // Keep cache small: only last 5 items
-    if (_analysisCache.length > 5) _analysisCache.remove(_analysisCache.keys.first);
+    if (_analysisCache.length > 5) {
+      _analysisCache.remove(_analysisCache.keys.first);
+    }
     _analysisCache[key] = results;
   }
 
@@ -112,7 +119,10 @@ class MealProvider with ChangeNotifier {
   /// Load today's meals
   Future<void> _loadTodaysMeals({bool notify = true}) async {
     if (notify) {
-      _isLoading = true;
+      _uiState =
+          _todaysMeals.isEmpty
+              ? const AsyncUiState.loading()
+              : const AsyncUiState.refreshing();
       notifyListeners();
     }
 
@@ -121,7 +131,10 @@ class MealProvider with ChangeNotifier {
     _memoizedTodaysMacros = null;
 
     if (notify) {
-      _isLoading = false;
+      _uiState =
+          _todaysMeals.isEmpty
+              ? const AsyncUiState.empty()
+              : const AsyncUiState.success();
       notifyListeners();
     }
   }
@@ -130,14 +143,20 @@ class MealProvider with ChangeNotifier {
   Future<void> loadMealsForDate(String dateString, {bool notify = true}) async {
     _selectedDate = dateString;
     if (notify) {
-      _isLoading = true;
+      _uiState =
+          _selectedDateMeals.isEmpty
+              ? const AsyncUiState.loading()
+              : const AsyncUiState.refreshing();
       notifyListeners();
     }
 
     _selectedDateMeals = _repository.getMealsByDate(dateString);
 
     if (notify) {
-      _isLoading = false;
+      _uiState =
+          _selectedDateMeals.isEmpty
+              ? const AsyncUiState.empty()
+              : const AsyncUiState.success();
       notifyListeners();
     }
   }
@@ -154,58 +173,62 @@ class MealProvider with ChangeNotifier {
     String? dateString,
     SettingsProvider? settings,
   }) async {
-    if (_isLoading) return;
-    _isLoading = true;
+    if (_isMutating) return;
+    _isMutating = true;
     notifyListeners();
 
     try {
       final prevCal = todaysTotalCalories;
-    final prevPro = todaysTotalMacros.protein;
+      final prevPro = todaysTotalMacros.protein;
 
-    final now = DateTime.now();
-    final meal = Meal(
-      id: _uuid.v4(),
-      timestamp: now.millisecondsSinceEpoch,
-      dateString: dateString ?? app_date.DateUtils.getDateString(now),
-      imageUri: imageUri,
-      foodName: foodName,
-      calories: calories,
-      macros: Macros(protein: protein, carbs: carbs, fat: fat),
-      synced: false,
-      portion: portion,
-    );
+      final now = DateTime.now();
+      final meal = Meal(
+        id: _uuid.v4(),
+        timestamp: now.millisecondsSinceEpoch,
+        dateString: dateString ?? app_date.DateUtils.getDateString(now),
+        imageUri: imageUri,
+        foodName: foodName,
+        calories: calories,
+        macros: Macros(protein: protein, carbs: carbs, fat: fat),
+        synced: false,
+        portion: portion,
+      );
 
-    await _repository.addMeal(meal);
-    
-    // Refresh internal state without extra notifications
-    await _loadTodaysMeals(notify: false);
+      await _repository.addMeal(meal);
 
-    // Update streak and Trigger goal alerts if settings provided
-    if (settings != null) {
-      await settings.updateStreakOnMealLog(mealDate: meal.dateString);
+      // Refresh internal state without extra notifications
+      await _loadTodaysMeals(notify: false);
 
-      final newCal = todaysTotalCalories;
-      final newPro = todaysTotalMacros.protein;
+      // Update streak and Trigger goal alerts if settings provided
+      if (settings != null) {
+        await settings.updateStreakOnMealLog(mealDate: meal.dateString);
 
-      if (prevCal < settings.dailyCalorieGoal &&
-          newCal >= settings.dailyCalorieGoal) {
-        settings.triggerCalorieGoalAlert(settings.dailyCalorieGoal);
+        final newCal = todaysTotalCalories;
+        final newPro = todaysTotalMacros.protein;
+
+        if (prevCal < settings.dailyCalorieGoal &&
+            newCal >= settings.dailyCalorieGoal) {
+          settings.triggerCalorieGoalAlert(settings.dailyCalorieGoal);
+        }
+
+        if (prevPro < settings.dailyProteinGoal &&
+            newPro >= settings.dailyProteinGoal) {
+          settings.triggerProteinGoalAlert(settings.dailyProteinGoal);
+        }
       }
 
-      if (prevPro < settings.dailyProteinGoal &&
-          newPro >= settings.dailyProteinGoal) {
-        settings.triggerProteinGoalAlert(settings.dailyProteinGoal);
+      // Refresh selected date reference
+      if (_selectedDate == app_date.DateUtils.getTodayString()) {
+        _selectedDateMeals = _todaysMeals;
+      } else {
+        await loadMealsForDate(_selectedDate, notify: false);
       }
-    }
-
-    // Refresh selected date reference
-    if (_selectedDate == app_date.DateUtils.getTodayString()) {
-      _selectedDateMeals = _todaysMeals;
-    } else {
-      await loadMealsForDate(_selectedDate, notify: false);
-    }
     } finally {
-      _isLoading = false;
+      _isMutating = false;
+      _uiState =
+          _selectedDateMeals.isEmpty
+              ? const AsyncUiState.empty()
+              : const AsyncUiState.success();
       notifyListeners();
     }
   }
@@ -341,6 +364,7 @@ class MealProvider with ChangeNotifier {
     _memoizedTodaysCalories = null;
     _memoizedTodaysMacros = null;
     _selectedDate = app_date.DateUtils.getTodayString();
+    _uiState = const AsyncUiState.empty();
     notifyListeners();
   }
 }

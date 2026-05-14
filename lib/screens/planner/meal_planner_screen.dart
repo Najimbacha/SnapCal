@@ -15,6 +15,8 @@ import '../../core/theme/theme_colors.dart';
 import '../../providers/planner_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
+import '../../widgets/async_state_widgets.dart';
+import '../../widgets/optimize_plan_button.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/day_summary_bar.dart';
 import 'widgets/meal_card.dart';
@@ -74,8 +76,6 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
 
   @override
   Widget build(BuildContext context) {
-
-
     final l10n = AppLocalizations.of(context)!;
 
     return AppPageScaffold(
@@ -85,16 +85,23 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
       child: Consumer2<PlannerProvider, SettingsProvider>(
         builder: (context, planner, settings, _) {
           // 1. Generating state
-          if (planner.isGenerating) return _buildGeneratingState();
+          if (planner.isGenerating && planner.currentPlan == null) {
+            return _buildGeneratingState();
+          }
 
           // 2. Error state
-          if (planner.error != null) return _buildErrorState(planner);
+          if (planner.error != null && planner.currentPlan == null) {
+            return _buildErrorState(planner);
+          }
 
           // 3. Empty state
           if (planner.currentPlan == null) return _buildEmptyState(settings);
 
           // 4. Plan exists
-          return _buildPlanView(planner, settings);
+          return AppAsyncOverlay(
+            state: planner.uiState,
+            child: _buildPlanView(planner, settings),
+          );
         },
       ),
     );
@@ -120,13 +127,24 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
               decoration: BoxDecoration(
                 color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(LucideIcons.refreshCw, size: 14, color: colorScheme.onSurfaceVariant),
+                  Icon(
+                    LucideIcons.refreshCw,
+                    size: 14,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 6),
-                  Text(AppLocalizations.of(context)!.snap_retake.substring(0, 5), style: AppTypography.labelLarge.copyWith(color: colorScheme.onSurfaceVariant)),
+                  Text(
+                    AppLocalizations.of(context)!.snap_retake.substring(0, 5),
+                    style: AppTypography.labelLarge.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -139,13 +157,25 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
             decoration: BoxDecoration(
               color: colorScheme.primaryContainer.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: colorScheme.primary.withValues(alpha: 0.2),
+              ),
             ),
             child: Row(
               children: [
-                Icon(LucideIcons.sparkles, size: 14, color: colorScheme.primary),
+                Icon(
+                  LucideIcons.sparkles,
+                  size: 14,
+                  color: colorScheme.primary,
+                ),
                 const SizedBox(width: 6),
-                Text(AppLocalizations.of(context)!.common_done.substring(0, 3), style: AppTypography.labelLarge.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
+                Text(
+                  AppLocalizations.of(context)!.common_done.substring(0, 3),
+                  style: AppTypography.labelLarge.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -179,11 +209,15 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                   return Container(
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.05 + (0.05 * math.sin(value * math.pi))),
+                      color: AppColors.primary.withValues(
+                        alpha: 0.05 + (0.05 * math.sin(value * math.pi)),
+                      ),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.1 * math.sin(value * math.pi)),
+                          color: AppColors.primary.withValues(
+                            alpha: 0.1 * math.sin(value * math.pi),
+                          ),
                           blurRadius: 40,
                           spreadRadius: 10,
                         ),
@@ -243,13 +277,21 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
     final colorScheme = Theme.of(context).colorScheme;
     return Column(
       children: [
+        // Optimize Plan Button (Moved from Settings)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: const OptimizePlanButton(),
+        ),
+        
         // Tab bar (Weekly plan / Grocery)
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: colorScheme.surfaceContainer.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            ),
           ),
           child: Row(
             children: [
@@ -280,9 +322,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
           _buildDayTabs(),
           const SizedBox(height: 12),
           // Meals for selected day
-          Expanded(
-            child: _buildDayMeals(planner, settings),
-          ),
+          Expanded(child: _buildDayMeals(planner, settings)),
         ] else ...[
           Expanded(child: _buildGroceryTab(planner, settings)),
         ],
@@ -313,14 +353,18 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                 duration: const Duration(milliseconds: 250),
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.primary
-                      : Theme.of(context).colorScheme.surface,
+                  color:
+                      isSelected
+                          ? AppColors.primary
+                          : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isSelected
-                        ? AppColors.primary
-                        : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    color:
+                        isSelected
+                            ? AppColors.primary
+                            : Theme.of(
+                              context,
+                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                   ),
                   boxShadow: [
                     if (isSelected)
@@ -335,8 +379,12 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                   child: Text(
                     _getDayLabels(context)[index],
                     style: AppTypography.labelLarge.copyWith(
-                      color: isSelected ? Colors.white : context.textSecondaryColor,
-                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                      color:
+                          isSelected
+                              ? Colors.white
+                              : context.textSecondaryColor,
+                      fontWeight:
+                          isSelected ? FontWeight.w900 : FontWeight.w600,
                     ),
                   ),
                 ),
@@ -360,7 +408,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
       return Center(
         child: AppEmptyState(
           icon: LucideIcons.utensils,
-          title: AppLocalizations.of(context)!.planner_no_meals(_getDayLabels(context)[_selectedDay]),
+          title: AppLocalizations.of(
+            context,
+          )!.planner_no_meals(_getDayLabels(context)[_selectedDay]),
           body: AppLocalizations.of(context)!.planner_no_meals_body,
         ),
       );
@@ -374,12 +424,15 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
           padding: const EdgeInsets.only(bottom: 80),
           itemCount: meals.length,
           itemBuilder: (context, index) {
+            final startDelay = ((index + 2) % 10) * 0.1;
+            final endDelay = (startDelay + 0.4).clamp(0.0, 1.0);
+            
             final anim = CurvedAnimation(
               parent: _animController,
               curve: Interval(
-                ((index + 2) % 10) * 0.1, 
-                (((index + 2) % 10) * 0.1) + 0.4, 
-                curve: Curves.easeOutQuart
+                startDelay,
+                endDelay,
+                curve: Curves.easeOutQuart,
               ),
             );
 
@@ -397,7 +450,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
                 child: Container(
-                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.4),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withValues(alpha: 0.4),
                 ),
               ),
             ),
@@ -408,19 +463,30 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(LucideIcons.crown, color: AppColors.warning, size: 36),
+                  const Icon(
+                    LucideIcons.crown,
+                    color: AppColors.warning,
+                    size: 36,
+                  ),
                   const SizedBox(height: 12),
-                  Text(AppLocalizations.of(context)!.planner_unlock_week, style: AppTypography.heading3),
+                  Text(
+                    AppLocalizations.of(context)!.planner_unlock_week,
+                    style: AppTypography.heading3,
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     AppLocalizations.of(context)!.planner_free_limit_body,
-                    style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.textSecondaryColor,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => _showPaywall(context),
-                    child: Text(AppLocalizations.of(context)!.planner_upgrade_pro),
+                    child: Text(
+                      AppLocalizations.of(context)!.planner_upgrade_pro,
+                    ),
                   ),
                 ],
               ),
@@ -431,14 +497,18 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
         if (planner.isRegenerating)
           Positioned.fill(
             child: Container(
-              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: 0.7),
               child: const Center(child: CircularProgressIndicator()),
             ),
           ),
         // Bottom summary bar (only for unlocked days)
         if (!isLocked)
           Positioned(
-            left: 0, right: 0, bottom: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             child: _staggeredSlide(
               _itemAnims[4],
               DaySummaryBar(
@@ -486,33 +556,35 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
       children: [
         ListView(
           padding: const EdgeInsets.fromLTRB(0, 12, 0, 100),
-          children: grouped.entries.map((entry) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-                  child: Text(
-                    entry.key.toUpperCase(),
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.primary,
-                      letterSpacing: 2.0,
-                      fontWeight: FontWeight.w900,
+          children:
+              grouped.entries.map((entry) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                      child: Text(
+                        entry.key.toUpperCase(),
+                        style: AppTypography.labelMedium.copyWith(
+                          color: AppColors.primary,
+                          letterSpacing: 2.0,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                ...entry.value.map((item) {
-                  return _GroceryItemTile(
-                    item: item,
-                    onToggle: () => provider.toggleGroceryItem(item.id),
-                  );
-                }),
-              ],
-            );
-          }).toList(),
+                    ...entry.value.map((item) {
+                      return _GroceryItemTile(
+                        item: item,
+                        onToggle: () => provider.toggleGroceryItem(item.id),
+                      );
+                    }),
+                  ],
+                );
+              }).toList(),
         ),
         Positioned(
-          right: 0, bottom: 8,
+          right: 0,
+          bottom: 8,
           child: FloatingActionButton.extended(
             onPressed: () {
               final text = provider.getFormattedGroceryList();
@@ -540,14 +612,16 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
       _showPaywall(context);
       return;
     }
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => MealPreferencesSheet(
-        onGenerate: () => context.read<PlannerProvider>().generateWeeklyPlan(),
-      ),
+      builder:
+          (_) => MealPreferencesSheet(
+            onGenerate:
+                () => context.read<PlannerProvider>().generateWeeklyPlan(),
+          ),
     );
   }
 
@@ -558,25 +632,32 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   void _confirmRegenerate(BuildContext context, PlannerProvider planner) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.planner_regenerate_day(_getDayLabels(context)[_selectedDay])),
-        content: Text(
-          AppLocalizations.of(context)!.planner_regenerate_body(_getDayLabels(context)[_selectedDay]),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(AppLocalizations.of(context)!.common_cancel),
+      builder:
+          (ctx) => AlertDialog(
+            title: Text(
+              AppLocalizations.of(
+                context,
+              )!.planner_regenerate_day(_getDayLabels(context)[_selectedDay]),
+            ),
+            content: Text(
+              AppLocalizations.of(
+                context,
+              )!.planner_regenerate_body(_getDayLabels(context)[_selectedDay]),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(AppLocalizations.of(context)!.common_cancel),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  planner.regenerateDay(_selectedDay);
+                },
+                child: Text(AppLocalizations.of(context)!.planner_regenerate),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              planner.regenerateDay(_selectedDay);
-            },
-            child: Text(AppLocalizations.of(context)!.planner_regenerate),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -607,7 +688,8 @@ class _ScaleTap extends StatefulWidget {
   State<_ScaleTap> createState() => _ScaleTapState();
 }
 
-class _ScaleTapState extends State<_ScaleTap> with SingleTickerProviderStateMixin {
+class _ScaleTapState extends State<_ScaleTap>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 
@@ -665,9 +747,10 @@ class _GroceryItemTile extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
-            color: isChecked 
-              ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
-              : colorScheme.surface.withValues(alpha: 0.6),
+            color:
+                isChecked
+                    ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
+                    : colorScheme.surface.withValues(alpha: 0.6),
             border: Border(
               bottom: BorderSide(
                 color: colorScheme.outlineVariant.withValues(alpha: 0.2),
@@ -686,13 +769,17 @@ class _GroceryItemTile extends StatelessWidget {
                   color: isChecked ? AppColors.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isChecked ? AppColors.primary : colorScheme.outlineVariant,
+                    color:
+                        isChecked
+                            ? AppColors.primary
+                            : colorScheme.outlineVariant,
                     width: 2,
                   ),
                 ),
-                child: isChecked
-                    ? const Icon(Icons.check, size: 18, color: Colors.white)
-                    : null,
+                child:
+                    isChecked
+                        ? const Icon(Icons.check, size: 18, color: Colors.white)
+                        : null,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -703,8 +790,12 @@ class _GroceryItemTile extends StatelessWidget {
                       item.name,
                       style: AppTypography.bodyLarge.copyWith(
                         fontWeight: FontWeight.w700,
-                        decoration: isChecked ? TextDecoration.lineThrough : null,
-                        color: isChecked ? context.textMutedColor : context.textPrimaryColor,
+                        decoration:
+                            isChecked ? TextDecoration.lineThrough : null,
+                        color:
+                            isChecked
+                                ? context.textMutedColor
+                                : context.textPrimaryColor,
                       ),
                     ),
                     Text(
@@ -732,7 +823,11 @@ class _TabButton extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _TabButton({required this.label, required this.selected, required this.onTap});
+  const _TabButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -814,7 +909,9 @@ class _GeneratingMessagesState extends State<_GeneratingMessages> {
       child: Text(
         _getMessages(context)[_index],
         key: ValueKey(_index),
-        style: AppTypography.bodyMedium.copyWith(color: context.textSecondaryColor),
+        style: AppTypography.bodyMedium.copyWith(
+          color: context.textSecondaryColor,
+        ),
       ),
     );
   }

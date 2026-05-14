@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../providers/metrics_provider.dart';
+import '../../../widgets/async_state_widgets.dart';
 import '../../../widgets/ui_blocks.dart';
 import '../../settings/widgets/weight_entry_modal.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -21,7 +22,10 @@ class BodyReportView extends StatelessWidget {
     return Consumer<MetricsProvider>(
       builder: (context, metricsProvider, _) {
         if (metricsProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.only(top: 16),
+            child: AppSectionSkeleton(rows: 3),
+          );
         }
         final metrics = metricsProvider.metrics;
         if (metrics.isEmpty) {
@@ -47,10 +51,7 @@ class BodyReportView extends StatelessWidget {
         final change = current != null && start != null ? current - start : 0;
 
         return SingleChildScrollView(
-          padding: EdgeInsets.only(
-            top: 16,
-            bottom: 40,
-          ),
+          padding: EdgeInsets.only(top: 16, bottom: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -58,7 +59,8 @@ class BodyReportView extends StatelessWidget {
                 children: [
                   Expanded(
                     child: MetricTile(
-                      label: AppLocalizations.of(context)!.report_weight_current,
+                      label:
+                          AppLocalizations.of(context)!.report_weight_current,
                       value: '${current?.toStringAsFixed(1) ?? '--'} kg',
                       accent: AppColors.primary,
                       icon: LucideIcons.scale,
@@ -71,7 +73,10 @@ class BodyReportView extends StatelessWidget {
                       value:
                           '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)} kg',
                       accent: change <= 0 ? AppColors.protein : AppColors.fat,
-                      icon: change <= 0 ? LucideIcons.trendingDown : LucideIcons.trendingUp,
+                      icon:
+                          change <= 0
+                              ? LucideIcons.trendingDown
+                              : LucideIcons.trendingUp,
                     ),
                   ),
                 ],
@@ -83,7 +88,10 @@ class BodyReportView extends StatelessWidget {
                 child: _ScaleTap(
                   onTap: () => context.push('/progress'),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     leading: Container(
                       width: 48,
                       height: 48,
@@ -91,17 +99,29 @@ class BodyReportView extends StatelessWidget {
                         color: AppColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Icon(LucideIcons.camera, color: AppColors.primary, size: 20),
+                      child: const Icon(
+                        LucideIcons.camera,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
                     title: Text(
-                      AppLocalizations.of(context)!.report_progress_timeline, 
-                      style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w800)
+                      AppLocalizations.of(context)!.report_progress_timeline,
+                      style: AppTypography.titleMedium.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     subtitle: Text(
                       AppLocalizations.of(context)!.report_progress_gallery,
-                      style: AppTypography.bodySmall.copyWith(color: context.textSecondaryColor),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: context.textSecondaryColor,
+                      ),
                     ),
-                    trailing: Icon(LucideIcons.chevronRight, size: 18, color: context.textMutedColor),
+                    trailing: Icon(
+                      LucideIcons.chevronRight,
+                      size: 18,
+                      color: context.textMutedColor,
+                    ),
                   ),
                 ),
               ),
@@ -111,7 +131,10 @@ class BodyReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SectionLabel(title: AppLocalizations.of(context)!.report_weight_analytics),
+                    SectionLabel(
+                      title:
+                          AppLocalizations.of(context)!.report_weight_analytics,
+                    ),
                     const SizedBox(height: 16),
                     SizedBox(
                       height: 220,
@@ -126,16 +149,24 @@ class BodyReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SectionLabel(title: AppLocalizations.of(context)!.report_recent_history),
+                    SectionLabel(
+                      title:
+                          AppLocalizations.of(context)!.report_recent_history,
+                    ),
                     const SizedBox(height: 16),
                     ...metrics
                         .take(5)
                         .map(
                           (metric) => Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
-                              color: context.backgroundColor.withValues(alpha: 0.3),
+                              color: context.backgroundColor.withValues(
+                                alpha: 0.3,
+                              ),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Row(
@@ -144,7 +175,9 @@ class BodyReportView extends StatelessWidget {
                                   width: 38,
                                   height: 38,
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -157,7 +190,9 @@ class BodyReportView extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     '${metric.date.day}/${metric.date.month}/${metric.date.year}',
-                                    style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
+                                    style: AppTypography.labelLarge.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                                 Column(
@@ -172,7 +207,11 @@ class BodyReportView extends StatelessWidget {
                                     ),
                                     if (metric.bodyFat != null)
                                       Text(
-                                        AppLocalizations.of(context)!.report_body_fat_pct(metric.bodyFat!.toStringAsFixed(1)),
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.report_body_fat_pct(
+                                          metric.bodyFat!.toStringAsFixed(1),
+                                        ),
                                         style: AppTypography.bodySmall.copyWith(
                                           color: context.textSecondaryColor,
                                           fontWeight: FontWeight.w600,
@@ -223,11 +262,12 @@ class _WeightChart extends StatelessWidget {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          getDrawingHorizontalLine: (value) => FlLine(
-            color: context.dividerColor.withValues(alpha: 0.3),
-            strokeWidth: 1,
-            dashArray: [5, 5],
-          ),
+          getDrawingHorizontalLine:
+              (value) => FlLine(
+                color: context.dividerColor.withValues(alpha: 0.3),
+                strokeWidth: 1,
+                dashArray: [5, 5],
+              ),
         ),
         titlesData: const FlTitlesData(show: false),
         borderData: FlBorderData(show: false),
@@ -238,14 +278,17 @@ class _WeightChart extends StatelessWidget {
               return touchedSpots.map((spot) {
                 return LineTooltipItem(
                   '${spot.y.toStringAsFixed(1)} kg',
-                  AppTypography.labelLarge.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+                  AppTypography.labelLarge.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 );
               }).toList();
             },
           ),
         ),
         lineBarsData: [
- LineChartBarData(
+          LineChartBarData(
             spots: spots,
             isCurved: true,
             color: AppColors.primary,
@@ -253,12 +296,13 @@ class _WeightChart extends StatelessWidget {
             isStrokeCapRound: true,
             dotData: FlDotData(
               show: true,
-              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                radius: 4,
-                color: Colors.white,
-                strokeWidth: 2,
-                strokeColor: AppColors.primary,
-              ),
+              getDotPainter:
+                  (spot, percent, barData, index) => FlDotCirclePainter(
+                    radius: 4,
+                    color: Colors.white,
+                    strokeWidth: 2,
+                    strokeColor: AppColors.primary,
+                  ),
             ),
             belowBarData: BarAreaData(
               show: true,
@@ -288,7 +332,8 @@ class _ScaleTap extends StatefulWidget {
   State<_ScaleTap> createState() => _ScaleTapState();
 }
 
-class _ScaleTapState extends State<_ScaleTap> with SingleTickerProviderStateMixin {
+class _ScaleTapState extends State<_ScaleTap>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 

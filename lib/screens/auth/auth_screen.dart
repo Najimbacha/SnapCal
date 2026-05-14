@@ -46,14 +46,18 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     if (_staggeredAnims == null || _staggeredAnims!.length < count) {
       _staggeredAnims = List.generate(
         count,
-        (index) => CurvedAnimation(
-          parent: _animController,
-          curve: Interval(
-            index * 0.08,
-            (index * 0.08 + 0.4).clamp(0.0, 1.0),
-            curve: Curves.easeOutCubic,
-          ),
-        ),
+        (index) {
+          final start = (index * 0.08).clamp(0.0, 1.0);
+          final end = (start + 0.4).clamp(0.0, 1.0);
+          return CurvedAnimation(
+            parent: _animController,
+            curve: Interval(
+              start,
+              end,
+              curve: Curves.easeOutCubic,
+            ),
+          );
+        },
       );
     }
   }
@@ -73,7 +77,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       SnackBar(
         content: Text(
           message,
-          style: AppTypography.bodySmall.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+          style: AppTypography.bodySmall.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         backgroundColor: isError ? AppColors.error : AppColors.primary,
         behavior: SnackBarBehavior.floating,
@@ -90,12 +97,18 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _handleGoogle() async {
+    if (_googleLoading) return;
+    debugPrint('🔑 AuthScreen: Google button tapped');
     HapticFeedback.mediumImpact();
     setState(() => _googleLoading = true);
     final auth = context.read<AuthProvider>();
     try {
       await auth.signInWithGoogle();
-      if (auth.isAuthenticated) _onAuthSuccess();
+      if (auth.isAuthenticated && !auth.isAnonymous) {
+        _onAuthSuccess();
+      } else if (auth.errorMessage != null && auth.errorMessage!.isNotEmpty) {
+        _showStyledSnackBar(auth.errorMessage!);
+      }
     } catch (e) {
       _showStyledSnackBar('$e');
     } finally {
@@ -124,9 +137,15 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     final auth = context.read<AuthProvider>();
     try {
       if (_isSignUp) {
-        await auth.registerWithEmail(_emailController.text.trim(), _passwordController.text);
+        await auth.registerWithEmail(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
       } else {
-        await auth.signInWithEmail(_emailController.text.trim(), _passwordController.text);
+        await auth.signInWithEmail(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
       }
       if (auth.isAuthenticated) _onAuthSuccess();
     } catch (e) {
@@ -139,10 +158,14 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     _ensureAnims(10);
-    
+
     // Failsafe Redirection for logged-in users
     final auth = context.watch<AuthProvider>();
-    if (auth.isAuthenticated && !auth.isAnonymous && !_googleLoading && !_facebookLoading && !_emailLoading) {
+    if (auth.isAuthenticated &&
+        !auth.isAnonymous &&
+        !_googleLoading &&
+        !_facebookLoading &&
+        !_emailLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/settings');
       });
@@ -182,269 +205,370 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-          
+
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // ── Logo ──
-                  _StaggeredFade(
-                    animation: _staggeredAnims![0],
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppColors.primary.withValues(alpha: 0.25),
-                            AppColors.primary.withValues(alpha: 0.05),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.4),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.25),
-                            blurRadius: 30,
-                            spreadRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/icon/icon.png',
-                          fit: BoxFit.cover,
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // ── Logo ──
+                      _StaggeredFade(
+                        animation: _staggeredAnims![0],
+                        child: Container(
                           width: 80,
                           height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppColors.primary.withValues(alpha: 0.25),
+                                AppColors.primary.withValues(alpha: 0.05),
+                              ],
+                            ),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.4),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.25,
+                                ),
+                                blurRadius: 30,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/icon/icon.png',
+                              fit: BoxFit.cover,
+                              width: 80,
+                              height: 80,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
+                      const SizedBox(height: 32),
 
-                  // ── Title ──
-                  _StaggeredFade(
-                    animation: _staggeredAnims![1],
-                    child: Text(
-                      _showEmailForm 
-                          ? (_isSignUp ? "Create account" : "Welcome back")
-                          : "Let's dive in",
-                      style: AppTypography.displayMedium.copyWith(
-                        color: context.textPrimaryColor,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1.5,
-                        height: 1.1,
+                      // ── Title ──
+                      _StaggeredFade(
+                        animation: _staggeredAnims![1],
+                        child: Text(
+                          _showEmailForm
+                              ? (_isSignUp ? "Create account" : "Welcome back")
+                              : "Let's dive in",
+                          style: AppTypography.displayMedium.copyWith(
+                            color: context.textPrimaryColor,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -1.5,
+                            height: 1.1,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _StaggeredFade(
-                    animation: _staggeredAnims![1],
-                    child: Text(
-                      "Your journey to a healthier you starts here.",
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: context.textSecondaryColor,
+                      const SizedBox(height: 12),
+                      _StaggeredFade(
+                        animation: _staggeredAnims![1],
+                        child: Text(
+                          "Your journey to a healthier you starts here.",
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: context.textSecondaryColor,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 48),
+                      const SizedBox(height: 48),
 
-                  // ── Auth Options ──
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOutBack,
-                    child: _showEmailForm
-                        ? Form(
-                            key: _formKey,
-                            child: Column(
-                              children: [
-                                _StaggeredFade(
-                                  animation: _staggeredAnims![5],
-                                  child: _AuthTextField(
-                                    controller: _emailController,
-                                    hint: "Email address",
-                                    keyboardType: TextInputType.emailAddress,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                _StaggeredFade(
-                                  animation: _staggeredAnims![6],
-                                  child: _AuthTextField(
-                                    controller: _passwordController,
-                                    hint: "Password",
-                                    isPassword: true,
-                                    showPassword: _showPassword,
-                                    onTogglePassword: () => setState(() => _showPassword = !_showPassword),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                _StaggeredFade(
-                                  animation: _staggeredAnims![7],
-                                  child: AppScaleTap(
-                                    onTap: _emailLoading ? () {} : _handleEmailSubmit,
-                                    child: Container(
-                                      height: 54,
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        color: isDark ? Colors.white : const Color(0xFF1E293B),
-                                        borderRadius: BorderRadius.circular(100),
-                                      ),
-                                      child: Center(
-                                        child: _emailLoading
-                                            ? SizedBox(
-                                                width: 20,
-                                                height: 20,
-                                                child: CircularProgressIndicator(
-                                                  color: isDark ? Colors.black : Colors.white,
-                                                  strokeWidth: 2,
-                                                ),
-                                              )
-                                            : Text(
-                                                _isSignUp ? "Sign Up" : "Log In",
-                                                style: AppTypography.titleMedium.copyWith(
-                                                  color: isDark ? Colors.black : Colors.white,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                // ── Footer ──
-                                _StaggeredFade(
-                                  animation: _staggeredAnims![8],
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                      // ── Auth Options ──
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOutBack,
+                        child:
+                            _showEmailForm
+                                ? Form(
+                                  key: _formKey,
+                                  child: Column(
                                     children: [
-                                      Text(
-                                        _isSignUp ? "Already have an account? " : "Don't have an account? ",
-                                        style: AppTypography.bodyMedium.copyWith(color: context.textSecondaryColor),
+                                      _StaggeredFade(
+                                        animation: _staggeredAnims![5],
+                                        child: _AuthTextField(
+                                          controller: _emailController,
+                                          hint: "Email address",
+                                          keyboardType:
+                                              TextInputType.emailAddress,
+                                        ),
                                       ),
-                                      AppScaleTap(
-                                        onTap: () => setState(() => _isSignUp = !_isSignUp),
-                                        child: Text(
-                                          _isSignUp ? "Log in" : "Sign up",
-                                          style: AppTypography.titleMedium.copyWith(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w700,
+                                      const SizedBox(height: 16),
+                                      _StaggeredFade(
+                                        animation: _staggeredAnims![6],
+                                        child: _AuthTextField(
+                                          controller: _passwordController,
+                                          hint: "Password",
+                                          isPassword: true,
+                                          showPassword: _showPassword,
+                                          onTogglePassword:
+                                              () => setState(
+                                                () =>
+                                                    _showPassword =
+                                                        !_showPassword,
+                                              ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      _StaggeredFade(
+                                        animation: _staggeredAnims![7],
+                                        child: AppScaleTap(
+                                          onTap:
+                                              _emailLoading
+                                                  ? () {}
+                                                  : _handleEmailSubmit,
+                                          child: Container(
+                                            height: 54,
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  isDark
+                                                      ? Colors.white
+                                                      : const Color(0xFF1E293B),
+                                              borderRadius:
+                                                  BorderRadius.circular(100),
+                                            ),
+                                            child: Center(
+                                              child:
+                                                  _emailLoading
+                                                      ? SizedBox(
+                                                        width: 20,
+                                                        height: 20,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                              color:
+                                                                  isDark
+                                                                      ? Colors
+                                                                          .black
+                                                                      : Colors
+                                                                          .white,
+                                                              strokeWidth: 2,
+                                                            ),
+                                                      )
+                                                      : Text(
+                                                        _isSignUp
+                                                            ? "Sign Up"
+                                                            : "Log In",
+                                                        style: AppTypography
+                                                            .titleMedium
+                                                            .copyWith(
+                                                              color:
+                                                                  isDark
+                                                                      ? Colors
+                                                                          .black
+                                                                      : Colors
+                                                                          .white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                            ),
+                                                      ),
+                                            ),
                                           ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      // ── Footer ──
+                                      _StaggeredFade(
+                                        animation: _staggeredAnims![8],
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              _isSignUp
+                                                  ? "Already have an account? "
+                                                  : "Don't have an account? ",
+                                              style: AppTypography.bodyMedium
+                                                  .copyWith(
+                                                    color:
+                                                        context
+                                                            .textSecondaryColor,
+                                                  ),
+                                            ),
+                                            AppScaleTap(
+                                              onTap:
+                                                  () => setState(
+                                                    () =>
+                                                        _isSignUp = !_isSignUp,
+                                                  ),
+                                              child: Text(
+                                                _isSignUp
+                                                    ? "Log in"
+                                                    : "Sign up",
+                                                style: AppTypography.titleMedium
+                                                    .copyWith(
+                                                      color: AppColors.primary,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      TextButton(
+                                        onPressed:
+                                            () => setState(
+                                              () => _showEmailForm = false,
+                                            ),
+                                        child: Text(
+                                          "Back to Social Login",
+                                          style: AppTypography.bodyMedium
+                                              .copyWith(
+                                                color: context.textMutedColor,
+                                              ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                                const SizedBox(height: 24),
-                                TextButton(
-                                  onPressed: () => setState(() => _showEmailForm = false),
-                                  child: Text("Back to Social Login", style: AppTypography.bodyMedium.copyWith(color: context.textMutedColor)),
-                                ),
-                              ],
-                            ),
-                          )
-                        : Column(
-                            children: [
-                              // ── Google (Primary) ──
-                              _StaggeredFade(
-                                animation: _staggeredAnims![2],
-                                child: _AuthSocialButton(
-                                  label: "Continue with Google",
-                                  backgroundColor: isDark ? Colors.white : Colors.white,
-                                  textColor: Colors.black,
-                                  borderColor: Colors.transparent,
-                                  iconWidget: Image.asset(
-                                    'assets/images/google_logo.png',
-                                    width: 20,
-                                    height: 20,
-                                  ),
-                                  isLoading: _googleLoading,
-                                  onTap: _handleGoogle,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              
-                              // ── Divider ──
-                              _StaggeredFade(
-                                animation: _staggeredAnims![3],
-                                child: Row(
+                                )
+                                : Column(
                                   children: [
-                                    Expanded(child: Divider(color: context.dividerColor.withValues(alpha: 0.1))),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      child: Text(
-                                        "or",
-                                        style: AppTypography.labelSmall.copyWith(
-                                          color: context.textMutedColor.withValues(alpha: 0.5),
+                                    // ── Google (Primary) ──
+                                    _StaggeredFade(
+                                      animation: _staggeredAnims![2],
+                                      child: _AuthSocialButton(
+                                        label: "Continue with Google",
+                                        backgroundColor:
+                                            isDark
+                                                ? Colors.white
+                                                : Colors.white,
+                                        textColor: Colors.black,
+                                        borderColor: Colors.transparent,
+                                        iconWidget: Image.asset(
+                                          'assets/images/google_logo.png',
+                                          width: 20,
+                                          height: 20,
                                         ),
+                                        isLoading: _googleLoading,
+                                        onTap: _handleGoogle,
                                       ),
                                     ),
-                                    Expanded(child: Divider(color: context.dividerColor.withValues(alpha: 0.1))),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
+                                    const SizedBox(height: 16),
 
-                              // ── Secondary Actions (Facebook & Email) ──
-                              _StaggeredFade(
-                                animation: _staggeredAnims![4],
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _AuthSocialButton(
-                                        label: "Facebook",
-                                        backgroundColor: const Color(0xFF1877F2),
-                                        textColor: Colors.white,
-                                        borderColor: Colors.transparent,
-                                        iconWidget: const FaIcon(FontAwesomeIcons.facebookF, size: 16, color: Colors.white),
-                                        isLoading: _facebookLoading,
-                                        onTap: _handleFacebook,
-                                        small: true,
+                                    // ── Divider ──
+                                    _StaggeredFade(
+                                      animation: _staggeredAnims![3],
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Divider(
+                                              color: context.dividerColor
+                                                  .withValues(alpha: 0.1),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                            ),
+                                            child: Text(
+                                              "or",
+                                              style: AppTypography.labelSmall
+                                                  .copyWith(
+                                                    color: context
+                                                        .textMutedColor
+                                                        .withValues(alpha: 0.5),
+                                                  ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Divider(
+                                              color: context.dividerColor
+                                                  .withValues(alpha: 0.1),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _AuthSocialButton(
-                                        label: "Email",
-                                        backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                                        textColor: isDark ? Colors.white : Colors.black,
-                                        borderColor: Colors.transparent,
-                                        iconWidget: Icon(LucideIcons.mail, size: 16, color: isDark ? Colors.white : Colors.black),
-                                        isLoading: false,
-                                        onTap: () => setState(() {
-                                          _showEmailForm = true;
-                                          _isSignUp = false;
-                                        }),
-                                        small: true,
+                                    const SizedBox(height: 16),
+
+                                    // ── Secondary Actions (Facebook & Email) ──
+                                    _StaggeredFade(
+                                      animation: _staggeredAnims![4],
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: _AuthSocialButton(
+                                              label: "Facebook",
+                                              backgroundColor: const Color(
+                                                0xFF1877F2,
+                                              ),
+                                              textColor: Colors.white,
+                                              borderColor: Colors.transparent,
+                                              iconWidget: const FaIcon(
+                                                FontAwesomeIcons.facebookF,
+                                                size: 16,
+                                                color: Colors.white,
+                                              ),
+                                              isLoading: _facebookLoading,
+                                              onTap: _handleFacebook,
+                                              small: true,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: _AuthSocialButton(
+                                              label: "Email",
+                                              backgroundColor:
+                                                  isDark
+                                                      ? Colors.white.withValues(
+                                                        alpha: 0.05,
+                                                      )
+                                                      : Colors.black.withValues(
+                                                        alpha: 0.05,
+                                                      ),
+                                              textColor:
+                                                  isDark
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                              borderColor: Colors.transparent,
+                                              iconWidget: Icon(
+                                                LucideIcons.mail,
+                                                size: 16,
+                                                color:
+                                                    isDark
+                                                        ? Colors.white
+                                                        : Colors.black,
+                                              ),
+                                              isLoading: false,
+                                              onTap:
+                                                  () => setState(() {
+                                                    _showEmailForm = true;
+                                                    _isSignUp = false;
+                                                  }),
+                                              small: true,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                            ],
-                          ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
-    ],
-  ),
-);
+    );
   }
 }
 
@@ -472,58 +596,77 @@ class _AuthSocialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDarkMode;
-    return AppScaleTap(
-      onTap: isLoading ? () {} : onTap,
-      child: Container(
-        height: 56,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: backgroundColor ?? (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.8)),
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            color: borderColor ?? (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.04)),
-          ),
-          boxShadow: isDark && backgroundColor == null ? null : [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+    final radius = BorderRadius.circular(100);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isLoading ? null : onTap,
+        borderRadius: radius,
+        child: Ink(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color:
+                backgroundColor ??
+                (isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.white.withValues(alpha: 0.8)),
+            borderRadius: radius,
+            border: Border.all(
+              color:
+                  borderColor ??
+                  (isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.04)),
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (isLoading)
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else ...[
-              iconWidget,
-              if (!small) ...[
-                const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: AppTypography.titleSmall.copyWith(
-                    color: textColor ?? (isDark ? Colors.white : Colors.black),
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
+            boxShadow:
+                isDark && backgroundColor == null
+                    ? null
+                    : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isLoading)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else ...[
+                iconWidget,
+                if (!small) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    label,
+                    style: AppTypography.titleSmall.copyWith(
+                      color:
+                          textColor ?? (isDark ? Colors.white : Colors.black),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
                   ),
-                ),
-              ] else ...[
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: AppTypography.labelLarge.copyWith(
-                    color: textColor ?? (isDark ? Colors.white : Colors.black),
-                    fontWeight: FontWeight.w600,
+                ] else ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: AppTypography.labelLarge.copyWith(
+                      color:
+                          textColor ?? (isDark ? Colors.white : Colors.black),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
+                ],
               ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -552,18 +695,27 @@ class _AuthTextField extends StatelessWidget {
     final isDark = context.isDarkMode;
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.8),
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.white.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.04),
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.04),
         ),
-        boxShadow: isDark ? null : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow:
+            isDark
+                ? null
+                : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
       ),
       child: TextFormField(
         controller: controller,
@@ -572,19 +724,27 @@ class _AuthTextField extends StatelessWidget {
         style: AppTypography.bodyLarge,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: AppTypography.bodyLarge.copyWith(color: context.textMutedColor),
-          suffixIcon: isPassword
-              ? IconButton(
-                  onPressed: onTogglePassword,
-                  icon: Icon(
-                    (showPassword ?? false) ? LucideIcons.eyeOff : LucideIcons.eye,
-                    size: 18,
-                    color: context.textMutedColor,
-                  ),
-                )
-              : null,
+          hintStyle: AppTypography.bodyLarge.copyWith(
+            color: context.textMutedColor,
+          ),
+          suffixIcon:
+              isPassword
+                  ? IconButton(
+                    onPressed: onTogglePassword,
+                    icon: Icon(
+                      (showPassword ?? false)
+                          ? LucideIcons.eyeOff
+                          : LucideIcons.eye,
+                      size: 18,
+                      color: context.textMutedColor,
+                    ),
+                  )
+                  : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );
@@ -611,5 +771,3 @@ class _StaggeredFade extends StatelessWidget {
     );
   }
 }
-
-

@@ -139,8 +139,8 @@ class _SyncDataScreenState extends State<SyncDataScreen>
     _benefitSlides = [];
     final benefitCount = _benefits.length;
     for (int i = 0; i < benefitCount; i++) {
-      final start = 0.35 + (i * 0.08);
-      final end = start + 0.15;
+      final start = (0.35 + (i * 0.08)).clamp(0.0, 1.0);
+      final end = (start + 0.15).clamp(0.0, 1.0);
       _benefitAnimations.add(
         Tween<double>(begin: 0.0, end: 1.0).animate(
           CurvedAnimation(

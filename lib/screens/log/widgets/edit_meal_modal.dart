@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../../data/models/meal.dart';
-import '../../../providers/settings_provider.dart';
-import '../../../widgets/ui_blocks.dart';
 
 class EditMealModal extends StatefulWidget {
   final Meal meal;
@@ -39,11 +35,19 @@ class _EditMealModalState extends State<EditMealModal> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.meal.foodName);
-    _caloriesController = TextEditingController(text: widget.meal.calories.toString());
+    _caloriesController = TextEditingController(
+      text: widget.meal.calories.toString(),
+    );
     _portionController = TextEditingController(text: widget.meal.portion ?? '');
-    _proteinController = TextEditingController(text: widget.meal.macros.protein.toString());
-    _carbsController = TextEditingController(text: widget.meal.macros.carbs.toString());
-    _fatController = TextEditingController(text: widget.meal.macros.fat.toString());
+    _proteinController = TextEditingController(
+      text: widget.meal.macros.protein.toString(),
+    );
+    _carbsController = TextEditingController(
+      text: widget.meal.macros.carbs.toString(),
+    );
+    _fatController = TextEditingController(
+      text: widget.meal.macros.fat.toString(),
+    );
   }
 
   @override
@@ -59,7 +63,8 @@ class _EditMealModalState extends State<EditMealModal> {
 
   void _handleSave() {
     final updatedMeal = widget.meal.copyWith(
-      foodName: _nameController.text.isEmpty ? 'Unknown Meal' : _nameController.text,
+      foodName:
+          _nameController.text.isEmpty ? 'Unknown Meal' : _nameController.text,
       calories: int.tryParse(_caloriesController.text) ?? 0,
       portion: _portionController.text,
       macros: widget.meal.macros.copyWith(
@@ -95,13 +100,16 @@ class _EditMealModalState extends State<EditMealModal> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           Flexible(
             child: SingleChildScrollView(
               padding: EdgeInsets.only(
-                left: 24, 
-                right: 24, 
-                bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 120,
+                left: 24,
+                right: 24,
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom +
+                    MediaQuery.of(context).padding.bottom +
+                    120,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -118,13 +126,14 @@ class _EditMealModalState extends State<EditMealModal> {
                         ),
                       ),
                       IconButton(
-                        onPressed: widget.onCancel ?? () => Navigator.pop(context),
+                        onPressed:
+                            widget.onCancel ?? () => Navigator.pop(context),
                         icon: const Icon(LucideIcons.x),
                         color: context.textSecondaryColor,
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 24),
 
                   // CALORIES INPUT SECTION
@@ -133,7 +142,9 @@ class _EditMealModalState extends State<EditMealModal> {
                     decoration: BoxDecoration(
                       color: colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: context.dividerColor.withValues(alpha: 0.1)),
+                      border: Border.all(
+                        color: context.dividerColor.withValues(alpha: 0.1),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -161,7 +172,10 @@ class _EditMealModalState extends State<EditMealModal> {
                               isDense: true,
                               contentPadding: EdgeInsets.zero,
                               suffixText: ' kcal',
-                              suffixStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+                              suffixStyle: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.normal,
+                              ),
                             ),
                           ),
                         ),
@@ -234,15 +248,20 @@ class _EditMealModalState extends State<EditMealModal> {
                       backgroundColor: context.primaryColor,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(56),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       elevation: 0,
                     ),
                     child: Text(
                       l10n.log_save_entry,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
-                  
+
                   if (widget.meal.id != 'temp' && widget.meal.id != 'new') ...[
                     const SizedBox(height: 12),
                     TextButton(
@@ -270,22 +289,37 @@ class _EditMealModalState extends State<EditMealModal> {
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: context.surfaceContainerColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(l10n.log_delete_meal_title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(l10n.log_delete_meal_body),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.common_keep_it)),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              widget.onDelete();
-            },
-            child: Text(l10n.common_delete, style: TextStyle(color: colorScheme.error, fontWeight: FontWeight.bold)),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: context.surfaceContainerColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: Text(
+              l10n.log_delete_meal_title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: Text(l10n.log_delete_meal_body),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.common_keep_it),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onDelete();
+                },
+                child: Text(
+                  l10n.common_delete,
+                  style: TextStyle(
+                    color: colorScheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
@@ -329,7 +363,10 @@ class _MinimalistInput extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
         ),
       ],
@@ -377,7 +414,10 @@ class _MinimalistMacroInput extends StatelessWidget {
               borderSide: BorderSide.none,
             ),
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
             suffixText: unit,
             suffixStyle: TextStyle(color: context.textMutedColor, fontSize: 12),
           ),

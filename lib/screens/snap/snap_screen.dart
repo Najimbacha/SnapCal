@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/services/connectivity_service.dart';
@@ -17,7 +16,6 @@ import 'snap_controller.dart';
 import 'widgets/analyzing_overlay.dart';
 import 'widgets/barcode_scanner_view.dart';
 import 'widgets/food_frame_guide.dart';
-import 'widgets/multi_result_sheet.dart';
 import 'widgets/result_modal.dart';
 import 'widgets/shutter_button.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -37,6 +35,8 @@ class _SnapScreenState extends State<SnapScreen>
   late final SnapController _controller;
   bool _hasInitializedOnce = false;
   bool _isTickerActive = true;
+  bool _isSavingResult = false;
+  String? _savedResultFingerprint;
 
   Offset? _focusPoint;
   AnimationController? _focusAnimController;
@@ -54,10 +54,16 @@ class _SnapScreenState extends State<SnapScreen>
       duration: const Duration(milliseconds: 800),
     );
     _focusOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _focusAnimController!, curve: const Interval(0.5, 1.0)),
+      CurvedAnimation(
+        parent: _focusAnimController!,
+        curve: const Interval(0.5, 1.0),
+      ),
     );
     _focusScale = Tween<double>(begin: 1.4, end: 1.0).animate(
-      CurvedAnimation(parent: _focusAnimController!, curve: Curves.easeOutCubic),
+      CurvedAnimation(
+        parent: _focusAnimController!,
+        curve: Curves.easeOutCubic,
+      ),
     );
   }
 
@@ -100,7 +106,8 @@ class _SnapScreenState extends State<SnapScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _controller.initializeCamera();
-    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       CameraService().stop();
     }
   }
@@ -121,41 +128,33 @@ class _SnapScreenState extends State<SnapScreen>
 
   void _showResultModal() {
     if (!mounted) return;
+    _isSavingResult = false;
+    _savedResultFingerprint = null;
     final results = _controller.analysisResults;
 
-    if (results != null && results.length > 1) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        useRootNavigator: true,
-        backgroundColor: Colors.transparent,
-        isDismissible: false,
-        builder: (context) => MultiResultSheet(
-          results: results,
-          onSaveAll: _saveMultipleMeals,
-          onCancel: _controller.reset,
-        ),
-      );
-    } else {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        useRootNavigator: true,
-        backgroundColor: Colors.transparent,
-        isDismissible: false,
-        builder:
-            (context) => ResultModal(
-              imageBytes: _controller.capturedImageBytes,
-              result: _controller.analysisResult,
-              onSave: _saveMeal,
-              onCancel: _controller.reset,
-            ),
-      );
-    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      builder:
+          (context) => ResultModal(
+            imageBytes: _controller.capturedImageBytes,
+            result:
+                results != null && results.length == 1 ? results.first : null,
+            results: results != null && results.length > 1 ? results : null,
+            onSave: _saveMeal,
+            onSaveAll: _saveMultipleMeals,
+            onCancel: _controller.reset,
+          ),
+    );
   }
 
   void _showManualInputModal() {
     if (!mounted) return;
+    _isSavingResult = false;
+    _savedResultFingerprint = null;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -167,6 +166,7 @@ class _SnapScreenState extends State<SnapScreen>
             imageBytes: _controller.capturedImageBytes,
             result: null,
             onSave: _saveMeal,
+            onSaveAll: _saveMultipleMeals,
             onCancel: _controller.reset,
           ),
     );
@@ -180,70 +180,131 @@ class _SnapScreenState extends State<SnapScreen>
     int fat,
     String? portion,
   ) async {
-    // 1. Capture dependencies before popping/navigating
-    final mealProvider = context.read<MealProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
-    final router = GoRouter.of(context);
-    
-    // 2. Close modal immediately
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
-    
-    // 3. Navigate home immediately for that "Snap & Done" feeling
-    HapticFeedback.heavyImpact();
-    router.go('/'); 
-
-    // 4. Perform database work in background
-    await mealProvider.addMeal(
-      foodName: name.isEmpty ? AppLocalizations.of(context)!.log_unknown_food : name,
+    final fingerprint = _singleSaveFingerprint(
+      name: name,
       calories: calories,
       protein: protein,
       carbs: carbs,
       fat: fat,
       portion: portion,
-      settings: settingsProvider,
     );
+    if (!_beginResultSave(fingerprint)) return;
 
-    // 5. Increment scan count only ON SUCCESSFUL SAVE
-    if (!settingsProvider.isPro) {
-      await ScanGateService().incrementScanCount();
-    }
-    
-    // 6. Reset camera controller state for next time
-    _controller.reset();
-  }
-
-  Future<void> _saveMultipleMeals(List<NutritionResult> selectedItems) async {
     final mealProvider = context.read<MealProvider>();
     final settingsProvider = context.read<SettingsProvider>();
     final router = GoRouter.of(context);
 
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
+    try {
+      HapticFeedback.heavyImpact();
+      router.go('/');
 
-    HapticFeedback.heavyImpact();
-    router.go('/');
-
-    for (final item in selectedItems) {
       await mealProvider.addMeal(
-        foodName: item.foodName.isEmpty ? AppLocalizations.of(context)!.log_unknown_food : item.foodName,
-        calories: item.calories,
-        protein: item.protein,
-        carbs: item.carbs,
-        fat: item.fat,
-        portion: item.portion,
+        foodName:
+            name.isEmpty
+                ? AppLocalizations.of(context)!.log_unknown_food
+                : name,
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fat: fat,
+        portion: portion,
         settings: settingsProvider,
       );
-    }
 
-    // Increment scan count once for the whole "session"
-    if (!settingsProvider.isPro) {
-      await ScanGateService().incrementScanCount();
-    }
+      if (!settingsProvider.isPro) {
+        await ScanGateService().incrementScanCount();
+      }
 
-    _controller.reset();
+      _controller.reset();
+    } finally {
+      _isSavingResult = false;
+    }
+  }
+
+  Future<void> _saveMultipleMeals(List<NutritionResult> selectedItems) async {
+    final fingerprint = _multiSaveFingerprint(selectedItems);
+    if (!_beginResultSave(fingerprint)) return;
+
+    final mealProvider = context.read<MealProvider>();
+    final settingsProvider = context.read<SettingsProvider>();
+    final router = GoRouter.of(context);
+
+    try {
+      HapticFeedback.heavyImpact();
+      router.go('/');
+
+      for (final item in selectedItems) {
+        await mealProvider.addMeal(
+          foodName:
+              item.foodName.isEmpty
+                  ? AppLocalizations.of(context)!.log_unknown_food
+                  : item.foodName,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          portion: item.portion,
+          settings: settingsProvider,
+        );
+      }
+
+      // Increment scan count once for the whole "session"
+      if (!settingsProvider.isPro) {
+        await ScanGateService().incrementScanCount();
+      }
+
+      _controller.reset();
+    } finally {
+      _isSavingResult = false;
+    }
+  }
+
+  bool _beginResultSave(String fingerprint) {
+    if (_isSavingResult || _savedResultFingerprint == fingerprint) {
+      return false;
+    }
+    _isSavingResult = true;
+    _savedResultFingerprint = fingerprint;
+    return true;
+  }
+
+  String _singleSaveFingerprint({
+    required String name,
+    required int calories,
+    required int protein,
+    required int carbs,
+    required int fat,
+    required String? portion,
+  }) {
+    final imageKey = _controller.capturedImageBytes?.length ?? 0;
+    return [
+      'single',
+      imageKey,
+      name.trim().toLowerCase(),
+      calories,
+      protein,
+      carbs,
+      fat,
+      portion?.trim().toLowerCase() ?? '',
+    ].join('|');
+  }
+
+  String _multiSaveFingerprint(List<NutritionResult> items) {
+    final imageKey = _controller.capturedImageBytes?.length ?? 0;
+    return [
+      'multi',
+      imageKey,
+      ...items.map(
+        (item) => [
+          item.foodName.trim().toLowerCase(),
+          item.calories,
+          item.protein,
+          item.carbs,
+          item.fat,
+          item.portion.trim().toLowerCase(),
+        ].join(':'),
+      ),
+    ].join('|');
   }
 
   @override
@@ -288,12 +349,14 @@ class _SnapScreenState extends State<SnapScreen>
                         _focusAnimController?.reset();
                         _focusAnimController?.forward();
                       },
-                      child: (controller.cameraController?.value.isInitialized ?? false)
-                          ? CameraPreview(
-                              controller.cameraController!,
-                              key: ObjectKey(controller.cameraController),
-                            )
-                          : const _CameraShimmerSkeleton(),
+                      child:
+                          (controller.cameraController?.value.isInitialized ??
+                                  false)
+                              ? CameraPreview(
+                                controller.cameraController!,
+                                key: ObjectKey(controller.cameraController),
+                              )
+                              : const _CameraShimmerSkeleton(),
                     ),
                   )
                 else if (controller.errorMessage != null)
@@ -302,7 +365,8 @@ class _SnapScreenState extends State<SnapScreen>
                       icon: LucideIcons.cameraOff,
                       title: AppLocalizations.of(context)!.error_camera,
                       body: controller.errorMessage!,
-                      actionLabel: AppLocalizations.of(context)!.assistant_retry,
+                      actionLabel:
+                          AppLocalizations.of(context)!.assistant_retry,
                       onAction: _controller.initializeCamera,
                     ),
                   )
@@ -367,7 +431,7 @@ class _SnapScreenState extends State<SnapScreen>
                       ),
                     ),
                   ),
-                
+
                 if (!controller.isScanningBarcode) ...[
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 16,
@@ -376,7 +440,8 @@ class _SnapScreenState extends State<SnapScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        if (controller.isInitialized && controller.errorMessage == null)
+                        if (controller.isInitialized &&
+                            controller.errorMessage == null)
                           _flashButton(controller)
                         else
                           const SizedBox(width: 44),
@@ -384,7 +449,7 @@ class _SnapScreenState extends State<SnapScreen>
                       ],
                     ),
                   ),
-                  
+
                   Positioned(
                     left: 0,
                     right: 0,
@@ -406,7 +471,8 @@ class _SnapScreenState extends State<SnapScreen>
                             children: [
                               _controlButton(
                                 icon: LucideIcons.image,
-                                label: AppLocalizations.of(context)!.snap_gallery,
+                                label:
+                                    AppLocalizations.of(context)!.snap_gallery,
                                 onTap:
                                     () => controller.pickFromGallery(
                                       context: context,
@@ -439,7 +505,8 @@ class _SnapScreenState extends State<SnapScreen>
                               ),
                               _controlButton(
                                 icon: LucideIcons.scan,
-                                label: AppLocalizations.of(context)!.snap_barcode,
+                                label:
+                                    AppLocalizations.of(context)!.snap_barcode,
                                 onTap:
                                     () => controller.isScanningBarcode = true,
                               ),
@@ -491,9 +558,10 @@ class _SnapScreenState extends State<SnapScreen>
         height: 44,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isActive
-              ? const Color(0xFFFFD700).withValues(alpha: 0.2)
-              : Colors.white.withValues(alpha: 0.1),
+          color:
+              isActive
+                  ? const Color(0xFFFFD700).withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.1),
         ),
         child: Icon(
           icon,
@@ -517,15 +585,21 @@ class _SnapScreenState extends State<SnapScreen>
                     : Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: settingsProvider.isPro
-                  ? const Color(0xFF10B981).withValues(alpha: 0.3)
-                  : Colors.white.withValues(alpha: 0.15),
+              color:
+                  settingsProvider.isPro
+                      ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                      : Colors.white.withValues(alpha: 0.15),
             ),
           ),
           child: Text(
-            settingsProvider.isPro ? AppLocalizations.of(context)!.snap_pro_unlimited : '$scanCount/3',
+            settingsProvider.isPro
+                ? AppLocalizations.of(context)!.snap_pro_unlimited
+                : '$scanCount/3',
             style: AppTypography.labelSmall.copyWith(
-              color: settingsProvider.isPro ? const Color(0xFF10B981) : Colors.white,
+              color:
+                  settingsProvider.isPro
+                      ? const Color(0xFF10B981)
+                      : Colors.white,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -602,16 +676,20 @@ class _CameraShimmerSkeleton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 200, height: 200,
+                width: 200,
+                height: 200,
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 2),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 2,
+                  ),
                   borderRadius: BorderRadius.circular(40),
                 ),
               ),
               const SizedBox(height: 40),
               Container(
-                width: 150, 
-                height: 12, 
+                width: 150,
+                height: 12,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(6),

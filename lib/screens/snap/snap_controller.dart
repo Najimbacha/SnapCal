@@ -38,19 +38,20 @@ class SnapController extends ChangeNotifier {
   FlashMode get flashMode => _flashMode;
   Uint8List? get capturedImageBytes => _capturedImageBytes;
   List<NutritionResult>? get analysisResults => _analysisResults;
-  NutritionResult? get analysisResult => _analysisResults?.isNotEmpty == true ? _analysisResults!.first : null;
+  NutritionResult? get analysisResult =>
+      _analysisResults?.isNotEmpty == true ? _analysisResults!.first : null;
   String? get errorMessage => _errorMessage;
 
   set isScanningBarcode(bool value) {
     if (_isScanningBarcode == value) return;
     _isScanningBarcode = value;
-    
+
     if (_isScanningBarcode) {
       CameraService().stop();
     } else {
       initializeCamera();
     }
-    
+
     notifyListeners();
   }
 
@@ -81,7 +82,12 @@ class SnapController extends ChangeNotifier {
 
   Future<void> initializeCamera() async {
     _errorMessage = null;
-    await CameraService().warmup();
+    await CameraService().warmup().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        _errorMessage = 'Camera is taking longer than expected.';
+      },
+    );
     if (CameraService().error != null) {
       _errorMessage = CameraService().error;
     }
@@ -105,10 +111,13 @@ class SnapController extends ChangeNotifier {
   }) async {
     if (_isCapturing || _isAnalyzing) return;
 
-    if (!connectivity.isOnline) {
+    final l10n = AppLocalizations.of(context)!;
+    final hasInternet = await connectivity.refreshReachability();
+    if (!hasInternet) {
       HapticFeedback.vibrate();
-      _errorMessage = AppLocalizations.of(context)!.snap_offline_error;
+      _errorMessage = l10n.snap_offline_error;
       notifyListeners();
+      onShowManualInput();
       return;
     }
 
@@ -131,7 +140,7 @@ class SnapController extends ChangeNotifier {
       final XFile imageFile = await CameraService().controller!.takePicture();
       final bytes = await imageFile.readAsBytes();
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
-      
+
       _isCapturing = false;
       _isAnalyzing = true;
       notifyListeners();
@@ -141,13 +150,15 @@ class SnapController extends ChangeNotifier {
         if (cached != null) {
           _analysisResults = cached;
         } else {
-          _analysisResults = await _geminiService.analyzeFood(
-            _capturedImageBytes!,
-            language: settingsProvider.languageCode,
-          );
+          _analysisResults = await _geminiService
+              .analyzeFood(
+                _capturedImageBytes!,
+                language: settingsProvider.languageCode,
+              )
+              .timeout(const Duration(seconds: 18));
           mealProvider.cacheAnalysis(_capturedImageBytes!, _analysisResults!);
         }
-        
+
         _isAnalyzing = false;
         notifyListeners();
         onShowResult();
@@ -179,10 +190,13 @@ class SnapController extends ChangeNotifier {
   }) async {
     if (_isAnalyzing) return;
 
-    if (!connectivity.isOnline) {
+    final l10n = AppLocalizations.of(context)!;
+    final hasInternet = await connectivity.refreshReachability();
+    if (!hasInternet) {
       HapticFeedback.vibrate();
-      _errorMessage = AppLocalizations.of(context)!.snap_offline_error;
+      _errorMessage = l10n.snap_offline_error;
       notifyListeners();
+      onShowManualInput();
       return;
     }
 
@@ -212,10 +226,12 @@ class SnapController extends ChangeNotifier {
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
 
       try {
-        _analysisResults = await _geminiService.analyzeFood(
-          _capturedImageBytes!,
-          language: settingsProvider.languageCode,
-        );
+        _analysisResults = await _geminiService
+            .analyzeFood(
+              _capturedImageBytes!,
+              language: settingsProvider.languageCode,
+            )
+            .timeout(const Duration(seconds: 18));
         _isAnalyzing = false;
         notifyListeners();
         onShowResult();
@@ -256,7 +272,9 @@ class SnapController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await _barcodeService.fetchProductByBarcode(code);
+      final result = await _barcodeService
+          .fetchProductByBarcode(code)
+          .timeout(const Duration(seconds: 8));
       if (result != null) {
         _analysisResults = [result];
         _isAnalyzing = false;

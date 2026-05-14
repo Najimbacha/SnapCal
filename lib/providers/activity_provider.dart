@@ -7,7 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 class ActivityProvider with ChangeNotifier {
   late Stream<StepCount> _stepCountStream;
   late Stream<PedestrianStatus> _pedestrianStatusStream;
-  
+
   StreamSubscription<StepCount>? _stepSubscription;
   StreamSubscription<PedestrianStatus>? _statusSubscription;
   Timer? _throttleTimer;
@@ -17,9 +17,9 @@ class ActivityProvider with ChangeNotifier {
   bool _isTracking = false;
   String _status = 'stationary';
   double _userWeight = 70.0; // Default fallback
-  
+
   Box? _box;
-  
+
   // Storage keys
   static const String _boxName = 'activity_box';
   static const String _offsetKey = 'steps_offset';
@@ -67,7 +67,7 @@ class ActivityProvider with ChangeNotifier {
 
   Future<void> startTracking() async {
     if (_isTracking) return;
-    
+
     // Ensure box is open
     if (_box == null || !_box!.isOpen) {
       _box = await Hive.openBox(_boxName);
@@ -111,16 +111,16 @@ class ActivityProvider with ChangeNotifier {
     }
 
     _steps = (event.steps - offset).clamp(0, 999999);
-    
+
     // Personalized calorie calculation
     _burnedCalories = (_steps * (_userWeight * 0.0006)).toInt();
-    
+
     // PERFORMANCE OPTIMIZATION: Throttle UI updates to max once per second
     if (_throttleTimer == null || !_throttleTimer!.isActive) {
       notifyListeners();
       _throttleTimer = Timer(const Duration(seconds: 1), () {});
     }
-    
+
     _box!.put('steps_$today', _steps);
   }
 
@@ -129,7 +129,7 @@ class ActivityProvider with ChangeNotifier {
     if (_box == null || !_box!.isOpen) _box = await Hive.openBox(_boxName);
     int total = 0;
     final now = DateTime.now();
-    
+
     for (int i = 0; i < 7; i++) {
       final date = now.subtract(Duration(days: i));
       final dateString = date.toIso8601String().split('T')[0];
@@ -138,13 +138,13 @@ class ActivityProvider with ChangeNotifier {
     return total;
   }
 
-  void _onStepCountError(error) {
+  void _onStepCountError(Object error) {
     debugPrint('Pedometer Error: $error');
     _isTracking = false;
     notifyListeners();
   }
 
-  void _onStatusError(error) {
+  void _onStatusError(Object error) {
     debugPrint('Pedestrian Status Error: $error');
   }
 
@@ -152,6 +152,7 @@ class ActivityProvider with ChangeNotifier {
   void dispose() {
     _stepSubscription?.cancel();
     _statusSubscription?.cancel();
+    _throttleTimer?.cancel();
     super.dispose();
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
@@ -25,7 +27,8 @@ class LogScreen extends StatefulWidget {
   State<LogScreen> createState() => _LogScreenState();
 }
 
-class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMixin {
+class _LogScreenState extends State<LogScreen>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _animController;
   final List<Animation<double>> _itemAnims = [];
 
@@ -155,15 +158,24 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
       title: l10n.log_title,
       subtitle: l10n.log_subtitle,
       scrollable: true,
-      floatingActionButton: _FloatingAddButton(onTap: _showManualAddModal),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _LogActionRow(
+            onScanTap: () {
+              HapticFeedback.mediumImpact();
+              context.go('/snap');
+            },
+            onManualTap: _showManualAddModal,
+          ),
+          const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.2),
+              ),
             ),
             child: AppSectionCard(
               padding: const EdgeInsets.all(16),
@@ -216,19 +228,29 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                if (meals.length >= 2 && app_date.DateUtils.isToday(selectedDate))
+                if (meals.length >= 2 &&
+                    app_date.DateUtils.isToday(selectedDate))
                   AppScaleTap(
                     onTap: () => _showSaveRoutineModal(meals),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(LucideIcons.save, size: 14, color: AppColors.primary),
+                          const Icon(
+                            LucideIcons.save,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             l10n.feature_templates_save_prompt,
@@ -250,10 +272,14 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
               _itemAnims[4],
               AppEmptyState(
                 icon: LucideIcons.bookOpen,
-                title: app_date.DateUtils.isToday(selectedDate) ? l10n.log_no_entries_today : l10n.log_no_entries_history,
-                body: app_date.DateUtils.isToday(selectedDate)
-                    ? l10n.log_track_prompt
-                    : l10n.log_no_data_prompt,
+                title:
+                    app_date.DateUtils.isToday(selectedDate)
+                        ? l10n.log_no_entries_today
+                        : l10n.log_no_entries_history,
+                body:
+                    app_date.DateUtils.isToday(selectedDate)
+                        ? l10n.log_track_prompt
+                        : l10n.log_no_data_prompt,
                 actionLabel: l10n.log_add_manually,
                 onAction: _showManualAddModal,
               ),
@@ -262,12 +288,15 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
             ...meals.asMap().entries.map((entry) {
               final index = entry.key;
               final meal = entry.value;
+              final startDelay = ((index + 4) % 10) * 0.1;
+              final endDelay = (startDelay + 0.4).clamp(0.0, 1.0);
+              
               final anim = CurvedAnimation(
                 parent: _animController,
                 curve: Interval(
-                  ((index + 4) % 10) * 0.1, 
-                  (((index + 4) % 10) * 0.1) + 0.4, 
-                  curve: Curves.easeOutQuart
+                  startDelay,
+                  endDelay,
+                  curve: Curves.easeOutQuart,
                 ),
               );
 
@@ -284,7 +313,9 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
                     );
                     if (!mounted) return;
                     messenger.showSnackBar(
-                      SnackBar(content: Text(l10n.log_removed_snackbar(meal.foodName))),
+                      SnackBar(
+                        content: Text(l10n.log_removed_snackbar(meal.foodName)),
+                      ),
                     );
                   },
                 ),
@@ -299,31 +330,101 @@ class _LogScreenState extends State<LogScreen> with SingleTickerProviderStateMix
   }
 }
 
-class _FloatingAddButton extends StatelessWidget {
-  final VoidCallback onTap;
+class _LogActionRow extends StatelessWidget {
+  final VoidCallback onScanTap;
+  final VoidCallback onManualTap;
 
-  const _FloatingAddButton({required this.onTap});
+  const _LogActionRow({required this.onScanTap, required this.onManualTap});
 
   @override
   Widget build(BuildContext context) {
-    return _ScaleTap(
-      onTap: onTap,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 6),
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: AppScaleTap(
+            onTap: onScanTap,
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [colorScheme.primary, AppColors.sky],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.primary.withValues(alpha: 0.18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(LucideIcons.camera, color: Colors.white, size: 19),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      l10n.snap_log_meal,
+                      style: AppTypography.labelLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
-        child: const Icon(LucideIcons.plus, color: Colors.white, size: 28),
-      ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 2,
+          child: AppScaleTap(
+            onTap: onManualTap,
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.58,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.edit_rounded,
+                    color: colorScheme.primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 7),
+                  Flexible(
+                    child: Text(
+                      l10n.log_add_manually,
+                      style: AppTypography.labelMedium.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -342,48 +443,4 @@ Widget _staggeredSlide(Animation<double> animation, Widget child) {
     },
     child: child,
   );
-}
-
-class _ScaleTap extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-
-  const _ScaleTap({required this.child, required this.onTap});
-
-  @override
-  State<_ScaleTap> createState() => _ScaleTapState();
-}
-
-class _ScaleTapState extends State<_ScaleTap> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.95).animate(_controller);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _controller.reverse(),
-      child: ScaleTransition(scale: _scale, child: widget.child),
-    );
-  }
 }

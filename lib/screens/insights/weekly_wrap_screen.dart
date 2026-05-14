@@ -32,18 +32,21 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
       if (image == null) return;
 
       final directory = await getApplicationDocumentsDirectory();
-      final imagePath = await File('${directory.path}/weekly_wrap.png').create();
+      final imagePath =
+          await File('${directory.path}/weekly_wrap.png').create();
       await imagePath.writeAsBytes(image);
 
-      await Share.shareXFiles(
-        [XFile(imagePath.path)],
-        text: l10n.feature_insights_share_text,
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(imagePath.path)],
+          text: l10n.feature_insights_share_text,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sharing: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error sharing: $e')));
     }
   }
 
@@ -76,7 +79,10 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
       return Scaffold(
         appBar: AppBar(title: Text(l10n.feature_insights_title)),
         body: Center(
-          child: Text('No data for this week yet.', style: AppTypography.titleMedium),
+          child: Text(
+            'No data for this week yet.',
+            style: AppTypography.titleMedium,
+          ),
         ),
       );
     }
@@ -101,7 +107,9 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
                       child: Column(
                         children: [
                           Text(
-                            l10n.feature_insights_avg_cal(report.avgCalories.round().toString()),
+                            l10n.feature_insights_avg_cal(
+                              report.avgCalories.round().toString(),
+                            ),
                             style: AppTypography.headlineMedium.copyWith(
                               fontWeight: FontWeight.bold,
                               color: AppColors.primary,
@@ -109,7 +117,9 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            l10n.feature_insights_on_track(report.daysOnTrack.toString()),
+                            l10n.feature_insights_on_track(
+                              report.daysOnTrack.toString(),
+                            ),
                             style: AppTypography.titleMedium.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
@@ -128,7 +138,9 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
                       children: [
                         Text(
                           'Calorie Trend',
-                          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                          style: AppTypography.titleMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         WeekChart(dailyCalories: report.dailyCalories),
@@ -145,10 +157,14 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
                       children: [
                         Text(
                           'AI Coach Insights',
-                          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                          style: AppTypography.titleMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 16),
-                        ...report.aiInsights.map((insight) => InsightCard(insight: insight)),
+                        ...report.aiInsights.map(
+                          (insight) => InsightCard(insight: insight),
+                        ),
                       ],
                     ),
                   ),
@@ -157,7 +173,7 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
             ),
           ),
           const SizedBox(height: 32),
-          
+
           ElevatedButton.icon(
             icon: const Icon(LucideIcons.share2, size: 18),
             label: Text(l10n.feature_insights_share),

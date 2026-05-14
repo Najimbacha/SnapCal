@@ -23,7 +23,8 @@ class ProgressScreen extends StatefulWidget {
   State<ProgressScreen> createState() => _ProgressScreenState();
 }
 
-class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProviderStateMixin {
+class _ProgressScreenState extends State<ProgressScreen>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _animController;
   final List<Animation<double>> _itemAnims = [];
 
@@ -54,7 +55,10 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
 
   void _handleCapture(BuildContext context, bool canAdd) {
     if (canAdd) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => PhotoCaptureFlow()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => PhotoCaptureFlow()),
+      );
     } else {
       context.push('/paywall');
     }
@@ -65,31 +69,38 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
   Future<void> _generateJourney(List<dynamic> photos) async {
     if (photos.length < 2) {
       final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.progress_video_min_photos)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.progress_video_min_photos)));
       return;
     }
 
     setState(() => _isGenerating = true);
-    
+
     try {
-      final paths = photos
-          .map((m) => m.photoFrontPath ?? m.photoSidePath)
-          .whereType<String>()
-          .toList();
+      final paths =
+          photos
+              .map((m) => m.photoFrontPath ?? m.photoSidePath)
+              .whereType<String>()
+              .toList();
 
       final videoPath = await TransformationVideoService().generateVideo(paths);
-      
+
       if (videoPath != null) {
+        if (!mounted) return;
         final l10n = AppLocalizations.of(context)!;
-        await Share.shareXFiles([XFile(videoPath)], text: l10n.progress_video_share_text);
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(videoPath)],
+            text: l10n.progress_video_share_text,
+          ),
+        );
       } else {
         if (mounted) {
           final l10n = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.progress_video_failed)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.progress_video_failed)));
         }
       }
     } finally {
@@ -106,9 +117,9 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
         final photos = provider.metricsWithPhotos;
         final trend = provider.recentTrend;
         final canAdd = provider.canAddPhoto;
-        
+
         final l10n = AppLocalizations.of(context)!;
-        
+
         return AppPageScaffold(
           title: l10n.report_tab_body,
           subtitle: null,
@@ -124,11 +135,22 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                      ),
                     ),
-                    child: _isGenerating 
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                        : Icon(LucideIcons.video, color: AppColors.primary, size: 20),
+                    child:
+                        _isGenerating
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : Icon(
+                              LucideIcons.video,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
                   ),
                 ),
               _ScaleTap(
@@ -138,9 +160,15 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: colorScheme.primary.withValues(alpha: 0.2),
+                    ),
                   ),
-                  child: Icon(LucideIcons.camera, color: colorScheme.primary, size: 20),
+                  child: Icon(
+                    LucideIcons.camera,
+                    color: colorScheme.primary,
+                    size: 20,
+                  ),
                 ),
               ),
             ],
@@ -154,15 +182,22 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
                     padding: const EdgeInsets.only(bottom: 12),
                     child: AppSectionCard(
                       glass: true,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       child: WeightTrendChart(metrics: trend),
                     ),
                   ),
                 ),
               Expanded(
-                child: photos.isEmpty 
-                  ? _staggeredSlide(_itemAnims[1], _buildEmpty(context, canAdd))
-                  : _buildList(context, photos),
+                child:
+                    photos.isEmpty
+                        ? _staggeredSlide(
+                          _itemAnims[1],
+                          _buildEmpty(context, canAdd),
+                        )
+                        : _buildList(context, photos),
               ),
             ],
           ),
@@ -178,7 +213,8 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
         icon: LucideIcons.image,
         title: l10n.report_no_weight_title,
         body: l10n.progress_take_photos_desc,
-        actionLabel: canAdd ? l10n.progress_tap_to_snap : l10n.planner_upgrade_pro,
+        actionLabel:
+            canAdd ? l10n.progress_tap_to_snap : l10n.planner_upgrade_pro,
         onAction: () => _handleCapture(context, canAdd),
       ),
     );
@@ -191,12 +227,15 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
       itemCount: photos.length,
       itemBuilder: (context, i) {
         final metric = photos[i];
+        final startDelay = ((i + 2) % 10) * 0.1;
+        final endDelay = (startDelay + 0.4).clamp(0.0, 1.0);
+        
         final anim = CurvedAnimation(
           parent: _animController,
           curve: Interval(
-            ((i + 2) % 10) * 0.1, 
-            (((i + 2) % 10) * 0.1) + 0.4, 
-            curve: Curves.easeOutQuart
+            startDelay,
+            endDelay,
+            curve: Curves.easeOutQuart,
           ),
         );
 
@@ -206,18 +245,22 @@ class _ProgressScreenState extends State<ProgressScreen> with SingleTickerProvid
             padding: const EdgeInsets.only(bottom: 16),
             child: ProgressCard(
               metric: metric,
-              onCompare: (i < photos.length - 1) ? () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  useSafeArea: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => PhotoComparisonSheet(
-                    current: metric,
-                    previous: photos[i + 1],
-                  ),
-                );
-              } : null,
+              onCompare:
+                  (i < photos.length - 1)
+                      ? () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          useSafeArea: true,
+                          backgroundColor: Colors.transparent,
+                          builder:
+                              (_) => PhotoComparisonSheet(
+                                current: metric,
+                                previous: photos[i + 1],
+                              ),
+                        );
+                      }
+                      : null,
             ),
           ),
         );
@@ -252,7 +295,8 @@ class _ScaleTap extends StatefulWidget {
   State<_ScaleTap> createState() => _ScaleTapState();
 }
 
-class _ScaleTapState extends State<_ScaleTap> with SingleTickerProviderStateMixin {
+class _ScaleTapState extends State<_ScaleTap>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 

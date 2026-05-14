@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/date_utils.dart' as app_date;
@@ -51,10 +50,7 @@ class DatePickerBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Previous button
-          _EliteNavButton(
-            icon: LucideIcons.chevronLeft, 
-            onTap: onPrevious
-          ),
+          _EliteNavButton(icon: LucideIcons.chevronLeft, onTap: onPrevious),
 
           // Date display
           Expanded(
@@ -127,29 +123,35 @@ class _EliteNavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppScaleTap(
-      onTap: isDisabled ? null : () {
-        HapticFeedback.lightImpact();
-        onTap?.call();
-      },
+      onTap:
+          isDisabled
+              ? null
+              : () {
+                HapticFeedback.lightImpact();
+                onTap?.call();
+              },
       child: Container(
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: isDisabled 
-            ? context.textMutedColor.withValues(alpha: 0.05) 
-            : context.primaryColor.withValues(alpha: 0.1),
+          color:
+              isDisabled
+                  ? context.textMutedColor.withValues(alpha: 0.05)
+                  : context.primaryColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDisabled 
-              ? Colors.transparent 
-              : context.primaryColor.withValues(alpha: 0.1),
+            color:
+                isDisabled
+                    ? Colors.transparent
+                    : context.primaryColor.withValues(alpha: 0.1),
           ),
         ),
         child: Icon(
           icon,
-          color: isDisabled 
-            ? context.textMutedColor.withValues(alpha: 0.3) 
-            : context.primaryColor,
+          color:
+              isDisabled
+                  ? context.textMutedColor.withValues(alpha: 0.3)
+                  : context.primaryColor,
           size: 20,
         ),
       ),

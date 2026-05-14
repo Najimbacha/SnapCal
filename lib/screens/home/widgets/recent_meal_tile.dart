@@ -6,7 +6,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/meal.dart';
-import '../../../widgets/glass_container.dart';
 import '../../../widgets/ui_blocks.dart';
 
 /// Tile for displaying a recent meal on the home screen
@@ -19,23 +18,37 @@ class RecentMealTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+    final macroTotal =
+        meal.macros.protein + meal.macros.carbs + meal.macros.fat;
+
     return AppScaleTap(
       onTap: onTap ?? () => context.push('/log'),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+            color:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : AppColors.lightCardBorder,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: isDark ? 0.06 : 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+            // Subtle emerald glow
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: isDark ? 0.04 : 0.03),
+              blurRadius: 20,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -51,17 +64,21 @@ class RecentMealTile extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: meal.imageUri != null
-                    ? (meal.imageUri!.startsWith('http')
-                        ? Image.network(meal.imageUri!, fit: BoxFit.cover)
-                        : Image.file(File(meal.imageUri!), fit: BoxFit.cover))
-                    : Center(
-                        child: Icon(
-                          LucideIcons.utensilsCrossed,
-                          color: AppColors.primary.withValues(alpha: 0.5),
-                          size: 24,
+                child:
+                    meal.imageUri != null
+                        ? (meal.imageUri!.startsWith('http')
+                            ? Image.network(meal.imageUri!, fit: BoxFit.cover)
+                            : Image.file(
+                              File(meal.imageUri!),
+                              fit: BoxFit.cover,
+                            ))
+                        : Center(
+                          child: Icon(
+                            LucideIcons.utensilsCrossed,
+                            color: AppColors.primary.withValues(alpha: 0.5),
+                            size: 24,
+                          ),
                         ),
-                      ),
               ),
             ),
             const SizedBox(width: 16),
@@ -75,7 +92,7 @@ class RecentMealTile extends StatelessWidget {
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w900,
                       fontSize: 16,
-                      letterSpacing: -0.5,
+                      letterSpacing: 0,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -83,7 +100,11 @@ class RecentMealTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(LucideIcons.clock, size: 12, color: context.textMutedColor),
+                      Icon(
+                        LucideIcons.clock,
+                        size: 12,
+                        color: context.textMutedColor,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         meal.formattedTime,
@@ -103,11 +124,38 @@ class RecentMealTile extends StatelessWidget {
                           borderRadius: BorderRadius.circular(2),
                         ),
                         child: Row(
-                          children: [
-                            Expanded(flex: meal.macros.protein, child: Container(color: AppColors.protein)),
-                            Expanded(flex: meal.macros.carbs, child: Container(color: AppColors.carbs)),
-                            Expanded(flex: meal.macros.fat, child: Container(color: AppColors.fat)),
-                          ],
+                          children:
+                              macroTotal == 0
+                                  ? [
+                                    Expanded(
+                                      child: Container(
+                                        color: context.dividerColor.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                      ),
+                                    ),
+                                  ]
+                                  : [
+                                    if (meal.macros.protein > 0)
+                                      Expanded(
+                                        flex: meal.macros.protein,
+                                        child: Container(
+                                          color: AppColors.protein,
+                                        ),
+                                      ),
+                                    if (meal.macros.carbs > 0)
+                                      Expanded(
+                                        flex: meal.macros.carbs,
+                                        child: Container(
+                                          color: AppColors.carbs,
+                                        ),
+                                      ),
+                                    if (meal.macros.fat > 0)
+                                      Expanded(
+                                        flex: meal.macros.fat,
+                                        child: Container(color: AppColors.fat),
+                                      ),
+                                  ],
                         ),
                       ),
                     ],
@@ -121,7 +169,9 @@ class RecentMealTile extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -132,7 +182,7 @@ class RecentMealTile extends StatelessWidget {
                       color: AppColors.primary,
                       fontWeight: FontWeight.w900,
                       fontSize: 15,
-                      letterSpacing: -0.5,
+                      letterSpacing: 0,
                     ),
                   ),
                   Text(

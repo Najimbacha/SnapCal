@@ -41,7 +41,8 @@ class _LiquidCalorieCircleState extends State<LiquidCalorieCircle>
 
   @override
   Widget build(BuildContext context) {
-    final double percentage = math.min(1.0, widget.current / widget.target);
+    final double safeTarget = math.max(widget.target, 1).toDouble();
+    final double percentage = math.min(1.0, widget.current / safeTarget);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSuccess = widget.current >= widget.target && widget.target > 0;
 

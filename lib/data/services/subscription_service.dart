@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -10,12 +11,13 @@ class SubscriptionService {
   SubscriptionService._internal();
 
   SettingsRepository? _settingsRepository;
+  StreamSubscription<User?>? _authSubscription;
 
-  // Real keys should be stored in AppConstants or Remote Config. 
+  // Real keys should be stored in AppConstants or Remote Config.
   // For now, we use these as default.
   static const String _appleApiKey = "appl_placeholder_for_ios_setup";
   static const String _googleApiKey = "goog_fgVDYvjpkxPzXqwYLndFXKGNEUr";
-  static const String _entitlementId = "pro"; 
+  static const String _entitlementId = "pro";
 
   void setRepository(SettingsRepository repository) {
     _settingsRepository = repository;
@@ -23,7 +25,7 @@ class SubscriptionService {
 
   static Future<void> init(SettingsRepository repository) async {
     _instance.setRepository(repository);
-    
+
     try {
       if (kDebugMode) {
         await Purchases.setLogLevel(LogLevel.debug);
@@ -37,24 +39,21 @@ class SubscriptionService {
       } else if (Platform.isIOS) {
         configuration = PurchasesConfiguration(_appleApiKey);
       }
-      
+
       if (configuration != null) {
         await Purchases.configure(configuration);
-        
-        // Initial identity sync
-        final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser != null) {
-          await Purchases.logIn(currentUser.uid);
-        }
+
+        await _instance._syncRevenueCatIdentity(
+          FirebaseAuth.instance.currentUser,
+        );
 
         // Listen for identity changes
-        FirebaseAuth.instance.authStateChanges().listen((user) async {
-          if (user != null) {
-            await Purchases.logIn(user.uid);
-          } else {
-            await Purchases.logOut();
-          }
-        });
+        await _instance._authSubscription?.cancel();
+        _instance._authSubscription = FirebaseAuth.instance
+            .authStateChanges()
+            .listen((user) {
+              unawaited(_instance._syncRevenueCatIdentity(user));
+            });
 
         // Initial check of entitlement status
         final customerInfo = await Purchases.getCustomerInfo();
@@ -70,12 +69,32 @@ class SubscriptionService {
     }
   }
 
+  Future<void> _syncRevenueCatIdentity(User? user) async {
+    try {
+      if (user != null && !user.isAnonymous) {
+        final result = await Purchases.logIn(user.uid);
+        _processCustomerInfo(result.customerInfo);
+        return;
+      }
+
+      final isRevenueCatAnonymous = await Purchases.isAnonymous;
+      if (isRevenueCatAnonymous) {
+        return;
+      }
+
+      final customerInfo = await Purchases.logOut();
+      _processCustomerInfo(customerInfo);
+    } catch (e) {
+      debugPrint("RevenueCat identity sync warning: $e");
+    }
+  }
+
   void _processCustomerInfo(CustomerInfo customerInfo) {
-    bool isActive = customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
-    
+    bool isActive =
+        customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
+
     // Pro status is derived solely from RevenueCat entitlements
 
-    
     debugPrint("🏆 Pro Entitlement Active: $isActive");
     _settingsRepository?.updateProStatus(isActive);
   }
@@ -91,8 +110,16 @@ class SubscriptionService {
 
   Future<bool> purchasePackage(Package package) async {
     try {
-      final purchaseResult = await Purchases.purchase(PurchaseParams.package(package));
-      final isActive = purchaseResult.customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
+      final purchaseResult = await Purchases.purchase(
+        PurchaseParams.package(package),
+      );
+      final isActive =
+          purchaseResult
+              .customerInfo
+              .entitlements
+              .all[_entitlementId]
+              ?.isActive ??
+          false;
       await _settingsRepository?.updateProStatus(isActive);
       return isActive;
     } catch (e) {
@@ -104,7 +131,8 @@ class SubscriptionService {
   Future<bool> restorePurchases() async {
     try {
       final customerInfo = await Purchases.restorePurchases();
-      final isActive = customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
+      final isActive =
+          customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
       await _settingsRepository?.updateProStatus(isActive);
       return isActive;
     } catch (e) {

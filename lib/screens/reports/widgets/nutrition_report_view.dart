@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../providers/meal_provider.dart';
 import '../../../providers/settings_provider.dart';
+import '../../../widgets/async_state_widgets.dart';
 import '../../../widgets/ui_blocks.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -18,14 +19,14 @@ class NutritionReportView extends StatelessWidget {
     return Consumer2<MealProvider, SettingsProvider>(
       builder: (context, meals, settings, _) {
         if (meals.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.only(top: 16),
+            child: AppSectionSkeleton(rows: 3),
+          );
         }
         final weeklyMacros = meals.getWeeklyMacroSummary();
         return SingleChildScrollView(
-          padding: EdgeInsets.only(
-            top: 16,
-            bottom: 40,
-          ),
+          padding: EdgeInsets.only(top: 16, bottom: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -58,7 +59,9 @@ class NutritionReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SectionLabel(title: AppLocalizations.of(context)!.report_calorie_trend),
+                    SectionLabel(
+                      title: AppLocalizations.of(context)!.report_calorie_trend,
+                    ),
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 220,
@@ -75,7 +78,9 @@ class NutritionReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SectionLabel(title: AppLocalizations.of(context)!.report_macro_dist),
+                    SectionLabel(
+                      title: AppLocalizations.of(context)!.report_macro_dist,
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -93,19 +98,28 @@ class NutritionReportView extends StatelessWidget {
                           child: Column(
                             children: [
                               _LegendRow(
-                                label: AppLocalizations.of(context)!.report_macro_protein,
+                                label:
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.report_macro_protein,
                                 value: '${weeklyMacros.protein}g',
                                 color: AppColors.protein,
                               ),
                               const SizedBox(height: 10),
                               _LegendRow(
-                                label: AppLocalizations.of(context)!.report_macro_carbs,
+                                label:
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.report_macro_carbs,
                                 value: '${weeklyMacros.carbs}g',
                                 color: AppColors.carbs,
                               ),
                               const SizedBox(height: 10),
                               _LegendRow(
-                                label: AppLocalizations.of(context)!.report_macro_fat,
+                                label:
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.report_macro_fat,
                                 value: '${weeklyMacros.fat}g',
                                 color: AppColors.fat,
                               ),
@@ -147,11 +161,12 @@ class _CalorieChart extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: 500,
-          getDrawingHorizontalLine: (value) => FlLine(
-            color: context.dividerColor.withValues(alpha: 0.3),
-            strokeWidth: 1,
-            dashArray: [5, 5],
-          ),
+          getDrawingHorizontalLine:
+              (value) => FlLine(
+                color: context.dividerColor.withValues(alpha: 0.3),
+                strokeWidth: 1,
+                dashArray: [5, 5],
+              ),
         ),
         titlesData: const FlTitlesData(show: false),
         borderData: FlBorderData(show: false),
@@ -162,7 +177,10 @@ class _CalorieChart extends StatelessWidget {
               return touchedSpots.map((spot) {
                 return LineTooltipItem(
                   '${spot.y.round()} kcal',
-                  AppTypography.labelLarge.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+                  AppTypography.labelLarge.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 );
               }).toList();
             },
@@ -177,12 +195,13 @@ class _CalorieChart extends StatelessWidget {
             isStrokeCapRound: true,
             dotData: FlDotData(
               show: true,
-              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                radius: 4,
-                color: Colors.white,
-                strokeWidth: 2,
-                strokeColor: AppColors.primary,
-              ),
+              getDotPainter:
+                  (spot, percent, barData, index) => FlDotCirclePainter(
+                    radius: 4,
+                    color: Colors.white,
+                    strokeWidth: 2,
+                    strokeColor: AppColors.primary,
+                  ),
             ),
             belowBarData: BarAreaData(
               show: true,
@@ -226,7 +245,8 @@ class _MacroChart extends StatelessWidget {
             value: total > 0 ? protein : 1,
             title: '',
             radius: 18,
-            badgeWidget: total > 0 ? null : const Icon(Icons.info_outline, size: 12),
+            badgeWidget:
+                total > 0 ? null : const Icon(Icons.info_outline, size: 12),
           ),
           PieChartSectionData(
             color: AppColors.carbs,
@@ -274,26 +294,30 @@ class _LegendRow extends StatelessWidget {
               color: color,
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 6, spreadRadius: 1),
+                BoxShadow(
+                  color: color.withValues(alpha: 0.4),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
               ],
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              label, 
+              label,
               style: AppTypography.labelLarge.copyWith(
                 color: context.textPrimaryColor,
                 fontWeight: FontWeight.w700,
-              )
-            )
+              ),
+            ),
           ),
           Text(
-            value, 
+            value,
             style: AppTypography.labelMedium.copyWith(
               color: context.textSecondaryColor,
               fontWeight: FontWeight.w900,
-            )
+            ),
           ),
         ],
       ),

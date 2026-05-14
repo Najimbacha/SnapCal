@@ -1,6 +1,6 @@
-import 'dart:ui';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -15,6 +15,8 @@ import '../../data/services/assistant_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_colors.dart';
+import '../../widgets/async_state_widgets.dart';
+import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/ui_blocks.dart';
 
 class AssistantScreen extends StatefulWidget {
@@ -24,7 +26,8 @@ class AssistantScreen extends StatefulWidget {
   State<AssistantScreen> createState() => _AssistantScreenState();
 }
 
-class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProviderStateMixin {
+class _AssistantScreenState extends State<AssistantScreen>
+    with SingleTickerProviderStateMixin {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   AnimationController? _staggerController;
@@ -71,11 +74,16 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
     });
   }
 
-  void _fetchRecommendations({String? query, Uint8List? imageBytes, bool clearPrevious = false, bool forceFetch = false}) {
+  void _fetchRecommendations({
+    String? query,
+    Uint8List? imageBytes,
+    bool clearPrevious = false,
+    bool forceFetch = false,
+  }) {
     final assistantProvider = context.read<AssistantProvider>();
     final mealProvider = context.read<MealProvider>();
     final settingsProvider = context.read<SettingsProvider>();
-    
+
     assistantProvider.fetchRecommendations(
       currentCalories: mealProvider.todaysTotalCalories,
       targetCalories: settingsProvider.dailyCalorieGoal,
@@ -102,9 +110,7 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final colorScheme = Theme.of(context).colorScheme;
     final isPro = settings.isPro;
-    final bgColor = isPro ? colorScheme.surface : const Color(0xFF0F172A);
 
     return PopScope(
       canPop: true,
@@ -112,151 +118,45 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
         if (didPop) return;
         context.pop();
       },
-      child: Scaffold(
-        backgroundColor: bgColor,
-        body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: !isPro ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isPro ? [
-                      colorScheme.surface,
-                      colorScheme.primary.withValues(alpha: 0.04),
-                      colorScheme.surface,
-                      AppColors.primary.withValues(alpha: 0.06),
-                    ] : [
-                      const Color(0xFF0F172A),
-                      const Color(0xFF1E1B4B),
-                      const Color(0xFF0F172A),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Column(
-              children: [
-                _ChatAppBar(
-                  isElite: !isPro,
-                  onRefresh: () => _fetchRecommendations(clearPrevious: true, forceFetch: true),
-                ),
-                Expanded(
-                  child: Consumer<AssistantProvider>(
-                    builder: (context, assistant, _) {
-                      final content = _buildChatContent(context, assistant);
-                      if (!isPro) {
-                        return Stack(
-                          children: [
-                            content,
-                            Positioned.fill(
-                              child: ClipRect(
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.transparent,
-                                          const Color(0xFF0F172A).withValues(alpha: 0.1),
-                                          const Color(0xFF0F172A).withValues(alpha: 0.8),
-                                        ],
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(20),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFFBBF24).withValues(alpha: 0.1),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              LucideIcons.crown, 
-                                              color: Color(0xFFFBBF24), 
-                                              size: 32,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          Text(
-                                            "ELITE FEATURE",
-                                            style: AppTypography.displaySmall.copyWith(
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: 16,
-                                              letterSpacing: 4,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-                      return content;
-                    },
-                  ),
-                ),
-                _buildInputArea(context, isPro),
-              ],
-            ),
-          ],
+      child: AppPageScaffold(
+        title: "AI Coach",
+        padding: EdgeInsets.zero,
+        trailing: _RefreshHeaderButton(
+          onTap:
+              () =>
+                  _fetchRecommendations(clearPrevious: true, forceFetch: true),
+        ),
+        bottomBar: _buildInputArea(context, isPro),
+        child: Consumer<AssistantProvider>(
+          builder: (context, assistant, _) {
+            final content = _buildChatContent(context, assistant);
+            if (!isPro) {
+              return const _LockedCoachPreview();
+            }
+            return content;
+          },
         ),
       ),
-    ),
-  );
-}
-
-  Widget _buildProBenefit(BuildContext context, IconData icon, String label, {bool isGold = false}) {
-    final accentColor = isGold ? const Color(0xFFFBBF24) : AppColors.primary;
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: accentColor, size: 16),
-        ),
-        const SizedBox(width: 16),
-        Text(
-          label,
-          style: AppTypography.bodyMedium.copyWith(
-            color: Colors.white.withValues(alpha: 0.9),
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-          ),
-        ),
-      ],
     );
   }
 
   Widget _buildChatContent(BuildContext context, AssistantProvider assistant) {
-    if (assistant.error != null) {
+    if (assistant.error != null && assistant.history.isEmpty) {
       return Center(
-        child: AppEmptyState(
+        child: AppInlineFallback(
           icon: LucideIcons.alertTriangle,
           title: AppLocalizations.of(context)!.assistant_title,
-          body: assistant.error!,
+          message: AppLocalizations.of(context)!.error_generic,
           actionLabel: AppLocalizations.of(context)!.assistant_retry,
           onAction: _loadInitialRecommendations,
         ),
       );
     }
     if (assistant.history.isEmpty && assistant.isLoading) {
-      return const Center(child: _ThinkingPulse());
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: AppSectionSkeleton(rows: 4),
+      );
     }
     if (assistant.history.isEmpty) {
       return Center(
@@ -264,45 +164,64 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              const Icon(LucideIcons.sparkles, color: AppColors.primary, size: 48),
+              const Icon(
+                LucideIcons.sparkles,
+                color: AppColors.primary,
+                size: 48,
+              ),
               const SizedBox(height: 24),
               Text(
                 AppLocalizations.of(context)!.assistant_initial_prompt,
-                style: AppTypography.heading3.copyWith(fontWeight: FontWeight.w900),
+                style: AppTypography.heading3.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
                 AppLocalizations.of(context)!.assistant_initial_body,
-                style: AppTypography.bodyMedium.copyWith(color: context.textSecondaryColor),
+                style: AppTypography.bodyMedium.copyWith(
+                  color: context.textSecondaryColor,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
               _RecommendationGrid(
-                onSelect: (q) => _fetchRecommendations(query: q, clearPrevious: true),
+                onSelect:
+                    (q) => _fetchRecommendations(query: q, clearPrevious: true),
               ),
             ],
           ),
         ),
       );
     }
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-      itemCount: assistant.history.length,
-      itemBuilder: (context, index) {
-        return _ChatMessageTile(message: assistant.history[index]);
-      },
+    return AppAsyncOverlay(
+      state: assistant.uiState,
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+        itemCount: assistant.history.length,
+        itemBuilder: (context, index) {
+          return _ChatMessageTile(message: assistant.history[index]);
+        },
+      ),
     );
   }
 
   Widget _buildInputArea(BuildContext context, bool isPro) {
     if (!isPro) {
       return Container(
-        padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          12 + MediaQuery.of(context).padding.bottom,
+        ),
         decoration: BoxDecoration(
-          color: const Color(0xFF0F172A),
-          border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+          color: context.surfaceColor,
+          border: Border(
+            top: BorderSide(color: context.dividerColor.withValues(alpha: 0.1)),
+          ),
         ),
         child: AppScaleTap(
           onTap: () => context.push('/paywall'),
@@ -310,11 +229,11 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
-              color: Colors.white,
+              gradient: AppColors.primaryGradient,
               borderRadius: BorderRadius.circular(100),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: AppColors.primary.withValues(alpha: 0.22),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -322,11 +241,11 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
             ),
             child: Center(
               child: Text(
-                "UNLOCK ELITE COACHING",
+                "See Subscription Options",
                 style: AppTypography.titleMedium.copyWith(
-                  color: Colors.black,
+                  color: Colors.white,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
+                  letterSpacing: 0,
                 ),
               ),
             ),
@@ -335,10 +254,17 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
       );
     }
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
       decoration: BoxDecoration(
         color: context.surfaceColor,
-        border: Border(top: BorderSide(color: context.dividerColor.withValues(alpha: 0.1))),
+        border: Border(
+          top: BorderSide(color: context.dividerColor.withValues(alpha: 0.1)),
+        ),
       ),
       child: Row(
         children: [
@@ -379,7 +305,11 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
                 color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(LucideIcons.send, color: Colors.white, size: 20),
+              child: const Icon(
+                LucideIcons.send,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -388,61 +318,192 @@ class _AssistantScreenState extends State<AssistantScreen> with SingleTickerProv
   }
 }
 
-class _ChatAppBar extends StatelessWidget {
-  final VoidCallback onRefresh;
-  final bool isElite;
-  const _ChatAppBar({required this.onRefresh, this.isElite = false});
+class _RefreshHeaderButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RefreshHeaderButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 20, 8),
-        child: Row(
-          children: [
-            AppScaleTap(
-              onTap: () => context.pop(),
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isElite ? Colors.white.withValues(alpha: 0.1) : context.backgroundColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.arrow_back_ios_new_rounded, 
-                  size: 16, 
-                  color: isElite ? Colors.white : colorScheme.onSurface,
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              "AI Coach",
-              style: AppTypography.heading3.copyWith(
-                fontWeight: FontWeight.w900,
-                color: isElite ? Colors.white : context.textPrimaryColor,
-              ),
-            ),
-            const Spacer(),
-            AppScaleTap(
-              onTap: onRefresh,
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isElite ? Colors.white.withValues(alpha: 0.1) : context.backgroundColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  LucideIcons.refreshCw, 
-                  size: 20,
-                  color: isElite ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ),
-          ],
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.38),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
         ),
+        child: Icon(
+          LucideIcons.refreshCw,
+          size: 20,
+          color: colorScheme.onSurface,
+        ),
+      ),
+    );
+  }
+}
+
+class _LockedCoachPreview extends StatelessWidget {
+  const _LockedCoachPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+                  decoration: BoxDecoration(
+                    color: context.cardColor,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: context.cardBorderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.24 : 0.06,
+                        ),
+                        blurRadius: 22,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          LucideIcons.sparkles,
+                          color: colorScheme.primary,
+                          size: 30,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        "Know what to eat next.",
+                        style: AppTypography.heading2.copyWith(
+                          color: context.textPrimaryColor,
+                          fontWeight: FontWeight.w900,
+                          height: 1.05,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "AI Coach reads today's calories, macros, and goal, then gives clear food advice.",
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: context.textSecondaryColor,
+                          height: 1.35,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const _CoachPreviewCard(
+                  icon: LucideIcons.utensils,
+                  title: "Next meal suggestion",
+                  body:
+                      "Best next meal: grilled chicken rice bowl, around 550 kcal.",
+                ),
+                const SizedBox(height: 10),
+                const _CoachPreviewCard(
+                  icon: LucideIcons.barChart3,
+                  title: "Macro correction",
+                  body: "You still need 45g protein and 120g carbs today.",
+                ),
+                const SizedBox(height: 10),
+                const _CoachPreviewCard(
+                  icon: LucideIcons.messageCircle,
+                  title: "Daily progress feedback",
+                  body:
+                      "You are low on protein. Add eggs, tuna, or Greek yogurt next.",
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CoachPreviewCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+
+  const _CoachPreviewCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.cardBorderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: colorScheme.primary, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: context.textPrimaryColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: context.textSecondaryColor,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -471,7 +532,8 @@ class _ChatMessageTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[
             const CircleAvatar(
@@ -494,33 +556,14 @@ class _ChatMessageTile extends StatelessWidget {
               child: MarkdownBody(
                 data: content,
                 styleSheet: MarkdownStyleSheet(
-                  p: AppTypography.bodyMedium.copyWith(color: isUser ? Colors.white : context.textPrimaryColor),
+                  p: AppTypography.bodyMedium.copyWith(
+                    color: isUser ? Colors.white : context.textPrimaryColor,
+                  ),
                 ),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ThinkingPulse extends StatelessWidget {
-  const _ThinkingPulse();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40, height: 40,
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-      ),
-      child: const Center(
-        child: SizedBox(
-          width: 20, height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-        ),
       ),
     );
   }
@@ -536,13 +579,16 @@ class _RecommendationGrid extends StatelessWidget {
       "Am I on track for my goal today?",
       "Suggest a protein-rich dinner",
       "Explain my macro balance",
-      "How can I improve my streak?"
+      "How can I improve my streak?",
     ];
 
     return Wrap(
       spacing: 12,
       runSpacing: 12,
-      children: queries.map((q) => _QueryChip(label: q, onTap: () => onSelect(q))).toList(),
+      children:
+          queries
+              .map((q) => _QueryChip(label: q, onTap: () => onSelect(q)))
+              .toList(),
     );
   }
 }
@@ -561,11 +607,15 @@ class _QueryChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.backgroundColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.dividerColor.withValues(alpha: 0.1)),
+          border: Border.all(
+            color: context.dividerColor.withValues(alpha: 0.1),
+          ),
         ),
         child: Text(
           label,
-          style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600),
+          style: AppTypography.labelMedium.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

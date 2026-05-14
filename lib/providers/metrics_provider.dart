@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/services/security_service.dart';
+import '../core/state/async_ui_state.dart';
 import '../data/models/body_metric.dart';
 import 'settings_provider.dart';
 
@@ -18,30 +19,43 @@ class MetricsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  bool _isLoading = true;
-  bool get isLoading => _isLoading;
+  AsyncUiState _uiState = const AsyncUiState.loading();
+  bool get isLoading => _uiState.isBlocking;
+  bool get isRefreshing => _uiState.isRefreshing;
+  AsyncUiState get uiState => _uiState;
 
   List<BodyMetric> _metrics = [];
   List<BodyMetric> get metrics => _metrics;
 
   List<BodyMetric> get metricsWithPhotos =>
-      _metrics.where((m) => m.photoFrontPath != null || m.photoSidePath != null).toList();
+      _metrics
+          .where((m) => m.photoFrontPath != null || m.photoSidePath != null)
+          .toList();
 
   int get photosCount => metricsWithPhotos.length;
 
   Future<void> _init() async {
-    if (!Hive.isBoxOpen(_boxName)) {
-      final encryptionKey = await SecurityService().getEncryptionKey();
-      _box = await Hive.openBox<BodyMetric>(
-        _boxName,
-        encryptionCipher: HiveAesCipher(encryptionKey),
-      );
-    } else {
-      _box = Hive.box<BodyMetric>(_boxName);
+    try {
+      if (!Hive.isBoxOpen(_boxName)) {
+        final encryptionKey = await SecurityService().getEncryptionKey();
+        _box = await Hive.openBox<BodyMetric>(
+          _boxName,
+          encryptionCipher: HiveAesCipher(encryptionKey),
+        );
+      } else {
+        _box = Hive.box<BodyMetric>(_boxName);
+      }
+      _sortMetrics(); // Load without notifying
+      _uiState =
+          _metrics.isEmpty
+              ? const AsyncUiState.empty()
+              : const AsyncUiState.success();
+    } catch (e) {
+      debugPrint('⚠️ MetricsProvider: failed to initialize: $e');
+      _uiState = const AsyncUiState.error('Progress data is unavailable.');
+    } finally {
+      notifyListeners(); // Single notify after full init
     }
-    _sortMetrics(); // Load without notifying
-    _isLoading = false;
-    notifyListeners(); // Single notify after full init
   }
 
   /// Sort/reload metrics from box without notifying listeners
@@ -122,7 +136,8 @@ class MetricsProvider with ChangeNotifier {
       await _box?.put(existing.key, updated);
     } else {
       // Must have a weight to create an entry, fallback to starting weight or 70.0
-      final weight = currentWeight ?? _settingsProvider.settings.startingWeight ?? 70.0;
+      final weight =
+          currentWeight ?? _settingsProvider.settings.startingWeight ?? 70.0;
       final newMetric = BodyMetric(
         date: entryDate,
         weight: weight,
@@ -138,17 +153,21 @@ class MetricsProvider with ChangeNotifier {
   /// Check if user can add a photo based on premium status
   bool get canAddPhoto {
     if (_settingsProvider.isPro) return true;
-    
+
     // Free tier: 1 photo per month
     final currentMonth = DateTime.now().month;
     final currentYear = DateTime.now().year;
-    
-    final photosThisMonth = _metrics.where((m) => 
-      (m.photoFrontPath != null || m.photoSidePath != null) &&
-      m.date.month == currentMonth &&
-      m.date.year == currentYear
-    ).length;
-    
+
+    final photosThisMonth =
+        _metrics
+            .where(
+              (m) =>
+                  (m.photoFrontPath != null || m.photoSidePath != null) &&
+                  m.date.month == currentMonth &&
+                  m.date.year == currentYear,
+            )
+            .length;
+
     return photosThisMonth < 1;
   }
 
@@ -201,6 +220,7 @@ class MetricsProvider with ChangeNotifier {
   Future<void> clear() async {
     await _box?.clear();
     _metrics = [];
+    _uiState = const AsyncUiState.empty();
     notifyListeners();
   }
 }

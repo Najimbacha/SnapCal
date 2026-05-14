@@ -22,7 +22,6 @@ class MealListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Dismissible(
@@ -52,7 +51,10 @@ class MealListTile extends StatelessWidget {
             color: context.cardColor,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.03),
               width: 1.5,
             ),
             boxShadow: [
@@ -79,7 +81,9 @@ class MealListTile extends StatelessWidget {
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Center(
                   child: Icon(
@@ -110,7 +114,11 @@ class MealListTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(LucideIcons.clock, size: 10, color: context.textMutedColor),
+                        Icon(
+                          LucideIcons.clock,
+                          size: 10,
+                          color: context.textMutedColor,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           meal.formattedTime,
@@ -119,15 +127,27 @@ class MealListTile extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        if (meal.portion != null && meal.portion!.isNotEmpty) ...[
+                        if (meal.portion != null &&
+                            meal.portion!.isNotEmpty) ...[
                           const SizedBox(width: 8),
-                          Container(width: 3, height: 3, decoration: BoxDecoration(color: context.textMutedColor.withValues(alpha: 0.3), shape: BoxShape.circle)),
+                          Container(
+                            width: 3,
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: context.textMutedColor.withValues(
+                                alpha: 0.3,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               meal.portion!,
                               style: AppTypography.labelSmall.copyWith(
-                                color: context.textMutedColor.withValues(alpha: 0.7),
+                                color: context.textMutedColor.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontWeight: FontWeight.w500,
                               ),
                               maxLines: 1,
@@ -174,11 +194,20 @@ class MealListTile extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      _EliteMacroPill(color: AppColors.protein, value: '${meal.macros.protein}'),
+                      _EliteMacroPill(
+                        color: AppColors.protein,
+                        value: '${meal.macros.protein}',
+                      ),
                       const SizedBox(width: 6),
-                      _EliteMacroPill(color: AppColors.carbs, value: '${meal.macros.carbs}'),
+                      _EliteMacroPill(
+                        color: AppColors.carbs,
+                        value: '${meal.macros.carbs}',
+                      ),
                       const SizedBox(width: 6),
-                      _EliteMacroPill(color: AppColors.fat, value: '${meal.macros.fat}'),
+                      _EliteMacroPill(
+                        color: AppColors.fat,
+                        value: '${meal.macros.fat}',
+                      ),
                     ],
                   ),
                 ],
@@ -192,13 +221,33 @@ class MealListTile extends StatelessWidget {
 
   IconData _getMealIcon(Meal meal) {
     final name = meal.foodName.toLowerCase();
-    if (name.contains('coffee') || name.contains('tea')) return LucideIcons.coffee;
-    if (name.contains('egg') || name.contains('breakfast')) return LucideIcons.egg;
-    if (name.contains('burger') || name.contains('meat') || name.contains('beef')) return LucideIcons.beef;
-    if (name.contains('apple') || name.contains('fruit') || name.contains('salad')) return LucideIcons.apple;
-    if (name.contains('bread') || name.contains('toast')) return LucideIcons.croissant;
-    if (name.contains('fish') || name.contains('shrimp')) return LucideIcons.fish;
-    if (name.contains('cake') || name.contains('cookie') || name.contains('sweet')) return LucideIcons.cake;
+    if (name.contains('coffee') || name.contains('tea')) {
+      return LucideIcons.coffee;
+    }
+    if (name.contains('egg') || name.contains('breakfast')) {
+      return LucideIcons.egg;
+    }
+    if (name.contains('burger') ||
+        name.contains('meat') ||
+        name.contains('beef')) {
+      return LucideIcons.beef;
+    }
+    if (name.contains('apple') ||
+        name.contains('fruit') ||
+        name.contains('salad')) {
+      return LucideIcons.apple;
+    }
+    if (name.contains('bread') || name.contains('toast')) {
+      return LucideIcons.croissant;
+    }
+    if (name.contains('fish') || name.contains('shrimp')) {
+      return LucideIcons.fish;
+    }
+    if (name.contains('cake') ||
+        name.contains('cookie') ||
+        name.contains('sweet')) {
+      return LucideIcons.cake;
+    }
     return LucideIcons.utensils;
   }
 }

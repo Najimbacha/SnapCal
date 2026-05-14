@@ -666,6 +666,12 @@ abstract class AppLocalizations {
   /// **'KCAL'**
   String get result_kcal;
 
+  /// No description provided for @result_calories.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories'**
+  String get result_calories;
+
   /// No description provided for @result_macronutrients.
   ///
   /// In en, this message translates to:
@@ -1308,6 +1314,12 @@ abstract class AppLocalizations {
   /// **'Add'**
   String get water_add;
 
+  /// No description provided for @water_remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get water_remove;
+
   /// No description provided for @water_hydration.
   ///
   /// In en, this message translates to:
@@ -1823,6 +1835,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start with one quick snap.'**
   String get home_no_meals_body;
+
+  /// No description provided for @home_first_meal_cta_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan a meal to start today'**
+  String get home_first_meal_cta_title;
+
+  /// No description provided for @home_first_meal_cta_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the camera to log calories and macros automatically.'**
+  String get home_first_meal_cta_body;
+
+  /// No description provided for @home_section_macros_today.
+  ///
+  /// In en, this message translates to:
+  /// **'Macros today'**
+  String get home_section_macros_today;
+
+  /// No description provided for @home_eaten_progress.
+  ///
+  /// In en, this message translates to:
+  /// **'EATEN'**
+  String get home_eaten_progress;
+
+  /// No description provided for @home_steps_today.
+  ///
+  /// In en, this message translates to:
+  /// **'steps today'**
+  String get home_steps_today;
 
   /// No description provided for @home_default_name.
   ///

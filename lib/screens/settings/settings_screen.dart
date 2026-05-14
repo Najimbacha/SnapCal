@@ -14,8 +14,6 @@ import '../../providers/water_provider.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/planner_provider.dart';
 import '../../providers/metrics_provider.dart';
-import '../../providers/activity_provider.dart';
-import '../../providers/achievements_provider.dart';
 import '../../data/services/report_pdf_service.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/ui_blocks.dart';
@@ -60,7 +58,9 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SectionLabel(title: AppLocalizations.of(context)!.settings_core_config),
+            child: SectionLabel(
+              title: AppLocalizations.of(context)!.settings_core_config,
+            ),
           ),
           const SizedBox(height: 12),
           AppSectionCard(
@@ -73,7 +73,6 @@ class SettingsScreen extends StatelessWidget {
                   icon: LucideIcons.user,
                   accent: AppColors.primary,
                   title: AppLocalizations.of(context)!.settings_body_profile,
-                  subtitle: AppLocalizations.of(context)!.settings_body_profile_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -86,7 +85,6 @@ class SettingsScreen extends StatelessWidget {
                   icon: LucideIcons.flame,
                   accent: AppColors.primary,
                   title: AppLocalizations.of(context)!.settings_nutrition_goals,
-                  subtitle: AppLocalizations.of(context)!.settings_nutrition_goals_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -99,7 +97,6 @@ class SettingsScreen extends StatelessWidget {
                   icon: LucideIcons.settings,
                   accent: AppColors.primary,
                   title: AppLocalizations.of(context)!.settings_preferences,
-                  subtitle: AppLocalizations.of(context)!.settings_preferences_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -111,8 +108,8 @@ class SettingsScreen extends StatelessWidget {
                 _CategoryRow(
                   icon: LucideIcons.trophy,
                   accent: Colors.orange,
-                  title: AppLocalizations.of(context)!.feature_achievements_title,
-                  subtitle: '${context.watch<AchievementsProvider>().totalUnlocked} Unlocked',
+                  title:
+                      AppLocalizations.of(context)!.feature_achievements_title,
                   onTap: () => context.push('/achievements'),
                 ),
               ],
@@ -121,7 +118,9 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SectionLabel(title: AppLocalizations.of(context)!.settings_data_security),
+            child: SectionLabel(
+              title: AppLocalizations.of(context)!.settings_data_security,
+            ),
           ),
           const SizedBox(height: 12),
           AppSectionCard(
@@ -134,7 +133,6 @@ class SettingsScreen extends StatelessWidget {
                   icon: LucideIcons.userCircle,
                   accent: AppColors.primary,
                   title: AppLocalizations.of(context)!.settings_account,
-                  subtitle: AppLocalizations.of(context)!.settings_account_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -147,7 +145,6 @@ class SettingsScreen extends StatelessWidget {
                   icon: LucideIcons.hardDrive,
                   accent: AppColors.primary,
                   title: AppLocalizations.of(context)!.settings_data_sync,
-                  subtitle: AppLocalizations.of(context)!.settings_data_sync_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -162,7 +159,9 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SectionLabel(title: AppLocalizations.of(context)!.settings_information),
+            child: SectionLabel(
+              title: AppLocalizations.of(context)!.settings_information,
+            ),
           ),
           const SizedBox(height: 12),
           AppSectionCard(
@@ -175,7 +174,6 @@ class SettingsScreen extends StatelessWidget {
                   icon: LucideIcons.info,
                   accent: AppColors.primary,
                   title: AppLocalizations.of(context)!.settings_about,
-                  subtitle: AppLocalizations.of(context)!.settings_about_sub,
                   onTap:
                       () => Navigator.push(
                         context,
@@ -183,20 +181,6 @@ class SettingsScreen extends StatelessWidget {
                       ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 32),
-          Center(
-            child: Opacity(
-              opacity: 0.5,
-              child: Text(
-                '${AppLocalizations.of(context)!.snap_pro_unlimited.toUpperCase()} v1.0.0',
-                style: AppTypography.labelSmall.copyWith(
-                  color: Theme.of(context).hintColor,
-                  letterSpacing: 2.0,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -370,12 +354,13 @@ void _showGenderSelector(BuildContext context, SettingsProvider settings) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
-    builder: (context) => _SelectionSheet(
-      title: AppLocalizations.of(context)!.settings_gender,
-      options: const ['male', 'female', 'other'],
-      currentValue: settings.gender ?? 'male',
-      onSelect: (value) => settings.updateBodyProfile(gender: value),
-    ),
+    builder:
+        (context) => _SelectionSheet(
+          title: AppLocalizations.of(context)!.settings_gender,
+          options: const ['male', 'female', 'other'],
+          currentValue: settings.gender ?? 'male',
+          onSelect: (value) => settings.updateBodyProfile(gender: value),
+        ),
   );
 }
 
@@ -383,33 +368,39 @@ void _showUnitSelector(BuildContext context, SettingsProvider settings) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
-    builder: (context) => Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _SelectionSheet(
-          title: AppLocalizations.of(context)!.settings_weight_unit,
-          options: const ['kg', 'lb'],
-          currentValue: settings.weightUnit,
-          onSelect: (value) => settings.updateUnits(weightUnit: value),
+    builder:
+        (context) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SelectionSheet(
+              title: AppLocalizations.of(context)!.settings_weight_unit,
+              options: const ['kg', 'lb'],
+              currentValue: settings.weightUnit,
+              onSelect: (value) => settings.updateUnits(weightUnit: value),
+            ),
+            _SelectionSheet(
+              title: AppLocalizations.of(context)!.settings_height_unit,
+              options: const ['cm', 'in'],
+              currentValue: settings.heightUnit,
+              onSelect: (value) => settings.updateUnits(heightUnit: value),
+            ),
+          ],
         ),
-        _SelectionSheet(
-          title: AppLocalizations.of(context)!.settings_height_unit,
-          options: const ['cm', 'in'],
-          currentValue: settings.heightUnit,
-          onSelect: (value) => settings.updateUnits(heightUnit: value),
-        ),
-      ],
-    ),
   );
 }
 
-Future<void> _selectTime(BuildContext context, SettingsProvider settings, String type) async {
-  final current = type == 'breakfast' 
-      ? settings.breakfastTime 
-      : type == 'lunch' 
-          ? settings.lunchTime 
+Future<void> _selectTime(
+  BuildContext context,
+  SettingsProvider settings,
+  String type,
+) async {
+  final current =
+      type == 'breakfast'
+          ? settings.breakfastTime
+          : type == 'lunch'
+          ? settings.lunchTime
           : settings.dinnerTime;
-          
+
   final parts = current.split(':');
   final initial = TimeOfDay(
     hour: int.tryParse(parts[0]) ?? 8,
@@ -422,7 +413,9 @@ Future<void> _selectTime(BuildContext context, SettingsProvider settings, String
     builder: (context, child) {
       return Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: Theme.of(context).colorScheme.copyWith(primary: AppColors.primary),
+          colorScheme: Theme.of(
+            context,
+          ).colorScheme.copyWith(primary: AppColors.primary),
         ),
         child: child!,
       );
@@ -430,7 +423,8 @@ Future<void> _selectTime(BuildContext context, SettingsProvider settings, String
   );
 
   if (picked != null) {
-    final timeStr = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     if (type == 'breakfast') {
       await settings.updateReminderTimes(breakfast: timeStr);
     } else if (type == 'lunch') {
@@ -469,16 +463,19 @@ class _SelectionSheet extends StatelessWidget {
         children: [
           Text(title, style: AppTypography.heading3),
           const SizedBox(height: 20),
-          ...options.map((opt) => ListTile(
-            title: Text(opt.toUpperCase(), style: AppTypography.titleMedium),
-            trailing: opt == currentValue 
-                ? const Icon(LucideIcons.check, color: AppColors.primary) 
-                : null,
-            onTap: () {
-              onSelect(opt);
-              Navigator.pop(context);
-            },
-          )),
+          ...options.map(
+            (opt) => ListTile(
+              title: Text(opt.toUpperCase(), style: AppTypography.titleMedium),
+              trailing:
+                  opt == currentValue
+                      ? const Icon(LucideIcons.check, color: AppColors.primary)
+                      : null,
+              onTap: () {
+                onSelect(opt);
+                Navigator.pop(context);
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -503,92 +500,97 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (context) => Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).padding.bottom + 24,
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
+    builder:
+        (context) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom + 24,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 24),
+                  Text(
+                    AppLocalizations.of(context)!.settings_select_language,
+                    style: AppTypography.heading3,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppLocalizations.of(context)!.settings_language_desc,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _LanguageTile(
+                    title: 'English',
+                    subtitle:
+                        AppLocalizations.of(context)!.settings_lang_en_desc,
+                    code: 'en',
+                    selected: settings.languageCode == 'en',
+                    onTap: () {
+                      settings.setLanguage('en');
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _LanguageTile(
+                    title: 'العربية',
+                    subtitle:
+                        AppLocalizations.of(context)!.settings_lang_ar_desc,
+                    code: 'ar',
+                    selected: settings.languageCode == 'ar',
+                    onTap: () {
+                      settings.setLanguage('ar');
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _LanguageTile(
+                    title: 'Español',
+                    subtitle:
+                        AppLocalizations.of(context)!.settings_lang_es_desc,
+                    code: 'es',
+                    selected: settings.languageCode == 'es',
+                    onTap: () {
+                      settings.setLanguage('es');
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _LanguageTile(
+                    title: 'Français',
+                    subtitle:
+                        AppLocalizations.of(context)!.settings_lang_fr_desc,
+                    code: 'fr',
+                    selected: settings.languageCode == 'fr',
+                    onTap: () {
+                      settings.setLanguage('fr');
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
-              Text(
-                AppLocalizations.of(context)!.settings_select_language,
-                style: AppTypography.heading3,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                AppLocalizations.of(context)!.settings_language_desc,
-                style: AppTypography.bodySmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 24),
-              _LanguageTile(
-                title: 'English',
-                subtitle: AppLocalizations.of(context)!.settings_lang_en_desc,
-                code: 'en',
-                selected: settings.languageCode == 'en',
-                onTap: () {
-                  settings.setLanguage('en');
-                  Navigator.pop(context);
-                },
-              ),
-              const SizedBox(height: 12),
-              _LanguageTile(
-                title: 'العربية',
-                subtitle: AppLocalizations.of(context)!.settings_lang_ar_desc,
-                code: 'ar',
-                selected: settings.languageCode == 'ar',
-                onTap: () {
-                  settings.setLanguage('ar');
-                  Navigator.pop(context);
-                },
-              ),
-              const SizedBox(height: 12),
-              _LanguageTile(
-                title: 'Español',
-                subtitle: AppLocalizations.of(context)!.settings_lang_es_desc,
-                code: 'es',
-                selected: settings.languageCode == 'es',
-                onTap: () {
-                  settings.setLanguage('es');
-                  Navigator.pop(context);
-                },
-              ),
-              const SizedBox(height: 12),
-              _LanguageTile(
-                title: 'Français',
-                subtitle: AppLocalizations.of(context)!.settings_lang_fr_desc,
-                code: 'fr',
-                selected: settings.languageCode == 'fr',
-                onTap: () {
-                  settings.setLanguage('fr');
-                  Navigator.pop(context);
-                },
-              ),
-            ],
+            ),
           ),
         ),
-      ),
-    ),
   );
 }
 
@@ -615,9 +617,10 @@ class _LanguageTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: selected 
-              ? AppColors.primary.withValues(alpha: 0.1) 
-              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          color:
+              selected
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? AppColors.primary : Colors.transparent,
@@ -629,7 +632,8 @@ class _LanguageTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: selected ? AppColors.primary : colorScheme.outlineVariant,
+                color:
+                    selected ? AppColors.primary : colorScheme.outlineVariant,
                 shape: BoxShape.circle,
               ),
               child: Text(
@@ -650,7 +654,8 @@ class _LanguageTile extends StatelessWidget {
                     title,
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w900,
-                      color: selected ? AppColors.primary : colorScheme.onSurface,
+                      color:
+                          selected ? AppColors.primary : colorScheme.onSurface,
                     ),
                   ),
                   Text(
@@ -670,8 +675,6 @@ class _LanguageTile extends StatelessWidget {
     );
   }
 }
-
-
 
 class _ProfileSection extends StatelessWidget {
   final List<Widget> children;
@@ -734,12 +737,18 @@ class _SettingRow extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [accent.withValues(alpha: 0.15), accent.withValues(alpha: 0.05)],
+                    colors: [
+                      accent.withValues(alpha: 0.15),
+                      accent.withValues(alpha: 0.05),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: accent.withValues(alpha: 0.15), width: 1.5),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.15),
+                    width: 1.5,
+                  ),
                 ),
                 child: Icon(icon, color: accent, size: 22),
               ),
@@ -772,13 +781,17 @@ class _SettingRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   LucideIcons.chevronRight,
                   size: 14,
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.4),
                 ),
               ),
             ],
@@ -793,7 +806,6 @@ class _SwitchRow extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final String title;
-  final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -801,7 +813,6 @@ class _SwitchRow extends StatelessWidget {
     required this.icon,
     required this.accent,
     required this.title,
-    this.subtitle,
     required this.value,
     required this.onChanged,
   });
@@ -833,15 +844,6 @@ class _SwitchRow extends StatelessWidget {
                     letterSpacing: -0.1,
                   ),
                 ),
-                if (subtitle != null)
-                  Text(
-                    subtitle!,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11,
-                    ),
-                  ),
               ],
             ),
           ),
@@ -912,9 +914,10 @@ class _ThemeRow extends StatelessWidget {
                         child: Text(
                           option.$2,
                           style: TextStyle(
-                            fontWeight: currentMode == option.$1
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                            fontWeight:
+                                currentMode == option.$1
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -958,114 +961,6 @@ class _AuthSnapshot {
   int get hashCode => Object.hash(isAnonymous, displayName, email, photoURL);
 }
 
-class _RecalculateButton extends StatefulWidget {
-  @override
-  State<_RecalculateButton> createState() => _RecalculateButtonState();
-}
-
-class _RecalculateButtonState extends State<_RecalculateButton> {
-  bool _isLoading = false;
-
-  Future<void> _recalculate() async {
-    final metricsProvider = context.read<MetricsProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
-    final currentWeight = metricsProvider.currentWeight;
-
-    if (currentWeight == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.settings_log_weight_first)),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    final success = await settingsProvider.recalculatePlan(
-      currentWeightKg: currentWeight,
-    );
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    if (success && mounted) {
-      // Navigate to Assistant to explain the new plan
-      context.push('/assistant');
-      context.read<AssistantProvider>().fetchRecommendations(
-            currentCalories: context.read<MealProvider>().todaysTotalCalories,
-            targetCalories: context.read<SettingsProvider>().dailyCalorieGoal,
-            currentMacros: {
-              'protein': context.read<MealProvider>().todaysTotalMacros.protein,
-              'carbs': context.read<MealProvider>().todaysTotalMacros.carbs,
-              'fat': context.read<MealProvider>().todaysTotalMacros.fat,
-            },
-            targetMacros: {
-              'protein': context.read<SettingsProvider>().dailyProteinGoal,
-              'carbs': context.read<SettingsProvider>().dailyCarbGoal,
-              'fat': context.read<SettingsProvider>().dailyFatGoal,
-            },
-            mealNames: context.read<MealProvider>().recentMeals.map((m) => m.foodName).toList(),
-            dietaryRestriction: context.read<SettingsProvider>().dietaryRestriction,
-            userQuery:
-                AppLocalizations.of(context)!.settings_recalculate_query,
-          );
-    } else if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.settings_complete_profile_first),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.2),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: FilledButton.icon(
-          onPressed: _isLoading ? null : _recalculate,
-          icon:
-              _isLoading
-                  ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: Colors.white,
-                    ),
-                  )
-                  : const Icon(LucideIcons.sparkles, size: 20),
-          label: Text(
-            _isLoading 
-              ? AppLocalizations.of(context)!.settings_optimizing 
-              : AppLocalizations.of(context)!.settings_optimize_btn,
-            style: AppTypography.labelLarge.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            minimumSize: const Size.fromHeight(60),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _ProfileCard extends StatelessWidget {
   final _AuthSnapshot auth;
@@ -1076,7 +971,7 @@ class _ProfileCard extends StatelessWidget {
     final hasName = auth.displayName != null && auth.displayName!.isNotEmpty;
     final isGuest = auth.isAnonymous;
     final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
-    
+
     String displayName = auth.displayName ?? '';
     if (!hasName && auth.email != null) {
       displayName = auth.email!.split('@')[0];
@@ -1084,33 +979,44 @@ class _ProfileCard extends StatelessWidget {
         displayName = displayName[0].toUpperCase() + displayName.substring(1);
       }
     }
-    if (displayName.isEmpty) displayName = AppLocalizations.of(context)!.settings_member;
+    if (displayName.isEmpty) {
+      displayName = AppLocalizations.of(context)!.settings_member;
+    }
 
     return GestureDetector(
       onTap: isGuest ? () => context.push('/auth') : null,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        padding: const EdgeInsets.all(24),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.fromLTRB(32, 24, 32, 40),
         decoration: BoxDecoration(
-          gradient: isGuest 
-            ? const LinearGradient(
-                colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFFC026D3)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.primary.withValues(alpha: 0.8),
-                  const Color(0xFF064E3B),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-          borderRadius: BorderRadius.circular(28),
+          gradient:
+              isGuest
+                  ? const LinearGradient(
+                    colors: [
+                      Color(0xFF4F46E5),
+                      Color(0xFF7C3AED),
+                      Color(0xFFC026D3),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                  : LinearGradient(
+                    colors: [
+                      AppColors.primary,
+                      AppColors.primary.withValues(alpha: 0.8),
+                      const Color(0xFF064E3B),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(48),
+          ),
           boxShadow: [
             BoxShadow(
-              color: (isGuest ? Colors.black : AppColors.primary).withValues(alpha: 0.3),
+              color: (isGuest ? Colors.black : AppColors.primary).withValues(
+                alpha: 0.3,
+              ),
               blurRadius: 25,
               offset: const Offset(0, 12),
             ),
@@ -1136,7 +1042,10 @@ class _ProfileCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 3),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 3,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.1),
@@ -1147,15 +1056,17 @@ class _ProfileCard extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(34),
-                    child: auth.photoURL != null
-                        ? Image.network(auth.photoURL!, fit: BoxFit.cover)
-                        : Center(
-                            child: Icon(
-                              LucideIcons.user,
-                              color: isGuest ? Colors.grey : AppColors.primary,
-                              size: 32,
+                    child:
+                        auth.photoURL != null
+                            ? Image.network(auth.photoURL!, fit: BoxFit.cover)
+                            : Center(
+                              child: Icon(
+                                LucideIcons.user,
+                                color:
+                                    isGuest ? Colors.grey : AppColors.primary,
+                                size: 36,
+                              ),
                             ),
-                          ),
                   ),
                 ),
                 const SizedBox(width: 20),
@@ -1164,56 +1075,55 @@ class _ProfileCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              isGuest ? AppLocalizations.of(context)!.settings_guest_title : displayName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.heading3.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 20,
-                                letterSpacing: -0.5,
-                              ),
+                      Text(
+                        isGuest
+                            ? AppLocalizations.of(context)!.settings_guest_title
+                            : displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.heading3.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      if (isPro)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFCD34D).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(100),
+                            border: Border.all(
+                              color: const Color(0xFFFCD34D).withValues(alpha: 0.5),
+                              width: 1,
                             ),
                           ),
-                          if (isPro)
-                            Container(
-                              margin: const EdgeInsets.only(left: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFCD34D).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(100),
-                                border: Border.all(
-                                  color: const Color(0xFFFCD34D).withValues(alpha: 0.5),
-                                  width: 1,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                LucideIcons.gem,
+                                color: Color(0xFFFCD34D),
+                                size: 12,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'EMERALD',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: const Color(0xFFFCD34D),
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 10,
+                                  letterSpacing: 1.0,
                                 ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    LucideIcons.gem,
-                                    color: Color(0xFFFCD34D),
-                                    size: 10,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'EMERALD',
-                                    style: AppTypography.labelSmall.copyWith(
-                                      color: const Color(0xFFFCD34D),
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 9,
-                                      letterSpacing: 1.0,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 6),
                       if (isGuest) ...[
                         Text(
@@ -1303,14 +1213,14 @@ class _CategoryRow extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final VoidCallback onTap;
 
   const _CategoryRow({
     required this.icon,
     required this.accent,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.onTap,
   });
 
@@ -1328,7 +1238,10 @@ class _CategoryRow extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [accent.withValues(alpha: 0.15), accent.withValues(alpha: 0.05)],
+                    colors: [
+                      accent.withValues(alpha: 0.15),
+                      accent.withValues(alpha: 0.05),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -1353,28 +1266,36 @@ class _CategoryRow extends StatelessWidget {
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11,
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle!,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   LucideIcons.chevronRight,
                   size: 14,
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.4),
                 ),
               ),
             ],
@@ -1403,13 +1324,22 @@ class _BodyProfileScreen extends StatelessWidget {
                     (context, name, _) => _SettingRow(
                       icon: LucideIcons.user,
                       accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_display_name_label,
-                      value: name ?? AppLocalizations.of(context)!.settings_set_name,
+                      title:
+                          AppLocalizations.of(
+                            context,
+                          )!.settings_display_name_label,
+                      value:
+                          name ??
+                          AppLocalizations.of(context)!.settings_set_name,
                       onTap: () => _showNameDialog(context, name ?? ''),
                     ),
               ),
               Selector<MetricsProvider, (double?, String)>(
-                selector: (_, m) => (m.currentWeight, context.read<SettingsProvider>().weightUnit),
+                selector:
+                    (_, m) => (
+                      m.currentWeight,
+                      context.read<SettingsProvider>().weightUnit,
+                    ),
                 builder: (context, data, _) {
                   double? displayWeight = data.$1;
                   if (displayWeight != null && data.$2 == 'lb') {
@@ -1418,16 +1348,19 @@ class _BodyProfileScreen extends StatelessWidget {
                   return _SettingRow(
                     icon: LucideIcons.scale,
                     accent: AppColors.primary,
-                    title: AppLocalizations.of(context)!.settings_current_weight,
-                    value: displayWeight != null
-                        ? '${displayWeight.toStringAsFixed(1)} ${data.$2}'
-                        : AppLocalizations.of(context)!.settings_set_weight,
-                    onTap: () => showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => const WeightEntryModal(),
-                    ),
+                    title:
+                        AppLocalizations.of(context)!.settings_current_weight,
+                    value:
+                        displayWeight != null
+                            ? '${displayWeight.toStringAsFixed(1)} ${data.$2}'
+                            : AppLocalizations.of(context)!.settings_set_weight,
+                    onTap:
+                        () => showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => const WeightEntryModal(),
+                        ),
                   );
                 },
               ),
@@ -1442,20 +1375,26 @@ class _BodyProfileScreen extends StatelessWidget {
                     icon: LucideIcons.ruler,
                     accent: AppColors.primary,
                     title: AppLocalizations.of(context)!.settings_height,
-                    value: displayHeight != null
-                        ? '${displayHeight.round()} ${data.$2}'
-                        : AppLocalizations.of(context)!.settings_set_height,
-                    onTap: () => _showNumberDialog(
-                      context,
-                      title: AppLocalizations.of(context)!.settings_height,
-                      currentValue: displayHeight?.round() ?? (data.$2 == 'in' ? 67 : 170),
-                      unit: data.$2,
-                      onSave: (value) {
-                        double cm = value.toDouble();
-                        if (data.$2 == 'in') cm = value * 2.54;
-                        return context.read<SettingsProvider>().updateBodyProfile(height: cm);
-                      },
-                    ),
+                    value:
+                        displayHeight != null
+                            ? '${displayHeight.round()} ${data.$2}'
+                            : AppLocalizations.of(context)!.settings_set_height,
+                    onTap:
+                        () => _showNumberDialog(
+                          context,
+                          title: AppLocalizations.of(context)!.settings_height,
+                          currentValue:
+                              displayHeight?.round() ??
+                              (data.$2 == 'in' ? 67 : 170),
+                          unit: data.$2,
+                          onSave: (value) {
+                            double cm = value.toDouble();
+                            if (data.$2 == 'in') cm = value * 2.54;
+                            return context
+                                .read<SettingsProvider>()
+                                .updateBodyProfile(height: cm);
+                          },
+                        ),
                   );
                 },
               ),
@@ -1470,55 +1409,70 @@ class _BodyProfileScreen extends StatelessWidget {
                     icon: LucideIcons.target,
                     accent: AppColors.primary,
                     title: AppLocalizations.of(context)!.settings_target_weight,
-                    value: displayTarget != null
-                        ? '${displayTarget.toStringAsFixed(1)} ${data.$2}'
-                        : AppLocalizations.of(context)!.settings_set_target,
-                    onTap: () => _showNumberDialog(
-                      context,
-                      title: AppLocalizations.of(context)!.settings_target_weight,
-                      currentValue: displayTarget?.round() ?? (data.$2 == 'lb' ? 154 : 70),
-                      unit: data.$2,
-                      onSave: (value) {
-                        double kg = value.toDouble();
-                        if (data.$2 == 'lb') kg = value / 2.20462;
-                        return context.read<SettingsProvider>().updateBodyProfile(targetWeight: kg);
-                      },
-                    ),
+                    value:
+                        displayTarget != null
+                            ? '${displayTarget.toStringAsFixed(1)} ${data.$2}'
+                            : AppLocalizations.of(context)!.settings_set_target,
+                    onTap:
+                        () => _showNumberDialog(
+                          context,
+                          title:
+                              AppLocalizations.of(
+                                context,
+                              )!.settings_target_weight,
+                          currentValue:
+                              displayTarget?.round() ??
+                              (data.$2 == 'lb' ? 154 : 70),
+                          unit: data.$2,
+                          onSave: (value) {
+                            double kg = value.toDouble();
+                            if (data.$2 == 'lb') kg = value / 2.20462;
+                            return context
+                                .read<SettingsProvider>()
+                                .updateBodyProfile(targetWeight: kg);
+                          },
+                        ),
                   );
                 },
               ),
               Consumer<SettingsProvider>(
-                builder: (context, settings, _) => Column(
-                  children: [
-                    _SettingRow(
-                      icon: LucideIcons.calendar,
-                      accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_age,
-                      value: settings.age?.toString() ?? '--',
-                      onTap: () => _showNumberDialog(
-                        context,
-                        title: AppLocalizations.of(context)!.settings_age,
-                        currentValue: settings.age ?? 25,
-                        unit: 'yrs',
-                        onSave: (value) => settings.updateBodyProfile(age: value),
-                      ),
+                builder:
+                    (context, settings, _) => Column(
+                      children: [
+                        _SettingRow(
+                          icon: LucideIcons.calendar,
+                          accent: AppColors.primary,
+                          title: AppLocalizations.of(context)!.settings_age,
+                          value: settings.age?.toString() ?? '--',
+                          onTap:
+                              () => _showNumberDialog(
+                                context,
+                                title:
+                                    AppLocalizations.of(context)!.settings_age,
+                                currentValue: settings.age ?? 25,
+                                unit: 'yrs',
+                                onSave:
+                                    (value) =>
+                                        settings.updateBodyProfile(age: value),
+                              ),
+                        ),
+                        _SettingRow(
+                          icon: LucideIcons.userCircle,
+                          accent: AppColors.primary,
+                          title: AppLocalizations.of(context)!.settings_gender,
+                          value: settings.gender?.toUpperCase() ?? '--',
+                          onTap: () => _showGenderSelector(context, settings),
+                        ),
+                        _SettingRow(
+                          icon: LucideIcons.settings,
+                          accent: AppColors.primary,
+                          title: AppLocalizations.of(context)!.settings_units,
+                          value:
+                              '${settings.weightUnit.toUpperCase()} / ${settings.heightUnit.toUpperCase()}',
+                          onTap: () => _showUnitSelector(context, settings),
+                        ),
+                      ],
                     ),
-                    _SettingRow(
-                      icon: LucideIcons.userCircle,
-                      accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_gender,
-                      value: settings.gender?.toUpperCase() ?? '--',
-                      onTap: () => _showGenderSelector(context, settings),
-                    ),
-                    _SettingRow(
-                      icon: LucideIcons.settings,
-                      accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_units,
-                      value: '${settings.weightUnit.toUpperCase()} / ${settings.heightUnit.toUpperCase()}',
-                      onTap: () => _showUnitSelector(context, settings),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -1545,12 +1499,16 @@ class _NutritionGoalsScreen extends StatelessWidget {
                     (context, value, _) => _SettingRow(
                       icon: LucideIcons.flame,
                       accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_daily_calories,
+                      title:
+                          AppLocalizations.of(context)!.settings_daily_calories,
                       value: '$value kcal',
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title: AppLocalizations.of(context)!.settings_daily_calories,
+                            title:
+                                AppLocalizations.of(
+                                  context,
+                                )!.settings_daily_calories,
                             currentValue: value,
                             unit: 'kcal',
                             onSave:
@@ -1571,7 +1529,8 @@ class _NutritionGoalsScreen extends StatelessWidget {
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title: AppLocalizations.of(context)!.settings_protein,
+                            title:
+                                AppLocalizations.of(context)!.settings_protein,
                             currentValue: value,
                             unit: 'g',
                             onSave:
@@ -1621,9 +1580,6 @@ class _NutritionGoalsScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          _RecalculateButton(),
-          const SizedBox(height: 32),
         ],
       ),
     );
@@ -1647,7 +1603,8 @@ class _PreferencesScreen extends StatelessWidget {
                     (context, value, _) => _SwitchRow(
                       icon: LucideIcons.bell,
                       accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_notifications,
+                      title:
+                          AppLocalizations.of(context)!.settings_notifications,
                       value: value,
                       onChanged:
                           context.read<SettingsProvider>().toggleNotifications,
@@ -1659,7 +1616,8 @@ class _PreferencesScreen extends StatelessWidget {
                     (context, value, _) => _SwitchRow(
                       icon: LucideIcons.clock3,
                       accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_meal_reminders,
+                      title:
+                          AppLocalizations.of(context)!.settings_meal_reminders,
                       value: value,
                       onChanged:
                           context.read<SettingsProvider>().toggleMealReminders,
@@ -1667,41 +1625,56 @@ class _PreferencesScreen extends StatelessWidget {
               ),
 
               Consumer<SettingsProvider>(
-                builder: (context, settings, _) => Column(
-                  children: [
-                    _ThemeRow(currentMode: settings.themeMode),
-                    _SettingRow(
-                      icon: LucideIcons.languages,
-                      accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_language,
-                      value: _getLanguageName(settings.languageCode),
-                      onTap: () => _showLanguageSelector(context, settings),
+                builder:
+                    (context, settings, _) => Column(
+                      children: [
+                        _ThemeRow(currentMode: settings.themeMode),
+                        _SettingRow(
+                          icon: LucideIcons.languages,
+                          accent: AppColors.primary,
+                          title:
+                              AppLocalizations.of(context)!.settings_language,
+                          value: _getLanguageName(settings.languageCode),
+                          onTap: () => _showLanguageSelector(context, settings),
+                        ),
+                        if (settings.mealRemindersEnabled) ...[
+                          _SettingRow(
+                            icon: LucideIcons.egg,
+                            accent: AppColors.primary,
+                            title:
+                                AppLocalizations.of(
+                                  context,
+                                )!.settings_breakfast_time,
+                            value: settings.breakfastTime,
+                            onTap:
+                                () =>
+                                    _selectTime(context, settings, 'breakfast'),
+                          ),
+                          _SettingRow(
+                            icon: LucideIcons.utensils,
+                            accent: AppColors.primary,
+                            title:
+                                AppLocalizations.of(
+                                  context,
+                                )!.settings_lunch_time,
+                            value: settings.lunchTime,
+                            onTap:
+                                () => _selectTime(context, settings, 'lunch'),
+                          ),
+                          _SettingRow(
+                            icon: LucideIcons.moon,
+                            accent: AppColors.primary,
+                            title:
+                                AppLocalizations.of(
+                                  context,
+                                )!.settings_dinner_time,
+                            value: settings.dinnerTime,
+                            onTap:
+                                () => _selectTime(context, settings, 'dinner'),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (settings.mealRemindersEnabled) ...[
-                      _SettingRow(
-                        icon: LucideIcons.egg,
-                        accent: AppColors.primary,
-                        title: AppLocalizations.of(context)!.settings_breakfast_time,
-                        value: settings.breakfastTime,
-                        onTap: () => _selectTime(context, settings, 'breakfast'),
-                      ),
-                      _SettingRow(
-                        icon: LucideIcons.utensils,
-                        accent: AppColors.primary,
-                        title: AppLocalizations.of(context)!.settings_lunch_time,
-                        value: settings.lunchTime,
-                        onTap: () => _selectTime(context, settings, 'lunch'),
-                      ),
-                      _SettingRow(
-                        icon: LucideIcons.moon,
-                        accent: AppColors.primary,
-                        title: AppLocalizations.of(context)!.settings_dinner_time,
-                        value: settings.dinnerTime,
-                        onTap: () => _selectTime(context, settings, 'dinner'),
-                      ),
-                    ],
-                  ],
-                ),
               ),
             ],
           ),
@@ -1728,8 +1701,16 @@ class _AccountScreen extends StatelessWidget {
                     (context, isPro, _) => _SettingRow(
                       icon: LucideIcons.crown,
                       accent: AppColors.warning,
-                      title: AppLocalizations.of(context)!.settings_subscription,
-                      value: isPro ? AppLocalizations.of(context)!.settings_pro_active : AppLocalizations.of(context)!.settings_manage_plan,
+                      title:
+                          AppLocalizations.of(context)!.settings_subscription,
+                      value:
+                          isPro
+                              ? AppLocalizations.of(
+                                context,
+                              )!.settings_pro_active
+                              : AppLocalizations.of(
+                                context,
+                              )!.settings_manage_plan,
                       onTap: () => context.push('/paywall'),
                     ),
               ),
@@ -1742,11 +1723,20 @@ class _AccountScreen extends StatelessWidget {
                               ? LucideIcons.userPlus
                               : LucideIcons.logOut,
                       accent: isAnonymous ? AppColors.primary : AppColors.error,
-                      title: isAnonymous ? AppLocalizations.of(context)!.settings_create_account : AppLocalizations.of(context)!.common_sign_out,
+                      title:
+                          isAnonymous
+                              ? AppLocalizations.of(
+                                context,
+                              )!.settings_create_account
+                              : AppLocalizations.of(context)!.common_sign_out,
                       value:
                           isAnonymous
-                              ? AppLocalizations.of(context)!.settings_sync_data_desc
-                              : AppLocalizations.of(context)!.settings_sign_out_desc,
+                              ? AppLocalizations.of(
+                                context,
+                              )!.settings_sync_data_desc
+                              : AppLocalizations.of(
+                                context,
+                              )!.settings_sign_out_desc,
                       onTap: () => _handleSignOut(context),
                     ),
               ),
@@ -1758,7 +1748,10 @@ class _AccountScreen extends StatelessWidget {
                     icon: LucideIcons.trash2,
                     accent: AppColors.error,
                     title: AppLocalizations.of(context)!.common_delete_account,
-                    value: AppLocalizations.of(context)!.common_delete_account_confirm,
+                    value:
+                        AppLocalizations.of(
+                          context,
+                        )!.common_delete_account_confirm,
                     onTap: () => _showDeleteConfirmation(context),
                   );
                 },
@@ -1780,18 +1773,24 @@ class _AccountScreen extends StatelessWidget {
     // Show confirmation for logout if desired, or just do it
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.common_sign_out),
-        content: Text(AppLocalizations.of(context)!.common_sign_out_confirm),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppLocalizations.of(context)!.common_cancel)),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text(AppLocalizations.of(context)!.common_sign_out),
+      builder:
+          (context) => AlertDialog(
+            title: Text(AppLocalizations.of(context)!.common_sign_out),
+            content: Text(
+              AppLocalizations.of(context)!.common_sign_out_confirm,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(AppLocalizations.of(context)!.common_cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                child: Text(AppLocalizations.of(context)!.common_sign_out),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed != true) return;
@@ -1811,7 +1810,7 @@ class _AccountScreen extends StatelessWidget {
       await metrics.clear();
       await assistant.clear();
       await planner.clear();
-      
+
       if (context.mounted) context.go('/auth');
     }
   }
@@ -1819,27 +1818,33 @@ class _AccountScreen extends StatelessWidget {
   Future<void> _showDeleteConfirmation(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.common_delete_account),
-        content: Text(
-          AppLocalizations.of(context)!.common_delete_account_confirm,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppLocalizations.of(context)!.common_cancel)),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text(AppLocalizations.of(context)!.common_delete_permanently),
+      builder:
+          (context) => AlertDialog(
+            title: Text(AppLocalizations.of(context)!.common_delete_account),
+            content: Text(
+              AppLocalizations.of(context)!.common_delete_account_confirm,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(AppLocalizations.of(context)!.common_cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                child: Text(
+                  AppLocalizations.of(context)!.common_delete_permanently,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed == true && context.mounted) {
       try {
         final auth = context.read<AuthProvider>();
         await auth.deleteAccount();
-        
+
         if (context.mounted) {
           final settings = context.read<SettingsProvider>();
           final meal = context.read<MealProvider>();
@@ -1854,7 +1859,7 @@ class _AccountScreen extends StatelessWidget {
           await metrics.clear();
           await assistant.clear();
           await planner.clear();
-          
+
           if (context.mounted) context.go('/auth');
         }
       } catch (e) {
@@ -1891,10 +1896,11 @@ class _DataSyncScreen extends StatelessWidget {
                   final mealProvider = context.read<MealProvider>();
                   final settingsProvider = context.read<SettingsProvider>();
                   final authProvider = context.read<AuthProvider>();
-                  
-                  final userName = authProvider.user?.displayName ?? 
-                                   authProvider.user?.email?.split('@').first ?? 
-                                   'Valued User';
+
+                  final userName =
+                      authProvider.user?.displayName ??
+                      authProvider.user?.email?.split('@').first ??
+                      'Valued User';
 
                   await ReportPdfService.generateAndShareReport(
                     userName: userName,
@@ -2050,7 +2056,9 @@ class _UpgradeProCard extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              AppLocalizations.of(context)!.settings_upgrade_pro,
+                              AppLocalizations.of(
+                                context,
+                              )!.settings_upgrade_pro,
                               style: AppTypography.heading3.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w900,
@@ -2063,7 +2071,10 @@ class _UpgradeProCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFCD34D),
                               borderRadius: BorderRadius.circular(6),
@@ -2105,4 +2116,3 @@ class _UpgradeProCard extends StatelessWidget {
     );
   }
 }
-

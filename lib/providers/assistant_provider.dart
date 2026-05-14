@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../core/state/async_ui_state.dart';
 import '../data/repositories/assistant_repository.dart';
 import '../data/services/assistant_service.dart';
 
@@ -22,10 +23,13 @@ class AssistantProvider with ChangeNotifier {
 
   List<dynamic> _history = [];
   bool _isLoading = false;
+  AsyncUiState _uiState = const AsyncUiState.idle();
   String? _error;
 
   List<dynamic> get history => _history;
-  bool get isLoading => _isLoading;
+  bool get isLoading => _isLoading && _history.isEmpty;
+  bool get isRefreshing => _isLoading && _history.isNotEmpty;
+  AsyncUiState get uiState => _uiState;
   String? get error => _error;
 
   /// Fetch recommendations based on user stats (with caching)
@@ -43,14 +47,18 @@ class AssistantProvider with ChangeNotifier {
     String language = 'en',
   }) async {
     if (clearPrevious) {
-      _history = [];
-      notifyListeners();
-      await _repository.saveChatHistory(_history);
+      if (_history.isEmpty) {
+        notifyListeners();
+      }
     }
 
     // Add user query to history immediately if it exists
     if (userQuery != null) {
-      _history.add({'type': 'user', 'content': userQuery, 'hasImage': imageBytes != null});
+      _history.add({
+        'type': 'user',
+        'content': userQuery,
+        'hasImage': imageBytes != null,
+      });
       notifyListeners();
       await _repository.saveChatHistory(_history);
     }
@@ -68,33 +76,42 @@ class AssistantProvider with ChangeNotifier {
       }
     }
 
+    if (_isLoading) return;
     _isLoading = true;
+    _uiState =
+        _history.isEmpty
+            ? const AsyncUiState.loading()
+            : const AsyncUiState.refreshing();
     _error = null;
     notifyListeners();
 
     try {
       final List<AssistantResponse> newRecs;
-      
+
       if (imageBytes != null) {
         // New: Handle Image Analysis
-        newRecs = await _service.analyzeImage(
-          imageBytes: imageBytes,
-          userQuery: userQuery,
-          currentCalories: currentCalories,
-          targetCalories: targetCalories,
-          language: language,
-        );
+        newRecs = await _service
+            .analyzeImage(
+              imageBytes: imageBytes,
+              userQuery: userQuery,
+              currentCalories: currentCalories,
+              targetCalories: targetCalories,
+              language: language,
+            )
+            .timeout(const Duration(seconds: 18));
       } else {
-        newRecs = await _service.getRecommendations(
-          currentCalories: currentCalories,
-          targetCalories: targetCalories,
-          currentMacros: currentMacros,
-          targetMacros: targetMacros,
-          mealNames: mealNames,
-          dietaryRestriction: dietaryRestriction,
-          userQuery: userQuery,
-          language: language,
-        );
+        newRecs = await _service
+            .getRecommendations(
+              currentCalories: currentCalories,
+              targetCalories: targetCalories,
+              currentMacros: currentMacros,
+              targetMacros: targetMacros,
+              mealNames: mealNames,
+              dietaryRestriction: dietaryRestriction,
+              userQuery: userQuery,
+              language: language,
+            )
+            .timeout(const Duration(seconds: 15));
       }
 
       if (userQuery != null || imageBytes != null) {
@@ -112,9 +129,16 @@ class AssistantProvider with ChangeNotifier {
         await _repository.saveCalorieSnapshot(currentCalories);
       }
     } catch (e) {
+      debugPrint('⚠️ AssistantProvider: recommendation fallback: $e');
       _error = e.toString();
     } finally {
       _isLoading = false;
+      _uiState =
+          _history.isEmpty
+              ? (_error == null
+                  ? const AsyncUiState.empty()
+                  : AsyncUiState.error(_error))
+              : const AsyncUiState.success();
       notifyListeners();
     }
   }

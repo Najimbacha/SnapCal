@@ -128,7 +128,8 @@ class _ChartPainter extends CustomPainter {
     final double width = size.width;
     final double height = size.height;
     final double stepX = width / (weights.length - 1);
-    final double rangeY = maxY - minY;
+    double rangeY = maxY - minY;
+    if (rangeY == 0) rangeY = 1.0;
 
     double getY(double weight) {
       return height - ((weight - minY) / rangeY * height);

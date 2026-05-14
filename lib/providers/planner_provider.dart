@@ -4,6 +4,7 @@ import '../data/models/grocery_item.dart';
 import '../data/models/meal.dart';
 import '../data/models/meal_plan.dart';
 import '../data/services/gemini_service.dart';
+import '../core/state/async_ui_state.dart';
 import 'settings_provider.dart';
 
 class PlannerProvider with ChangeNotifier {
@@ -19,8 +20,10 @@ class PlannerProvider with ChangeNotifier {
   MealPlan? _currentPlan;
   List<GroceryItem> _groceryList = [];
 
-  bool _isLoading = true;
-  bool get isLoading => _isLoading;
+  AsyncUiState _uiState = const AsyncUiState.loading();
+  bool get isLoading => _uiState.isBlocking;
+  bool get isRefreshing => _uiState.isRefreshing;
+  AsyncUiState get uiState => _uiState;
   bool _isGenerating = false;
   bool get isGenerating => _isGenerating;
   bool _isRegenerating = false;
@@ -43,21 +46,33 @@ class PlannerProvider with ChangeNotifier {
   }
 
   Future<void> _init() async {
-    if (!Hive.isBoxOpen(_planBoxName)) {
-      _planBox = await Hive.openBox<MealPlan>(_planBoxName);
-    } else {
-      _planBox = Hive.box<MealPlan>(_planBoxName);
-    }
+    try {
+      if (!Hive.isBoxOpen(_planBoxName)) {
+        _planBox = await Hive.openBox<MealPlan>(_planBoxName);
+      } else {
+        _planBox = Hive.box<MealPlan>(_planBoxName);
+      }
 
-    if (!Hive.isBoxOpen(_groceryBoxName)) {
-      _groceryBox = await Hive.openBox<GroceryItem>(_groceryBoxName);
-    } else {
-      _groceryBox = Hive.box<GroceryItem>(_groceryBoxName);
-    }
+      if (!Hive.isBoxOpen(_groceryBoxName)) {
+        _groceryBox = await Hive.openBox<GroceryItem>(_groceryBoxName);
+      } else {
+        _groceryBox = Hive.box<GroceryItem>(_groceryBoxName);
+      }
 
-    _loadData();
-    _isLoading = false;
-    notifyListeners();
+      _loadData();
+      _uiState =
+          _currentPlan == null
+              ? const AsyncUiState.empty()
+              : const AsyncUiState.success();
+    } catch (e) {
+      debugPrint('⚠️ PlannerProvider: failed to initialize: $e');
+      _error = 'Planner is temporarily unavailable.';
+      _uiState = const AsyncUiState.error(
+        'Planner is temporarily unavailable.',
+      );
+    } finally {
+      notifyListeners();
+    }
   }
 
   void _loadData() {
@@ -71,13 +86,20 @@ class PlannerProvider with ChangeNotifier {
   }
 
   Future<void> generateWeeklyPlan() async {
+    if (_isGenerating) return;
     _isGenerating = true;
+    _uiState =
+        _currentPlan == null
+            ? const AsyncUiState.loading()
+            : const AsyncUiState.refreshing();
     _error = null;
     notifyListeners();
 
     try {
       final userSettings = _settingsProvider.settings;
-      final result = await _aiService.generateWeeklyMealPlan(userSettings);
+      final result = await _aiService
+          .generateWeeklyMealPlan(userSettings)
+          .timeout(const Duration(seconds: 20));
 
       if (result != null) {
         _currentPlan = result.plan;
@@ -95,6 +117,12 @@ class PlannerProvider with ChangeNotifier {
       _error = 'Something went wrong. Please try again.';
     } finally {
       _isGenerating = false;
+      _uiState =
+          _currentPlan == null
+              ? (_error == null
+                  ? const AsyncUiState.empty()
+                  : AsyncUiState.error(_error))
+              : const AsyncUiState.success();
       notifyListeners();
     }
   }
@@ -103,25 +131,32 @@ class PlannerProvider with ChangeNotifier {
   Future<void> regenerateDay(int dayIndex) async {
     if (_currentPlan == null) return;
 
+    if (_isRegenerating) return;
     _isRegenerating = true;
+    _uiState = const AsyncUiState.refreshing();
     _error = null;
     notifyListeners();
 
     try {
-      final result = await _aiService.regenerateDay(
-        _settingsProvider.settings,
-        dayIndex,
-        _currentPlan!.weeklyMeals,
-      );
+      final result = await _aiService
+          .regenerateDay(
+            _settingsProvider.settings,
+            dayIndex,
+            _currentPlan!.weeklyMeals,
+          )
+          .timeout(const Duration(seconds: 18));
 
       if (result != null && result.plan.weeklyMeals.containsKey(dayIndex)) {
-        final updatedMeals = Map<int, List<Meal>>.from(_currentPlan!.weeklyMeals);
+        final updatedMeals = Map<int, List<Meal>>.from(
+          _currentPlan!.weeklyMeals,
+        );
         updatedMeals[dayIndex] = result.plan.weeklyMeals[dayIndex]!;
         _currentPlan = _currentPlan!.copyWith(weeklyMeals: updatedMeals);
         await _planBox?.put('current', _currentPlan!);
 
         // Merge new grocery items without duplicates
-        final existingNames = _groceryList.map((g) => g.name.toLowerCase()).toSet();
+        final existingNames =
+            _groceryList.map((g) => g.name.toLowerCase()).toSet();
         for (final newItem in result.groceryList) {
           if (!existingNames.contains(newItem.name.toLowerCase())) {
             _groceryList.add(newItem);
@@ -138,6 +173,7 @@ class PlannerProvider with ChangeNotifier {
       _error = 'Something went wrong. Please try again.';
     } finally {
       _isRegenerating = false;
+      _uiState = const AsyncUiState.success();
       notifyListeners();
     }
   }
@@ -179,16 +215,32 @@ class PlannerProvider with ChangeNotifier {
     final grouped = <String, List<String>>{};
     for (final item in _groceryList) {
       final cat = item.category.isNotEmpty ? item.category : 'Other';
-      grouped.putIfAbsent(cat, () => []).add(
-        item.amount.isNotEmpty ? '${item.name} — ${item.amount}' : item.name,
-      );
+      grouped
+          .putIfAbsent(cat, () => [])
+          .add(
+            item.amount.isNotEmpty
+                ? '${item.name} — ${item.amount}'
+                : item.name,
+          );
     }
 
     final categoryEmojis = {
-      'produce': '🥬', 'grains': '🌾', 'protein': '🥩', 'meat': '🥩',
-      'dairy': '🧀', 'fruits': '🍎', 'vegetables': '🥬', 'snacks': '🍿',
-      'beverages': '🥤', 'condiments': '🧂', 'oils': '🫒', 'other': '📦',
-      'frozen': '🧊', 'bakery': '🍞', 'seafood': '🐟', 'spices': '🌶️',
+      'produce': '🥬',
+      'grains': '🌾',
+      'protein': '🥩',
+      'meat': '🥩',
+      'dairy': '🧀',
+      'fruits': '🍎',
+      'vegetables': '🥬',
+      'snacks': '🍿',
+      'beverages': '🥤',
+      'condiments': '🧂',
+      'oils': '🫒',
+      'other': '📦',
+      'frozen': '🧊',
+      'bakery': '🍞',
+      'seafood': '🐟',
+      'spices': '🌶️',
     };
 
     final buffer = StringBuffer('🛒 SnapCal Grocery List\n');
@@ -214,4 +266,3 @@ class PlannerProvider with ChangeNotifier {
     notifyListeners();
   }
 }
-

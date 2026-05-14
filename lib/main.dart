@@ -4,7 +4,6 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
-import 'core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'router.dart';
 import 'core/services/app_initializer.dart';
@@ -29,9 +28,6 @@ import 'providers/achievements_provider.dart';
 import 'providers/insights_provider.dart';
 import 'data/services/connectivity_service.dart';
 import 'screens/splash/splash_screen.dart';
-
-import 'dart:ui';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -303,79 +299,23 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
                   ],
                   builder: (context, child) {
                     // 1. Handle Initial/Loading state
-                    final isHanging = auth.status == AuthStatus.initial ||
-                        auth.status == AuthStatus.loading;
-
-                    if (isHanging) {
-                      return const SplashScreen();
-                    }
+                    final isBootstrapping = auth.status == AuthStatus.initial;
 
                     // Trigger anonymous sign-in if completely unauthenticated
-                    if (auth.status == AuthStatus.unauthenticated &&
-                        auth.user == null) {
+                    if ((isBootstrapping ||
+                            auth.status == AuthStatus.unauthenticated ||
+                            auth.status == AuthStatus.error) &&
+                        auth.user == null &&
+                        !auth.isBusy) {
                       // Use a zero-delay future to move the side-effect out of the build method
                       Future.delayed(
                         Duration.zero,
                         () => auth.signInAnonymously(),
                       );
-                      return const SplashScreen();
                     }
 
-                    // 2. Handle Fatal Error state
-                    if (auth.status == AuthStatus.error && auth.user == null) {
-                      return Scaffold(
-                        body: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.wifi_off_rounded,
-                                  size: 64,
-                                  color: Colors.orange,
-                                ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  AppLocalizations.of(context)?.appTitle ??
-                                      'SnapCal',
-                                  style:
-                                      AppTheme
-                                          .darkTheme
-                                          .textTheme
-                                          .headlineSmall,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  AppLocalizations.of(
-                                        context,
-                                      )?.error_connection_title ??
-                                      'Network Error',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
-                                const SizedBox(height: 32),
-                                FilledButton.icon(
-                                  onPressed: () {
-                                    auth.clearError();
-                                    auth.signInAnonymously();
-                                  },
-                                  icon: const Icon(Icons.refresh),
-                                  label: Text(
-                                    AppLocalizations.of(
-                                          context,
-                                        )?.common_try_again ??
-                                        'Try Again',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    // 3. Normal App Flow
+                    // Normal app flow: local data remains usable while auth warms up
+                    // or retries silently in the background.
                     return child!;
                   },
                 );
@@ -407,7 +347,7 @@ class _GlobalErrorView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(

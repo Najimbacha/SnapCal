@@ -6,6 +6,7 @@ import '../data/services/scan_gate_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/notification_service.dart';
 import '../data/services/calorie_onboarding_service.dart';
+import '../core/state/async_ui_state.dart';
 
 /// Provider for managing user settings and subscription state
 class SettingsProvider with ChangeNotifier {
@@ -13,7 +14,7 @@ class SettingsProvider with ChangeNotifier {
   final NotificationService _notificationService = NotificationService();
 
   late UserSettings _settings;
-  bool _isLoading = false;
+  AsyncUiState _uiState = const AsyncUiState.success();
   StreamSubscription<UserSettings>? _settingsSubscription;
 
   SettingsProvider(this._repository) {
@@ -42,7 +43,7 @@ class SettingsProvider with ChangeNotifier {
       debugPrint('⚠️ SettingsProvider: Error loading initial settings: $e');
       _settings = UserSettings.defaults();
     }
-    
+
     _settingsSubscription = _repository.settingsStream.listen((newSettings) {
       _settings = newSettings;
       _syncNotifications();
@@ -61,7 +62,9 @@ class SettingsProvider with ChangeNotifier {
   SettingsRepository get repository =>
       _repository; // Expose for mock subscription service
   UserSettings get settings => _settings;
-  bool get isLoading => _isLoading;
+  bool get isLoading => _uiState.isBlocking;
+  bool get isRefreshing => _uiState.isRefreshing;
+  AsyncUiState get uiState => _uiState;
   bool get isPro => _settings.isPro;
   int get currentStreak => _settings.currentStreak;
 
@@ -82,12 +85,14 @@ class SettingsProvider with ChangeNotifier {
   double get weeklyRateKg => _settings.weeklyRateKg ?? 0.0;
   String get recommendationInsight => _settings.recommendationInsight ?? '';
   String get recommendationTip => _settings.recommendationTip ?? '';
-  String get recommendationSafetyNote => _settings.recommendationSafetyNote ?? '';
+  String get recommendationSafetyNote =>
+      _settings.recommendationSafetyNote ?? '';
 
   // Planner Preferences
   int get mealsPerDay => _settings.mealsPerDay ?? 3;
   String get dietaryRestriction => _settings.dietaryRestriction ?? 'none';
-  String get cuisinePreference => _settings.cuisinePreference ?? 'international';
+  String get cuisinePreference =>
+      _settings.cuisinePreference ?? 'international';
 
   bool get notificationsEnabled => _settings.notificationsEnabled;
   bool get mealRemindersEnabled => _settings.mealRemindersEnabled;
@@ -136,7 +141,7 @@ class SettingsProvider with ChangeNotifier {
       3: _settings.dinnerTime,
     };
     final lang = languageCode;
-    
+
     final titles = {
       1: _getNotifString(lang, 'breakfast_title'),
       2: _getNotifString(lang, 'lunch_title'),
@@ -176,9 +181,11 @@ class SettingsProvider with ChangeNotifier {
         'dinner_title': 'Dinner Reminder',
         'dinner_body': 'End the day strong—log your dinner now.',
         'goal_calories_title': 'Goal Reached! 🚀',
-        'goal_calories_body': "You've hit your daily calorie goal of {goal} kcal!",
+        'goal_calories_body':
+            "You've hit your daily calorie goal of {goal} kcal!",
         'goal_protein_title': 'Protein Goal Met! 💪',
-        'goal_protein_body': "Great job! You've reached your {goal}g protein target.",
+        'goal_protein_body':
+            "Great job! You've reached your {goal}g protein target.",
       },
       'ar': {
         'breakfast_title': 'تذكير الفطور',
@@ -188,9 +195,11 @@ class SettingsProvider with ChangeNotifier {
         'dinner_title': 'تذكير العشاء',
         'dinner_body': 'أنهِ يومك بقوة - سجل عشاءك الآن.',
         'goal_calories_title': 'تحقق الهدف! 🚀',
-        'goal_calories_body': 'لقد وصلت إلى هدفك اليومي من السعرات الحرارية: {goal} سعرة!',
+        'goal_calories_body':
+            'لقد وصلت إلى هدفك اليومي من السعرات الحرارية: {goal} سعرة!',
         'goal_protein_title': 'تم تحقيق هدف البروتين! 💪',
-        'goal_protein_body': 'عمل رائع! لقد وصلت إلى هدفك البالغ {goal} جرام من البروتين.',
+        'goal_protein_body':
+            'عمل رائع! لقد وصلت إلى هدفك البالغ {goal} جرام من البروتين.',
       },
       'es': {
         'breakfast_title': 'Recordatorio de Desayuno',
@@ -200,21 +209,27 @@ class SettingsProvider with ChangeNotifier {
         'dinner_title': 'Recordatorio de Cena',
         'dinner_body': 'Termina el día con fuerza: registra tu cena ahora.',
         'goal_calories_title': '¡Objetivo Alcanzado! 🚀',
-        'goal_calories_body': '¡Has alcanzado tu objetivo diario de {goal} kcal!',
+        'goal_calories_body':
+            '¡Has alcanzado tu objetivo diario de {goal} kcal!',
         'goal_protein_title': '¡Meta de Proteína Cumplida! 💪',
-        'goal_protein_body': '¡Buen trabajo! Has alcanzado tu meta de {goal}g de proteína.',
+        'goal_protein_body':
+            '¡Buen trabajo! Has alcanzado tu meta de {goal}g de proteína.',
       },
       'fr': {
         'breakfast_title': 'Rappel du Petit-déjeuner',
-        'breakfast_body': "C'est l'heure d'enregistrer votre petit-déjeuner sain !",
+        'breakfast_body':
+            "C'est l'heure d'enregistrer votre petit-déjeuner sain !",
         'lunch_title': 'Rappel du Déjeuner',
         'lunch_body': "N'oubliez pas de suivre votre déjeuner.",
         'dinner_title': 'Rappel du Dîner',
-        'dinner_body': 'Finissez la journée en beauté — enregistrez votre dîner dès maintenant.',
+        'dinner_body':
+            'Finissez la journée en beauté — enregistrez votre dîner dès maintenant.',
         'goal_calories_title': 'Objectif atteint ! 🚀',
-        'goal_calories_body': 'Vous avez atteint votre objectif quotidien de {goal} kcal !',
+        'goal_calories_body':
+            'Vous avez atteint votre objectif quotidien de {goal} kcal !',
         'goal_protein_title': 'Objectif protéines rempli ! 💪',
-        'goal_protein_body': 'Beau travail ! Vous avez atteint votre cible de {goal}g de protéines.',
+        'goal_protein_body':
+            'Beau travail ! Vous avez atteint votre cible de {goal}g de protéines.',
       },
     };
 
@@ -249,7 +264,10 @@ class SettingsProvider with ChangeNotifier {
     if (_settings.notificationsEnabled && _settings.goalAlertsEnabled) {
       final lang = languageCode;
       final title = _getNotifString(lang, 'goal_calories_title');
-      final body = _getNotifString(lang, 'goal_calories_body').replaceAll('{goal}', goal.toString());
+      final body = _getNotifString(
+        lang,
+        'goal_calories_body',
+      ).replaceAll('{goal}', goal.toString());
       await _notificationService.showGoalAlert(title: title, body: body);
     }
   }
@@ -259,7 +277,10 @@ class SettingsProvider with ChangeNotifier {
     if (_settings.notificationsEnabled && _settings.goalAlertsEnabled) {
       final lang = languageCode;
       final title = _getNotifString(lang, 'goal_protein_title');
-      final body = _getNotifString(lang, 'goal_protein_body').replaceAll('{goal}', goal.toString());
+      final body = _getNotifString(
+        lang,
+        'goal_protein_body',
+      ).replaceAll('{goal}', goal.toString());
       await _notificationService.showGoalAlert(title: title, body: body);
     }
   }
@@ -415,7 +436,7 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Update streak when user logs a meal. 
+  /// Update streak when user logs a meal.
   /// Now date-aware to allow retroactive logging.
   Future<void> updateStreakOnMealLog({String? mealDate}) async {
     final today = app_date.DateUtils.getTodayString();
@@ -438,7 +459,10 @@ class SettingsProvider with ChangeNotifier {
         );
       } else {
         // Gap in logging, reset to 1
-        _settings = _settings.copyWith(currentStreak: 1, lastLoggedDate: logDate);
+        _settings = _settings.copyWith(
+          currentStreak: 1,
+          lastLoggedDate: logDate,
+        );
       }
     }
 
@@ -459,12 +483,12 @@ class SettingsProvider with ChangeNotifier {
       // We deleted the most recent meal date anchor
       final newStreak = (_settings.currentStreak - 1).clamp(0, 9999);
       final previousDay = app_date.DateUtils.getPreviousDay(dateOfDeletedMeal);
-      
+
       _settings = _settings.copyWith(
         currentStreak: newStreak,
         lastLoggedDate: newStreak == 0 ? null : previousDay,
       );
-      
+
       await _repository.saveSettings(_settings);
       notifyListeners();
     }
@@ -473,19 +497,21 @@ class SettingsProvider with ChangeNotifier {
   /// Recalculate nutrition plan based on current weight
   /// Uses Mifflin-St Jeor via CalorieOnboardingService
   Future<bool> recalculatePlan({required double currentWeightKg}) async {
-    if (_isLoading) return false;
-    _isLoading = true;
-    notifyListeners();
-
-    // Guard: need minimum profile data
     final age = _settings.age;
     final gender = _settings.gender;
     final heightCm = _settings.height;
     final targetWeight = _settings.targetWeight;
 
-    if (age == null || gender == null || heightCm == null || targetWeight == null) {
+    if (_uiState.isBusy) return false;
+    if (age == null ||
+        gender == null ||
+        heightCm == null ||
+        targetWeight == null) {
       return false; // Not enough data to recalculate
     }
+
+    _uiState = const AsyncUiState.refreshing();
+    notifyListeners();
 
     try {
       final service = CalorieOnboardingService();
@@ -521,9 +547,17 @@ class SettingsProvider with ChangeNotifier {
       return true;
     } catch (e) {
       debugPrint('❌ SettingsProvider: Recalculation failed: $e');
+      _uiState = const AsyncUiState.error('Unable to refresh nutrition plan.');
       return false;
     } finally {
-      _isLoading = false;
+      if (_uiState.hasError) {
+        Future.microtask(() {
+          _uiState = const AsyncUiState.success();
+          notifyListeners();
+        });
+      } else {
+        _uiState = const AsyncUiState.success();
+      }
       notifyListeners();
     }
   }
