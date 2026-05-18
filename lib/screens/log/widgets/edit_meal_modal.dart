@@ -3,10 +3,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
-import '../../../../data/models/meal.dart';
-import '../../../../providers/settings_provider.dart';
+import '../../../data/models/meal.dart';
+import '../../../data/services/gemini_service.dart';
+import '../../../data/services/premium_conversion_service.dart';
+import '../../../providers/settings_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 import '../../../widgets/premium_prompt_card.dart';
 
 class EditMealModal extends StatefulWidget {
@@ -34,6 +35,7 @@ class _EditMealModalState extends State<EditMealModal> {
   late TextEditingController _proteinController;
   late TextEditingController _carbsController;
   late TextEditingController _fatController;
+  Future<String>? _mealInsightFuture;
 
   @override
   void initState() {
@@ -85,6 +87,15 @@ class _EditMealModalState extends State<EditMealModal> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
+    final settings = context.watch<SettingsProvider>();
+
+    if (settings.isPro && _mealInsightFuture == null) {
+      _mealInsightFuture = AIService().generateMealInsight(
+        meal: widget.meal,
+        settings: settings.settings,
+        languageCode: settings.languageCode,
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -244,14 +255,21 @@ class _EditMealModalState extends State<EditMealModal> {
                   ),
 
                   const SizedBox(height: 32),
-                  if (!context.read<SettingsProvider>().isPro) ...[
+                  if (settings.isPro && _mealInsightFuture != null) ...[
+                    _EditMealInsightCard(insight: _mealInsightFuture!),
+                    const SizedBox(height: 24),
+                  ] else if (!settings.isPro) ...[
                     PremiumPromptCard(
-                      title: 'PREMIUM ANALYSIS',
-                      subtitle:
-                          'Get a better version of this meal based on your goal with AI suggestions.',
-                      buttonText: 'Unlock Suggestions',
+                      title: l10n.premium_analysis_title,
+                      subtitle: l10n.premium_analysis_body,
+                      buttonText: l10n.report_prompt_btn,
                       icon: LucideIcons.wand2,
-                      onTap: () => context.push('/paywall'),
+                      onTap:
+                          () => PremiumConversionService().openPaywall(
+                            context,
+                            PaywallEntryPoint.mealInsight,
+                            featureName: 'meal_edit',
+                          ),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -335,6 +353,67 @@ class _EditMealModalState extends State<EditMealModal> {
               ),
             ],
           ),
+    );
+  }
+}
+
+class _EditMealInsightCard extends StatelessWidget {
+  final Future<String> insight;
+
+  const _EditMealInsightCard({required this.insight});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    return FutureBuilder<String>(
+      future: insight,
+      builder: (context, snapshot) {
+        final body =
+            snapshot.connectionState == ConnectionState.done
+                ? snapshot.data ?? l10n.result_ai_meal_body
+                : l10n.feature_insights_generating;
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer.withValues(alpha: 0.34),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: colorScheme.primary.withValues(alpha: 0.18),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(LucideIcons.sparkles, color: colorScheme.primary, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.result_ai_meal_insight,
+                      style: AppTypography.labelLarge.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      body,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

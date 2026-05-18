@@ -48,7 +48,9 @@ class BodyProgressCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF6B4DFF).withValues(alpha: 0.1),
+                            color: const Color(
+                              0xFF6B4DFF,
+                            ).withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -58,7 +60,10 @@ class BodyProgressCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text(AppLocalizations.of(context)!.home_body_stats, style: AppTypography.heading3),
+                        Text(
+                          AppLocalizations.of(context)!.home_body_stats,
+                          style: AppTypography.heading3,
+                        ),
                       ],
                     ),
                     Icon(
@@ -144,7 +149,7 @@ class BodyProgressCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Text(
-          'Tap to log your customized weight',
+          AppLocalizations.of(context)!.progress_log_custom_weight,
           style: AppTypography.bodySmall.copyWith(
             color: context.textSecondaryColor,
           ),

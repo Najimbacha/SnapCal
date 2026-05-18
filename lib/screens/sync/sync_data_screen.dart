@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/auth_modal.dart';
 import '../../widgets/ui_blocks.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -236,7 +236,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
 
   void _handleEmailSignIn() {
     HapticFeedback.mediumImpact();
-    context.push('/auth');
+    AuthModal.show(context);
   }
 
   @override

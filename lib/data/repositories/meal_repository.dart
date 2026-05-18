@@ -45,8 +45,25 @@ class MealRepository {
         _indexBox = Hive.box<List<String>>(AppConstants.mealIndexBoxName);
       }
     } catch (e) {
-      debugPrint('❌ MealRepository: Box open failed or timed out: $e');
-      rethrow; // Pass to AppInitializer for safe handling
+      debugPrint('⚠️ MealRepository: Box open failed, attempting recovery: $e');
+      try {
+        // Attempt to delete corrupted boxes and recreate
+        await Hive.deleteBoxFromDisk(AppConstants.mealsBoxName);
+        await Hive.deleteBoxFromDisk(AppConstants.mealIndexBoxName);
+        
+        _mealsBox = await Hive.openBox<Meal>(
+          AppConstants.mealsBoxName,
+          encryptionCipher: cipher,
+        );
+        _indexBox = await Hive.openBox<List<String>>(
+          AppConstants.mealIndexBoxName,
+          encryptionCipher: cipher,
+        );
+        debugPrint('✅ MealRepository: Recovery successful (Data cleared)');
+      } catch (retryError) {
+        debugPrint('❌ MealRepository: Fatal recovery failure: $retryError');
+        rethrow;
+      }
     }
 
     // Initial migration: if meals exist but index is empty

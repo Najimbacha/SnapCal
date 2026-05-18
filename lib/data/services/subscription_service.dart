@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../repositories/settings_repository.dart';
+import '../../core/services/config_service.dart';
 
 class SubscriptionService {
   static final SubscriptionService _instance = SubscriptionService._internal();
@@ -13,10 +14,6 @@ class SubscriptionService {
   SettingsRepository? _settingsRepository;
   StreamSubscription<User?>? _authSubscription;
 
-  // Real keys should be stored in AppConstants or Remote Config.
-  // For now, we use these as default.
-  static const String _appleApiKey = "appl_placeholder_for_ios_setup";
-  static const String _googleApiKey = "goog_fgVDYvjpkxPzXqwYLndFXKGNEUr";
   static const String _entitlementId = "pro";
 
   void setRepository(SettingsRepository repository) {
@@ -35,9 +32,15 @@ class SubscriptionService {
 
       PurchasesConfiguration? configuration;
       if (Platform.isAndroid) {
-        configuration = PurchasesConfiguration(_googleApiKey);
+        final googleApiKey = ConfigService().revenueCatGoogleApiKey;
+        if (googleApiKey.isNotEmpty) {
+          configuration = PurchasesConfiguration(googleApiKey);
+        }
       } else if (Platform.isIOS) {
-        configuration = PurchasesConfiguration(_appleApiKey);
+        final appleApiKey = ConfigService().revenueCatAppleApiKey;
+        if (appleApiKey.isNotEmpty) {
+          configuration = PurchasesConfiguration(appleApiKey);
+        }
       }
 
       if (configuration != null) {

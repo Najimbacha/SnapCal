@@ -48,7 +48,9 @@ class ActivityScreen extends StatelessWidget {
                       ).animate().fadeIn(),
                     const SizedBox(width: 8),
                     Text(
-                      isWalking ? 'LIVE TRACKING' : 'STATIONARY',
+                      isWalking
+                          ? l10n.activity_live_tracking
+                          : l10n.activity_stationary,
                       style: AppTypography.labelSmall.copyWith(
                         color:
                             isWalking
@@ -74,7 +76,7 @@ class ActivityScreen extends StatelessWidget {
                     .animate(key: ValueKey(activity.steps))
                     .scale(duration: 200.ms, curve: Curves.easeOut),
                 Text(
-                  'steps today'.toUpperCase(),
+                  l10n.activity_steps_today_label,
                   style: AppTypography.labelMedium.copyWith(
                     color: context.textMutedColor,
                     fontWeight: FontWeight.w900,
@@ -100,7 +102,7 @@ class ActivityScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _SimpleStat(
-                      label: 'CALORIES',
+                      label: l10n.activity_calories_label,
                       value: '${activity.burnedCalories}',
                       unit: 'kcal',
                       icon: LucideIcons.flame,
@@ -110,7 +112,7 @@ class ActivityScreen extends StatelessWidget {
                   _Divider(),
                   Expanded(
                     child: _SimpleStat(
-                      label: 'GOAL',
+                      label: l10n.activity_goal_label,
                       value: '10k',
                       unit: 'steps',
                       icon: LucideIcons.target,
@@ -155,7 +157,7 @@ class ActivityScreen extends StatelessWidget {
 
             // --- STATUS & PERMISSIONS ---
             Text(
-              'TRACKING ENGINE',
+              l10n.activity_tracking_engine,
               style: AppTypography.labelSmall.copyWith(
                 color: context.textMutedColor,
                 fontWeight: FontWeight.w900,
@@ -182,16 +184,16 @@ class ActivityScreen extends StatelessWidget {
                           children: [
                             Text(
                               activity.isTracking
-                                  ? 'Active & Encrypted'
-                                  : 'Permission Required',
+                                  ? l10n.activity_active_encrypted
+                                  : l10n.activity_permission_required,
                               style: AppTypography.titleSmall.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             Text(
                               activity.isTracking
-                                  ? 'Your steps are synced in real-time.'
-                                  : 'Enable tracking to see your progress.',
+                                  ? l10n.activity_steps_synced
+                                  : l10n.activity_enable_tracking,
                               style: AppTypography.bodySmall.copyWith(
                                 color: context.textMutedColor,
                               ),
@@ -214,9 +216,9 @@ class ActivityScreen extends StatelessWidget {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Authorize Tracking',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      child: Text(
+                        l10n.activity_authorize_btn,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],

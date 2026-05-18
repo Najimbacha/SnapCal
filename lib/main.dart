@@ -79,8 +79,8 @@ class _SnapCalAppState extends State<SnapCalApp> {
           )
           .timeout(
             const Duration(
-              seconds: 30,
-            ), // Increased slightly to accommodate all inner timeouts
+              seconds: 35,
+            ), // Safety Hatch: transition to Error/Retry screen if initialization hangs for over 35 seconds
             onTimeout: () {
               debugPrint('❌ SnapCalApp: Initialization Timed Out!');
               throw TimeoutException(
@@ -116,9 +116,12 @@ class _SnapCalAppState extends State<SnapCalApp> {
 
         // Handle Initialization Errors (Network, Storage, etc.)
         if (snapshot.hasError) {
+          final l10n = _startupLocalizations();
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.darkTheme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
               backgroundColor: const Color(0xFF0F172A),
               body: Center(
@@ -133,9 +136,9 @@ class _SnapCalAppState extends State<SnapCalApp> {
                         size: 64,
                       ),
                       const SizedBox(height: 24),
-                      const Text(
-                        'Launch Encountered an Issue',
-                        style: TextStyle(
+                      Text(
+                        l10n.startup_launch_issue,
+                        style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
@@ -144,8 +147,8 @@ class _SnapCalAppState extends State<SnapCalApp> {
                       const SizedBox(height: 12),
                       Text(
                         snapshot.error is TimeoutException
-                            ? 'Initialization is taking longer than expected.'
-                            : 'Something went wrong while setting up the app. Please try again.',
+                            ? l10n.startup_initialization_slow
+                            : l10n.startup_setup_failed,
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.white60),
                       ),
@@ -157,7 +160,7 @@ class _SnapCalAppState extends State<SnapCalApp> {
                           foregroundColor: Colors.black,
                         ),
                         icon: const Icon(LucideIcons.refreshCw, size: 18),
-                        label: const Text('Retry Launch'),
+                        label: Text(l10n.startup_retry_launch),
                       ),
                     ],
                   ),
@@ -334,8 +337,11 @@ class _GlobalErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _startupLocalizations();
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         backgroundColor: const Color(0xFF0F172A),
         body: Center(
@@ -357,27 +363,27 @@ class _GlobalErrorView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                const Text(
-                  'Initialization Error',
-                  style: TextStyle(
+                Text(
+                  l10n.startup_initialization_error,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'The application encountered a startup error. Please try restarting.',
+                Text(
+                  l10n.startup_error_body,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
                 ),
                 const SizedBox(height: 40),
                 TextButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.refresh, color: Colors.white),
-                  label: const Text(
-                    'Reload',
-                    style: TextStyle(color: Colors.white),
+                  label: Text(
+                    l10n.startup_reload,
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ],
@@ -387,4 +393,15 @@ class _GlobalErrorView extends StatelessWidget {
       ),
     );
   }
+}
+
+AppLocalizations _startupLocalizations() {
+  final locale = WidgetsBinding.instance.platformDispatcher.locale;
+  final languageCode =
+      AppLocalizations.supportedLocales.any(
+            (supported) => supported.languageCode == locale.languageCode,
+          )
+          ? locale.languageCode
+          : 'en';
+  return lookupAppLocalizations(Locale(languageCode));
 }

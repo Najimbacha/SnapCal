@@ -9,6 +9,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/ui_blocks.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -44,21 +45,14 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
 
   void _ensureAnims(int count) {
     if (_staggeredAnims == null || _staggeredAnims!.length < count) {
-      _staggeredAnims = List.generate(
-        count,
-        (index) {
-          final start = (index * 0.08).clamp(0.0, 1.0);
-          final end = (start + 0.4).clamp(0.0, 1.0);
-          return CurvedAnimation(
-            parent: _animController,
-            curve: Interval(
-              start,
-              end,
-              curve: Curves.easeOutCubic,
-            ),
-          );
-        },
-      );
+      _staggeredAnims = List.generate(count, (index) {
+        final start = (index * 0.08).clamp(0.0, 1.0);
+        final end = (start + 0.4).clamp(0.0, 1.0);
+        return CurvedAnimation(
+          parent: _animController,
+          curve: Interval(start, end, curve: Curves.easeOutCubic),
+        );
+      });
     }
   }
 
@@ -172,6 +166,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     }
 
     final isDark = context.isDarkMode;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: Stack(
@@ -262,8 +257,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         animation: _staggeredAnims![1],
                         child: Text(
                           _showEmailForm
-                              ? (_isSignUp ? "Create account" : "Welcome back")
-                              : "Let's dive in",
+                              ? (_isSignUp
+                                  ? l10n.auth_create_account
+                                  : l10n.auth_welcome_back_title)
+                              : l10n.auth_lets_dive,
                           style: AppTypography.displayMedium.copyWith(
                             color: context.textPrimaryColor,
                             fontWeight: FontWeight.w900,
@@ -277,7 +274,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                       _StaggeredFade(
                         animation: _staggeredAnims![1],
                         child: Text(
-                          "Your journey to a healthier you starts here.",
+                          l10n.auth_intro_body,
                           style: AppTypography.bodyMedium.copyWith(
                             color: context.textSecondaryColor,
                           ),
@@ -300,7 +297,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                         animation: _staggeredAnims![5],
                                         child: _AuthTextField(
                                           controller: _emailController,
-                                          hint: "Email address",
+                                          hint: l10n.auth_hint_email,
                                           keyboardType:
                                               TextInputType.emailAddress,
                                         ),
@@ -310,7 +307,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                         animation: _staggeredAnims![6],
                                         child: _AuthTextField(
                                           controller: _passwordController,
-                                          hint: "Password",
+                                          hint: l10n.auth_hint_password,
                                           isPassword: true,
                                           showPassword: _showPassword,
                                           onTogglePassword:
@@ -359,8 +356,9 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                                       )
                                                       : Text(
                                                         _isSignUp
-                                                            ? "Sign Up"
-                                                            : "Log In",
+                                                            ? l10n
+                                                                .auth_sign_up_short
+                                                            : l10n.auth_log_in,
                                                         style: AppTypography
                                                             .titleMedium
                                                             .copyWith(
@@ -389,8 +387,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                           children: [
                                             Text(
                                               _isSignUp
-                                                  ? "Already have an account? "
-                                                  : "Don't have an account? ",
+                                                  ? l10n.auth_have_account
+                                                  : l10n.auth_no_account,
                                               style: AppTypography.bodyMedium
                                                   .copyWith(
                                                     color:
@@ -406,8 +404,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                                   ),
                                               child: Text(
                                                 _isSignUp
-                                                    ? "Log in"
-                                                    : "Sign up",
+                                                    ? l10n.auth_log_in
+                                                    : l10n.auth_sign_up_short,
                                                 style: AppTypography.titleMedium
                                                     .copyWith(
                                                       color: AppColors.primary,
@@ -426,7 +424,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                               () => _showEmailForm = false,
                                             ),
                                         child: Text(
-                                          "Back to Social Login",
+                                          l10n.auth_back_to_social,
                                           style: AppTypography.bodyMedium
                                               .copyWith(
                                                 color: context.textMutedColor,
@@ -442,7 +440,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                     _StaggeredFade(
                                       animation: _staggeredAnims![2],
                                       child: _AuthSocialButton(
-                                        label: "Continue with Google",
+                                        label: l10n.sync_google,
                                         backgroundColor:
                                             isDark
                                                 ? Colors.white
@@ -476,7 +474,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                               horizontal: 16,
                                             ),
                                             child: Text(
-                                              "or",
+                                              l10n.common_or,
                                               style: AppTypography.labelSmall
                                                   .copyWith(
                                                     color: context
@@ -503,7 +501,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                         children: [
                                           Expanded(
                                             child: _AuthSocialButton(
-                                              label: "Facebook",
+                                              label: l10n.sync_facebook,
                                               backgroundColor: const Color(
                                                 0xFF1877F2,
                                               ),
@@ -522,7 +520,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                           const SizedBox(width: 12),
                                           Expanded(
                                             child: _AuthSocialButton(
-                                              label: "Email",
+                                              label: l10n.sync_email,
                                               backgroundColor:
                                                   isDark
                                                       ? Colors.white.withValues(

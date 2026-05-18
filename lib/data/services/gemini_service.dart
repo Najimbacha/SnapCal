@@ -39,8 +39,12 @@ class NutritionResult {
       protein: _safeInt(json['protein']),
       carbs: _safeInt(json['carbs']),
       fat: _safeInt(json['fat']),
-      healthScore: _safeInt(json['health_score']) == 0 ? 5 : _safeInt(json['health_score']),
-      insights: (json['insights'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      healthScore:
+          _safeInt(json['health_score']) == 0
+              ? 5
+              : _safeInt(json['health_score']),
+      insights:
+          (json['insights'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 
@@ -99,15 +103,14 @@ class AIService {
                 ],
               },
             ],
-            'generationConfig': {
-              'temperature': 0.7,
-              'maxOutputTokens': 1024,
-            },
+            'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
           },
         );
 
         if (response.statusCode == 200) {
-          final text = response.data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+          final text =
+              response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
+                  as String?;
           if (text != null) return text;
         }
       } catch (e) {
@@ -120,8 +123,83 @@ class AIService {
     throw lastError ?? GeminiException('All text generation candidates failed');
   }
 
+  Future<String> generateMealInsight({
+    required Meal meal,
+    required UserSettings settings,
+    required String languageCode,
+  }) async {
+    final languageName = languageNames[languageCode] ?? 'English';
+    final prompt = '''
+You are SnapCal's nutrition coach.
+RESPOND ENTIRELY IN $languageName.
+Give exactly one concise, practical meal improvement insight for this user.
+Mention one specific macro or calorie observation and one specific next action.
+Do not diagnose medical conditions. Keep it under 28 words.
+
+Meal:
+- Name: ${meal.foodName}
+- Portion: ${meal.portion ?? 'not provided'}
+- Calories: ${meal.calories} kcal
+- Protein: ${meal.macros.protein}g
+- Carbs: ${meal.macros.carbs}g
+- Fat: ${meal.macros.fat}g
+
+User daily targets:
+- Calories: ${settings.dailyCalorieGoal} kcal
+- Protein: ${settings.dailyProteinGoal}g
+- Carbs: ${settings.dailyCarbGoal}g
+- Fat: ${settings.dailyFatGoal}g
+''';
+
+    try {
+      final response = await generateText(prompt);
+      final cleaned =
+          response
+              .replaceAll('```json', '')
+              .replaceAll('```', '')
+              .trim()
+              .split('\n')
+              .where((line) => line.trim().isNotEmpty)
+              .join(' ');
+      if (cleaned.isNotEmpty) return cleaned;
+    } catch (e) {
+      debugPrint('Meal insight generation failed: $e');
+    }
+
+    return _fallbackMealInsight(meal, settings, languageCode);
+  }
+
+  String _fallbackMealInsight(
+    Meal meal,
+    UserSettings settings,
+    String languageCode,
+  ) {
+    final proteinGap = settings.dailyProteinGoal - meal.macros.protein;
+    switch (languageCode) {
+      case 'ar':
+        return proteinGap > 25
+            ? 'البروتين في هذه الوجبة منخفض لهدفك. أضف مصدراً خفيفاً للبروتين في الوجبة التالية.'
+            : 'هذه الوجبة مناسبة أكثر عند موازنتها بخضار أو ماء خلال اليوم.';
+      case 'es':
+        return proteinGap > 25
+            ? 'Esta comida queda baja en proteína para tu meta. Añade una fuente magra en la próxima comida.'
+            : 'Esta comida encaja mejor si la equilibras con verduras o agua durante el día.';
+      case 'fr':
+        return proteinGap > 25
+            ? 'Ce repas est faible en protéines pour ton objectif. Ajoute une source maigre au prochain repas.'
+            : 'Ce repas s’équilibre mieux avec des légumes ou de l’eau dans la journée.';
+      default:
+        return proteinGap > 25
+            ? 'This meal is light on protein for your goal. Add a lean protein source at your next meal.'
+            : 'This meal fits better when balanced with vegetables or water later today.';
+    }
+  }
+
   /// Main method: Tries Groq first (faster), falls back to Gemini, then Manual
-  Future<List<NutritionResult>> analyzeFood(Uint8List imageBytes, {String language = 'en'}) async {
+  Future<List<NutritionResult>> analyzeFood(
+    Uint8List imageBytes, {
+    String language = 'en',
+  }) async {
     String groqError = "Unknown";
     try {
       // 1. Try Groq first (faster, higher free limits)
@@ -132,7 +210,11 @@ class AIService {
       debugPrint("Groq failed ($groqError). Switching to Gemini...");
       try {
         // 2. Fallback to Gemini
-        return await _detectWithGeminiRetry(imageBytes, language: language, maxRetries: 2);
+        return await _detectWithGeminiRetry(
+          imageBytes,
+          language: language,
+          maxRetries: 2,
+        );
       } catch (e2) {
         final geminiError = _extractDioError(e2);
         return [
@@ -171,7 +253,10 @@ class AIService {
   }
 
   /// Primary: Google Gemini (with Auto-Hunting)
-  Future<List<NutritionResult>> _detectWithGemini(Uint8List imageBytes, {String language = 'en'}) async {
+  Future<List<NutritionResult>> _detectWithGemini(
+    Uint8List imageBytes, {
+    String language = 'en',
+  }) async {
     final apiKey = ConfigService().geminiApiKey;
     if (apiKey.isEmpty) throw GeminiException('API Key missing');
 
@@ -238,7 +323,10 @@ class AIService {
   }
 
   /// Fallback: Groq (with Auto-Hunting)
-  Future<List<NutritionResult>> _detectWithGroq(Uint8List imageBytes, {String language = 'en'}) async {
+  Future<List<NutritionResult>> _detectWithGroq(
+    Uint8List imageBytes, {
+    String language = 'en',
+  }) async {
     final apiKey = ConfigService().groqApiKey;
     if (apiKey.isEmpty) throw GeminiException('API Key missing');
 
@@ -272,7 +360,10 @@ class AIService {
               {
                 'role': 'user',
                 'content': [
-                  {'type': 'text', 'text': AppConstants.getGeminiSystemPrompt(language)},
+                  {
+                    'type': 'text',
+                    'text': AppConstants.getGeminiSystemPrompt(language),
+                  },
                   {
                     'type': 'image_url',
                     'image_url': {'url': imageUrl},
@@ -383,6 +474,7 @@ class AIService {
     Map<int, List<Meal>> existingWeeklyMeals,
   ) async {
     final existingMealsContext = <String>[];
+    final languageName = languageNames[settings.languageCode] ?? 'English';
     final dayNames = [
       'Monday',
       'Tuesday',
@@ -408,6 +500,7 @@ class AIService {
 
     final prompt = '''
 You are a certified nutrition expert. Generate meals for ONE day only (${dayNames[dayIndex]}).
+STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE. All meal types, meal names, portions, ingredients, grocery item names, and grocery categories MUST be in $languageName.
 User: Goal ${settings.goalMode} | $safeTarget kcal | P${settings.dailyProteinGoal}g C${settings.dailyCarbGoal}g F${settings.dailyFatGoal}g
 Meals/day: ${settings.mealsPerDay} | Restriction: ${settings.dietaryRestriction} | Cuisine: ${settings.cuisinePreference}
 Do NOT repeat: ${existingMealsContext.join(', ')}

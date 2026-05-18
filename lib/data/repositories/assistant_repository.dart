@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/services/security_service.dart';
 import '../../core/constants/app_constants.dart';
@@ -8,11 +10,30 @@ class AssistantRepository {
   Box? _box;
 
   Future<void> init() async {
-    final encryptionKey = await SecurityService().getEncryptionKey();
-    _box = await Hive.openBox(
-      AppConstants.assistantBoxName,
-      encryptionCipher: HiveAesCipher(encryptionKey),
-    );
+    try {
+      final encryptionKey = await SecurityService().getEncryptionKey();
+      _box = await Hive.openBox(
+        AppConstants.assistantBoxName,
+        encryptionCipher: HiveAesCipher(encryptionKey),
+      ).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint(
+        '⚠️ AssistantRepository: Box open failed, attempting recovery: $e',
+      );
+      try {
+        await Hive.deleteBoxFromDisk(AppConstants.assistantBoxName);
+        final encryptionKey = await SecurityService().getEncryptionKey();
+        _box = await Hive.openBox(
+          AppConstants.assistantBoxName,
+          encryptionCipher: HiveAesCipher(encryptionKey),
+        );
+        debugPrint('✅ AssistantRepository: Recovery successful');
+      } catch (retryError) {
+        debugPrint(
+          '❌ AssistantRepository: Fatal recovery failure: $retryError',
+        );
+      }
+    }
   }
 
   /// Get cached recommendations if they exist

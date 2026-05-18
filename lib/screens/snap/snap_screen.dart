@@ -10,6 +10,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/gemini_service.dart';
+import '../../data/services/premium_conversion_service.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import 'snap_controller.dart';
@@ -123,7 +124,12 @@ class _SnapScreenState extends State<SnapScreen>
   }
 
   void _showPaywall() {
-    context.push('/paywall', extra: {'limitReached': true});
+    PremiumConversionService().openPaywall(
+      context,
+      PaywallEntryPoint.scanLimit,
+      limitReached: true,
+      featureName: 'scan',
+    );
   }
 
   void _showResultModal() {

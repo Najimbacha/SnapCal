@@ -20,39 +20,51 @@ class AchievementsScreen extends StatelessWidget {
 
     return AppPageScaffold(
       title: l10n.feature_achievements_title,
-      subtitle: l10n.feature_achievements_unlocked(achievementsProvider.totalUnlocked.toString()),
+      subtitle: l10n.feature_achievements_unlocked(
+        achievementsProvider.totalUnlocked.toString(),
+      ),
       scrollable: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _CategorySection(
-            title: 'Consistency',
+            title: l10n.achievement_category_consistency,
             icon: LucideIcons.calendarClock,
-            achievements: achievementsProvider.byCategory(AchievementCategory.consistency),
+            achievements: achievementsProvider.byCategory(
+              AchievementCategory.consistency,
+            ),
           ),
           const SizedBox(height: 32),
           _CategorySection(
-            title: 'Precision',
+            title: l10n.achievement_category_precision,
             icon: LucideIcons.target,
-            achievements: achievementsProvider.byCategory(AchievementCategory.precision),
+            achievements: achievementsProvider.byCategory(
+              AchievementCategory.precision,
+            ),
           ),
           const SizedBox(height: 32),
           _CategorySection(
-            title: 'Hydration',
+            title: l10n.achievement_category_hydration,
             icon: LucideIcons.droplets,
-            achievements: achievementsProvider.byCategory(AchievementCategory.hydration),
+            achievements: achievementsProvider.byCategory(
+              AchievementCategory.hydration,
+            ),
           ),
           const SizedBox(height: 32),
           _CategorySection(
-            title: 'Logging',
+            title: l10n.achievement_category_logging,
             icon: LucideIcons.camera,
-            achievements: achievementsProvider.byCategory(AchievementCategory.logging),
+            achievements: achievementsProvider.byCategory(
+              AchievementCategory.logging,
+            ),
           ),
           const SizedBox(height: 32),
           _CategorySection(
-            title: 'Progress',
+            title: l10n.achievement_category_progress,
             icon: LucideIcons.trendingUp,
-            achievements: achievementsProvider.byCategory(AchievementCategory.progress),
+            achievements: achievementsProvider.byCategory(
+              AchievementCategory.progress,
+            ),
           ),
           const SizedBox(height: 48),
         ],

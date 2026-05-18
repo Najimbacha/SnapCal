@@ -15,6 +15,7 @@ import 'providers/auth_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/planner/meal_planner_screen.dart';
 import 'screens/paywall/paywall_screen.dart'; // Import
+import 'data/services/premium_conversion_service.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/progress/progress_screen.dart'; // Import
 import 'widgets/hero_action_button.dart';
@@ -73,9 +74,18 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
         pageBuilder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
           final limitReached = extra?['limitReached'] as bool? ?? false;
+          final entryPoint = PremiumConversionService().parseEntryPoint(
+            extra?['entryPoint'] as String?,
+            limitReached: limitReached,
+          );
+          final featureName = extra?['featureName'] as String?;
           return _sharedAxisPage(
             state,
-            PaywallScreen(limitReached: limitReached),
+            PaywallScreen(
+              limitReached: limitReached,
+              entryPoint: entryPoint,
+              featureName: featureName,
+            ),
           );
         },
       ),

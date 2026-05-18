@@ -1922,4 +1922,568 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get activity_motivation_elite =>
       'رائع! أنت في منطقة النشاط النخبة اليوم.';
+
+  @override
+  String get home_scan_food => 'مسح الطعام';
+
+  @override
+  String get home_go_pro => 'كن برو';
+
+  @override
+  String get home_pro_badge => 'برو';
+
+  @override
+  String get settings_upgrade_to_pro => 'الترقية إلى برو';
+
+  @override
+  String get settings_emerald_badge => 'زمرد';
+
+  @override
+  String get coach_limit_title => 'تم الوصول إلى الحد اليومي';
+
+  @override
+  String get coach_limit_subtitle =>
+      'اشترك في النسخة المميزة للحصول على توجيه غير محدود وإرشاد ذكي للوجبات مصمم خصيصاً لأهدافك.';
+
+  @override
+  String get coach_limit_btn => 'الترقية لمحادثة غير محدودة';
+
+  @override
+  String get coach_see_options => 'عرض خيارات الاشتراك';
+
+  @override
+  String get coach_locked_title => 'اعرف ماذا تأكل بعد ذلك.';
+
+  @override
+  String get coach_locked_desc =>
+      'يقرأ مدرب الذكاء الاصطناعي سعراتك الحرارية وعناصرك الغذائية وهدفك اليوم، ثم يقدم نصائح غذائية واضحة.';
+
+  @override
+  String get coach_preview_meal_title => 'اقتراح الوجبة التالية';
+
+  @override
+  String get coach_preview_meal_body =>
+      'أفضل وجبة تالية: وعاء أرز الدجاج المشوي، حوالي 550 سعرة حرارية.';
+
+  @override
+  String get coach_preview_macro_title => 'تصحيح العناصر الغذائية';
+
+  @override
+  String get coach_preview_macro_body =>
+      'ما زلت بحاجة إلى 45 جرام من البروتين و 120 جرام من الكربوهيدرات اليوم.';
+
+  @override
+  String get coach_preview_feedback_title => 'ملاحظات التقدم اليومي';
+
+  @override
+  String get coach_preview_feedback_body =>
+      'نسبة البروتين لديك منخفضة. أضف البيض، التونة، أو الزبادي اليوناني بعد ذلك.';
+
+  @override
+  String get report_prompt_title => 'تقريرك الأسبوعي جاهز';
+
+  @override
+  String get report_prompt_subtitle =>
+      'افتح نظرة أعمق لمعرفة سبب تجاوز الأهداف في بعض الأيام وكيفية التحسين في الأسبوع المقبل.';
+
+  @override
+  String get report_prompt_btn => 'فتح التقرير الأسبوعي';
+
+  @override
+  String get scan_overlay_scanning => 'مسح رؤية الذكاء الاصطناعي';
+
+  @override
+  String get scan_overlay_desc =>
+      'الكشف عن المكونات وحساب الكثافة الغذائية باستخدام Gemini...';
+
+  @override
+  String get scan_overlay_manual => 'تسجيل يدوياً';
+
+  @override
+  String get report_card_title => 'تقرير التقدم الأسبوعي';
+
+  @override
+  String get report_card_subtitle =>
+      'تعرف على سبب تجاوز الأهداف في بعض الأيام واحصل على اقتراحات مخصصة لتصحيح ذلك.';
+
+  @override
+  String get startup_launch_issue => 'حدثت مشكلة أثناء التشغيل';
+
+  @override
+  String get startup_initialization_slow =>
+      'يستغرق التهيئة وقتاً أطول من المتوقع.';
+
+  @override
+  String get startup_setup_failed =>
+      'حدث خطأ أثناء إعداد التطبيق. يرجى المحاولة مرة أخرى.';
+
+  @override
+  String get startup_retry_launch => 'إعادة محاولة التشغيل';
+
+  @override
+  String get startup_initialization_error => 'خطأ في التهيئة';
+
+  @override
+  String get startup_error_body =>
+      'واجه التطبيق خطأ عند بدء التشغيل. يرجى محاولة إعادة التشغيل.';
+
+  @override
+  String get startup_reload => 'إعادة تحميل';
+
+  @override
+  String get activity_live_tracking => 'تتبع مباشر';
+
+  @override
+  String get activity_stationary => 'ثابت';
+
+  @override
+  String get activity_steps_today_label => 'خطوات اليوم';
+
+  @override
+  String get activity_calories_label => 'السعرات';
+
+  @override
+  String get activity_goal_label => 'الهدف';
+
+  @override
+  String get activity_tracking_engine => 'محرك التتبع';
+
+  @override
+  String get activity_active_encrypted => 'نشط ومشفر';
+
+  @override
+  String get activity_permission_required => 'الإذن مطلوب';
+
+  @override
+  String get activity_steps_synced => 'تتم مزامنة خطواتك في الوقت الفعلي.';
+
+  @override
+  String get activity_enable_tracking => 'فعّل التتبع لرؤية تقدمك.';
+
+  @override
+  String feature_insights_share_error(String error) {
+    return 'خطأ أثناء المشاركة: $error';
+  }
+
+  @override
+  String get feature_insights_empty => 'لا توجد بيانات لهذا الأسبوع بعد.';
+
+  @override
+  String get feature_insights_calorie_trend => 'اتجاه السعرات';
+
+  @override
+  String get feature_insights_ai_coach => 'رؤى مدرب الذكاء الاصطناعي';
+
+  @override
+  String get auth_intro_body => 'تبدأ رحلتك نحو صحة أفضل من هنا.';
+
+  @override
+  String get auth_back_to_social => 'العودة إلى تسجيل الدخول الاجتماعي';
+
+  @override
+  String get auth_create_account => 'إنشاء حساب';
+
+  @override
+  String get auth_welcome_back_title => 'مرحباً بعودتك';
+
+  @override
+  String get auth_lets_dive => 'لنبدأ';
+
+  @override
+  String get auth_sign_up_short => 'تسجيل';
+
+  @override
+  String get auth_log_in => 'دخول';
+
+  @override
+  String get auth_have_account => 'لديك حساب بالفعل؟ ';
+
+  @override
+  String get auth_no_account => 'ليس لديك حساب؟ ';
+
+  @override
+  String get common_or => 'أو';
+
+  @override
+  String get common_today => 'اليوم';
+
+  @override
+  String get common_yesterday => 'أمس';
+
+  @override
+  String get common_tomorrow => 'غداً';
+
+  @override
+  String get common_maybe_later => 'ربما لاحقاً';
+
+  @override
+  String get settings_category_body_profile_sub =>
+      'قياسات الجسم والوحدات والوزن المستهدف';
+
+  @override
+  String get settings_category_nutrition_sub =>
+      'أهداف السعرات والبروتين والكربوهيدرات والدهون';
+
+  @override
+  String get settings_category_preferences_sub =>
+      'المظهر واللغة والتذكيرات وتخطيط الوجبات';
+
+  @override
+  String get settings_category_achievements_sub =>
+      'السلاسل والإنجازات ومكافآت التقدم';
+
+  @override
+  String get settings_category_account_sub =>
+      'تسجيل الدخول واسم الملف الشخصي والتحكم بالحساب';
+
+  @override
+  String get settings_category_data_sync_sub =>
+      'النسخ الاحتياطي والاستعادة وبيانات التطبيق المحلية';
+
+  @override
+  String get settings_category_about_sub =>
+      'الإصدار والخصوصية والشروط ومعلومات التطبيق';
+
+  @override
+  String get home_go_deeper_title => 'تعمق أكثر';
+
+  @override
+  String get home_go_deeper_body =>
+      'مراجعات يومية بالذكاء الاصطناعي، واتجاهات العناصر، والسجل الكامل.';
+
+  @override
+  String get home_daily_wellness => 'العافية اليومية';
+
+  @override
+  String get home_add => 'إضافة';
+
+  @override
+  String get home_daily_score => 'النتيجة اليومية';
+
+  @override
+  String get log_monthly_calendar_soon => 'التقويم الشهري قريباً';
+
+  @override
+  String get log_today_subtitle => 'تتبع ما تأكله اليوم';
+
+  @override
+  String get log_review_day => 'راجع هذا اليوم';
+
+  @override
+  String get log_scan_food => 'مسح الطعام';
+
+  @override
+  String get feature_templates_saved_meals => 'الوجبات المحفوظة';
+
+  @override
+  String get feature_templates_saved_added => 'تمت إضافة الوجبة المحفوظة';
+
+  @override
+  String get feature_templates_deleted => 'تم حذف الروتين';
+
+  @override
+  String get premium_analysis_title => 'تحليل مميز';
+
+  @override
+  String get premium_analysis_body =>
+      'احصل على نسخة أفضل من هذه الوجبة حسب هدفك مع اقتراحات الذكاء الاصطناعي.';
+
+  @override
+  String get result_meal_name => 'اسم الوجبة';
+
+  @override
+  String get result_feast => 'وليمة';
+
+  @override
+  String get result_ai_meal_insight => 'رؤية الوجبة بالذكاء الاصطناعي';
+
+  @override
+  String get result_ai_meal_body => 'وازن هذه الوجبة باقتراح ذكي واحد.';
+
+  @override
+  String get result_add_new_item => 'إضافة عنصر جديد';
+
+  @override
+  String get result_total_calories => 'إجمالي السعرات';
+
+  @override
+  String get result_food_details => 'تفاصيل الطعام';
+
+  @override
+  String get result_food => 'الطعام';
+
+  @override
+  String get result_portion_label => 'الحصة';
+
+  @override
+  String get paywall_cancel_anytime => 'يمكنك الإلغاء في أي وقت. بلا التزام.';
+
+  @override
+  String get paywall_terms_conditions => 'الشروط والأحكام';
+
+  @override
+  String get paywall_trial_7_day => 'تجربة 7 أيام';
+
+  @override
+  String get paywall_scan_limit_subtitle =>
+      'استخدمت 3 من 3 عمليات مسح مجانية اليوم. افتح مسح طعام غير محدود بالذكاء الاصطناعي وتحليل السعرات فوراً.';
+
+  @override
+  String get paywall_coach_subtitle =>
+      'افتح تدريباً غير محدود وإرشاداً للعناصر الغذائية واقتراحات وجبات مناسبة ليومك.';
+
+  @override
+  String get paywall_planner_subtitle =>
+      'افتح خططاً أسبوعية كاملة وقوائم مشتريات وتفضيلات وإعادة توليد وجبات بالذكاء الاصطناعي.';
+
+  @override
+  String paywall_reports_subtitle(String feature) {
+    return 'افتح تحليلاً أعمق واتجاهات أسبوعية واقتراحات عملية بالذكاء الاصطناعي بعد كل $feature.';
+  }
+
+  @override
+  String get paywall_progress_subtitle =>
+      'افتح المزيد من صور التقدم والمقارنات وتتبع التحول بعد الحد الشهري المجاني.';
+
+  @override
+  String get paywall_ad_removal_subtitle =>
+      'اشترك في Pro لإزالة الإعلانات وفتح تجربة التغذية الكاملة بالذكاء الاصطناعي.';
+
+  @override
+  String get progress_weight_trend => 'اتجاه الوزن';
+
+  @override
+  String get progress_log_custom_weight => 'اضغط لتسجيل وزنك المخصص';
+
+  @override
+  String get log_calories_eaten => 'السعرات المستهلكة';
+
+  @override
+  String log_kcal_over(int amount) {
+    return '$amount فوق الهدف';
+  }
+
+  @override
+  String log_kcal_left(int amount) {
+    return '$amount متبقية';
+  }
+
+  @override
+  String get log_no_details => 'لم يتم تسجيل تفاصيل لهذا اليوم بعد.';
+
+  @override
+  String log_over_target_insight(int amount) {
+    return 'سجلت $amount سعرة فوق الهدف. راجع الوجبات الأثقل أدناه.';
+  }
+
+  @override
+  String log_low_protein_insight(int calories) {
+    return 'سجلت $calories سعرة وكان البروتين أقل من الهدف.';
+  }
+
+  @override
+  String log_water_behind_insight(int calories) {
+    return 'سجلت $calories سعرة. لا يزال شرب الماء أقل من الهدف اليوم.';
+  }
+
+  @override
+  String log_balanced_day_insight(int calories) {
+    return 'سجلت $calories سعرة مع يوم متوازن حتى الآن.';
+  }
+
+  @override
+  String feature_templates_save_desc(int count) {
+    return 'احفظ هذه العناصر الـ $count للتسجيل لاحقاً بلمسة واحدة.';
+  }
+
+  @override
+  String get achievement_category_consistency => 'الاستمرارية';
+
+  @override
+  String get achievement_category_precision => 'الدقة';
+
+  @override
+  String get achievement_category_hydration => 'الترطيب';
+
+  @override
+  String get achievement_category_logging => 'التسجيل';
+
+  @override
+  String get achievement_category_progress => 'التقدم';
+
+  @override
+  String get achievement_unlocked_label => 'مفتوح';
+
+  @override
+  String get report_pdf_title => 'تقرير التغذية بالذكاء الاصطناعي';
+
+  @override
+  String report_pdf_user(String name) {
+    return 'المستخدم: $name';
+  }
+
+  @override
+  String get report_pdf_weekly_performance => 'الأداء الأسبوعي';
+
+  @override
+  String get report_pdf_total_protein => 'إجمالي البروتين';
+
+  @override
+  String get report_pdf_active_streak => 'سلسلة النشاط';
+
+  @override
+  String get report_pdf_grams => 'جرام';
+
+  @override
+  String get report_pdf_days => 'أيام';
+
+  @override
+  String get report_pdf_macro_distribution => 'توزيع العناصر الغذائية';
+
+  @override
+  String get report_pdf_nutrient => 'العنصر';
+
+  @override
+  String get report_pdf_total_consumed => 'الإجمالي المستهلك';
+
+  @override
+  String get report_pdf_daily_target => 'الهدف اليومي';
+
+  @override
+  String get report_pdf_goal_status => 'حالة الهدف';
+
+  @override
+  String get report_pdf_carbohydrates => 'الكربوهيدرات';
+
+  @override
+  String get report_pdf_fats => 'الدهون';
+
+  @override
+  String get report_pdf_meal_log => 'سجل الوجبات التفصيلي (آخر 7 أيام)';
+
+  @override
+  String get report_pdf_date => 'التاريخ';
+
+  @override
+  String get report_pdf_meal_item => 'الوجبة';
+
+  @override
+  String get report_pdf_type => 'النوع';
+
+  @override
+  String get report_pdf_footer =>
+      'تم إنشاء هذا التقرير تلقائياً بواسطة SnapCal AI.';
+
+  @override
+  String get report_pdf_tagline => 'استمر بثبات، وابقَ صحياً.';
+
+  @override
+  String get onboarding_safety_safer_pace => 'سنقترح وتيرة أكثر أماناً.';
+
+  @override
+  String get onboarding_safety_surplus_capped =>
+      'حددنا فائض السعرات لإبقاء الخطة واقعية.';
+
+  @override
+  String get onboarding_safety_floor =>
+      'أبقينا هدفك فوق الحد الأدنى الآمن للسعرات.';
+
+  @override
+  String onboarding_safety_floor_extra(String note) {
+    return '$note تم تطبيق الحد الأدنى الآمن للسعرات.';
+  }
+
+  @override
+  String onboarding_insight_desk(int calories) {
+    return '$calories سعرة تجعل خطتك واقعية مع نمط نشاط منخفض.';
+  }
+
+  @override
+  String onboarding_insight_light(int calories) {
+    return '$calories سعرة تمنحك هدفاً ثابتاً يناسب حركة أسبوعية خفيفة.';
+  }
+
+  @override
+  String onboarding_insight_athlete(int calories) {
+    return '$calories سعرة تدعم احتياج التدريب دون تسريع الوتيرة كثيراً.';
+  }
+
+  @override
+  String onboarding_insight_default(int calories) {
+    return '$calories سعرة توازن بين هدفك وحجم جسمك ومستوى نشاطك الحالي.';
+  }
+
+  @override
+  String get onboarding_tip_desk =>
+      'المشي 20 دقيقة بعد الوجبات طريقة سهلة لتحسين الالتزام.';
+
+  @override
+  String get onboarding_tip_light =>
+      'جلستا حركة إضافيتان أسبوعياً ستجعلان هذا الهدف أسهل للاستمرار.';
+
+  @override
+  String get onboarding_tip_athlete =>
+      'وزع البروتين على كل وجبة لدعم التعافي والسيطرة على الشهية.';
+
+  @override
+  String get onboarding_tip_bulk =>
+      'اجعل معظم السعرات الإضافية حول التدريب لتحسين الأداء.';
+
+  @override
+  String get onboarding_tip_default =>
+      'ابنِ وجباتك حول البروتين أولاً حتى يصبح الهدف أسهل.';
+
+  @override
+  String get paywall_slide_grilled_chicken => 'دجاج مشوي';
+
+  @override
+  String get paywall_slide_rice => 'أرز';
+
+  @override
+  String get paywall_slide_avocado => 'أفوكادو';
+
+  @override
+  String get paywall_slide_toast => 'توست';
+
+  @override
+  String get paywall_slide_cherry_tomatoes => 'طماطم كرزية';
+
+  @override
+  String get paywall_slide_salmon => 'فيليه سلمون';
+
+  @override
+  String get paywall_slide_sweet_potato => 'بطاطا حلوة';
+
+  @override
+  String get paywall_slide_broccoli => 'بروكلي';
+
+  @override
+  String get paywall_slide_boiled_eggs => 'بيض مسلوق';
+
+  @override
+  String get paywall_slide_chicken_portion => '١٥٠ جم';
+
+  @override
+  String get paywall_slide_rice_portion => '١٣٠ جم';
+
+  @override
+  String get paywall_slide_avocado_portion => '١٠٠ جم';
+
+  @override
+  String get paywall_slide_tomatoes_portion => '٨٠ جم';
+
+  @override
+  String get paywall_slide_salmon_portion => '١٥٠ جم';
+
+  @override
+  String get paywall_slide_sweet_potato_portion => '١٣٠ جم';
+
+  @override
+  String get paywall_slide_broccoli_portion => '١٠٠ جم';
+
+  @override
+  String get paywall_slide_eggs_portion => 'بيضتان';
+
+  @override
+  String get paywall_slide_toast_portion => 'شريحتان';
 }

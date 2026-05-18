@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../../core/services/security_service.dart';
 import '../models/water_log.dart';
@@ -9,11 +10,26 @@ class WaterRepository {
 
   /// Initialize the repository
   Future<void> init() async {
-    final encryptionKey = await SecurityService().getEncryptionKey();
-    _waterBox = await Hive.openBox<WaterLog>(
-      AppConstants.waterBoxName,
-      encryptionCipher: HiveAesCipher(encryptionKey),
-    );
+    try {
+      final encryptionKey = await SecurityService().getEncryptionKey();
+      _waterBox = await Hive.openBox<WaterLog>(
+        AppConstants.waterBoxName,
+        encryptionCipher: HiveAesCipher(encryptionKey),
+      ).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('⚠️ WaterRepository: Box open failed, attempting recovery: $e');
+      try {
+        await Hive.deleteBoxFromDisk(AppConstants.waterBoxName);
+        final encryptionKey = await SecurityService().getEncryptionKey();
+        _waterBox = await Hive.openBox<WaterLog>(
+          AppConstants.waterBoxName,
+          encryptionCipher: HiveAesCipher(encryptionKey),
+        );
+        debugPrint('✅ WaterRepository: Recovery successful');
+      } catch (retryError) {
+        debugPrint('❌ WaterRepository: Fatal recovery failure: $retryError');
+      }
+    }
   }
 
   /// Get water for a specific date

@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/theme/theme_colors.dart';
 import '../data/services/ad_service.dart';
+import '../data/services/premium_conversion_service.dart';
 import '../providers/settings_provider.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class AdBanner extends StatefulWidget {
   final double height;
-  
-  const AdBanner({
-    super.key,
-    this.height = 60.0,
-  });
+
+  const AdBanner({super.key, this.height = 60.0});
 
   @override
   State<AdBanner> createState() => _AdBannerState();
@@ -64,7 +61,7 @@ class _AdBannerState extends State<AdBanner> {
   @override
   Widget build(BuildContext context) {
     final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
-    
+
     // Pro users see absolutely no ads or placeholders
     if (isPro) {
       return const SizedBox.shrink();
@@ -116,7 +113,10 @@ class _AdBannerState extends State<AdBanner> {
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        context.push('/paywall');
+        PremiumConversionService().openPaywall(
+          context,
+          PaywallEntryPoint.adRemoval,
+        );
       },
       child: Container(
         width: double.infinity,

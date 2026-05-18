@@ -26,10 +26,20 @@ class SettingsRepository {
       _settingsBox = await Hive.openBox<UserSettings>(
         AppConstants.settingsBoxName,
         encryptionCipher: HiveAesCipher(encryptionKey),
-      );
+      ).timeout(const Duration(seconds: 10));
     } catch (e) {
-      debugPrint('❌ SettingsRepository: Failed to open box: $e');
-      // If box fails to open, we'll fall back to defaults in getSettings
+      debugPrint('⚠️ SettingsRepository: Box open failed, attempting recovery: $e');
+      try {
+        await Hive.deleteBoxFromDisk(AppConstants.settingsBoxName);
+        final encryptionKey = await SecurityService().getEncryptionKey();
+        _settingsBox = await Hive.openBox<UserSettings>(
+          AppConstants.settingsBoxName,
+          encryptionCipher: HiveAesCipher(encryptionKey),
+        );
+        debugPrint('✅ SettingsRepository: Recovery successful');
+      } catch (retryError) {
+        debugPrint('❌ SettingsRepository: Fatal recovery failure: $retryError');
+      }
     }
     
     // Emit initial value

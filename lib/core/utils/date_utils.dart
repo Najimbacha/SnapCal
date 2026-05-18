@@ -1,3 +1,6 @@
+import 'package:intl/intl.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
+
 /// Utility class for date operations
 class DateUtils {
   DateUtils._();
@@ -23,7 +26,11 @@ class DateUtils {
   }
 
   /// Get a human-readable date label
-  static String getDateLabel(String dateString) {
+  static String getDateLabel(
+    String dateString, {
+    AppLocalizations? l10n,
+    String? localeName,
+  }) {
     final date = parseDate(dateString);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -32,27 +39,13 @@ class DateUtils {
     final difference = today.difference(targetDate).inDays;
 
     if (difference == 0) {
-      return 'Today';
+      return l10n?.common_today ?? 'Today';
     } else if (difference == 1) {
-      return 'Yesterday';
+      return l10n?.common_yesterday ?? 'Yesterday';
     } else if (difference == -1) {
-      return 'Tomorrow';
+      return l10n?.common_tomorrow ?? 'Tomorrow';
     } else {
-      final months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      return '${months[date.month - 1]} ${date.day}';
+      return DateFormat.MMMd(localeName ?? l10n?.localeName).format(date);
     }
   }
 

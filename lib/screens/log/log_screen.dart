@@ -11,6 +11,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/meal.dart';
 import '../../data/models/meal_template.dart';
+import '../../data/services/premium_conversion_service.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -179,10 +180,10 @@ class _LogScreenState extends State<LogScreen>
       title: l10n.log_title,
       subtitle:
           app_date.DateUtils.isToday(selectedDate)
-              ? 'Track what you eat today'
-              : 'Review this day',
+              ? l10n.log_today_subtitle
+              : l10n.log_review_day,
       trailing: Tooltip(
-        message: 'Monthly calendar coming soon',
+        message: l10n.log_monthly_calendar_soon,
         child: Container(
           width: 38,
           height: 38,
@@ -201,6 +202,7 @@ class _LogScreenState extends State<LogScreen>
         ),
       ),
       scrollable: true,
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 80),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -212,20 +214,32 @@ class _LogScreenState extends State<LogScreen>
                   child: Opacity(
                     opacity: 0.06,
                     child: Container(
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          colors: [
-                            AppColors.primary,
-                            AppColors.sky.withValues(alpha: 0.1),
-                            Colors.transparent,
-                          ],
-                          center: const Alignment(-0.8, -0.6),
-                          radius: 1.8,
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              colors: [
+                                AppColors.primary,
+                                AppColors.sky.withValues(alpha: 0.1),
+                                Colors.transparent,
+                              ],
+                              center: const Alignment(-0.8, -0.6),
+                              radius: 1.8,
+                            ),
+                          ),
+                        )
+                        .animate(
+                          onPlay:
+                              (controller) => controller.repeat(reverse: true),
+                        )
+                        .scale(
+                          begin: const Offset(1, 1),
+                          end: const Offset(1.15, 1.15),
+                          duration: 10.seconds,
+                          curve: Curves.easeInOut,
+                        )
+                        .blur(
+                          begin: const Offset(60, 60),
+                          end: const Offset(100, 100),
                         ),
-                      ),
-                    ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-                     .scale(begin: const Offset(1, 1), end: const Offset(1.15, 1.15), duration: 10.seconds, curve: Curves.easeInOut)
-                     .blur(begin: const Offset(60, 60), end: const Offset(100, 100)),
                   ),
                 ),
                 Column(
@@ -233,6 +247,17 @@ class _LogScreenState extends State<LogScreen>
                     HorizontalDayCalendar(
                       selectedDate: selectedDate,
                       dailySummaries: summaries,
+                      isDateLocked:
+                          (date) => !mealProvider.canViewDate(
+                            date,
+                            isPro: settings.isPro,
+                          ),
+                      onLockedDateSelected:
+                          (_) => PremiumConversionService().openPaywall(
+                            context,
+                            PaywallEntryPoint.reportInsight,
+                            featureName: 'full_history',
+                          ),
                       onDateSelected: mealProvider.loadMealsForDate,
                     ),
                   ],
@@ -243,16 +268,19 @@ class _LogScreenState extends State<LogScreen>
           const SizedBox(height: 12),
           _DayCommandCard(summary: selectedSummary),
           const SizedBox(height: 12),
-          _LogActionBar(
-            onScanTap: () {
-              HapticFeedback.mediumImpact();
-              context.go('/snap');
-            },
-            onManualTap: _showManualAddModal,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _LogActionBar(
+              onScanTap: () {
+                HapticFeedback.mediumImpact();
+                context.go('/snap');
+              },
+              onManualTap: _showManualAddModal,
+            ),
           ),
           const SizedBox(height: 22),
           Padding(
-            padding: const EdgeInsets.only(left: 4, right: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -303,36 +331,41 @@ class _LogScreenState extends State<LogScreen>
             ),
           ),
           const SizedBox(height: 12),
-          if (meals.isEmpty)
-            _staggeredSlide(
-              _itemAnims[4],
-              _LogEmptyState(
-                isToday: app_date.DateUtils.isToday(selectedDate),
-                onScan: () => context.go('/snap'),
-                onManual: _showManualAddModal,
-              ),
-            )
-          else
-            _staggeredSlide(
-              _itemAnims[4],
-              _MealTimeline(
-                meals: meals,
-                onMealTap: _showEditModal,
-                onMealDelete: (meal) async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  await mealProvider.deleteMeal(
-                    meal.id,
-                    settings: context.read<SettingsProvider>(),
-                  );
-                  if (!mounted) return;
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(l10n.log_removed_snackbar(meal.foodName)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child:
+                meals.isEmpty
+                    ? _staggeredSlide(
+                      _itemAnims[4],
+                      _LogEmptyState(
+                        isToday: app_date.DateUtils.isToday(selectedDate),
+                        onScan: () => context.go('/snap'),
+                        onManual: _showManualAddModal,
+                      ),
+                    )
+                    : _staggeredSlide(
+                      _itemAnims[4],
+                      _MealTimeline(
+                        meals: meals,
+                        onMealTap: _showEditModal,
+                        onMealDelete: (meal) async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          await mealProvider.deleteMeal(
+                            meal.id,
+                            settings: context.read<SettingsProvider>(),
+                          );
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                l10n.log_removed_snackbar(meal.foodName),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  );
-                },
-              ),
-            ),
+          ),
           const SizedBox(height: 20),
           _SavedMealsStrip(selectedDate: selectedDate),
           const SizedBox(height: 80),
@@ -348,8 +381,32 @@ class _LogScreenState extends State<LogScreen>
     required ActivityProvider activity,
   }) {
     final today = DateTime.now();
-    return List.generate(14, (index) {
-      final date = today.subtract(Duration(days: 13 - index));
+    final visibleMeals = mealProvider.getMealsForVisibleHistory(
+      isPro: settings.isPro,
+    );
+    final oldestMealDate =
+        visibleMeals.isEmpty
+            ? today
+            : visibleMeals
+                .map((meal) => DateTime.tryParse(meal.dateString))
+                .whereType<DateTime>()
+                .fold<DateTime>(today, (oldest, date) {
+                  return date.isBefore(oldest) ? date : oldest;
+                });
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final oldestOnly = DateTime(
+      oldestMealDate.year,
+      oldestMealDate.month,
+      oldestMealDate.day,
+    );
+    final dayCount =
+        settings.isPro
+            ? todayOnly.difference(oldestOnly).inDays + 1
+            : 14;
+
+    final visibleDayCount = math.max(dayCount, 14);
+    return List.generate(visibleDayCount, (index) {
+      final date = today.subtract(Duration(days: visibleDayCount - 1 - index));
       return _buildSummaryForDate(
         dateString: app_date.DateUtils.getDateString(date),
         mealProvider: mealProvider,
@@ -410,6 +467,7 @@ class _DayCommandCard extends StatelessWidget {
     final remaining = summary.calorieGoal - summary.calories;
     final isOver = remaining < 0;
     final statusColor = _calorieColor;
+    final l10n = AppLocalizations.of(context)!;
 
     return AppSectionCard(
       padding: const EdgeInsets.all(18),
@@ -424,7 +482,7 @@ class _DayCommandCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Calories eaten',
+                      l10n.log_calories_eaten,
                       style: AppTypography.labelMedium.copyWith(
                         color: colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w800,
@@ -474,10 +532,10 @@ class _DayCommandCard extends StatelessWidget {
                 ),
                 child: Text(
                   isOver
-                      ? '${remaining.abs()} over'
+                      ? l10n.log_kcal_over(remaining.abs())
                       : summary.hasData
-                      ? '$remaining left'
-                      : 'No data',
+                      ? l10n.log_kcal_left(remaining)
+                      : l10n.log_no_data_prompt,
                   style: AppTypography.labelLarge.copyWith(
                     color: statusColor,
                     fontWeight: FontWeight.w900,
@@ -489,7 +547,7 @@ class _DayCommandCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            _insight(remaining),
+            _insight(remaining, l10n),
             style: AppTypography.bodyMedium.copyWith(
               color: colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w700,
@@ -526,21 +584,21 @@ class _DayCommandCard extends StatelessWidget {
     );
   }
 
-  String _insight(int remaining) {
+  String _insight(int remaining, AppLocalizations l10n) {
     if (!summary.hasData) {
-      return 'No details logged for this day yet.';
+      return l10n.log_no_details;
     }
     if (remaining < 0) {
-      return 'You logged ${remaining.abs()} kcal over target. Review the heavier meals below.';
+      return l10n.log_over_target_insight(remaining.abs());
     }
     if (summary.proteinProgress < 0.55) {
-      return 'You logged ${summary.calories} kcal and protein was behind target.';
+      return l10n.log_low_protein_insight(summary.calories);
     }
     if (summary.waterProgress < 1 &&
         app_date.DateUtils.isToday(summary.dateString)) {
-      return 'You logged ${summary.calories} kcal. Water is still behind today.';
+      return l10n.log_water_behind_insight(summary.calories);
     }
-    return 'You logged ${summary.calories} kcal with a balanced day so far.';
+    return l10n.log_balanced_day_insight(summary.calories);
   }
 
   Color get _calorieColor {
@@ -559,24 +617,25 @@ class _MacroBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
         _MacroBar(
-          label: 'Protein',
+          label: l10n.result_protein,
           value: summary.protein,
           goal: summary.proteinGoal,
           color: AppColors.protein,
         ),
         const SizedBox(height: 8),
         _MacroBar(
-          label: 'Carbs',
+          label: l10n.result_carbs,
           value: summary.carbs,
           goal: summary.carbGoal,
           color: AppColors.carbs,
         ),
         const SizedBox(height: 8),
         _MacroBar(
-          label: 'Fat',
+          label: l10n.result_fat,
           value: summary.fat,
           goal: summary.fatGoal,
           color: AppColors.fat,
@@ -641,8 +700,11 @@ class _MacroBar extends StatelessWidget {
                     ],
                   ),
                 ),
-              ).animate()
-               .scaleX(begin: 0, duration: 800.ms, curve: Curves.easeOutCubic),
+              ).animate().scaleX(
+                begin: 0,
+                duration: 800.ms,
+                curve: Curves.easeOutCubic,
+              ),
             ),
           ),
         ),
@@ -822,7 +884,7 @@ class _MealTimeline extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 10),
+                    padding: const EdgeInsets.only(left: 0, bottom: 10),
                     child: Text(
                       entry.key.toUpperCase(),
                       style: AppTypography.labelSmall.copyWith(
@@ -907,159 +969,162 @@ class _LogMealTile extends StatelessWidget {
       child: AppScaleTap(
         onTap: onTap,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.22),
-            ),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 42,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      meal.formattedTime,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _mealIcon(meal),
-                        color: AppColors.primary,
-                        size: 13,
-                      ),
-                    ),
-                  ],
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.22),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 42,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            meal.foodName,
-                            style: AppTypography.titleSmall.copyWith(
-                              color: colorScheme.onSurface,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        Text(
+                          meal.formattedTime,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
                           ),
                         ),
-                        if (confidence != null) ...[
-                          const SizedBox(width: 6),
-                          _TrustBadge(confidence: confidence),
-                        ],
+                        const SizedBox(height: 8),
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _mealIcon(meal),
+                            color: AppColors.primary,
+                            size: 13,
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      meal.portion?.isNotEmpty == true
-                          ? meal.portion!
-                          : 'Portion not set',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 9),
-                    Container(
-                      height: 5,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: colorScheme.outlineVariant.withValues(
-                          alpha: 0.12,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                meal.foodName,
+                                style: AppTypography.titleSmall.copyWith(
+                                  color: colorScheme.onSurface,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (confidence != null) ...[
+                              const SizedBox(width: 6),
+                              _TrustBadge(confidence: confidence),
+                            ],
+                          ],
                         ),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Row(
-                        children:
-                            macroTotal == 0
-                                ? [
-                                  Expanded(
-                                    child: ColoredBox(
-                                      color: colorScheme.outlineVariant
-                                          .withValues(alpha: 0.28),
-                                    ),
-                                  ),
-                                ]
-                                : [
-                                  if (meal.macros.protein > 0)
-                                    Expanded(
-                                      flex: meal.macros.protein,
-                                      child: const ColoredBox(
-                                        color: AppColors.protein,
+                        const SizedBox(height: 4),
+                        Text(
+                          meal.portion?.isNotEmpty == true
+                              ? meal.portion!
+                              : 'Portion not set',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 9),
+                        Container(
+                          height: 5,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.12,
+                            ),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            children:
+                                macroTotal == 0
+                                    ? [
+                                      Expanded(
+                                        child: ColoredBox(
+                                          color: colorScheme.outlineVariant
+                                              .withValues(alpha: 0.28),
+                                        ),
                                       ),
-                                    ),
-                                  if (meal.macros.carbs > 0)
-                                    Expanded(
-                                      flex: meal.macros.carbs,
-                                      child: const ColoredBox(
-                                        color: AppColors.carbs,
-                                      ),
-                                    ),
-                                  if (meal.macros.fat > 0)
-                                    Expanded(
-                                      flex: meal.macros.fat,
-                                      child: const ColoredBox(
-                                        color: AppColors.fat,
-                                      ),
-                                    ),
-                                ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${meal.calories}',
-                    style: AppTypography.titleMedium.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0,
+                                    ]
+                                    : [
+                                      if (meal.macros.protein > 0)
+                                        Expanded(
+                                          flex: meal.macros.protein,
+                                          child: const ColoredBox(
+                                            color: AppColors.protein,
+                                          ),
+                                        ),
+                                      if (meal.macros.carbs > 0)
+                                        Expanded(
+                                          flex: meal.macros.carbs,
+                                          child: const ColoredBox(
+                                            color: AppColors.carbs,
+                                          ),
+                                        ),
+                                      if (meal.macros.fat > 0)
+                                        Expanded(
+                                          flex: meal.macros.fat,
+                                          child: const ColoredBox(
+                                            color: AppColors.fat,
+                                          ),
+                                        ),
+                                    ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    'kcal',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0,
-                    ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${meal.calories}',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                      Text(
+                        'kcal',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ).animate().fade(duration: 400.ms).slideX(begin: 0.05, curve: Curves.easeOutCubic),
+            )
+            .animate()
+            .fade(duration: 400.ms)
+            .slideX(begin: 0.05, curve: Curves.easeOutCubic),
       ),
     );
   }
@@ -1137,14 +1202,15 @@ class _SavedMealsStrip extends StatelessWidget {
     final templates = context.watch<TemplateProvider>().templates;
     if (templates.isEmpty) return const SizedBox.shrink();
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 10),
+          padding: const EdgeInsets.only(left: 16, bottom: 10),
           child: Text(
-            'SAVED MEALS',
+            l10n.feature_templates_saved_meals,
             style: AppTypography.labelSmall.copyWith(
               color: colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w900,
@@ -1157,6 +1223,7 @@ class _SavedMealsStrip extends StatelessWidget {
           height: 86,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             physics: const BouncingScrollPhysics(),
             itemCount: templates.length,
             separatorBuilder: (_, _) => const SizedBox(width: 10),
@@ -1178,6 +1245,7 @@ class _SavedMealsStrip extends StatelessWidget {
     final mealProvider = context.read<MealProvider>();
     final settings = context.read<SettingsProvider>();
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     for (final item in template.items) {
       await mealProvider.addMeal(
@@ -1194,8 +1262,8 @@ class _SavedMealsStrip extends StatelessWidget {
 
     if (!context.mounted) return;
     messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Saved meal added'),
+      SnackBar(
+        content: Text(l10n.feature_templates_saved_added),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1295,66 +1363,89 @@ class _LogEmptyState extends StatelessWidget {
               children: [
                 // Soft pulsing background aura
                 Container(
-                  width: 140,
-                  height: 140,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        AppColors.primary.withValues(alpha: 0.12),
-                        AppColors.primary.withValues(alpha: 0.0),
-                      ],
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.12),
+                            AppColors.primary.withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(
+                      begin: const Offset(1, 1),
+                      end: const Offset(1.3, 1.3),
+                      duration: 2.seconds,
+                      curve: Curves.easeInOut,
                     ),
-                  ),
-                ).animate(onPlay: (c) => c.repeat(reverse: true))
-                 .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 2.seconds, curve: Curves.easeInOut),
-                
+
                 // Main icon with a gradient glow
                 Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Icon(
-                      LucideIcons.utensils,
-                      size: 38,
-                      color: AppColors.primary,
+                      child: Center(
+                        child: Icon(
+                          LucideIcons.utensils,
+                          size: 38,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .moveY(
+                      begin: 0,
+                      end: -8,
+                      duration: 1.5.seconds,
+                      curve: Curves.easeInOut,
                     ),
-                  ),
-                ).animate(onPlay: (c) => c.repeat(reverse: true))
-                 .moveY(begin: 0, end: -8, duration: 1.5.seconds, curve: Curves.easeInOut),
 
                 // Decorative floating "sparks"
-                ...List.generate(3, (index) => Positioned(
-                  top: 40 + (index * 40),
-                  left: 30 + (index * 60),
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: index == 0 ? AppColors.sky : AppColors.amber,
-                      shape: BoxShape.circle,
-                    ),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                   .moveY(begin: 0, end: -15, duration: (1 + index * 0.5).seconds, curve: Curves.easeInOut)
-                   .fade(begin: 0.2, end: 0.8),
-                )),
+                ...List.generate(
+                  3,
+                  (index) => Positioned(
+                    top: 40 + (index * 40),
+                    left: 30 + (index * 60),
+                    child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: index == 0 ? AppColors.sky : AppColors.amber,
+                            shape: BoxShape.circle,
+                          ),
+                        )
+                        .animate(onPlay: (c) => c.repeat(reverse: true))
+                        .moveY(
+                          begin: 0,
+                          end: -15,
+                          duration: (1 + index * 0.5).seconds,
+                          curve: Curves.easeInOut,
+                        )
+                        .fade(begin: 0.2, end: 0.8),
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            isToday ? 'Ready to log your first meal?' : 'No activity on this day',
+            isToday
+                ? 'Ready to log your first meal?'
+                : 'No activity on this day',
             style: AppTypography.titleLarge.copyWith(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.w900,
@@ -1400,11 +1491,15 @@ class _LogEmptyState extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(LucideIcons.camera, color: Colors.white, size: 18),
+                          const Icon(
+                            LucideIcons.camera,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
-                          const Text(
-                            'Scan Food',
-                            style: TextStyle(
+                          Text(
+                            AppLocalizations.of(context)!.log_scan_food,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w900,
                               fontSize: 15,
@@ -1423,20 +1518,28 @@ class _LogEmptyState extends StatelessWidget {
                   child: Container(
                     height: 52,
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.5,
+                      ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.3,
+                        ),
                       ),
                     ),
                     alignment: Alignment.center,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.edit_rounded, color: colorScheme.primary, size: 18),
+                        Icon(
+                          Icons.edit_rounded,
+                          color: colorScheme.primary,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Text(
-                          'Add Manually',
+                          AppLocalizations.of(context)!.log_add_manually,
                           style: TextStyle(
                             color: colorScheme.onSurface,
                             fontWeight: FontWeight.w800,

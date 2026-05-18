@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'analytics_service.dart';
 
@@ -13,8 +14,16 @@ class PremiumGateService {
   static const String _lastPopupDateKey = 'last_premium_popup_date';
   static const String _popupCountTodayKey = 'premium_popup_count_today';
   static const String _lastUpgradeTapKey = 'last_upgrade_tap_timestamp';
+  static const String _lastPopupShownKey = 'last_premium_prompt_timestamp';
+  static const String _lastPopupDismissedKey =
+      'last_premium_prompt_dismissed_timestamp';
   static const String _aiMessagesUsedKey = 'ai_messages_used_today';
   static const String _freeScansUsedKey = 'free_scans_used_today';
+
+  static const int _maxAutomaticPopupsPerDay = 1;
+  static const Duration _modalCooldown = Duration(hours: 24);
+  static const Duration _postDismissCooldown = Duration(hours: 24);
+  static const Duration _postCtaCooldown = Duration(hours: 48);
 
   Future<void> init() async {
     if (!_initialized) {
@@ -22,6 +31,11 @@ class PremiumGateService {
       _initialized = true;
       _resetDailyCountsIfNeeded();
     }
+  }
+
+  @visibleForTesting
+  void resetForTesting() {
+    _initialized = false;
   }
 
   void _resetDailyCountsIfNeeded() {
@@ -44,22 +58,37 @@ class PremiumGateService {
   // --- Logic Checks ---
 
   bool canShowPopup(bool isPremium) {
-    if (isPremium) return false;
+    return canShowAhaPrompt(
+      isPremium: isPremium,
+      hasCompletedValueAction: true,
+    );
+  }
+
+  bool canShowAhaPrompt({
+    required bool isPremium,
+    required bool hasCompletedValueAction,
+  }) {
+    if (!_initialized || isPremium || !hasCompletedValueAction) return false;
+
+    _resetDailyCountsIfNeeded();
 
     final countToday = _prefs.getInt(_popupCountTodayKey) ?? 0;
-    if (countToday >= 2) return false;
+    if (countToday >= _maxAutomaticPopupsPerDay) return false;
 
     final lastUpgradeTap = _prefs.getInt(_lastUpgradeTapKey) ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
-    
-    // Rule: Wait 24h if user tapped upgrade but didn't buy
-    if (now - lastUpgradeTap < 24 * 60 * 60 * 1000) {
+
+    if (now - lastUpgradeTap < _postCtaCooldown.inMilliseconds) {
       return false;
     }
 
-    // Rule: Wait 6 hours between popups
-    final lastShown = _prefs.getInt('last_premium_prompt_timestamp') ?? 0;
-    if (now - lastShown < 6 * 60 * 60 * 1000) {
+    final lastDismissed = _prefs.getInt(_lastPopupDismissedKey) ?? 0;
+    if (now - lastDismissed < _postDismissCooldown.inMilliseconds) {
+      return false;
+    }
+
+    final lastShown = _prefs.getInt(_lastPopupShownKey) ?? 0;
+    if (now - lastShown < _modalCooldown.inMilliseconds) {
       return false;
     }
 
@@ -71,23 +100,36 @@ class PremiumGateService {
   Future<void> recordPopupShown() async {
     final count = _prefs.getInt(_popupCountTodayKey) ?? 0;
     await _prefs.setInt(_popupCountTodayKey, count + 1);
-    await _prefs.setInt('last_premium_prompt_timestamp', DateTime.now().millisecondsSinceEpoch);
+    await _prefs.setInt(
+      _lastPopupShownKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
     AnalyticsService().logEvent('premium_popup_seen');
   }
 
   Future<void> recordCtaClicked(String source) async {
-    await _prefs.setInt(_lastUpgradeTapKey, DateTime.now().millisecondsSinceEpoch);
-    AnalyticsService().logEvent('premium_cta_clicked', parameters: {'source': source});
+    await _prefs.setInt(
+      _lastUpgradeTapKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+    AnalyticsService().logEvent(
+      'premium_cta_clicked',
+      parameters: {'source': source},
+    );
   }
 
   Future<void> recordPopupClosed() async {
+    await _prefs.setInt(
+      _lastPopupDismissedKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
     AnalyticsService().logEvent('premium_popup_closed');
   }
 
   // --- Message/Scan Tracking ---
 
   int getAiMessagesUsed() => _prefs.getInt(_aiMessagesUsedKey) ?? 0;
-  
+
   Future<void> incrementAiMessages() async {
     final current = getAiMessagesUsed();
     await _prefs.setInt(_aiMessagesUsedKey, current + 1);

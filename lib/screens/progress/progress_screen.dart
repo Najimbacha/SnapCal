@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../providers/metrics_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/photo_capture_flow.dart';
@@ -13,6 +13,7 @@ import 'widgets/photo_comparison_sheet.dart';
 import 'widgets/progress_card.dart';
 import 'widgets/weight_trend_chart.dart';
 import '../../core/theme/app_colors.dart';
+import '../../data/services/premium_conversion_service.dart';
 import '../../data/services/transformation_video_service.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -60,13 +61,26 @@ class _ProgressScreenState extends State<ProgressScreen>
         MaterialPageRoute(builder: (_) => PhotoCaptureFlow()),
       );
     } else {
-      context.push('/paywall');
+      PremiumConversionService().openPaywall(
+        context,
+        PaywallEntryPoint.progressPhotoLimit,
+      );
     }
   }
 
   bool _isGenerating = false;
 
   Future<void> _generateJourney(List<dynamic> photos) async {
+    final settings = context.read<SettingsProvider>();
+    if (!settings.isPro) {
+      PremiumConversionService().openPaywall(
+        context,
+        PaywallEntryPoint.progressPhotoLimit,
+        featureName: 'journey_video',
+      );
+      return;
+    }
+
     if (photos.length < 2) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(
@@ -229,14 +243,10 @@ class _ProgressScreenState extends State<ProgressScreen>
         final metric = photos[i];
         final startDelay = ((i + 2) % 10) * 0.1;
         final endDelay = (startDelay + 0.4).clamp(0.0, 1.0);
-        
+
         final anim = CurvedAnimation(
           parent: _animController,
-          curve: Interval(
-            startDelay,
-            endDelay,
-            curve: Curves.easeOutQuart,
-          ),
+          curve: Interval(startDelay, endDelay, curve: Curves.easeOutQuart),
         );
 
         return _staggeredSlide(

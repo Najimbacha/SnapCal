@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_typography.dart';
 import '../../data/services/connectivity_service.dart';
+import '../../data/services/premium_conversion_service.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -113,6 +114,7 @@ class _AssistantScreenState extends State<AssistantScreen>
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final isPro = settings.isPro;
+    final l10n = AppLocalizations.of(context)!;
 
     return PopScope(
       canPop: true,
@@ -132,7 +134,9 @@ class _AssistantScreenState extends State<AssistantScreen>
         child: Consumer<AssistantProvider>(
           builder: (context, assistant, _) {
             final content = _buildChatContent(context, assistant);
-            final hasReachedLimit = PremiumGateService().hasReachedAiLimit(isPro);
+            final hasReachedLimit = PremiumGateService().hasReachedAiLimit(
+              isPro,
+            );
             if (!isPro && hasReachedLimit) {
               return Stack(
                 children: [
@@ -143,11 +147,16 @@ class _AssistantScreenState extends State<AssistantScreen>
                     right: 20,
                     child: PremiumPromptCard(
                       style: PremiumPromptStyle.glass,
-                      title: 'DAILY LIMIT REACHED',
-                      subtitle: 'Go Premium for unlimited coaching and smarter meal guidance tailored to your goals.',
-                      buttonText: 'Upgrade for Unlimited Chat',
+                      title: l10n.coach_limit_title,
+                      subtitle: l10n.coach_limit_subtitle,
+                      buttonText: l10n.coach_limit_btn,
                       icon: LucideIcons.sparkles,
-                      onTap: () => context.push('/paywall'),
+                      onTap:
+                          () => PremiumConversionService().openPaywall(
+                            context,
+                            PaywallEntryPoint.aiCoachLimit,
+                            featureName: 'ai_coach',
+                          ),
                     ),
                   ),
                 ],
@@ -232,6 +241,8 @@ class _AssistantScreenState extends State<AssistantScreen>
   }
 
   Widget _buildInputArea(BuildContext context, bool isPro) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (!isPro && PremiumGateService().hasReachedAiLimit(isPro)) {
       return const SizedBox.shrink();
     }
@@ -250,7 +261,12 @@ class _AssistantScreenState extends State<AssistantScreen>
           ),
         ),
         child: AppScaleTap(
-          onTap: () => context.push('/paywall'),
+          onTap:
+              () => PremiumConversionService().openPaywall(
+                context,
+                PaywallEntryPoint.aiCoachLimit,
+                featureName: 'ai_coach',
+              ),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 18),
@@ -267,7 +283,7 @@ class _AssistantScreenState extends State<AssistantScreen>
             ),
             child: Center(
               child: Text(
-                "See Subscription Options",
+                l10n.coach_see_options,
                 style: AppTypography.titleMedium.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -303,8 +319,8 @@ class _AssistantScreenState extends State<AssistantScreen>
               ),
               child: TextField(
                 controller: _searchController,
-                decoration: const InputDecoration(
-                  hintText: "Ask about your nutrition...",
+                decoration: InputDecoration(
+                  hintText: l10n.assistant_input_hint,
                   border: InputBorder.none,
                 ),
                 onSubmitted: (q) {
@@ -318,16 +334,16 @@ class _AssistantScreenState extends State<AssistantScreen>
           ),
           const SizedBox(width: 12),
           AppScaleTap(
-              onTap: () async {
-                final q = _searchController.text;
-                if (q.trim().isNotEmpty) {
-                  _fetchRecommendations(query: q);
-                  _searchController.clear();
-                  if (!isPro) {
-                    await PremiumGateService().incrementAiMessages();
-                  }
+            onTap: () async {
+              final q = _searchController.text;
+              if (q.trim().isNotEmpty) {
+                _fetchRecommendations(query: q);
+                _searchController.clear();
+                if (!isPro) {
+                  await PremiumGateService().incrementAiMessages();
                 }
-              },
+              }
+            },
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: const BoxDecoration(
@@ -382,6 +398,7 @@ class _LockedCoachPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -425,7 +442,7 @@ class _LockedCoachPreview extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        "Know what to eat next.",
+                        l10n.coach_locked_title,
                         style: AppTypography.heading2.copyWith(
                           color: context.textPrimaryColor,
                           fontWeight: FontWeight.w900,
@@ -435,7 +452,7 @@ class _LockedCoachPreview extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "AI Coach reads today's calories, macros, and goal, then gives clear food advice.",
+                        l10n.coach_locked_desc,
                         style: AppTypography.bodyMedium.copyWith(
                           color: context.textSecondaryColor,
                           height: 1.35,
@@ -446,24 +463,22 @@ class _LockedCoachPreview extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                const _CoachPreviewCard(
+                _CoachPreviewCard(
                   icon: LucideIcons.utensils,
-                  title: "Next meal suggestion",
-                  body:
-                      "Best next meal: grilled chicken rice bowl, around 550 kcal.",
+                  title: l10n.coach_preview_meal_title,
+                  body: l10n.coach_preview_meal_body,
                 ),
                 const SizedBox(height: 10),
-                const _CoachPreviewCard(
+                _CoachPreviewCard(
                   icon: LucideIcons.barChart3,
-                  title: "Macro correction",
-                  body: "You still need 45g protein and 120g carbs today.",
+                  title: l10n.coach_preview_macro_title,
+                  body: l10n.coach_preview_macro_body,
                 ),
                 const SizedBox(height: 10),
-                const _CoachPreviewCard(
+                _CoachPreviewCard(
                   icon: LucideIcons.messageCircle,
-                  title: "Daily progress feedback",
-                  body:
-                      "You are low on protein. Add eggs, tuna, or Greek yogurt next.",
+                  title: l10n.coach_preview_feedback_title,
+                  body: l10n.coach_preview_feedback_body,
                 ),
               ],
             ),
@@ -604,11 +619,12 @@ class _RecommendationGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final queries = [
-      "Am I on track for my goal today?",
-      "Suggest a protein-rich dinner",
-      "Explain my macro balance",
-      "How can I improve my streak?",
+      l10n.assistant_starter_cal_desc,
+      l10n.assistant_starter_meal_desc,
+      l10n.assistant_starter_plans_desc,
+      l10n.assistant_starter_tips_desc,
     ];
 
     return Wrap(

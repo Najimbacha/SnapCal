@@ -1909,4 +1909,570 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get activity_motivation_elite =>
       'Outstanding! You\'re in the elite active zone today.';
+
+  @override
+  String get home_scan_food => 'Scan food';
+
+  @override
+  String get home_go_pro => 'Go Pro';
+
+  @override
+  String get home_pro_badge => 'PRO';
+
+  @override
+  String get settings_upgrade_to_pro => 'UPGRADE TO PRO';
+
+  @override
+  String get settings_emerald_badge => 'EMERALD';
+
+  @override
+  String get coach_limit_title => 'DAILY LIMIT REACHED';
+
+  @override
+  String get coach_limit_subtitle =>
+      'Go Premium for unlimited coaching and smarter meal guidance tailored to your goals.';
+
+  @override
+  String get coach_limit_btn => 'Upgrade for Unlimited Chat';
+
+  @override
+  String get coach_see_options => 'See Subscription Options';
+
+  @override
+  String get coach_locked_title => 'Know what to eat next.';
+
+  @override
+  String get coach_locked_desc =>
+      'AI Coach reads today\'s calories, macros, and goal, then gives clear food advice.';
+
+  @override
+  String get coach_preview_meal_title => 'Next meal suggestion';
+
+  @override
+  String get coach_preview_meal_body =>
+      'Best next meal: grilled chicken rice bowl, around 550 kcal.';
+
+  @override
+  String get coach_preview_macro_title => 'Macro correction';
+
+  @override
+  String get coach_preview_macro_body =>
+      'You still need 45g protein and 120g carbs today.';
+
+  @override
+  String get coach_preview_feedback_title => 'Daily progress feedback';
+
+  @override
+  String get coach_preview_feedback_body =>
+      'You are low on protein. Add eggs, tuna, or Greek yogurt next.';
+
+  @override
+  String get report_prompt_title => 'YOUR WEEKLY REPORT IS READY';
+
+  @override
+  String get report_prompt_subtitle =>
+      'Unlock a deeper look at why some days went over target and how to improve next week.';
+
+  @override
+  String get report_prompt_btn => 'Unlock Weekly Report';
+
+  @override
+  String get scan_overlay_scanning => 'AI VISION SCANNING';
+
+  @override
+  String get scan_overlay_desc =>
+      'Detecting ingredients and calculating\nnutritional density with Gemini...';
+
+  @override
+  String get scan_overlay_manual => 'LOG MANUALLY';
+
+  @override
+  String get report_card_title => 'WEEKLY PROGRESS REPORT';
+
+  @override
+  String get report_card_subtitle =>
+      'See why some days went over target and get personalized suggestions to fix it.';
+
+  @override
+  String get startup_launch_issue => 'Launch Encountered an Issue';
+
+  @override
+  String get startup_initialization_slow =>
+      'Initialization is taking longer than expected.';
+
+  @override
+  String get startup_setup_failed =>
+      'Something went wrong while setting up the app. Please try again.';
+
+  @override
+  String get startup_retry_launch => 'Retry Launch';
+
+  @override
+  String get startup_initialization_error => 'Initialization Error';
+
+  @override
+  String get startup_error_body =>
+      'The application encountered a startup error. Please try restarting.';
+
+  @override
+  String get startup_reload => 'Reload';
+
+  @override
+  String get activity_live_tracking => 'LIVE TRACKING';
+
+  @override
+  String get activity_stationary => 'STATIONARY';
+
+  @override
+  String get activity_steps_today_label => 'STEPS TODAY';
+
+  @override
+  String get activity_calories_label => 'CALORIES';
+
+  @override
+  String get activity_goal_label => 'GOAL';
+
+  @override
+  String get activity_tracking_engine => 'TRACKING ENGINE';
+
+  @override
+  String get activity_active_encrypted => 'Active & Encrypted';
+
+  @override
+  String get activity_permission_required => 'Permission Required';
+
+  @override
+  String get activity_steps_synced => 'Your steps are synced in real-time.';
+
+  @override
+  String get activity_enable_tracking =>
+      'Enable tracking to see your progress.';
+
+  @override
+  String feature_insights_share_error(String error) {
+    return 'Error sharing: $error';
+  }
+
+  @override
+  String get feature_insights_empty => 'No data for this week yet.';
+
+  @override
+  String get feature_insights_calorie_trend => 'Calorie Trend';
+
+  @override
+  String get feature_insights_ai_coach => 'AI Coach Insights';
+
+  @override
+  String get auth_intro_body => 'Your journey to a healthier you starts here.';
+
+  @override
+  String get auth_back_to_social => 'Back to Social Login';
+
+  @override
+  String get auth_create_account => 'Create account';
+
+  @override
+  String get auth_welcome_back_title => 'Welcome back';
+
+  @override
+  String get auth_lets_dive => 'Let\'s dive in';
+
+  @override
+  String get auth_sign_up_short => 'Sign Up';
+
+  @override
+  String get auth_log_in => 'Log In';
+
+  @override
+  String get auth_have_account => 'Already have an account? ';
+
+  @override
+  String get auth_no_account => 'Don\'t have an account? ';
+
+  @override
+  String get common_or => 'or';
+
+  @override
+  String get common_today => 'Today';
+
+  @override
+  String get common_yesterday => 'Yesterday';
+
+  @override
+  String get common_tomorrow => 'Tomorrow';
+
+  @override
+  String get common_maybe_later => 'Maybe Later';
+
+  @override
+  String get settings_category_body_profile_sub =>
+      'Body metrics, units, and target weight';
+
+  @override
+  String get settings_category_nutrition_sub =>
+      'Calories, protein, carbs, and fat targets';
+
+  @override
+  String get settings_category_preferences_sub =>
+      'Theme, language, reminders, and meal planning';
+
+  @override
+  String get settings_category_achievements_sub =>
+      'Streaks, milestones, and progress rewards';
+
+  @override
+  String get settings_category_account_sub =>
+      'Sign in, profile name, and account controls';
+
+  @override
+  String get settings_category_data_sync_sub =>
+      'Backup, restore, and local app data';
+
+  @override
+  String get settings_category_about_sub =>
+      'Version, privacy, terms, and app information';
+
+  @override
+  String get home_go_deeper_title => 'Go deeper';
+
+  @override
+  String get home_go_deeper_body =>
+      'AI day reviews, macro trends, and full history.';
+
+  @override
+  String get home_daily_wellness => 'Daily Wellness';
+
+  @override
+  String get home_add => 'Add';
+
+  @override
+  String get home_daily_score => 'Daily score';
+
+  @override
+  String get log_monthly_calendar_soon => 'Monthly calendar coming soon';
+
+  @override
+  String get log_today_subtitle => 'Track what you eat today';
+
+  @override
+  String get log_review_day => 'Review this day';
+
+  @override
+  String get log_scan_food => 'Scan Food';
+
+  @override
+  String get feature_templates_saved_meals => 'SAVED MEALS';
+
+  @override
+  String get feature_templates_saved_added => 'Saved meal added';
+
+  @override
+  String get feature_templates_deleted => 'Routine deleted';
+
+  @override
+  String get premium_analysis_title => 'PREMIUM ANALYSIS';
+
+  @override
+  String get premium_analysis_body =>
+      'Get a better version of this meal based on your goal with AI suggestions.';
+
+  @override
+  String get result_meal_name => 'Meal name';
+
+  @override
+  String get result_feast => 'Feast';
+
+  @override
+  String get result_ai_meal_insight => 'AI meal insight';
+
+  @override
+  String get result_ai_meal_body =>
+      'Balance this meal with one smart suggestion.';
+
+  @override
+  String get result_add_new_item => 'ADD NEW ITEM';
+
+  @override
+  String get result_total_calories => 'TOTAL CALORIES';
+
+  @override
+  String get result_food_details => 'Food details';
+
+  @override
+  String get result_food => 'Food';
+
+  @override
+  String get result_portion_label => 'Portion';
+
+  @override
+  String get paywall_cancel_anytime => 'Cancel anytime. No commitment.';
+
+  @override
+  String get paywall_terms_conditions => 'Terms & Conditions';
+
+  @override
+  String get paywall_trial_7_day => '7-day trial';
+
+  @override
+  String get paywall_scan_limit_subtitle =>
+      'You used 3/3 free scans today. Unlock unlimited AI food scans and instant calorie breakdowns.';
+
+  @override
+  String get paywall_coach_subtitle =>
+      'Unlock unlimited coaching, macro guidance, and meal suggestions tailored to your day.';
+
+  @override
+  String get paywall_planner_subtitle =>
+      'Unlock full weekly plans, grocery lists, preferences, and AI meal regenerations.';
+
+  @override
+  String paywall_reports_subtitle(String feature) {
+    return 'Unlock deeper analysis, weekly trends, and practical AI suggestions after every $feature.';
+  }
+
+  @override
+  String get paywall_progress_subtitle =>
+      'Unlock more progress photos, comparisons, and transformation tracking beyond the monthly free limit.';
+
+  @override
+  String get paywall_ad_removal_subtitle =>
+      'Go Pro to remove ads and unlock the full AI nutrition experience.';
+
+  @override
+  String get progress_weight_trend => 'Weight Trend';
+
+  @override
+  String get progress_log_custom_weight => 'Tap to log your customized weight';
+
+  @override
+  String get log_calories_eaten => 'Calories eaten';
+
+  @override
+  String log_kcal_over(int amount) {
+    return '$amount over';
+  }
+
+  @override
+  String log_kcal_left(int amount) {
+    return '$amount left';
+  }
+
+  @override
+  String get log_no_details => 'No details logged for this day yet.';
+
+  @override
+  String log_over_target_insight(int amount) {
+    return 'You logged $amount kcal over target. Review the heavier meals below.';
+  }
+
+  @override
+  String log_low_protein_insight(int calories) {
+    return 'You logged $calories kcal and protein was behind target.';
+  }
+
+  @override
+  String log_water_behind_insight(int calories) {
+    return 'You logged $calories kcal. Water is still behind today.';
+  }
+
+  @override
+  String log_balanced_day_insight(int calories) {
+    return 'You logged $calories kcal with a balanced day so far.';
+  }
+
+  @override
+  String feature_templates_save_desc(int count) {
+    return 'Save these $count items for one-tap logging later.';
+  }
+
+  @override
+  String get achievement_category_consistency => 'Consistency';
+
+  @override
+  String get achievement_category_precision => 'Precision';
+
+  @override
+  String get achievement_category_hydration => 'Hydration';
+
+  @override
+  String get achievement_category_logging => 'Logging';
+
+  @override
+  String get achievement_category_progress => 'Progress';
+
+  @override
+  String get achievement_unlocked_label => 'Unlocked';
+
+  @override
+  String get report_pdf_title => 'AI NUTRITION REPORT';
+
+  @override
+  String report_pdf_user(String name) {
+    return 'User: $name';
+  }
+
+  @override
+  String get report_pdf_weekly_performance => 'WEEKLY PERFORMANCE';
+
+  @override
+  String get report_pdf_total_protein => 'Total Protein';
+
+  @override
+  String get report_pdf_active_streak => 'Active Streak';
+
+  @override
+  String get report_pdf_grams => 'grams';
+
+  @override
+  String get report_pdf_days => 'days';
+
+  @override
+  String get report_pdf_macro_distribution => 'MACRONUTRIENT DISTRIBUTION';
+
+  @override
+  String get report_pdf_nutrient => 'Nutrient';
+
+  @override
+  String get report_pdf_total_consumed => 'Total Consumed';
+
+  @override
+  String get report_pdf_daily_target => 'Daily Target';
+
+  @override
+  String get report_pdf_goal_status => 'Goal Status';
+
+  @override
+  String get report_pdf_carbohydrates => 'Carbohydrates';
+
+  @override
+  String get report_pdf_fats => 'Fats';
+
+  @override
+  String get report_pdf_meal_log => 'DETAILED MEAL LOG (Last 7 Days)';
+
+  @override
+  String get report_pdf_date => 'Date';
+
+  @override
+  String get report_pdf_meal_item => 'Meal Item';
+
+  @override
+  String get report_pdf_type => 'Type';
+
+  @override
+  String get report_pdf_footer =>
+      'This report was automatically generated by SnapCal AI.';
+
+  @override
+  String get report_pdf_tagline => 'Stay consistent, stay healthy.';
+
+  @override
+  String get onboarding_safety_safer_pace => 'We\'ll suggest a safer pace.';
+
+  @override
+  String get onboarding_safety_surplus_capped =>
+      'We capped the surplus to keep the plan realistic.';
+
+  @override
+  String get onboarding_safety_floor =>
+      'We kept your target above the minimum safe calorie floor.';
+
+  @override
+  String onboarding_safety_floor_extra(String note) {
+    return '$note Minimum calorie floor applied.';
+  }
+
+  @override
+  String onboarding_insight_desk(int calories) {
+    return '$calories kcal keeps your plan realistic while matching a lower-activity routine.';
+  }
+
+  @override
+  String onboarding_insight_light(int calories) {
+    return '$calories kcal gives you a steady target that fits light weekly movement.';
+  }
+
+  @override
+  String onboarding_insight_athlete(int calories) {
+    return '$calories kcal supports training demand without pushing the pace too hard.';
+  }
+
+  @override
+  String onboarding_insight_default(int calories) {
+    return '$calories kcal balances your goal, body size, and current activity level.';
+  }
+
+  @override
+  String get onboarding_tip_desk =>
+      'A 20-minute walk after meals is an easy way to improve consistency.';
+
+  @override
+  String get onboarding_tip_light =>
+      'Two extra movement sessions each week will make this target easier to sustain.';
+
+  @override
+  String get onboarding_tip_athlete =>
+      'Anchor protein across each meal so training recovery stays ahead of appetite swings.';
+
+  @override
+  String get onboarding_tip_bulk =>
+      'Keep most extra calories around training so the surplus works for performance.';
+
+  @override
+  String get onboarding_tip_default =>
+      'Build meals around protein first so the target feels easier to hit.';
+
+  @override
+  String get paywall_slide_grilled_chicken => 'Grilled Chicken';
+
+  @override
+  String get paywall_slide_rice => 'Rice';
+
+  @override
+  String get paywall_slide_avocado => 'Avocado';
+
+  @override
+  String get paywall_slide_toast => 'Toast';
+
+  @override
+  String get paywall_slide_cherry_tomatoes => 'Cherry Tomatoes';
+
+  @override
+  String get paywall_slide_salmon => 'Salmon Fillet';
+
+  @override
+  String get paywall_slide_sweet_potato => 'Sweet Potato';
+
+  @override
+  String get paywall_slide_broccoli => 'Broccoli';
+
+  @override
+  String get paywall_slide_boiled_eggs => 'Boiled Eggs';
+
+  @override
+  String get paywall_slide_chicken_portion => '150g';
+
+  @override
+  String get paywall_slide_rice_portion => '130g';
+
+  @override
+  String get paywall_slide_avocado_portion => '100g';
+
+  @override
+  String get paywall_slide_tomatoes_portion => '80g';
+
+  @override
+  String get paywall_slide_salmon_portion => '150g';
+
+  @override
+  String get paywall_slide_sweet_potato_portion => '130g';
+
+  @override
+  String get paywall_slide_broccoli_portion => '100g';
+
+  @override
+  String get paywall_slide_eggs_portion => '2 large';
+
+  @override
+  String get paywall_slide_toast_portion => '2 slices';
 }

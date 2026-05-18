@@ -17,41 +17,13 @@ class RecentMealTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final macroTotal =
         meal.macros.protein + meal.macros.carbs + meal.macros.fat;
 
     return AppScaleTap(
       onTap: onTap ?? () => context.push('/log'),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : AppColors.lightCardBorder,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.06 : 0.04),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-            // Subtle emerald glow
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: isDark ? 0.04 : 0.03),
-              blurRadius: 20,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
             // Meal Thumbnail

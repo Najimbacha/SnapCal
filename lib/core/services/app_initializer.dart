@@ -30,6 +30,8 @@ import '../../data/services/widget_service.dart';
 import '../utils/async_guard.dart';
 
 class AppInitializer {
+  static bool _errorReportingConfigured = false;
+
   static Future<void> preInit() async {
     await _initFirebase();
   }
@@ -64,17 +66,17 @@ class AppInitializer {
       // 3. Initialize Hive
       await _initHive();
 
-      debugPrint('🚀 AppInitializer: Initializing scan gate...');
-      await ScanGateService().init();
-
-      debugPrint('🚀 AppInitializer: Initializing premium gate...');
-      await PremiumGateService().init();
-
       debugPrint(
-        '🚀 AppInitializer: Initializing Repositories (Meal, Settings, Water, Assistant)...',
+        '🚀 AppInitializer: Parallelizing Service & Repository Init...',
       );
-      // 4. Initialize Repositories (CRITICAL)
+      // 4. Initialize everything else in parallel after Hive/Firebase are ready
       await Future.wait([
+        ScanGateService().init().then(
+          (_) => debugPrint('✅ AppInitializer: ScanGate ready'),
+        ),
+        PremiumGateService().init().then(
+          (_) => debugPrint('✅ AppInitializer: PremiumGate ready'),
+        ),
         mealRepository.init().then(
           (_) => debugPrint('✅ AppInitializer: MealRepo ready'),
         ),
@@ -91,7 +93,7 @@ class AppInitializer {
         const Duration(seconds: 15),
         onTimeout: () {
           debugPrint(
-            '⚠️ AppInitializer: Repository initialization timed out after 15s',
+            '⚠️ AppInitializer: Initialization timed out after 15s',
           );
           throw TimeoutException(
             'Core data services are taking too long to respond.',
@@ -106,7 +108,8 @@ class AppInitializer {
       final duration = DateTime.now().difference(startTime).inMilliseconds;
       debugPrint('✅ AppInitializer: Critical core ready in ${duration}ms');
     } catch (e, stack) {
-      debugPrint('❌ AppInitializer: Fatal error during initialization: $e');
+      _logInitializerFailure(e, stack);
+      _recordInitializerFailure(e, stack);
       debugPrint(stack.toString());
       rethrow;
     }
@@ -144,58 +147,77 @@ class AppInitializer {
       debugPrint('🔥 Firebase: Checking if already initialized...');
       if (Firebase.apps.isEmpty) {
         debugPrint('🔥 Firebase: Calling initializeApp()...');
-        await Firebase.initializeApp().timeout(const Duration(seconds: 15));
+        await Firebase.initializeApp().timeout(const Duration(seconds: 30));
         debugPrint('🔥 Firebase: initializeApp() completed');
 
-        // Enable Crashlytics in Release mode
-        if (!kDebugMode) {
-          debugPrint('🔥 Firebase: Enabling Crashlytics collection...');
-          await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
-            true,
-          );
-          debugPrint('🔥 Firebase: Crashlytics collection enabled');
-        }
-
-        // Setup Global Error Handling now that Firebase is ready
-        debugPrint('🔥 Firebase: Setting up error reporting...');
-        _setupErrorReporting();
-
-        debugPrint('🔥 Firebase initialized and Error Reporting active');
       } else {
         debugPrint('🔥 Firebase already initialized');
       }
+      await _configureCrashlyticsAfterFirebase();
     } catch (e) {
-      debugPrint('❌ Firebase initialization failed: $e');
+      _logFirebaseInitFailure(e);
       // Rethrow to ensure the UI shows the retry screen instead of hanging in a half-initialized state
       rethrow;
     }
   }
 
+  static Future<void> _configureCrashlyticsAfterFirebase() async {
+    // Enable Crashlytics in Release mode
+    if (!kDebugMode) {
+      debugPrint('🔥 Firebase: Enabling Crashlytics collection...');
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+      debugPrint('🔥 Firebase: Crashlytics collection enabled');
+    }
+
+    if (_errorReportingConfigured) {
+      debugPrint('🔥 Firebase: Error reporting already configured');
+      return;
+    }
+
+    // Setup Global Error Handling now that Firebase is ready
+    debugPrint('🔥 Firebase: Setting up error reporting...');
+    _setupErrorReporting();
+    _errorReportingConfigured = true;
+
+    debugPrint('🔥 Firebase initialized and Error Reporting active');
+  }
+
   static void _setupErrorReporting() {
     FlutterError.onError = (errorDetails) {
-      if (_isNonFatalMouseTrackerAssertion(
+      final fatal = _shouldRecordFlutterErrorAsFatal(
         errorDetails.exception,
         errorDetails.stack,
-      )) {
+      );
+      unawaited(
+        FirebaseCrashlytics.instance.setCustomKey(
+          'flutter_error_fatal',
+          fatal,
+        ),
+      );
+
+      if (fatal) {
+        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+      } else {
         FirebaseCrashlytics.instance.recordFlutterError(errorDetails);
-        FlutterError.presentError(errorDetails);
-        return;
       }
 
-      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
       FlutterError.presentError(errorDetails);
     };
 
     PlatformDispatcher.instance.onError = (error, stack) {
-      if (_isNonFatalMouseTrackerAssertion(error, stack)) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
-        return true;
-      }
-
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      final fatal = _shouldRecordFlutterErrorAsFatal(error, stack);
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: fatal);
       return true;
     };
     debugPrint('🛡️ Crashlytics Error Reporting configured');
+  }
+
+  static bool _shouldRecordFlutterErrorAsFatal(
+    Object error,
+    StackTrace? stack,
+  ) {
+    return !_isNonFatalMouseTrackerAssertion(error, stack) &&
+        !_isParentDataWidgetAssertion(error, stack);
   }
 
   static bool _isNonFatalMouseTrackerAssertion(
@@ -208,6 +230,69 @@ class AppInitializer {
     return message.contains('mouse_tracker.dart') ||
         message.contains('!_debugDuringDeviceUpdate') ||
         stackText.contains('MouseTracker.updateAllDevices');
+  }
+
+  static bool _isParentDataWidgetAssertion(Object error, StackTrace? stack) {
+    final message = error.toString();
+    final stackText = stack?.toString() ?? '';
+
+    return message.contains('Incorrect use of ParentDataWidget') ||
+        message.contains('ParentDataWidget') ||
+        stackText.contains('RenderObjectElement._updateParentData');
+  }
+
+  static void _logInitializerFailure(Object error, StackTrace stack) {
+    debugPrint('❌ AppInitializer: Fatal error during initialization');
+    debugPrint('❌ AppInitializer: type=${error.runtimeType}');
+    if (error is PlatformException) {
+      debugPrint('❌ AppInitializer: platformCode=${error.code}');
+      debugPrint('❌ AppInitializer: platformMessage=${error.message}');
+      debugPrint('❌ AppInitializer: platformDetails=${error.details}');
+    } else {
+      debugPrint('❌ AppInitializer: error=$error');
+    }
+    debugPrint('❌ AppInitializer: firebaseApps=${Firebase.apps.length}');
+  }
+
+  static void _recordInitializerFailure(Object error, StackTrace stack) {
+    if (Firebase.apps.isEmpty) return;
+
+    unawaited(
+      FirebaseCrashlytics.instance.setCustomKey(
+        'app_initializer_error_type',
+        error.runtimeType.toString(),
+      ),
+    );
+    if (error is PlatformException) {
+      unawaited(
+        FirebaseCrashlytics.instance.setCustomKey(
+          'app_initializer_platform_code',
+          error.code,
+        ),
+      );
+      unawaited(
+        FirebaseCrashlytics.instance.setCustomKey(
+          'app_initializer_platform_message',
+          error.message ?? '',
+        ),
+      );
+    }
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+  }
+
+  static void _logFirebaseInitFailure(Object error) {
+    debugPrint('❌ Firebase initialization failed');
+    debugPrint('❌ Firebase: type=${error.runtimeType}');
+    if (error is PlatformException) {
+      debugPrint('❌ Firebase: platformCode=${error.code}');
+      debugPrint('❌ Firebase: platformMessage=${error.message}');
+      debugPrint('❌ Firebase: platformDetails=${error.details}');
+    } else if (error is TimeoutException) {
+      debugPrint('❌ Firebase: timeout=${error.message}');
+    } else {
+      debugPrint('❌ Firebase: error=$error');
+    }
+    debugPrint('❌ Firebase: appsAfterFailure=${Firebase.apps.length}');
   }
 
   static Future<void> _initHive() async {

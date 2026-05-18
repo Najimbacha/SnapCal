@@ -98,7 +98,7 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
           const SizedBox(height: 20),
           
           if (!canCompare)
-            _buildMissingPhotos(context)
+            Expanded(child: _buildMissingPhotos(context))
           else
             Expanded(
               child: Padding(
@@ -189,11 +189,11 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
   }
 
   Widget _buildMissingPhotos(BuildContext context) {
-    return Expanded(
-      child: Center(
-        child: Text(
-          AppLocalizations.of(context)!.progress_missing_photos,
-          style: AppTypography.bodyMedium.copyWith(color: context.textSecondaryColor),
+    return Center(
+      child: Text(
+        AppLocalizations.of(context)!.progress_missing_photos,
+        style: AppTypography.bodyMedium.copyWith(
+          color: context.textSecondaryColor,
         ),
       ),
     );

@@ -61,7 +61,7 @@ class DatePickerBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    app_date.DateUtils.getDateLabel(selectedDate),
+                    app_date.DateUtils.getDateLabel(selectedDate, l10n: l10n),
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.5,

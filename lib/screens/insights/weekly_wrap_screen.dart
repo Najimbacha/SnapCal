@@ -10,8 +10,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/core/theme/app_typography.dart';
 import 'package:snapcal/providers/insights_provider.dart';
+import 'package:snapcal/providers/settings_provider.dart';
+import 'package:snapcal/data/services/premium_conversion_service.dart';
 import 'package:snapcal/widgets/app_page_scaffold.dart';
 import 'package:snapcal/widgets/glass_card.dart';
+import 'package:snapcal/widgets/premium_prompt_card.dart';
 import 'widgets/insight_card.dart';
 import 'widgets/week_chart.dart';
 
@@ -44,17 +47,41 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error sharing: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.feature_insights_share_error('$e'))),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final insightsProvider = context.watch<InsightsProvider>();
+    final settings = context.watch<SettingsProvider>();
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
+
+    if (!settings.isPro) {
+      return AppPageScaffold(
+        title: l10n.feature_insights_title,
+        subtitle: l10n.feature_insights_desc,
+        scrollable: true,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 24),
+          child: PremiumPromptCard(
+            title: l10n.report_card_title,
+            subtitle: l10n.report_card_subtitle,
+            buttonText: l10n.report_prompt_btn,
+            icon: LucideIcons.fileBarChart,
+            onTap:
+                () => PremiumConversionService().openPaywall(
+                  context,
+                  PaywallEntryPoint.reportInsight,
+                  featureName: 'weekly_wrap',
+                ),
+          ),
+        ),
+      );
+    }
 
     if (insightsProvider.isGenerating) {
       return Scaffold(
@@ -80,7 +107,7 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
         appBar: AppBar(title: Text(l10n.feature_insights_title)),
         body: Center(
           child: Text(
-            'No data for this week yet.',
+            l10n.feature_insights_empty,
             style: AppTypography.titleMedium,
           ),
         ),
@@ -137,7 +164,7 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Calorie Trend',
+                          l10n.feature_insights_calorie_trend,
                           style: AppTypography.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -156,7 +183,7 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'AI Coach Insights',
+                          l10n.feature_insights_ai_coach,
                           style: AppTypography.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
                           ),

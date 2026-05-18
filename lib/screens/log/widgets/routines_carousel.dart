@@ -24,7 +24,11 @@ class RoutinesCarousel extends StatelessWidget {
     final settingsProvider = context.read<SettingsProvider>();
 
     try {
-      await templateProvider.logFromTemplate(template, mealProvider, settingsProvider);
+      await templateProvider.logFromTemplate(
+        template,
+        mealProvider,
+        settingsProvider,
+      );
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -34,9 +38,10 @@ class RoutinesCarousel extends StatelessWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${l10n.error_generic}: $e')));
     }
   }
 
@@ -123,7 +128,10 @@ class _RoutineCard extends StatelessWidget {
           color: context.cardColor,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+            color:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.black.withValues(alpha: 0.03),
             width: 1.5,
           ),
           boxShadow: [
@@ -212,24 +220,31 @@ class _RoutineOptionsSheet extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               '${template.emoji} ${template.name}',
-              style: AppTypography.heading3.copyWith(fontWeight: FontWeight.w900),
+              style: AppTypography.heading3.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 24),
             ListTile(
               leading: const Icon(LucideIcons.trash2, color: AppColors.error),
               title: Text(
-                AppLocalizations.of(context)!.common_delete, 
-                style: AppTypography.bodyLarge.copyWith(color: AppColors.error, fontWeight: FontWeight.w900)
+                AppLocalizations.of(context)!.common_delete,
+                style: AppTypography.bodyLarge.copyWith(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               onTap: () async {
                 final messenger = ScaffoldMessenger.of(context);
                 final router = Navigator.of(context);
-                
-                await context.read<TemplateProvider>().deleteTemplate(template.id);
-                router.pop();
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('Routine deleted')),
+                final deletedMessage =
+                    AppLocalizations.of(context)!.feature_templates_deleted;
+
+                await context.read<TemplateProvider>().deleteTemplate(
+                  template.id,
                 );
+                router.pop();
+                messenger.showSnackBar(SnackBar(content: Text(deletedMessage)));
               },
             ),
             const SizedBox(height: 24),

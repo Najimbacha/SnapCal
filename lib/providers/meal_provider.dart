@@ -5,6 +5,7 @@ import '../data/models/meal.dart';
 import '../data/repositories/meal_repository.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/gemini_service.dart';
+import '../data/services/pro_feature_service.dart';
 import '../core/state/async_ui_state.dart';
 import 'settings_provider.dart';
 
@@ -113,6 +114,31 @@ class MealProvider with ChangeNotifier {
   /// Read meals for date without changing the selected log date.
   List<Meal> getMealsForDate(String dateString) {
     return _repository.getMealsByDate(dateString);
+  }
+
+  bool canViewDate(String dateString, {required bool isPro}) {
+    if (isPro) return true;
+    final date = DateTime.tryParse(dateString);
+    if (date == null) return false;
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final start = todayOnly.subtract(
+      const Duration(days: ProFeatureService.freeHistoryDays - 1),
+    );
+    final normalized = DateTime(date.year, date.month, date.day);
+    return !normalized.isBefore(start) && !normalized.isAfter(todayOnly);
+  }
+
+  List<Meal> getMealsForVisibleHistory({required bool isPro}) {
+    if (isPro) return _repository.getAllMeals();
+    return _repository
+        .getAllMeals()
+        .where((meal) => canViewDate(meal.dateString, isPro: false))
+        .toList();
+  }
+
+  List<Meal> getReportMeals({required bool isPro}) {
+    return isPro ? getWeeklyMeals() : getWeeklyMeals().take(3).toList();
   }
 
   /// Get today's meal count

@@ -2,11 +2,11 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:go_router/go_router.dart';
 import '../../../widgets/premium_prompt_card.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../data/services/premium_conversion_service.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../providers/meal_provider.dart';
 import '../../../providers/settings_provider.dart';
@@ -28,6 +28,7 @@ class NutritionReportView extends StatelessWidget {
           );
         }
         final weeklyMacros = meals.getWeeklyMacroSummary();
+        final isPro = settings.isPro;
         return SingleChildScrollView(
           padding: EdgeInsets.only(top: 16, bottom: 40),
           child: Column(
@@ -57,92 +58,99 @@ class NutritionReportView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              AppSectionCard(
-                glass: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionLabel(
-                      title: AppLocalizations.of(context)!.report_calorie_trend,
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 220,
-                      child: _CalorieChart(
-                        values: meals.getWeeklyCalorieTrend(),
+              if (isPro)
+                AppSectionCard(
+                  glass: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SectionLabel(
+                        title:
+                            AppLocalizations.of(context)!.report_calorie_trend,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              AppSectionCard(
-                glass: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionLabel(
-                      title: AppLocalizations.of(context)!.report_macro_dist,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 150,
-                          height: 150,
-                          child: _MacroChart(
-                            protein: weeklyMacros.protein.toDouble(),
-                            carbs: weeklyMacros.carbs.toDouble(),
-                            fat: weeklyMacros.fat.toDouble(),
-                          ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 220,
+                        child: _CalorieChart(
+                          values: meals.getWeeklyCalorieTrend(),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              _LegendRow(
-                                label:
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.report_macro_protein,
-                                value: '${weeklyMacros.protein}g',
-                                color: AppColors.protein,
-                              ),
-                              const SizedBox(height: 10),
-                              _LegendRow(
-                                label:
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.report_macro_carbs,
-                                value: '${weeklyMacros.carbs}g',
-                                color: AppColors.carbs,
-                              ),
-                              const SizedBox(height: 10),
-                              _LegendRow(
-                                label:
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.report_macro_fat,
-                                value: '${weeklyMacros.fat}g',
-                                color: AppColors.fat,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (!settings.isPro) ...[
+              if (isPro) const SizedBox(height: 12),
+              if (isPro)
+                AppSectionCard(
+                  glass: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SectionLabel(
+                        title: AppLocalizations.of(context)!.report_macro_dist,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 150,
+                            height: 150,
+                            child: _MacroChart(
+                              protein: weeklyMacros.protein.toDouble(),
+                              carbs: weeklyMacros.carbs.toDouble(),
+                              fat: weeklyMacros.fat.toDouble(),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                _LegendRow(
+                                  label:
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.report_macro_protein,
+                                  value: '${weeklyMacros.protein}g',
+                                  color: AppColors.protein,
+                                ),
+                                const SizedBox(height: 10),
+                                _LegendRow(
+                                  label:
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.report_macro_carbs,
+                                  value: '${weeklyMacros.carbs}g',
+                                  color: AppColors.carbs,
+                                ),
+                                const SizedBox(height: 10),
+                                _LegendRow(
+                                  label:
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.report_macro_fat,
+                                  value: '${weeklyMacros.fat}g',
+                                  color: AppColors.fat,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              if (!isPro) ...[
                 const SizedBox(height: 16),
                 PremiumPromptCard(
-                  title: 'WEEKLY PROGRESS REPORT',
-                  subtitle:
-                      'See why some days went over target and get personalized suggestions to fix it.',
-                  buttonText: 'Unlock Weekly Report',
+                  title: AppLocalizations.of(context)!.report_card_title,
+                  subtitle: AppLocalizations.of(context)!.report_card_subtitle,
+                  buttonText: AppLocalizations.of(context)!.report_prompt_btn,
                   icon: LucideIcons.fileBarChart,
-                  onTap: () => context.push('/paywall'),
+                  onTap:
+                      () => PremiumConversionService().openPaywall(
+                        context,
+                        PaywallEntryPoint.reportInsight,
+                        featureName: 'weekly_report',
+                      ),
                 ),
               ],
             ],

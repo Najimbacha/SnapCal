@@ -1,16 +1,17 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/settings_provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../../../widgets/premium_prompt_card.dart';
-import '../../../widgets/premium_prompt_modal.dart';
+import '../../../core/utils/date_utils.dart' as app_date;
+import '../../../data/models/meal.dart';
+import '../../../data/services/premium_conversion_service.dart';
 import '../../../data/services/gemini_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
@@ -48,6 +49,8 @@ class _ResultModalState extends State<ResultModal> {
   late final TextEditingController _mealTitleController;
   late List<_ReviewFoodItem> _items;
   bool _isSaving = false;
+  bool _localizedDefaultTitleApplied = false;
+  Future<String>? _mealInsightFuture;
 
   int get _totalCalories => _items.fold(0, (sum, item) => sum + item.calories);
   int get _totalProtein => _items.fold(0, (sum, item) => sum + item.protein);
@@ -73,22 +76,53 @@ class _ResultModalState extends State<ResultModal> {
     _mealTitleController = TextEditingController(
       text: _items.length == 1 ? _items.first.name : 'Feast',
     );
+  }
 
-    // Smart Premium Encouragement
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) {
-          PremiumPromptModal.show(
-            context,
-            title: 'TURN MEALS INTO PROGRESS',
-            subtitle:
-                'Get unlimited scans, smarter suggestions, and see how this meal fits into your weekly goals.',
-            buttonText: 'Scan Without Limits',
-            icon: LucideIcons.zap,
-          );
-        }
-      });
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final l10n = AppLocalizations.of(context)!;
+    if (!_localizedDefaultTitleApplied &&
+        _items.length != 1 &&
+        _mealTitleController.text == 'Feast') {
+      _mealTitleController.text = l10n.result_feast;
+      _localizedDefaultTitleApplied = true;
+    }
+    if (_items.length == 1 && _items.first.name == 'Food') {
+      _items = [_items.first.copyWith(name: l10n.result_food)];
+      if (_mealTitleController.text == 'Food') {
+        _mealTitleController.text = l10n.result_food;
+      }
+    }
+
+    final settings = context.read<SettingsProvider>();
+    if (settings.isPro && _mealInsightFuture == null) {
+      _mealInsightFuture = AIService().generateMealInsight(
+        meal: _buildInsightMeal(),
+        settings: settings.settings,
+        languageCode: settings.languageCode,
+      );
+    }
+  }
+
+  Meal _buildInsightMeal() {
+    final name =
+        _mealTitleController.text.trim().isEmpty
+            ? _items.first.name
+            : _mealTitleController.text.trim();
+    return Meal(
+      id: 'preview',
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+      dateString: app_date.DateUtils.getTodayString(),
+      foodName: name,
+      calories: _totalCalories,
+      macros: Macros(
+        protein: _totalProtein,
+        carbs: _totalCarbs,
+        fat: _totalFat,
+      ),
+      portion: _items.map((item) => item.portion).join(', '),
+    );
   }
 
   @override
@@ -149,9 +183,9 @@ class _ResultModalState extends State<ResultModal> {
       backgroundColor: Colors.transparent,
       builder:
           (context) => _TextEditSheet(
-            title: 'Meal name',
+            title: AppLocalizations.of(context)!.result_meal_name,
             controller: controller,
-            hintText: 'Feast',
+            hintText: AppLocalizations.of(context)!.result_feast,
           ),
     );
     if (value == null || value.trim().isEmpty) return;
@@ -219,6 +253,7 @@ class _ResultModalState extends State<ResultModal> {
                   totalProtein: _totalProtein,
                   totalFat: _totalFat,
                   items: _items,
+                  mealInsightFuture: _mealInsightFuture,
                   onEditTitle: _editMealTitle,
                   onEditItem: _editItem,
                   onAddFood: _addManualFood,
@@ -324,6 +359,7 @@ class _ReviewSheet extends StatelessWidget {
   final int totalProtein;
   final int totalFat;
   final List<_ReviewFoodItem> items;
+  final Future<String>? mealInsightFuture;
   final VoidCallback onEditTitle;
   final ValueChanged<int> onEditItem;
   final VoidCallback onAddFood;
@@ -338,6 +374,7 @@ class _ReviewSheet extends StatelessWidget {
     required this.totalProtein,
     required this.totalFat,
     required this.items,
+    required this.mealInsightFuture,
     required this.onEditTitle,
     required this.onEditItem,
     required this.onAddFood,
@@ -366,327 +403,144 @@ class _ReviewSheet extends StatelessWidget {
             children: [
               Expanded(
                 child: ListView(
-              padding: const EdgeInsets.fromLTRB(26, 14, 26, 22),
-              physics: const BouncingScrollPhysics(),
-              children: [
-                Row(
+                  padding: const EdgeInsets.fromLTRB(26, 14, 26, 22),
+                  physics: const BouncingScrollPhysics(),
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            mealTitleController.text.trim().isEmpty
-                                ? 'FEAST'
-                                : mealTitleController.text.trim().toUpperCase(),
-                            style: AppTypography.headlineSmall.copyWith(
-                              color: colorScheme.onSurface,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      onTap: onEditTitle,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Icon(
-                          LucideIcons.edit3,
-                          color: colorScheme.onSurfaceVariant,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                const _ReceiptDivider(),
-                const SizedBox(height: 12),
-                _MacroBillSummary(
-                  calories: totalCalories,
-                  carbs: totalCarbs,
-                  protein: totalProtein,
-                  fat: totalFat,
-                ),
-                if (!settings.isPro) ...[
-                  const SizedBox(height: 16),
-                  PremiumPromptCard(
-                    title: 'PREMIUM INSIGHT',
-                    subtitle:
-                        'Your meal is higher in carbs than usual. Unlock AI suggestions to balance this feast.',
-                    buttonText: 'Unlock Insight',
-                    icon: LucideIcons.sparkles,
-                    onTap: () => context.push('/paywall'),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                const _ReceiptDivider(),
-                const SizedBox(height: 10),
-                // Perforated Divider
-                const _ReceiptDivider(),
-                const SizedBox(height: 12),
-                
-                ...List.generate(items.length, (index) {
-                  final item = items[index];
-                  return _FoodReviewRow(
-                    item: item,
-                    onTap: () => onEditItem(index),
-                  );
-                }),
-                
-                const SizedBox(height: 8),
-                const _ReceiptDivider(),
-                const SizedBox(height: 18),
-                _MoreFoodButton(onTap: onAddFood),
-              ],
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(26, 8, 26, bottomPadding + 12),
-            child: Column(
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  height: 58,
-                  child: FilledButton(
-                    onPressed: isSaving ? null : onSave,
-                    style: FilledButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    child: Ink(
-                      decoration: BoxDecoration(
-                        gradient: AppColors.premiumGradient,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Container(
-                        alignment: Alignment.center,
-                        child: isSaving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                l10n?.snap_log_meal ?? 'Log this meal',
-                                style: AppTypography.titleMedium.copyWith(
-                                  color: Colors.white,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                mealTitleController.text.trim().isEmpty
+                                    ? 'FEAST'
+                                    : mealTitleController.text
+                                        .trim()
+                                        .toUpperCase(),
+                                style: AppTypography.headlineSmall.copyWith(
+                                  color: colorScheme.onSurface,
                                   fontWeight: FontWeight.w900,
-                                  letterSpacing: 0,
+                                  letterSpacing: -0.5,
                                 ),
                               ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        ], // End of Column children
-      ), // End of Column
-    ], // End of Stack children
-  ), // End of Stack
-); // End of Container
-  }
-}
-
-class _SummaryTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _SummaryTile({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 90),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: isDark ? 0.15 : 0.08),
-            colorScheme.surface.withValues(alpha: isDark ? 0.4 : 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: color.withValues(alpha: isDark ? 0.25 : 0.15),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: color.withValues(alpha: 0.8),
-              fontWeight: FontWeight.w900,
-              fontSize: 10,
-              letterSpacing: 0.5,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: AppTypography.titleLarge.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScanTrustPanel extends StatelessWidget {
-  final int itemCount;
-  final int calories;
-  final int protein;
-
-  const _ScanTrustPanel({
-    required this.itemCount,
-    required this.calories,
-    required this.protein,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final confidence = _confidenceValue;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primary.withValues(alpha: isDark ? 0.12 : 0.06),
-            colorScheme.surface.withValues(alpha: 0.4),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: isDark ? 0.2 : 0.12),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _AnimatedAIIcon(color: colorScheme.primary),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Review before logging',
-                        style: AppTypography.titleSmall.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.2,
+                            ],
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${(confidence * 100).round()}%',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w900,
+                        InkWell(
+                          onTap: onEditTitle,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              LucideIcons.edit3,
+                              color: colorScheme.onSurfaceVariant,
+                              size: 20,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
+                    const SizedBox(height: 14),
+                    const _ReceiptDivider(),
+                    const SizedBox(height: 12),
+                    _MacroBillSummary(
+                      calories: totalCalories,
+                      carbs: totalCarbs,
+                      protein: totalProtein,
+                      fat: totalFat,
+                    ),
+                    if (settings.isPro && mealInsightFuture != null) ...[
+                      const SizedBox(height: 12),
+                      _AiMealInsightCard(insight: mealInsightFuture!),
+                    ] else if (!settings.isPro) ...[
+                      const SizedBox(height: 12),
+                      _PremiumInsightStrip(
+                        onTap:
+                            () => PremiumConversionService().openPaywall(
+                              context,
+                              PaywallEntryPoint.mealInsight,
+                              featureName: 'meal_result',
+                            ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    const _ReceiptDivider(),
+                    const SizedBox(height: 10),
+                    // Perforated Divider
+                    const _ReceiptDivider(),
+                    const SizedBox(height: 12),
+
+                    ...List.generate(items.length, (index) {
+                      final item = items[index];
+                      return _FoodReviewRow(
+                        item: item,
+                        onTap: () => onEditItem(index),
+                      );
+                    }),
+
+                    const SizedBox(height: 8),
+                    const _ReceiptDivider(),
+                    const SizedBox(height: 18),
+                    _MoreFoodButton(onTap: onAddFood),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _rationale,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                    height: 1.3,
-                  ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(26, 8, 26, bottomPadding + 12),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      height: 58,
+                      child: FilledButton(
+                        onPressed: isSaving ? null : onSave,
+                        style: FilledButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: AppColors.premiumGradient,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Container(
+                            alignment: Alignment.center,
+                            child:
+                                isSaving
+                                    ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.4,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                    : Text(
+                                      l10n?.snap_log_meal ?? 'Log this meal',
+                                      style: AppTypography.titleMedium.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0,
+                                      ),
+                                    ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  double get _confidenceValue {
-    if (calories <= 0) return 0.48;
-    if (itemCount > 1) return 0.76;
-    if (protein > 0) return 0.84;
-    return 0.72;
-  }
-
-  String get _rationale {
-    if (calories <= 0) {
-      return 'The estimate needs a calorie value. Tap the item to edit portion and macros.';
-    }
-    if (itemCount > 1) {
-      return 'AI split this photo into $itemCount foods. Check each portion before saving.';
-    }
-    return 'AI estimated calories from the visible portion and macros. Tap any row to correct it.';
+              ),
+            ], // End of Column children
+          ), // End of Column
+        ], // End of Stack children
+      ), // End of Stack
+    ); // End of Container
   }
 }
 
@@ -760,6 +614,194 @@ class _FoodReviewRow extends StatelessWidget {
   }
 }
 
+class _PremiumInsightStrip extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _PremiumInsightStrip({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+            decoration: BoxDecoration(
+              color: (isDark ? Colors.white : AppColors.primary).withValues(
+                alpha: isDark ? 0.055 : 0.045,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.primary.withValues(
+                  alpha: isDark ? 0.24 : 0.18,
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.premiumGradient,
+                    borderRadius: BorderRadius.circular(11),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.18),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    LucideIcons.sparkles,
+                    color: Colors.white,
+                    size: 17,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.result_ai_meal_insight,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.labelMedium.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        AppLocalizations.of(context)!.result_ai_meal_body,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.74,
+                          ),
+                          fontSize: 11,
+                          height: 1.1,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.20),
+                    ),
+                  ),
+                  child: Text(
+                    'PRO',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AiMealInsightCard extends StatelessWidget {
+  final Future<String> insight;
+
+  const _AiMealInsightCard({required this.insight});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return FutureBuilder<String>(
+      future: insight,
+      builder: (context, snapshot) {
+        final text =
+            snapshot.connectionState == ConnectionState.done
+                ? snapshot.data ??
+                    AppLocalizations.of(context)!.result_ai_meal_body
+                : AppLocalizations.of(context)!.feature_insights_generating;
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.18),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                LucideIcons.sparkles,
+                color: AppColors.primary,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.result_ai_meal_insight,
+                      style: AppTypography.labelMedium.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      text,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _DottedLeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -777,7 +819,9 @@ class _DottedLeader extends StatelessWidget {
               height: 1,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                 ),
               ),
             );
@@ -794,90 +838,21 @@ class _ReceiptDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: List.generate(40, (index) => Expanded(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          height: 1.5,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(1),
+      children: List.generate(
+        40,
+        (index) => Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            height: 1.5,
+            decoration: BoxDecoration(
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(1),
+            ),
           ),
         ),
-      )),
-    );
-  }
-}
-
-class _AnimatedAIIcon extends StatefulWidget {
-  final Color color;
-  const _AnimatedAIIcon({required this.color});
-
-  @override
-  State<_AnimatedAIIcon> createState() => _AnimatedAIIconState();
-}
-
-class _AnimatedAIIconState extends State<_AnimatedAIIcon>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2))
-          ..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.color.withValues(
-                      alpha: 0.15 + (_controller.value * 0.2),
-                    ),
-                    blurRadius: 8 + (_controller.value * 8),
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [widget.color, AppColors.sky],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                LucideIcons.sparkles,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-          ],
-        );
-      },
+      ),
     );
   }
 }
@@ -909,7 +884,7 @@ class _MoreFoodButton extends StatelessWidget {
             Icon(LucideIcons.plus, color: colorScheme.primary, size: 18),
             const SizedBox(width: 8),
             Text(
-              'ADD NEW ITEM',
+              AppLocalizations.of(context)!.result_add_new_item,
               style: AppTypography.labelLarge.copyWith(
                 color: colorScheme.primary,
                 fontWeight: FontWeight.w900,
@@ -934,10 +909,11 @@ class _MacroBillSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
         _SummaryLine(
-          label: 'TOTAL CALORIES',
+          label: l10n.result_total_calories,
           value: '$calories',
           unit: 'KCAL',
           color: AppColors.primary,
@@ -948,7 +924,7 @@ class _MacroBillSummary extends StatelessWidget {
           children: [
             Expanded(
               child: _SummaryLine(
-                label: 'CARBS',
+                label: l10n.result_carbs,
                 value: '${carbs}g',
                 color: AppColors.carbs,
                 icon: LucideIcons.wheat,
@@ -958,7 +934,7 @@ class _MacroBillSummary extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: _SummaryLine(
-                label: 'PROTEIN',
+                label: l10n.result_protein,
                 value: '${protein}g',
                 color: AppColors.protein,
                 icon: LucideIcons.beef,
@@ -968,7 +944,7 @@ class _MacroBillSummary extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: _SummaryLine(
-                label: 'FAT',
+                label: l10n.result_fat,
                 value: '${fat}g',
                 color: AppColors.fat,
                 icon: LucideIcons.droplets,
@@ -1097,9 +1073,10 @@ class _ZigZagEdge extends StatelessWidget {
     return SizedBox(
       height: 8,
       child: Row(
-        children: List.generate(20, (index) => Expanded(
-          child: CustomPaint(painter: _TrianglePainter()),
-        )),
+        children: List.generate(
+          20,
+          (index) => Expanded(child: CustomPaint(painter: _TrianglePainter())),
+        ),
       ),
     );
   }
@@ -1108,80 +1085,21 @@ class _ZigZagEdge extends StatelessWidget {
 class _TrianglePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFFFDFDFD)..style = PaintingStyle.fill;
-    final path = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(size.width / 2, 0)
-      ..lineTo(size.width, size.height)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-  @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _ReceiptBarcode extends StatelessWidget {
-  const _ReceiptBarcode();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(40, (index) => Container(
-            width: (index % 3 == 0) ? 3 : 1.5,
-            height: 24,
-            margin: const EdgeInsets.symmetric(horizontal: 1),
-            color: colorScheme.onSurface.withValues(alpha: 0.2),
-          )),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'SNAPCAL-INTEL-2024',
-          style: AppTypography.labelSmall.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontFamily: 'monospace',
-            fontSize: 8,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DashedBorderPainter extends CustomPainter {
-  final Color color;
-  final double radius;
-
-  const _DashedBorderPainter({required this.color, required this.radius});
-
-  @override
-  void paint(Canvas canvas, Size size) {
     final paint =
         Paint()
-          ..color = color
-          ..strokeWidth = 1.2
-          ..style = PaintingStyle.stroke;
-    final rrect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(radius),
-    );
-    final path = Path()..addRRect(rrect);
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      while (distance < metric.length) {
-        final end = (distance + 8).clamp(0.0, metric.length);
-        canvas.drawPath(metric.extractPath(distance, end), paint);
-        distance += 14;
-      }
-    }
+          ..color = const Color(0xFFFDFDFD)
+          ..style = PaintingStyle.fill;
+    final path =
+        Path()
+          ..moveTo(0, size.height)
+          ..lineTo(size.width / 2, 0)
+          ..lineTo(size.width, size.height)
+          ..close();
+    canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.radius != radius;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _FoodEditSheet extends StatefulWidget {
@@ -1224,10 +1142,11 @@ class _FoodEditSheetState extends State<_FoodEditSheet> {
   }
 
   void _submit() {
+    final l10n = AppLocalizations.of(context)!;
     Navigator.pop(
       context,
       _ReviewFoodItem(
-        name: _name.text.trim().isEmpty ? 'Food' : _name.text.trim(),
+        name: _name.text.trim().isEmpty ? l10n.result_food : _name.text.trim(),
         portion: _portion.text.trim().isEmpty ? '100.0g' : _portion.text.trim(),
         calories: int.tryParse(_calories.text) ?? 0,
         protein: int.tryParse(_protein.text) ?? 0,
@@ -1240,19 +1159,20 @@ class _FoodEditSheetState extends State<_FoodEditSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final l10n = AppLocalizations.of(context)!;
     return _EditSheetFrame(
-      title: 'Food details',
+      title: l10n.result_food_details,
       bottom: bottom,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _EditField(label: 'Food', controller: _name),
-          _EditField(label: 'Portion', controller: _portion),
+          _EditField(label: l10n.result_food, controller: _name),
+          _EditField(label: l10n.result_portion_label, controller: _portion),
           Row(
             children: [
               Expanded(
                 child: _EditField(
-                  label: 'Calories',
+                  label: l10n.result_calories,
                   controller: _calories,
                   keyboardType: TextInputType.number,
                 ),
@@ -1260,7 +1180,7 @@ class _FoodEditSheetState extends State<_FoodEditSheet> {
               const SizedBox(width: 10),
               Expanded(
                 child: _EditField(
-                  label: 'Carbs',
+                  label: l10n.result_carbs,
                   controller: _carbs,
                   keyboardType: TextInputType.number,
                 ),
@@ -1271,7 +1191,7 @@ class _FoodEditSheetState extends State<_FoodEditSheet> {
             children: [
               Expanded(
                 child: _EditField(
-                  label: 'Protein',
+                  label: l10n.result_protein,
                   controller: _protein,
                   keyboardType: TextInputType.number,
                 ),
@@ -1279,7 +1199,7 @@ class _FoodEditSheetState extends State<_FoodEditSheet> {
               const SizedBox(width: 10),
               Expanded(
                 child: _EditField(
-                  label: 'Fat',
+                  label: l10n.result_fat,
                   controller: _fat,
                   keyboardType: TextInputType.number,
                 ),
@@ -1308,7 +1228,7 @@ class _FoodEditSheetState extends State<_FoodEditSheet> {
                 child: Container(
                   alignment: Alignment.center,
                   child: Text(
-                    'Done',
+                    l10n.common_done,
                     style: AppTypography.titleMedium.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
@@ -1356,7 +1276,7 @@ class _TextEditSheet extends StatelessWidget {
             height: 52,
             child: FilledButton(
               onPressed: () => Navigator.pop(context, controller.text),
-              child: const Text('Done'),
+              child: Text(AppLocalizations.of(context)!.common_done),
             ),
           ),
         ],
@@ -1520,6 +1440,24 @@ class _ReviewFoodItem {
     required this.carbs,
     required this.fat,
   });
+
+  _ReviewFoodItem copyWith({
+    String? name,
+    String? portion,
+    int? calories,
+    int? protein,
+    int? carbs,
+    int? fat,
+  }) {
+    return _ReviewFoodItem(
+      name: name ?? this.name,
+      portion: portion ?? this.portion,
+      calories: calories ?? this.calories,
+      protein: protein ?? this.protein,
+      carbs: carbs ?? this.carbs,
+      fat: fat ?? this.fat,
+    );
+  }
 
   factory _ReviewFoodItem.fromNutritionResult(NutritionResult result) {
     return _ReviewFoodItem(

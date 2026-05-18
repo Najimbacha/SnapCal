@@ -15,7 +15,7 @@ import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/premium_prompt_modal.dart';
-import '../../data/services/premium_gate_service.dart';
+import '../../data/services/premium_conversion_service.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -24,7 +24,8 @@ class ReportsScreen extends StatefulWidget {
   State<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProviderStateMixin {
+class _ReportsScreenState extends State<ReportsScreen>
+    with SingleTickerProviderStateMixin {
   String _timeRange = 'Weekly';
   late final AnimationController _animController;
   final List<Animation<double>> _itemAnims = [];
@@ -52,13 +53,18 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 2000), () {
         if (mounted) {
+          final hasReportData =
+              context.read<MealProvider>().getWeeklyMeals().isNotEmpty;
+          final l10n = AppLocalizations.of(context)!;
           PremiumPromptModal.show(
             context,
-            title: 'YOUR WEEKLY REPORT IS READY',
-            subtitle:
-                'Unlock a deeper look at why some days went over target and how to improve next week.',
-            buttonText: 'Unlock Weekly Report',
+            title: l10n.report_prompt_title,
+            subtitle: l10n.report_prompt_subtitle,
+            buttonText: l10n.report_prompt_btn,
             icon: LucideIcons.fileBarChart,
+            entryPoint: PaywallEntryPoint.reportInsight,
+            featureName: 'weekly_report',
+            hasCompletedValueAction: hasReportData,
           );
         }
       });
@@ -73,29 +79,41 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   Future<void> _exportPdfReport() async {
     if (_isExporting) return;
-    
+
+    final settingsProvider = context.read<SettingsProvider>();
+    if (!settingsProvider.isPro) {
+      PremiumConversionService().openPaywall(
+        context,
+        PaywallEntryPoint.reportInsight,
+        featureName: 'pdf_export',
+      );
+      return;
+    }
+
     setState(() => _isExporting = true);
     HapticFeedback.mediumImpact();
 
     try {
       final mealProvider = context.read<MealProvider>();
-      final settingsProvider = context.read<SettingsProvider>();
       final authProvider = context.read<AuthProvider>();
-      
-      final userName = authProvider.user?.displayName ?? 
-                       authProvider.user?.email?.split('@').first ?? 
-                       AppLocalizations.of(context)!.report_guest_user;
+
+      final userName =
+          authProvider.user?.displayName ??
+          authProvider.user?.email?.split('@').first ??
+          AppLocalizations.of(context)!.report_guest_user;
 
       await ReportPdfService.generateAndShareReport(
         userName: userName,
-        meals: mealProvider.getWeeklyMeals(),
+        meals: mealProvider.getReportMeals(isPro: settingsProvider.isPro),
         settings: settingsProvider,
         streak: settingsProvider.currentStreak,
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${AppLocalizations.of(context)!.report_failed}: $e')),
+          SnackBar(
+            content: Text('${AppLocalizations.of(context)!.report_failed}: $e'),
+          ),
         );
       }
     } finally {
@@ -139,9 +157,18 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                   color: colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: _isExporting 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Icon(LucideIcons.share, size: 20, color: colorScheme.primary),
+                child:
+                    _isExporting
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : Icon(
+                          LucideIcons.share,
+                          size: 20,
+                          color: colorScheme.primary,
+                        ),
               ),
             ),
             const SizedBox(width: 8),
@@ -150,30 +177,52 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 HapticFeedback.mediumImpact();
                 setState(() => _timeRange = value);
               },
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
               offset: const Offset(0, 48),
-              itemBuilder: (context) => [
-                PopupMenuItem(value: 'Weekly', child: Text(AppLocalizations.of(context)!.report_weekly_review)),
-                PopupMenuItem(value: 'Monthly', child: Text(AppLocalizations.of(context)!.report_monthly_audit)),
-              ],
+              itemBuilder:
+                  (context) => [
+                    PopupMenuItem(
+                      value: 'Weekly',
+                      child: Text(
+                        AppLocalizations.of(context)!.report_weekly_review,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'Monthly',
+                      child: Text(
+                        AppLocalizations.of(context)!.report_monthly_audit,
+                      ),
+                    ),
+                  ],
               child: _ScaleTap(
                 onTap: () {}, // Handled by PopupMenuButton
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: colorScheme.primary.withValues(alpha: 0.15)),
+                    border: Border.all(
+                      color: colorScheme.primary.withValues(alpha: 0.15),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.calendarRange, size: 14, color: colorScheme.primary),
+                      Icon(
+                        LucideIcons.calendarRange,
+                        size: 14,
+                        color: colorScheme.primary,
+                      ),
                       const SizedBox(width: 8),
                       Text(
-                        _timeRange == 'Weekly' 
-                          ? AppLocalizations.of(context)!.report_weekly 
-                          : AppLocalizations.of(context)!.report_monthly,
+                        _timeRange == 'Weekly'
+                            ? AppLocalizations.of(context)!.report_weekly
+                            : AppLocalizations.of(context)!.report_monthly,
                         style: AppTypography.labelLarge.copyWith(
                           color: colorScheme.primary,
                           fontWeight: FontWeight.w900,
@@ -193,7 +242,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             _staggeredSlide(
               _itemAnims[0],
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: Responsive.hPadding(context)),
+                padding: EdgeInsets.symmetric(
+                  horizontal: Responsive.hPadding(context),
+                ),
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
@@ -227,7 +278,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                     ),
                     dividerColor: Colors.transparent,
                     tabs: [
-                      Tab(text: AppLocalizations.of(context)!.report_tab_nutrition),
+                      Tab(
+                        text:
+                            AppLocalizations.of(context)!.report_tab_nutrition,
+                      ),
                       Tab(text: AppLocalizations.of(context)!.report_tab_body),
                     ],
                   ),
@@ -270,7 +324,8 @@ class _ScaleTap extends StatefulWidget {
   State<_ScaleTap> createState() => _ScaleTapState();
 }
 
-class _ScaleTapState extends State<_ScaleTap> with SingleTickerProviderStateMixin {
+class _ScaleTapState extends State<_ScaleTap>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 

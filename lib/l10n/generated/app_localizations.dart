@@ -3617,6 +3617,1008 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Outstanding! You\'re in the elite active zone today.'**
   String get activity_motivation_elite;
+
+  /// No description provided for @home_scan_food.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan food'**
+  String get home_scan_food;
+
+  /// No description provided for @home_go_pro.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Pro'**
+  String get home_go_pro;
+
+  /// No description provided for @home_pro_badge.
+  ///
+  /// In en, this message translates to:
+  /// **'PRO'**
+  String get home_pro_badge;
+
+  /// No description provided for @settings_upgrade_to_pro.
+  ///
+  /// In en, this message translates to:
+  /// **'UPGRADE TO PRO'**
+  String get settings_upgrade_to_pro;
+
+  /// No description provided for @settings_emerald_badge.
+  ///
+  /// In en, this message translates to:
+  /// **'EMERALD'**
+  String get settings_emerald_badge;
+
+  /// No description provided for @coach_limit_title.
+  ///
+  /// In en, this message translates to:
+  /// **'DAILY LIMIT REACHED'**
+  String get coach_limit_title;
+
+  /// No description provided for @coach_limit_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Premium for unlimited coaching and smarter meal guidance tailored to your goals.'**
+  String get coach_limit_subtitle;
+
+  /// No description provided for @coach_limit_btn.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade for Unlimited Chat'**
+  String get coach_limit_btn;
+
+  /// No description provided for @coach_see_options.
+  ///
+  /// In en, this message translates to:
+  /// **'See Subscription Options'**
+  String get coach_see_options;
+
+  /// No description provided for @coach_locked_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Know what to eat next.'**
+  String get coach_locked_title;
+
+  /// No description provided for @coach_locked_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Coach reads today\'s calories, macros, and goal, then gives clear food advice.'**
+  String get coach_locked_desc;
+
+  /// No description provided for @coach_preview_meal_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Next meal suggestion'**
+  String get coach_preview_meal_title;
+
+  /// No description provided for @coach_preview_meal_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Best next meal: grilled chicken rice bowl, around 550 kcal.'**
+  String get coach_preview_meal_body;
+
+  /// No description provided for @coach_preview_macro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Macro correction'**
+  String get coach_preview_macro_title;
+
+  /// No description provided for @coach_preview_macro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'You still need 45g protein and 120g carbs today.'**
+  String get coach_preview_macro_body;
+
+  /// No description provided for @coach_preview_feedback_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily progress feedback'**
+  String get coach_preview_feedback_title;
+
+  /// No description provided for @coach_preview_feedback_body.
+  ///
+  /// In en, this message translates to:
+  /// **'You are low on protein. Add eggs, tuna, or Greek yogurt next.'**
+  String get coach_preview_feedback_body;
+
+  /// No description provided for @report_prompt_title.
+  ///
+  /// In en, this message translates to:
+  /// **'YOUR WEEKLY REPORT IS READY'**
+  String get report_prompt_title;
+
+  /// No description provided for @report_prompt_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock a deeper look at why some days went over target and how to improve next week.'**
+  String get report_prompt_subtitle;
+
+  /// No description provided for @report_prompt_btn.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock Weekly Report'**
+  String get report_prompt_btn;
+
+  /// No description provided for @scan_overlay_scanning.
+  ///
+  /// In en, this message translates to:
+  /// **'AI VISION SCANNING'**
+  String get scan_overlay_scanning;
+
+  /// No description provided for @scan_overlay_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Detecting ingredients and calculating\nnutritional density with Gemini...'**
+  String get scan_overlay_desc;
+
+  /// No description provided for @scan_overlay_manual.
+  ///
+  /// In en, this message translates to:
+  /// **'LOG MANUALLY'**
+  String get scan_overlay_manual;
+
+  /// No description provided for @report_card_title.
+  ///
+  /// In en, this message translates to:
+  /// **'WEEKLY PROGRESS REPORT'**
+  String get report_card_title;
+
+  /// No description provided for @report_card_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See why some days went over target and get personalized suggestions to fix it.'**
+  String get report_card_subtitle;
+
+  /// No description provided for @startup_launch_issue.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch Encountered an Issue'**
+  String get startup_launch_issue;
+
+  /// No description provided for @startup_initialization_slow.
+  ///
+  /// In en, this message translates to:
+  /// **'Initialization is taking longer than expected.'**
+  String get startup_initialization_slow;
+
+  /// No description provided for @startup_setup_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong while setting up the app. Please try again.'**
+  String get startup_setup_failed;
+
+  /// No description provided for @startup_retry_launch.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry Launch'**
+  String get startup_retry_launch;
+
+  /// No description provided for @startup_initialization_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Initialization Error'**
+  String get startup_initialization_error;
+
+  /// No description provided for @startup_error_body.
+  ///
+  /// In en, this message translates to:
+  /// **'The application encountered a startup error. Please try restarting.'**
+  String get startup_error_body;
+
+  /// No description provided for @startup_reload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get startup_reload;
+
+  /// No description provided for @activity_live_tracking.
+  ///
+  /// In en, this message translates to:
+  /// **'LIVE TRACKING'**
+  String get activity_live_tracking;
+
+  /// No description provided for @activity_stationary.
+  ///
+  /// In en, this message translates to:
+  /// **'STATIONARY'**
+  String get activity_stationary;
+
+  /// No description provided for @activity_steps_today_label.
+  ///
+  /// In en, this message translates to:
+  /// **'STEPS TODAY'**
+  String get activity_steps_today_label;
+
+  /// No description provided for @activity_calories_label.
+  ///
+  /// In en, this message translates to:
+  /// **'CALORIES'**
+  String get activity_calories_label;
+
+  /// No description provided for @activity_goal_label.
+  ///
+  /// In en, this message translates to:
+  /// **'GOAL'**
+  String get activity_goal_label;
+
+  /// No description provided for @activity_tracking_engine.
+  ///
+  /// In en, this message translates to:
+  /// **'TRACKING ENGINE'**
+  String get activity_tracking_engine;
+
+  /// No description provided for @activity_active_encrypted.
+  ///
+  /// In en, this message translates to:
+  /// **'Active & Encrypted'**
+  String get activity_active_encrypted;
+
+  /// No description provided for @activity_permission_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission Required'**
+  String get activity_permission_required;
+
+  /// No description provided for @activity_steps_synced.
+  ///
+  /// In en, this message translates to:
+  /// **'Your steps are synced in real-time.'**
+  String get activity_steps_synced;
+
+  /// No description provided for @activity_enable_tracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable tracking to see your progress.'**
+  String get activity_enable_tracking;
+
+  /// No description provided for @feature_insights_share_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Error sharing: {error}'**
+  String feature_insights_share_error(String error);
+
+  /// No description provided for @feature_insights_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No data for this week yet.'**
+  String get feature_insights_empty;
+
+  /// No description provided for @feature_insights_calorie_trend.
+  ///
+  /// In en, this message translates to:
+  /// **'Calorie Trend'**
+  String get feature_insights_calorie_trend;
+
+  /// No description provided for @feature_insights_ai_coach.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Coach Insights'**
+  String get feature_insights_ai_coach;
+
+  /// No description provided for @auth_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your journey to a healthier you starts here.'**
+  String get auth_intro_body;
+
+  /// No description provided for @auth_back_to_social.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Social Login'**
+  String get auth_back_to_social;
+
+  /// No description provided for @auth_create_account.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get auth_create_account;
+
+  /// No description provided for @auth_welcome_back_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back'**
+  String get auth_welcome_back_title;
+
+  /// No description provided for @auth_lets_dive.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s dive in'**
+  String get auth_lets_dive;
+
+  /// No description provided for @auth_sign_up_short.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Up'**
+  String get auth_sign_up_short;
+
+  /// No description provided for @auth_log_in.
+  ///
+  /// In en, this message translates to:
+  /// **'Log In'**
+  String get auth_log_in;
+
+  /// No description provided for @auth_have_account.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? '**
+  String get auth_have_account;
+
+  /// No description provided for @auth_no_account.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account? '**
+  String get auth_no_account;
+
+  /// No description provided for @common_or.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get common_or;
+
+  /// No description provided for @common_today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get common_today;
+
+  /// No description provided for @common_yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get common_yesterday;
+
+  /// No description provided for @common_tomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get common_tomorrow;
+
+  /// No description provided for @common_maybe_later.
+  ///
+  /// In en, this message translates to:
+  /// **'Maybe Later'**
+  String get common_maybe_later;
+
+  /// No description provided for @settings_category_body_profile_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Body metrics, units, and target weight'**
+  String get settings_category_body_profile_sub;
+
+  /// No description provided for @settings_category_nutrition_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories, protein, carbs, and fat targets'**
+  String get settings_category_nutrition_sub;
+
+  /// No description provided for @settings_category_preferences_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme, language, reminders, and meal planning'**
+  String get settings_category_preferences_sub;
+
+  /// No description provided for @settings_category_achievements_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Streaks, milestones, and progress rewards'**
+  String get settings_category_achievements_sub;
+
+  /// No description provided for @settings_category_account_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in, profile name, and account controls'**
+  String get settings_category_account_sub;
+
+  /// No description provided for @settings_category_data_sync_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup, restore, and local app data'**
+  String get settings_category_data_sync_sub;
+
+  /// No description provided for @settings_category_about_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Version, privacy, terms, and app information'**
+  String get settings_category_about_sub;
+
+  /// No description provided for @home_go_deeper_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Go deeper'**
+  String get home_go_deeper_title;
+
+  /// No description provided for @home_go_deeper_body.
+  ///
+  /// In en, this message translates to:
+  /// **'AI day reviews, macro trends, and full history.'**
+  String get home_go_deeper_body;
+
+  /// No description provided for @home_daily_wellness.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Wellness'**
+  String get home_daily_wellness;
+
+  /// No description provided for @home_add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get home_add;
+
+  /// No description provided for @home_daily_score.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily score'**
+  String get home_daily_score;
+
+  /// No description provided for @log_monthly_calendar_soon.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly calendar coming soon'**
+  String get log_monthly_calendar_soon;
+
+  /// No description provided for @log_today_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Track what you eat today'**
+  String get log_today_subtitle;
+
+  /// No description provided for @log_review_day.
+  ///
+  /// In en, this message translates to:
+  /// **'Review this day'**
+  String get log_review_day;
+
+  /// No description provided for @log_scan_food.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan Food'**
+  String get log_scan_food;
+
+  /// No description provided for @feature_templates_saved_meals.
+  ///
+  /// In en, this message translates to:
+  /// **'SAVED MEALS'**
+  String get feature_templates_saved_meals;
+
+  /// No description provided for @feature_templates_saved_added.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved meal added'**
+  String get feature_templates_saved_added;
+
+  /// No description provided for @feature_templates_deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Routine deleted'**
+  String get feature_templates_deleted;
+
+  /// No description provided for @premium_analysis_title.
+  ///
+  /// In en, this message translates to:
+  /// **'PREMIUM ANALYSIS'**
+  String get premium_analysis_title;
+
+  /// No description provided for @premium_analysis_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a better version of this meal based on your goal with AI suggestions.'**
+  String get premium_analysis_body;
+
+  /// No description provided for @result_meal_name.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal name'**
+  String get result_meal_name;
+
+  /// No description provided for @result_feast.
+  ///
+  /// In en, this message translates to:
+  /// **'Feast'**
+  String get result_feast;
+
+  /// No description provided for @result_ai_meal_insight.
+  ///
+  /// In en, this message translates to:
+  /// **'AI meal insight'**
+  String get result_ai_meal_insight;
+
+  /// No description provided for @result_ai_meal_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance this meal with one smart suggestion.'**
+  String get result_ai_meal_body;
+
+  /// No description provided for @result_add_new_item.
+  ///
+  /// In en, this message translates to:
+  /// **'ADD NEW ITEM'**
+  String get result_add_new_item;
+
+  /// No description provided for @result_total_calories.
+  ///
+  /// In en, this message translates to:
+  /// **'TOTAL CALORIES'**
+  String get result_total_calories;
+
+  /// No description provided for @result_food_details.
+  ///
+  /// In en, this message translates to:
+  /// **'Food details'**
+  String get result_food_details;
+
+  /// No description provided for @result_food.
+  ///
+  /// In en, this message translates to:
+  /// **'Food'**
+  String get result_food;
+
+  /// No description provided for @result_portion_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Portion'**
+  String get result_portion_label;
+
+  /// No description provided for @paywall_cancel_anytime.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel anytime. No commitment.'**
+  String get paywall_cancel_anytime;
+
+  /// No description provided for @paywall_terms_conditions.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms & Conditions'**
+  String get paywall_terms_conditions;
+
+  /// No description provided for @paywall_trial_7_day.
+  ///
+  /// In en, this message translates to:
+  /// **'7-day trial'**
+  String get paywall_trial_7_day;
+
+  /// No description provided for @paywall_scan_limit_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You used 3/3 free scans today. Unlock unlimited AI food scans and instant calorie breakdowns.'**
+  String get paywall_scan_limit_subtitle;
+
+  /// No description provided for @paywall_coach_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock unlimited coaching, macro guidance, and meal suggestions tailored to your day.'**
+  String get paywall_coach_subtitle;
+
+  /// No description provided for @paywall_planner_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock full weekly plans, grocery lists, preferences, and AI meal regenerations.'**
+  String get paywall_planner_subtitle;
+
+  /// No description provided for @paywall_reports_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock deeper analysis, weekly trends, and practical AI suggestions after every {feature}.'**
+  String paywall_reports_subtitle(String feature);
+
+  /// No description provided for @paywall_progress_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock more progress photos, comparisons, and transformation tracking beyond the monthly free limit.'**
+  String get paywall_progress_subtitle;
+
+  /// No description provided for @paywall_ad_removal_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Pro to remove ads and unlock the full AI nutrition experience.'**
+  String get paywall_ad_removal_subtitle;
+
+  /// No description provided for @progress_weight_trend.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight Trend'**
+  String get progress_weight_trend;
+
+  /// No description provided for @progress_log_custom_weight.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to log your customized weight'**
+  String get progress_log_custom_weight;
+
+  /// No description provided for @log_calories_eaten.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories eaten'**
+  String get log_calories_eaten;
+
+  /// No description provided for @log_kcal_over.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} over'**
+  String log_kcal_over(int amount);
+
+  /// No description provided for @log_kcal_left.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} left'**
+  String log_kcal_left(int amount);
+
+  /// No description provided for @log_no_details.
+  ///
+  /// In en, this message translates to:
+  /// **'No details logged for this day yet.'**
+  String get log_no_details;
+
+  /// No description provided for @log_over_target_insight.
+  ///
+  /// In en, this message translates to:
+  /// **'You logged {amount} kcal over target. Review the heavier meals below.'**
+  String log_over_target_insight(int amount);
+
+  /// No description provided for @log_low_protein_insight.
+  ///
+  /// In en, this message translates to:
+  /// **'You logged {calories} kcal and protein was behind target.'**
+  String log_low_protein_insight(int calories);
+
+  /// No description provided for @log_water_behind_insight.
+  ///
+  /// In en, this message translates to:
+  /// **'You logged {calories} kcal. Water is still behind today.'**
+  String log_water_behind_insight(int calories);
+
+  /// No description provided for @log_balanced_day_insight.
+  ///
+  /// In en, this message translates to:
+  /// **'You logged {calories} kcal with a balanced day so far.'**
+  String log_balanced_day_insight(int calories);
+
+  /// No description provided for @feature_templates_save_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Save these {count} items for one-tap logging later.'**
+  String feature_templates_save_desc(int count);
+
+  /// No description provided for @achievement_category_consistency.
+  ///
+  /// In en, this message translates to:
+  /// **'Consistency'**
+  String get achievement_category_consistency;
+
+  /// No description provided for @achievement_category_precision.
+  ///
+  /// In en, this message translates to:
+  /// **'Precision'**
+  String get achievement_category_precision;
+
+  /// No description provided for @achievement_category_hydration.
+  ///
+  /// In en, this message translates to:
+  /// **'Hydration'**
+  String get achievement_category_hydration;
+
+  /// No description provided for @achievement_category_logging.
+  ///
+  /// In en, this message translates to:
+  /// **'Logging'**
+  String get achievement_category_logging;
+
+  /// No description provided for @achievement_category_progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get achievement_category_progress;
+
+  /// No description provided for @achievement_unlocked_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked'**
+  String get achievement_unlocked_label;
+
+  /// No description provided for @report_pdf_title.
+  ///
+  /// In en, this message translates to:
+  /// **'AI NUTRITION REPORT'**
+  String get report_pdf_title;
+
+  /// No description provided for @report_pdf_user.
+  ///
+  /// In en, this message translates to:
+  /// **'User: {name}'**
+  String report_pdf_user(String name);
+
+  /// No description provided for @report_pdf_weekly_performance.
+  ///
+  /// In en, this message translates to:
+  /// **'WEEKLY PERFORMANCE'**
+  String get report_pdf_weekly_performance;
+
+  /// No description provided for @report_pdf_total_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Protein'**
+  String get report_pdf_total_protein;
+
+  /// No description provided for @report_pdf_active_streak.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Streak'**
+  String get report_pdf_active_streak;
+
+  /// No description provided for @report_pdf_grams.
+  ///
+  /// In en, this message translates to:
+  /// **'grams'**
+  String get report_pdf_grams;
+
+  /// No description provided for @report_pdf_days.
+  ///
+  /// In en, this message translates to:
+  /// **'days'**
+  String get report_pdf_days;
+
+  /// No description provided for @report_pdf_macro_distribution.
+  ///
+  /// In en, this message translates to:
+  /// **'MACRONUTRIENT DISTRIBUTION'**
+  String get report_pdf_macro_distribution;
+
+  /// No description provided for @report_pdf_nutrient.
+  ///
+  /// In en, this message translates to:
+  /// **'Nutrient'**
+  String get report_pdf_nutrient;
+
+  /// No description provided for @report_pdf_total_consumed.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Consumed'**
+  String get report_pdf_total_consumed;
+
+  /// No description provided for @report_pdf_daily_target.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Target'**
+  String get report_pdf_daily_target;
+
+  /// No description provided for @report_pdf_goal_status.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal Status'**
+  String get report_pdf_goal_status;
+
+  /// No description provided for @report_pdf_carbohydrates.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbohydrates'**
+  String get report_pdf_carbohydrates;
+
+  /// No description provided for @report_pdf_fats.
+  ///
+  /// In en, this message translates to:
+  /// **'Fats'**
+  String get report_pdf_fats;
+
+  /// No description provided for @report_pdf_meal_log.
+  ///
+  /// In en, this message translates to:
+  /// **'DETAILED MEAL LOG (Last 7 Days)'**
+  String get report_pdf_meal_log;
+
+  /// No description provided for @report_pdf_date.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get report_pdf_date;
+
+  /// No description provided for @report_pdf_meal_item.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal Item'**
+  String get report_pdf_meal_item;
+
+  /// No description provided for @report_pdf_type.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get report_pdf_type;
+
+  /// No description provided for @report_pdf_footer.
+  ///
+  /// In en, this message translates to:
+  /// **'This report was automatically generated by SnapCal AI.'**
+  String get report_pdf_footer;
+
+  /// No description provided for @report_pdf_tagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay consistent, stay healthy.'**
+  String get report_pdf_tagline;
+
+  /// No description provided for @onboarding_safety_safer_pace.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll suggest a safer pace.'**
+  String get onboarding_safety_safer_pace;
+
+  /// No description provided for @onboarding_safety_surplus_capped.
+  ///
+  /// In en, this message translates to:
+  /// **'We capped the surplus to keep the plan realistic.'**
+  String get onboarding_safety_surplus_capped;
+
+  /// No description provided for @onboarding_safety_floor.
+  ///
+  /// In en, this message translates to:
+  /// **'We kept your target above the minimum safe calorie floor.'**
+  String get onboarding_safety_floor;
+
+  /// No description provided for @onboarding_safety_floor_extra.
+  ///
+  /// In en, this message translates to:
+  /// **'{note} Minimum calorie floor applied.'**
+  String onboarding_safety_floor_extra(String note);
+
+  /// No description provided for @onboarding_insight_desk.
+  ///
+  /// In en, this message translates to:
+  /// **'{calories} kcal keeps your plan realistic while matching a lower-activity routine.'**
+  String onboarding_insight_desk(int calories);
+
+  /// No description provided for @onboarding_insight_light.
+  ///
+  /// In en, this message translates to:
+  /// **'{calories} kcal gives you a steady target that fits light weekly movement.'**
+  String onboarding_insight_light(int calories);
+
+  /// No description provided for @onboarding_insight_athlete.
+  ///
+  /// In en, this message translates to:
+  /// **'{calories} kcal supports training demand without pushing the pace too hard.'**
+  String onboarding_insight_athlete(int calories);
+
+  /// No description provided for @onboarding_insight_default.
+  ///
+  /// In en, this message translates to:
+  /// **'{calories} kcal balances your goal, body size, and current activity level.'**
+  String onboarding_insight_default(int calories);
+
+  /// No description provided for @onboarding_tip_desk.
+  ///
+  /// In en, this message translates to:
+  /// **'A 20-minute walk after meals is an easy way to improve consistency.'**
+  String get onboarding_tip_desk;
+
+  /// No description provided for @onboarding_tip_light.
+  ///
+  /// In en, this message translates to:
+  /// **'Two extra movement sessions each week will make this target easier to sustain.'**
+  String get onboarding_tip_light;
+
+  /// No description provided for @onboarding_tip_athlete.
+  ///
+  /// In en, this message translates to:
+  /// **'Anchor protein across each meal so training recovery stays ahead of appetite swings.'**
+  String get onboarding_tip_athlete;
+
+  /// No description provided for @onboarding_tip_bulk.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep most extra calories around training so the surplus works for performance.'**
+  String get onboarding_tip_bulk;
+
+  /// No description provided for @onboarding_tip_default.
+  ///
+  /// In en, this message translates to:
+  /// **'Build meals around protein first so the target feels easier to hit.'**
+  String get onboarding_tip_default;
+
+  /// No description provided for @paywall_slide_grilled_chicken.
+  ///
+  /// In en, this message translates to:
+  /// **'Grilled Chicken'**
+  String get paywall_slide_grilled_chicken;
+
+  /// No description provided for @paywall_slide_rice.
+  ///
+  /// In en, this message translates to:
+  /// **'Rice'**
+  String get paywall_slide_rice;
+
+  /// No description provided for @paywall_slide_avocado.
+  ///
+  /// In en, this message translates to:
+  /// **'Avocado'**
+  String get paywall_slide_avocado;
+
+  /// No description provided for @paywall_slide_toast.
+  ///
+  /// In en, this message translates to:
+  /// **'Toast'**
+  String get paywall_slide_toast;
+
+  /// No description provided for @paywall_slide_cherry_tomatoes.
+  ///
+  /// In en, this message translates to:
+  /// **'Cherry Tomatoes'**
+  String get paywall_slide_cherry_tomatoes;
+
+  /// No description provided for @paywall_slide_salmon.
+  ///
+  /// In en, this message translates to:
+  /// **'Salmon Fillet'**
+  String get paywall_slide_salmon;
+
+  /// No description provided for @paywall_slide_sweet_potato.
+  ///
+  /// In en, this message translates to:
+  /// **'Sweet Potato'**
+  String get paywall_slide_sweet_potato;
+
+  /// No description provided for @paywall_slide_broccoli.
+  ///
+  /// In en, this message translates to:
+  /// **'Broccoli'**
+  String get paywall_slide_broccoli;
+
+  /// No description provided for @paywall_slide_boiled_eggs.
+  ///
+  /// In en, this message translates to:
+  /// **'Boiled Eggs'**
+  String get paywall_slide_boiled_eggs;
+
+  /// No description provided for @paywall_slide_chicken_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'150g'**
+  String get paywall_slide_chicken_portion;
+
+  /// No description provided for @paywall_slide_rice_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'130g'**
+  String get paywall_slide_rice_portion;
+
+  /// No description provided for @paywall_slide_avocado_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'100g'**
+  String get paywall_slide_avocado_portion;
+
+  /// No description provided for @paywall_slide_tomatoes_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'80g'**
+  String get paywall_slide_tomatoes_portion;
+
+  /// No description provided for @paywall_slide_salmon_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'150g'**
+  String get paywall_slide_salmon_portion;
+
+  /// No description provided for @paywall_slide_sweet_potato_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'130g'**
+  String get paywall_slide_sweet_potato_portion;
+
+  /// No description provided for @paywall_slide_broccoli_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'100g'**
+  String get paywall_slide_broccoli_portion;
+
+  /// No description provided for @paywall_slide_eggs_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'2 large'**
+  String get paywall_slide_eggs_portion;
+
+  /// No description provided for @paywall_slide_toast_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'2 slices'**
+  String get paywall_slide_toast_portion;
 }
 
 class _AppLocalizationsDelegate

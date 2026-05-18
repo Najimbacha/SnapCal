@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'premium_prompt_card.dart';
-import '../data/services/premium_gate_service.dart';
+import '../data/services/premium_conversion_service.dart';
 import '../providers/settings_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -13,40 +11,53 @@ class PremiumPromptModal {
     required String subtitle,
     required String buttonText,
     required IconData icon,
+    PaywallEntryPoint entryPoint = PaywallEntryPoint.homeAha,
+    String? featureName,
+    bool hasCompletedValueAction = true,
   }) async {
     final settings = context.read<SettingsProvider>();
-    final gate = PremiumGateService();
+    final conversion = PremiumConversionService();
+    final canShow = await conversion.maybeShowAhaPrompt(
+      context,
+      entryPoint: entryPoint,
+      isPro: settings.isPro,
+      hasCompletedValueAction: hasCompletedValueAction,
+      featureName: featureName,
+    );
 
-    if (!gate.canShowPopup(settings.isPro)) return;
-
-    await gate.recordPopupShown();
-
-    if (!context.mounted) return;
+    if (!canShow || !context.mounted) return;
 
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: PremiumPromptCard(
-            style: PremiumPromptStyle.glass,
-            title: title,
-            subtitle: subtitle,
-            buttonText: buttonText,
-            icon: icon,
-            onTap: () {
-              gate.recordCtaClicked('modal');
-              Navigator.pop(context);
-              context.push('/paywall');
-            },
-            onDismiss: () {
-              gate.recordPopupClosed();
-              Navigator.pop(context);
-            },
+      builder:
+          (dialogContext) => Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: PremiumPromptCard(
+                style: PremiumPromptStyle.glass,
+                title: title,
+                subtitle: subtitle,
+                buttonText: buttonText,
+                icon: icon,
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  conversion.openPaywall(
+                    context,
+                    entryPoint,
+                    featureName: featureName,
+                  );
+                },
+                onDismiss: () {
+                  conversion.recordPromptDismissed(
+                    entryPoint,
+                    featureName: featureName,
+                  );
+                  Navigator.pop(dialogContext);
+                },
+              ),
+            ),
           ),
-        ),
-      ),
     );
   }
 }

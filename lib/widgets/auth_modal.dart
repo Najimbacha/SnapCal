@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-/// AuthModal — now simply navigates to the full-screen auth screen.
-/// Keeps the same public API so all existing callsites (e.g. home_screen)
-/// continue to work without any changes.
+import '../screens/auth/auth_bottom_sheet.dart';
+
+/// AuthModal — now simply opens the modern half-screen AuthBottomSheet modal.
+/// Keeps the same public API so all existing callsites continue to work.
 class AuthModal extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -15,9 +15,14 @@ class AuthModal extends StatelessWidget {
         'The next generation of AI calorie tracking. Precise, private, and premium.',
   });
 
-  /// Show auth — navigates to the full-screen /auth route.
+  /// Show auth — displays the modern, premium half-screen AuthBottomSheet modal.
   static void show(BuildContext context, {String? title, String? subtitle}) {
-    context.push('/auth');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const AuthBottomSheet(),
+    );
   }
 
   @override
@@ -25,7 +30,7 @@ class AuthModal extends StatelessWidget {
     // This widget body is no longer used directly, but kept for safety
     // in case someone instantiates it as a widget instead of calling show().
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (context.mounted) context.push('/auth');
+      if (context.mounted) show(context);
     });
     return const SizedBox.shrink();
   }

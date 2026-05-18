@@ -2,16 +2,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/body_metric.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class WeightTrendChart extends StatelessWidget {
   final List<BodyMetric> metrics;
   final double? targetWeight;
 
-  const WeightTrendChart({
-    super.key,
-    required this.metrics,
-    this.targetWeight,
-  });
+  const WeightTrendChart({super.key, required this.metrics, this.targetWeight});
 
   @override
   Widget build(BuildContext context) {
@@ -23,10 +20,10 @@ class WeightTrendChart extends StatelessWidget {
     // Filter and sort for display (Oldest to Newest for the line)
     final displayMetrics = metrics.reversed.toList();
     final weights = displayMetrics.map((m) => m.weight).toList();
-    
+
     final minWeight = weights.reduce(math.min);
     final maxWeight = weights.reduce(math.max);
-    
+
     // Add some padding to the range
     final rangePadding = (maxWeight - minWeight) * 0.2;
     final minY = (minWeight - rangePadding).floorToDouble();
@@ -39,7 +36,9 @@ class WeightTrendChart extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,7 +46,7 @@ class WeightTrendChart extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Weight Trend',
+                AppLocalizations.of(context)!.progress_weight_trend,
                 style: AppTypography.labelLarge.copyWith(
                   color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
@@ -100,7 +99,9 @@ class _DateLabel extends StatelessWidget {
     return Text(
       '${date.day}/${date.month}',
       style: AppTypography.labelSmall.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+        color: Theme.of(
+          context,
+        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
       ),
     );
   }
@@ -136,12 +137,21 @@ class _ChartPainter extends CustomPainter {
     }
 
     // Draw Grid Lines (simplified)
-    final gridPaint = Paint()
-      ..color = labelColor.withValues(alpha: 0.1)
-      ..strokeWidth = 1;
-    
-    canvas.drawLine(Offset(0, getY(minY)), Offset(width, getY(minY)), gridPaint);
-    canvas.drawLine(Offset(0, getY(maxY)), Offset(width, getY(maxY)), gridPaint);
+    final gridPaint =
+        Paint()
+          ..color = labelColor.withValues(alpha: 0.1)
+          ..strokeWidth = 1;
+
+    canvas.drawLine(
+      Offset(0, getY(minY)),
+      Offset(width, getY(minY)),
+      gridPaint,
+    );
+    canvas.drawLine(
+      Offset(0, getY(maxY)),
+      Offset(width, getY(maxY)),
+      gridPaint,
+    );
 
     final path = Path();
     final fillPath = Path();
@@ -174,20 +184,25 @@ class _ChartPainter extends CustomPainter {
     }
 
     // Draw Fill
-    final fillPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.0)],
-      ).createShader(Rect.fromLTWH(0, 0, width, height));
+    final fillPaint =
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              color.withValues(alpha: 0.3),
+              color.withValues(alpha: 0.0),
+            ],
+          ).createShader(Rect.fromLTWH(0, 0, width, height));
     canvas.drawPath(fillPath, fillPaint);
 
     // Draw Line
-    final linePaint = Paint()
-      ..color = color
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final linePaint =
+        Paint()
+          ..color = color
+          ..strokeWidth = 3
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
     canvas.drawPath(path, linePaint);
 
     // Draw Points

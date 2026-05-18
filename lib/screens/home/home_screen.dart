@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/meal.dart';
+import '../../data/services/premium_conversion_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -93,33 +94,61 @@ class _HomeScreenState extends State<HomeScreen>
       (provider) => provider.getWeeklyCalorieTrend(),
     );
 
-    final settings = context.watch<SettingsProvider>();
-    final auth = context.watch<AuthProvider>();
-    final activity = context.watch<ActivityProvider>();
-    final water = context.watch<WaterProvider>();
+    final calorieGoal = context.select<SettingsProvider, int>(
+      (p) => math.max(p.dailyCalorieGoal, 1),
+    );
+    final proteinGoal = context.select<SettingsProvider, int>(
+      (p) => p.dailyProteinGoal,
+    );
+    final carbGoal = context.select<SettingsProvider, int>(
+      (p) => p.dailyCarbGoal,
+    );
+    final fatGoal = context.select<SettingsProvider, int>(
+      (p) => p.dailyFatGoal,
+    );
+    final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
+    final currentStreak = context.select<SettingsProvider, int>(
+      (p) => p.currentStreak,
+    );
 
-    final displayName = auth.user?.displayName;
+    final authState = context
+        .select<AuthProvider, ({String? name, bool isAnon})>(
+          (p) => (name: p.user?.displayName, isAnon: p.isAnonymous),
+        );
+
+    final activityState = context.select<
+      ActivityProvider,
+      ({int steps, bool isTracking, String status})
+    >(
+      (p) => (
+        steps: p.isTracking ? p.steps : 0,
+        isTracking: p.isTracking,
+        status: p.status,
+      ),
+    );
+
+    final waterState = context.select<WaterProvider, ({int total, int goal})>(
+      (p) => (total: p.total, goal: p.goal),
+    );
+
     final userName =
-        (displayName != null && displayName.isNotEmpty)
-            ? displayName
+        (authState.name != null && authState.name!.isNotEmpty)
+            ? authState.name!
             : 'SnapCal Member';
 
-    final calorieGoal = math.max(settings.dailyCalorieGoal, 1);
     final remaining = calorieGoal - totalCalories;
     final yesterdayCalories =
         weeklyCalories.length >= 2
             ? weeklyCalories[weeklyCalories.length - 2].round()
             : 0;
-    final waterProgress = (water.total / math.max(water.goal, 1)).clamp(
+    final waterProgress = (waterState.total / math.max(waterState.goal, 1))
+        .clamp(0.0, 1.0);
+    final stepsProgress = (activityState.steps / 10000).clamp(0.0, 1.0);
+    final calorieProgress = (totalCalories / calorieGoal).clamp(0.0, 1.4);
+    final proteinProgress = (macros.protein / math.max(proteinGoal, 1)).clamp(
       0.0,
       1.0,
     );
-    final steps = activity.isTracking ? activity.steps : 0;
-    final stepsProgress = (steps / 10000).clamp(0.0, 1.0);
-    final calorieProgress = (totalCalories / calorieGoal).clamp(0.0, 1.4);
-    final proteinProgress = (macros.protein /
-            math.max(settings.dailyProteinGoal, 1))
-        .clamp(0.0, 1.0);
     final dailyScore = _dailyScore(
       mealCount: mealCount,
       calorieProgress: calorieProgress,
@@ -147,7 +176,8 @@ class _HomeScreenState extends State<HomeScreen>
             _HomeInset(
               child: _HomeDashboardHeader(
                 userName: userName,
-                streak: settings.currentStreak,
+                isPro: isPro,
+                streak: currentStreak,
                 isRefreshing: mealState.refreshing,
                 onSettingsTap: () => context.go('/settings'),
               ),
@@ -164,28 +194,11 @@ class _HomeScreenState extends State<HomeScreen>
                   remaining: remaining,
                   mealCount: mealCount,
                   protein: macros.protein,
-                  proteinGoal: settings.dailyProteinGoal,
+                  proteinGoal: proteinGoal,
                   yesterdayCalories: yesterdayCalories,
                   onAssistantTap: () => context.push('/assistant'),
                 ),
           ),
-          if (!settings.isPro) ...[
-            const SizedBox(height: 10),
-            _staggeredSlide(
-              _itemAnims[1],
-              _HomeInset(
-                child: PremiumPromptCard(
-                  style: PremiumPromptStyle.mini,
-                  title: 'GO DEEPER WITH PREMIUM',
-                  subtitle:
-                      'Unlock smarter calorie insights and macro trends.',
-                  buttonText: 'Elite',
-                  icon: LucideIcons.trendingUp,
-                  onTap: () => context.push('/paywall'),
-                ),
-              ),
-            ),
-          ],
           const SizedBox(height: 10),
           _staggeredSlide(
             _itemAnims[2],
@@ -198,71 +211,68 @@ class _HomeScreenState extends State<HomeScreen>
             _itemAnims[3],
             _MacroOverviewCard(
               macros: macros,
-              proteinGoal: settings.dailyProteinGoal,
-              carbGoal: settings.dailyCarbGoal,
-              fatGoal: settings.dailyFatGoal,
+              proteinGoal: proteinGoal,
+              carbGoal: carbGoal,
+              fatGoal: fatGoal,
             ),
           ),
           const SizedBox(height: 10),
           _staggeredSlide(
             _itemAnims[4],
-            _HomeInset(
-              child: _TodayMealsPreviewCard(
-                meals: recentMeals,
-                onViewAll: () => context.go('/log'),
-                onScan: () => context.go('/snap'),
-                onManual: () => context.go('/log'),
-              ),
+            _TodayMealsPreviewCard(
+              meals: recentMeals,
+              onViewAll: () => context.go('/log'),
+              onScan: () => context.go('/snap'),
+              onManual: () => context.go('/log'),
             ),
           ),
           const SizedBox(height: 10),
           _staggeredSlide(
             _itemAnims[5],
             _SecondaryDashboardGrid(
-              waterTotal: water.total,
-              waterGoal: water.goal,
-              steps: steps,
+              waterTotal: waterState.total,
+              waterGoal: waterState.goal,
+              steps: activityState.steps,
               stepsUnit: l10n.home_steps_today,
-              activityLive: activity.status == 'walking',
-              onWaterAdd: () => _addWater(water),
-              onWaterRemove: () => _removeWater(water),
+              activityLive: activityState.status == 'walking',
+              onWaterAdd: () => _addWater(context.read<WaterProvider>()),
+              onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
               onActivityTap: () => context.push('/activity'),
             ),
           ),
           const SizedBox(height: 10),
           _staggeredSlide(
             _itemAnims[6],
-            _HomeInset(
-              child: _CalendarProgressStrip(
-                weeklyCalories: weeklyCalories,
-                calorieGoal: calorieGoal,
-                dailyScore: dailyScore,
-                onTap: () => context.go('/reports'),
-              ),
+            _CalendarProgressStrip(
+              weeklyCalories: weeklyCalories,
+              calorieGoal: calorieGoal,
+              dailyScore: dailyScore,
+              onTap: () => context.go('/reports'),
             ),
           ),
-          if (auth.isAnonymous && recentMeals.isNotEmpty) ...[
+          if (!isPro && recentMeals.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _staggeredSlide(
+              _itemAnims[7],
+              PremiumPromptCard(
+                style: PremiumPromptStyle.mini,
+                title: l10n.home_go_deeper_title,
+                subtitle: l10n.home_go_deeper_body,
+                buttonText: 'Pro',
+                icon: LucideIcons.sparkles,
+                onTap:
+                    () => PremiumConversionService().openPaywall(
+                      context,
+                      PaywallEntryPoint.homeAha,
+                    ),
+              ),
+            ),
+          ],
+          if (authState.isAnon && recentMeals.isNotEmpty) ...[
             const SizedBox(height: 18),
             _staggeredSlide(
               _itemAnims[7],
               _SyncPromptCard(onSaveTap: () => AuthModal.show(context)),
-            ),
-          ],
-          if (!settings.isPro && recentMeals.isEmpty) ...[
-            const SizedBox(height: 18),
-            _staggeredSlide(
-              _itemAnims[7],
-              _HomeInset(
-                child: PremiumPromptCard(
-                  style: PremiumPromptStyle.mini,
-                  title: 'START TRACKING',
-                  subtitle:
-                      'Premium users get smarter reports after logging meals.',
-                  buttonText: 'Elite',
-                  icon: LucideIcons.rocket,
-                  onTap: () => context.push('/paywall'),
-                ),
-              ),
             ),
           ],
           const SizedBox(height: 16),
@@ -339,44 +349,104 @@ class _ScanFoodButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+
     return AppScaleTap(
       onTap: onTap,
       child: Container(
-        height: 56,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        height: 62, // Taller premium feel
         decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(
+            22,
+          ), // Matching card radius perfectly
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF10B981), // Premium emerald
+              Color(
+                0xFF0D9BD8,
+              ), // Radiant sky/teal highlight to add incredible depth!
+            ],
+          ),
+          border: Border.all(
+            color: Colors.white.withValues(
+              alpha: isDark ? 0.28 : 0.22,
+            ), // 3D glass edge highlight
+            width: 1.5,
+          ),
           boxShadow: [
+            // Glowing neon shadow that makes the card pop off the screen!
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.18),
-              blurRadius: 18,
+              color: const Color(
+                0xFF10B981,
+              ).withValues(alpha: isDark ? 0.38 : 0.26),
+              blurRadius: 20,
               offset: const Offset(0, 8),
-              spreadRadius: -6,
+              spreadRadius: -2,
             ),
           ],
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(LucideIcons.scanLine, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Text(
-              'Scan food',
-              style: AppTypography.titleMedium.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              // Luxurious scan graphic pattern in background
+              Positioned(
+                right: -12,
+                bottom: -12,
+                child: Icon(
+                  LucideIcons.scan,
+                  size: 92,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Icon(
-              LucideIcons.arrowRight,
-              color: colorScheme.onPrimary.withValues(alpha: 0.9),
-              size: 18,
-            ),
-          ],
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Circular neon glow around scan icon
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.28),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: const Icon(
+                          LucideIcons.scanLine,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.home_scan_food,
+                        style: AppTypography.titleMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.3,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        LucideIcons.arrowRight,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -385,12 +455,14 @@ class _ScanFoodButton extends StatelessWidget {
 
 class _HomeDashboardHeader extends StatelessWidget {
   final String userName;
+  final bool isPro;
   final int streak;
   final bool isRefreshing;
   final VoidCallback onSettingsTap;
 
   const _HomeDashboardHeader({
     required this.userName,
+    required this.isPro,
     required this.streak,
     required this.isRefreshing,
     required this.onSettingsTap,
@@ -428,6 +500,8 @@ class _HomeDashboardHeader extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
+                _PremiumProBadge(isPro: isPro),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 180),
                   child:
@@ -449,7 +523,8 @@ class _HomeDashboardHeader extends StatelessWidget {
               ],
             ),
           ),
-          if (streak > 0) _HeaderStreakBadge(label: l10n.home_streak_days(streak)),
+          if (streak > 0)
+            _HeaderStreakBadge(label: l10n.home_streak_days(streak)),
           const SizedBox(width: 6),
           _HomeHeaderButton(
             icon: LucideIcons.settings,
@@ -457,6 +532,103 @@ class _HomeDashboardHeader extends StatelessWidget {
             onTap: onSettingsTap,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PremiumProBadge extends StatelessWidget {
+  final bool isPro;
+
+  const _PremiumProBadge({required this.isPro});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    // If they are Pro, display a clean gold Pro badge
+    if (isPro) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFFFFD700), // Gold
+              Color(0xFFFFA500), // Orange Gold
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(LucideIcons.gem, color: Colors.black, size: 11),
+            const SizedBox(width: 4),
+            Text(
+              l10n.home_pro_badge,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // If they are not Pro, render the gorgeous interactive conversion upgrade pill!
+    return AppScaleTap(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        context.push('/paywall');
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFF10B981), // Emerald Primary
+              Color(0xFF0D9BD8), // Sky Blue
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF10B981).withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              LucideIcons.gem, // Premium Diamond Icon
+              color: Colors.white,
+              size: 12,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              l10n.home_go_pro,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -577,7 +749,7 @@ class _CalorieDashboardCard extends StatelessWidget {
 
     return _DashboardSectionFrame(
       accentColor: statusColor,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
       margin: EdgeInsets.zero,
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -835,7 +1007,7 @@ class _CalorieInsightPill extends StatelessWidget {
                   _AnimatedSparkleIcon(color: statusColor),
                   const SizedBox(width: 8),
                   Text(
-                    'AI Coach',
+                    l10n.assistant_title,
                     style: AppTypography.labelLarge.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.95),
                       fontWeight: FontWeight.w900,
@@ -1242,84 +1414,101 @@ class _MacroMeter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final normalizedGoal = math.max(goal, 1);
     final progress = (consumed / normalizedGoal).clamp(0.0, 1.0);
-    // Lighter end-color for gradient bar
-    final barEndColor = Color.lerp(color, Colors.white, 0.35)!;
 
     return Container(
-      height: 102,
-      padding: const EdgeInsets.all(12),
+      height: 68,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withValues(alpha: 0.075),
-            colorScheme.surface.withValues(alpha: 0.22),
+            color.withValues(alpha: isDark ? 0.10 : 0.07),
+            colorScheme.surface.withValues(alpha: isDark ? 0.16 : 0.30),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.10)),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.12 : 0.09),
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, size: 13, color: color),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '${consumed}g',
-              style: AppTypography.titleLarge.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0,
-                height: 1,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '$consumed',
+                          style: AppTypography.titleMedium.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                            fontSize: 18,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          'g',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          // Premium bottom-flush progress bar
           TweenAnimationBuilder<double>(
             duration: const Duration(milliseconds: 520),
             curve: Curves.easeOutCubic,
             tween: Tween<double>(begin: 0, end: progress),
             builder: (context, value, child) {
-              return Container(
-                height: 6,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(999),
-                ),
+              return SizedBox(
+                height: 3,
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: FractionallySizedBox(
                     widthFactor: value.clamp(0.0, 1.0),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [color, barEndColor]),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
+                    child: Container(color: color),
                   ),
                 ),
               );
@@ -1370,7 +1559,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Daily Wellness',
+                l10n.home_daily_wellness,
                 style: AppTypography.titleMedium.copyWith(
                   color: colorScheme.onSurface,
                   fontWeight: FontWeight.w900,
@@ -1481,13 +1670,25 @@ class _TodayMealsPreviewCard extends StatelessWidget {
             _EmptyMealsInline(onScan: onScan, onManual: onManual)
           else
             Column(
-              children:
-                  meals
-                      .take(3)
-                      .map(
-                        (meal) => RecentMealTile(meal: meal, onTap: onViewAll),
-                      )
-                      .toList(),
+              children: [
+                const SizedBox(height: 4),
+                ...meals
+                    .take(3)
+                    .expand(
+                      (meal) => [
+                        RecentMealTile(meal: meal, onTap: onViewAll),
+                        if (meal != meals.take(3).last)
+                          Divider(
+                            height: 1,
+                            thickness: 0.8,
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.18,
+                            ),
+                            indent: 80,
+                          ),
+                      ],
+                    ),
+              ],
             ),
         ],
       ),
@@ -1531,7 +1732,7 @@ class _EmptyMealsInline extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'No meals logged yet',
+              AppLocalizations.of(context)!.home_no_meals_title,
               style: AppTypography.bodyMedium.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w800,
@@ -1539,7 +1740,10 @@ class _EmptyMealsInline extends StatelessWidget {
               ),
             ),
           ),
-          TextButton(onPressed: onManual, child: const Text('Add')),
+          TextButton(
+            onPressed: onManual,
+            child: Text(AppLocalizations.of(context)!.home_add),
+          ),
           FilledButton(
             onPressed: onScan,
             style: FilledButton.styleFrom(
@@ -1547,7 +1751,7 @@ class _EmptyMealsInline extends StatelessWidget {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Scan'),
+            child: Text(AppLocalizations.of(context)!.home_scan_food),
           ),
         ],
       ),
@@ -1623,7 +1827,7 @@ class _CalendarProgressStrip extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          'Daily score',
+                          AppLocalizations.of(context)!.home_daily_score,
                           style: AppTypography.titleSmall.copyWith(
                             color: colorScheme.onSurface,
                             fontWeight: FontWeight.w900,

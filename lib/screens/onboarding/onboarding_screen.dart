@@ -257,8 +257,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _generateRecommendation(OnboardingProfileInput profile) async {
+    final languageCode = context.read<SettingsProvider>().languageCode;
     // 1. Calculate local results immediately for instant UI feedback
-    final localResult = _service.computeBasePlan(profile);
+    final localResult = _service.computeBasePlan(
+      profile,
+      languageCode: languageCode,
+    );
 
     if (!mounted) return;
     setState(() {
@@ -268,7 +272,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
     // 2. Load AI-enhanced layer in the background
     try {
-      final aiRecommendation = await _service.buildRecommendation(profile);
+      final aiRecommendation = await _service.buildRecommendation(
+        profile,
+        languageCode: languageCode,
+      );
       if (!mounted) return;
 
       // Update with AI insights if they differ (they will have better text)
@@ -804,8 +811,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
               // DESIGN: explicit gap between number and its label
               const SizedBox(height: 4),
-              const Text(
-                'DAILY CALORIES',
+              Text(
+                l10n.onboarding_result_daily_calories,
                 style: TextStyle(
                   color: _textMuted,
                   fontSize: 11,

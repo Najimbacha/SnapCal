@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../data/models/grocery_item.dart';
 import '../data/models/meal.dart';
@@ -6,6 +6,7 @@ import '../data/models/meal_plan.dart';
 import '../data/services/gemini_service.dart';
 import '../core/state/async_ui_state.dart';
 import 'settings_provider.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class PlannerProvider with ChangeNotifier {
   static const String _planBoxName = 'meal_plan_box';
@@ -32,6 +33,8 @@ class PlannerProvider with ChangeNotifier {
   String? get error => _error;
   int _regenCountThisWeek = 0;
   int get regenCountThisWeek => _regenCountThisWeek;
+  AppLocalizations get _l10n =>
+      lookupAppLocalizations(Locale(_settingsProvider.languageCode));
 
   void updateSettings(SettingsProvider settings) {
     _settingsProvider = settings;
@@ -66,10 +69,8 @@ class PlannerProvider with ChangeNotifier {
               : const AsyncUiState.success();
     } catch (e) {
       debugPrint('⚠️ PlannerProvider: failed to initialize: $e');
-      _error = 'Planner is temporarily unavailable.';
-      _uiState = const AsyncUiState.error(
-        'Planner is temporarily unavailable.',
-      );
+      _error = _l10n.error_generic;
+      _uiState = AsyncUiState.error(_error);
     } finally {
       notifyListeners();
     }
@@ -110,11 +111,11 @@ class PlannerProvider with ChangeNotifier {
         _groceryList = result.groceryList;
         _regenCountThisWeek = 0;
       } else {
-        _error = 'Failed to generate plan. Please try again.';
+        _error = _l10n.error_generic;
       }
     } catch (e) {
       debugPrint('Error generating plan: $e');
-      _error = 'Something went wrong. Please try again.';
+      _error = _l10n.error_generic;
     } finally {
       _isGenerating = false;
       _uiState =
@@ -127,7 +128,7 @@ class PlannerProvider with ChangeNotifier {
     }
   }
 
-  /// Regenerate a single day's meals (premium, 3/week for free)
+  /// Regenerate a single day's meals (Pro only).
   Future<void> regenerateDay(int dayIndex) async {
     if (_currentPlan == null) return;
 
@@ -166,11 +167,11 @@ class PlannerProvider with ChangeNotifier {
 
         _regenCountThisWeek++;
       } else {
-        _error = 'Failed to regenerate. Please try again.';
+        _error = _l10n.error_generic;
       }
     } catch (e) {
       debugPrint('Error regenerating day: $e');
-      _error = 'Something went wrong. Please try again.';
+      _error = _l10n.error_generic;
     } finally {
       _isRegenerating = false;
       _uiState = const AsyncUiState.success();
@@ -179,8 +180,7 @@ class PlannerProvider with ChangeNotifier {
   }
 
   bool get canRegenerate {
-    if (_settingsProvider.isPro) return true;
-    return _regenCountThisWeek < 3;
+    return _settingsProvider.isPro;
   }
 
   Future<void> toggleGroceryItem(String id) async {

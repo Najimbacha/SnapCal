@@ -52,6 +52,8 @@ class HorizontalDayCalendar extends StatefulWidget {
   final String selectedDate;
   final List<DailySummary> dailySummaries;
   final ValueChanged<String> onDateSelected;
+  final ValueChanged<String>? onLockedDateSelected;
+  final bool Function(String dateString)? isDateLocked;
   final int daysBack;
   final int daysForward;
 
@@ -60,6 +62,8 @@ class HorizontalDayCalendar extends StatefulWidget {
     required this.selectedDate,
     required this.dailySummaries,
     required this.onDateSelected,
+    this.onLockedDateSelected,
+    this.isDateLocked,
     this.daysBack = 13,
     this.daysForward = 0,
   });
@@ -122,11 +126,17 @@ class _HorizontalDayCalendarState extends State<HorizontalDayCalendar> {
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final summary = widget.dailySummaries[index];
+          final locked = widget.isDateLocked?.call(summary.dateString) ?? false;
           return _DayCell(
             summary: summary,
             selected: summary.dateString == widget.selectedDate,
+            locked: locked,
             onTap: () {
               HapticFeedback.lightImpact();
+              if (locked) {
+                widget.onLockedDateSelected?.call(summary.dateString);
+                return;
+              }
               widget.onDateSelected(summary.dateString);
             },
           );
@@ -139,11 +149,13 @@ class _HorizontalDayCalendarState extends State<HorizontalDayCalendar> {
 class _DayCell extends StatelessWidget {
   final DailySummary summary;
   final bool selected;
+  final bool locked;
   final VoidCallback onTap;
 
   const _DayCell({
     required this.summary,
     required this.selected,
+    required this.locked,
     required this.onTap,
   });
 
@@ -188,19 +200,34 @@ class _DayCell extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                today ? 'Today' : _weekdayLabel(date),
-                style: AppTypography.labelSmall.copyWith(
-                  color:
-                      selected
-                          ? AppColors.primary
-                          : colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w900,
-                  fontSize: today ? 9 : 10,
-                  letterSpacing: 0,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      today ? 'Today' : _weekdayLabel(date),
+                      style: AppTypography.labelSmall.copyWith(
+                        color:
+                            selected
+                                ? AppColors.primary
+                                : colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w900,
+                        fontSize: today ? 9 : 10,
+                        letterSpacing: 0,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (locked) ...[
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.lock_rounded,
+                      size: 9,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ],
               ),
               SizedBox(
                 width: 32,

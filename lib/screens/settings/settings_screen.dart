@@ -4,6 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import 'package:snapcal/data/services/subscription_service.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -14,6 +16,8 @@ import '../../providers/water_provider.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/planner_provider.dart';
 import '../../providers/metrics_provider.dart';
+import '../../widgets/auth_modal.dart';
+import '../../data/services/premium_conversion_service.dart';
 import '../../data/services/report_pdf_service.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/ui_blocks.dart';
@@ -45,151 +49,136 @@ class SettingsScreen extends StatelessWidget {
                 ),
             builder: (context, auth, _) => _ProfileCard(auth: auth),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Selector<SettingsProvider, bool>(
             selector: (_, s) => s.isPro,
             builder: (context, isPro, _) {
               if (isPro) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: PremiumPromptCard(
-                  title: 'SNAPCAL ELITE',
-                  subtitle:
-                      'Unlimited scans, AI coach, deeper insights, and detailed progress reports.',
-                  buttonText: 'Manage Premium',
-                  icon: LucideIcons.crown,
-                  onTap: () => context.push('/paywall'),
-                ),
+              final l10n = AppLocalizations.of(context)!;
+              return PremiumPromptCard(
+                title: 'SnapCal Pro',
+                subtitle: l10n.settings_upgrade_desc,
+                buttonText: l10n.settings_upgrade_pro,
+                icon: LucideIcons.sparkles,
+                style: PremiumPromptStyle.mini,
+                onTap:
+                    () => PremiumConversionService().openPaywall(
+                      context,
+                      PaywallEntryPoint.settings,
+                    ),
               );
             },
           ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SectionLabel(
-              title: AppLocalizations.of(context)!.settings_core_config,
-            ),
+          const SizedBox(height: 22),
+          _SettingsSectionFrame(
+            title: AppLocalizations.of(context)!.settings_core_config,
+            accent: AppColors.primary,
+            children: [
+              _CategoryRow(
+                icon: LucideIcons.user,
+                accent: AppColors.primary,
+                title: AppLocalizations.of(context)!.settings_body_profile,
+                subtitle:
+                    AppLocalizations.of(context)!.settings_category_body_profile_sub,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const _BodyProfileScreen(),
+                      ),
+                    ),
+              ),
+              _CategoryRow(
+                icon: LucideIcons.flame,
+                accent: AppColors.primary,
+                title: AppLocalizations.of(context)!.settings_nutrition_goals,
+                subtitle:
+                    AppLocalizations.of(context)!.settings_category_nutrition_sub,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const _NutritionGoalsScreen(),
+                      ),
+                    ),
+              ),
+              _CategoryRow(
+                icon: LucideIcons.settings,
+                accent: AppColors.sky,
+                title: AppLocalizations.of(context)!.settings_preferences,
+                subtitle:
+                    AppLocalizations.of(context)!.settings_category_preferences_sub,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const _PreferencesScreen(),
+                      ),
+                    ),
+              ),
+              _CategoryRow(
+                icon: LucideIcons.trophy,
+                accent: Colors.orange,
+                title:
+                    AppLocalizations.of(context)!.feature_achievements_title,
+                subtitle:
+                    AppLocalizations.of(context)!.settings_category_achievements_sub,
+                onTap: () => context.push('/achievements'),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          AppSectionCard(
-            glass: true,
-            padding: EdgeInsets.zero,
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              children: [
-                _CategoryRow(
-                  icon: LucideIcons.user,
-                  accent: AppColors.primary,
-                  title: AppLocalizations.of(context)!.settings_body_profile,
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const _BodyProfileScreen(),
-                        ),
+          const SizedBox(height: 18),
+          _SettingsSectionFrame(
+            title: AppLocalizations.of(context)!.settings_data_security,
+            accent: AppColors.violet,
+            children: [
+              _CategoryRow(
+                icon: LucideIcons.userCircle,
+                accent: AppColors.violet,
+                title: AppLocalizations.of(context)!.settings_account,
+                subtitle:
+                    AppLocalizations.of(context)!.settings_category_account_sub,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const _AccountScreen(),
                       ),
-                ),
-                _CategoryRow(
-                  icon: LucideIcons.flame,
-                  accent: AppColors.primary,
-                  title: AppLocalizations.of(context)!.settings_nutrition_goals,
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const _NutritionGoalsScreen(),
-                        ),
+                    ),
+              ),
+              _CategoryRow(
+                icon: LucideIcons.hardDrive,
+                accent: AppColors.sky,
+                title: AppLocalizations.of(context)!.settings_data_sync,
+                subtitle:
+                    AppLocalizations.of(context)!.settings_category_data_sync_sub,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const _DataSyncScreen(),
                       ),
-                ),
-                _CategoryRow(
-                  icon: LucideIcons.settings,
-                  accent: AppColors.primary,
-                  title: AppLocalizations.of(context)!.settings_preferences,
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const _PreferencesScreen(),
-                        ),
-                      ),
-                ),
-                _CategoryRow(
-                  icon: LucideIcons.trophy,
-                  accent: Colors.orange,
-                  title:
-                      AppLocalizations.of(context)!.feature_achievements_title,
-                  onTap: () => context.push('/achievements'),
-                ),
-              ],
-            ),
+                    ),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SectionLabel(
-              title: AppLocalizations.of(context)!.settings_data_security,
-            ),
-          ),
-          const SizedBox(height: 12),
-          AppSectionCard(
-            glass: true,
-            padding: EdgeInsets.zero,
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              children: [
-                _CategoryRow(
-                  icon: LucideIcons.userCircle,
-                  accent: AppColors.primary,
-                  title: AppLocalizations.of(context)!.settings_account,
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const _AccountScreen(),
-                        ),
-                      ),
-                ),
-                _CategoryRow(
-                  icon: LucideIcons.hardDrive,
-                  accent: AppColors.primary,
-                  title: AppLocalizations.of(context)!.settings_data_sync,
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const _DataSyncScreen(),
-                        ),
-                      ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SectionLabel(
-              title: AppLocalizations.of(context)!.settings_information,
-            ),
-          ),
-          const SizedBox(height: 12),
-          AppSectionCard(
-            glass: true,
-            padding: EdgeInsets.zero,
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              children: [
-                _CategoryRow(
-                  icon: LucideIcons.info,
-                  accent: AppColors.primary,
-                  title: AppLocalizations.of(context)!.settings_about,
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const _AboutScreen()),
-                      ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 18),
+          _SettingsSectionFrame(
+            title: AppLocalizations.of(context)!.settings_information,
+            accent: AppColors.amber,
+            children: [
+              _CategoryRow(
+                icon: LucideIcons.info,
+                accent: AppColors.amber,
+                title: AppLocalizations.of(context)!.settings_about,
+                subtitle: AppLocalizations.of(context)!.settings_category_about_sub,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const _AboutScreen()),
+                    ),
+              ),
+            ],
           ),
           const SizedBox(height: 32),
         ],
@@ -875,6 +864,8 @@ class _ThemeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.read<SettingsProvider>();
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
@@ -910,28 +901,87 @@ class _ThemeRow extends StatelessWidget {
           Row(
             children: [
               for (final option in [
-                ('system', AppLocalizations.of(context)!.settings_theme_system),
-                ('light', AppLocalizations.of(context)!.settings_theme_light),
-                ('dark', AppLocalizations.of(context)!.settings_theme_dark),
+                (
+                  'system',
+                  AppLocalizations.of(context)!.settings_theme_system,
+                  LucideIcons.smartphone
+                ),
+                (
+                  'light',
+                  AppLocalizations.of(context)!.settings_theme_light,
+                  LucideIcons.sun
+                ),
+                (
+                  'dark',
+                  AppLocalizations.of(context)!.settings_theme_dark,
+                  LucideIcons.moon
+                ),
               ])
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Center(
-                        child: Text(
-                          option.$2,
-                          style: TextStyle(
-                            fontWeight:
-                                currentMode == option.$1
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                    padding: EdgeInsets.only(
+                      right: option.$1 == 'dark' ? 0 : 8,
+                    ),
+                    child: AppScaleTap(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        settings.setThemeMode(option.$1);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeInOutCubic,
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: currentMode == option.$1
+                              ? AppColors.primary.withValues(alpha: 0.12)
+                              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: currentMode == option.$1
+                                ? AppColors.primary
+                                : colorScheme.outlineVariant.withValues(alpha: 0.15),
+                            width: 1.8,
                           ),
+                          boxShadow: currentMode == option.$1
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.08),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              option.$3,
+                              color: currentMode == option.$1
+                                  ? AppColors.primary
+                                  : colorScheme.onSurfaceVariant,
+                              size: 20,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              option.$2,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.labelMedium.copyWith(
+                                color: currentMode == option.$1
+                                    ? AppColors.primary
+                                    : colorScheme.onSurface,
+                                fontWeight: currentMode == option.$1
+                                    ? FontWeight.w900
+                                    : FontWeight.w700,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      selected: currentMode == option.$1,
-                      onSelected: (_) => settings.setThemeMode(option.$1),
-                      showCheckmark: false,
                     ),
                   ),
                 ),
@@ -969,6 +1019,133 @@ class _AuthSnapshot {
   int get hashCode => Object.hash(isAnonymous, displayName, email, photoURL);
 }
 
+class _SettingsSectionFrame extends StatelessWidget {
+  final String title;
+  final Color accent;
+  final List<Widget> children;
+
+  const _SettingsSectionFrame({
+    required this.title,
+    required this.accent,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 16, bottom: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: AppTypography.labelLarge.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _SettingsSurface(
+          accent: accent,
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: children
+                .expand(
+                  (child) => [
+                    child,
+                    if (child != children.last)
+                      Divider(
+                        height: 1,
+                        thickness: 0.8,
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.18),
+                        indent: 76,
+                      ),
+                  ],
+                )
+                .toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsSurface extends StatelessWidget {
+  final Widget child;
+  final Color accent;
+  final EdgeInsetsGeometry padding;
+
+  const _SettingsSurface({
+    required this.child,
+    required this.accent,
+    this.padding = const EdgeInsets.all(16),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              accent.withValues(alpha: isDark ? 0.07 : 0.045),
+              colorScheme.surfaceContainerHighest.withValues(
+                alpha: isDark ? 0.34 : 0.66,
+              ),
+            ),
+            colorScheme.surfaceContainerHighest.withValues(
+              alpha: isDark ? 0.17 : 0.48,
+            ),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color:
+              isDark
+                  ? colorScheme.outlineVariant.withValues(alpha: 0.20)
+                  : AppColors.lightCardBorder.withValues(alpha: 0.7),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.055),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+          BoxShadow(
+            color: accent.withValues(alpha: isDark ? 0.05 : 0.03),
+            blurRadius: 28,
+            offset: const Offset(-6, -6),
+            spreadRadius: -4,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
 
 class _ProfileCard extends StatelessWidget {
   final _AuthSnapshot auth;
@@ -976,6 +1153,7 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hasName = auth.displayName != null && auth.displayName!.isNotEmpty;
     final isGuest = auth.isAnonymous;
     final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
@@ -988,82 +1166,50 @@ class _ProfileCard extends StatelessWidget {
       }
     }
     if (displayName.isEmpty) {
-      displayName = AppLocalizations.of(context)!.settings_member;
+      displayName = l10n.settings_member;
     }
 
-    return GestureDetector(
-      onTap: isGuest ? () => context.push('/auth') : null,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.fromLTRB(32, 24, 32, 40),
-        decoration: BoxDecoration(
-          gradient:
-              isGuest
-                  ? const LinearGradient(
-                    colors: [
-                      Color(0xFF4F46E5),
-                      Color(0xFF7C3AED),
-                      Color(0xFFC026D3),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                  : LinearGradient(
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primary.withValues(alpha: 0.8),
-                      const Color(0xFF064E3B),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-          borderRadius: const BorderRadius.vertical(
-            bottom: Radius.circular(48),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (isGuest ? Colors.black : AppColors.primary).withValues(
-                alpha: 0.3,
-              ),
-              blurRadius: 25,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
+    return AppScaleTap(
+      onTap: isGuest ? () => AuthModal.show(context) : null,
+      child: _SettingsSurface(
+        accent: isGuest ? AppColors.violet : AppColors.primary,
+        padding: const EdgeInsets.all(16),
         child: Stack(
-          clipBehavior: Clip.none,
           children: [
             Positioned(
-              right: -15,
-              top: -15,
+              right: -18,
+              top: -24,
               child: Icon(
-                isGuest ? LucideIcons.cloud : LucideIcons.sparkles,
-                size: 120,
-                color: Colors.white.withValues(alpha: 0.1),
+                isGuest ? LucideIcons.cloud : LucideIcons.scanLine,
+                size: 108,
+                color: (isGuest ? AppColors.violet : AppColors.primary)
+                    .withValues(alpha: 0.07),
               ),
             ),
             Row(
               children: [
                 Container(
-                  width: 68,
-                  height: 68,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      width: 3,
+                    gradient: LinearGradient(
+                      colors: [
+                        (isGuest ? AppColors.violet : AppColors.primary)
+                            .withValues(alpha: 0.18),
+                        (isGuest ? AppColors.sky : AppColors.emeraldLight)
+                            .withValues(alpha: 0.08),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: (isGuest ? AppColors.violet : AppColors.primary)
+                          .withValues(alpha: 0.18),
+                    ),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(34),
+                    borderRadius: BorderRadius.circular(19),
                     child:
                         auth.photoURL != null
                             ? Image.network(auth.photoURL!, fit: BoxFit.cover)
@@ -1071,13 +1217,15 @@ class _ProfileCard extends StatelessWidget {
                               child: Icon(
                                 LucideIcons.user,
                                 color:
-                                    isGuest ? Colors.grey : AppColors.primary,
-                                size: 36,
+                                    isGuest
+                                        ? AppColors.violet
+                                        : AppColors.primary,
+                                size: 30,
                               ),
                             ),
                   ),
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1085,15 +1233,15 @@ class _ProfileCard extends StatelessWidget {
                     children: [
                       Text(
                         isGuest
-                            ? AppLocalizations.of(context)!.settings_guest_title
+                            ? l10n.settings_guest_title
                             : displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.heading3.copyWith(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                          letterSpacing: -0.5,
+                          fontSize: 19,
+                          letterSpacing: 0,
                         ),
                       ),
                       if (isPro)
@@ -1104,10 +1252,10 @@ class _ProfileCard extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFCD34D).withValues(alpha: 0.15),
+                            color: AppColors.primary.withValues(alpha: 0.10),
                             borderRadius: BorderRadius.circular(100),
                             border: Border.all(
-                              color: const Color(0xFFFCD34D).withValues(alpha: 0.5),
+                              color: AppColors.primary.withValues(alpha: 0.25),
                               width: 1,
                             ),
                           ),
@@ -1116,20 +1264,70 @@ class _ProfileCard extends StatelessWidget {
                             children: [
                               const Icon(
                                 LucideIcons.gem,
-                                color: Color(0xFFFCD34D),
+                                color: AppColors.primary,
                                 size: 12,
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                'EMERALD',
+                                l10n.settings_emerald_badge,
                                 style: AppTypography.labelSmall.copyWith(
-                                  color: const Color(0xFFFCD34D),
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.w900,
                                   fontSize: 10,
-                                  letterSpacing: 1.0,
+                                  letterSpacing: 0.8,
                                 ),
                               ),
                             ],
+                          ),
+                        )
+                      else
+                        AppScaleTap(
+                          onTap: () {
+                            HapticFeedback.mediumImpact();
+                            context.push('/paywall');
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF10B981),
+                                  Color(0xFF0D9BD8),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(100),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.gem,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  l10n.settings_upgrade_to_pro,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 10,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       const SizedBox(height: 6),
@@ -1137,15 +1335,17 @@ class _ProfileCard extends StatelessWidget {
                         Text(
                           AppLocalizations.of(context)!.settings_guest_subtitle,
                           style: AppTypography.labelSmall.copyWith(
-                            color: Colors.white.withValues(alpha: 0.8),
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 12),
                         _ActionPill(
-                          label: AppLocalizations.of(context)!.settings_auth_cta,
+                          label:
+                              AppLocalizations.of(context)!.settings_auth_cta,
                           icon: LucideIcons.userPlus,
-                          onTap: () => context.push('/auth'),
+                          onTap: () => AuthModal.show(context),
                         ),
                       ] else
                         Text(
@@ -1153,12 +1353,34 @@ class _ProfileCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.labelSmall.copyWith(
-                            color: Colors.white.withValues(alpha: 0.8),
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 0.1,
+                            letterSpacing: 0,
                           ),
                         ),
                     ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surface.withValues(alpha: 0.55),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outlineVariant.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Icon(
+                    isGuest ? LucideIcons.logIn : LucideIcons.shieldCheck,
+                    size: 16,
+                    color: isGuest ? AppColors.violet : AppColors.primary,
                   ),
                 ),
               ],
@@ -1234,41 +1456,49 @@ class _CategoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      accent.withValues(alpha: 0.15),
+                      accent.withValues(alpha: 0.16),
                       accent.withValues(alpha: 0.05),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: accent.withValues(alpha: 0.15),
+                    color: accent.withValues(alpha: 0.16),
                     width: 1.5,
                   ),
                 ),
-                child: Icon(icon, color: accent, size: 22),
+                child: Icon(icon, color: accent, size: 20),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       title,
                       style: AppTypography.titleMedium.copyWith(
+                        color: colorScheme.onSurface,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.3,
                         fontSize: 16,
@@ -1278,32 +1508,31 @@ class _CategoryRow extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.labelSmall.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          color: colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
-                          fontSize: 11,
+                          fontSize: 12,
+                          letterSpacing: 0,
                         ),
                       ),
                     ],
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.all(4),
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   LucideIcons.chevronRight,
                   size: 14,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outline.withValues(alpha: 0.4),
+                  color: colorScheme.outline.withValues(alpha: 0.4),
                 ),
               ),
             ],
@@ -1719,7 +1948,12 @@ class _AccountScreen extends StatelessWidget {
                               : AppLocalizations.of(
                                 context,
                               )!.settings_manage_plan,
-                      onTap: () => context.push('/paywall'),
+                      onTap:
+                          () => PremiumConversionService().openPaywall(
+                            context,
+                            PaywallEntryPoint.settings,
+                            featureName: 'subscription',
+                          ),
                     ),
               ),
               Selector<AuthProvider, bool>(
@@ -1764,6 +1998,13 @@ class _AccountScreen extends StatelessWidget {
                   );
                 },
               ),
+              _SettingRow(
+                icon: LucideIcons.refreshCw,
+                accent: AppColors.primary,
+                title: AppLocalizations.of(context)!.paywall_restore,
+                value: AppLocalizations.of(context)!.premium_restore_success,
+                onTap: () => _handleRestore(context),
+              ),
             ],
           ),
         ],
@@ -1771,10 +2012,52 @@ class _AccountScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _handleRestore(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final settingsProvider = context.read<SettingsProvider>();
+    final subService = SubscriptionService();
+
+    HapticFeedback.mediumImpact();
+
+    try {
+      final success = await subService.restorePurchases().timeout(
+        const Duration(seconds: 20),
+      );
+
+      if (success) {
+        settingsProvider.refresh();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(l10n.premium_restore_success),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(l10n.premium_restore_empty),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.premium_restore_fail),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _handleSignOut(BuildContext context) async {
     final auth = context.read<AuthProvider>();
     if (auth.isAnonymous) {
-      context.push('/auth');
+      AuthModal.show(context);
       return;
     }
 
@@ -1905,6 +2188,15 @@ class _DataSyncScreen extends StatelessWidget {
                   final settingsProvider = context.read<SettingsProvider>();
                   final authProvider = context.read<AuthProvider>();
 
+                  if (!settingsProvider.isPro) {
+                    PremiumConversionService().openPaywall(
+                      context,
+                      PaywallEntryPoint.reportInsight,
+                      featureName: 'pdf_export',
+                    );
+                    return;
+                  }
+
                   final userName =
                       authProvider.user?.displayName ??
                       authProvider.user?.email?.split('@').first ??
@@ -1912,7 +2204,9 @@ class _DataSyncScreen extends StatelessWidget {
 
                   await ReportPdfService.generateAndShareReport(
                     userName: userName,
-                    meals: mealProvider.getWeeklyMeals(),
+                    meals: mealProvider.getReportMeals(
+                      isPro: settingsProvider.isPro,
+                    ),
                     settings: settingsProvider,
                     streak: settingsProvider.currentStreak,
                   );
@@ -1993,133 +2287,6 @@ class _AboutScreen extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _UpgradeProCard extends StatelessWidget {
-  const _UpgradeProCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppScaleTap(
-      onTap: () => context.push('/paywall'),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF064E3B), Color(0xFF065F46), Color(0xFF0F172A)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF064E3B).withValues(alpha: 0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Background Motif
-            Positioned(
-              right: -20,
-              bottom: -20,
-              child: Icon(
-                LucideIcons.gem,
-                size: 140,
-                color: Colors.white.withValues(alpha: 0.05),
-              ),
-            ),
-            Row(
-              children: [
-                // Glowing Icon
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFCD34D).withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFFCD34D).withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: const Icon(
-                    LucideIcons.crown,
-                    color: Color(0xFFFCD34D),
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              AppLocalizations.of(
-                                context,
-                              )!.settings_upgrade_pro,
-                              style: AppTypography.heading3.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 22,
-                                letterSpacing: -0.5,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFCD34D),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'PRO',
-                              style: TextStyle(
-                                color: Color(0xFF064E3B),
-                                fontWeight: FontWeight.w900,
-                                fontSize: 10,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        AppLocalizations.of(context)!.settings_upgrade_desc,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  LucideIcons.chevronRight,
-                  color: Colors.white54,
-                  size: 20,
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

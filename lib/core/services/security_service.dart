@@ -26,39 +26,54 @@ class SecurityService {
   }
 
   Future<Uint8List> _getOrCreateKey() async {
-    try {
-      final encodedKey = await _secureStorage
-          .read(key: _encryptionKeyName)
-          .timeout(
-            const Duration(seconds: 3),
-            onTimeout:
-                () => throw TimeoutException('Secure storage read timed out'),
-          );
+    int attempts = 0;
+    const maxAttempts = 2;
 
-      if (encodedKey == null) {
-        final key = Hive.generateSecureKey();
-        await _secureStorage
-            .write(key: _encryptionKeyName, value: base64UrlEncode(key))
+    while (attempts < maxAttempts) {
+      try {
+        final encodedKey = await _secureStorage
+            .read(key: _encryptionKeyName)
             .timeout(
               const Duration(seconds: 3),
               onTimeout:
-                  () =>
-                      throw TimeoutException('Secure storage write timed out'),
+                  () => throw TimeoutException('Secure storage read timed out'),
             );
-        _encryptionKey = Uint8List.fromList(key);
-      } else {
-        _encryptionKey = base64Url.decode(encodedKey);
+
+        if (encodedKey == null) {
+          final key = Hive.generateSecureKey();
+          await _secureStorage
+              .write(key: _encryptionKeyName, value: base64UrlEncode(key))
+              .timeout(
+                const Duration(seconds: 3),
+                onTimeout:
+                    () =>
+                        throw TimeoutException(
+                          'Secure storage write timed out',
+                        ),
+              );
+          _encryptionKey = Uint8List.fromList(key);
+        } else {
+          _encryptionKey = base64Url.decode(encodedKey);
+        }
+        return _encryptionKey!;
+      } catch (e) {
+        attempts++;
+        debugPrint(
+          '⚠️ SecurityService: Secure storage attempt $attempts failed: $e',
+        );
+        if (attempts >= maxAttempts) {
+          debugPrint('❌ SecurityService: All attempts failed, using fallback.');
+          break;
+        }
+        // Small delay before retry
+        await Future.delayed(Duration(milliseconds: 200 * attempts));
       }
-      return _encryptionKey!;
-    } catch (e) {
-      debugPrint('❌ SecurityService: Secure storage error or timeout: $e');
-      // Fallback to a non-persisted key if secure storage fails,
-      // but note that this means data will be lost on next launch.
-      // Better than a permanent hang/blank screen.
-      final fallbackKey = Hive.generateSecureKey();
-      _encryptionKey = Uint8List.fromList(fallbackKey);
-      return _encryptionKey!;
     }
+
+    // Fallback to a non-persisted key if secure storage fails
+    final fallbackKey = Hive.generateSecureKey();
+    _encryptionKey = Uint8List.fromList(fallbackKey);
+    return _encryptionKey!;
   }
 
   /// Securely clear keys (e.g. on factory reset)

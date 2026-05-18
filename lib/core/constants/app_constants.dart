@@ -5,6 +5,14 @@ class AppConstants {
   // API Configuration (Managed via Firebase Remote Config)
   static const String defaultGeminiApiKey = 'Your-Gemini-Key';
   static const String defaultGroqApiKey = 'Your-Groq-Key';
+  static const String defaultRevenueCatAppleApiKey = String.fromEnvironment(
+    'REVENUECAT_APPLE_API_KEY',
+    defaultValue: '',
+  );
+  static const String defaultRevenueCatGoogleApiKey = String.fromEnvironment(
+    'REVENUECAT_GOOGLE_API_KEY',
+    defaultValue: 'goog_fgVDYvjpkxPzXqwYLndFXKGNEUr',
+  );
   
   // Model IDs
   static const String defaultGeminiModel = 'gemini-2.5-flash';

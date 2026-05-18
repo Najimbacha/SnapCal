@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../core/services/config_service.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 typedef OnboardingAiBuilder =
     Future<Map<String, dynamic>?> Function(
@@ -88,9 +89,11 @@ class CalorieOnboardingService {
   };
 
   Future<OnboardingRecommendation> buildRecommendation(
-    OnboardingProfileInput input,
-  ) async {
-    final computed = _computeBasePlanData(input);
+    OnboardingProfileInput input, {
+    String languageCode = 'en',
+  }) async {
+    final l10n = _l10n(languageCode);
+    final computed = _computeBasePlanData(input, l10n);
 
     final startedAt = DateTime.now();
     final aiFuture =
@@ -100,7 +103,7 @@ class CalorieOnboardingService {
           computed.goalMode,
           computed.weeklyRateKg,
         ) ??
-        _generateAiLayer(input, computed);
+        _generateAiLayer(input, computed, languageCode);
 
     Map<String, dynamic>? aiPayload;
     try {
@@ -127,10 +130,10 @@ class CalorieOnboardingService {
       fatGrams: computed.fatGrams,
       insight:
           aiPayload?['insight'] as String? ??
-          _fallbackInsight(input, computed.dailyCalories),
+          _fallbackInsight(input, computed.dailyCalories, l10n),
       tip:
           aiPayload?['tip'] as String? ??
-          _fallbackTip(input.activityLevel, computed.goalMode),
+          _fallbackTip(input.activityLevel, computed.goalMode, l10n),
       safetyNote: computed.safetyNote,
       goalMode: computed.goalMode,
       weeklyRateKg: computed.weeklyRateKg,
@@ -142,15 +145,19 @@ class CalorieOnboardingService {
     );
   }
 
-  OnboardingRecommendation computeBasePlan(OnboardingProfileInput input) {
-    final computed = _computeBasePlanData(input);
+  OnboardingRecommendation computeBasePlan(
+    OnboardingProfileInput input, {
+    String languageCode = 'en',
+  }) {
+    final l10n = _l10n(languageCode);
+    final computed = _computeBasePlanData(input, l10n);
     return OnboardingRecommendation(
       dailyCalories: computed.dailyCalories,
       proteinGrams: computed.proteinGrams,
       carbGrams: computed.carbGrams,
       fatGrams: computed.fatGrams,
-      insight: _fallbackInsight(input, computed.dailyCalories),
-      tip: _fallbackTip(input.activityLevel, computed.goalMode),
+      insight: _fallbackInsight(input, computed.dailyCalories, l10n),
+      tip: _fallbackTip(input.activityLevel, computed.goalMode, l10n),
       safetyNote: computed.safetyNote,
       goalMode: computed.goalMode,
       weeklyRateKg: computed.weeklyRateKg,
@@ -162,7 +169,10 @@ class CalorieOnboardingService {
     );
   }
 
-  _ComputedPlan _computeBasePlanData(OnboardingProfileInput input) {
+  _ComputedPlan _computeBasePlanData(
+    OnboardingProfileInput input,
+    AppLocalizations l10n,
+  ) {
     final genderFactor = input.gender == 'male' ? 5 : -161;
     final bmr =
         (10 * input.currentWeightKg) +
@@ -188,14 +198,14 @@ class CalorieOnboardingService {
       if (weeklyLossKg > 1) {
         adjustment = -(7700 / 7);
         paceAdjusted = true;
-        safetyNote = "We'll suggest a safer pace.";
+        safetyNote = l10n.onboarding_safety_safer_pace;
       }
     }
 
     if (goalMode == 'bulk' && adjustment > 500) {
       adjustment = 500;
       paceAdjusted = true;
-      safetyNote = 'We capped the surplus to keep the plan realistic.';
+      safetyNote = l10n.onboarding_safety_surplus_capped;
     }
 
     var targetCalories = tdee + adjustment;
@@ -205,8 +215,8 @@ class CalorieOnboardingService {
       paceAdjusted = true;
       safetyNote =
           safetyNote.isEmpty
-              ? 'We kept your target above the minimum safe calorie floor.'
-              : '$safetyNote Minimum calorie floor applied.';
+              ? l10n.onboarding_safety_floor
+              : l10n.onboarding_safety_floor_extra(safetyNote);
     }
 
     final roundedCalories = (targetCalories / 25).round() * 25;
@@ -260,6 +270,7 @@ class CalorieOnboardingService {
   Future<Map<String, dynamic>?> _generateAiLayer(
     OnboardingProfileInput input,
     _ComputedPlan computed,
+    String languageCode,
   ) async {
     final apiKey = ConfigService().geminiApiKey;
     final modelId = ConfigService().geminiModelId;
@@ -275,7 +286,7 @@ class CalorieOnboardingService {
         'contents': [
           {
             'parts': [
-              {'text': _buildPrompt(input, computed)},
+              {'text': _buildPrompt(input, computed, languageCode)},
             ],
           },
         ],
@@ -308,7 +319,11 @@ class CalorieOnboardingService {
     }
   }
 
-  String _buildPrompt(OnboardingProfileInput input, _ComputedPlan computed) {
+  String _buildPrompt(
+    OnboardingProfileInput input,
+    _ComputedPlan computed,
+    String languageCode,
+  ) {
     return '''
 You are writing onboarding copy for a calorie calculator app.
 Return raw JSON only:
@@ -335,6 +350,7 @@ Computed plan:
 - Safety note: ${computed.safetyNote.isEmpty ? 'none' : computed.safetyNote}
 
 Rules:
+- Respond entirely in ${_languageName(languageCode)}.
 - Keep insight to one sentence, under 22 words.
 - Keep tip to one sentence, under 18 words.
 - Do not recalculate the plan.
@@ -343,31 +359,59 @@ Rules:
 ''';
   }
 
-  String _fallbackInsight(OnboardingProfileInput input, int calories) {
+  String _fallbackInsight(
+    OnboardingProfileInput input,
+    int calories,
+    AppLocalizations l10n,
+  ) {
     switch (input.activityLevel) {
       case 'desk_life':
-        return '$calories kcal keeps your plan realistic while matching a lower-activity routine.';
+        return l10n.onboarding_insight_desk(calories);
       case 'light_mover':
-        return '$calories kcal gives you a steady target that fits light weekly movement.';
+        return l10n.onboarding_insight_light(calories);
       case 'athlete':
-        return '$calories kcal supports training demand without pushing the pace too hard.';
+        return l10n.onboarding_insight_athlete(calories);
       default:
-        return '$calories kcal balances your goal, body size, and current activity level.';
+        return l10n.onboarding_insight_default(calories);
     }
   }
 
-  String _fallbackTip(String activityLevel, String goalMode) {
+  String _fallbackTip(
+    String activityLevel,
+    String goalMode,
+    AppLocalizations l10n,
+  ) {
     switch (activityLevel) {
       case 'desk_life':
-        return 'A 20-minute walk after meals is an easy way to improve consistency.';
+        return l10n.onboarding_tip_desk;
       case 'light_mover':
-        return 'Two extra movement sessions each week will make this target easier to sustain.';
+        return l10n.onboarding_tip_light;
       case 'athlete':
-        return 'Anchor protein across each meal so training recovery stays ahead of appetite swings.';
+        return l10n.onboarding_tip_athlete;
       default:
         return goalMode == 'bulk'
-            ? 'Keep most extra calories around training so the surplus works for performance.'
-            : 'Build meals around protein first so the target feels easier to hit.';
+            ? l10n.onboarding_tip_bulk
+            : l10n.onboarding_tip_default;
+    }
+  }
+
+  AppLocalizations _l10n(String languageCode) {
+    final supported = AppLocalizations.supportedLocales.any(
+      (locale) => locale.languageCode == languageCode,
+    );
+    return lookupAppLocalizations(Locale(supported ? languageCode : 'en'));
+  }
+
+  String _languageName(String languageCode) {
+    switch (languageCode) {
+      case 'ar':
+        return 'Arabic';
+      case 'es':
+        return 'Spanish';
+      case 'fr':
+        return 'French';
+      default:
+        return 'English';
     }
   }
 }

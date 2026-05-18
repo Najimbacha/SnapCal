@@ -6,12 +6,12 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
+import '../../data/services/premium_conversion_service.dart';
 import '../../providers/planner_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
@@ -282,7 +282,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: const OptimizePlanButton(),
         ),
-        
+
         // Tab bar (Weekly plan / Grocery)
         Container(
           padding: const EdgeInsets.all(4),
@@ -295,22 +295,26 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
           ),
           child: Row(
             children: [
-              _TabButton(
-                label: AppLocalizations.of(context)!.planner_tab_weekly,
-                selected: _activeTab == 0,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  setState(() => _activeTab = 0);
-                },
+              Expanded(
+                child: _TabButton(
+                  label: AppLocalizations.of(context)!.planner_tab_weekly,
+                  selected: _activeTab == 0,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() => _activeTab = 0);
+                  },
+                ),
               ),
               const SizedBox(width: 4),
-              _TabButton(
-                label: AppLocalizations.of(context)!.planner_tab_grocery,
-                selected: _activeTab == 1,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  setState(() => _activeTab = 1);
-                },
+              Expanded(
+                child: _TabButton(
+                  label: AppLocalizations.of(context)!.planner_tab_grocery,
+                  selected: _activeTab == 1,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() => _activeTab = 1);
+                  },
+                ),
               ),
             ],
           ),
@@ -426,14 +430,10 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
           itemBuilder: (context, index) {
             final startDelay = ((index + 2) % 10) * 0.1;
             final endDelay = (startDelay + 0.4).clamp(0.0, 1.0);
-            
+
             final anim = CurvedAnimation(
               parent: _animController,
-              curve: Interval(
-                startDelay,
-                endDelay,
-                curve: Curves.easeOutQuart,
-              ),
+              curve: Interval(startDelay, endDelay, curve: Curves.easeOutQuart),
             );
 
             return _staggeredSlide(
@@ -483,7 +483,11 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
-                    onPressed: () => _showPaywall(context),
+                    onPressed:
+                        () => _showPaywall(
+                          context,
+                          PaywallEntryPoint.plannerLockedDay,
+                        ),
                     child: Text(
                       AppLocalizations.of(context)!.planner_upgrade_pro,
                     ),
@@ -542,7 +546,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
           title: AppLocalizations.of(context)!.planner_grocery_pro,
           body: AppLocalizations.of(context)!.planner_grocery_pro_body,
           actionLabel: AppLocalizations.of(context)!.planner_upgrade_pro,
-          onAction: () => _showPaywall(context),
+          onAction: () => _showPaywall(context, PaywallEntryPoint.groceryList),
         ),
       );
     }
@@ -609,7 +613,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   void _showPreferences(BuildContext context) {
     final isPro = context.read<SettingsProvider>().isPro;
     if (!isPro) {
-      _showPaywall(context);
+      _showPaywall(context, PaywallEntryPoint.plannerPreferences);
       return;
     }
 
@@ -625,8 +629,12 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
     );
   }
 
-  void _showPaywall(BuildContext context) {
-    context.push('/paywall');
+  void _showPaywall(BuildContext context, PaywallEntryPoint entryPoint) {
+    PremiumConversionService().openPaywall(
+      context,
+      entryPoint,
+      featureName: 'planner',
+    );
   }
 
   void _confirmRegenerate(BuildContext context, PlannerProvider planner) {
@@ -831,32 +839,30 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              if (selected)
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: AppTypography.labelLarge.copyWith(
-                color: selected ? Colors.white : context.textSecondaryColor,
-                fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            if (selected)
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: AppTypography.labelLarge.copyWith(
+              color: selected ? Colors.white : context.textSecondaryColor,
+              fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
             ),
           ),
         ),

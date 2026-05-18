@@ -1928,4 +1928,576 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get activity_motivation_elite =>
       '¡Sobresaliente! Estás en la zona activa de élite hoy.';
+
+  @override
+  String get home_scan_food => 'Escanear comida';
+
+  @override
+  String get home_go_pro => 'Pasar a Pro';
+
+  @override
+  String get home_pro_badge => 'PRO';
+
+  @override
+  String get settings_upgrade_to_pro => 'MEJORAR A PRO';
+
+  @override
+  String get settings_emerald_badge => 'ESMERALDA';
+
+  @override
+  String get coach_limit_title => 'LÍMITE DIARIO ALCANZADO';
+
+  @override
+  String get coach_limit_subtitle =>
+      'Pásate a Premium para obtener asesoramiento ilimitado y orientación de comidas más inteligente adaptada a tus objetivos.';
+
+  @override
+  String get coach_limit_btn => 'Mejorar para Chat Ilimitado';
+
+  @override
+  String get coach_see_options => 'Ver opciones de suscripción';
+
+  @override
+  String get coach_locked_title => 'Saber qué comer a continuación.';
+
+  @override
+  String get coach_locked_desc =>
+      'El entrenador de IA lee las calorías, macros y objetivos de hoy, luego brinda consejos claros sobre la comida.';
+
+  @override
+  String get coach_preview_meal_title => 'Sugerencia de la próxima comida';
+
+  @override
+  String get coach_preview_meal_body =>
+      'Mejor comida siguiente: tazón de arroz con pollo a la parrilla, alrededor de 550 kcal.';
+
+  @override
+  String get coach_preview_macro_title => 'Corrección de macros';
+
+  @override
+  String get coach_preview_macro_body =>
+      'Aún necesitas 45g de proteína y 120g de carbohidratos hoy.';
+
+  @override
+  String get coach_preview_feedback_title => 'Comentarios del progreso diario';
+
+  @override
+  String get coach_preview_feedback_body =>
+      'Estás bajo en proteínas. Agrega huevos, atún o yogur griego a continuación.';
+
+  @override
+  String get report_prompt_title => 'TU REPORTE SEMANAL ESTÁ LISTO';
+
+  @override
+  String get report_prompt_subtitle =>
+      'Desbloquea una mirada más profunda sobre por qué algunos días superaron el objetivo y cómo mejorar la próxima semana.';
+
+  @override
+  String get report_prompt_btn => 'Desbloquear reporte semanal';
+
+  @override
+  String get scan_overlay_scanning => 'ESCANEO DE VISIÓN DE IA';
+
+  @override
+  String get scan_overlay_desc =>
+      'Detectando ingredientes y calculando la densidad nutricional con Gemini...';
+
+  @override
+  String get scan_overlay_manual => 'REGISTRAR MANUALMENTE';
+
+  @override
+  String get report_card_title => 'INFORME DE PROGRESO SEMANAL';
+
+  @override
+  String get report_card_subtitle =>
+      'Mira por qué algunos días superaron el objetivo y recibe sugerencias personalizadas para corregirlo.';
+
+  @override
+  String get startup_launch_issue => 'Hubo un problema al iniciar';
+
+  @override
+  String get startup_initialization_slow =>
+      'La inicialización está tardando más de lo esperado.';
+
+  @override
+  String get startup_setup_failed =>
+      'Algo salió mal al configurar la app. Inténtalo de nuevo.';
+
+  @override
+  String get startup_retry_launch => 'Reintentar inicio';
+
+  @override
+  String get startup_initialization_error => 'Error de inicialización';
+
+  @override
+  String get startup_error_body =>
+      'La aplicación encontró un error al iniciar. Intenta reiniciarla.';
+
+  @override
+  String get startup_reload => 'Recargar';
+
+  @override
+  String get activity_live_tracking => 'SEGUIMIENTO EN VIVO';
+
+  @override
+  String get activity_stationary => 'SIN MOVIMIENTO';
+
+  @override
+  String get activity_steps_today_label => 'PASOS HOY';
+
+  @override
+  String get activity_calories_label => 'CALORÍAS';
+
+  @override
+  String get activity_goal_label => 'OBJETIVO';
+
+  @override
+  String get activity_tracking_engine => 'MOTOR DE SEGUIMIENTO';
+
+  @override
+  String get activity_active_encrypted => 'Activo y cifrado';
+
+  @override
+  String get activity_permission_required => 'Permiso requerido';
+
+  @override
+  String get activity_steps_synced =>
+      'Tus pasos se sincronizan en tiempo real.';
+
+  @override
+  String get activity_enable_tracking =>
+      'Activa el seguimiento para ver tu progreso.';
+
+  @override
+  String feature_insights_share_error(String error) {
+    return 'Error al compartir: $error';
+  }
+
+  @override
+  String get feature_insights_empty => 'Aún no hay datos para esta semana.';
+
+  @override
+  String get feature_insights_calorie_trend => 'Tendencia de calorías';
+
+  @override
+  String get feature_insights_ai_coach => 'Consejos del coach IA';
+
+  @override
+  String get auth_intro_body =>
+      'Tu camino hacia una vida más saludable empieza aquí.';
+
+  @override
+  String get auth_back_to_social => 'Volver al inicio social';
+
+  @override
+  String get auth_create_account => 'Crear cuenta';
+
+  @override
+  String get auth_welcome_back_title => 'Bienvenido de nuevo';
+
+  @override
+  String get auth_lets_dive => 'Empecemos';
+
+  @override
+  String get auth_sign_up_short => 'Registrarse';
+
+  @override
+  String get auth_log_in => 'Iniciar sesión';
+
+  @override
+  String get auth_have_account => '¿Ya tienes cuenta? ';
+
+  @override
+  String get auth_no_account => '¿No tienes cuenta? ';
+
+  @override
+  String get common_or => 'o';
+
+  @override
+  String get common_today => 'Hoy';
+
+  @override
+  String get common_yesterday => 'Ayer';
+
+  @override
+  String get common_tomorrow => 'Mañana';
+
+  @override
+  String get common_maybe_later => 'Quizás más tarde';
+
+  @override
+  String get settings_category_body_profile_sub =>
+      'Métricas corporales, unidades y peso objetivo';
+
+  @override
+  String get settings_category_nutrition_sub =>
+      'Objetivos de calorías, proteínas, carbohidratos y grasas';
+
+  @override
+  String get settings_category_preferences_sub =>
+      'Tema, idioma, recordatorios y planificación de comidas';
+
+  @override
+  String get settings_category_achievements_sub =>
+      'Rachas, logros y recompensas de progreso';
+
+  @override
+  String get settings_category_account_sub =>
+      'Inicio de sesión, nombre de perfil y controles de cuenta';
+
+  @override
+  String get settings_category_data_sync_sub =>
+      'Copia de seguridad, restauración y datos locales';
+
+  @override
+  String get settings_category_about_sub =>
+      'Versión, privacidad, términos e información de la app';
+
+  @override
+  String get home_go_deeper_title => 'Ver más detalles';
+
+  @override
+  String get home_go_deeper_body =>
+      'Revisiones diarias con IA, tendencias de macros e historial completo.';
+
+  @override
+  String get home_daily_wellness => 'Bienestar diario';
+
+  @override
+  String get home_add => 'Agregar';
+
+  @override
+  String get home_daily_score => 'Puntuación diaria';
+
+  @override
+  String get log_monthly_calendar_soon =>
+      'El calendario mensual llegará pronto';
+
+  @override
+  String get log_today_subtitle => 'Registra lo que comes hoy';
+
+  @override
+  String get log_review_day => 'Revisar este día';
+
+  @override
+  String get log_scan_food => 'Escanear comida';
+
+  @override
+  String get feature_templates_saved_meals => 'COMIDAS GUARDADAS';
+
+  @override
+  String get feature_templates_saved_added => 'Comida guardada agregada';
+
+  @override
+  String get feature_templates_deleted => 'Rutina eliminada';
+
+  @override
+  String get premium_analysis_title => 'ANÁLISIS PREMIUM';
+
+  @override
+  String get premium_analysis_body =>
+      'Obtén una mejor versión de esta comida según tu objetivo con sugerencias de IA.';
+
+  @override
+  String get result_meal_name => 'Nombre de la comida';
+
+  @override
+  String get result_feast => 'Banquete';
+
+  @override
+  String get result_ai_meal_insight => 'Análisis IA de la comida';
+
+  @override
+  String get result_ai_meal_body =>
+      'Equilibra esta comida con una sugerencia inteligente.';
+
+  @override
+  String get result_add_new_item => 'AGREGAR NUEVO ELEMENTO';
+
+  @override
+  String get result_total_calories => 'CALORÍAS TOTALES';
+
+  @override
+  String get result_food_details => 'Detalles de comida';
+
+  @override
+  String get result_food => 'Comida';
+
+  @override
+  String get result_portion_label => 'Porción';
+
+  @override
+  String get paywall_cancel_anytime =>
+      'Cancela cuando quieras. Sin compromiso.';
+
+  @override
+  String get paywall_terms_conditions => 'Términos y condiciones';
+
+  @override
+  String get paywall_trial_7_day => 'Prueba de 7 días';
+
+  @override
+  String get paywall_scan_limit_subtitle =>
+      'Usaste 3/3 escaneos gratis hoy. Desbloquea escaneos ilimitados con IA y desglose instantáneo de calorías.';
+
+  @override
+  String get paywall_coach_subtitle =>
+      'Desbloquea coaching ilimitado, orientación de macros y sugerencias de comidas adaptadas a tu día.';
+
+  @override
+  String get paywall_planner_subtitle =>
+      'Desbloquea planes semanales completos, listas de compras, preferencias y regeneración de comidas con IA.';
+
+  @override
+  String paywall_reports_subtitle(String feature) {
+    return 'Desbloquea análisis más profundos, tendencias semanales y sugerencias prácticas de IA después de cada $feature.';
+  }
+
+  @override
+  String get paywall_progress_subtitle =>
+      'Desbloquea más fotos de progreso, comparaciones y seguimiento de transformación más allá del límite mensual gratis.';
+
+  @override
+  String get paywall_ad_removal_subtitle =>
+      'Pásate a Pro para quitar anuncios y desbloquear toda la experiencia nutricional con IA.';
+
+  @override
+  String get progress_weight_trend => 'Tendencia de peso';
+
+  @override
+  String get progress_log_custom_weight =>
+      'Toca para registrar tu peso personalizado';
+
+  @override
+  String get log_calories_eaten => 'Calorías consumidas';
+
+  @override
+  String log_kcal_over(int amount) {
+    return '$amount por encima';
+  }
+
+  @override
+  String log_kcal_left(int amount) {
+    return '$amount restantes';
+  }
+
+  @override
+  String get log_no_details => 'Aún no hay detalles registrados para este día.';
+
+  @override
+  String log_over_target_insight(int amount) {
+    return 'Registraste $amount kcal por encima del objetivo. Revisa las comidas más pesadas abajo.';
+  }
+
+  @override
+  String log_low_protein_insight(int calories) {
+    return 'Registraste $calories kcal y la proteína quedó por debajo del objetivo.';
+  }
+
+  @override
+  String log_water_behind_insight(int calories) {
+    return 'Registraste $calories kcal. El agua aún está por debajo hoy.';
+  }
+
+  @override
+  String log_balanced_day_insight(int calories) {
+    return 'Registraste $calories kcal con un día equilibrado hasta ahora.';
+  }
+
+  @override
+  String feature_templates_save_desc(int count) {
+    return 'Guarda estos $count elementos para registrarlos luego con un toque.';
+  }
+
+  @override
+  String get achievement_category_consistency => 'Constancia';
+
+  @override
+  String get achievement_category_precision => 'Precisión';
+
+  @override
+  String get achievement_category_hydration => 'Hidratación';
+
+  @override
+  String get achievement_category_logging => 'Registro';
+
+  @override
+  String get achievement_category_progress => 'Progreso';
+
+  @override
+  String get achievement_unlocked_label => 'Desbloqueado';
+
+  @override
+  String get report_pdf_title => 'INFORME NUTRICIONAL IA';
+
+  @override
+  String report_pdf_user(String name) {
+    return 'Usuario: $name';
+  }
+
+  @override
+  String get report_pdf_weekly_performance => 'RENDIMIENTO SEMANAL';
+
+  @override
+  String get report_pdf_total_protein => 'Proteína total';
+
+  @override
+  String get report_pdf_active_streak => 'Racha activa';
+
+  @override
+  String get report_pdf_grams => 'gramos';
+
+  @override
+  String get report_pdf_days => 'días';
+
+  @override
+  String get report_pdf_macro_distribution => 'DISTRIBUCIÓN DE MACRONUTRIENTES';
+
+  @override
+  String get report_pdf_nutrient => 'Nutriente';
+
+  @override
+  String get report_pdf_total_consumed => 'Total consumido';
+
+  @override
+  String get report_pdf_daily_target => 'Objetivo diario';
+
+  @override
+  String get report_pdf_goal_status => 'Estado del objetivo';
+
+  @override
+  String get report_pdf_carbohydrates => 'Carbohidratos';
+
+  @override
+  String get report_pdf_fats => 'Grasas';
+
+  @override
+  String get report_pdf_meal_log =>
+      'REGISTRO DETALLADO DE COMIDAS (últimos 7 días)';
+
+  @override
+  String get report_pdf_date => 'Fecha';
+
+  @override
+  String get report_pdf_meal_item => 'Comida';
+
+  @override
+  String get report_pdf_type => 'Tipo';
+
+  @override
+  String get report_pdf_footer =>
+      'Este informe fue generado automáticamente por SnapCal AI.';
+
+  @override
+  String get report_pdf_tagline => 'Mantén la constancia, cuida tu salud.';
+
+  @override
+  String get onboarding_safety_safer_pace => 'Sugeriremos un ritmo más seguro.';
+
+  @override
+  String get onboarding_safety_surplus_capped =>
+      'Limitamos el superávit para mantener el plan realista.';
+
+  @override
+  String get onboarding_safety_floor =>
+      'Mantuvimos tu objetivo por encima del mínimo seguro de calorías.';
+
+  @override
+  String onboarding_safety_floor_extra(String note) {
+    return '$note Se aplicó el mínimo seguro de calorías.';
+  }
+
+  @override
+  String onboarding_insight_desk(int calories) {
+    return '$calories kcal mantiene tu plan realista para una rutina de baja actividad.';
+  }
+
+  @override
+  String onboarding_insight_light(int calories) {
+    return '$calories kcal te da un objetivo estable para movimiento semanal ligero.';
+  }
+
+  @override
+  String onboarding_insight_athlete(int calories) {
+    return '$calories kcal apoya la demanda del entrenamiento sin forzar demasiado el ritmo.';
+  }
+
+  @override
+  String onboarding_insight_default(int calories) {
+    return '$calories kcal equilibra tu objetivo, tamaño corporal y actividad actual.';
+  }
+
+  @override
+  String get onboarding_tip_desk =>
+      'Caminar 20 minutos después de comer es una forma fácil de mejorar la constancia.';
+
+  @override
+  String get onboarding_tip_light =>
+      'Dos sesiones extra de movimiento por semana harán este objetivo más sostenible.';
+
+  @override
+  String get onboarding_tip_athlete =>
+      'Distribuye proteína en cada comida para apoyar la recuperación y controlar el apetito.';
+
+  @override
+  String get onboarding_tip_bulk =>
+      'Coloca la mayoría de calorías extra cerca del entrenamiento para mejorar el rendimiento.';
+
+  @override
+  String get onboarding_tip_default =>
+      'Construye tus comidas alrededor de la proteína para que el objetivo sea más fácil.';
+
+  @override
+  String get paywall_slide_grilled_chicken => 'Pollo a la parrilla';
+
+  @override
+  String get paywall_slide_rice => 'Arroz';
+
+  @override
+  String get paywall_slide_avocado => 'Aguacate';
+
+  @override
+  String get paywall_slide_toast => 'Tostadas';
+
+  @override
+  String get paywall_slide_cherry_tomatoes => 'Tomates cherry';
+
+  @override
+  String get paywall_slide_salmon => 'Filete de salmón';
+
+  @override
+  String get paywall_slide_sweet_potato => 'Batata dulce';
+
+  @override
+  String get paywall_slide_broccoli => 'Brócoli';
+
+  @override
+  String get paywall_slide_boiled_eggs => 'Huevos cocidos';
+
+  @override
+  String get paywall_slide_chicken_portion => '150g';
+
+  @override
+  String get paywall_slide_rice_portion => '130g';
+
+  @override
+  String get paywall_slide_avocado_portion => '100g';
+
+  @override
+  String get paywall_slide_tomatoes_portion => '80g';
+
+  @override
+  String get paywall_slide_salmon_portion => '150g';
+
+  @override
+  String get paywall_slide_sweet_potato_portion => '130g';
+
+  @override
+  String get paywall_slide_broccoli_portion => '100g';
+
+  @override
+  String get paywall_slide_eggs_portion => '2 grandes';
+
+  @override
+  String get paywall_slide_toast_portion => '2 rebanadas';
 }

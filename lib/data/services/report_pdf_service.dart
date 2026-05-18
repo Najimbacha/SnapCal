@@ -1,11 +1,12 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/meal.dart';
 import '../../providers/settings_provider.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class ReportPdfService {
   static Future<void> generateAndShareReport({
@@ -28,6 +29,7 @@ class ReportPdfService {
 
     final now = DateTime.now();
     final weeklyMeals = meals; // Already filtered by provider
+    final l10n = lookupAppLocalizations(Locale(settings.languageCode));
 
     // Calculate totals
     int totalCals = 0;
@@ -40,7 +42,7 @@ class ReportPdfService {
       totalC += m.macros.carbs;
       totalF += m.macros.fat;
     }
-    
+
     final avgCals = weeklyMeals.isEmpty ? 0 : (totalCals / 7).round();
 
     pdf.addPage(
@@ -55,9 +57,10 @@ class ReportPdfService {
               children: [
                 pw.Row(
                   children: [
-                    if (logoImage != null) 
+                    if (logoImage != null)
                       pw.Container(
-                        width: 40, height: 40,
+                        width: 40,
+                        height: 40,
                         child: pw.Image(logoImage),
                       ),
                     pw.SizedBox(width: 12),
@@ -73,7 +76,7 @@ class ReportPdfService {
                           ),
                         ),
                         pw.Text(
-                          'AI NUTRITION REPORT',
+                          l10n.report_pdf_title,
                           style: pw.TextStyle(
                             fontSize: 10,
                             letterSpacing: 2,
@@ -88,12 +91,15 @@ class ReportPdfService {
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
                     pw.Text(
-                      DateFormat('MMMM dd, yyyy').format(now),
+                      DateFormat.yMMMMd(l10n.localeName).format(now),
                       style: const pw.TextStyle(fontSize: 12),
                     ),
                     pw.Text(
-                      'User: $userName',
-                      style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+                      l10n.report_pdf_user(userName),
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        color: PdfColors.grey600,
+                      ),
                     ),
                   ],
                 ),
@@ -104,7 +110,7 @@ class ReportPdfService {
 
             // ── Executive Summary ──
             pw.Text(
-              'WEEKLY PERFORMANCE',
+              l10n.report_pdf_weekly_performance,
               style: pw.TextStyle(
                 fontSize: 14,
                 fontWeight: pw.FontWeight.bold,
@@ -116,11 +122,26 @@ class ReportPdfService {
 
             pw.Row(
               children: [
-                _buildSummaryStat('Avg. Calories', '$avgCals', 'kcal/day', PdfColors.teal),
+                _buildSummaryStat(
+                  l10n.report_avg_calories,
+                  '$avgCals',
+                  'kcal/day',
+                  PdfColors.teal,
+                ),
                 pw.SizedBox(width: 20),
-                _buildSummaryStat('Total Protein', '$totalP', 'grams', PdfColors.blue),
+                _buildSummaryStat(
+                  l10n.report_pdf_total_protein,
+                  '$totalP',
+                  l10n.report_pdf_grams,
+                  PdfColors.blue,
+                ),
                 pw.SizedBox(width: 20),
-                _buildSummaryStat('Active Streak', '$streak', 'days', PdfColors.orange),
+                _buildSummaryStat(
+                  l10n.report_pdf_active_streak,
+                  '$streak',
+                  l10n.report_pdf_days,
+                  PdfColors.orange,
+                ),
               ],
             ),
 
@@ -128,7 +149,7 @@ class ReportPdfService {
 
             // ── Macro Balance Table ──
             pw.Text(
-              'MACRONUTRIENT DISTRIBUTION',
+              l10n.report_pdf_macro_distribution,
               style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 12),
@@ -138,15 +159,30 @@ class ReportPdfService {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.grey100),
                   children: [
-                    _tableHeader('Nutrient'),
-                    _tableHeader('Total Consumed'),
-                    _tableHeader('Daily Target'),
-                    _tableHeader('Goal Status'),
+                    _tableHeader(l10n.report_pdf_nutrient),
+                    _tableHeader(l10n.report_pdf_total_consumed),
+                    _tableHeader(l10n.report_pdf_daily_target),
+                    _tableHeader(l10n.report_pdf_goal_status),
                   ],
                 ),
-                _tableRow('Protein', '${totalP}g', '${settings.dailyProteinGoal}g', _getGoalStatus(totalP / 7, settings.dailyProteinGoal)),
-                _tableRow('Carbohydrates', '${totalC}g', '${settings.dailyCarbGoal}g', _getGoalStatus(totalC / 7, settings.dailyCarbGoal)),
-                _tableRow('Fats', '${totalF}g', '${settings.dailyFatGoal}g', _getGoalStatus(totalF / 7, settings.dailyFatGoal)),
+                _tableRow(
+                  l10n.result_protein,
+                  '${totalP}g',
+                  '${settings.dailyProteinGoal}g',
+                  _getGoalStatus(totalP / 7, settings.dailyProteinGoal),
+                ),
+                _tableRow(
+                  l10n.report_pdf_carbohydrates,
+                  '${totalC}g',
+                  '${settings.dailyCarbGoal}g',
+                  _getGoalStatus(totalC / 7, settings.dailyCarbGoal),
+                ),
+                _tableRow(
+                  l10n.report_pdf_fats,
+                  '${totalF}g',
+                  '${settings.dailyFatGoal}g',
+                  _getGoalStatus(totalF / 7, settings.dailyFatGoal),
+                ),
               ],
             ),
 
@@ -154,29 +190,36 @@ class ReportPdfService {
 
             // ── Recent Activity Log ──
             pw.Text(
-              'DETAILED MEAL LOG (Last 7 Days)',
+              l10n.report_pdf_meal_log,
               style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 12),
             pw.Table(
               children: [
                 pw.TableRow(
-                  decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.teal, width: 1))),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      bottom: pw.BorderSide(color: PdfColors.teal, width: 1),
+                    ),
+                  ),
                   children: [
-                    _tableHeader('Date'),
-                    _tableHeader('Meal Item'),
-                    _tableHeader('Type'),
-                    _tableHeader('Calories'),
+                    _tableHeader(l10n.report_pdf_date),
+                    _tableHeader(l10n.report_pdf_meal_item),
+                    _tableHeader(l10n.report_pdf_type),
+                    _tableHeader(l10n.result_calories),
                   ],
                 ),
                 ...weeklyMeals.reversed.map((m) {
                   final date = DateTime.fromMillisecondsSinceEpoch(m.timestamp);
                   return pw.TableRow(
                     children: [
-                      _tableCell(DateFormat('MMM dd').format(date)),
+                      _tableCell(DateFormat.MMMd(l10n.localeName).format(date)),
                       _tableCell(m.foodName),
-                      _tableCell(m.mealType ?? 'Snack'),
-                      _tableCell('${m.calories} kcal', align: pw.Alignment.centerRight),
+                      _tableCell(m.mealType ?? l10n.result_meal_snack),
+                      _tableCell(
+                        '${m.calories} kcal',
+                        align: pw.Alignment.centerRight,
+                      ),
                     ],
                   );
                 }),
@@ -190,13 +233,17 @@ class ReportPdfService {
               child: pw.Column(
                 children: [
                   pw.Text(
-                    'This report was automatically generated by SnapCal AI.',
+                    l10n.report_pdf_footer,
                     style: pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
-                    'Stay consistent, stay healthy.',
-                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.teal),
+                    l10n.report_pdf_tagline,
+                    style: pw.TextStyle(
+                      fontSize: 10,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.teal,
+                    ),
                   ),
                 ],
               ),
@@ -213,7 +260,12 @@ class ReportPdfService {
     );
   }
 
-  static pw.Widget _buildSummaryStat(String label, String value, String unit, PdfColor color) {
+  static pw.Widget _buildSummaryStat(
+    String label,
+    String value,
+    String unit,
+    PdfColor color,
+  ) {
     return pw.Expanded(
       child: pw.Container(
         padding: const pw.EdgeInsets.all(12),
@@ -225,13 +277,26 @@ class ReportPdfService {
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text(label, style: pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+            pw.Text(
+              label,
+              style: pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+            ),
             pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.end,
               children: [
-                pw.Text(value, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: color)),
+                pw.Text(
+                  value,
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                    color: color,
+                  ),
+                ),
                 pw.SizedBox(width: 4),
-                pw.Text(unit, style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
+                pw.Text(
+                  unit,
+                  style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+                ),
               ],
             ),
           ],
@@ -250,18 +315,30 @@ class ReportPdfService {
     );
   }
 
-  static pw.TableRow _tableRow(String label, String value, String target, String status) {
+  static pw.TableRow _tableRow(
+    String label,
+    String value,
+    String target,
+    String status,
+  ) {
     return pw.TableRow(
       children: [
         _tableCell(label),
         _tableCell(value),
         _tableCell(target),
-        _tableCell(status, color: status == 'ON TRACK' ? PdfColors.green : PdfColors.orange),
+        _tableCell(
+          status,
+          color: status == 'ON TRACK' ? PdfColors.green : PdfColors.orange,
+        ),
       ],
     );
   }
 
-  static pw.Widget _tableCell(String text, {pw.Alignment align = pw.Alignment.centerLeft, PdfColor? color}) {
+  static pw.Widget _tableCell(
+    String text, {
+    pw.Alignment align = pw.Alignment.centerLeft,
+    PdfColor? color,
+  }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(8),
       child: pw.Align(

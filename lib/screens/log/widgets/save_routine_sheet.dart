@@ -24,7 +24,18 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
   bool _isSaving = false;
 
   final List<String> _emojiOptions = [
-    '🍽️', '🍳', '🥗', '🥣', '🥪', '🥤', '🍎', '🥩', '🥑', '🥞', '🍔', '🍕'
+    '🍽️',
+    '🍳',
+    '🥗',
+    '🥣',
+    '🥪',
+    '🥤',
+    '🍎',
+    '🥩',
+    '🥑',
+    '🥞',
+    '🍔',
+    '🍕',
   ];
 
   @override
@@ -70,7 +81,7 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
     final l10n = AppLocalizations.of(context)!;
     final isPro = context.watch<SettingsProvider>().isPro;
     final templateProvider = context.watch<TemplateProvider>();
-    
+
     final canAdd = templateProvider.canAddTemplate(isPro);
 
     return GlassCard(
@@ -98,22 +109,28 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
             const SizedBox(height: 24),
             Text(
               l10n.feature_templates_save_prompt,
-              style: AppTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
+              style: AppTypography.headlineSmall.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Save these ${widget.meals.length} items for one-tap logging later.',
-              style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurfaceVariant),
+              l10n.feature_templates_save_desc(widget.meals.length),
+              style: AppTypography.bodyMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 24),
-            
+
             if (!canAdd) ...[
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: AppColors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -122,7 +139,9 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
                     Expanded(
                       child: Text(
                         l10n.feature_templates_limit_reached,
-                        style: AppTypography.bodyMedium.copyWith(color: AppColors.error),
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.error,
+                        ),
                       ),
                     ),
                   ],
@@ -146,13 +165,15 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
                       height: 50,
                       margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
-                        color: isSelected 
-                            ? AppColors.primary.withValues(alpha: 0.2)
-                            : Colors.transparent,
+                        color:
+                            isSelected
+                                ? AppColors.primary.withValues(alpha: 0.2)
+                                : Colors.transparent,
                         shape: BoxShape.circle,
-                        border: isSelected 
-                            ? Border.all(color: AppColors.primary, width: 2)
-                            : null,
+                        border:
+                            isSelected
+                                ? Border.all(color: AppColors.primary, width: 2)
+                                : null,
                       ),
                       alignment: Alignment.center,
                       child: Text(emoji, style: const TextStyle(fontSize: 24)),
@@ -175,14 +196,18 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
               ),
             ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: canAdd && _nameController.text.isNotEmpty ? _save : null,
+                onPressed:
+                    canAdd && _nameController.text.isNotEmpty ? _save : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -190,13 +215,20 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : Text(l10n.feature_templates_save_btn, style: const TextStyle(fontWeight: FontWeight.bold)),
+                child:
+                    _isSaving
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                        : Text(
+                          l10n.feature_templates_save_btn,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
               ),
             ),
           ],

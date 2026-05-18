@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../data/models/user_settings.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/services/scan_gate_service.dart';
@@ -7,6 +7,7 @@ import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/notification_service.dart';
 import '../data/services/calorie_onboarding_service.dart';
 import '../core/state/async_ui_state.dart';
+import '../l10n/generated/app_localizations.dart';
 
 /// Provider for managing user settings and subscription state
 class SettingsProvider with ChangeNotifier {
@@ -172,68 +173,37 @@ class SettingsProvider with ChangeNotifier {
   }
 
   String _getNotifString(String lang, String key) {
-    final map = {
-      'en': {
-        'breakfast_title': 'Breakfast Reminder',
-        'breakfast_body': 'Time to log your healthy breakfast!',
-        'lunch_title': 'Lunch Reminder',
-        'lunch_body': 'Don\'t forget to track your lunch.',
-        'dinner_title': 'Dinner Reminder',
-        'dinner_body': 'End the day strong—log your dinner now.',
-        'goal_calories_title': 'Goal Reached! 🚀',
-        'goal_calories_body':
-            "You've hit your daily calorie goal of {goal} kcal!",
-        'goal_protein_title': 'Protein Goal Met! 💪',
-        'goal_protein_body':
-            "Great job! You've reached your {goal}g protein target.",
-      },
-      'ar': {
-        'breakfast_title': 'تذكير الفطور',
-        'breakfast_body': 'حان الوقت لتسجيل فطورك الصحي!',
-        'lunch_title': 'تذكير الغداء',
-        'lunch_body': 'لا تنسَ تتبع وجبة الغداء.',
-        'dinner_title': 'تذكير العشاء',
-        'dinner_body': 'أنهِ يومك بقوة - سجل عشاءك الآن.',
-        'goal_calories_title': 'تحقق الهدف! 🚀',
-        'goal_calories_body':
-            'لقد وصلت إلى هدفك اليومي من السعرات الحرارية: {goal} سعرة!',
-        'goal_protein_title': 'تم تحقيق هدف البروتين! 💪',
-        'goal_protein_body':
-            'عمل رائع! لقد وصلت إلى هدفك البالغ {goal} جرام من البروتين.',
-      },
-      'es': {
-        'breakfast_title': 'Recordatorio de Desayuno',
-        'breakfast_body': '¡Es hora de registrar tu desayuno saludable!',
-        'lunch_title': 'Recordatorio de Almuerzo',
-        'lunch_body': 'No olvides registrar tu almuerzo.',
-        'dinner_title': 'Recordatorio de Cena',
-        'dinner_body': 'Termina el día con fuerza: registra tu cena ahora.',
-        'goal_calories_title': '¡Objetivo Alcanzado! 🚀',
-        'goal_calories_body':
-            '¡Has alcanzado tu objetivo diario de {goal} kcal!',
-        'goal_protein_title': '¡Meta de Proteína Cumplida! 💪',
-        'goal_protein_body':
-            '¡Buen trabajo! Has alcanzado tu meta de {goal}g de proteína.',
-      },
-      'fr': {
-        'breakfast_title': 'Rappel du Petit-déjeuner',
-        'breakfast_body':
-            "C'est l'heure d'enregistrer votre petit-déjeuner sain !",
-        'lunch_title': 'Rappel du Déjeuner',
-        'lunch_body': "N'oubliez pas de suivre votre déjeuner.",
-        'dinner_title': 'Rappel du Dîner',
-        'dinner_body':
-            'Finissez la journée en beauté — enregistrez votre dîner dès maintenant.',
-        'goal_calories_title': 'Objectif atteint ! 🚀',
-        'goal_calories_body':
-            'Vous avez atteint votre objectif quotidien de {goal} kcal !',
-        'goal_protein_title': 'Objectif protéines rempli ! 💪',
-        'goal_protein_body':
-            'Beau travail ! Vous avez atteint votre cible de {goal}g de protéines.',
-      },
-    };
+    final l10n = lookupAppLocalizations(Locale(_supportedLanguage(lang)));
+    switch (key) {
+      case 'breakfast_title':
+        return l10n.notif_breakfast_title;
+      case 'breakfast_body':
+        return l10n.notif_breakfast_body;
+      case 'lunch_title':
+        return l10n.notif_lunch_title;
+      case 'lunch_body':
+        return l10n.notif_lunch_body;
+      case 'dinner_title':
+        return l10n.notif_dinner_title;
+      case 'dinner_body':
+        return l10n.notif_dinner_body;
+      case 'goal_calories_title':
+        return l10n.notif_goal_calories_title;
+      case 'goal_calories_body':
+        return l10n.notif_goal_calories_body('{goal}');
+      case 'goal_protein_title':
+        return l10n.notif_goal_protein_title;
+      case 'goal_protein_body':
+        return l10n.notif_goal_protein_body('{goal}');
+      default:
+        return '';
+    }
+  }
 
-    return map[lang]?[key] ?? map['en']![key]!;
+  String _supportedLanguage(String lang) {
+    return AppLocalizations.supportedLocales.any((l) => l.languageCode == lang)
+        ? lang
+        : 'en';
   }
 
   /// Toggle global notifications
@@ -396,7 +366,10 @@ class SettingsProvider with ChangeNotifier {
   /// Mock export data logic
   Future<String> exportUserData() async {
     await Future.delayed(const Duration(seconds: 2)); // Simulate processing
-    return "Exported data for ${_settings.gender ?? 'User'} - ${_settings.dailyCalorieGoal} kcal plan.";
+    final l10n = lookupAppLocalizations(
+      Locale(_supportedLanguage(languageCode)),
+    );
+    return '${l10n.settings_export_data}: ${_settings.dailyCalorieGoal} kcal';
   }
 
   /// Complete onboarding and persist the profile + recommendation result
@@ -539,7 +512,10 @@ class SettingsProvider with ChangeNotifier {
         heightUnit: _settings.heightUnit ?? 'cm',
       );
 
-      final recommendation = await service.buildRecommendation(input);
+      final recommendation = await service.buildRecommendation(
+        input,
+        languageCode: languageCode,
+      );
 
       _settings = _settings.copyWith(
         dailyCalorieGoal: recommendation.dailyCalories,

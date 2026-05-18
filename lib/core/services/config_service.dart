@@ -20,6 +20,8 @@ class ConfigService {
         'gemini_model_id': AppConstants.defaultGeminiModel,
         'groq_coach_model': AppConstants.defaultGroqCoachModel,
         'groq_model_id': AppConstants.defaultGroqScannerModel, // Matched to console
+        'revenuecat_apple_api_key': AppConstants.defaultRevenueCatAppleApiKey,
+        'revenuecat_google_api_key': AppConstants.defaultRevenueCatGoogleApiKey,
       });
 
       await _remoteConfig.setConfigSettings(RemoteConfigSettings(
@@ -74,5 +76,15 @@ class ConfigService {
   String get groqScannerModel {
     if (!_initialized) return AppConstants.defaultGroqScannerModel;
     return _remoteConfig.getString('groq_model_id').trim();
+  }
+
+  String get revenueCatAppleApiKey {
+    if (!_initialized) return AppConstants.defaultRevenueCatAppleApiKey.trim();
+    return _remoteConfig.getString('revenuecat_apple_api_key').trim();
+  }
+
+  String get revenueCatGoogleApiKey {
+    if (!_initialized) return AppConstants.defaultRevenueCatGoogleApiKey.trim();
+    return _remoteConfig.getString('revenuecat_google_api_key').trim();
   }
 }
