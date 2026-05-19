@@ -1007,33 +1007,23 @@ class _FoodScanShowcaseState extends State<_FoodScanShowcase>
             left: 0,
             right: 0,
             bottom: 22,
-            child: ShaderMask(
-              shaderCallback: (rect) {
-                return const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black, Colors.transparent],
-                  stops: [0.85, 1.0], // Fade out smoothly at the bottom 15%
-                ).createShader(rect);
-              },
-              blendMode: BlendMode.dstIn,
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (index) {
-                  _scanController.reset();
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (index) {
+                _scanController.reset();
 
-                  setState(() {
-                    _currentPage = index;
-                  });
-                  // Delay scanner sweep for a full 1.0 second to show the clean image first
-                  Future.delayed(const Duration(milliseconds: 1000), () {
-                    if (mounted && _currentPage == index) {
-                      _scanController.forward(from: 0.0);
-                    }
-                  });
-                },
-                itemCount: slides.length,
-                itemBuilder: (context, index) {
+                setState(() {
+                  _currentPage = index;
+                });
+                // Delay scanner sweep for a full 1.0 second to show the clean image first
+                Future.delayed(const Duration(milliseconds: 1000), () {
+                  if (mounted && _currentPage == index) {
+                    _scanController.forward(from: 0.0);
+                  }
+                });
+              },
+              itemCount: slides.length,
+              itemBuilder: (context, index) {
                   final slide = slides[index];
                   return Stack(
                     children: [
@@ -1143,7 +1133,6 @@ class _FoodScanShowcaseState extends State<_FoodScanShowcase>
                 },
               ),
             ),
-          ),
 
           // Dots (rendered outside ShaderMask to prevent fading, placed at bottom: 2)
           Positioned(
