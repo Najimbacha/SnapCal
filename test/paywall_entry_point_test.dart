@@ -35,9 +35,12 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('LIMIT REACHED'), findsOneWidget);
     expect(
       find.textContaining('You used 3/3 free scans today'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Upgrade to unlock unlimited scanning'),
       findsOneWidget,
     );
 
@@ -49,8 +52,8 @@ void main() {
     await tester.pumpWidget(buildSubject(PaywallEntryPoint.aiCoachLimit));
     await tester.pump();
 
-    expect(find.text('AI COACH'), findsOneWidget);
-    expect(find.textContaining('Unlock unlimited coaching'), findsOneWidget);
+    expect(find.textContaining('Unlock unlimited AI coaching'), findsOneWidget);
+    expect(find.textContaining('24/7 personal nutrition guidance'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 9));

@@ -1,158 +1,195 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+
+import 'package:flutter/foundation.dart';
 import 'package:pedometer/pedometer.dart';
-import 'package:hive/hive.dart';
-import 'package:permission_handler/permission_handler.dart';
+
+import '../data/models/activity_summary.dart';
+import '../data/repositories/activity_repository.dart';
+import '../data/services/activity_service.dart';
 
 class ActivityProvider with ChangeNotifier {
-  late Stream<StepCount> _stepCountStream;
-  late Stream<PedestrianStatus> _pedestrianStatusStream;
+  ActivityProvider({ActivityRepository? repository})
+    : _repository = repository ?? ActivityRepository() {
+    syncNow();
+  }
+
+  final ActivityRepository _repository;
+
+  ActivitySummary _today = ActivitySummary.empty(DateTime.now());
+  List<ActivitySummary> _week = const [];
+  ActivityTrackingStatus _trackingStatus = ActivityTrackingStatus.disconnected;
+  bool _isSyncing = false;
+  String? _errorMessage;
+  DateTime? _lastSyncedAt;
+  String _motionStatus = 'stationary';
 
   StreamSubscription<StepCount>? _stepSubscription;
   StreamSubscription<PedestrianStatus>? _statusSubscription;
-  Timer? _throttleTimer;
 
-  int _steps = 0;
-  int _burnedCalories = 0;
-  bool _isTracking = false;
-  String _status = 'stationary';
-  double _userWeight = 70.0; // Default fallback
+  ActivitySummary get today => _today;
+  List<ActivitySummary> get week => _week;
+  ActivityTrackingStatus get trackingStatus => _trackingStatus;
+  bool get isConnected => _trackingStatus == ActivityTrackingStatus.connected;
+  bool get isSyncing => _isSyncing;
+  String? get errorMessage => _errorMessage;
+  DateTime? get lastSyncedAt => _lastSyncedAt;
+  String get sourceName => _repository.service.sourceName;
 
-  Box? _box;
+  int get steps => _today.steps;
+  int get stepGoal => _today.stepGoal;
+  int get burnedCalories => _today.activityCalories;
+  int get manualWorkoutCalories => _today.manualWorkoutCalories;
+  int get stepStreak => _today.stepStreak;
+  int get activityScore => _today.activityScore;
+  bool get isTracking => isConnected;
+  String get status => _motionStatus;
 
-  // Storage keys
-  static const String _boxName = 'activity_box';
-  static const String _offsetKey = 'steps_offset';
-  static const String _lastResetKey = 'last_reset_date';
+  int netCalories(int foodCalories) => foodCalories - burnedCalories;
 
-  int get steps => _steps;
-  int get burnedCalories => _burnedCalories;
-  bool get isTracking => _isTracking;
-  String get status => _status;
-
-  ActivityProvider() {
-    _initProvider();
-  }
-
-  Future<void> _initProvider() async {
-    _box = await Hive.openBox(_boxName);
-    final status = await Permission.activityRecognition.status;
-    if (status.isGranted) {
-      startTracking();
-    }
-  }
-
-  /// Update user weight for personalized calorie calculation
   void updateWeight(double? weight) {
-    if (weight != null && weight != _userWeight) {
-      _userWeight = weight;
-      _recalculateCalories();
-    }
+    // Step calories are intentionally estimated with a fixed formula.
   }
 
-  void _recalculateCalories() {
-    // Scientific formula: Weight(kg) * 0.0006 kcal per step
-    _burnedCalories = (_steps * (_userWeight * 0.0006)).toInt();
-    notifyListeners();
-  }
+  Future<bool> authorize() => startTracking();
 
-  Future<bool> authorize() async {
-    final status = await Permission.activityRecognition.request();
-    if (status.isGranted) {
-      await startTracking();
-      return true;
-    }
-    return false;
-  }
+  Future<bool> connect() => startTracking();
 
-  Future<void> startTracking() async {
-    if (_isTracking) return;
-
-    // Ensure box is open
-    if (_box == null || !_box!.isOpen) {
-      _box = await Hive.openBox(_boxName);
-    }
-
-    _stepCountStream = Pedometer.stepCountStream;
-    _pedestrianStatusStream = Pedometer.pedestrianStatusStream;
-
-    _stepSubscription = _stepCountStream.listen(
-      _onStepCount,
-      onError: _onStepCountError,
-    );
-
-    _statusSubscription = _pedestrianStatusStream.listen(
-      _onStatusChange,
-      onError: _onStatusError,
-    );
-
-    _isTracking = true;
-    notifyListeners();
-  }
-
-  void _onStatusChange(PedestrianStatus event) {
-    _status = event.status;
-    notifyListeners();
-  }
-
-  void _onStepCount(StepCount event) {
-    if (_box == null) return;
-
-    final today = DateTime.now().toIso8601String().split('T')[0];
-    final lastReset = _box!.get(_lastResetKey);
-
-    int offset = _box!.get(_offsetKey, defaultValue: -1);
-
-    // REBOOT-PROOF LOGIC
-    if (lastReset != today || offset == -1 || event.steps < offset) {
-      offset = event.steps;
-      _box!.put(_offsetKey, offset);
-      _box!.put(_lastResetKey, today);
-    }
-
-    _steps = (event.steps - offset).clamp(0, 999999);
-
-    // Personalized calorie calculation
-    _burnedCalories = (_steps * (_userWeight * 0.0006)).toInt();
-
-    // PERFORMANCE OPTIMIZATION: Throttle UI updates to max once per second
-    if (_throttleTimer == null || !_throttleTimer!.isActive) {
+  Future<bool> startTracking() async {
+    try {
+      _trackingStatus = await _repository.connect();
+      if (isConnected) {
+        _listenToPedometer();
+        await syncNow();
+        return true;
+      }
       notifyListeners();
-      _throttleTimer = Timer(const Duration(seconds: 1), () {});
+      return false;
+    } catch (error) {
+      _setError(error);
+      return false;
     }
-
-    _box!.put('steps_$today', _steps);
   }
 
-  /// Get total steps for the last 7 days
-  Future<int> getWeeklySteps() async {
-    if (_box == null || !_box!.isOpen) _box = await Hive.openBox(_boxName);
-    int total = 0;
-    final now = DateTime.now();
-
-    for (int i = 0; i < 7; i++) {
-      final date = now.subtract(Duration(days: i));
-      final dateString = date.toIso8601String().split('T')[0];
-      total += _box!.get('steps_$dateString', defaultValue: 0) as int;
-    }
-    return total;
-  }
-
-  void _onStepCountError(Object error) {
-    debugPrint('Pedometer Error: $error');
-    _isTracking = false;
+  Future<void> disconnect() async {
+    await _stepSubscription?.cancel();
+    await _statusSubscription?.cancel();
+    _stepSubscription = null;
+    _statusSubscription = null;
+    await _repository.disconnect();
+    _trackingStatus = ActivityTrackingStatus.disconnected;
     notifyListeners();
   }
 
-  void _onStatusError(Object error) {
-    debugPrint('Pedestrian Status Error: $error');
+  Future<void> syncNow() async {
+    if (_isSyncing) return;
+    _setSyncing(true);
+    try {
+      _trackingStatus = await _repository.refreshTrackingStatus();
+      _today = await _repository.fetchToday();
+      _week = await _repository.fetchLast7Days();
+      _lastSyncedAt = await _repository.getLastSyncedAt();
+      if (isConnected) _listenToPedometer();
+      _errorMessage = null;
+      notifyListeners();
+    } catch (error) {
+      _setError(error);
+    } finally {
+      _setSyncing(false);
+    }
+  }
+
+  Future<void> updateStepGoal(int goal) async {
+    await _repository.setStepGoal(goal);
+    await syncNow();
+  }
+
+  Future<void> addManualWorkout({
+    required String type,
+    required int calories,
+    required DateTime start,
+    required Duration duration,
+  }) async {
+    await _repository.addManualWorkout(
+      type: type,
+      calories: calories,
+      start: start,
+      duration: duration,
+    );
+    await syncNow();
+  }
+
+  Future<void> deleteManualWorkout(WorkoutEntry workout) async {
+    await _repository.deleteManualWorkout(workout.id, workout.start);
+    await syncNow();
+  }
+
+  Future<int> getWeeklySteps() async {
+    if (_week.isEmpty) await syncNow();
+    return _week.fold<int>(0, (sum, day) => sum + day.steps);
+  }
+
+  String statusLabel() {
+    switch (_trackingStatus) {
+      case ActivityTrackingStatus.connected:
+        return 'Tracking enabled';
+      case ActivityTrackingStatus.permissionDenied:
+        return 'Permission denied';
+      case ActivityTrackingStatus.unsupported:
+        return 'Unsupported device';
+      case ActivityTrackingStatus.error:
+        return 'Tracking error';
+      case ActivityTrackingStatus.disconnected:
+        return 'Tracking off';
+    }
+  }
+
+  void _listenToPedometer() {
+    if (_stepSubscription != null) return;
+
+    _stepSubscription = _repository.service.stepCountStream.listen(
+      (event) async {
+        try {
+          _today = await _repository.recordStepReading(event.steps);
+          _week = await _repository.fetchLast7Days();
+          _lastSyncedAt = await _repository.getLastSyncedAt();
+          notifyListeners();
+        } catch (error) {
+          debugPrint('Pedometer step error: $error');
+        }
+      },
+      onError: (Object error) {
+        debugPrint('Pedometer stream error: $error');
+        _setError(error);
+      },
+    );
+
+    _statusSubscription = _repository.service.pedestrianStatusStream.listen(
+      (event) {
+        _motionStatus = event.status;
+        notifyListeners();
+      },
+      onError: (Object error) {
+        debugPrint('Pedestrian status error: $error');
+      },
+    );
+  }
+
+  void _setSyncing(bool value) {
+    if (_isSyncing == value) return;
+    _isSyncing = value;
+    notifyListeners();
+  }
+
+  void _setError(Object error) {
+    _trackingStatus = ActivityTrackingStatus.error;
+    _errorMessage = error.toString();
+    notifyListeners();
   }
 
   @override
   void dispose() {
     _stepSubscription?.cancel();
     _statusSubscription?.cancel();
-    _throttleTimer?.cancel();
     super.dispose();
   }
 }

@@ -12,6 +12,10 @@ class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.seed,
       brightness: Brightness.dark,
+    ).copyWith(
+      onSurface: AppColors.darkTextPrimary,
+      onSurfaceVariant: AppColors.darkTextSecondary,
+      outline: AppColors.darkTextSecondary.withValues(alpha: 0.5),
     );
 
     return ThemeData(
@@ -120,6 +124,10 @@ class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.seed,
       brightness: Brightness.light,
+    ).copyWith(
+      onSurface: AppColors.lightTextPrimary,
+      onSurfaceVariant: AppColors.lightTextSecondary,
+      outline: AppColors.lightTextSecondary.withValues(alpha: 0.5),
     );
 
     return ThemeData(

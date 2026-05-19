@@ -13,6 +13,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/water_provider.dart';
+import '../../providers/activity_provider.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/planner_provider.dart';
 import '../../providers/metrics_provider.dart';
@@ -126,6 +127,50 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => context.push('/achievements'),
               ),
             ],
+          ),
+          const SizedBox(height: 18),
+          Consumer<ActivityProvider>(
+            builder:
+                (context, activity, _) => _SettingsSectionFrame(
+                  title: 'Step Tracking',
+                  accent: AppColors.sky,
+                  children: [
+                    _CategoryRow(
+                      icon: LucideIcons.watch,
+                      accent:
+                          activity.isConnected
+                              ? AppColors.primary
+                              : AppColors.sky,
+                      title: activity.sourceName,
+                      subtitle:
+                          activity.isSyncing
+                              ? 'Syncing activity data...'
+                              : activity.statusLabel(),
+                      onTap: () => context.push('/activity'),
+                    ),
+                    _CategoryRow(
+                      icon: LucideIcons.refreshCw,
+                      accent: AppColors.primary,
+                      title: 'Sync now',
+                      subtitle:
+                          activity.lastSyncedAt == null
+                              ? 'Refresh steps and estimated calories'
+                              : 'Last synced ${TimeOfDay.fromDateTime(activity.lastSyncedAt!).format(context)}',
+                      onTap:
+                          activity.isSyncing
+                              ? () {}
+                              : () => activity.syncNow(),
+                    ),
+                    if (activity.isConnected)
+                      _CategoryRow(
+                        icon: LucideIcons.unlink,
+                        accent: AppColors.error,
+                        title: 'Turn off step tracking',
+                        subtitle: 'Stop listening to phone step updates',
+                        onTap: () => activity.disconnect(),
+                      ),
+                  ],
+                ),
           ),
           const SizedBox(height: 18),
           _SettingsSectionFrame(

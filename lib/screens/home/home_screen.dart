@@ -118,10 +118,11 @@ class _HomeScreenState extends State<HomeScreen>
 
     final activityState = context.select<
       ActivityProvider,
-      ({int steps, bool isTracking, String status})
+      ({int steps, int burnedCalories, bool isTracking, String status})
     >(
       (p) => (
         steps: p.isTracking ? p.steps : 0,
+        burnedCalories: p.isTracking ? p.burnedCalories : 0,
         isTracking: p.isTracking,
         status: p.status,
       ),
@@ -233,6 +234,7 @@ class _HomeScreenState extends State<HomeScreen>
               waterTotal: waterState.total,
               waterGoal: waterState.goal,
               steps: activityState.steps,
+              burnedCalories: activityState.burnedCalories,
               stepsUnit: l10n.home_steps_today,
               activityLive: activityState.status == 'walking',
               onWaterAdd: () => _addWater(context.read<WaterProvider>()),
@@ -1524,6 +1526,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
   final int waterTotal;
   final int waterGoal;
   final int steps;
+  final int burnedCalories;
   final String stepsUnit;
   final bool activityLive;
   final VoidCallback onWaterAdd;
@@ -1534,6 +1537,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
     required this.waterTotal,
     required this.waterGoal,
     required this.steps,
+    required this.burnedCalories,
     required this.stepsUnit,
     required this.activityLive,
     required this.onWaterAdd,
@@ -1599,7 +1603,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
                     color: AppColors.primary,
                     title: l10n.home_metric_activity,
                     primaryMetric: '$steps',
-                    secondaryMetric: 'Goal: 10,000',
+                    secondaryMetric: '$burnedCalories activity kcal',
                     progress: stepsProgress,
                     footerText: activityLive ? 'Walking • Live' : 'Steps today',
                     motionTrail: true,

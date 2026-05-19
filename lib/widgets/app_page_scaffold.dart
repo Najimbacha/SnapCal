@@ -24,6 +24,8 @@ class AppPageScaffold extends StatelessWidget {
   final bool isPremium;
   final bool? forceShowBackButton; // New: To override auto-detection
   final Decoration? headerDecoration;
+  final Widget? background;
+  final Color? backgroundColor;
   final bool showHeader;
   final bool extendBehindStatusBar;
 
@@ -41,6 +43,8 @@ class AppPageScaffold extends StatelessWidget {
     this.isPremium = false,
     this.forceShowBackButton,
     this.headerDecoration,
+    this.background,
+    this.backgroundColor,
     this.showHeader = true,
     this.extendBehindStatusBar = false,
   });
@@ -209,8 +213,15 @@ class AppPageScaffold extends StatelessWidget {
       value: overlayStyle,
       child: Scaffold(
         extendBodyBehindAppBar: extendBehindStatusBar,
-        backgroundColor: colorScheme.surface,
-        body: SafeArea(top: !extendBehindStatusBar, bottom: true, child: body),
+        backgroundColor: backgroundColor ?? colorScheme.surface,
+        body: background != null
+            ? Stack(
+                children: [
+                  Positioned.fill(child: background!),
+                  SafeArea(top: !extendBehindStatusBar, bottom: true, child: body),
+                ],
+              )
+            : SafeArea(top: !extendBehindStatusBar, bottom: true, child: body),
         floatingActionButton: floatingActionButton,
       ),
     );
