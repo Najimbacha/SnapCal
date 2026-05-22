@@ -28,3 +28,13 @@
 # Ignore Play Core and GMS warnings
 -dontwarn com.google.android.play.core.**
 -dontwarn com.google.android.gms.internal.**
+
+# FFmpegKit rules for com.antonkarpenko.ffmpegkit and com.arthenica.ffmpegkit
+-keep class com.antonkarpenko.ffmpegkit.** { *; }
+-keep interface com.antonkarpenko.ffmpegkit.** { *; }
+-dontwarn com.antonkarpenko.ffmpegkit.**
+
+-keep class com.arthenica.ffmpegkit.** { *; }
+-keep interface com.arthenica.ffmpegkit.** { *; }
+-dontwarn com.arthenica.ffmpegkit.**
+

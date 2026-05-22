@@ -10,7 +10,8 @@ class AssistantResponse {
   final String title;
   final String content;
   final String type; // 'recipe', 'coaching', or 'action'
-  final Map<String, int>? macros; // For recipes: {calories, protein, carbs, fat}
+  // For recipes: {calories, protein, carbs, fat}
+  final Map<String, int>? macros;
   final List<AssistantAction>? actions; // Actionable buttons
 
   AssistantResponse({
@@ -35,14 +36,18 @@ class AssistantResponse {
       title: json['title'] as String? ?? '',
       content: parsedContent,
       type: json['type'] as String? ?? 'coaching',
-      macros: json['macros'] != null
-          ? Map<String, int>.from(json['macros'] as Map)
-          : null,
-      actions: json['actions'] != null
-          ? (json['actions'] as List)
-              .map((e) => AssistantAction.fromJson(e as Map<String, dynamic>))
-              .toList()
-          : null,
+      macros:
+          json['macros'] != null
+              ? Map<String, int>.from(json['macros'] as Map)
+              : null,
+      actions:
+          json['actions'] != null
+              ? (json['actions'] as List)
+                  .map(
+                    (e) => AssistantAction.fromJson(e as Map<String, dynamic>),
+                  )
+                  .toList()
+              : null,
     );
   }
 }
@@ -61,22 +66,21 @@ class AssistantAction {
       data: json['data'] as Map<String, dynamic>?,
     );
   }
-  
-  Map<String, dynamic> toJson() => {
-    'label': label,
-    'type': type,
-    'data': data,
-  };
+
+  Map<String, dynamic> toJson() => {'label': label, 'type': type, 'data': data};
 }
 
 /// Service for AI-powered nutrition coaching and recipe suggestions
 class AssistantService {
   final Dio _dio;
 
-  AssistantService() : _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 15),
-  ));
+  AssistantService()
+    : _dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
 
   /// Get recommendations based on current macros and goals
   Future<List<AssistantResponse>> getRecommendations({
@@ -115,7 +119,7 @@ class AssistantService {
             {'role': 'user', 'content': prompt},
           ],
           'temperature': 0.6,
-          'max_tokens': 256,
+          'max_tokens': 700,
         },
       );
 
@@ -126,18 +130,22 @@ class AssistantService {
         if (text != null) {
           debugPrint("Assistant Raw Response: $text");
           String jsonString = _extractJson(text);
-          
+
           // Sanitize: Only escape newlines that are inside JSON strings.
           jsonString = _sanitizeJsonString(jsonString);
-          
+
           final dynamic decoded = jsonDecode(jsonString);
-          
+
           if (decoded is List) {
             return decoded
-                .map((e) => AssistantResponse.fromJson(e as Map<String, dynamic>))
+                .map(
+                  (e) => AssistantResponse.fromJson(e as Map<String, dynamic>),
+                )
                 .toList();
           } else if (decoded is Map) {
-            return [AssistantResponse.fromJson(decoded as Map<String, dynamic>)];
+            return [
+              AssistantResponse.fromJson(decoded as Map<String, dynamic>),
+            ];
           }
           return [];
         }
@@ -152,13 +160,19 @@ class AssistantService {
       }
 
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        throw GeminiException('Unauthorized: Please check your Groq API Key in Firebase Remote Config.');
+        throw GeminiException(
+          'Unauthorized: Please check your Groq API Key in Firebase Remote Config.',
+        );
       }
       if (e.response?.statusCode == 404) {
-        throw GeminiException('Invalid Model: The Groq Model ID in Remote Config is incorrect.');
+        throw GeminiException(
+          'Invalid Model: The Groq Model ID in Remote Config is incorrect.',
+        );
       }
       if (e.response?.statusCode == 400) {
-        throw GeminiException('Bad Request: ${detail ?? 'Check your Remote Config values.'}');
+        throw GeminiException(
+          'Bad Request: ${detail ?? 'Check your Remote Config values.'}',
+        );
       }
       throw GeminiException('${detail ?? e.message}');
     } catch (e) {
@@ -181,9 +195,9 @@ class AssistantService {
       if (apiKey.isEmpty) throw GeminiException('Gemini API Key missing');
 
       final base64Image = base64Encode(imageBytes);
-      
+
       final languageName = AIService.languageNames[language] ?? 'English';
-      
+
       final prompt = """
 You are the SnapCal AI Wellness Coach.
 STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE.
@@ -208,7 +222,7 @@ User Stats: $currentCalories / $targetCalories kcal.
 """;
 
       debugPrint("🧠 AssistantService: Analyzing image with $modelId...");
-      
+
       // Use v1beta for better compatibility with cutting-edge flash models
       final response = await _dio.post(
         'https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$apiKey',
@@ -218,7 +232,10 @@ User Stats: $currentCalories / $targetCalories kcal.
               'parts': [
                 {'text': prompt},
                 {
-                  'inline_data': {'mime_type': 'image/jpeg', 'data': base64Image},
+                  'inline_data': {
+                    'mime_type': 'image/jpeg',
+                    'data': base64Image,
+                  },
                 },
               ],
             },
@@ -228,8 +245,10 @@ User Stats: $currentCalories / $targetCalories kcal.
       );
 
       if (response.statusCode == 200) {
-        final text = response.data['candidates']?[0]?['content']?[0]?['text'] ?? 
-                     response.data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+        final text =
+            response.data['candidates']?[0]?['content']?[0]?['text'] ??
+            response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
+                as String?;
         if (text != null) {
           final jsonString = _extractJson(text);
           final jsonResult = jsonDecode(jsonString) as List<dynamic>;
@@ -238,7 +257,9 @@ User Stats: $currentCalories / $targetCalories kcal.
               .toList();
         }
       }
-      throw GeminiException('Failed to analyze image (Status: ${response.statusCode})');
+      throw GeminiException(
+        'Failed to analyze image (Status: ${response.statusCode})',
+      );
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final msg = e.response?.data?['error']?['message'] ?? e.message;
@@ -269,14 +290,15 @@ User Stats: $currentCalories / $targetCalories kcal.
 
     return """
 You are the SnapCal AI Nutritionist. 
-Your goal is to provide ultra-concise, direct nutritional feedback.
+Your goal is to provide practical nutrition coaching that is clear, structured, and useful.
 STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE.
 
-STRICT BREVITY RULES:
-1. RESPONSE MUST BE 10-20 WORDS MAX.
-2. NO INTRODUCTIONS. No "Hello", "Sure", or "I recommend".
-3. START directly with the advice or data.
-4. Use 1-2 bullet points only for data.
+STYLE RULES:
+1. NO INTRODUCTIONS. No "Hello", "Sure", or "I recommend".
+2. START directly with the answer.
+3. For recipe, cooking, or meal creation requests, return a beautiful, scannable mini recipe.
+4. For coaching questions, give a concise insight, why it matters, and one next action.
+5. Keep answers readable on mobile: 70-130 words for recipes, 40-80 words for coaching.
 
 CURRENT USER STATUS:
 - Calories: $currentCalories / $targetCalories (${remainingCalories > 0 ? "Rem: $remainingCalories" : "Over: ${remainingCalories.abs()}"} kcal)
@@ -286,9 +308,19 @@ ${userQuery != null ? "USER QUESTION: $userQuery" : "Provide one quick strategy.
 
 RESPONSE REQUIREMENTS:
 - Return a JSON LIST [ ... ] with exactly ONE object.
-- 'type': 'coaching'
-- 'title': 1-2 words.
-- 'content': Extreme brevity.
+- 'type': 'recipe' for recipe/meal creation requests, otherwise 'coaching'.
+- 'title': short useful label, e.g. "Chicken Biryani" or "Macro Fix".
+- 'content': Markdown string using short headings and bullets.
+- For recipe type, include 'macros': {"calories": int, "protein": int, "carbs": int, "fat": int} as an approximate single-serving estimate.
+- Recipe content MUST use this exact structure:
+  ### Ingredients
+  - 4-7 clear items with quantities
+  ### Steps
+  1. 3-5 short numbered steps, each step one action
+  ### Coach note
+  One short line with serving size, cooking time, and nutrition tip.
+- Never return a recipe as one paragraph or one sentence.
+- Do not repeat the user question.
 """;
   }
 
@@ -296,7 +328,7 @@ RESPONSE REQUIREMENTS:
     // Find the first occurrence of either '[' or '{'
     int startList = text.indexOf('[');
     int startObject = text.indexOf('{');
-    
+
     int start = -1;
     if (startList != -1 && startObject != -1) {
       start = startList < startObject ? startList : startObject;
@@ -311,7 +343,7 @@ RESPONSE REQUIREMENTS:
       int endList = text.lastIndexOf(']');
       int endObject = text.lastIndexOf('}');
       int end = (start == startList) ? endList : endObject;
-      
+
       if (end != -1 && end > start) {
         return text.substring(start, end + 1);
       }
@@ -337,7 +369,7 @@ RESPONSE REQUIREMENTS:
 
     for (int i = 0; i < text.length; i++) {
       String char = text[i];
-      
+
       if (inString) {
         if (char == '"' && !isEscaped) {
           inString = false;

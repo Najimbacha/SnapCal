@@ -15,6 +15,7 @@ class MealRepository {
   final _mealsController = StreamController<List<Meal>>.broadcast();
   late final FirebaseFirestore _firestore;
   late final FirebaseAuth _auth;
+  StreamSubscription<User?>? _authSubscription;
 
   /// Stream of meals for the current date for reactive UI
   Stream<List<Meal>> get todaysMealsStream => _mealsController.stream;
@@ -50,7 +51,7 @@ class MealRepository {
         // Attempt to delete corrupted boxes and recreate
         await Hive.deleteBoxFromDisk(AppConstants.mealsBoxName);
         await Hive.deleteBoxFromDisk(AppConstants.mealIndexBoxName);
-        
+
         _mealsBox = await Hive.openBox<Meal>(
           AppConstants.mealsBoxName,
           encryptionCipher: cipher,
@@ -92,10 +93,12 @@ class MealRepository {
     // Emit initial today's meals
     _emitTodaysMeals();
 
-    // Initial cloud sync
-    if (_auth.currentUser != null) {
-      unawaited(syncFromFirestore());
-    }
+    await _authSubscription?.cancel();
+    _authSubscription = _auth.authStateChanges().listen((user) {
+      if (user != null) {
+        unawaited(syncFromFirestore());
+      }
+    });
   }
 
   void _emitTodaysMeals() {
@@ -271,6 +274,7 @@ class MealRepository {
   }
 
   void dispose() {
+    _authSubscription?.cancel();
     _mealsController.close();
   }
 }

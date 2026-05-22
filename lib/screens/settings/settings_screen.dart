@@ -27,16 +27,19 @@ import 'widgets/weight_entry_modal.dart';
 import '../../widgets/premium_prompt_card.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  final bool? showBack;
+  const SettingsScreen({super.key, this.showBack});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
-      title: AppLocalizations.of(context)!.settings_title,
+      title: l10n.settings_title,
       isPremium: context.select<SettingsProvider, bool>((p) => p.isPro),
-      forceShowBackButton: true,
+      showHeader: true,
+      forceShowBackButton: showBack,
       scrollable: true,
-      padding: const EdgeInsets.fromLTRB(0, 4, 0, 40),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -50,37 +53,43 @@ class SettingsScreen extends StatelessWidget {
                 ),
             builder: (context, auth, _) => _ProfileCard(auth: auth),
           ),
-          const SizedBox(height: 16),
           Selector<SettingsProvider, bool>(
             selector: (_, s) => s.isPro,
             builder: (context, isPro, _) {
-              if (isPro) return const SizedBox.shrink();
+              if (isPro) return const SizedBox(height: 24);
               final l10n = AppLocalizations.of(context)!;
-              return PremiumPromptCard(
-                title: 'SnapCal Pro',
-                subtitle: l10n.settings_upgrade_desc,
-                buttonText: l10n.settings_upgrade_pro,
-                icon: LucideIcons.sparkles,
-                style: PremiumPromptStyle.mini,
-                onTap:
-                    () => PremiumConversionService().openPaywall(
-                      context,
-                      PaywallEntryPoint.settings,
-                    ),
+              return Column(
+                children: [
+                  const SizedBox(height: 20),
+                  PremiumPromptCard(
+                    title: 'SnapCal Pro',
+                    subtitle: l10n.settings_upgrade_desc,
+                    buttonText: l10n.settings_upgrade_pro,
+                    icon: LucideIcons.sparkles,
+                    style: PremiumPromptStyle.mini,
+                    onTap:
+                        () => PremiumConversionService().openPaywall(
+                          context,
+                          PaywallEntryPoint.settings,
+                        ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
               );
             },
           ),
-          const SizedBox(height: 22),
           _SettingsSectionFrame(
             title: AppLocalizations.of(context)!.settings_core_config,
             accent: AppColors.primary,
             children: [
               _CategoryRow(
                 icon: LucideIcons.user,
-                accent: AppColors.primary,
+                accent: AppColors.protein,
                 title: AppLocalizations.of(context)!.settings_body_profile,
                 subtitle:
-                    AppLocalizations.of(context)!.settings_category_body_profile_sub,
+                    AppLocalizations.of(
+                      context,
+                    )!.settings_category_body_profile_sub,
                 onTap:
                     () => Navigator.push(
                       context,
@@ -91,10 +100,12 @@ class SettingsScreen extends StatelessWidget {
               ),
               _CategoryRow(
                 icon: LucideIcons.flame,
-                accent: AppColors.primary,
+                accent: AppColors.fat,
                 title: AppLocalizations.of(context)!.settings_nutrition_goals,
                 subtitle:
-                    AppLocalizations.of(context)!.settings_category_nutrition_sub,
+                    AppLocalizations.of(
+                      context,
+                    )!.settings_category_nutrition_sub,
                 onTap:
                     () => Navigator.push(
                       context,
@@ -108,7 +119,9 @@ class SettingsScreen extends StatelessWidget {
                 accent: AppColors.sky,
                 title: AppLocalizations.of(context)!.settings_preferences,
                 subtitle:
-                    AppLocalizations.of(context)!.settings_category_preferences_sub,
+                    AppLocalizations.of(
+                      context,
+                    )!.settings_category_preferences_sub,
                 onTap:
                     () => Navigator.push(
                       context,
@@ -119,76 +132,84 @@ class SettingsScreen extends StatelessWidget {
               ),
               _CategoryRow(
                 icon: LucideIcons.trophy,
-                accent: Colors.orange,
-                title:
-                    AppLocalizations.of(context)!.feature_achievements_title,
+                accent: AppColors.amber,
+                title: AppLocalizations.of(context)!.feature_achievements_title,
                 subtitle:
-                    AppLocalizations.of(context)!.settings_category_achievements_sub,
+                    AppLocalizations.of(
+                      context,
+                    )!.settings_category_achievements_sub,
                 onTap: () => context.push('/achievements'),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           Consumer<ActivityProvider>(
-            builder:
-                (context, activity, _) => _SettingsSectionFrame(
-                  title: 'Step Tracking',
-                  accent: AppColors.sky,
-                  children: [
-                    _CategoryRow(
-                      icon: LucideIcons.watch,
-                      accent:
-                          activity.isConnected
-                              ? AppColors.primary
-                              : AppColors.sky,
-                      title: activity.sourceName,
-                      subtitle:
-                          activity.isSyncing
-                              ? 'Syncing activity data...'
-                              : activity.statusLabel(),
-                      onTap: () => context.push('/activity'),
-                    ),
-                    _CategoryRow(
-                      icon: LucideIcons.refreshCw,
-                      accent: AppColors.primary,
-                      title: 'Sync now',
-                      subtitle:
-                          activity.lastSyncedAt == null
-                              ? 'Refresh steps and estimated calories'
-                              : 'Last synced ${TimeOfDay.fromDateTime(activity.lastSyncedAt!).format(context)}',
-                      onTap:
-                          activity.isSyncing
-                              ? () {}
-                              : () => activity.syncNow(),
-                    ),
-                    if (activity.isConnected)
+            builder: (context, activity, _) {
+              final l10n = AppLocalizations.of(context)!;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SettingsSectionFrame(
+                    title: l10n.settings_step_tracking,
+                    accent: AppColors.sky,
+                    children: [
                       _CategoryRow(
+                        icon: LucideIcons.watch,
+                        accent: activity.isConnected
+                            ? AppColors.success
+                            : AppColors.sky,
+                        title: activity.sourceName,
+                        subtitle: activity.isSyncing
+                            ? l10n.settings_syncing_activity
+                            : _getLocalStatus(context, activity.statusLabel()),
+                        onTap: () => context.push('/activity'),
+                      ),
+                      _CategoryRow(
+                        icon: LucideIcons.refreshCw,
+                        accent: AppColors.sky,
+                        title: l10n.settings_sync_now,
+                        subtitle: activity.lastSyncedAt == null
+                            ? l10n.settings_sync_now_desc
+                            : l10n.settings_last_synced(
+                                TimeOfDay.fromDateTime(activity.lastSyncedAt!).format(context),
+                              ),
+                        onTap: activity.isSyncing ? () {} : () => activity.syncNow(),
+                      ),
+                    ],
+                  ),
+                  if (activity.isConnected) ...[
+                    const SizedBox(height: 12),
+                    _SettingsSurface(
+                      accent: AppColors.error,
+                      padding: EdgeInsets.zero,
+                      child: _CategoryRow(
                         icon: LucideIcons.unlink,
                         accent: AppColors.error,
-                        title: 'Turn off step tracking',
-                        subtitle: 'Stop listening to phone step updates',
+                        title: l10n.settings_disconnect_steps,
+                        subtitle: l10n.settings_disconnect_steps_desc,
                         onTap: () => activity.disconnect(),
                       ),
+                    ),
                   ],
-                ),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           _SettingsSectionFrame(
             title: AppLocalizations.of(context)!.settings_data_security,
-            accent: AppColors.violet,
+            accent: AppColors.protein,
             children: [
               _CategoryRow(
                 icon: LucideIcons.userCircle,
-                accent: AppColors.violet,
+                accent: AppColors.protein,
                 title: AppLocalizations.of(context)!.settings_account,
                 subtitle:
                     AppLocalizations.of(context)!.settings_category_account_sub,
                 onTap:
                     () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const _AccountScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const _AccountScreen()),
                     ),
               ),
               _CategoryRow(
@@ -196,7 +217,9 @@ class SettingsScreen extends StatelessWidget {
                 accent: AppColors.sky,
                 title: AppLocalizations.of(context)!.settings_data_sync,
                 subtitle:
-                    AppLocalizations.of(context)!.settings_category_data_sync_sub,
+                    AppLocalizations.of(
+                      context,
+                    )!.settings_category_data_sync_sub,
                 onTap:
                     () => Navigator.push(
                       context,
@@ -207,7 +230,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           _SettingsSectionFrame(
             title: AppLocalizations.of(context)!.settings_information,
             accent: AppColors.amber,
@@ -216,7 +239,8 @@ class SettingsScreen extends StatelessWidget {
                 icon: LucideIcons.info,
                 accent: AppColors.amber,
                 title: AppLocalizations.of(context)!.settings_about,
-                subtitle: AppLocalizations.of(context)!.settings_category_about_sub,
+                subtitle:
+                    AppLocalizations.of(context)!.settings_category_about_sub,
                 onTap:
                     () => Navigator.push(
                       context,
@@ -225,7 +249,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -273,7 +297,7 @@ void _showNumberDialog(
                   color: AppColors.primary,
                 ),
                 decoration: InputDecoration(
-                  suffixText: unit,
+                  suffixText: _getLocalOption(context, unit),
                   suffixStyle: AppTypography.titleMedium,
                   filled: true,
                   fillColor: colorScheme.surfaceContainerHighest.withValues(
@@ -507,7 +531,7 @@ class _SelectionSheet extends StatelessWidget {
           const SizedBox(height: 20),
           ...options.map(
             (opt) => ListTile(
-              title: Text(opt.toUpperCase(), style: AppTypography.titleMedium),
+              title: Text(_getLocalOption(context, opt), style: AppTypography.titleMedium),
               trailing:
                   opt == currentValue
                       ? const Icon(LucideIcons.check, color: AppColors.primary)
@@ -718,37 +742,7 @@ class _LanguageTile extends StatelessWidget {
   }
 }
 
-class _ProfileSection extends StatelessWidget {
-  final List<Widget> children;
 
-  const _ProfileSection({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return AppSectionCard(
-      glass: true,
-      padding: EdgeInsets.zero,
-      child: Column(
-        children:
-            children
-                .expand(
-                  (child) => [
-                    child,
-                    if (child != children.last)
-                      Divider(
-                        height: 1,
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.5),
-                        indent: 72,
-                      ),
-                  ],
-                )
-                .toList(),
-      ),
-    );
-  }
-}
 
 class _SettingRow extends StatelessWidget {
   final IconData icon;
@@ -767,74 +761,57 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      accent.withValues(alpha: 0.15),
-                      accent.withValues(alpha: 0.05),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: accent.withValues(alpha: 0.15),
-                    width: 1.5,
-                  ),
+                  color: accent.withValues(alpha: isDark ? 0.14 : 0.10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: accent, size: 22),
+                child: Center(
+                  child: Icon(icon, color: accent, size: 16),
+                ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.3,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      value,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: accent,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  title,
+                  style: AppTypography.titleMedium.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                    fontSize: 15,
+                  ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
+              const SizedBox(width: 8),
+              Text(
+                value,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
                 ),
-                child: Icon(
-                  LucideIcons.chevronRight,
-                  size: 14,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outline.withValues(alpha: 0.4),
-                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 14,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
               ),
             ],
           ),
@@ -861,39 +838,40 @@ class _SwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(14),
+              color: accent.withValues(alpha: isDark ? 0.14 : 0.10),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: accent, size: 20),
+            child: Center(
+              child: Icon(icon, color: accent, size: 16),
+            ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-              ],
+            child: Text(
+              title,
+              style: AppTypography.titleMedium.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+                fontSize: 15,
+              ),
             ),
           ),
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
             activeThumbColor: AppColors.primary,
-            activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
           ),
         ],
       ),
@@ -910,127 +888,120 @@ class _ThemeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.read<SettingsProvider>();
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final options = [
+      ('system', AppLocalizations.of(context)!.settings_theme_system, LucideIcons.smartphone),
+      ('light', AppLocalizations.of(context)!.settings_theme_light, LucideIcons.sun),
+      ('dark', AppLocalizations.of(context)!.settings_theme_dark, LucideIcons.moon),
+    ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ─── Label row ───
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.protein.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
+                  color: AppColors.primary.withValues(alpha: isDark ? 0.14 : 0.10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
-                  LucideIcons.sunMoon,
-                  color: AppColors.protein,
-                  size: 20,
+                child: Center(
+                  child: Icon(LucideIcons.sunMoon, color: AppColors.primary, size: 16),
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  AppLocalizations.of(context)!.settings_appearance,
-                  style: AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.1,
-                  ),
+              const SizedBox(width: 14),
+              Text(
+                AppLocalizations.of(context)!.settings_appearance,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.titleMedium.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                  fontSize: 15,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              for (final option in [
-                (
-                  'system',
-                  AppLocalizations.of(context)!.settings_theme_system,
-                  LucideIcons.smartphone
-                ),
-                (
-                  'light',
-                  AppLocalizations.of(context)!.settings_theme_light,
-                  LucideIcons.sun
-                ),
-                (
-                  'dark',
-                  AppLocalizations.of(context)!.settings_theme_dark,
-                  LucideIcons.moon
-                ),
-              ])
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: option.$1 == 'dark' ? 0 : 8,
-                    ),
-                    child: AppScaleTap(
+          const SizedBox(height: 10),
+          // ─── Segmented picker — full width below, indented past icon ───
+          Padding(
+            padding: const EdgeInsets.only(left: 46),
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
+                    : colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: options.map((opt) {
+                  final isSelected = currentMode == opt.$1;
+                  return Expanded(
+                    child: GestureDetector(
                       onTap: () {
                         HapticFeedback.selectionClick();
-                        settings.setThemeMode(option.$1);
+                        settings.setThemeMode(opt.$1);
                       },
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 240),
-                        curve: Curves.easeInOutCubic,
-                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: currentMode == option.$1
-                              ? AppColors.primary.withValues(alpha: 0.12)
-                              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.22),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: currentMode == option.$1
-                                ? AppColors.primary
-                                : colorScheme.outlineVariant.withValues(alpha: 0.15),
-                            width: 1.8,
-                          ),
-                          boxShadow: currentMode == option.$1
+                          color: isSelected
+                              ? (isDark ? colorScheme.surfaceContainer : Colors.white)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.08),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.15 : 0.05,
+                                    ),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
                                   ),
                                 ]
                               : null,
                         ),
-                        child: Column(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              option.$3,
-                              color: currentMode == option.$1
-                                  ? AppColors.primary
-                                  : colorScheme.onSurfaceVariant,
-                              size: 20,
+                              opt.$3,
+                              size: 13,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(width: 5),
                             Text(
-                              option.$2,
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              opt.$2,
                               style: AppTypography.labelMedium.copyWith(
-                                color: currentMode == option.$1
-                                    ? AppColors.primary
-                                    : colorScheme.onSurface,
-                                fontWeight: currentMode == option.$1
-                                    ? FontWeight.w900
-                                    : FontWeight.w700,
-                                fontSize: 11,
+                                fontSize: 11.5,
+                                fontWeight:
+                                    isSelected ? FontWeight.w600 : FontWeight.w500,
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ),
-            ],
+                  );
+                }).toList(),
+              ),
+            ),
           ),
         ],
       ),
@@ -1083,47 +1054,38 @@ class _SettingsSectionFrame extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 16, bottom: 10),
-          child: Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: accent,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: AppTypography.labelLarge.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            title.toUpperCase(),
+            style: AppTypography.labelSmall.copyWith(
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              fontSize: 11,
+            ),
           ),
         ),
         _SettingsSurface(
           accent: accent,
           padding: EdgeInsets.zero,
           child: Column(
-            children: children
-                .expand(
-                  (child) => [
-                    child,
-                    if (child != children.last)
-                      Divider(
-                        height: 1,
-                        thickness: 0.8,
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.18),
-                        indent: 76,
-                      ),
-                  ],
-                )
-                .toList(),
+            children:
+                children
+                    .expand(
+                      (child) => [
+                        child,
+                        if (child != children.last)
+                          Divider(
+                            height: 1,
+                            thickness: 0.5,
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.08,
+                            ),
+                            indent: 52,
+                          ),
+                      ],
+                    )
+                    .toList(),
           ),
         ),
       ],
@@ -1151,41 +1113,14 @@ class _SettingsSurface extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.alphaBlend(
-              accent.withValues(alpha: isDark ? 0.07 : 0.045),
-              colorScheme.surfaceContainerHighest.withValues(
-                alpha: isDark ? 0.34 : 0.66,
-              ),
-            ),
-            colorScheme.surfaceContainerHighest.withValues(
-              alpha: isDark ? 0.17 : 0.48,
-            ),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(28),
+        color: isDark ? colorScheme.surfaceContainerLow : colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color:
-              isDark
-                  ? colorScheme.outlineVariant.withValues(alpha: 0.20)
-                  : AppColors.lightCardBorder.withValues(alpha: 0.7),
+          color: isDark
+              ? colorScheme.outlineVariant.withValues(alpha: 0.08)
+              : colorScheme.outlineVariant.withValues(alpha: 0.12),
+          width: 0.8,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.055),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-          BoxShadow(
-            color: accent.withValues(alpha: isDark ? 0.05 : 0.03),
-            blurRadius: 28,
-            offset: const Offset(-6, -6),
-            spreadRadius: -4,
-          ),
-        ],
       ),
       child: child,
     );
@@ -1198,11 +1133,15 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final hasName = auth.displayName != null && auth.displayName!.isNotEmpty;
     final isGuest = auth.isAnonymous;
     final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
 
+    if (isGuest) {
+      return _GuestCard(isPro: isPro);
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    final hasName = auth.displayName != null && auth.displayName!.isNotEmpty;
     String displayName = auth.displayName ?? '';
     if (!hasName && auth.email != null) {
       displayName = auth.email!.split('@')[0];
@@ -1214,221 +1153,103 @@ class _ProfileCard extends StatelessWidget {
       displayName = l10n.settings_member;
     }
 
+    return _MemberCard(auth: auth, displayName: displayName, isPro: isPro);
+  }
+}
+
+class _GuestCard extends StatelessWidget {
+  final bool isPro;
+  const _GuestCard({required this.isPro});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AppScaleTap(
-      onTap: isGuest ? () => AuthModal.show(context) : null,
-      child: _SettingsSurface(
-        accent: isGuest ? AppColors.violet : AppColors.primary,
-        padding: const EdgeInsets.all(16),
-        child: Stack(
+      onTap: () => AuthModal.show(context),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          color: isDark ? colorScheme.surfaceContainerLow : colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? colorScheme.outlineVariant.withValues(alpha: 0.08)
+                : colorScheme.outlineVariant.withValues(alpha: 0.12),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
           children: [
-            Positioned(
-              right: -18,
-              top: -24,
-              child: Icon(
-                isGuest ? LucideIcons.cloud : LucideIcons.scanLine,
-                size: 108,
-                color: (isGuest ? AppColors.violet : AppColors.primary)
-                    .withValues(alpha: 0.07),
+            // Neutral grey avatar circle
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: isDark ? 0.4 : 0.6),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Icon(
+                  LucideIcons.user,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                  size: 22,
+                ),
               ),
             ),
-            Row(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        (isGuest ? AppColors.violet : AppColors.primary)
-                            .withValues(alpha: 0.18),
-                        (isGuest ? AppColors.sky : AppColors.emeraldLight)
-                            .withValues(alpha: 0.08),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: (isGuest ? AppColors.violet : AppColors.primary)
-                          .withValues(alpha: 0.18),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.settings_guest_account,
+                    style: AppTypography.heading3.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      letterSpacing: -0.3,
                     ),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(19),
-                    child:
-                        auth.photoURL != null
-                            ? Image.network(auth.photoURL!, fit: BoxFit.cover)
-                            : Center(
-                              child: Icon(
-                                LucideIcons.user,
-                                color:
-                                    isGuest
-                                        ? AppColors.violet
-                                        : AppColors.primary,
-                                size: 30,
-                              ),
-                            ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        isGuest
-                            ? l10n.settings_guest_title
-                            : displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.heading3.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 19,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                      if (isPro)
-                        Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(100),
-                            border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.25),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                LucideIcons.gem,
-                                color: AppColors.primary,
-                                size: 12,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                l10n.settings_emerald_badge,
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 10,
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        AppScaleTap(
-                          onTap: () {
-                            HapticFeedback.mediumImpact();
-                            context.push('/paywall');
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(top: 8),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF10B981),
-                                  Color(0xFF0D9BD8),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(100),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF10B981).withValues(alpha: 0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  LucideIcons.gem,
-                                  color: Colors.white,
-                                  size: 12,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  l10n.settings_upgrade_to_pro,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 10,
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 6),
-                      if (isGuest) ...[
-                        Text(
-                          AppLocalizations.of(context)!.settings_guest_subtitle,
-                          style: AppTypography.labelSmall.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _ActionPill(
-                          label:
-                              AppLocalizations.of(context)!.settings_auth_cta,
-                          icon: LucideIcons.userPlus,
-                          onTap: () => AuthModal.show(context),
-                        ),
-                      ] else
-                        Text(
-                          auth.email ?? 'Premium Nutrition',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.labelSmall.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surface.withValues(alpha: 0.55),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.outlineVariant.withValues(alpha: 0.28),
+                  const SizedBox(height: 3),
+                  Text(
+                    l10n.settings_guest_subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                      fontWeight: FontWeight.w400,
+                      fontSize: 12,
+                      letterSpacing: 0,
                     ),
                   ),
-                  child: Icon(
-                    isGuest ? LucideIcons.logIn : LucideIcons.shieldCheck,
-                    size: 16,
-                    color: isGuest ? AppColors.violet : AppColors.primary,
-                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.14),
+                  width: 0.8,
                 ),
-              ],
+              ),
+              child: Text(
+                l10n.settings_sign_in,
+                style: AppTypography.labelSmall.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  letterSpacing: 0,
+                ),
+              ),
             ),
           ],
         ),
@@ -1437,47 +1258,181 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-class _ActionPill extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
+class _MemberCard extends StatelessWidget {
+  final _AuthSnapshot auth;
+  final String displayName;
+  final bool isPro;
 
-  const _ActionPill({
-    required this.label,
-    required this.icon,
-    required this.onTap,
+  const _MemberCard({
+    required this.auth,
+    required this.displayName,
+    required this.isPro,
   });
+
+  // Returns 1–2 uppercase initials from a display name
+  static String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final initials = _initials(displayName);
+
     return AppScaleTap(
-      onTap: onTap,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const _AccountScreen()),
+        );
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+          color: isDark ? colorScheme.surfaceContainerLow : colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? colorScheme.outlineVariant.withValues(alpha: 0.08)
+                : colorScheme.outlineVariant.withValues(alpha: 0.12),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Avatar: photo or initials gradient
+            Container(
+              width: 52,
+              height: 52,
+              decoration: const BoxDecoration(shape: BoxShape.circle),
+              child: ClipOval(
+                child: auth.photoURL != null
+                    ? Image.network(
+                        auth.photoURL!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => _InitialsAvatar(initials: initials),
+                      )
+                    : _InitialsAvatar(initials: initials),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.heading3.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
+                      if (isPro) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                LucideIcons.gem,
+                                color: AppColors.primary,
+                                size: 8,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                l10n.settings_emerald_badge.toUpperCase(),
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 8,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    auth.email ?? l10n.settings_member,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                      fontWeight: FontWeight.w400,
+                      fontSize: 12,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Icon(
+              LucideIcons.chevronRight,
+              size: 14,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
             ),
           ],
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppTypography.labelSmall.copyWith(
-                color: Colors.black87,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Icon(icon, size: 12, color: Colors.black87),
-          ],
+      ),
+    );
+  }
+}
+
+/// Gradient initials avatar used when no profile photo is available.
+class _InitialsAvatar extends StatelessWidget {
+  final String initials;
+  const _InitialsAvatar({required this.initials});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: const BoxDecoration(
+        gradient: AppColors.wellnessGlow,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
         ),
       ),
     );
@@ -1502,6 +1457,7 @@ class _CategoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Material(
       color: Colors.transparent,
@@ -1511,30 +1467,22 @@ class _CategoryRow extends StatelessWidget {
           onTap();
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           child: Row(
             children: [
+              // Consistent rounded-square icon — iOS Settings style
               Container(
-                width: 44,
-                height: 44,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      accent.withValues(alpha: 0.16),
-                      accent.withValues(alpha: 0.05),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: accent.withValues(alpha: 0.16),
-                    width: 1.5,
-                  ),
+                  color: accent.withValues(alpha: isDark ? 0.14 : 0.10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: accent, size: 20),
+                child: Center(
+                  child: Icon(icon, color: accent, size: 16),
+                ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1544,21 +1492,22 @@ class _CategoryRow extends StatelessWidget {
                       title,
                       style: AppTypography.titleMedium.copyWith(
                         color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.3,
-                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                        fontSize: 15,
                       ),
                     ),
                     if (subtitle != null) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         subtitle!,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.labelSmall.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w400,
                           fontSize: 12,
+                          height: 1.3,
                           letterSpacing: 0,
                         ),
                       ),
@@ -1567,18 +1516,10 @@ class _CategoryRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  LucideIcons.chevronRight,
-                  size: 14,
-                  color: colorScheme.outline.withValues(alpha: 0.4),
-                ),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 14,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
               ),
             ],
           ),
@@ -1590,15 +1531,22 @@ class _CategoryRow extends StatelessWidget {
 
 class _BodyProfileScreen extends StatelessWidget {
   const _BodyProfileScreen();
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
-      title: AppLocalizations.of(context)!.settings_body_profile_title,
-      subtitle: AppLocalizations.of(context)!.settings_body_profile_desc,
+      title: l10n.settings_body_profile_title,
+      subtitle: l10n.settings_body_profile_desc,
       scrollable: true,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       child: Column(
         children: [
-          _ProfileSection(
+          const _WeightProgressBar(),
+          const SizedBox(height: 24),
+          _SettingsSectionFrame(
+            title: l10n.onboarding_basic_intro_eyebrow, // "PERSONAL DETAILS"
+            accent: AppColors.primary,
             children: [
               Selector<AuthProvider, String?>(
                 selector: (_, auth) => auth.user?.displayName,
@@ -1606,16 +1554,45 @@ class _BodyProfileScreen extends StatelessWidget {
                     (context, name, _) => _SettingRow(
                       icon: LucideIcons.user,
                       accent: AppColors.primary,
-                      title:
-                          AppLocalizations.of(
-                            context,
-                          )!.settings_display_name_label,
-                      value:
-                          name ??
-                          AppLocalizations.of(context)!.settings_set_name,
+                      title: l10n.settings_display_name_label,
+                      value: name ?? l10n.settings_set_name,
                       onTap: () => _showNameDialog(context, name ?? ''),
                     ),
               ),
+              Consumer<SettingsProvider>(
+                builder: (context, settings, _) => Column(
+                  children: [
+                    _SettingRow(
+                      icon: LucideIcons.calendar,
+                      accent: AppColors.primary,
+                      title: l10n.settings_age,
+                      value: settings.age?.toString() ?? '--',
+                      onTap:
+                          () => _showNumberDialog(
+                            context,
+                            title: l10n.settings_age,
+                            currentValue: settings.age ?? 25,
+                            unit: 'yrs',
+                            onSave: (value) => settings.updateBodyProfile(age: value),
+                          ),
+                    ),
+                    _SettingRow(
+                      icon: LucideIcons.userCircle,
+                      accent: AppColors.primary,
+                      title: l10n.settings_gender,
+                      value: settings.gender != null ? _getLocalGender(context, settings.gender!) : '--',
+                      onTap: () => _showGenderSelector(context, settings),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _SettingsSectionFrame(
+            title: l10n.home_body_stats, // "Body Stats"
+            accent: AppColors.primary,
+            children: [
               Selector<MetricsProvider, (double?, String)>(
                 selector:
                     (_, m) => (
@@ -1630,52 +1607,17 @@ class _BodyProfileScreen extends StatelessWidget {
                   return _SettingRow(
                     icon: LucideIcons.scale,
                     accent: AppColors.primary,
-                    title:
-                        AppLocalizations.of(context)!.settings_current_weight,
+                    title: l10n.settings_current_weight,
                     value:
                         displayWeight != null
-                            ? '${displayWeight.toStringAsFixed(1)} ${data.$2}'
-                            : AppLocalizations.of(context)!.settings_set_weight,
+                            ? '${displayWeight.toStringAsFixed(1)} ${_getLocalUnit(context, data.$2)}'
+                            : l10n.settings_set_weight,
                     onTap:
                         () => showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
                           builder: (_) => const WeightEntryModal(),
-                        ),
-                  );
-                },
-              ),
-              Selector<SettingsProvider, (double?, String)>(
-                selector: (_, s) => (s.height, s.heightUnit),
-                builder: (context, data, _) {
-                  double? displayHeight = data.$1;
-                  if (displayHeight != null && data.$2 == 'in') {
-                    displayHeight = displayHeight / 2.54;
-                  }
-                  return _SettingRow(
-                    icon: LucideIcons.ruler,
-                    accent: AppColors.primary,
-                    title: AppLocalizations.of(context)!.settings_height,
-                    value:
-                        displayHeight != null
-                            ? '${displayHeight.round()} ${data.$2}'
-                            : AppLocalizations.of(context)!.settings_set_height,
-                    onTap:
-                        () => _showNumberDialog(
-                          context,
-                          title: AppLocalizations.of(context)!.settings_height,
-                          currentValue:
-                              displayHeight?.round() ??
-                              (data.$2 == 'in' ? 67 : 170),
-                          unit: data.$2,
-                          onSave: (value) {
-                            double cm = value.toDouble();
-                            if (data.$2 == 'in') cm = value * 2.54;
-                            return context
-                                .read<SettingsProvider>()
-                                .updateBodyProfile(height: cm);
-                          },
                         ),
                   );
                 },
@@ -1690,18 +1632,15 @@ class _BodyProfileScreen extends StatelessWidget {
                   return _SettingRow(
                     icon: LucideIcons.target,
                     accent: AppColors.primary,
-                    title: AppLocalizations.of(context)!.settings_target_weight,
+                    title: l10n.settings_target_weight,
                     value:
                         displayTarget != null
-                            ? '${displayTarget.toStringAsFixed(1)} ${data.$2}'
-                            : AppLocalizations.of(context)!.settings_set_target,
+                            ? '${displayTarget.toStringAsFixed(1)} ${_getLocalUnit(context, data.$2)}'
+                            : l10n.settings_set_target,
                     onTap:
                         () => _showNumberDialog(
                           context,
-                          title:
-                              AppLocalizations.of(
-                                context,
-                              )!.settings_target_weight,
+                          title: l10n.settings_target_weight,
                           currentValue:
                               displayTarget?.round() ??
                               (data.$2 == 'lb' ? 154 : 70),
@@ -1717,44 +1656,56 @@ class _BodyProfileScreen extends StatelessWidget {
                   );
                 },
               ),
+              Selector<SettingsProvider, (double?, String)>(
+                selector: (_, s) => (s.height, s.heightUnit),
+                builder: (context, data, _) {
+                  double? displayHeight = data.$1;
+                  if (displayHeight != null && data.$2 == 'in') {
+                    displayHeight = displayHeight / 2.54;
+                  }
+                  return _SettingRow(
+                    icon: LucideIcons.ruler,
+                    accent: AppColors.primary,
+                    title: l10n.settings_height,
+                    value:
+                        displayHeight != null
+                            ? '${displayHeight.round()} ${_getLocalUnit(context, data.$2)}'
+                            : l10n.settings_set_height,
+                    onTap:
+                        () => _showNumberDialog(
+                          context,
+                          title: l10n.settings_height,
+                          currentValue:
+                              displayHeight?.round() ??
+                              (data.$2 == 'in' ? 67 : 170),
+                          unit: data.$2,
+                          onSave: (value) {
+                            double cm = value.toDouble();
+                            if (data.$2 == 'in') cm = value * 2.54;
+                            return context
+                                .read<SettingsProvider>()
+                                .updateBodyProfile(height: cm);
+                          },
+                        ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _SettingsSectionFrame(
+            title: l10n.settings_units, // "Units"
+            accent: AppColors.primary,
+            children: [
               Consumer<SettingsProvider>(
-                builder:
-                    (context, settings, _) => Column(
-                      children: [
-                        _SettingRow(
-                          icon: LucideIcons.calendar,
-                          accent: AppColors.primary,
-                          title: AppLocalizations.of(context)!.settings_age,
-                          value: settings.age?.toString() ?? '--',
-                          onTap:
-                              () => _showNumberDialog(
-                                context,
-                                title:
-                                    AppLocalizations.of(context)!.settings_age,
-                                currentValue: settings.age ?? 25,
-                                unit: 'yrs',
-                                onSave:
-                                    (value) =>
-                                        settings.updateBodyProfile(age: value),
-                              ),
-                        ),
-                        _SettingRow(
-                          icon: LucideIcons.userCircle,
-                          accent: AppColors.primary,
-                          title: AppLocalizations.of(context)!.settings_gender,
-                          value: settings.gender?.toUpperCase() ?? '--',
-                          onTap: () => _showGenderSelector(context, settings),
-                        ),
-                        _SettingRow(
-                          icon: LucideIcons.settings,
-                          accent: AppColors.primary,
-                          title: AppLocalizations.of(context)!.settings_units,
-                          value:
-                              '${settings.weightUnit.toUpperCase()} / ${settings.heightUnit.toUpperCase()}',
-                          onTap: () => _showUnitSelector(context, settings),
-                        ),
-                      ],
-                    ),
+                builder: (context, settings, _) => _SettingRow(
+                  icon: LucideIcons.settings,
+                  accent: AppColors.primary,
+                  title: l10n.settings_units,
+                  value:
+                      '${_getLocalUnit(context, settings.weightUnit).toUpperCase()} / ${_getLocalUnit(context, settings.heightUnit).toUpperCase()}',
+                  onTap: () => _showUnitSelector(context, settings),
+                ),
               ),
             ],
           ),
@@ -1766,14 +1717,21 @@ class _BodyProfileScreen extends StatelessWidget {
 
 class _NutritionGoalsScreen extends StatelessWidget {
   const _NutritionGoalsScreen();
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
-      title: AppLocalizations.of(context)!.settings_nutrition_goals_title,
+      title: l10n.settings_nutrition_goals_title,
       scrollable: true,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       child: Column(
         children: [
-          _ProfileSection(
+          const _MacroCalorieRelationshipCard(),
+          const SizedBox(height: 24),
+          _SettingsSectionFrame(
+            title: l10n.settings_nutrition_goals, // "Nutrition Goals"
+            accent: AppColors.primary,
             children: [
               Selector<SettingsProvider, int>(
                 selector: (_, s) => s.dailyCalorieGoal,
@@ -1781,16 +1739,12 @@ class _NutritionGoalsScreen extends StatelessWidget {
                     (context, value, _) => _SettingRow(
                       icon: LucideIcons.flame,
                       accent: AppColors.primary,
-                      title:
-                          AppLocalizations.of(context)!.settings_daily_calories,
-                      value: '$value kcal',
+                      title: l10n.settings_daily_calories,
+                      value: '$value ${l10n.settings_kcal_unit}',
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title:
-                                AppLocalizations.of(
-                                  context,
-                                )!.settings_daily_calories,
+                            title: l10n.settings_daily_calories,
                             currentValue: value,
                             unit: 'kcal',
                             onSave:
@@ -1806,13 +1760,12 @@ class _NutritionGoalsScreen extends StatelessWidget {
                     (context, value, _) => _SettingRow(
                       icon: LucideIcons.beef,
                       accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_protein,
-                      value: '${value}g',
+                      title: l10n.settings_protein,
+                      value: '$value${l10n.settings_grams_unit}',
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title:
-                                AppLocalizations.of(context)!.settings_protein,
+                            title: l10n.settings_protein,
                             currentValue: value,
                             unit: 'g',
                             onSave:
@@ -1828,12 +1781,12 @@ class _NutritionGoalsScreen extends StatelessWidget {
                     (context, value, _) => _SettingRow(
                       icon: LucideIcons.wheat,
                       accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_carbs,
-                      value: '${value}g',
+                      title: l10n.settings_carbs,
+                      value: '$value${l10n.settings_grams_unit}',
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title: AppLocalizations.of(context)!.settings_carbs,
+                            title: l10n.settings_carbs,
                             currentValue: value,
                             unit: 'g',
                             onSave:
@@ -1847,12 +1800,12 @@ class _NutritionGoalsScreen extends StatelessWidget {
                     (context, value, _) => _SettingRow(
                       icon: LucideIcons.droplets,
                       accent: AppColors.primary,
-                      title: AppLocalizations.of(context)!.settings_fat,
-                      value: '${value}g',
+                      title: l10n.settings_fat,
+                      value: '$value${l10n.settings_grams_unit}',
                       onTap:
                           () => _showNumberDialog(
                             context,
-                            title: AppLocalizations.of(context)!.settings_fat,
+                            title: l10n.settings_fat,
                             currentValue: value,
                             unit: 'g',
                             onSave:
@@ -1870,14 +1823,19 @@ class _NutritionGoalsScreen extends StatelessWidget {
 
 class _PreferencesScreen extends StatelessWidget {
   const _PreferencesScreen();
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
-      title: AppLocalizations.of(context)!.settings_preferences_title,
+      title: l10n.settings_preferences_title,
       scrollable: true,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       child: Column(
         children: [
-          _ProfileSection(
+          _SettingsSectionFrame(
+            title: l10n.settings_notifications, // "Notifications"
+            accent: AppColors.primary,
             children: [
               Selector<SettingsProvider, bool>(
                 selector: (_, s) => s.notificationsEnabled,
@@ -1885,8 +1843,7 @@ class _PreferencesScreen extends StatelessWidget {
                     (context, value, _) => _SwitchRow(
                       icon: LucideIcons.bell,
                       accent: AppColors.primary,
-                      title:
-                          AppLocalizations.of(context)!.settings_notifications,
+                      title: l10n.settings_notifications,
                       value: value,
                       onChanged:
                           context.read<SettingsProvider>().toggleNotifications,
@@ -1898,65 +1855,94 @@ class _PreferencesScreen extends StatelessWidget {
                     (context, value, _) => _SwitchRow(
                       icon: LucideIcons.clock3,
                       accent: AppColors.primary,
-                      title:
-                          AppLocalizations.of(context)!.settings_meal_reminders,
+                      title: l10n.settings_meal_reminders,
                       value: value,
                       onChanged:
                           context.read<SettingsProvider>().toggleMealReminders,
                     ),
               ),
-
-              Consumer<SettingsProvider>(
+              Selector<SettingsProvider, bool>(
+                selector: (_, s) => s.dailyMotivationEnabled,
                 builder:
-                    (context, settings, _) => Column(
-                      children: [
-                        _ThemeRow(currentMode: settings.themeMode),
-                        _SettingRow(
-                          icon: LucideIcons.languages,
-                          accent: AppColors.primary,
-                          title:
-                              AppLocalizations.of(context)!.settings_language,
-                          value: _getLanguageName(settings.languageCode),
-                          onTap: () => _showLanguageSelector(context, settings),
-                        ),
-                        if (settings.mealRemindersEnabled) ...[
-                          _SettingRow(
-                            icon: LucideIcons.egg,
-                            accent: AppColors.primary,
-                            title:
-                                AppLocalizations.of(
-                                  context,
-                                )!.settings_breakfast_time,
-                            value: settings.breakfastTime,
-                            onTap:
-                                () =>
-                                    _selectTime(context, settings, 'breakfast'),
-                          ),
-                          _SettingRow(
-                            icon: LucideIcons.utensils,
-                            accent: AppColors.primary,
-                            title:
-                                AppLocalizations.of(
-                                  context,
-                                )!.settings_lunch_time,
-                            value: settings.lunchTime,
-                            onTap:
-                                () => _selectTime(context, settings, 'lunch'),
-                          ),
-                          _SettingRow(
-                            icon: LucideIcons.moon,
-                            accent: AppColors.primary,
-                            title:
-                                AppLocalizations.of(
-                                  context,
-                                )!.settings_dinner_time,
-                            value: settings.dinnerTime,
-                            onTap:
-                                () => _selectTime(context, settings, 'dinner'),
-                          ),
-                        ],
-                      ],
+                    (context, value, _) => _SwitchRow(
+                      icon: LucideIcons.sparkles,
+                      accent: AppColors.primary,
+                      title: l10n.settings_daily_motivation,
+                      value: value,
+                      onChanged:
+                          context
+                              .read<SettingsProvider>()
+                              .toggleDailyMotivation,
                     ),
+              ),
+            ],
+          ),
+          Selector<SettingsProvider, bool>(
+            selector: (_, s) => s.mealRemindersEnabled,
+            builder: (context, enabled, _) {
+              if (!enabled) return const SizedBox.shrink();
+              return Column(
+                children: [
+                  const SizedBox(height: 24),
+                  _SettingsSectionFrame(
+                    title: l10n.settings_meal_reminders, // "Meal Reminders"
+                    accent: AppColors.primary,
+                    children: [
+                      Consumer<SettingsProvider>(
+                        builder: (context, settings, _) => Column(
+                          children: [
+                            _SettingRow(
+                              icon: LucideIcons.egg,
+                              accent: AppColors.primary,
+                              title: l10n.settings_breakfast_time,
+                              value: settings.breakfastTime,
+                              onTap:
+                                  () =>
+                                      _selectTime(context, settings, 'breakfast'),
+                            ),
+                            _SettingRow(
+                              icon: LucideIcons.utensils,
+                              accent: AppColors.primary,
+                              title: l10n.settings_lunch_time,
+                              value: settings.lunchTime,
+                              onTap:
+                                  () => _selectTime(context, settings, 'lunch'),
+                            ),
+                            _SettingRow(
+                              icon: LucideIcons.moon,
+                              accent: AppColors.primary,
+                              title: l10n.settings_dinner_time,
+                              value: settings.dinnerTime,
+                              onTap:
+                                  () => _selectTime(context, settings, 'dinner'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          _SettingsSectionFrame(
+            title: l10n.settings_appearance, // "App Appearance"
+            accent: AppColors.primary,
+            children: [
+              Consumer<SettingsProvider>(
+                builder: (context, settings, _) => Column(
+                  children: [
+                    _ThemeRow(currentMode: settings.themeMode),
+                    _SettingRow(
+                      icon: LucideIcons.languages,
+                      accent: AppColors.primary,
+                      title: l10n.settings_language,
+                      value: _getLanguageName(settings.languageCode),
+                      onTap: () => _showLanguageSelector(context, settings),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1968,14 +1954,19 @@ class _PreferencesScreen extends StatelessWidget {
 
 class _AccountScreen extends StatelessWidget {
   const _AccountScreen();
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
-      title: AppLocalizations.of(context)!.settings_account_title,
+      title: l10n.settings_account_title,
       scrollable: true,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       child: Column(
         children: [
-          _ProfileSection(
+          _SettingsSectionFrame(
+            title: l10n.settings_account, // "Account"
+            accent: AppColors.primary,
             children: [
               Selector<SettingsProvider, bool>(
                 selector: (_, s) => s.isPro,
@@ -1983,16 +1974,11 @@ class _AccountScreen extends StatelessWidget {
                     (context, isPro, _) => _SettingRow(
                       icon: LucideIcons.crown,
                       accent: AppColors.warning,
-                      title:
-                          AppLocalizations.of(context)!.settings_subscription,
+                      title: l10n.settings_subscription,
                       value:
                           isPro
-                              ? AppLocalizations.of(
-                                context,
-                              )!.settings_pro_active
-                              : AppLocalizations.of(
-                                context,
-                              )!.settings_manage_plan,
+                              ? l10n.settings_pro_active
+                              : l10n.settings_manage_plan,
                       onTap:
                           () => PremiumConversionService().openPaywall(
                             context,
@@ -2012,18 +1998,12 @@ class _AccountScreen extends StatelessWidget {
                       accent: isAnonymous ? AppColors.primary : AppColors.error,
                       title:
                           isAnonymous
-                              ? AppLocalizations.of(
-                                context,
-                              )!.settings_create_account
-                              : AppLocalizations.of(context)!.common_sign_out,
+                              ? l10n.settings_create_account
+                              : l10n.common_sign_out,
                       value:
                           isAnonymous
-                              ? AppLocalizations.of(
-                                context,
-                              )!.settings_sync_data_desc
-                              : AppLocalizations.of(
-                                context,
-                              )!.settings_sign_out_desc,
+                              ? l10n.settings_sync_data_desc
+                              : l10n.settings_sign_out_desc,
                       onTap: () => _handleSignOut(context),
                     ),
               ),
@@ -2034,11 +2014,8 @@ class _AccountScreen extends StatelessWidget {
                   return _SettingRow(
                     icon: LucideIcons.trash2,
                     accent: AppColors.error,
-                    title: AppLocalizations.of(context)!.common_delete_account,
-                    value:
-                        AppLocalizations.of(
-                          context,
-                        )!.common_delete_account_confirm,
+                    title: l10n.common_delete_account,
+                    value: l10n.common_delete_account_confirm,
                     onTap: () => _showDeleteConfirmation(context),
                   );
                 },
@@ -2046,8 +2023,8 @@ class _AccountScreen extends StatelessWidget {
               _SettingRow(
                 icon: LucideIcons.refreshCw,
                 accent: AppColors.primary,
-                title: AppLocalizations.of(context)!.paywall_restore,
-                value: AppLocalizations.of(context)!.premium_restore_success,
+                title: l10n.paywall_restore,
+                value: l10n.premium_restore_success,
                 onTap: () => _handleRestore(context),
               ),
             ],
@@ -2106,7 +2083,6 @@ class _AccountScreen extends StatelessWidget {
       return;
     }
 
-    // Show confirmation for logout if desired, or just do it
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -2214,20 +2190,25 @@ class _AccountScreen extends StatelessWidget {
 
 class _DataSyncScreen extends StatelessWidget {
   const _DataSyncScreen();
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
-      title: AppLocalizations.of(context)!.settings_data_sync_title,
+      title: l10n.settings_data_sync_title,
       scrollable: true,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       child: Column(
         children: [
-          _ProfileSection(
+          _SettingsSectionFrame(
+            title: l10n.settings_data_sync_title, // "Data & Sync"
+            accent: AppColors.primary,
             children: [
               _SettingRow(
                 icon: LucideIcons.download,
                 accent: AppColors.primary,
-                title: AppLocalizations.of(context)!.settings_export_data,
-                value: AppLocalizations.of(context)!.settings_export_desc,
+                title: l10n.settings_export_data,
+                value: l10n.settings_export_desc,
                 onTap: () async {
                   final mealProvider = context.read<MealProvider>();
                   final settingsProvider = context.read<SettingsProvider>();
@@ -2260,8 +2241,8 @@ class _DataSyncScreen extends StatelessWidget {
               _SettingRow(
                 icon: LucideIcons.cloud,
                 accent: AppColors.primary,
-                title: AppLocalizations.of(context)!.settings_data_sync_title,
-                value: AppLocalizations.of(context)!.settings_cloud_sync_desc,
+                title: l10n.settings_data_sync_title,
+                value: l10n.settings_cloud_sync_desc,
                 onTap:
                     () => Navigator.push(
                       context,
@@ -2284,20 +2265,25 @@ class _DataSyncScreen extends StatelessWidget {
 
 class _AboutScreen extends StatelessWidget {
   const _AboutScreen();
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
-      title: AppLocalizations.of(context)!.settings_about_title,
+      title: l10n.settings_about_title,
       scrollable: true,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       child: Column(
         children: [
-          _ProfileSection(
+          _SettingsSectionFrame(
+            title: l10n.settings_about_title, // "About"
+            accent: AppColors.primary,
             children: [
               _SettingRow(
                 icon: LucideIcons.shield,
                 accent: AppColors.primary,
-                title: AppLocalizations.of(context)!.settings_privacy,
-                value: AppLocalizations.of(context)!.settings_privacy_desc,
+                title: l10n.settings_privacy,
+                value: l10n.settings_privacy_desc,
                 onTap:
                     () => launchUrl(
                       Uri.parse('https://snapcal.app/privacy'),
@@ -2307,8 +2293,8 @@ class _AboutScreen extends StatelessWidget {
               _SettingRow(
                 icon: LucideIcons.fileText,
                 accent: AppColors.primary,
-                title: AppLocalizations.of(context)!.settings_terms,
-                value: AppLocalizations.of(context)!.settings_terms_desc,
+                title: l10n.settings_terms,
+                value: l10n.settings_terms_desc,
                 onTap:
                     () => launchUrl(
                       Uri.parse('https://snapcal.app/terms'),
@@ -2318,15 +2304,14 @@ class _AboutScreen extends StatelessWidget {
               _SettingRow(
                 icon: LucideIcons.sparkles,
                 accent: AppColors.primary,
-                title: AppLocalizations.of(context)!.settings_about_app,
+                title: l10n.settings_about_app,
                 value: 'v1.0.0',
                 onTap:
                     () => showAboutDialog(
                       context: context,
                       applicationName: 'SnapCal',
                       applicationVersion: '1.0.0',
-                      applicationLegalese:
-                          AppLocalizations.of(context)!.settings_legalese,
+                      applicationLegalese: l10n.settings_legalese,
                     ),
               ),
             ],
@@ -2335,4 +2320,460 @@ class _AboutScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _WeightProgressBar extends StatelessWidget {
+  const _WeightProgressBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Consumer2<MetricsProvider, SettingsProvider>(
+      builder: (context, metrics, settings, _) {
+        final unit = settings.weightUnit;
+        final startWeightKg = settings.startingWeight;
+        final currentWeightKg = metrics.currentWeight ?? startWeightKg;
+        final targetWeightKg = settings.targetWeight;
+
+        if (startWeightKg == null || targetWeightKg == null || currentWeightKg == null) {
+          return const SizedBox.shrink();
+        }
+
+        // Convert weights for display
+        final double startWeight = unit == 'lb' ? startWeightKg * 2.20462 : startWeightKg;
+        final double currentWeight = unit == 'lb' ? currentWeightKg * 2.20462 : currentWeightKg;
+        final double targetWeight = unit == 'lb' ? targetWeightKg * 2.20462 : targetWeightKg;
+
+        // Calculate progress percentage
+        double progress = 0.0;
+        final diffTotal = (startWeight - targetWeight).abs();
+        if (diffTotal > 0.01) {
+          if (targetWeight < startWeight) {
+            // Weight loss goal
+            progress = (startWeight - currentWeight) / (startWeight - targetWeight);
+          } else {
+            // Weight gain goal
+            progress = (currentWeight - startWeight) / (targetWeight - startWeight);
+          }
+          progress = progress.clamp(0.0, 1.0);
+        }
+
+        final leftToGoal = (currentWeight - targetWeight).abs();
+        final isLoss = targetWeight < startWeight;
+
+        final l10n = AppLocalizations.of(context)!;
+        return _SettingsSurface(
+          accent: AppColors.primary,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isLoss ? l10n.settings_weight_loss_progress : l10n.settings_weight_gain_progress,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    '${(progress * 100).round()}%',
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Progress Bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  height: 10,
+                  child: Stack(
+                    children: [
+                      Container(
+                        color: isDark
+                            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+                            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                      ),
+                      FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: progress,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primary.withValues(alpha: 0.7),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Values legend
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _WeightLabel(
+                    label: l10n.settings_weight_start,
+                    value: '${startWeight.toStringAsFixed(1)} ${_getLocalUnit(context, unit)}',
+                    alignment: CrossAxisAlignment.start,
+                  ),
+                  _WeightLabel(
+                    label: l10n.settings_weight_current,
+                    value: '${currentWeight.toStringAsFixed(1)} ${_getLocalUnit(context, unit)}',
+                    isHighlight: true,
+                    alignment: CrossAxisAlignment.center,
+                  ),
+                  _WeightLabel(
+                    label: l10n.settings_weight_target,
+                    value: '${targetWeight.toStringAsFixed(1)} ${_getLocalUnit(context, unit)}',
+                    alignment: CrossAxisAlignment.end,
+                  ),
+                ],
+              ),
+              if (leftToGoal > 0.05) ...[
+                const SizedBox(height: 12),
+                Divider(
+                  height: 1,
+                  thickness: 0.5,
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.08),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: Text(
+                    leftToGoal <= 0.1
+                        ? l10n.settings_goal_reached
+                        : l10n.settings_left_to_reach_target(leftToGoal.toStringAsFixed(1), _getLocalUnit(context, unit)),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _WeightLabel extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isHighlight;
+  final CrossAxisAlignment alignment;
+
+  const _WeightLabel({
+    required this.label,
+    required this.value,
+    this.isHighlight = false,
+    this.alignment = CrossAxisAlignment.center,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: alignment,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: AppTypography.labelSmall.copyWith(
+            color: isHighlight
+                ? AppColors.primary
+                : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            fontSize: 9,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: AppTypography.bodyMedium.copyWith(
+            fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w600,
+            color: isHighlight ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MacroCalorieRelationshipCard extends StatelessWidget {
+  const _MacroCalorieRelationshipCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Consumer<SettingsProvider>(
+      builder: (context, settings, _) {
+        final pGrams = settings.dailyProteinGoal;
+        final cGrams = settings.dailyCarbGoal;
+        final fGrams = settings.dailyFatGoal;
+
+        final pKcal = pGrams * 4.0;
+        final cKcal = cGrams * 4.0;
+        final fKcal = fGrams * 9.0;
+        final totalKcal = pKcal + cKcal + fKcal;
+
+        double pPct = 0.33;
+        double cPct = 0.33;
+        double fPct = 0.34;
+
+        if (totalKcal > 0) {
+          pPct = pKcal / totalKcal;
+          cPct = cKcal / totalKcal;
+          fPct = fKcal / totalKcal;
+        }
+
+        final l10n = AppLocalizations.of(context)!;
+        return _SettingsSurface(
+          accent: AppColors.primary,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.settings_macro_calorie_split,
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l10n.settings_macro_calorie_split_desc,
+                style: AppTypography.labelSmall.copyWith(
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.w400,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Segmented bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  height: 12,
+                  child: Row(
+                    children: [
+                      if (pPct > 0)
+                        Expanded(
+                          flex: (pPct * 1000).round(),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: AppColors.proteinGradient,
+                            ),
+                          ),
+                        ),
+                      if (cPct > 0)
+                        Expanded(
+                          flex: (cPct * 1000).round(),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: AppColors.carbsGradient,
+                            ),
+                          ),
+                        ),
+                      if (fPct > 0)
+                        Expanded(
+                          flex: (fPct * 1000).round(),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: AppColors.fatGradient,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Legend
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _MacroLegendItem(
+                    label: l10n.settings_protein,
+                    grams: '$pGrams${l10n.settings_grams_unit}',
+                    kcal: '${pKcal.round()} ${l10n.settings_kcal_unit}',
+                    percentage: '${(pPct * 100).round()}%',
+                    color: AppColors.protein,
+                  ),
+                  _MacroLegendItem(
+                    label: l10n.settings_carbs,
+                    grams: '$cGrams${l10n.settings_grams_unit}',
+                    kcal: '${cKcal.round()} ${l10n.settings_kcal_unit}',
+                    percentage: '${(cPct * 100).round()}%',
+                    color: AppColors.carbs,
+                  ),
+                  _MacroLegendItem(
+                    label: l10n.settings_fat,
+                    grams: '$fGrams${l10n.settings_grams_unit}',
+                    kcal: '${fKcal.round()} ${l10n.settings_kcal_unit}',
+                    percentage: '${(fPct * 100).round()}%',
+                    color: AppColors.fat,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MacroLegendItem extends StatelessWidget {
+  final String label;
+  final String grams;
+  final String kcal;
+  final String percentage;
+  final Color color;
+
+  const _MacroLegendItem({
+    required this.label,
+    required this.grams,
+    required this.kcal,
+    required this.percentage,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          grams,
+          style: AppTypography.bodyMedium.copyWith(
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurface,
+            fontSize: 14,
+          ),
+        ),
+        Text(
+          '$kcal ($percentage)',
+          style: AppTypography.labelSmall.copyWith(
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            fontSize: 10,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _getLocalStatus(BuildContext context, String status) {
+  final l10n = AppLocalizations.of(context)!;
+  switch (status.toLowerCase()) {
+    case 'tracking enabled':
+    case 'enabled':
+      return l10n.settings_status_enabled;
+    case 'permission denied':
+    case 'denied':
+      return l10n.settings_status_denied;
+    case 'unsupported device':
+    case 'unsupported':
+      return l10n.settings_status_unsupported;
+    case 'tracking error':
+    case 'error':
+      return l10n.settings_status_error;
+    case 'tracking off':
+    case 'off':
+    default:
+      return l10n.settings_status_off;
+  }
+}
+
+String _getLocalGender(BuildContext context, String gender) {
+  final l10n = AppLocalizations.of(context)!;
+  switch (gender.toLowerCase()) {
+    case 'male':
+      return l10n.settings_gender_male;
+    case 'female':
+      return l10n.settings_gender_female;
+    case 'other':
+      return l10n.settings_gender_other;
+    default:
+      return gender;
+  }
+}
+
+String _getLocalUnit(BuildContext context, String unit) {
+  final l10n = AppLocalizations.of(context)!;
+  switch (unit.toLowerCase()) {
+    case 'kg':
+      return l10n.settings_unit_kg;
+    case 'lb':
+      return l10n.settings_unit_lb;
+    case 'cm':
+      return l10n.settings_unit_cm;
+    case 'in':
+      return l10n.settings_unit_in;
+    default:
+      return unit;
+  }
+}
+
+String _getLocalOption(BuildContext context, String option) {
+  final l10n = AppLocalizations.of(context)!;
+  final normalized = option.toLowerCase();
+  if (normalized == 'male' || normalized == 'female' || normalized == 'other') {
+    return _getLocalGender(context, normalized);
+  }
+  if (normalized == 'kg' || normalized == 'lb' || normalized == 'cm' || normalized == 'in') {
+    return _getLocalUnit(context, normalized);
+  }
+  if (normalized == 'yrs') {
+    return l10n.settings_age_unit;
+  }
+  if (normalized == 'kcal') {
+    return l10n.settings_kcal_unit;
+  }
+  if (normalized == 'g') {
+    return l10n.settings_grams_unit;
+  }
+  return option;
 }

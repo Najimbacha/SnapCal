@@ -222,10 +222,6 @@ class _SnapScreenState extends State<SnapScreen>
         originalCalories: calories,
       );
 
-      if (!settingsProvider.isPro) {
-        await ScanGateService().incrementScanCount();
-      }
-
       _controller.reset();
     } finally {
       _isSavingResult = false;
@@ -262,11 +258,6 @@ class _SnapScreenState extends State<SnapScreen>
               'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
           originalCalories: item.calories,
         );
-      }
-
-      // Increment scan count once for the whole "session"
-      if (!settingsProvider.isPro) {
-        await ScanGateService().incrementScanCount();
       }
 
       _controller.reset();
@@ -523,8 +514,20 @@ class _SnapScreenState extends State<SnapScreen>
                                 icon: LucideIcons.scan,
                                 label:
                                     AppLocalizations.of(context)!.snap_barcode,
-                                onTap:
-                                    () => controller.isScanningBarcode = true,
+                                onTap: () {
+                                  final isPro =
+                                      context.read<SettingsProvider>().isPro;
+                                  if (!isPro) {
+                                    PremiumConversionService().openPaywall(
+                                      context,
+                                      PaywallEntryPoint.scanLimit,
+                                      limitReached: false,
+                                      featureName: 'barcode',
+                                    );
+                                  } else {
+                                    controller.isScanningBarcode = true;
+                                  }
+                                },
                               ),
                             ],
                           ),

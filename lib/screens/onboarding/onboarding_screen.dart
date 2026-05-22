@@ -8,19 +8,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/theme_colors.dart';
 import '../../data/services/calorie_onboarding_service.dart';
 import '../../providers/metrics_provider.dart';
 import '../../providers/settings_provider.dart';
 
-// Custom Color Palette from the design reference
-const Color _bgColor = Color(0xFF07090E);
-const Color _greenColor = Color(0xFF20D96C);
-const Color _textPrimary = Color(0xFFEEF3FF);
-const Color _textSecondary = Color(0xB3EEF3FF);
-const Color _textMuted = Color(0x66EEF3FF);
-
 /// SnapCal Premium Onboarding
-/// Re-implemented from the high-fidelity dark design reference.
+/// Re-implemented with full M3 Expressive branding & Google Gemini aesthetics.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -54,6 +49,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late final TextEditingController _currentWeightController;
   late final TextEditingController _goalWeightController;
 
+  final FocusNode _ageFocusNode = FocusNode();
+  final FocusNode _heightCmFocusNode = FocusNode();
+  final FocusNode _heightFtFocusNode = FocusNode();
+  final FocusNode _heightInFocusNode = FocusNode();
+  final FocusNode _currentWeightFocusNode = FocusNode();
+  final FocusNode _goalWeightFocusNode = FocusNode();
+
   String? _errorText;
   Timer? _autoAdvanceTimer;
 
@@ -73,12 +75,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       duration: const Duration(milliseconds: 600),
     )..forward();
 
-    _ageController = TextEditingController();
-    _heightCmController = TextEditingController();
-    _heightFtController = TextEditingController();
-    _heightInController = TextEditingController();
-    _currentWeightController = TextEditingController();
-    _goalWeightController = TextEditingController();
+    _ageController = TextEditingController(text: '28');
+    _heightCmController = TextEditingController(text: '170');
+    _heightFtController = TextEditingController(text: '5');
+    _heightInController = TextEditingController(text: '7');
+    if (_isImperial) {
+      _currentWeightController = TextEditingController(text: '165');
+      _goalWeightController = TextEditingController(text: '155');
+    } else {
+      _currentWeightController = TextEditingController(text: '75');
+      _goalWeightController = TextEditingController(text: '70');
+    }
   }
 
   @override
@@ -91,6 +98,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _heightInController.dispose();
     _currentWeightController.dispose();
     _goalWeightController.dispose();
+    _ageFocusNode.dispose();
+    _heightCmFocusNode.dispose();
+    _heightFtFocusNode.dispose();
+    _heightInFocusNode.dispose();
+    _currentWeightFocusNode.dispose();
+    _goalWeightFocusNode.dispose();
     _autoAdvanceTimer?.cancel();
     super.dispose();
   }
@@ -296,12 +309,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final settings = context.read<SettingsProvider>();
     final metrics = context.read<MetricsProvider>();
 
-    // Fire and forget the persistence to make the transition instant
-    settings.completeOnboarding(
-      profile: _profile!,
-      recommendation: _recommendation!,
-    );
-    metrics.logWeight(_profile!.currentWeightKg);
+    try {
+      // We must await both completeOnboarding and logWeight. Awaiting completeOnboarding
+      // ensures settings.onboardingComplete is true before we call context.go('/')
+      // to avoid GoRouter's redirect logic forcing us back to /onboarding.
+      await settings.completeOnboarding(
+        profile: _profile!,
+        recommendation: _recommendation!,
+      );
+      await metrics.logWeight(_profile!.currentWeightKg);
+    } catch (e) {
+      debugPrint('OnboardingScreen: Error completing onboarding: $e');
+    }
 
     // Give a tiny moment for haptics/UI state to settle then jump
     await Future.delayed(const Duration(milliseconds: 100));
@@ -315,19 +334,24 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: context.backgroundColor,
       body: Stack(
         children: [
           // Animated Mesh Background
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _bgController,
-              builder:
-                  (context, _) => CustomPaint(
-                    painter: _MeshPainter(progress: _bgController.value),
-                  ),
+              builder: (context, _) => CustomPaint(
+                painter: _MeshPainter(
+                  progress: _bgController.value,
+                  color1: context.primaryColor,
+                  color2: AppColors.tertiarySeed,
+                  isDark: isDark,
+                ),
+              ),
             ),
           ),
 
@@ -337,7 +361,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 // Header
                 Padding(
                   padding: const EdgeInsets.only(
-                    top: 32,
+                    top: 24,
                     bottom: 12,
                     left: 24,
                     right: 24,
@@ -362,8 +386,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               l10n
                                   .onboarding_step(_stepIndex + 1, _totalSteps)
                                   .toUpperCase(),
-                              style: const TextStyle(
-                                color: _textMuted,
+                              style: TextStyle(
+                                color: context.textMutedColor,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.2,
@@ -394,7 +418,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 Padding(
                   padding: EdgeInsets.fromLTRB(
                     24,
-                    0,
+                    12,
                     24,
                     math.max(24.0, bottomPadding + 12.0),
                   ),
@@ -443,10 +467,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-        const Text(
+        Text(
           'SnapCal',
           style: TextStyle(
-            color: _greenColor,
+            color: context.primaryColor,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.5,
             fontSize: 11,
@@ -455,10 +479,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         const SizedBox(height: 12),
         Text(
           l10n.onboarding_welcome_title.toUpperCase(),
-          style: const TextStyle(
-            color: _textPrimary,
+          style: TextStyle(
+            color: context.textPrimaryColor,
             fontSize: 42,
-            // DESIGN: relaxed letter-spacing and taller line-height for legibility
             height: 1.05,
             fontWeight: FontWeight.w900,
             letterSpacing: -1.2,
@@ -468,8 +491,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         const SizedBox(height: 20),
         Text(
           l10n.onboarding_welcome_body,
-          style: const TextStyle(
-            color: _textSecondary,
+          style: TextStyle(
+            color: context.textSecondaryColor,
             fontSize: 16,
             height: 1.5,
           ),
@@ -502,6 +525,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         _NumberInput(
           controller: _ageController,
           unit: l10n.onboarding_age_suffix,
+          focusNode: _ageFocusNode,
+          autofocus: true,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) {
+            if (!_isImperial) {
+              _heightCmFocusNode.requestFocus();
+            } else {
+              _heightFtFocusNode.requestFocus();
+            }
+          },
         ),
         const SizedBox(height: 12),
         _InputLabel(l10n.onboarding_gender),
@@ -541,16 +574,34 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         ),
         const SizedBox(height: 4),
         if (!_isImperial)
-          _NumberInput(controller: _heightCmController, unit: 'cm')
+          _NumberInput(
+            controller: _heightCmController,
+            unit: 'cm',
+            focusNode: _heightCmFocusNode,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _handleNext(),
+          )
         else
           Row(
             children: [
               Expanded(
-                child: _InputBox(controller: _heightFtController, suffix: 'ft'),
+                child: _InputBox(
+                  controller: _heightFtController,
+                  suffix: 'ft',
+                  focusNode: _heightFtFocusNode,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _heightInFocusNode.requestFocus(),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _InputBox(controller: _heightInController, suffix: 'in'),
+                child: _InputBox(
+                  controller: _heightInController,
+                  suffix: 'in',
+                  focusNode: _heightInFocusNode,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _handleNext(),
+                ),
               ),
             ],
           ),
@@ -585,6 +636,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         _NumberInput(
           controller: _currentWeightController,
           unit: _isImperial ? 'lbs' : 'kg',
+          focusNode: _currentWeightFocusNode,
+          autofocus: true,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _goalWeightFocusNode.requestFocus(),
         ),
         const SizedBox(height: 12),
         _InputLabel(l10n.settings_target_weight),
@@ -592,13 +647,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           controller: _goalWeightController,
           unit: _isImperial ? 'lbs' : 'kg',
           isAccent: true,
+          focusNode: _goalWeightFocusNode,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _handleNext(),
         ),
         const SizedBox(height: 16),
         Center(
           child: Text(
             l10n.onboarding_target_intro_body,
-            style: const TextStyle(
-              color: Color(0x99EEF3FF),
+            style: TextStyle(
+              color: context.textSecondaryColor,
               fontSize: 12,
               height: 1.4,
             ),
@@ -611,6 +669,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _buildTimeline(AppLocalizations l10n) {
+    final primaryColor = context.primaryColor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -625,16 +684,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             children: [
               Text(
                 _timelineMonths.round().toString(),
-                // DESIGN: tighter line-height on display number for deliberate compact feel
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 64,
                   fontWeight: FontWeight.w900,
-                  color: _greenColor,
+                  color: primaryColor,
                   fontFamily: 'Syne',
                   height: 0.9,
                 ),
               ),
-              // DESIGN: small gap between number and unit label
               const SizedBox(height: 4),
               Text(
                 l10n
@@ -642,8 +699,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     .split(' ')
                     .last
                     .toUpperCase(),
-                style: const TextStyle(
-                  color: _textMuted,
+                style: TextStyle(
+                  color: context.textMutedColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -651,14 +708,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ],
           ),
         ),
-        // DESIGN: optimized vertical grouping — number and slider now feel like one cohesive unit
         const SizedBox(height: 24),
         SliderTheme(
           data: SliderThemeData(
-            activeTrackColor: _greenColor,
-            inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
-            thumbColor: _greenColor,
-            overlayColor: _greenColor.withValues(alpha: 0.1),
+            activeTrackColor: primaryColor,
+            inactiveTrackColor: primaryColor.withValues(alpha: 0.15),
+            thumbColor: primaryColor,
+            overlayColor: primaryColor.withValues(alpha: 0.1),
             trackHeight: 4,
           ),
           child: Slider(
@@ -680,16 +736,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             children: [
               Text(
                 '1 ${l10n.onboarding_months(1).split(' ').last.toUpperCase()}',
-                style: const TextStyle(
-                  color: Color(0xB3EEF3FF),
+                style: TextStyle(
+                  color: context.textSecondaryColor,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               Text(
                 '12 ${l10n.onboarding_months(12).split(' ').last.toUpperCase()}',
-                style: const TextStyle(
-                  color: Color(0xB3EEF3FF),
+                style: TextStyle(
+                  color: context.textSecondaryColor,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),
@@ -725,7 +781,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           emoji: '🚶',
           title: l10n.onboarding_activity_light_mover,
           subtitle: l10n.onboarding_activity_light_mover_desc,
-          color: const Color(0xFF25D96C),
+          color: context.primaryColor,
           selected: _activityLevel == 'light_mover',
           onTap: () => _setActivity('light_mover'),
         ),
@@ -734,7 +790,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           emoji: '🏃',
           title: l10n.onboarding_activity_active_title,
           subtitle: l10n.onboarding_activity_active_desc,
-          color: const Color(0xFF7C5CEF),
+          color: AppColors.tertiarySeed,
           selected: _activityLevel == 'active',
           onTap: () => _setActivity('active'),
         ),
@@ -743,7 +799,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           emoji: '🏋️',
           title: l10n.onboarding_activity_athlete,
           subtitle: l10n.onboarding_activity_athlete_desc,
-          color: const Color(0xFFFF8C38),
+          color: AppColors.amber,
           selected: _activityLevel == 'athlete',
           onTap: () => _setActivity('athlete'),
         ),
@@ -751,8 +807,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         Center(
           child: Text(
             l10n.onboarding_activity_footer,
-            style: const TextStyle(
-              color: _textMuted,
+            style: TextStyle(
+              color: context.textMutedColor,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -767,7 +823,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     setState(() => _activityLevel = val);
     _autoAdvanceTimer?.cancel();
     _autoAdvanceTimer = Timer(const Duration(milliseconds: 700), () {
-      if (mounted && _stepIndex == 4) _handleNext();
+      if (mounted && _stepIndex == 3) _handleNext();
     });
   }
 
@@ -778,6 +834,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
     final res = _recommendation;
     if (res == null) return const SizedBox.shrink();
+    final primaryColor = context.primaryColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,30 +848,32 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: _greenColor.withValues(alpha: 0.08),
+            color: primaryColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: _greenColor.withValues(alpha: 0.12)),
+            border: Border.all(color: primaryColor.withValues(alpha: 0.12)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                res.dailyCalories.toString(),
-                // DESIGN: tighter line-height on large display number for intentional compactness
-                style: const TextStyle(
-                  fontSize: 72,
-                  fontWeight: FontWeight.w900,
-                  color: _greenColor,
-                  fontFamily: 'Syne',
-                  height: 0.9,
+              ShaderMask(
+                shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
+                blendMode: BlendMode.srcIn,
+                child: Text(
+                  res.dailyCalories.toString(),
+                  style: const TextStyle(
+                    fontSize: 72,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    fontFamily: 'Syne',
+                    height: 0.9,
+                  ),
                 ),
               ),
-              // DESIGN: explicit gap between number and its label
               const SizedBox(height: 4),
               Text(
                 l10n.onboarding_result_daily_calories,
                 style: TextStyle(
-                  color: _textMuted,
+                  color: context.textMutedColor,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.5,
@@ -827,16 +886,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: _greenColor.withValues(alpha: 0.12),
+                  color: primaryColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(99),
                 ),
-                // DESIGN: use _isImperial to show correct unit in weekly rate pill
                 child: Text(
                   _isImperial
                       ? '📈 ~${(res.weeklyRateKg / 0.45359237).toStringAsFixed(1)} lbs / week'
                       : '📈 ~${res.weeklyRateKg.toStringAsFixed(1)} kg / week',
-                  style: const TextStyle(
-                    color: _greenColor,
+                  style: TextStyle(
+                    color: primaryColor,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -852,7 +910,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               child: _MacroBox(
                 label: l10n.result_protein,
                 value: '${res.proteinGrams}g',
-                color: const Color(0xFF60A5FA),
+                colors: AppColors.proteinGradient.colors,
               ),
             ),
             const SizedBox(width: 8),
@@ -860,7 +918,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               child: _MacroBox(
                 label: l10n.result_carbs,
                 value: '${res.carbGrams}g',
-                color: const Color(0xFF4ADE80),
+                colors: AppColors.carbsGradient.colors,
               ),
             ),
             const SizedBox(width: 8),
@@ -868,7 +926,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               child: _MacroBox(
                 label: l10n.result_fat,
                 value: '${res.fatGrams}g',
-                color: const Color(0xFFFBBF24),
+                colors: AppColors.fatGradient.colors,
               ),
             ),
           ],
@@ -893,23 +951,21 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       child: Column(
         children: [
           const SizedBox(height: 40),
-          // DESIGN: dedicated loading eyebrow key — use onboarding_result_loading_eyebrow
           Text(
             l10n.onboarding_result_loading_eyebrow.toUpperCase(),
-            style: const TextStyle(
-              color: _greenColor,
+            style: TextStyle(
+              color: context.primaryColor,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.5,
               fontSize: 11,
             ),
           ),
           const SizedBox(height: 12),
-          // DESIGN: use a dedicated calculating title key so this doesn't reuse welcome copy
           Text(
             l10n.onboarding_result_calibrating,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: _textPrimary,
+            style: TextStyle(
+              color: context.textPrimaryColor,
               fontSize: 38,
               fontWeight: FontWeight.w800,
               fontFamily: 'Syne',
@@ -921,8 +977,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           Text(
             l10n.onboarding_welcome_body,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: _textSecondary,
+            style: TextStyle(
+              color: context.textSecondaryColor,
               fontSize: 16,
               height: 1.5,
             ),
@@ -934,8 +990,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           const SizedBox(height: 20),
           Text(
             l10n.onboarding_result_calibrating,
-            style: const TextStyle(
-              color: _textMuted,
+            style: TextStyle(
+              color: context.textMutedColor,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -961,6 +1017,7 @@ class _HeaderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 200),
       opacity: visible ? 1 : 0,
@@ -972,11 +1029,11 @@ class _HeaderButton extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
+              color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+              border: Border.all(color: context.cardBorderColor),
             ),
-            child: Icon(icon, size: 20, color: Colors.white),
+            child: Icon(icon, size: 20, color: context.textPrimaryColor),
           ),
         ),
       ),
@@ -990,10 +1047,11 @@ class _ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 6,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(99),
       ),
       child: FractionallySizedBox(
@@ -1001,13 +1059,13 @@ class _ProgressBar extends StatelessWidget {
         widthFactor: progress,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF20D96C),
+            gradient: AppColors.primaryGradient,
             borderRadius: BorderRadius.circular(99),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF20D96C).withValues(alpha: 0.6),
-                blurRadius: 12,
-                spreadRadius: 1,
+                color: AppColors.primary.withValues(alpha: 0.4),
+                blurRadius: 10,
+                spreadRadius: 0.5,
               ),
             ],
           ),
@@ -1035,45 +1093,38 @@ class _PrimaryButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-        height: 64,
+        height: 60,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF20D96C), Color(0xFF16A34A)],
-            // DESIGN: top-to-bottom gradient reads as natural lighting, not a diagonal slash
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-          borderRadius: BorderRadius.circular(22),
+          gradient: AppColors.primaryGradient,
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              // DESIGN: bumped shadow opacity from 0.35 → 0.45 for more perceived lift on dark bg
-              color: const Color(0xFF20D96C).withValues(alpha: 0.45),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+              color: AppColors.primary.withValues(alpha: 0.35),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
               spreadRadius: -2,
             ),
           ],
         ),
         child: Center(
-          child:
-              loading
-                  ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.5,
-                    ),
-                  )
-                  : Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
+          child: loading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
                   ),
+                )
+              : Text(
+                  text,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
         ),
       ),
     );
@@ -1087,12 +1138,12 @@ class _FeaturePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        // DESIGN: bumped border opacity 0.07 → 0.12 so pills read as distinct against the mesh bg
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+        border: Border.all(color: context.cardBorderColor),
         borderRadius: BorderRadius.circular(99),
       ),
       child: Row(
@@ -1102,8 +1153,8 @@ class _FeaturePill extends StatelessWidget {
           const SizedBox(width: 7),
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFFEEF3FF),
+            style: TextStyle(
+              color: context.textPrimaryColor,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -1132,19 +1183,18 @@ class _StepHeader extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           eyebrow.toUpperCase(),
-          style: const TextStyle(
-            color: Color(0xFF20D96C),
+          style: TextStyle(
+            color: context.primaryColor,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.5,
             fontSize: 10,
           ),
         ),
         const SizedBox(height: 8),
-        // DESIGN: Syne applied consistently to all step titles for editorial punch
         Text(
           title,
-          style: const TextStyle(
-            color: Color(0xFFEEF3FF),
+          style: TextStyle(
+            color: context.textPrimaryColor,
             fontSize: 26,
             fontWeight: FontWeight.w800,
             fontFamily: 'Syne',
@@ -1155,8 +1205,8 @@ class _StepHeader extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           body,
-          style: const TextStyle(
-            color: Color(0xB3EEF3FF),
+          style: TextStyle(
+            color: context.textSecondaryColor,
             fontSize: 14,
             height: 1.5,
             fontWeight: FontWeight.w400,
@@ -1182,6 +1232,9 @@ class _ChoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = context.primaryColor;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -1189,26 +1242,23 @@ class _ChoiceCard extends StatelessWidget {
         curve: Curves.easeOutQuint,
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          // DESIGN: full-opacity card bg so unselected state reads against the mesh background
-          color: selected ? const Color(0x1720D96C) : const Color(0xFF131923),
+          color: selected
+              ? primaryColor.withValues(alpha: isDark ? 0.12 : 0.08)
+              : context.cardColor,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color:
-                selected
-                    ? const Color(0xFF20D96C)
-                    : Colors.white.withValues(alpha: 0.08),
+            color: selected ? primaryColor : context.cardBorderColor,
             width: selected ? 2.0 : 1.2,
           ),
-          boxShadow:
-              selected
-                  ? [
-                    BoxShadow(
-                      color: const Color(0xFF20D96C).withValues(alpha: 0.15),
-                      blurRadius: 20,
-                      offset: Offset.zero,
-                    ),
-                  ]
-                  : [],
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: isDark ? 0.15 : 0.08),
+                    blurRadius: 20,
+                    offset: Offset.zero,
+                  ),
+                ]
+              : [],
         ),
         child: Column(
           children: [
@@ -1216,10 +1266,9 @@ class _ChoiceCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color:
-                    selected
-                        ? const Color(0x2020D96C)
-                        : Colors.white.withValues(alpha: 0.05),
+                color: selected
+                    ? primaryColor.withValues(alpha: 0.18)
+                    : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -1230,7 +1279,7 @@ class _ChoiceCard extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : _textPrimary,
+                color: selected ? primaryColor : context.textPrimaryColor,
                 fontSize: 15,
                 fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
               ),
@@ -1261,8 +1310,9 @@ class _UnitToggle extends StatelessWidget {
       width: 140,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF131923),
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.cardBorderColor),
       ),
       child: Row(
         children: [
@@ -1298,40 +1348,32 @@ class _ToggleBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = context.primaryColor;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          gradient:
-              active
-                  ? const LinearGradient(
-                    colors: [Color(0xFF20D96C), Color(0xFF16A34A)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                  : null,
-          color: active ? null : Colors.transparent,
+          gradient: active ? AppColors.primaryGradient : null,
           borderRadius: BorderRadius.circular(10),
-          boxShadow:
-              active
-                  ? [
-                    BoxShadow(
-                      color: const Color(0xFF20D96C).withValues(alpha: 0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                  : [],
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: 0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
         child: Center(
           child: Text(
             label,
             style: TextStyle(
-              color: active ? const Color(0xFF020B06) : const Color(0x66EEF3FF),
-              fontSize: 13,
+              color: active ? Colors.white : context.textMutedColor,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.5,
             ),
@@ -1346,10 +1388,19 @@ class _NumberInput extends StatefulWidget {
   final TextEditingController controller;
   final String unit;
   final bool isAccent;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final void Function(String)? onSubmitted;
+  final bool autofocus;
+
   const _NumberInput({
     required this.controller,
     this.unit = '',
     this.isAccent = false,
+    this.focusNode,
+    this.textInputAction,
+    this.onSubmitted,
+    this.autofocus = false,
   });
 
   @override
@@ -1357,49 +1408,74 @@ class _NumberInput extends StatefulWidget {
 }
 
 class _NumberInputState extends State<_NumberInput> {
-  final FocusNode _focusNode = FocusNode();
+  FocusNode? _internalFocusNode;
+  FocusNode get _effectiveFocusNode => widget.focusNode ?? (_internalFocusNode ??= FocusNode());
   bool _isFocused = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(
-      () => setState(() => _isFocused = _focusNode.hasFocus),
-    );
+    _effectiveFocusNode.addListener(_handleFocusChange);
+    _isFocused = _effectiveFocusNode.hasFocus;
+  }
+
+  void _handleFocusChange() {
+    if (mounted) {
+      setState(() => _isFocused = _effectiveFocusNode.hasFocus);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _NumberInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focusNode != oldWidget.focusNode) {
+      oldWidget.focusNode?.removeListener(_handleFocusChange);
+      _effectiveFocusNode.addListener(_handleFocusChange);
+      _isFocused = _effectiveFocusNode.hasFocus;
+    }
   }
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    widget.focusNode?.removeListener(_handleFocusChange);
+    _internalFocusNode?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bgColor =
-        widget.isAccent
-            ? (_isFocused ? const Color(0x2220D96C) : const Color(0x1120D96C))
-            : (_isFocused ? const Color(0x1A20D96C) : const Color(0xFF131923));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = context.primaryColor;
 
-    final borderColor =
-        widget.isAccent
-            ? const Color(0xFF20D96C).withValues(alpha: 0.4)
-            : (_isFocused
-                ? const Color(0xFF20D96C)
-                : Colors.white.withValues(alpha: 0.1));
+    final bgColor = widget.isAccent
+        ? (_isFocused ? primaryColor.withValues(alpha: 0.18) : primaryColor.withValues(alpha: 0.08))
+        : (_isFocused ? primaryColor.withValues(alpha: 0.1) : context.cardColor);
+
+    final borderColor = widget.isAccent
+        ? primaryColor.withValues(alpha: 0.4)
+        : (_isFocused ? primaryColor : context.cardBorderColor);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
       width: 200,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: _isFocused ? const Color(0xFF20D96C) : borderColor,
+          color: _isFocused ? primaryColor : borderColor,
           width: _isFocused ? 1.6 : 1.2,
         ),
+        boxShadow: _isFocused
+            ? [
+                BoxShadow(
+                  color: primaryColor.withValues(alpha: isDark ? 0.1 : 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : [],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -1408,14 +1484,17 @@ class _NumberInputState extends State<_NumberInput> {
           Expanded(
             child: TextField(
               controller: widget.controller,
-              focusNode: _focusNode,
+              focusNode: _effectiveFocusNode,
               keyboardType: TextInputType.number,
-              cursorColor: const Color(0xFF20D96C),
+              textInputAction: widget.textInputAction,
+              onSubmitted: widget.onSubmitted,
+              autofocus: widget.autofocus,
+              cursorColor: primaryColor,
               textAlignVertical: TextAlignVertical.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 38,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFFEEF3FF),
+                color: context.textPrimaryColor,
                 fontFamily: 'Syne',
                 letterSpacing: -1.5,
               ),
@@ -1427,7 +1506,7 @@ class _NumberInputState extends State<_NumberInput> {
                 enabledBorder: InputBorder.none,
                 hintText: '0',
                 hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: context.textMutedColor.withValues(alpha: 0.25),
                 ),
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -1439,8 +1518,8 @@ class _NumberInputState extends State<_NumberInput> {
               padding: const EdgeInsets.only(left: 6),
               child: Text(
                 widget.unit,
-                style: const TextStyle(
-                  color: Color(0xB3EEF3FF),
+                style: TextStyle(
+                  color: context.textSecondaryColor,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1455,54 +1534,83 @@ class _NumberInputState extends State<_NumberInput> {
 class _InputBox extends StatefulWidget {
   final TextEditingController controller;
   final String suffix;
-  const _InputBox({required this.controller, required this.suffix});
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final void Function(String)? onSubmitted;
+
+  const _InputBox({
+    required this.controller,
+    required this.suffix,
+    this.focusNode,
+    this.textInputAction,
+    this.onSubmitted,
+  });
 
   @override
   State<_InputBox> createState() => _InputBoxState();
 }
 
 class _InputBoxState extends State<_InputBox> {
-  final FocusNode _focusNode = FocusNode();
+  FocusNode? _internalFocusNode;
+  FocusNode get _effectiveFocusNode => widget.focusNode ?? (_internalFocusNode ??= FocusNode());
   bool _isFocused = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(
-      () => setState(() => _isFocused = _focusNode.hasFocus),
-    );
+    _effectiveFocusNode.addListener(_handleFocusChange);
+    _isFocused = _effectiveFocusNode.hasFocus;
+  }
+
+  void _handleFocusChange() {
+    if (mounted) {
+      setState(() => _isFocused = _effectiveFocusNode.hasFocus);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _InputBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focusNode != oldWidget.focusNode) {
+      oldWidget.focusNode?.removeListener(_handleFocusChange);
+      _effectiveFocusNode.addListener(_handleFocusChange);
+      _isFocused = _effectiveFocusNode.hasFocus;
+    }
   }
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    widget.focusNode?.removeListener(_handleFocusChange);
+    _internalFocusNode?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = context.primaryColor;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
-        color: _isFocused ? const Color(0x1A20D96C) : const Color(0xFF131923),
+        color: _isFocused ? primaryColor.withValues(alpha: 0.08) : context.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color:
-              _isFocused
-                  ? const Color(0xFF20D96C)
-                  : Colors.white.withValues(alpha: 0.1),
+          color: _isFocused ? primaryColor : context.cardBorderColor,
           width: _isFocused ? 1.6 : 1.2,
         ),
       ),
       child: TextField(
         controller: widget.controller,
-        focusNode: _focusNode,
+        focusNode: _effectiveFocusNode,
         keyboardType: TextInputType.number,
-        cursorColor: const Color(0xFF20D96C),
-        style: const TextStyle(
-          color: Color(0xFFEEF3FF),
+        textInputAction: widget.textInputAction,
+        onSubmitted: widget.onSubmitted,
+        autofocus: false,
+        cursorColor: primaryColor,
+        style: TextStyle(
+          color: context.textPrimaryColor,
           fontSize: 22,
           fontWeight: FontWeight.w800,
           fontFamily: 'Syne',
@@ -1516,8 +1624,8 @@ class _InputBoxState extends State<_InputBox> {
           isDense: true,
           contentPadding: EdgeInsets.zero,
           suffixText: widget.suffix,
-          suffixStyle: const TextStyle(
-            color: Color(0xB3EEF3FF),
+          suffixStyle: TextStyle(
+            color: context.textSecondaryColor,
             fontSize: 15,
             fontWeight: FontWeight.w700,
           ),
@@ -1537,8 +1645,8 @@ class _InputLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10, left: 4),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
-          color: Color(0x66EEF3FF),
+        style: TextStyle(
+          color: context.textMutedColor,
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.2,
@@ -1569,6 +1677,10 @@ class _ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeCardBg = color.withValues(alpha: isDark ? 0.15 : 0.08);
+    final activeBorderColor = color;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -1577,27 +1689,21 @@ class _ActivityCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          // DESIGN: full-opacity card bg for unselected state
-          color:
-              selected
-                  ? color.withValues(alpha: 0.15)
-                  : const Color(0xFF131923),
+          color: selected ? activeCardBg : context.cardColor,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: selected ? color : Colors.white.withValues(alpha: 0.08),
+            color: selected ? activeBorderColor : context.cardBorderColor,
             width: selected ? 2.0 : 1.2,
           ),
-          boxShadow:
-              selected
-                  ? [
-                    // DESIGN: symmetric halo (offset: zero) reads better on dark backgrounds
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: Offset.zero,
-                    ),
-                  ]
-                  : [],
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: isDark ? 0.2 : 0.08),
+                    blurRadius: 20,
+                    offset: Offset.zero,
+                  ),
+                ]
+              : [],
         ),
         child: Row(
           children: [
@@ -1605,10 +1711,9 @@ class _ActivityCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color:
-                    selected
-                        ? color.withValues(alpha: 0.2)
-                        : Colors.white.withValues(alpha: 0.05),
+                color: selected
+                    ? color.withValues(alpha: 0.2)
+                    : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Center(
@@ -1623,7 +1728,7 @@ class _ActivityCard extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: selected ? Colors.white : _textPrimary,
+                      color: selected ? (isDark ? Colors.white : context.textPrimaryColor) : context.textPrimaryColor,
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1632,10 +1737,9 @@ class _ActivityCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color:
-                          selected
-                              ? Colors.white.withValues(alpha: 0.7)
-                              : _textSecondary,
+                      color: selected
+                          ? (isDark ? Colors.white.withValues(alpha: 0.7) : context.textSecondaryColor)
+                          : context.textSecondaryColor,
                       fontSize: 13,
                     ),
                   ),
@@ -1644,7 +1748,7 @@ class _ActivityCard extends StatelessWidget {
             ),
             Icon(
               selected ? LucideIcons.checkCircle2 : LucideIcons.circle,
-              color: selected ? color : _textMuted,
+              color: selected ? color : context.textMutedColor,
               size: 22,
             ),
           ],
@@ -1665,7 +1769,6 @@ class _StepTransition extends StatelessWidget {
       switchInCurve: Curves.easeOutQuart,
       switchOutCurve: Curves.easeInQuart,
       transitionBuilder: (Widget child, Animation<double> animation) {
-        // DESIGN: slight vertical component added for natural parallax feel on mobile
         final offsetAnimation = Tween<Offset>(
           begin: const Offset(0.03, 0.015),
           end: Offset.zero,
@@ -1684,11 +1787,11 @@ class _StepTransition extends StatelessWidget {
 class _MacroBox extends StatelessWidget {
   final String label;
   final String value;
-  final Color color;
+  final List<Color> colors;
   const _MacroBox({
     required this.label,
     required this.value,
-    required this.color,
+    required this.colors,
   });
 
   @override
@@ -1696,26 +1799,30 @@ class _MacroBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.cardBorderColor),
       ),
       child: Column(
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              fontFamily: 'Syne',
+          ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(colors: colors).createShader(bounds),
+            blendMode: BlendMode.srcIn,
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'Syne',
+              ),
             ),
           ),
-          // DESIGN: explicit gap between value and label so 10px label isn't flush under the number
           const SizedBox(height: 4),
           Text(
             label.toUpperCase(),
-            style: const TextStyle(
-              color: Color(0x47EEF3FF),
+            style: TextStyle(
+              color: context.textMutedColor,
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
@@ -1738,16 +1845,17 @@ class _ResultInfoCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF131923),
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: context.cardBorderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title.toUpperCase(),
-            style: const TextStyle(
-              color: Color(0xFF20D96C),
+            style: TextStyle(
+              color: context.primaryColor,
               fontSize: 10,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.5,
@@ -1756,8 +1864,8 @@ class _ResultInfoCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             body,
-            style: const TextStyle(
-              color: Color(0x80EEF3FF),
+            style: TextStyle(
+              color: context.textSecondaryColor,
               fontSize: 14,
               height: 1.5,
               fontWeight: FontWeight.w500,
@@ -1781,13 +1889,14 @@ class _ErrorMessage extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0x14F87171),
+          color: AppColors.error.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
         ),
         child: Text(
           message!,
           style: const TextStyle(
-            color: Color(0xFFF87171),
+            color: AppColors.error,
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
@@ -1799,14 +1908,22 @@ class _ErrorMessage extends StatelessWidget {
 
 class _MeshPainter extends CustomPainter {
   final double progress;
-  _MeshPainter({required this.progress});
+  final Color color1;
+  final Color color2;
+  final bool isDark;
+  _MeshPainter({
+    required this.progress,
+    required this.color1,
+    required this.color2,
+    required this.isDark,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint =
         Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 80);
 
-    // Emerald blob top-left
+    // Indigo blob top-left
     final c1 = Offset(
       size.width * 0.25 + math.sin(progress * 2 * math.pi) * 30,
       size.height * 0.2 + math.cos(progress * 2 * math.pi) * 20,
@@ -1814,10 +1931,10 @@ class _MeshPainter extends CustomPainter {
     canvas.drawCircle(
       c1,
       size.width * 0.6,
-      paint..color = const Color(0xFF20D96C).withValues(alpha: 0.06),
+      paint..color = color1.withValues(alpha: isDark ? 0.08 : 0.05),
     );
 
-    // DESIGN: bumped orange blob opacity 0.04 → 0.06 so warm accent reads subtly in the corner
+    // Fuchsia blob bottom-right
     final c2 = Offset(
       size.width * 0.8 + math.cos(progress * 2 * math.pi) * 40,
       size.height * 0.8 + math.sin(progress * 2 * math.pi) * 30,
@@ -1825,13 +1942,16 @@ class _MeshPainter extends CustomPainter {
     canvas.drawCircle(
       c2,
       size.width * 0.5,
-      paint..color = const Color(0xFFFF8C38).withValues(alpha: 0.06),
+      paint..color = color2.withValues(alpha: isDark ? 0.06 : 0.04),
     );
   }
 
   @override
   bool shouldRepaint(covariant _MeshPainter oldDelegate) =>
-      oldDelegate.progress != progress;
+      oldDelegate.progress != progress ||
+      oldDelegate.color1 != color1 ||
+      oldDelegate.color2 != color2 ||
+      oldDelegate.isDark != isDark;
 }
 
 class _LoadingOrb extends StatefulWidget {
@@ -1860,13 +1980,13 @@ class _LoadingOrbState extends State<_LoadingOrb>
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = context.primaryColor;
     return AnimatedBuilder(
       animation: _ctrl,
       builder:
           (context, _) => Container(
             width: 100,
             height: 100,
-            // DESIGN: increased pulse scale 0.1 → 0.15 so the breathing feels more alive
             transform: Matrix4.diagonal3Values(
               1.0 + _ctrl.value * 0.15,
               1.0 + _ctrl.value * 0.15,
@@ -1877,7 +1997,7 @@ class _LoadingOrbState extends State<_LoadingOrb>
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFF20D96C).withValues(alpha: 0.2),
+                  primaryColor.withValues(alpha: 0.25),
                   Colors.transparent,
                 ],
               ),
@@ -1916,6 +2036,7 @@ class _DotRunnerState extends State<_DotRunner>
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = context.primaryColor;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
@@ -1930,7 +2051,7 @@ class _DotRunnerState extends State<_DotRunner>
               width: 6,
               height: 6,
               decoration: BoxDecoration(
-                color: const Color(0xFF20D96C).withValues(alpha: opacity),
+                color: primaryColor.withValues(alpha: opacity),
                 shape: BoxShape.circle,
               ),
             );

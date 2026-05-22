@@ -511,62 +511,55 @@ class _AuthBottomSheetState extends State<AuthBottomSheet>
                                 ),
                                 const SizedBox(height: 12),
                                 _StaggeredFade(
+                                  animation: _staggeredAnims![3],
+                                  child: _AuthSocialButton(
+                                    label: l10n.sync_facebook,
+                                    backgroundColor: const Color(
+                                      0xFF1877F2,
+                                    ),
+                                    textColor: Colors.white,
+                                    borderColor: Colors.transparent,
+                                    iconWidget: const FaIcon(
+                                      FontAwesomeIcons.facebookF,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                    isLoading: _facebookLoading,
+                                    onTap: _handleFacebook,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                _StaggeredFade(
                                   animation: _staggeredAnims![4],
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: _AuthSocialButton(
-                                          label: l10n.sync_facebook,
-                                          backgroundColor: const Color(
-                                            0xFF1877F2,
-                                          ),
-                                          textColor: Colors.white,
-                                          borderColor: Colors.transparent,
-                                          iconWidget: const FaIcon(
-                                            FontAwesomeIcons.facebookF,
-                                            size: 14,
-                                            color: Colors.white,
-                                          ),
-                                          isLoading: _facebookLoading,
-                                          onTap: _handleFacebook,
-                                          small: true,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: _AuthSocialButton(
-                                          label: l10n.sync_email,
-                                          backgroundColor:
-                                              isDark
-                                                  ? Colors.white.withValues(
-                                                    alpha: 0.05,
-                                                  )
-                                                  : Colors.black.withValues(
-                                                    alpha: 0.05,
-                                                  ),
-                                          textColor:
-                                              isDark
-                                                  ? Colors.white
-                                                  : Colors.black,
-                                          borderColor: Colors.transparent,
-                                          iconWidget: Icon(
-                                            LucideIcons.mail,
-                                            size: 14,
-                                            color:
-                                                isDark
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                          ),
-                                          isLoading: false,
-                                          onTap:
-                                              () => setState(() {
-                                                _showEmailForm = true;
-                                                _isSignUp = false;
-                                              }),
-                                          small: true,
-                                        ),
-                                      ),
-                                    ],
+                                  child: _AuthSocialButton(
+                                    label: l10n.sync_email,
+                                    backgroundColor:
+                                        isDark
+                                            ? Colors.white.withValues(
+                                              alpha: 0.05,
+                                            )
+                                            : Colors.black.withValues(
+                                              alpha: 0.05,
+                                            ),
+                                    textColor:
+                                        isDark
+                                            ? Colors.white
+                                            : Colors.black,
+                                    borderColor: Colors.transparent,
+                                    iconWidget: Icon(
+                                      LucideIcons.mail,
+                                      size: 14,
+                                      color:
+                                          isDark
+                                              ? Colors.white
+                                              : Colors.black,
+                                    ),
+                                    isLoading: false,
+                                    onTap:
+                                        () => setState(() {
+                                          _showEmailForm = true;
+                                          _isSignUp = false;
+                                        }),
                                   ),
                                 ),
                               ],
@@ -587,7 +580,6 @@ class _AuthSocialButton extends StatelessWidget {
   final Widget iconWidget;
   final bool isLoading;
   final VoidCallback onTap;
-  final bool small;
   final Color? backgroundColor;
   final Color? textColor;
   final Color? borderColor;
@@ -600,7 +592,6 @@ class _AuthSocialButton extends StatelessWidget {
     this.textColor,
     this.borderColor,
     this.isLoading = false,
-    this.small = false,
   });
 
   @override
@@ -652,9 +643,9 @@ class _AuthSocialButton extends StatelessWidget {
                 )
               else ...[
                 iconWidget,
-                if (!small) ...[
-                  const SizedBox(width: 10),
-                  Text(
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
                     label,
                     style: AppTypography.titleSmall.copyWith(
                       color:
@@ -662,18 +653,10 @@ class _AuthSocialButton extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.2,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ] else ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: AppTypography.labelLarge.copyWith(
-                      color:
-                          textColor ?? (isDark ? Colors.white : Colors.black),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+                ),
               ],
             ],
           ),

@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../core/state/async_ui_state.dart';
+import '../l10n/generated/app_localizations.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
@@ -182,7 +184,7 @@ class AuthProvider with ChangeNotifier {
         final description = e.description;
         _errorMessage =
             description == null || description.isEmpty
-                ? 'Google Sign-In failed (${e.code}). Please try again.'
+                ? _l10n.auth_google_sign_in_failed_code(e.code.name)
                 : description;
         _status = AuthStatus.error;
         _uiState = AsyncUiState.error(_errorMessage);
@@ -191,8 +193,7 @@ class AuthProvider with ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ AuthProvider: Firebase Google Auth Error: $e');
       _errorMessage =
-          e.message ??
-          'Firebase could not complete Google Sign-In (${e.code}).';
+          e.message ?? _l10n.auth_firebase_google_sign_in_failed(e.code);
       _status = AuthStatus.error;
       _uiState = AsyncUiState.error(_errorMessage);
       notifyListeners();
@@ -538,5 +539,16 @@ class AuthProvider with ChangeNotifier {
       _syncStatusFromUser();
     }
     notifyListeners();
+  }
+
+  AppLocalizations get _l10n {
+    final locale = PlatformDispatcher.instance.locale;
+    final languageCode =
+        AppLocalizations.supportedLocales.any(
+              (supported) => supported.languageCode == locale.languageCode,
+            )
+            ? locale.languageCode
+            : 'en';
+    return lookupAppLocalizations(Locale(languageCode));
   }
 }

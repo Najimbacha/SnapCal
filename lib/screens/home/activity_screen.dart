@@ -17,6 +17,7 @@ import '../../widgets/premium_prompt_card.dart';
 import '../../widgets/ui_blocks.dart';
 import '../../widgets/ambient_mesh_background.dart';
 import '../../widgets/activity_ring_gauge.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
@@ -42,9 +43,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
       0.0,
       1.0,
     );
+    final l10n = AppLocalizations.of(context)!;
 
     return AppPageScaffold(
-      title: 'Activity',
+      title: l10n.home_metric_activity,
       scrollable: true,
       background: const AmbientMeshBackground(),
       backgroundColor: Colors.transparent,
@@ -58,14 +60,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
             child: ActivityRingGauge(
               progress: progress,
               steps: activity.steps,
-              centerSubLabel: 'STEPS TODAY',
+              centerSubLabel: l10n.activity_steps_today_label,
               size: 280,
             ),
           ),
           const SizedBox(height: 16),
           Center(
             child: Text(
-              'Goal: ${activity.stepGoal} steps',
+              l10n.activity_steps_goal(activity.stepGoal),
               style: AppTypography.labelMedium.copyWith(
                 color: context.textMutedColor,
                 fontWeight: FontWeight.w800,
@@ -79,10 +81,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
             _PremiumActivityDashboard(activity: activity)
           else
             PremiumPromptCard(
-              title: 'Unlock weekly activity insights',
-              subtitle:
-                  'Go Pro for weekly steps, streaks, manual workout calories, activity score, and insights.',
-              buttonText: 'Go Pro',
+              title: l10n.activity_unlock_pro_title,
+              subtitle: l10n.activity_unlock_pro_subtitle,
+              buttonText: l10n.home_go_pro,
               icon: LucideIcons.lock,
               style: PremiumPromptStyle.glass,
               onTap:
@@ -109,7 +110,9 @@ class _TrackingStatusCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: (isDark ? Colors.black : Colors.white).withValues(alpha: isDark ? 0.2 : 0.6),
+        color: (isDark ? Colors.black : Colors.white).withValues(
+          alpha: isDark ? 0.2 : 0.6,
+        ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
@@ -119,7 +122,9 @@ class _TrackingStatusCard extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            activity.isConnected ? LucideIcons.footprints : LucideIcons.alertCircle,
+            activity.isConnected
+                ? LucideIcons.footprints
+                : LucideIcons.alertCircle,
             color: activity.isConnected ? AppColors.primary : AppColors.warning,
           ),
           const SizedBox(width: 14),
@@ -191,6 +196,7 @@ class _TrackingStatusCard extends StatelessWidget {
 class _DisclaimerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
@@ -208,7 +214,7 @@ class _DisclaimerCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Calories are estimated from steps and may not be exact.',
+              l10n.activity_calorie_estimate_disclaimer,
               style: AppTypography.bodySmall.copyWith(
                 color: context.textPrimaryColor,
                 fontWeight: FontWeight.w700,
@@ -229,6 +235,7 @@ class _PremiumActivityDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = activity.today;
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -238,9 +245,9 @@ class _PremiumActivityDashboard extends StatelessWidget {
               child: _MetricCard(
                 icon: LucideIcons.flame,
                 color: Colors.orange,
-                label: 'Estimated calories',
+                label: l10n.activity_estimated_calories,
                 value: '${today.activityCalories}',
-                unit: 'kcal',
+                unit: l10n.settings_kcal_unit,
               ),
             ),
             const SizedBox(width: 10),
@@ -248,9 +255,9 @@ class _PremiumActivityDashboard extends StatelessWidget {
               child: _MetricCard(
                 icon: LucideIcons.trophy,
                 color: AppColors.primary,
-                label: 'Step streak',
+                label: l10n.activity_step_streak,
                 value: '${today.stepStreak}',
-                unit: 'days',
+                unit: l10n.common_days,
               ),
             ),
           ],
@@ -262,9 +269,9 @@ class _PremiumActivityDashboard extends StatelessWidget {
               child: _MetricCard(
                 icon: LucideIcons.dumbbell,
                 color: AppColors.violet,
-                label: 'Workout calories',
+                label: l10n.activity_workout_calories,
                 value: '${today.manualWorkoutCalories}',
-                unit: 'kcal',
+                unit: l10n.settings_kcal_unit,
               ),
             ),
             const SizedBox(width: 10),
@@ -272,7 +279,7 @@ class _PremiumActivityDashboard extends StatelessWidget {
               child: _MetricCard(
                 icon: LucideIcons.activity,
                 color: AppColors.sky,
-                label: 'Activity score',
+                label: l10n.activity_score,
                 value: '${today.activityScore}',
                 unit: '/100',
               ),
@@ -412,15 +419,16 @@ class _WeeklyStepChart extends StatelessWidget {
                         if (index < 0 || index >= data.length) {
                           return const SizedBox.shrink();
                         }
-                        final label = [
-                          'M',
-                          'T',
-                          'W',
-                          'T',
-                          'F',
-                          'S',
-                          'S',
-                        ][data[index].date.weekday - 1];
+                        final label =
+                            [
+                              'M',
+                              'T',
+                              'W',
+                              'T',
+                              'F',
+                              'S',
+                              'S',
+                            ][data[index].date.weekday - 1];
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(label, style: AppTypography.labelSmall),
@@ -455,9 +463,11 @@ class _WeeklyStepChart extends StatelessWidget {
     final today = DateTime.now();
     return List.generate(7, (index) {
       return ActivitySummary.empty(
-        DateTime(today.year, today.month, today.day).subtract(
-          Duration(days: 6 - index),
-        ),
+        DateTime(
+          today.year,
+          today.month,
+          today.day,
+        ).subtract(Duration(days: 6 - index)),
       );
     });
   }
@@ -470,6 +480,7 @@ class _ManualWorkoutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppSectionCard(
       padding: const EdgeInsets.all(18),
       glass: true,
@@ -480,7 +491,7 @@ class _ManualWorkoutCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Manual workouts',
+                  l10n.activity_manual_workouts,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w900,
                     color: context.textPrimaryColor,
@@ -490,14 +501,14 @@ class _ManualWorkoutCard extends StatelessWidget {
               TextButton.icon(
                 onPressed: () => _showWorkoutSheet(context, activity),
                 icon: const Icon(LucideIcons.plus, size: 16),
-                label: const Text('Add'),
+                label: Text(l10n.home_add),
               ),
             ],
           ),
           const SizedBox(height: 8),
           if (activity.today.workouts.isEmpty)
             Text(
-              'No manual workouts logged today.',
+              l10n.activity_no_manual_workouts,
               style: AppTypography.bodySmall.copyWith(
                 color: context.textMutedColor,
               ),
@@ -507,9 +518,11 @@ class _ManualWorkoutCard extends StatelessWidget {
               (workout) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(LucideIcons.dumbbell),
-                title: Text(workout.type),
-                subtitle: Text('${workout.duration.inMinutes} min'),
-                trailing: Text('${workout.calories} kcal'),
+                title: Text(_workoutTypeLabel(context, workout.type)),
+                subtitle: Text(
+                  l10n.common_minutes_short(workout.duration.inMinutes),
+                ),
+                trailing: Text(l10n.common_kcal_value(workout.calories)),
               ),
             ),
         ],
@@ -517,8 +530,19 @@ class _ManualWorkoutCard extends StatelessWidget {
     );
   }
 
+  String _workoutTypeLabel(BuildContext context, String type) {
+    if (type == WorkoutEntry.defaultType ||
+        type == WorkoutEntry.legacyDefaultType) {
+      return AppLocalizations.of(context)!.activity_default_workout;
+    }
+    return type;
+  }
+
   void _showWorkoutSheet(BuildContext context, ActivityProvider activity) {
-    final typeController = TextEditingController(text: 'Workout');
+    final l10n = AppLocalizations.of(context)!;
+    final typeController = TextEditingController(
+      text: l10n.activity_default_workout,
+    );
     final caloriesController = TextEditingController();
     final minutesController = TextEditingController(text: '30');
 
@@ -537,21 +561,23 @@ class _ManualWorkoutCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Add workout', style: AppTypography.heading3),
+                Text(l10n.activity_add_workout, style: AppTypography.heading3),
                 const SizedBox(height: 16),
                 TextField(
                   controller: typeController,
-                  decoration: const InputDecoration(labelText: 'Workout type'),
+                  decoration: InputDecoration(
+                    labelText: l10n.activity_workout_type,
+                  ),
                 ),
                 TextField(
                   controller: caloriesController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Calories'),
+                  decoration: InputDecoration(labelText: l10n.result_calories),
                 ),
                 TextField(
                   controller: minutesController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Minutes'),
+                  decoration: InputDecoration(labelText: l10n.activity_minutes),
                 ),
                 const SizedBox(height: 18),
                 FilledButton(
@@ -562,12 +588,14 @@ class _ManualWorkoutCard extends StatelessWidget {
                     activity.addManualWorkout(
                       type: typeController.text,
                       calories: calories,
-                      start: DateTime.now().subtract(Duration(minutes: minutes)),
+                      start: DateTime.now().subtract(
+                        Duration(minutes: minutes),
+                      ),
                       duration: Duration(minutes: minutes),
                     );
                     Navigator.pop(sheetContext);
                   },
-                  child: const Text('Save workout'),
+                  child: Text(l10n.activity_save_workout),
                 ),
               ],
             ),
@@ -590,8 +618,8 @@ class _InsightCard extends StatelessWidget {
                 activity.week.length;
     final insight =
         avgSteps >= activity.stepGoal
-            ? 'You averaged $avgSteps steps this week and are meeting your step goal.'
-            : 'You averaged $avgSteps steps this week. A short walk can help close the gap.';
+            ? AppLocalizations.of(context)!.activity_insight_goal_met(avgSteps)
+            : AppLocalizations.of(context)!.activity_insight_goal_gap(avgSteps);
 
     return AppSectionCard(
       padding: const EdgeInsets.all(18),

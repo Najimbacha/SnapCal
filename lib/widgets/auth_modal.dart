@@ -5,15 +5,7 @@ import '../screens/auth/auth_bottom_sheet.dart';
 /// AuthModal — now simply opens the modern half-screen AuthBottomSheet modal.
 /// Keeps the same public API so all existing callsites continue to work.
 class AuthModal extends StatelessWidget {
-  final String title;
-  final String subtitle;
-
-  const AuthModal({
-    super.key,
-    this.title = 'Welcome to SnapCal',
-    this.subtitle =
-        'The next generation of AI calorie tracking. Precise, private, and premium.',
-  });
+  const AuthModal({super.key, String? title, String? subtitle});
 
   /// Show auth — displays the modern, premium half-screen AuthBottomSheet modal.
   static void show(BuildContext context, {String? title, String? subtitle}) {

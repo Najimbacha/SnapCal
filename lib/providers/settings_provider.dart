@@ -17,6 +17,7 @@ class SettingsProvider with ChangeNotifier {
   late UserSettings _settings;
   AsyncUiState _uiState = const AsyncUiState.success();
   StreamSubscription<UserSettings>? _settingsSubscription;
+  Future<void> _notificationSync = Future.value();
 
   SettingsProvider(this._repository) {
     _loadInitialSettings();
@@ -98,6 +99,7 @@ class SettingsProvider with ChangeNotifier {
   bool get notificationsEnabled => _settings.notificationsEnabled;
   bool get mealRemindersEnabled => _settings.mealRemindersEnabled;
   bool get goalAlertsEnabled => _settings.goalAlertsEnabled;
+  bool get dailyMotivationEnabled => _settings.dailyMotivationEnabled;
   String get themeMode => _settings.themeMode;
   bool get onboardingComplete => _settings.onboardingComplete;
   String get breakfastTime => _settings.breakfastTime;
@@ -109,6 +111,7 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setLanguage(String code) async {
     _settings = _settings.copyWith(languageCode: code);
     await _repository.saveSettings(_settings);
+    await _syncNotifications();
     notifyListeners();
   }
 
@@ -120,6 +123,14 @@ class SettingsProvider with ChangeNotifier {
 
   /// Sync notifications with current settings
   Future<void> _syncNotifications() async {
+    final nextSync = _notificationSync
+        .catchError((_) {})
+        .then((_) => _performNotificationSync());
+    _notificationSync = nextSync;
+    return nextSync;
+  }
+
+  Future<void> _performNotificationSync() async {
     if (!_settings.notificationsEnabled) {
       await _notificationService.cancelAll();
       return;
@@ -132,6 +143,12 @@ class SettingsProvider with ChangeNotifier {
       await _notificationService.cancelNotification(2);
       await _notificationService.cancelNotification(3);
     }
+
+    if (_settings.dailyMotivationEnabled) {
+      await _scheduleDailyMotivation();
+    } else {
+      await _notificationService.cancelDailyMotivation();
+    }
   }
 
   /// Schedule daily meal reminders
@@ -142,6 +159,7 @@ class SettingsProvider with ChangeNotifier {
       3: _settings.dinnerTime,
     };
     final lang = languageCode;
+    final l10n = _localizationsFor(lang);
 
     final titles = {
       1: _getNotifString(lang, 'breakfast_title'),
@@ -165,6 +183,8 @@ class SettingsProvider with ChangeNotifier {
           id: entry.key,
           title: titles[entry.key]!,
           body: bodies[entry.key]!,
+          channelName: l10n.notif_meal_reminders_channel,
+          channelDescription: l10n.notif_meal_reminders_channel_description,
           hour: hour,
           minute: minute,
         );
@@ -172,8 +192,82 @@ class SettingsProvider with ChangeNotifier {
     }
   }
 
+  /// Schedule daily motivation at the user's best local time.
+  Future<void> _scheduleDailyMotivation() async {
+    final time = _getDailyMotivationTime();
+    final l10n = _localizationsFor(languageCode);
+    await _notificationService.scheduleDailyMotivation(
+      messages: _getDailyMotivationMessages(languageCode),
+      channelName: l10n.notif_daily_motivation_channel,
+      channelDescription: l10n.notif_daily_motivation_channel_description,
+      hour: time.key,
+      minute: time.value,
+    );
+  }
+
+  MapEntry<int, int> _getDailyMotivationTime() {
+    final parts = _settings.breakfastTime.split(':');
+    if (parts.length != 2) return const MapEntry(8, 30);
+
+    final breakfastHour = int.tryParse(parts[0]);
+    final breakfastMinute = int.tryParse(parts[1]);
+    if (breakfastHour == null ||
+        breakfastMinute == null ||
+        breakfastHour < 0 ||
+        breakfastHour > 23 ||
+        breakfastMinute < 0 ||
+        breakfastMinute > 59) {
+      return const MapEntry(8, 30);
+    }
+
+    const earliestMinuteOfDay = 8 * 60;
+    const latestMinuteOfDay = 20 * 60;
+    final preferredMinuteOfDay = (breakfastHour * 60 + breakfastMinute - 30)
+        .clamp(earliestMinuteOfDay, latestMinuteOfDay);
+
+    return MapEntry(preferredMinuteOfDay ~/ 60, preferredMinuteOfDay % 60);
+  }
+
+  List<MotivationNotificationCopy> _getDailyMotivationMessages(String lang) {
+    final l10n = _localizationsFor(lang);
+    return [
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_1_title,
+        body: l10n.notif_motivation_1_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_2_title,
+        body: l10n.notif_motivation_2_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_3_title,
+        body: l10n.notif_motivation_3_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_4_title,
+        body: l10n.notif_motivation_4_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_5_title,
+        body: l10n.notif_motivation_5_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_6_title,
+        body: l10n.notif_motivation_6_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_7_title,
+        body: l10n.notif_motivation_7_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_8_title,
+        body: l10n.notif_motivation_8_body,
+      ),
+    ];
+  }
+
   String _getNotifString(String lang, String key) {
-    final l10n = lookupAppLocalizations(Locale(_supportedLanguage(lang)));
+    final l10n = _localizationsFor(lang);
     switch (key) {
       case 'breakfast_title':
         return l10n.notif_breakfast_title;
@@ -206,6 +300,10 @@ class SettingsProvider with ChangeNotifier {
         : 'en';
   }
 
+  AppLocalizations _localizationsFor(String lang) {
+    return lookupAppLocalizations(Locale(_supportedLanguage(lang)));
+  }
+
   /// Toggle global notifications
   Future<void> toggleNotifications(bool enabled) async {
     _settings = _settings.copyWith(notificationsEnabled: enabled);
@@ -217,6 +315,14 @@ class SettingsProvider with ChangeNotifier {
   /// Toggle meal reminders
   Future<void> toggleMealReminders(bool enabled) async {
     _settings = _settings.copyWith(mealRemindersEnabled: enabled);
+    await _repository.saveSettings(_settings);
+    await _syncNotifications();
+    notifyListeners();
+  }
+
+  /// Toggle daily motivation
+  Future<void> toggleDailyMotivation(bool enabled) async {
+    _settings = _settings.copyWith(dailyMotivationEnabled: enabled);
     await _repository.saveSettings(_settings);
     await _syncNotifications();
     notifyListeners();
@@ -238,7 +344,13 @@ class SettingsProvider with ChangeNotifier {
         lang,
         'goal_calories_body',
       ).replaceAll('{goal}', goal.toString());
-      await _notificationService.showGoalAlert(title: title, body: body);
+      final l10n = _localizationsFor(lang);
+      await _notificationService.showGoalAlert(
+        title: title,
+        body: body,
+        channelName: l10n.notif_goal_alerts_channel,
+        channelDescription: l10n.notif_goal_alerts_channel_description,
+      );
     }
   }
 
@@ -251,7 +363,13 @@ class SettingsProvider with ChangeNotifier {
         lang,
         'goal_protein_body',
       ).replaceAll('{goal}', goal.toString());
-      await _notificationService.showGoalAlert(title: title, body: body);
+      final l10n = _localizationsFor(lang);
+      await _notificationService.showGoalAlert(
+        title: title,
+        body: body,
+        channelName: l10n.notif_goal_alerts_channel,
+        channelDescription: l10n.notif_goal_alerts_channel_description,
+      );
     }
   }
 

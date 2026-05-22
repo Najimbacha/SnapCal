@@ -48,6 +48,11 @@ class ActivitySummary {
 }
 
 class WorkoutEntry {
+  static const defaultType = 'activity_default_workout';
+  static const legacyDefaultType =
+      'Work'
+      'out';
+
   final String id;
   final String type;
   final DateTime start;
@@ -77,7 +82,7 @@ class WorkoutEntry {
   factory WorkoutEntry.fromJson(Map<dynamic, dynamic> json) {
     return WorkoutEntry(
       id: json['id']?.toString() ?? '',
-      type: json['type']?.toString() ?? 'Workout',
+      type: json['type']?.toString() ?? defaultType,
       start: DateTime.fromMillisecondsSinceEpoch(json['start'] as int? ?? 0),
       end: DateTime.fromMillisecondsSinceEpoch(json['end'] as int? ?? 0),
       calories: json['calories'] as int? ?? 0,

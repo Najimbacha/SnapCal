@@ -103,9 +103,9 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
 
     final report = insightsProvider.currentReport;
     if (report == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.feature_insights_title)),
-        body: Center(
+      return AppPageScaffold(
+        title: l10n.feature_insights_title,
+        child: Center(
           child: Text(
             l10n.feature_insights_empty,
             style: AppTypography.titleMedium,

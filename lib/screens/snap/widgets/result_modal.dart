@@ -81,17 +81,19 @@ class _ResultModalState extends State<ResultModal> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final l10n = AppLocalizations.of(context)!;
-    if (!_localizedDefaultTitleApplied &&
-        _items.length != 1 &&
-        _mealTitleController.text == 'Feast') {
-      _mealTitleController.text = l10n.result_feast;
-      _localizedDefaultTitleApplied = true;
-    }
-    if (_items.length == 1 && _items.first.name == 'Food') {
-      _items = [_items.first.copyWith(name: l10n.result_food)];
-      if (_mealTitleController.text == 'Food') {
-        _mealTitleController.text = l10n.result_food;
+    final l10n = AppLocalizations.of(context);
+    if (l10n != null) {
+      if (!_localizedDefaultTitleApplied &&
+          _items.length != 1 &&
+          _mealTitleController.text == 'Feast') {
+        _mealTitleController.text = l10n.result_feast;
+        _localizedDefaultTitleApplied = true;
+      }
+      if (_items.length == 1 && _items.first.name == 'Food') {
+        _items = [_items.first.copyWith(name: l10n.result_food)];
+        if (_mealTitleController.text == 'Food') {
+          _mealTitleController.text = l10n.result_food;
+        }
       }
     }
 
@@ -193,6 +195,7 @@ class _ResultModalState extends State<ResultModal> {
   }
 
   Future<void> _editItem(int index) async {
+    debugPrint('_editItem called for index $index');
     final edited = await showModalBottomSheet<_ReviewFoodItem>(
       context: context,
       isScrollControlled: true,

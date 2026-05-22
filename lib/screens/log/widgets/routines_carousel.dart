@@ -182,7 +182,7 @@ class _RoutineCard extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              '${template.items.length} items',
+              AppLocalizations.of(context)!.common_items_count(template.items.length),
               style: AppTypography.labelSmall.copyWith(
                 color: context.textMutedColor,
                 fontWeight: FontWeight.w700,

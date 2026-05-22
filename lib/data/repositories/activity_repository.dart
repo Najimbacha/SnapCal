@@ -183,7 +183,7 @@ class ActivityRepository {
   }) async {
     final workout = WorkoutEntry(
       id: _uuid.v4(),
-      type: type.trim().isEmpty ? 'Workout' : type.trim(),
+      type: type.trim().isEmpty ? WorkoutEntry.defaultType : type.trim(),
       start: start,
       end: start.add(duration),
       calories: calories.clamp(0, 99999),

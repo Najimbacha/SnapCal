@@ -53,12 +53,18 @@ class _SyncDataScreenState extends State<SyncDataScreen>
       icon: LucideIcons.smartphone,
       text: AppLocalizations.of(context)!.sync_benefit_devices,
     ),
-    _Benefit(icon: LucideIcons.shield, text: AppLocalizations.of(context)!.sync_benefit_progress),
+    _Benefit(
+      icon: LucideIcons.shield,
+      text: AppLocalizations.of(context)!.sync_benefit_progress,
+    ),
     _Benefit(
       icon: LucideIcons.cloudOff,
       text: AppLocalizations.of(context)!.sync_benefit_offline,
     ),
-    _Benefit(icon: LucideIcons.lock, text: AppLocalizations.of(context)!.sync_benefit_secure),
+    _Benefit(
+      icon: LucideIcons.lock,
+      text: AppLocalizations.of(context)!.sync_benefit_secure,
+    ),
   ];
 
   @override
@@ -192,13 +198,16 @@ class _SyncDataScreenState extends State<SyncDataScreen>
     try {
       await context.read<AuthProvider>().signInWithGoogle();
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         final auth = context.read<AuthProvider>();
         if (auth.isAuthenticated) {
           widget.onAuthSuccess?.call();
         } else if (auth.status == AuthStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(auth.errorMessage ?? 'Google Sign-In failed'),
+              content: Text(
+                auth.errorMessage ?? l10n.auth_google_sign_in_failed,
+              ),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -217,13 +226,16 @@ class _SyncDataScreenState extends State<SyncDataScreen>
     try {
       await context.read<AuthProvider>().signInWithFacebook();
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         final auth = context.read<AuthProvider>();
         if (auth.isAuthenticated) {
           widget.onAuthSuccess?.call();
         } else if (auth.status == AuthStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(auth.errorMessage ?? 'Facebook Sign-In failed'),
+              content: Text(
+                auth.errorMessage ?? l10n.auth_facebook_sign_in_failed,
+              ),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -280,7 +292,9 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: colorScheme.primary.withValues(alpha: 0.3),
+                                      color: colorScheme.primary.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       blurRadius: 50 * _pulseAnimation.value,
                                       spreadRadius: 15 * _pulseAnimation.value,
                                     ),
@@ -296,7 +310,9 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                 shape: BoxShape.circle,
                                 color: context.cardColor,
                                 border: Border.all(
-                                  color: colorScheme.primary.withValues(alpha: 0.2),
+                                  color: colorScheme.primary.withValues(
+                                    alpha: 0.2,
+                                  ),
                                   width: 2,
                                 ),
                                 boxShadow: [
@@ -328,7 +344,8 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                           color: colorScheme.primary,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: colorScheme.primary.withValues(alpha: 0.4),
+                                              color: colorScheme.primary
+                                                  .withValues(alpha: 0.4),
                                               blurRadius: 8,
                                             ),
                                           ],
@@ -400,7 +417,10 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                 // Benefits List (compact)
                 AppSectionCard(
                   glass: true,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: List.generate(_benefits.length, (index) {
@@ -412,14 +432,18 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                             child: Opacity(
                               opacity: _benefitAnimations[index].value,
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
                                 child: Row(
                                   children: [
                                     Container(
                                       width: 38,
                                       height: 38,
                                       decoration: BoxDecoration(
-                                        color: colorScheme.primary.withValues(alpha: 0.12),
+                                        color: colorScheme.primary.withValues(
+                                          alpha: 0.12,
+                                        ),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Icon(
@@ -432,10 +456,11 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                     Expanded(
                                       child: Text(
                                         _benefits[index].text,
-                                        style: AppTypography.bodyMedium.copyWith(
-                                          color: context.textPrimaryColor,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        style: AppTypography.bodyMedium
+                                            .copyWith(
+                                              color: context.textPrimaryColor,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                       ),
                                     ),
                                   ],
@@ -480,16 +505,25 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 _AuthButton(
-                                  label: AppLocalizations.of(context)!.sync_facebook,
+                                  label:
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.sync_facebook,
                                   icon: FontAwesomeIcons.facebook,
                                   onPressed: _handleFacebookSignIn,
                                   backgroundColor: Colors.transparent,
                                   foregroundColor: context.textPrimaryColor,
                                   isFaIcon: true,
                                 ),
-                                Divider(height: 1, color: context.dividerColor.withValues(alpha: 0.5)),
+                                Divider(
+                                  height: 1,
+                                  color: context.dividerColor.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
                                 _AuthButton(
-                                  label: AppLocalizations.of(context)!.sync_email,
+                                  label:
+                                      AppLocalizations.of(context)!.sync_email,
                                   icon: LucideIcons.mail,
                                   onPressed: _handleEmailSignIn,
                                   backgroundColor: Colors.transparent,
@@ -567,7 +601,9 @@ class _AuthButton extends StatelessWidget {
               isAccent
                   ? [
                     BoxShadow(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.35),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -617,7 +653,8 @@ class _ScaleTap extends StatefulWidget {
   State<_ScaleTap> createState() => _ScaleTapState();
 }
 
-class _ScaleTapState extends State<_ScaleTap> with SingleTickerProviderStateMixin {
+class _ScaleTapState extends State<_ScaleTap>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 

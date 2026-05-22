@@ -603,7 +603,7 @@ class _AuthSocialButton extends StatelessWidget {
         borderRadius: radius,
         child: Ink(
           height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: small ? 8 : 16),
           decoration: BoxDecoration(
             color:
                 backgroundColor ??
@@ -642,23 +642,35 @@ class _AuthSocialButton extends StatelessWidget {
                 iconWidget,
                 if (!small) ...[
                   const SizedBox(width: 12),
-                  Text(
-                    label,
-                    style: AppTypography.titleSmall.copyWith(
-                      color:
-                          textColor ?? (isDark ? Colors.white : Colors.black),
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: AppTypography.titleSmall.copyWith(
+                          color:
+                              textColor ?? (isDark ? Colors.white : Colors.black),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
                     ),
                   ),
                 ] else ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    label,
-                    style: AppTypography.labelLarge.copyWith(
-                      color:
-                          textColor ?? (isDark ? Colors.white : Colors.black),
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: AppTypography.labelLarge.copyWith(
+                          color:
+                              textColor ?? (isDark ? Colors.white : Colors.black),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],

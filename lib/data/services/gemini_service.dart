@@ -77,9 +77,8 @@ class AIService {
     if (apiKey.isEmpty) throw GeminiException('API Key missing');
 
     final candidates = [
-      {'id': 'gemini-1.5-flash-8b', 'ver': 'v1'},
-      {'id': 'gemini-1.5-flash', 'ver': 'v1'},
-      {'id': 'gemini-2.0-flash', 'ver': 'v1'},
+      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
+      {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
     ];
 
     Object? lastError;
@@ -217,11 +216,9 @@ User daily targets:
         );
       } catch (e2) {
         final geminiError = _extractDioError(e2);
-        return [
-          _getFallbackResult(
-            "AI Failed. Groq: $groqError | Gemini: $geminiError",
-          ),
-        ];
+        throw GeminiException(
+          "AI Failed. Groq: $groqError | Gemini: $geminiError",
+        );
       }
     }
   }
@@ -264,9 +261,8 @@ User daily targets:
 
     // Prioritize ultra-low-cost models first to save on API costs
     final candidates = [
-      {'id': 'gemini-1.5-flash-8b', 'ver': 'v1'}, // Ultra-cheap, fast
-      {'id': 'gemini-1.5-flash', 'ver': 'v1'},
-      {'id': 'gemini-2.0-flash', 'ver': 'v1'},
+      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'}, // Ultra-cheap, fast
+      {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
     ];
 
     Object? lastError;
@@ -336,8 +332,6 @@ User daily targets:
     // List of Vision models to hunt through
     final candidates = [
       'meta-llama/llama-4-scout-17b-16e-instruct',
-      'llama-3.2-11b-vision',
-      'llama-3.2-90b-vision',
     ];
 
     Object? lastError;
@@ -401,19 +395,6 @@ User daily targets:
     }
   }
 
-  NutritionResult _getFallbackResult([String? errorMessage]) {
-    return NutritionResult(
-      foodName: errorMessage != null ? 'Error: $errorMessage' : 'Unknown Food',
-      portion: 'Unknown portion',
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      healthScore: 5,
-      insights: [],
-    );
-  }
-
   /// Generate Weekly Meal Plan & Grocery List (with AI Hunter)
   Future<PlanGenerationResult?> generateWeeklyMealPlan(
     UserSettings settings,
@@ -424,9 +405,8 @@ User daily targets:
 
     // Prioritize ultra-low-cost models first
     final candidates = [
-      {'id': 'gemini-1.5-flash-8b', 'ver': 'v1'},
-      {'id': 'gemini-1.5-flash', 'ver': 'v1'},
-      {'id': 'gemini-2.0-flash', 'ver': 'v1'},
+      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
+      {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
     ];
 
     for (var candidate in candidates) {
@@ -513,9 +493,8 @@ Output ONLY valid JSON:
 
     // Prioritize ultra-low-cost models
     final candidates = [
-      {'id': 'gemini-1.5-flash-8b', 'ver': 'v1'},
-      {'id': 'gemini-1.5-flash', 'ver': 'v1'},
-      {'id': 'gemini-2.0-flash', 'ver': 'v1'},
+      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
+      {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
     ];
 
     for (var candidate in candidates) {
@@ -623,7 +602,27 @@ Keys 0-6 = Monday-Sunday. Each day must have exactly ${settings.mealsPerDay} mea
     final Map<int, List<Meal>> weeklyMeals = {};
 
     weekPlanMap.forEach((key, value) {
-      final dayIndex = int.parse(key);
+      int? dayIndex = int.tryParse(key);
+      if (dayIndex == null) {
+        final lowerKey = key.toLowerCase();
+        if (lowerKey.contains('mon')) {
+          dayIndex = 0;
+        } else if (lowerKey.contains('tue')) {
+          dayIndex = 1;
+        } else if (lowerKey.contains('wed')) {
+          dayIndex = 2;
+        } else if (lowerKey.contains('thu')) {
+          dayIndex = 3;
+        } else if (lowerKey.contains('fri')) {
+          dayIndex = 4;
+        } else if (lowerKey.contains('sat')) {
+          dayIndex = 5;
+        } else if (lowerKey.contains('sun')) {
+          dayIndex = 6;
+        }
+      }
+      if (dayIndex == null) return;
+
       final List<Meal> mealsList =
           (value as List)
               .map(

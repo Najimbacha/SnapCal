@@ -89,12 +89,13 @@ class AppInitializer {
         assistantRepository.init().then(
           (_) => debugPrint('✅ AppInitializer: AssistantRepo ready'),
         ),
+        NotificationService().init().then(
+          (_) => debugPrint('✅ AppInitializer: NotificationService ready'),
+        ),
       ]).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          debugPrint(
-            '⚠️ AppInitializer: Initialization timed out after 15s',
-          );
+          debugPrint('⚠️ AppInitializer: Initialization timed out after 15s');
           throw TimeoutException(
             'Core data services are taking too long to respond.',
           );
@@ -119,9 +120,14 @@ class AppInitializer {
     SettingsRepository settingsRepository,
   ) async {
     try {
+      // 1. Initialize Remote Config first so that subsequent services can read updated API keys/configs.
+      await runSilently(
+        'Remote config init',
+        () => ConfigService().init(),
+      ).timeout(const Duration(seconds: 10));
+
+      // 2. Initialize remaining background services in parallel
       await Future.wait([
-        runSilently('Notification init', () => NotificationService().init()),
-        runSilently('Remote config init', () => ConfigService().init()),
         runSilently(
           'Subscription init',
           () => SubscriptionService.init(settingsRepository),
@@ -129,7 +135,7 @@ class AppInitializer {
         runSilently('Ad init', () => AdService().init()),
         runSilently('Widget init', WidgetService.init),
         runSilently('Service warmup', _warmupSingletons),
-      ]).timeout(const Duration(seconds: 15));
+      ]).timeout(const Duration(seconds: 10));
       debugPrint('⚡ Background services ready');
     } catch (e) {
       debugPrint('⚠️ Background service init warning: $e');
@@ -149,7 +155,6 @@ class AppInitializer {
         debugPrint('🔥 Firebase: Calling initializeApp()...');
         await Firebase.initializeApp().timeout(const Duration(seconds: 30));
         debugPrint('🔥 Firebase: initializeApp() completed');
-
       } else {
         debugPrint('🔥 Firebase already initialized');
       }
@@ -189,10 +194,7 @@ class AppInitializer {
         errorDetails.stack,
       );
       unawaited(
-        FirebaseCrashlytics.instance.setCustomKey(
-          'flutter_error_fatal',
-          fatal,
-        ),
+        FirebaseCrashlytics.instance.setCustomKey('flutter_error_fatal', fatal),
       );
 
       if (fatal) {
@@ -248,6 +250,9 @@ class AppInitializer {
       debugPrint('❌ AppInitializer: platformCode=${error.code}');
       debugPrint('❌ AppInitializer: platformMessage=${error.message}');
       debugPrint('❌ AppInitializer: platformDetails=${error.details}');
+      if (error.code == 'channel-error') {
+        _logNativePluginChannelFailure('AppInitializer');
+      }
     } else {
       debugPrint('❌ AppInitializer: error=$error');
     }
@@ -287,12 +292,22 @@ class AppInitializer {
       debugPrint('❌ Firebase: platformCode=${error.code}');
       debugPrint('❌ Firebase: platformMessage=${error.message}');
       debugPrint('❌ Firebase: platformDetails=${error.details}');
+      if (error.code == 'channel-error') {
+        _logNativePluginChannelFailure('Firebase');
+      }
     } else if (error is TimeoutException) {
       debugPrint('❌ Firebase: timeout=${error.message}');
     } else {
       debugPrint('❌ Firebase: error=$error');
     }
     debugPrint('❌ Firebase: appsAfterFailure=${Firebase.apps.length}');
+  }
+
+  static void _logNativePluginChannelFailure(String source) {
+    debugPrint(
+      '❌ $source: native plugin channel unavailable; verify Android '
+      'GeneratedPluginRegistrant.registerWith() ran.',
+    );
   }
 
   static Future<void> _initHive() async {

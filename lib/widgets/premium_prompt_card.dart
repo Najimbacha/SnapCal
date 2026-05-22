@@ -127,166 +127,98 @@ class PremiumPromptCard extends StatelessWidget {
   }
 
   Widget _buildMiniPrompt(BuildContext context, bool isDark) {
-    return ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Container(
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppColors.primary.withValues(
-                              alpha: isDark ? 0.055 : 0.035,
-                            ),
-                            AppColors.violet.withValues(
-                              alpha: isDark ? 0.060 : 0.040,
-                            ),
-                            Colors.white.withValues(
-                              alpha: isDark ? 0.015 : 0.0,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .animate(
-                      onPlay: (controller) => controller.repeat(reverse: true),
-                    )
-                    .shimmer(
-                      duration: 7.seconds,
-                      color: Colors.white.withValues(alpha: 0.025),
-                    ),
-              ),
+    final colorScheme = Theme.of(context).colorScheme;
 
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark ? colorScheme.surfaceContainerLow : colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark
+                  ? colorScheme.outlineVariant.withValues(alpha: 0.08)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.12),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Icon container — consistent rounded-square, primary-colored
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 15,
-                  vertical: 10,
-                ),
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: (isDark ? Colors.white : Colors.black).withValues(
-                      alpha: isDark ? 0.08 : 0.055,
-                    ),
-                    width: 1,
-                  ),
+                  color: AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.08),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Row(
+                child: Center(
+                  child: Icon(icon, color: AppColors.primary, size: 18),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Color.alphaBlend(
-                          AppColors.violet.withValues(
-                            alpha: isDark ? 0.14 : 0.08,
-                          ),
-                          AppColors.primary.withValues(
-                            alpha: isDark ? 0.08 : 0.05,
-                          ),
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.violet.withValues(alpha: 0.10),
-                            blurRadius: 6,
-                            spreadRadius: -3,
-                          ),
-                        ],
-                      ),
-                      child: Icon(icon, color: AppColors.primary, size: 16)
-                          .animate(
-                            onPlay:
-                                (controller) =>
-                                    controller.repeat(reverse: true),
-                          )
-                          .scale(
-                            begin: const Offset(1, 1),
-                            end: const Offset(1.06, 1.06),
-                            duration: 3.seconds,
-                            curve: Curves.easeInOut,
-                          ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: AppTypography.labelSmall.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0,
-                              fontSize: 12,
-                              color:
-                                  isDark
-                                      ? Colors.white.withValues(alpha: 0.92)
-                                      : AppColors.lightTextPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle,
-                            maxLines: 2,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: (isDark ? Colors.white : Colors.black)
-                                  .withValues(alpha: isDark ? 0.58 : 0.52),
-                              fontSize: 12,
-                              height: 1.2,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      title,
+                      style: AppTypography.labelSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.92)
+                            : AppColors.lightTextPrimary,
+                        letterSpacing: 0,
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    _CtaButton(text: buttonText, onTap: onTap, isMini: true),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: isDark ? 0.50 : 0.45),
+                        fontSize: 11.5,
+                        height: 1.3,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
                   ],
                 ),
               ),
-
-              Positioned(
-                top: 0,
-                left: 20,
-                right: 20,
-                child: Container(
-                  height: 1,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.0),
-                        Colors.white.withValues(alpha: isDark ? 0.22 : 0.30),
-                        Colors.white.withValues(alpha: 0.0),
-                      ],
-                    ),
+              const SizedBox(width: 12),
+              // Ghost CTA pill — same language as the Sign In button
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  buttonText,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    letterSpacing: 0,
                   ),
                 ),
               ),
             ],
           ),
-        )
-        .animate(onPlay: (controller) => controller.repeat(reverse: true))
-        .custom(
-          duration: 6.seconds,
-          builder: (context, value, child) {
-            return Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.violet.withValues(alpha: 0.025 * value),
-                    blurRadius: 14 * value,
-                    spreadRadius: -2,
-                  ),
-                ],
-              ),
-              child: child,
-            );
-          },
-        );
+        ),
+      ),
+    );
   }
 
   Widget _buildGlassPrompt(BuildContext context, bool isDark) {
@@ -380,13 +312,11 @@ class _CtaButton extends StatelessWidget {
   final String text;
   final VoidCallback onTap;
   final bool fullWidth;
-  final bool isMini;
 
   const _CtaButton({
     required this.text,
     required this.onTap,
     this.fullWidth = false,
-    this.isMini = false,
   });
 
   @override
@@ -394,22 +324,13 @@ class _CtaButton extends StatelessWidget {
     return Container(
       width: fullWidth ? double.infinity : null,
       decoration: BoxDecoration(
-        gradient:
-            isMini
-                ? const LinearGradient(
-                  colors: [AppColors.primary, AppColors.violet],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-                : AppColors.premiumGradient,
-        borderRadius: BorderRadius.circular(isMini ? 12 : 16),
+        gradient: AppColors.premiumGradient,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: (isMini ? AppColors.violet : AppColors.primary).withValues(
-              alpha: isMini ? 0.12 : 0.3,
-            ),
-            blurRadius: isMini ? 6 : 15,
-            offset: Offset(0, isMini ? 2 : 5),
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -417,12 +338,9 @@ class _CtaButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(isMini ? 12 : 16),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isMini ? 13 : 24,
-              vertical: isMini ? 8 : 14,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -432,35 +350,34 @@ class _CtaButton extends StatelessWidget {
                   style: AppTypography.labelLarge.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: isMini ? 0 : 0.5,
-                    fontSize: isMini ? 11 : 13,
+                    letterSpacing: 0.5,
+                    fontSize: 13,
                   ),
                 ),
-                if (!isMini)
-                  Positioned.fill(
-                    child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              stops: const [0.0, 0.45, 0.5, 0.55, 1.0],
-                              colors: [
-                                Colors.white.withValues(alpha: 0.0),
-                                Colors.white.withValues(alpha: 0.0),
-                                Colors.white.withValues(alpha: 0.3),
-                                Colors.white.withValues(alpha: 0.0),
-                                Colors.white.withValues(alpha: 0.0),
-                              ],
-                            ),
+                Positioned.fill(
+                  child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            stops: const [0.0, 0.45, 0.5, 0.55, 1.0],
+                            colors: [
+                              Colors.white.withValues(alpha: 0.0),
+                              Colors.white.withValues(alpha: 0.0),
+                              Colors.white.withValues(alpha: 0.3),
+                              Colors.white.withValues(alpha: 0.0),
+                              Colors.white.withValues(alpha: 0.0),
+                            ],
                           ),
-                        )
-                        .animate(onPlay: (controller) => controller.repeat())
-                        .shimmer(
-                          delay: 3.seconds,
-                          duration: 1500.ms,
-                          color: Colors.white.withValues(alpha: 0.2),
                         ),
-                  ),
+                      )
+                      .animate(onPlay: (controller) => controller.repeat())
+                      .shimmer(
+                        delay: 3.seconds,
+                        duration: 1500.ms,
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                ),
               ],
             ),
           ),

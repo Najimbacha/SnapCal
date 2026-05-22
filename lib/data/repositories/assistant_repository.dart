@@ -63,6 +63,7 @@ class AssistantRepository {
                 'content': e.content,
                 'type': e.type,
                 'macros': e.macros,
+                'actions': e.actions?.map((a) => a.toJson()).toList(),
               },
             )
             .toList();

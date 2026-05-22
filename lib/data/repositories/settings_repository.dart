@@ -13,6 +13,7 @@ class SettingsRepository {
   final _settingsController = StreamController<UserSettings>.broadcast();
   late final FirebaseFirestore _firestore;
   late final FirebaseAuth _auth;
+  StreamSubscription<User?>? _authSubscription;
 
   /// Stream of user settings for reactive UI updates
   Stream<UserSettings> get settingsStream => _settingsController.stream;
@@ -28,7 +29,13 @@ class SettingsRepository {
         encryptionCipher: HiveAesCipher(encryptionKey),
       ).timeout(const Duration(seconds: 10));
     } catch (e) {
-      debugPrint('⚠️ SettingsRepository: Box open failed, attempting recovery: $e');
+      if (e is StateError &&
+          e.message.contains('Secure storage is unavailable')) {
+        rethrow;
+      }
+      debugPrint(
+        '⚠️ SettingsRepository: Box open failed, attempting recovery: $e',
+      );
       try {
         await Hive.deleteBoxFromDisk(AppConstants.settingsBoxName);
         final encryptionKey = await SecurityService().getEncryptionKey();
@@ -41,15 +48,17 @@ class SettingsRepository {
         debugPrint('❌ SettingsRepository: Fatal recovery failure: $retryError');
       }
     }
-    
+
     // Emit initial value
     final initialSettings = getSettings();
     _settingsController.add(initialSettings);
 
-    // Initial sync check
-    if (_auth.currentUser != null) {
-      unawaited(syncFromFirestore());
-    }
+    await _authSubscription?.cancel();
+    _authSubscription = _auth.authStateChanges().listen((user) {
+      if (user != null) {
+        unawaited(syncFromFirestore());
+      }
+    });
   }
 
   /// Get current user settings (Sync)
@@ -65,7 +74,7 @@ class SettingsRepository {
   Future<void> saveSettings(UserSettings settings) async {
     // 1. Save to Local Hive
     await _settingsBox?.put(AppConstants.settingsKey, settings);
-    
+
     // 2. Push to Stream
     _settingsController.add(settings);
 
@@ -95,10 +104,13 @@ class SettingsRepository {
         final cloudSettings = UserSettings.fromJson(doc.data()!['settings']);
         final localSettings = getSettings();
 
-        // Simple conflict resolution: Cloud wins if it has data
-        if (cloudSettings != localSettings) {
-          await _settingsBox?.put(AppConstants.settingsKey, cloudSettings);
-          _settingsController.add(cloudSettings);
+        // Merge cloud settings with local isPro status (RevenueCat is the source of truth)
+        final mergedSettings = cloudSettings.copyWith(isPro: localSettings.isPro);
+
+        // Compare merged settings with local settings using mapEquals to avoid redundant writes
+        if (!mapEquals(mergedSettings.toJson(), localSettings.toJson())) {
+          await _settingsBox?.put(AppConstants.settingsKey, mergedSettings);
+          _settingsController.add(mergedSettings);
         }
       }
     } catch (e) {
@@ -157,6 +169,7 @@ class SettingsRepository {
   }
 
   void dispose() {
+    _authSubscription?.cancel();
     _settingsController.close();
   }
 }

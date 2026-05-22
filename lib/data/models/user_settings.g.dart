@@ -50,13 +50,14 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
       dietaryRestriction: fields[30] as String?,
       cuisinePreference: fields[31] as String?,
       languageCode: fields[32] as String?,
+      dailyMotivationEnabled: fields[33] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserSettings obj) {
     writer
-      ..writeByte(33)
+      ..writeByte(34)
       ..writeByte(0)
       ..write(obj.dailyCalorieGoal)
       ..writeByte(1)
@@ -122,7 +123,9 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
       ..writeByte(31)
       ..write(obj.cuisinePreference)
       ..writeByte(32)
-      ..write(obj.languageCode);
+      ..write(obj.languageCode)
+      ..writeByte(33)
+      ..write(obj.dailyMotivationEnabled);
   }
 
   @override

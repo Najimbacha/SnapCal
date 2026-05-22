@@ -67,7 +67,7 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
       GoRoute(
         path: '/settings',
         pageBuilder:
-            (context, state) => _sharedAxisPage(state, const SettingsScreen()),
+            (context, state) => _sharedAxisPage(state, const SettingsScreen(showBack: true)),
       ),
       GoRoute(
         path: '/paywall',

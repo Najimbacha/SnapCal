@@ -110,6 +110,8 @@ class _SnapCalAppState extends State<SnapCalApp> {
         if (snapshot.connectionState != ConnectionState.done) {
           return const MaterialApp(
             debugShowCheckedModeBanner: false,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: SplashScreen(),
           );
         }

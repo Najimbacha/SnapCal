@@ -22,7 +22,12 @@ class SecurityService {
 
     // Prevent concurrent calls to secure storage which can cause hangs on Android
     _encryptionKeyFuture ??= _getOrCreateKey();
-    return _encryptionKeyFuture!;
+    try {
+      return await _encryptionKeyFuture!;
+    } catch (_) {
+      _encryptionKeyFuture = null;
+      rethrow;
+    }
   }
 
   Future<Uint8List> _getOrCreateKey() async {
@@ -70,10 +75,9 @@ class SecurityService {
       }
     }
 
-    // Fallback to a non-persisted key if secure storage fails
-    final fallbackKey = Hive.generateSecureKey();
-    _encryptionKey = Uint8List.fromList(fallbackKey);
-    return _encryptionKey!;
+    throw StateError(
+      'Secure storage is unavailable; refusing to open encrypted local data with a temporary key.',
+    );
   }
 
   /// Securely clear keys (e.g. on factory reset)

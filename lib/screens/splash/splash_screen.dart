@@ -34,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   final List<_StarParticle> _stars = [];
   final _random = math.Random();
-  String _statusText = 'Initializing Calorie Intelligence Engine...';
+  int _statusStep = 0;
 
   @override
   void initState() {
@@ -80,11 +80,17 @@ class _SplashScreenState extends State<SplashScreen>
 
     _logoScale = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: 1.15).chain(CurveTween(curve: Curves.easeOutCubic)),
+        tween: Tween(
+          begin: 0.0,
+          end: 1.15,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
         weight: 60,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: 1.15, end: 1.0).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        tween: Tween(
+          begin: 1.15,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
         weight: 40,
       ),
     ]).animate(
@@ -92,27 +98,48 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _mainController, curve: const Interval(0.0, 0.3, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _mainController,
+        curve: const Interval(0.0, 0.3, curve: Curves.easeOut),
+      ),
     );
 
     _glowOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _mainController, curve: const Interval(0.2, 0.5, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _mainController,
+        curve: const Interval(0.2, 0.5, curve: Curves.easeOut),
+      ),
     );
 
     _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _mainController, curve: const Interval(0.4, 0.7, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _mainController,
+        curve: const Interval(0.4, 0.7, curve: Curves.easeOut),
+      ),
     );
 
-    _textSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-      CurvedAnimation(parent: _mainController, curve: const Interval(0.4, 0.7, curve: Curves.easeOutCubic)),
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _mainController,
+        curve: const Interval(0.4, 0.7, curve: Curves.easeOutCubic),
+      ),
     );
 
     _taglineOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _mainController, curve: const Interval(0.55, 0.8, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _mainController,
+        curve: const Interval(0.55, 0.8, curve: Curves.easeOut),
+      ),
     );
 
     _loaderOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _mainController, curve: const Interval(0.7, 1.0, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _mainController,
+        curve: const Interval(0.7, 1.0, curve: Curves.easeOut),
+      ),
     );
 
     _pulseAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
@@ -130,20 +157,20 @@ class _SplashScreenState extends State<SplashScreen>
     // Progressive status indicators
     _progressController.addListener(() {
       final val = _progressAnimation.value;
-      String nextStatusText = _statusText;
+      int nextStatusStep = _statusStep;
       if (val < 0.2) {
-        nextStatusText = 'Initializing Calorie Intelligence Engine...';
+        nextStatusStep = 0;
       } else if (val < 0.45) {
-        nextStatusText = 'Opening encrypted database...';
+        nextStatusStep = 1;
       } else if (val < 0.65) {
-        nextStatusText = 'Configuring AI Coach & Gemini gateways...';
+        nextStatusStep = 2;
       } else if (val < 0.85) {
-        nextStatusText = 'Calibrating wellness dashboard...';
+        nextStatusStep = 3;
       } else {
-        nextStatusText = 'Syncing cloud profile...';
+        nextStatusStep = 4;
       }
-      if (nextStatusText != _statusText) {
-        setState(() => _statusText = nextStatusText);
+      if (nextStatusStep != _statusStep) {
+        setState(() => _statusStep = nextStatusStep);
       }
     });
 
@@ -168,13 +195,13 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = _localizationsFor(context);
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final textPrimary = colorScheme.onSurface;
     final textSecondary = colorScheme.onSurfaceVariant;
     final accentColor = colorScheme.primary;
+    final statusText = _localizedStatusText(l10n);
 
     return Scaffold(
       body: Stack(
@@ -216,9 +243,14 @@ class _SplashScreenState extends State<SplashScreen>
               children: [
                 // 3. Central Glassmorphic App Logo with weightless Parallax floating offset
                 AnimatedBuilder(
-                  animation: Listenable.merge([_mainController, _pulseController, _particleController]),
+                  animation: Listenable.merge([
+                    _mainController,
+                    _pulseController,
+                    _particleController,
+                  ]),
                   builder: (context, child) {
-                    final floatOffsetY = 7.0 * math.sin(_particleController.value * 2 * math.pi);
+                    final floatOffsetY =
+                        7.0 * math.sin(_particleController.value * 2 * math.pi);
                     return Transform.translate(
                       offset: Offset(0, floatOffsetY),
                       child: Transform.scale(
@@ -237,7 +269,10 @@ class _SplashScreenState extends State<SplashScreen>
                                   boxShadow: [
                                     BoxShadow(
                                       color: accentColor.withValues(
-                                        alpha: (isDark ? 0.35 : 0.18) * _glowOpacity.value * _pulseAnimation.value,
+                                        alpha:
+                                            (isDark ? 0.35 : 0.18) *
+                                            _glowOpacity.value *
+                                            _pulseAnimation.value,
                                       ),
                                       blurRadius: 80 * _pulseAnimation.value,
                                       spreadRadius: 24 * _pulseAnimation.value,
@@ -251,7 +286,8 @@ class _SplashScreenState extends State<SplashScreen>
                                 height: 220,
                                 child: CustomPaint(
                                   painter: _CameraHudPainter(
-                                    rotation: _particleController.value * 2 * math.pi,
+                                    rotation:
+                                        _particleController.value * 2 * math.pi,
                                     color: accentColor,
                                   ),
                                 ),
@@ -262,13 +298,21 @@ class _SplashScreenState extends State<SplashScreen>
                                 height: 154,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.03)
-                                      : Colors.black.withValues(alpha: 0.02),
+                                  color:
+                                      isDark
+                                          ? Colors.white.withValues(alpha: 0.03)
+                                          : Colors.black.withValues(
+                                            alpha: 0.02,
+                                          ),
                                   border: Border.all(
-                                    color: isDark
-                                        ? Colors.white.withValues(alpha: 0.12)
-                                        : Colors.black.withValues(alpha: 0.08),
+                                    color:
+                                        isDark
+                                            ? Colors.white.withValues(
+                                              alpha: 0.12,
+                                            )
+                                            : Colors.black.withValues(
+                                              alpha: 0.08,
+                                            ),
                                     width: 1.5,
                                   ),
                                   boxShadow: [
@@ -283,20 +327,26 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                                 child: ClipOval(
                                   child: BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                                    filter: ImageFilter.blur(
+                                      sigmaX: 18,
+                                      sigmaY: 18,
+                                    ),
                                     child: Stack(
                                       alignment: Alignment.center,
                                       children: [
-                                        // Dynamic futuristic SnapCal Camera Calorie Lens illustration inside the glass
+                                        // Dynamic snapcal Camera Calorie Lens illustration inside the glass
                                         Positioned.fill(
                                           child: AnimatedBuilder(
                                             animation: _particleController,
                                             builder: (context, _) {
                                               return CustomPaint(
-                                                painter: _SnapCalScannerLensPainter(
-                                                  animationValue: _particleController.value,
-                                                  primaryColor: accentColor,
-                                                ),
+                                                painter:
+                                                    _SnapCalScannerLensPainter(
+                                                      animationValue:
+                                                          _particleController
+                                                              .value,
+                                                      primaryColor: accentColor,
+                                                    ),
                                               );
                                             },
                                           ),
@@ -308,7 +358,8 @@ class _SplashScreenState extends State<SplashScreen>
                                             builder: (context, _) {
                                               return CustomPaint(
                                                 painter: _LaserScanPainter(
-                                                  progress: _scanAnimation.value,
+                                                  progress:
+                                                      _scanAnimation.value,
                                                 ),
                                               );
                                             },
@@ -337,12 +388,24 @@ class _SplashScreenState extends State<SplashScreen>
                       position: _textSlide,
                       child: Opacity(
                         opacity: _textOpacity.value,
-                        child: Text(
-                          l10n?.appTitle ?? 'SnapCal',
-                          style: AppTypography.displayMedium.copyWith(
-                            color: textPrimary,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -2.2,
+                        child: ShaderMask(
+                          shaderCallback:
+                              (bounds) =>
+                                  AppColors.primaryGradient.createShader(
+                                    Rect.fromLTWH(
+                                      0,
+                                      0,
+                                      bounds.width,
+                                      bounds.height,
+                                    ),
+                                  ),
+                          child: Text(
+                            l10n.appTitle,
+                            style: AppTypography.displayMedium.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -2.2,
+                            ),
                           ),
                         ),
                       ),
@@ -359,7 +422,7 @@ class _SplashScreenState extends State<SplashScreen>
                     return Opacity(
                       opacity: _taglineOpacity.value,
                       child: Text(
-                        l10n?.splash_tagline ?? 'Snap. Track. Thrive.',
+                        l10n.splash_tagline,
                         style: AppTypography.labelLarge.copyWith(
                           color: textSecondary,
                           letterSpacing: 4.5,
@@ -374,7 +437,10 @@ class _SplashScreenState extends State<SplashScreen>
 
                 // 6. Horizontal Pill Progress Indicator
                 AnimatedBuilder(
-                  animation: Listenable.merge([_mainController, _progressAnimation]),
+                  animation: Listenable.merge([
+                    _mainController,
+                    _progressAnimation,
+                  ]),
                   builder: (context, child) {
                     return Opacity(
                       opacity: _loaderOpacity.value,
@@ -382,9 +448,10 @@ class _SplashScreenState extends State<SplashScreen>
                         width: 200,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.05),
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Stack(
@@ -394,15 +461,12 @@ class _SplashScreenState extends State<SplashScreen>
                               child: Container(
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      AppColors.primary,
-                                      Color(0xFF0D9BD8),
-                                    ],
-                                  ),
+                                  gradient: AppColors.primaryGradient,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.35),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.35,
+                                      ),
                                       blurRadius: 8,
                                       offset: const Offset(0, 2),
                                     ),
@@ -426,7 +490,7 @@ class _SplashScreenState extends State<SplashScreen>
                     return Opacity(
                       opacity: _loaderOpacity.value,
                       child: Text(
-                        _statusText,
+                        statusText,
                         style: AppTypography.bodySmall.copyWith(
                           color: textSecondary.withValues(alpha: 0.7),
                           fontWeight: FontWeight.w600,
@@ -443,6 +507,37 @@ class _SplashScreenState extends State<SplashScreen>
         ],
       ),
     );
+  }
+
+  String _localizedStatusText(AppLocalizations l10n) {
+    switch (_statusStep) {
+      case 1:
+        return l10n.splash_status_database;
+      case 2:
+        return l10n.splash_status_ai_gateways;
+      case 3:
+        return l10n.splash_status_dashboard;
+      case 4:
+        return l10n.splash_status_sync_profile;
+      case 0:
+      default:
+        return l10n.splash_status_initializing;
+    }
+  }
+
+  AppLocalizations _localizationsFor(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    if (localizations != null) return localizations;
+
+    final platformLocale = WidgetsBinding.instance.platformDispatcher.locale;
+    final languageCode =
+        AppLocalizations.supportedLocales.any(
+              (supported) =>
+                  supported.languageCode == platformLocale.languageCode,
+            )
+            ? platformLocale.languageCode
+            : 'en';
+    return lookupAppLocalizations(Locale(languageCode));
   }
 }
 
@@ -470,60 +565,67 @@ class _AmbientMeshPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = isDark ? const Color(0xFF09090B) : const Color(0xFFF8F9FA);
+    final bgPaint =
+        Paint()
+          ..color = isDark ? const Color(0xFF080B16) : const Color(0xFFF4F6FB);
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    if (!isDark) return;
 
     final angle = animationValue * 2 * math.pi;
     final paint = Paint()..style = PaintingStyle.fill;
 
-    // Bubble 1: Emerald Green (Slow floating left)
+    // Bubble 1: Google Blue (Slow floating left)
     final bubble1Center = Offset(
-      size.width * (0.2 + 0.1 * math.sin(angle)),
+      size.width * (0.2 + 0.12 * math.sin(angle)),
       size.height * (0.35 + 0.1 * math.cos(angle)),
     );
-    final bubble1Radius = size.width * 0.7;
+    final bubble1Radius = size.width * 0.75;
     paint.shader = RadialGradient(
       colors: [
-        AppColors.primary.withValues(alpha: 0.14),
-        AppColors.primary.withValues(alpha: 0.0),
+        const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.15 : 0.08),
+        const Color(0xFF3B82F6).withValues(alpha: 0.0),
       ],
-    ).createShader(Rect.fromCircle(center: bubble1Center, radius: bubble1Radius));
+    ).createShader(
+      Rect.fromCircle(center: bubble1Center, radius: bubble1Radius),
+    );
     canvas.drawCircle(bubble1Center, bubble1Radius, paint);
 
-    // Bubble 2: Premium Violet (Slow floating right)
+    // Bubble 2: Purple (Slow floating right)
     final bubble2Center = Offset(
-      size.width * (0.8 - 0.12 * math.cos(angle)),
+      size.width * (0.8 - 0.14 * math.cos(angle)),
       size.height * (0.65 + 0.08 * math.sin(angle)),
     );
-    final bubble2Radius = size.width * 0.8;
+    final bubble2Radius = size.width * 0.85;
     paint.shader = RadialGradient(
       colors: [
-        AppColors.violet.withValues(alpha: 0.12),
-        AppColors.violet.withValues(alpha: 0.0),
+        const Color(0xFF8B5CF6).withValues(alpha: isDark ? 0.15 : 0.08),
+        const Color(0xFF8B5CF6).withValues(alpha: 0.0),
       ],
-    ).createShader(Rect.fromCircle(center: bubble2Center, radius: bubble2Radius));
+    ).createShader(
+      Rect.fromCircle(center: bubble2Center, radius: bubble2Radius),
+    );
     canvas.drawCircle(bubble2Center, bubble2Radius, paint);
 
-    // Bubble 3: Sky Blue (Slow floating center-top)
+    // Bubble 3: Fuchsia/Pink (Slow floating center-top)
     final bubble3Center = Offset(
-      size.width * (0.5 + 0.14 * math.cos(angle)),
-      size.height * (0.48 - 0.1 * math.sin(angle)),
+      size.width * (0.5 + 0.15 * math.cos(angle)),
+      size.height * (0.48 - 0.12 * math.sin(angle)),
     );
-    final bubble3Radius = size.width * 0.6;
+    final bubble3Radius = size.width * 0.65;
     paint.shader = RadialGradient(
       colors: [
-        AppColors.sky.withValues(alpha: 0.09),
-        AppColors.sky.withValues(alpha: 0.0),
+        const Color(0xFFEC4899).withValues(alpha: isDark ? 0.12 : 0.06),
+        const Color(0xFFEC4899).withValues(alpha: 0.0),
       ],
-    ).createShader(Rect.fromCircle(center: bubble3Center, radius: bubble3Radius));
+    ).createShader(
+      Rect.fromCircle(center: bubble3Center, radius: bubble3Radius),
+    );
     canvas.drawCircle(bubble3Center, bubble3Radius, paint);
   }
 
   @override
   bool shouldRepaint(covariant _AmbientMeshPainter oldDelegate) {
-    return animationValue != oldDelegate.animationValue || isDark != oldDelegate.isDark;
+    return animationValue != oldDelegate.animationValue ||
+        isDark != oldDelegate.isDark;
   }
 }
 
@@ -547,7 +649,9 @@ class _StarPainter extends CustomPainter {
 
     for (final star in stars) {
       final y = (star.y - animationValue * star.speed) % 1.0;
-      final x = star.x + math.sin(animationValue * math.pi * 1.5 + star.y * 8) * 0.015;
+      final x =
+          star.x +
+          math.sin(animationValue * math.pi * 1.5 + star.y * 8) * 0.015;
 
       paint.color = starColor.withValues(alpha: star.opacity);
       canvas.drawCircle(
@@ -560,7 +664,8 @@ class _StarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _StarPainter oldDelegate) {
-    return animationValue != oldDelegate.animationValue || isDark != oldDelegate.isDark;
+    return animationValue != oldDelegate.animationValue ||
+        isDark != oldDelegate.isDark;
   }
 }
 
@@ -575,11 +680,14 @@ class _CameraHudPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
-    // 1. Sleek rotating corner brackets (shutter framing)
-    final bracketPaint = Paint()
-      ..color = color.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+    // Corner brackets using Google Gemini Gradient
+    final bracketPaint =
+        Paint()
+          ..shader = AppColors.primaryGradient.createShader(
+            Rect.fromCircle(center: center, radius: radius),
+          )
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.2;
 
     final bracketLength = math.pi / 6; // 30 degrees
     for (int i = 0; i < 4; i++) {
@@ -593,11 +701,12 @@ class _CameraHudPainter extends CustomPainter {
       );
     }
 
-    // 2. Continuous rotating tick dials
-    final tickPaint = Paint()
-      ..color = color.withValues(alpha: 0.22)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
+    // Tick dials
+    final tickPaint =
+        Paint()
+          ..color = color.withValues(alpha: 0.22)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2;
 
     final numTicks = 20;
     for (int i = 0; i < numTicks; i++) {
@@ -633,29 +742,34 @@ class _LaserScanPainter extends CustomPainter {
     final y = progress * size.height;
 
     // Glowing scan trail upward
-    final trailPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.transparent,
-          AppColors.primary.withValues(alpha: 0.08),
-          AppColors.primary.withValues(alpha: 0.45),
-        ],
-      ).createShader(Rect.fromLTRB(0, y - 28, size.width, y));
+    final trailPaint =
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.transparent,
+              const Color(0xFF8B5CF6).withValues(alpha: 0.06),
+              const Color(0xFFEC4899).withValues(alpha: 0.35),
+            ],
+          ).createShader(Rect.fromLTRB(0, y - 28, size.width, y));
     canvas.drawRect(Rect.fromLTRB(0, y - 28, size.width, y), trailPaint);
 
-    // Glowing neon green laser blur
-    final laserBlurPaint = Paint()
-      ..color = AppColors.primary
-      ..strokeWidth = 3.5
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5);
+    // Glowing laser line using Google Gemini gradient
+    final laserBlurPaint =
+        Paint()
+          ..shader = AppColors.primaryGradient.createShader(
+            Rect.fromPoints(const Offset(0, 0), Offset(size.width, 0)),
+          )
+          ..strokeWidth = 3.5
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5);
     canvas.drawLine(Offset(0, y), Offset(size.width, y), laserBlurPaint);
 
     // Ultra-bright solid white core
-    final laserCorePaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 1.8;
+    final laserCorePaint =
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth = 1.8;
     canvas.drawLine(Offset(0, y), Offset(size.width, y), laserCorePaint);
   }
 
@@ -680,39 +794,47 @@ class _SnapCalScannerLensPainter extends CustomPainter {
     final cy = size.height / 2;
     final radius = size.width / 2;
 
-    // 1. Draw Outer Camera Lens Ring (Metallic Dark Carbon Slate)
-    final outerRingPaint = Paint()
-      ..shader = const RadialGradient(
-        colors: [
-          Color(0xFF1E293B),
-          Color(0xFF0F172A),
-        ],
-      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: radius));
+    // 1. Draw Outer Camera Lens Ring (Metallic Dark Slate with Indigo hint)
+    final outerRingPaint =
+        Paint()
+          ..shader = const RadialGradient(
+            colors: [Color(0xFF1E2235), Color(0xFF0C0E1B)],
+          ).createShader(
+            Rect.fromCircle(center: Offset(cx, cy), radius: radius),
+          );
     canvas.drawCircle(Offset(cx, cy), radius - 4, outerRingPaint);
 
-    final outerRingBorder = Paint()
-      ..color = Colors.white.withValues(alpha: 0.12)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+    final outerRingBorder =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.15)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0;
     canvas.drawCircle(Offset(cx, cy), radius - 4, outerRingBorder);
 
-    // 2. Draw Calorie HUD Circular Speedometer Gauge (Emerald to Sky)
-    final gaugePaint = Paint()
-      ..shader = SweepGradient(
-        colors: [
-          primaryColor,
-          const Color(0xFF0D9BD8),
-          primaryColor.withValues(alpha: 0.1),
-        ],
-        stops: const [0.0, 0.75, 1.0],
-        transform: GradientRotation(animationValue * 2 * math.pi * 0.2), // slow spin
-      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: radius - 14));
+    // 2. Draw Calorie HUD Circular Speedometer Gauge (SweepGradient Google Gemini colors)
+    final gaugePaint =
+        Paint()
+          ..shader = SweepGradient(
+            colors: const [
+              Color(0xFF3B82F6), // Blue
+              Color(0xFF8B5CF6), // Purple
+              Color(0xFFEC4899), // Pink
+              Color(0xFF3B82F6), // Blue loop
+            ],
+            stops: const [0.0, 0.4, 0.8, 1.0],
+            transform: GradientRotation(
+              animationValue * 2 * math.pi * 0.25,
+            ), // slow spin
+          ).createShader(
+            Rect.fromCircle(center: Offset(cx, cy), radius: radius - 14),
+          );
 
-    final gaugeStroke = Paint()
-      ..shader = gaugePaint.shader
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0
-      ..strokeCap = StrokeCap.round;
+    final gaugeStroke =
+        Paint()
+          ..shader = gaugePaint.shader
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4.5
+          ..strokeCap = StrokeCap.round;
 
     // Draw an open progress arc representing the calorie limit gauge
     canvas.drawArc(
@@ -724,49 +846,64 @@ class _SnapCalScannerLensPainter extends CustomPainter {
     );
 
     // Minor tick marks inside the gauge
-    final tickPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+    final tickPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.25)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0;
     const numTicks = 36;
     for (int i = 0; i < numTicks; i++) {
       final tickAngle = (i * 2 * math.pi / numTicks);
       final startR = radius - 22;
       final endR = radius - 18;
       canvas.drawLine(
-        Offset(cx + startR * math.cos(tickAngle), cy + startR * math.sin(tickAngle)),
-        Offset(cx + endR * math.cos(tickAngle), cy + endR * math.sin(tickAngle)),
+        Offset(
+          cx + startR * math.cos(tickAngle),
+          cy + startR * math.sin(tickAngle),
+        ),
+        Offset(
+          cx + endR * math.cos(tickAngle),
+          cy + endR * math.sin(tickAngle),
+        ),
         tickPaint,
       );
     }
 
-    // 3. Draw Camera Aperture Shutter Core (Glossy Emerald Glass)
+    // 3. Draw Camera Aperture Shutter Core (Glossy Indigo Glass)
     final coreRadius = radius - 30;
-    final corePaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          primaryColor.withValues(alpha: 0.4),
-          const Color(0xFF065F46).withValues(alpha: 0.85),
-          const Color(0xFF022C22),
-        ],
-        stops: const [0.0, 0.7, 1.0],
-      ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: coreRadius));
+    final corePaint =
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              const Color(0xFF8B5CF6).withValues(alpha: 0.5),
+              const Color(0xFF4F46E5).withValues(alpha: 0.85),
+              const Color(0xFF1E1B4B),
+            ],
+            stops: const [0.0, 0.7, 1.0],
+          ).createShader(
+            Rect.fromCircle(center: Offset(cx, cy), radius: coreRadius),
+          );
     canvas.drawCircle(Offset(cx, cy), coreRadius, corePaint);
 
-    final coreBorder = Paint()
-      ..color = primaryColor.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+    final coreBorder =
+        Paint()
+          ..shader = AppColors.primaryGradient.createShader(
+            Rect.fromCircle(center: Offset(cx, cy), radius: coreRadius),
+          )
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5;
     canvas.drawCircle(Offset(cx, cy), coreRadius, coreBorder);
 
     // 4. Shutter Blades converging toward the center
-    final bladePaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.45)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+    final bladePaint =
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.5)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5;
 
     const numBlades = 6;
-    final bladeOffsetAngle = animationValue * 0.15; // subtle breathing opening of blades
+    final bladeOffsetAngle =
+        animationValue * 0.15; // subtle breathing opening of blades
     for (int i = 0; i < numBlades; i++) {
       final startAngle = bladeOffsetAngle + (i * 2 * math.pi / numBlades);
       final p1 = Offset(
@@ -781,28 +918,50 @@ class _SnapCalScannerLensPainter extends CustomPainter {
     }
 
     // 5. Central Glowing Camera Focus Target Crosshair [ + ]
-    final targetOpacity = 0.4 + (0.5 * math.sin(animationValue * 4 * math.pi).abs()); // flashing
-    final focusPaint = Paint()
-      ..color = primaryColor.withValues(alpha: targetOpacity)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+    final focusPaint =
+        Paint()
+          ..shader = AppColors.primaryGradient.createShader(
+            Rect.fromCircle(center: Offset(cx, cy), radius: 10),
+          )
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5;
 
     // Draw central plus sign
     canvas.drawLine(Offset(cx - 5, cy), Offset(cx + 5, cy), focusPaint);
     canvas.drawLine(Offset(cx, cy - 5), Offset(cx, cy + 5), focusPaint);
     // Draw target brackets surrounding plus
     const bracketRadius = 14.0;
-    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: bracketRadius), -math.pi * 0.15, math.pi * 0.3, false, focusPaint);
-    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: bracketRadius), math.pi * 0.85, math.pi * 0.3, false, focusPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(cx, cy), radius: bracketRadius),
+      -math.pi * 0.15,
+      math.pi * 0.3,
+      false,
+      focusPaint,
+    );
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(cx, cy), radius: bracketRadius),
+      math.pi * 0.85,
+      math.pi * 0.3,
+      false,
+      focusPaint,
+    );
 
     // 6. Curved Physical Reflection Glass Highlights (3D Gloss)
-    final glossPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.14)
-      ..style = PaintingStyle.fill;
+    final glossPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.18)
+          ..style = PaintingStyle.fill;
 
     // Gloss highlight oval in the top left quadrant
-    final glossPath = Path()
-      ..addOval(Rect.fromLTWH(cx - radius * 0.6, cy - radius * 0.6, radius * 0.8, radius * 0.4));
+    final glossPath =
+        Path()..addOval(
+          Rect.fromLTWH(
+            cx - radius * 0.6,
+            cy - radius * 0.6,
+            radius * 0.8,
+            radius * 0.4,
+          ),
+        );
 
     canvas.save();
     canvas.rotate(-math.pi / 6); // tilt gloss

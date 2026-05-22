@@ -462,6 +462,75 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notif_dinner_body => 'End the day strong—log your dinner now.';
 
   @override
+  String get notif_meal_reminders_channel => 'Meal reminders';
+
+  @override
+  String get notif_meal_reminders_channel_description =>
+      'Reminders to log your daily nutrition.';
+
+  @override
+  String get notif_daily_motivation_channel => 'Daily Motivation';
+
+  @override
+  String get notif_daily_motivation_channel_description =>
+      'Gentle daily nutrition motivation from SnapCal.';
+
+  @override
+  String get notif_motivation_1_title => 'Small steps count';
+
+  @override
+  String get notif_motivation_1_body =>
+      'Log your first meal when you’re ready.';
+
+  @override
+  String get notif_motivation_2_title => 'Today starts simple';
+
+  @override
+  String get notif_motivation_2_body =>
+      'Choose one meal that supports your goal.';
+
+  @override
+  String get notif_motivation_3_title => 'One good choice';
+
+  @override
+  String get notif_motivation_3_body =>
+      'Start with protein, water, or a quick meal log.';
+
+  @override
+  String get notif_motivation_4_title => 'You don’t need perfect';
+
+  @override
+  String get notif_motivation_4_body => 'Just notice what you eat today.';
+
+  @override
+  String get notif_motivation_5_title => 'Fuel first';
+
+  @override
+  String get notif_motivation_5_body =>
+      'Give your body something useful today.';
+
+  @override
+  String get notif_motivation_6_title => 'Make it easy';
+
+  @override
+  String get notif_motivation_6_body =>
+      'Track one meal. That’s enough to build momentum.';
+
+  @override
+  String get notif_motivation_7_title => 'Build the day well';
+
+  @override
+  String get notif_motivation_7_body =>
+      'A balanced first meal makes the next choice easier.';
+
+  @override
+  String get notif_motivation_8_title => 'Your health is daily';
+
+  @override
+  String get notif_motivation_8_body =>
+      'A small check-in keeps you in control.';
+
+  @override
   String get auth_title => 'Your Journey\nStarts Here';
 
   @override
@@ -542,6 +611,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String notif_goal_protein_body(Object goal) {
     return 'Great job! You\'ve reached your ${goal}g protein target.';
   }
+
+  @override
+  String get notif_goal_alerts_channel => 'Goal alerts';
+
+  @override
+  String get notif_goal_alerts_channel_description =>
+      'Alerts when you hit your nutrition milestones.';
 
   @override
   String get common_confirm => 'Confirm';
@@ -1519,6 +1595,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_guest_account => 'Guest Account';
 
   @override
+  String get settings_sign_in => 'Sign In';
+
+  @override
   String get settings_member => 'SnapCal Member';
 
   @override
@@ -1532,6 +1611,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_meal_reminders => 'Meal reminders';
+
+  @override
+  String get settings_daily_motivation => 'Daily motivation';
 
   @override
   String get settings_language => 'Language';
@@ -2075,6 +2157,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get auth_welcome_back_title => 'Welcome back';
 
   @override
+  String get home_welcome_guest => 'Welcome to SnapCal';
+
+  @override
   String get auth_lets_dive => 'Let\'s dive in';
 
   @override
@@ -2475,4 +2560,469 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paywall_slide_toast_portion => '2 slices';
+
+  @override
+  String get scan_step_uploading => 'Uploading food image...';
+
+  @override
+  String get scan_step_scanning => 'Scanning visual shapes...';
+
+  @override
+  String get scan_step_ingredients => 'Identifying ingredients...';
+
+  @override
+  String get scan_step_portions => 'Estimating portion sizes...';
+
+  @override
+  String get scan_step_calories => 'Calculating calorie density...';
+
+  @override
+  String get scan_step_macros => 'Balancing macronutrients...';
+
+  @override
+  String get scan_step_finalizing => 'Finalizing nutrition card...';
+
+  @override
+  String get common_camera => 'Camera';
+
+  @override
+  String get assistant_quick_macros => 'Fix my macros';
+
+  @override
+  String get assistant_quick_next_meal => 'What should I eat next?';
+
+  @override
+  String get assistant_quick_snack => 'High-protein snack';
+
+  @override
+  String assistant_meals_logged_today(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Based on $count meals logged today',
+      one: 'Based on 1 meal logged today',
+      zero: 'Based on no meals logged today',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistant_ask_coach_header => 'Ask your coach';
+
+  @override
+  String get assistant_brief_today => 'Today\'s coach brief';
+
+  @override
+  String get assistant_live => 'Live';
+
+  @override
+  String get assistant_brief_left => 'Left';
+
+  @override
+  String get assistant_protein_gap => 'Protein gap';
+
+  @override
+  String get assistant_to_goal => 'to goal';
+
+  @override
+  String get assistant_last_meal => 'Last meal';
+
+  @override
+  String get assistant_next_move => 'Next move';
+
+  @override
+  String get assistant_no_meals_logged => 'No meals logged yet';
+
+  @override
+  String get assistant_action_log_meal => 'Log a meal for precise coaching';
+
+  @override
+  String get assistant_action_protein => 'Prioritize protein next';
+
+  @override
+  String get assistant_action_light => 'Keep the next choice light';
+
+  @override
+  String get assistant_action_balanced => 'Stay balanced for your next meal';
+
+  @override
+  String get assistant_analyze_image_prompt => 'Analyze this image.';
+
+  @override
+  String common_items_count(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settings_weight_loss_progress => 'Weight Loss Progress';
+
+  @override
+  String get settings_weight_gain_progress => 'Weight Gain Progress';
+
+  @override
+  String get settings_weight_start => 'Start';
+
+  @override
+  String get settings_weight_current => 'Current';
+
+  @override
+  String get settings_weight_target => 'Target';
+
+  @override
+  String get settings_goal_reached => 'Goal reached! 🎉';
+
+  @override
+  String settings_left_to_reach_target(String amount, String unit) {
+    return '$amount $unit left to reach target';
+  }
+
+  @override
+  String get settings_macro_calorie_split => 'Macro Calorie Split';
+
+  @override
+  String get settings_macro_calorie_split_desc =>
+      'Percentage of total calories contributed by each macro';
+
+  @override
+  String get settings_step_tracking => 'Step Tracking';
+
+  @override
+  String get settings_syncing_activity => 'Syncing activity data...';
+
+  @override
+  String get settings_sync_now => 'Sync now';
+
+  @override
+  String get settings_sync_now_desc => 'Refresh steps and estimated calories';
+
+  @override
+  String settings_last_synced(String time) {
+    return 'Last synced $time';
+  }
+
+  @override
+  String get settings_disconnect_steps => 'Turn off step tracking';
+
+  @override
+  String get settings_disconnect_steps_desc =>
+      'Stop listening to phone step updates';
+
+  @override
+  String get settings_status_enabled => 'Tracking enabled';
+
+  @override
+  String get settings_status_denied => 'Permission denied';
+
+  @override
+  String get settings_status_unsupported => 'Unsupported device';
+
+  @override
+  String get settings_status_error => 'Tracking error';
+
+  @override
+  String get settings_status_off => 'Tracking off';
+
+  @override
+  String get settings_gender_male => 'Male';
+
+  @override
+  String get settings_gender_female => 'Female';
+
+  @override
+  String get settings_gender_other => 'Other';
+
+  @override
+  String get settings_age_unit => 'yrs';
+
+  @override
+  String get settings_kcal_unit => 'kcal';
+
+  @override
+  String get settings_grams_unit => 'g';
+
+  @override
+  String get settings_unit_kg => 'kg';
+
+  @override
+  String get settings_unit_lb => 'lb';
+
+  @override
+  String get settings_unit_cm => 'cm';
+
+  @override
+  String get settings_unit_in => 'in';
+
+  @override
+  String get paywall_unlock_snapcal_pro => 'Unlock SnapCal Pro';
+
+  @override
+  String get paywall_barcode_title => 'Unlock Barcode Scanner';
+
+  @override
+  String get paywall_barcode_subtitle =>
+      'Instantly log packaged foods by scanning their barcodes';
+
+  @override
+  String get paywall_free_scans_used_title => 'You used 3/3 free scans today';
+
+  @override
+  String get paywall_unlimited_scanning_subtitle =>
+      'Upgrade to unlock unlimited scanning';
+
+  @override
+  String get paywall_unlimited_scanning_title => 'Unlock Unlimited Scanning';
+
+  @override
+  String get paywall_scan_track_subtitle =>
+      'Upgrade to scan and track all your meals';
+
+  @override
+  String get paywall_ai_coaching_title => 'Unlock unlimited AI coaching';
+
+  @override
+  String get paywall_ai_coaching_subtitle =>
+      'Get 24/7 personal nutrition guidance';
+
+  @override
+  String get paywall_smart_planning_title => 'Unlock smart meal planning';
+
+  @override
+  String get paywall_smart_planning_subtitle =>
+      'Customized daily plans for your goals';
+
+  @override
+  String get paywall_shopping_lists_title => 'Auto-generated shopping lists';
+
+  @override
+  String get paywall_shopping_lists_subtitle =>
+      'Save time with smart grocery aggregation';
+
+  @override
+  String get paywall_progress_journey_title => 'Visual progress journey';
+
+  @override
+  String get paywall_progress_journey_subtitle =>
+      'Track your body transformation photos';
+
+  @override
+  String get paywall_analytics_title => 'Deep metabolic analytics';
+
+  @override
+  String get paywall_analytics_subtitle =>
+      'Unlock personalized nutrition trends';
+
+  @override
+  String get paywall_focused_title => '100% focused experience';
+
+  @override
+  String get paywall_focused_subtitle => 'Remove all ads and interruptions';
+
+  @override
+  String get paywall_upgrade_experience_title => 'Upgrade your experience';
+
+  @override
+  String get paywall_upgrade_experience_subtitle =>
+      'Unlock all premium features today';
+
+  @override
+  String get paywall_benefit_unlimited_scans => 'Unlimited scans';
+
+  @override
+  String get paywall_benefit_ai_guidance => 'AI guidance';
+
+  @override
+  String get paywall_benefit_full_history => 'Full history';
+
+  @override
+  String get paywall_benefit_weekly_reports => 'Weekly reports';
+
+  @override
+  String get paywall_benefit_ad_free => 'Ad-free';
+
+  @override
+  String get paywall_benefit_smart_planner => 'Smart planner';
+
+  @override
+  String paywall_price_target(String price) {
+    return '$price target';
+  }
+
+  @override
+  String get assistant_action_fix_macros => 'Fix today\'s macros';
+
+  @override
+  String get assistant_action_plan_next_meal => 'Plan my next meal';
+
+  @override
+  String get assistant_action_light_dinner => 'Suggest a light dinner';
+
+  @override
+  String assistant_coaching_with_meals(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Coaching with today\'s $count logged meals',
+      one: 'Coaching with today\'s 1 logged meal',
+      zero: 'Coaching with no logged meals today',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistant_start_new_chat => 'Start a new chat';
+
+  @override
+  String get assistant_new_chat => 'New chat';
+
+  @override
+  String get assistant_coach_insight => 'Coach insight';
+
+  @override
+  String get assistant_recipe_estimated_macros =>
+      'Recipe plan with estimated macros';
+
+  @override
+  String get assistant_personalized_from_today =>
+      'Personalized from today\'s nutrition';
+
+  @override
+  String get assistant_step_recipe_plan => 'Step-by-step recipe plan';
+
+  @override
+  String get assistant_recipe => 'Recipe';
+
+  @override
+  String get assistant_ingredients => 'Ingredients';
+
+  @override
+  String get assistant_what_to_do => 'What to do';
+
+  @override
+  String get assistant_recipe_plan => 'Recipe plan';
+
+  @override
+  String get assistant_plan_meal => 'Plan meal';
+
+  @override
+  String get assistant_adjust_macros => 'Adjust macros';
+
+  @override
+  String get assistant_ask_follow_up => 'Ask follow-up';
+
+  @override
+  String activity_steps_goal(int steps) {
+    return 'Goal: $steps steps';
+  }
+
+  @override
+  String get activity_unlock_pro_title => 'Unlock Pro activity features';
+
+  @override
+  String get activity_unlock_pro_subtitle =>
+      'Go Pro to unlock dynamic calorie goal adjustment from steps, weekly streaks, manual workout calories, activity score, and insights.';
+
+  @override
+  String get activity_manual_workouts => 'Manual workouts';
+
+  @override
+  String get activity_no_manual_workouts => 'No manual workouts logged today.';
+
+  @override
+  String get activity_default_workout => 'Workout';
+
+  @override
+  String get activity_add_workout => 'Add workout';
+
+  @override
+  String get activity_workout_type => 'Workout type';
+
+  @override
+  String get activity_minutes => 'Minutes';
+
+  @override
+  String get activity_save_workout => 'Save workout';
+
+  @override
+  String activity_insight_goal_met(int steps) {
+    return 'You averaged $steps steps this week and are meeting your step goal.';
+  }
+
+  @override
+  String activity_insight_goal_gap(int steps) {
+    return 'You averaged $steps steps this week. A short walk can help close the gap.';
+  }
+
+  @override
+  String common_minutes_short(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String common_kcal_value(int calories) {
+    return '$calories kcal';
+  }
+
+  @override
+  String get splash_status_initializing =>
+      'Initializing Calorie Intelligence Engine...';
+
+  @override
+  String get splash_status_database => 'Opening encrypted database...';
+
+  @override
+  String get splash_status_ai_gateways =>
+      'Configuring AI Coach & Gemini gateways...';
+
+  @override
+  String get splash_status_dashboard => 'Calibrating wellness dashboard...';
+
+  @override
+  String get splash_status_sync_profile => 'Syncing cloud profile...';
+
+  @override
+  String get auth_google_sign_in_failed => 'Google Sign-In failed';
+
+  @override
+  String get auth_facebook_sign_in_failed => 'Facebook Sign-In failed';
+
+  @override
+  String auth_google_sign_in_failed_code(String code) {
+    return 'Google Sign-In failed ($code). Please try again.';
+  }
+
+  @override
+  String auth_firebase_google_sign_in_failed(String code) {
+    return 'Firebase could not complete Google Sign-In ($code).';
+  }
+
+  @override
+  String get barcode_unknown_product => 'Unknown Product';
+
+  @override
+  String get barcode_default_portion => 'per serving/100g';
+
+  @override
+  String get activity_calorie_estimate_disclaimer =>
+      'Calories are estimated from steps and may not be exact.';
+
+  @override
+  String get activity_estimated_calories => 'Estimated calories';
+
+  @override
+  String get activity_step_streak => 'Step streak';
+
+  @override
+  String get activity_workout_calories => 'Workout calories';
+
+  @override
+  String get activity_score => 'Activity score';
+
+  @override
+  String get common_days => 'days';
 }

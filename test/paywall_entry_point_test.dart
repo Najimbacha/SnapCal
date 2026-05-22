@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:snapcal/data/services/premium_conversion_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/screens/paywall/paywall_screen.dart';
 
 void main() {
-  setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
-  });
-
   Widget buildSubject(
     PaywallEntryPoint entryPoint, {
     bool limitReached = false,
@@ -53,7 +48,10 @@ void main() {
     await tester.pump();
 
     expect(find.textContaining('Unlock unlimited AI coaching'), findsOneWidget);
-    expect(find.textContaining('24/7 personal nutrition guidance'), findsOneWidget);
+    expect(
+      find.textContaining('24/7 personal nutrition guidance'),
+      findsOneWidget,
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 9));

@@ -158,6 +158,7 @@ class SnapController extends ChangeNotifier {
           mealProvider.cacheAnalysis(_capturedImageBytes!, _analysisResults!);
         }
 
+        await _recordFreeScanIfNeeded(settingsProvider);
         _isAnalyzing = false;
         notifyListeners();
         onShowResult();
@@ -230,6 +231,7 @@ class SnapController extends ChangeNotifier {
               language: settingsProvider.languageCode,
             )
             .timeout(const Duration(seconds: 18));
+        await _recordFreeScanIfNeeded(settingsProvider);
         _isAnalyzing = false;
         notifyListeners();
         onShowResult();
@@ -275,6 +277,7 @@ class SnapController extends ChangeNotifier {
           .timeout(const Duration(seconds: 8));
       if (result != null) {
         _analysisResults = [result];
+        await _recordFreeScanIfNeeded(settingsProvider);
         _isAnalyzing = false;
         notifyListeners();
         onShowResult();
@@ -291,6 +294,14 @@ class SnapController extends ChangeNotifier {
       _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
       notifyListeners();
       onShowManualInput();
+    }
+  }
+
+  Future<void> _recordFreeScanIfNeeded(
+    SettingsProvider settingsProvider,
+  ) async {
+    if (!settingsProvider.isPro) {
+      await ScanGateService().incrementScanCount();
     }
   }
 

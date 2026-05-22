@@ -28,6 +28,7 @@ class AppPageScaffold extends StatelessWidget {
   final Color? backgroundColor;
   final bool showHeader;
   final bool extendBehindStatusBar;
+  final double headerHeight;
 
   const AppPageScaffold({
     super.key,
@@ -47,6 +48,7 @@ class AppPageScaffold extends StatelessWidget {
     this.backgroundColor,
     this.showHeader = true,
     this.extendBehindStatusBar = false,
+    this.headerHeight = 56,
   });
 
   @override
@@ -77,7 +79,7 @@ class AppPageScaffold extends StatelessWidget {
         extendBehindStatusBar ? MediaQuery.of(context).padding.top : 0.0;
 
     final header = Container(
-      height: 72 + statusBarTopInset,
+      height: headerHeight + statusBarTopInset,
       padding: EdgeInsets.fromLTRB(hPadding, statusBarTopInset, hPadding, 0),
       decoration: headerDecoration,
       child: Stack(
@@ -110,9 +112,9 @@ class AppPageScaffold extends StatelessWidget {
                         key: ValueKey(title),
                         style: AppTypography.titleLarge.copyWith(
                           color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                           fontSize: 18,
-                          letterSpacing: 0,
+                          letterSpacing: -0.3,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -143,7 +145,7 @@ class AppPageScaffold extends StatelessWidget {
                         }
                       },
                       child: _HeaderIconButton(
-                        icon: Icons.arrow_back_ios_new_rounded,
+                        icon: LucideIcons.arrowLeft,
                         colorScheme: colorScheme,
                       ),
                     )
@@ -236,17 +238,12 @@ class _HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
-        ),
-      ),
-      child: Icon(icon, size: 16, color: colorScheme.onSurface),
+    return Container(
+      width: 40,
+      height: 40,
+      alignment: Alignment.center,
+      color: Colors.transparent,
+      child: Icon(icon, size: 20, color: colorScheme.onSurface),
     );
   }
 }

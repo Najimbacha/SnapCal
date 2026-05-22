@@ -106,6 +106,9 @@ class UserSettings extends HiveObject {
   @HiveField(32)
   final String? languageCode;
 
+  @HiveField(33)
+  final bool dailyMotivationEnabled;
+
   UserSettings({
     required this.dailyCalorieGoal,
     required this.dailyProteinGoal,
@@ -139,6 +142,7 @@ class UserSettings extends HiveObject {
     this.mealsPerDay = 3,
     this.dietaryRestriction = 'none',
     this.cuisinePreference = 'international',
+    this.dailyMotivationEnabled = false,
     String? languageCode,
   }) : languageCode = languageCode ?? 'en';
 
@@ -176,6 +180,7 @@ class UserSettings extends HiveObject {
     String? dietaryRestriction,
     String? cuisinePreference,
     String? languageCode,
+    bool? dailyMotivationEnabled,
   }) {
     return UserSettings(
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -213,6 +218,8 @@ class UserSettings extends HiveObject {
       dietaryRestriction: dietaryRestriction ?? this.dietaryRestriction,
       cuisinePreference: cuisinePreference ?? this.cuisinePreference,
       languageCode: languageCode ?? this.languageCode,
+      dailyMotivationEnabled:
+          dailyMotivationEnabled ?? this.dailyMotivationEnabled,
     );
   }
 
@@ -251,6 +258,7 @@ class UserSettings extends HiveObject {
       'dietaryRestriction': dietaryRestriction,
       'cuisinePreference': cuisinePreference,
       'languageCode': languageCode,
+      'dailyMotivationEnabled': dailyMotivationEnabled,
     };
   }
 
@@ -291,8 +299,10 @@ class UserSettings extends HiveObject {
           json['recommendationSafetyNote'] as String? ?? '',
       mealsPerDay: json['mealsPerDay'] as int? ?? 3,
       dietaryRestriction: json['dietaryRestriction'] as String? ?? 'none',
-      cuisinePreference: json['cuisinePreference'] as String? ?? 'international',
+      cuisinePreference:
+          json['cuisinePreference'] as String? ?? 'international',
       languageCode: json['languageCode'] as String? ?? 'en',
+      dailyMotivationEnabled: json['dailyMotivationEnabled'] as bool? ?? false,
     );
   }
 
@@ -332,6 +342,7 @@ class UserSettings extends HiveObject {
       dietaryRestriction: 'none',
       cuisinePreference: 'international',
       languageCode: 'en',
+      dailyMotivationEnabled: false,
     );
   }
 }

@@ -472,6 +472,69 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notif_dinner_body => 'أنهِ يومك بقوة - سجل عشاءك الآن.';
 
   @override
+  String get notif_meal_reminders_channel => 'تذكير الوجبات';
+
+  @override
+  String get notif_meal_reminders_channel_description =>
+      'تذكيرات لتسجيل تغذيتك اليومية.';
+
+  @override
+  String get notif_daily_motivation_channel => 'تحفيز يومي';
+
+  @override
+  String get notif_daily_motivation_channel_description =>
+      'تحفيز يومي لطيف للتغذية من SnapCal.';
+
+  @override
+  String get notif_motivation_1_title => 'خطوة صغيرة تكفي';
+
+  @override
+  String get notif_motivation_1_body => 'سجّل أول وجبة عندما تكون جاهزاً.';
+
+  @override
+  String get notif_motivation_2_title => 'ابدأ اليوم ببساطة';
+
+  @override
+  String get notif_motivation_2_body => 'اختر وجبة واحدة تدعم هدفك.';
+
+  @override
+  String get notif_motivation_3_title => 'اختيار جيد واحد';
+
+  @override
+  String get notif_motivation_3_body => 'ابدأ ببروتين أو ماء أو تسجيل سريع.';
+
+  @override
+  String get notif_motivation_4_title => 'لا تحتاج إلى المثالية';
+
+  @override
+  String get notif_motivation_4_body => 'فقط لاحظ ما تأكله اليوم.';
+
+  @override
+  String get notif_motivation_5_title => 'غذِّ جسمك أولاً';
+
+  @override
+  String get notif_motivation_5_body => 'امنح جسمك شيئاً مفيداً اليوم.';
+
+  @override
+  String get notif_motivation_6_title => 'اجعلها سهلة';
+
+  @override
+  String get notif_motivation_6_body => 'سجّل وجبة واحدة. هذا يكفي للبداية.';
+
+  @override
+  String get notif_motivation_7_title => 'ابنِ يومك جيداً';
+
+  @override
+  String get notif_motivation_7_body =>
+      'وجبة أولى متوازنة تجعل القرار التالي أسهل.';
+
+  @override
+  String get notif_motivation_8_title => 'صحتك عادة يومية';
+
+  @override
+  String get notif_motivation_8_body => 'تسجيل صغير يساعدك على البقاء مسيطراً.';
+
+  @override
   String get auth_title => 'رحلتك\nتبدأ هنا';
 
   @override
@@ -551,6 +614,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String notif_goal_protein_body(Object goal) {
     return 'عمل رائع! لقد وصلت إلى هدفك البالغ $goal جرام من البروتين.';
   }
+
+  @override
+  String get notif_goal_alerts_channel => 'تنبيهات الأهداف';
+
+  @override
+  String get notif_goal_alerts_channel_description =>
+      'تنبيهات عند تحقيق أهدافك الغذائية.';
 
   @override
   String get common_confirm => 'تأكيد';
@@ -1534,6 +1604,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_guest_account => 'حساب ضيف';
 
   @override
+  String get settings_sign_in => 'تسجيل الدخول';
+
+  @override
   String get settings_member => 'عضو سناب كال';
 
   @override
@@ -1547,6 +1620,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settings_meal_reminders => 'تذكير الوجبات';
+
+  @override
+  String get settings_daily_motivation => 'تحفيز يومي';
 
   @override
   String get settings_language => 'اللغة';
@@ -2087,6 +2163,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get auth_welcome_back_title => 'مرحباً بعودتك';
 
   @override
+  String get home_welcome_guest => 'مرحباً بك في SnapCal';
+
+  @override
   String get auth_lets_dive => 'لنبدأ';
 
   @override
@@ -2486,4 +2565,466 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get paywall_slide_toast_portion => 'شريحتان';
+
+  @override
+  String get scan_step_uploading => 'جاري رفع صورة الطعام...';
+
+  @override
+  String get scan_step_scanning => 'جاري فحص الأشكال البصرية...';
+
+  @override
+  String get scan_step_ingredients => 'جاري تحديد المكونات...';
+
+  @override
+  String get scan_step_portions => 'جاري تقدير حجم الحصص...';
+
+  @override
+  String get scan_step_calories => 'جاري حساب كثافة السعرات الحرارية...';
+
+  @override
+  String get scan_step_macros => 'جاري موازنة العناصر الغذائية...';
+
+  @override
+  String get scan_step_finalizing => 'جاري إنهاء بطاقة التغذية...';
+
+  @override
+  String get common_camera => 'الكاميرا';
+
+  @override
+  String get assistant_quick_macros => 'تعديل الماكروز الخاصة بي';
+
+  @override
+  String get assistant_quick_next_meal => 'ماذا يجب أن آكل بعد ذلك؟';
+
+  @override
+  String get assistant_quick_snack => 'وجبة خفيفة عالية البروتين';
+
+  @override
+  String assistant_meals_logged_today(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'بناءً على $count وجبة مسجلة اليوم',
+      one: 'بناءً على وجبة واحدة مسجلة اليوم',
+      zero: 'لم يتم تسجيل وجبات اليوم',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistant_ask_coach_header => 'اسأل مدربك';
+
+  @override
+  String get assistant_brief_today => 'ملخص المدرب لليوم';
+
+  @override
+  String get assistant_live => 'مباشر';
+
+  @override
+  String get assistant_brief_left => 'المتبقي';
+
+  @override
+  String get assistant_protein_gap => 'فجوة البروتين';
+
+  @override
+  String get assistant_to_goal => 'للوصول للهدف';
+
+  @override
+  String get assistant_last_meal => 'آخر وجبة';
+
+  @override
+  String get assistant_next_move => 'الخطوة التالية';
+
+  @override
+  String get assistant_no_meals_logged => 'لم يتم تسجيل وجبات بعد';
+
+  @override
+  String get assistant_action_log_meal => 'سجل وجبة للحصول على توجيه دقيق';
+
+  @override
+  String get assistant_action_protein =>
+      'أعطِ الأولوية للبروتين في وجبتك القادمة';
+
+  @override
+  String get assistant_action_light => 'اجعل خيارك القادم خفيفًا';
+
+  @override
+  String get assistant_action_balanced => 'حافظ على توازن وجبتك القادمة';
+
+  @override
+  String get assistant_analyze_image_prompt => 'حلل هذه الصورة.';
+
+  @override
+  String common_items_count(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count عناصر',
+      one: 'عنصر واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settings_weight_loss_progress => 'تقدم خسارة الوزن';
+
+  @override
+  String get settings_weight_gain_progress => 'تقدم زيادة الوزن';
+
+  @override
+  String get settings_weight_start => 'البداية';
+
+  @override
+  String get settings_weight_current => 'الحالي';
+
+  @override
+  String get settings_weight_target => 'الهدف';
+
+  @override
+  String get settings_goal_reached => 'تم تحقيق الهدف! 🎉';
+
+  @override
+  String settings_left_to_reach_target(String amount, String unit) {
+    return 'متبقي $amount $unit للوصول للهدف';
+  }
+
+  @override
+  String get settings_macro_calorie_split => 'تقسيم سعرات العناصر الغذائية';
+
+  @override
+  String get settings_macro_calorie_split_desc =>
+      'نسبة السعرات الحرارية الإجمالية التي يساهم بها كل عنصر';
+
+  @override
+  String get settings_step_tracking => 'تتبع الخطوات';
+
+  @override
+  String get settings_syncing_activity => 'جاري مزامنة بيانات النشاط...';
+
+  @override
+  String get settings_sync_now => 'مزامنة الآن';
+
+  @override
+  String get settings_sync_now_desc =>
+      'تحديث الخطوات والسعرات الحرارية المقدرة';
+
+  @override
+  String settings_last_synced(String time) {
+    return 'آخر مزامنة $time';
+  }
+
+  @override
+  String get settings_disconnect_steps => 'إيقاف تتبع الخطوات';
+
+  @override
+  String get settings_disconnect_steps_desc =>
+      'إيقاف الاستماع لتحديثات خطوات الهاتف';
+
+  @override
+  String get settings_status_enabled => 'التتبع مفعّل';
+
+  @override
+  String get settings_status_denied => 'تم رفض الإذن';
+
+  @override
+  String get settings_status_unsupported => 'الجهاز غير مدعوم';
+
+  @override
+  String get settings_status_error => 'خطأ في التتبع';
+
+  @override
+  String get settings_status_off => 'التتبع متوقف';
+
+  @override
+  String get settings_gender_male => 'ذكر';
+
+  @override
+  String get settings_gender_female => 'أنثى';
+
+  @override
+  String get settings_gender_other => 'آخر';
+
+  @override
+  String get settings_age_unit => 'سنة';
+
+  @override
+  String get settings_kcal_unit => 'سعرة حرارية';
+
+  @override
+  String get settings_grams_unit => 'جم';
+
+  @override
+  String get settings_unit_kg => 'كجم';
+
+  @override
+  String get settings_unit_lb => 'رطل';
+
+  @override
+  String get settings_unit_cm => 'سم';
+
+  @override
+  String get settings_unit_in => 'بوصة';
+
+  @override
+  String get paywall_unlock_snapcal_pro => 'افتح SnapCal Pro';
+
+  @override
+  String get paywall_barcode_title => 'افتح ماسح الباركود';
+
+  @override
+  String get paywall_barcode_subtitle =>
+      'سجّل الأطعمة المعلبة فورًا عبر مسح الباركود';
+
+  @override
+  String get paywall_free_scans_used_title =>
+      'استخدمت 3/3 من الفحوصات المجانية اليوم';
+
+  @override
+  String get paywall_unlimited_scanning_subtitle =>
+      'قم بالترقية لفتح المسح غير المحدود';
+
+  @override
+  String get paywall_unlimited_scanning_title => 'افتح المسح غير المحدود';
+
+  @override
+  String get paywall_scan_track_subtitle =>
+      'قم بالترقية لمسح كل وجباتك وتتبعها';
+
+  @override
+  String get paywall_ai_coaching_title =>
+      'افتح تدريب الذكاء الاصطناعي غير المحدود';
+
+  @override
+  String get paywall_ai_coaching_subtitle => 'إرشاد تغذوي شخصي على مدار الساعة';
+
+  @override
+  String get paywall_smart_planning_title => 'افتح تخطيط الوجبات الذكي';
+
+  @override
+  String get paywall_smart_planning_subtitle => 'خطط يومية مخصصة لأهدافك';
+
+  @override
+  String get paywall_shopping_lists_title => 'قوائم تسوق يتم إنشاؤها تلقائيًا';
+
+  @override
+  String get paywall_shopping_lists_subtitle =>
+      'وفّر الوقت مع تجميع ذكي للمشتريات';
+
+  @override
+  String get paywall_progress_journey_title => 'رحلة تقدم مرئية';
+
+  @override
+  String get paywall_progress_journey_subtitle => 'تتبع صور تحول جسمك';
+
+  @override
+  String get paywall_analytics_title => 'تحليلات أيضية متقدمة';
+
+  @override
+  String get paywall_analytics_subtitle => 'افتح اتجاهات تغذية مخصصة';
+
+  @override
+  String get paywall_focused_title => 'تجربة مركزة 100%';
+
+  @override
+  String get paywall_focused_subtitle => 'أزل كل الإعلانات والمقاطعات';
+
+  @override
+  String get paywall_upgrade_experience_title => 'طوّر تجربتك';
+
+  @override
+  String get paywall_upgrade_experience_subtitle =>
+      'افتح كل ميزات الاشتراك اليوم';
+
+  @override
+  String get paywall_benefit_unlimited_scans => 'مسح غير محدود';
+
+  @override
+  String get paywall_benefit_ai_guidance => 'إرشاد بالذكاء الاصطناعي';
+
+  @override
+  String get paywall_benefit_full_history => 'السجل الكامل';
+
+  @override
+  String get paywall_benefit_weekly_reports => 'تقارير أسبوعية';
+
+  @override
+  String get paywall_benefit_ad_free => 'بدون إعلانات';
+
+  @override
+  String get paywall_benefit_smart_planner => 'مخطط ذكي';
+
+  @override
+  String paywall_price_target(String price) {
+    return 'السعر المستهدف $price';
+  }
+
+  @override
+  String get assistant_action_fix_macros => 'اضبط الماكروز اليوم';
+
+  @override
+  String get assistant_action_plan_next_meal => 'خطط وجبتي التالية';
+
+  @override
+  String get assistant_action_light_dinner => 'اقترح عشاءً خفيفًا';
+
+  @override
+  String assistant_coaching_with_meals(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'تدريب مع $count وجبات مسجلة اليوم',
+      one: 'تدريب مع وجبة واحدة مسجلة اليوم',
+      zero: 'تدريب بدون وجبات مسجلة اليوم',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get assistant_start_new_chat => 'ابدأ محادثة جديدة';
+
+  @override
+  String get assistant_new_chat => 'محادثة جديدة';
+
+  @override
+  String get assistant_coach_insight => 'رؤية المدرب';
+
+  @override
+  String get assistant_recipe_estimated_macros => 'خطة وصفة مع ماكروز تقديرية';
+
+  @override
+  String get assistant_personalized_from_today => 'مخصص حسب تغذيتك اليوم';
+
+  @override
+  String get assistant_step_recipe_plan => 'خطة وصفة خطوة بخطوة';
+
+  @override
+  String get assistant_recipe => 'وصفة';
+
+  @override
+  String get assistant_ingredients => 'المكونات';
+
+  @override
+  String get assistant_what_to_do => 'ما الذي تفعله';
+
+  @override
+  String get assistant_recipe_plan => 'خطة وصفة';
+
+  @override
+  String get assistant_plan_meal => 'خطط وجبة';
+
+  @override
+  String get assistant_adjust_macros => 'عدّل الماكروز';
+
+  @override
+  String get assistant_ask_follow_up => 'اسأل متابعة';
+
+  @override
+  String activity_steps_goal(int steps) {
+    return 'الهدف: $steps خطوة';
+  }
+
+  @override
+  String get activity_unlock_pro_title => 'افتح ميزات النشاط الاحترافية';
+
+  @override
+  String get activity_unlock_pro_subtitle =>
+      'قم بالترقية لفتح تعديل هدف السعرات من الخطوات، والسلاسل الأسبوعية، وسعرات التمارين اليدوية، ودرجة النشاط، والرؤى.';
+
+  @override
+  String get activity_manual_workouts => 'تمارين يدوية';
+
+  @override
+  String get activity_no_manual_workouts => 'لا توجد تمارين يدوية مسجلة اليوم.';
+
+  @override
+  String get activity_default_workout => 'تمرين';
+
+  @override
+  String get activity_add_workout => 'إضافة تمرين';
+
+  @override
+  String get activity_workout_type => 'نوع التمرين';
+
+  @override
+  String get activity_minutes => 'الدقائق';
+
+  @override
+  String get activity_save_workout => 'حفظ التمرين';
+
+  @override
+  String activity_insight_goal_met(int steps) {
+    return 'بلغ متوسط خطواتك $steps خطوة هذا الأسبوع وأنت تحقق هدف الخطوات.';
+  }
+
+  @override
+  String activity_insight_goal_gap(int steps) {
+    return 'بلغ متوسط خطواتك $steps خطوة هذا الأسبوع. يمكن لمشي قصير أن يساعدك على سد الفجوة.';
+  }
+
+  @override
+  String common_minutes_short(int minutes) {
+    return '$minutes د';
+  }
+
+  @override
+  String common_kcal_value(int calories) {
+    return '$calories سعرة';
+  }
+
+  @override
+  String get splash_status_initializing => 'تهيئة محرك ذكاء السعرات...';
+
+  @override
+  String get splash_status_database => 'فتح قاعدة البيانات المشفرة...';
+
+  @override
+  String get splash_status_ai_gateways =>
+      'إعداد مدرب الذكاء الاصطناعي وبوابات Gemini...';
+
+  @override
+  String get splash_status_dashboard => 'معايرة لوحة العافية...';
+
+  @override
+  String get splash_status_sync_profile => 'مزامنة ملفك السحابي...';
+
+  @override
+  String get auth_google_sign_in_failed => 'فشل تسجيل الدخول عبر Google';
+
+  @override
+  String get auth_facebook_sign_in_failed => 'فشل تسجيل الدخول عبر Facebook';
+
+  @override
+  String auth_google_sign_in_failed_code(String code) {
+    return 'فشل تسجيل الدخول عبر Google ($code). يرجى المحاولة مرة أخرى.';
+  }
+
+  @override
+  String auth_firebase_google_sign_in_failed(String code) {
+    return 'تعذر على Firebase إكمال تسجيل الدخول عبر Google ($code).';
+  }
+
+  @override
+  String get barcode_unknown_product => 'منتج غير معروف';
+
+  @override
+  String get barcode_default_portion => 'لكل حصة/100 جم';
+
+  @override
+  String get activity_calorie_estimate_disclaimer =>
+      'السعرات مقدّرة من الخطوات وقد لا تكون دقيقة تمامًا.';
+
+  @override
+  String get activity_estimated_calories => 'السعرات المقدّرة';
+
+  @override
+  String get activity_step_streak => 'سلسلة الخطوات';
+
+  @override
+  String get activity_workout_calories => 'سعرات التمارين';
+
+  @override
+  String get activity_score => 'درجة النشاط';
+
+  @override
+  String get common_days => 'أيام';
 }

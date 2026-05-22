@@ -33,7 +33,7 @@ class AssistantProvider with ChangeNotifier {
   String? get error => _error;
 
   /// Fetch recommendations based on user stats (with caching)
-  Future<void> fetchRecommendations({
+  Future<bool> fetchRecommendations({
     required int currentCalories,
     required int targetCalories,
     required Map<String, int> currentMacros,
@@ -47,9 +47,9 @@ class AssistantProvider with ChangeNotifier {
     String language = 'en',
   }) async {
     if (clearPrevious) {
-      if (_history.isEmpty) {
-        notifyListeners();
-      }
+      _history = [];
+      _error = null;
+      notifyListeners();
     }
 
     // Add user query to history immediately if it exists
@@ -72,11 +72,11 @@ class AssistantProvider with ChangeNotifier {
       if (cached != null && calDiff < 50 && _history.isEmpty) {
         _history = List<dynamic>.from(cached);
         notifyListeners();
-        return;
+        return true;
       }
     }
 
-    if (_isLoading) return;
+    if (_isLoading) return false;
     _isLoading = true;
     _uiState =
         _history.isEmpty
@@ -128,9 +128,11 @@ class AssistantProvider with ChangeNotifier {
         await _repository.saveRecommendations(newRecs);
         await _repository.saveCalorieSnapshot(currentCalories);
       }
+      return true;
     } catch (e) {
       debugPrint('⚠️ AssistantProvider: recommendation fallback: $e');
       _error = e.toString();
+      return false;
     } finally {
       _isLoading = false;
       _uiState =

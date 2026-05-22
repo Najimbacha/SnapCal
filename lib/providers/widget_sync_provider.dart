@@ -53,8 +53,9 @@ class WidgetSyncProvider {
     final burned = _activityProvider.burnedCalories;
     final goal = _settingsProvider.dailyCalorieGoal;
     final lang = _settingsProvider.languageCode;
+    final isPro = _settingsProvider.isPro;
 
-    final netGoal = goal + burned;
+    final netGoal = isPro ? goal + burned : goal;
     final remaining = netGoal - eaten;
     final progress =
         netGoal > 0 ? (eaten / netGoal).toDouble().clamp(0.0, 1.0) : 0.0;
@@ -65,6 +66,7 @@ class WidgetSyncProvider {
       remainingCalories: remaining.toInt(),
       progress: progress,
       status: status,
+      isLocked: !isPro,
     );
   }
 

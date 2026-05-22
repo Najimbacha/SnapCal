@@ -132,12 +132,8 @@ class _HomeScreenState extends State<HomeScreen>
       (p) => (total: p.total, goal: p.goal),
     );
 
-    final userName =
-        (authState.name != null && authState.name!.isNotEmpty)
-            ? authState.name!
-            : 'SnapCal Member';
-
-    final remaining = calorieGoal - totalCalories;
+    final adjustedGoal = isPro ? calorieGoal + activityState.burnedCalories : calorieGoal;
+    final remaining = adjustedGoal - totalCalories;
     final yesterdayCalories =
         weeklyCalories.length >= 2
             ? weeklyCalories[weeklyCalories.length - 2].round()
@@ -145,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen>
     final waterProgress = (waterState.total / math.max(waterState.goal, 1))
         .clamp(0.0, 1.0);
     final stepsProgress = (activityState.steps / 10000).clamp(0.0, 1.0);
-    final calorieProgress = (totalCalories / calorieGoal).clamp(0.0, 1.4);
+    final calorieProgress = (totalCalories / math.max(adjustedGoal, 1)).clamp(0.0, 1.4);
     final proteinProgress = (macros.protein / math.max(proteinGoal, 1)).clamp(
       0.0,
       1.0,
@@ -167,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen>
       extendBehindStatusBar: true,
       child: ListView(
         padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + 12,
+          top: MediaQuery.of(context).padding.top + 6,
           bottom: 160,
         ),
         physics: const BouncingScrollPhysics(),
@@ -176,11 +172,10 @@ class _HomeScreenState extends State<HomeScreen>
             _itemAnims[0],
             _HomeInset(
               child: _HomeDashboardHeader(
-                userName: userName,
                 isPro: isPro,
                 streak: currentStreak,
                 isRefreshing: mealState.refreshing,
-                onSettingsTap: () => context.go('/settings'),
+                onSettingsTap: () => context.push('/settings'),
               ),
             ),
           ),
@@ -188,10 +183,10 @@ class _HomeScreenState extends State<HomeScreen>
           _staggeredSlide(
             _itemAnims[1],
             showFirstLoadSkeleton
-                ? const _HomeDashboardSkeleton()
-                : _CalorieDashboardCard(
+              ? const _HomeDashboardSkeleton()
+              : _CalorieDashboardCard(
                   consumed: totalCalories,
-                  goal: calorieGoal,
+                  goal: adjustedGoal,
                   remaining: remaining,
                   mealCount: mealCount,
                   protein: macros.protein,
@@ -455,15 +450,59 @@ class _ScanFoodButton extends StatelessWidget {
   }
 }
 
+/// A clean settings gear icon button that replaces the old avatar circle.
+/// Makes the navigation affordance immediately clear.
+class _HomeSettingsButton extends StatelessWidget {
+  final VoidCallback onTap;
+  final bool isPro;
+
+  const _HomeSettingsButton({required this.onTap, required this.isPro});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: isPro
+              ? const Color(0xFFFFD700).withValues(alpha: isDark ? 0.12 : 0.08)
+              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isPro
+                ? const Color(0xFFFFD700).withValues(alpha: isDark ? 0.30 : 0.22)
+                : colorScheme.outlineVariant.withValues(
+                    alpha: isDark ? 0.18 : 0.12,
+                  ),
+            width: 0.8,
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            LucideIcons.settings2,
+            size: 16,
+            color: isPro
+                ? const Color(0xFFE29200)
+                : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeDashboardHeader extends StatelessWidget {
-  final String userName;
   final bool isPro;
   final int streak;
   final bool isRefreshing;
   final VoidCallback onSettingsTap;
 
   const _HomeDashboardHeader({
-    required this.userName,
     required this.isPro,
     required this.streak,
     required this.isRefreshing,
@@ -473,71 +512,65 @@ class _HomeDashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context)!;
+
     return SizedBox(
-      height: 36,
+      height: 44,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _HomeHeaderButton(
-            icon: LucideIcons.user,
-            label: MaterialLocalizations.of(context).showMenuTooltip,
-            onTap: onSettingsTap,
-          ),
-          const SizedBox(width: 8),
+          // Left: settings gear — immediately obvious navigation affordance
+          _HomeSettingsButton(onTap: onSettingsTap, isPro: isPro),
+          const SizedBox(width: 12),
+
+          // Center: app wordmark + refresh spinner
           Expanded(
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Flexible(
-                  child: Text(
-                    userName,
-                    style: AppTypography.titleMedium.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.94),
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.2,
-                      height: 1.0,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                Text(
+                  'SnapCal',
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 19,
+                    letterSpacing: -0.6,
+                    color: colorScheme.onSurface.withValues(alpha: 0.90),
                   ),
                 ),
-                const SizedBox(width: 8),
-                _PremiumProBadge(isPro: isPro),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 180),
-                  child:
-                      isRefreshing
-                          ? Padding(
-                            key: const ValueKey('refreshing'),
-                            padding: const EdgeInsets.only(left: 8),
-                            child: SizedBox(
-                              width: 13,
-                              height: 13,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: colorScheme.primary,
-                              ),
+                  child: isRefreshing
+                      ? Padding(
+                          key: const ValueKey('refreshing'),
+                          padding: const EdgeInsets.only(left: 8),
+                          child: SizedBox(
+                            width: 11,
+                            height: 11,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: isPro
+                                  ? const Color(0xFFE29200)
+                                  : colorScheme.primary,
                             ),
-                          )
-                          : const SizedBox.shrink(key: ValueKey('idle')),
+                          ),
+                        )
+                      : const SizedBox.shrink(key: ValueKey('idle')),
                 ),
               ],
             ),
           ),
-          if (streak > 0)
-            _HeaderStreakBadge(label: l10n.home_streak_days(streak)),
-          const SizedBox(width: 6),
-          _HomeHeaderButton(
-            icon: LucideIcons.settings,
-            label: MaterialLocalizations.of(context).showMenuTooltip,
-            onTap: onSettingsTap,
-          ),
+
+          // Right: streak badge + upgrade/pro indicator
+          if (streak > 0) ...[
+            _HeaderStreakBadge(streak: streak, isPro: isPro),
+            const SizedBox(width: 8),
+          ],
+          _PremiumProBadge(isPro: isPro),
         ],
       ),
     );
   }
 }
+
+
 
 class _PremiumProBadge extends StatelessWidget {
   final bool isPro;
@@ -548,22 +581,21 @@ class _PremiumProBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    // If they are Pro, display a clean gold Pro badge
     if (isPro) {
+      // Solid gold badge — premium status indicator, not a button
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
           gradient: const LinearGradient(
-            colors: [
-              Color(0xFFFFD700), // Gold
-              Color(0xFFFFA500), // Orange Gold
-            ],
+            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.3),
-              blurRadius: 6,
+              color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
@@ -572,13 +604,13 @@ class _PremiumProBadge extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(LucideIcons.gem, color: Colors.black, size: 11),
-            const SizedBox(width: 4),
+            const SizedBox(width: 5),
             Text(
               l10n.home_pro_badge,
               style: const TextStyle(
                 color: Colors.black,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
               ),
             ),
@@ -587,46 +619,39 @@ class _PremiumProBadge extends StatelessWidget {
       );
     }
 
-    // If they are not Pro, render the gorgeous interactive conversion upgrade pill!
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Premium gradient pill — matches app color system, high-contrast, premium
     return AppScaleTap(
       onTap: () {
         HapticFeedback.mediumImpact();
         context.push('/paywall');
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
+          gradient: AppColors.premiumGradient,
           borderRadius: BorderRadius.circular(20),
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF10B981), // Emerald Primary
-              Color(0xFF0D9BD8), // Sky Blue
-            ],
-          ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF10B981).withValues(alpha: 0.35),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: const Color(0xFF8B5CF6).withValues(alpha: isDark ? 0.35 : 0.20),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              LucideIcons.gem, // Premium Diamond Icon
-              color: Colors.white,
-              size: 12,
-            ),
+            const Icon(LucideIcons.sparkles, color: Colors.white, size: 11),
             const SizedBox(width: 5),
             Text(
               l10n.home_go_pro,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.3,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
               ),
             ),
           ],
@@ -636,82 +661,58 @@ class _PremiumProBadge extends StatelessWidget {
   }
 }
 
-class _HomeHeaderButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
 
-  const _HomeHeaderButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
+
+
+class _HeaderStreakBadge extends StatelessWidget {
+  final int streak;
+  final bool isPro;
+
+  const _HeaderStreakBadge({
+    required this.streak,
+    this.isPro = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return AppScaleTap(
-      onTap: onTap,
-      child: Tooltip(
-        message: label,
-        child: Container(
-          width: 35,
-          height: 35,
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.38),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color:
-                  isDark
-                      ? colorScheme.primary.withValues(alpha: 0.15)
-                      : AppColors.lightCardBorder,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Icon(icon, color: colorScheme.primary, size: 18),
-        ),
-      ),
-    );
-  }
-}
+    final badgeColor = isPro ? const Color(0xFFFFD700) : AppColors.amber;
 
-class _HeaderStreakBadge extends StatelessWidget {
-  final String label;
-
-  const _HeaderStreakBadge({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      height: 35,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 7),
       decoration: BoxDecoration(
-        color: AppColors.sky.withValues(alpha: isDark ? 0.12 : 0.09),
+        color: badgeColor.withValues(alpha: isDark ? 0.12 : 0.09),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: AppColors.sky.withValues(alpha: isDark ? 0.22 : 0.14),
+          color: badgeColor.withValues(alpha: isDark ? 0.22 : 0.28),
         ),
+        boxShadow: isPro
+            ? [
+                BoxShadow(
+                  color: badgeColor.withValues(alpha: isDark ? 0.08 : 0.03),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )
+              ]
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(LucideIcons.calendarCheck, color: AppColors.sky, size: 14),
-          const SizedBox(width: 5),
+          Icon(
+            LucideIcons.flame,
+            color: isPro ? const Color(0xFFE29200) : AppColors.amber,
+            size: 13,
+          ),
+          const SizedBox(width: 4),
           Text(
-            label,
+            '$streak',
             style: AppTypography.labelLarge.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.90),
               fontWeight: FontWeight.w900,
-              fontSize: 12,
+              fontSize: 11,
               letterSpacing: 0,
             ),
           ),
