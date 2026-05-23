@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
@@ -5,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/config_service.dart';
+import '../../core/utils/resilience_utils.dart';
 import '../models/meal.dart';
 import '../models/meal_plan.dart'; // MealPlan model
 import '../models/grocery_item.dart'; // GroceryItem model
@@ -205,19 +207,39 @@ User daily targets:
         idToken = await user.getIdToken();
       }
 
-      final response = await _dio.post(
-        endpoint,
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            if (idToken != null) 'Authorization': 'Bearer $idToken',
-          },
-          sendTimeout: const Duration(seconds: 25),
-          receiveTimeout: const Duration(seconds: 25),
-        ),
-        data: {
-          'image': base64Image,
-          'language': language,
+      final response = await ResilienceUtils.runWithRetryAndTimeout(
+        operation: () async {
+          return await _dio.post(
+            endpoint,
+            options: Options(
+              headers: {
+                'Content-Type': 'application/json',
+                if (idToken != null) 'Authorization': 'Bearer $idToken',
+              },
+              sendTimeout: const Duration(seconds: 15),
+              receiveTimeout: const Duration(seconds: 15),
+            ),
+            data: {
+              'image': base64Image,
+              'language': language,
+            },
+          );
+        },
+        timeoutDuration: const Duration(seconds: 20),
+        maxAttempts: 3,
+        retryIf: (e) {
+          if (e is DioException) {
+            final type = e.type;
+            if (type == DioExceptionType.connectionTimeout ||
+                type == DioExceptionType.sendTimeout ||
+                type == DioExceptionType.receiveTimeout ||
+                type == DioExceptionType.connectionError) {
+              return true;
+            }
+            final status = e.response?.statusCode;
+            return status != null && status >= 500;
+          }
+          return e is TimeoutException;
         },
       );
 
