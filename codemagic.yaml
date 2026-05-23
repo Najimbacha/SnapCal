@@ -1,0 +1,63 @@
+# Codemagic CI/CD configuration for SnapCal
+# For detailed instructions on setting up iOS code signing in Codemagic, see:
+# https://docs.codemagic.io/yaml-signing/signing-ios/
+
+workflows:
+  ios-release:
+    name: iOS Release
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    environment:
+      groups:
+        # Create a variable group in Codemagic UI named 'app_store_credentials' containing:
+        # - APP_STORE_CONNECT_KEY_IDENTIFIER
+        # - APP_STORE_CONNECT_ISSUER_ID
+        # - APP_STORE_CONNECT_PRIVATE_KEY
+        - app_store_credentials
+      vars:
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+        APP_ID: 6739023456 # Replace with your Apple App ID from App Store Connect
+        BUNDLE_ID: "com.snapcal.snapcal"
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+    scripts:
+      - name: Initialize Keychain
+        script: |
+          keychain initialize
+      - name: Fetch iOS Signing Files
+        script: |
+          # Automatically downloads/generates signing certificates and provisioning profiles from Apple
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --project-id "$APP_ID" --create
+      - name: Set up Signing Certificates
+        script: |
+          keychain add-certificates
+      - name: Configure Xcode Code Signing
+        script: |
+          xcode-project use-profiles
+      - name: Install dependencies
+        script: |
+          flutter packages pub get
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa --release \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME" \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - admin@snapcal.com # Replace with your email address for build notifications
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

@@ -13,9 +13,19 @@ class AppTheme {
       seedColor: AppColors.seed,
       brightness: Brightness.dark,
     ).copyWith(
+      surface: AppColors.darkBackground,
+      surfaceDim: AppColors.darkBackground,
+      surfaceBright: AppColors.darkBackground,
+      surfaceContainerLowest: AppColors.darkBackground,
+      surfaceContainerLow: const Color(0xFF050505),
+      surfaceContainer: const Color(0xFF0A0A0A),
+      surfaceContainerHigh: const Color(0xFF111111),
+      surfaceContainerHighest: const Color(0xFF1A1A1A),
       onSurface: AppColors.darkTextPrimary,
       onSurfaceVariant: AppColors.darkTextSecondary,
       outline: AppColors.darkTextSecondary.withValues(alpha: 0.5),
+      outlineVariant: const Color(0xFF2A2A2A),
+      surfaceTint: Colors.transparent,
     );
 
     return ThemeData(
@@ -125,9 +135,19 @@ class AppTheme {
       seedColor: AppColors.seed,
       brightness: Brightness.light,
     ).copyWith(
+      surface: AppColors.lightBackground,
+      surfaceDim: AppColors.lightBackground,
+      surfaceBright: AppColors.lightBackground,
+      surfaceContainerLowest: AppColors.lightBackground,
+      surfaceContainerLow: AppColors.lightBackground,
+      surfaceContainer: const Color(0xFFF8FAFC),
+      surfaceContainerHigh: const Color(0xFFF3F6FA),
+      surfaceContainerHighest: const Color(0xFFEFF3F8),
       onSurface: AppColors.lightTextPrimary,
       onSurfaceVariant: AppColors.lightTextSecondary,
       outline: AppColors.lightTextSecondary.withValues(alpha: 0.5),
+      outlineVariant: AppColors.lightCardBorder,
+      surfaceTint: Colors.transparent,
     );
 
     return ThemeData(

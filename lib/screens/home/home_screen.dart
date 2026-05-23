@@ -1,5 +1,6 @@
 import 'dart:math' as math;
-import 'dart:ui';
+
+// ignore_for_file: unused_element
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,18 +11,18 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/meal.dart';
+import '../../data/models/meal_slot.dart';
+import 'widgets/smart_meal_planner_card.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
-import '../../widgets/auth_modal.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/recent_meal_tile.dart';
-import '../../widgets/premium_prompt_card.dart';
+import '../../widgets/premium_prompt_modal.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,6 +38,391 @@ class _HomeScreenState extends State<HomeScreen>
 
   late final AnimationController _animController;
   late final List<Animation<double>> _itemAnims;
+
+  List<MealSlot>? _currentMealPlan;
+  String? _lastRestriction;
+
+  List<MealSlot> _getMealsForRestriction(String restriction) {
+    if (restriction == 'vegetarian') {
+      return [
+        const MealSlot(
+          mealType: "Breakfast",
+          name: "Avocado toast + eggs",
+          time: "8:00 AM",
+          kcal: 420,
+          status: MealSlotStatus.done,
+          isLogged: true,
+        ),
+        const MealSlot(
+          mealType: "Snack",
+          name: "Tomatoes + hummus",
+          time: "11:24 AM",
+          kcal: 75,
+          status: MealSlotStatus.done,
+          isLogged: true,
+        ),
+        const MealSlot(
+          mealType: "Lunch",
+          name: "Grilled tofu + quinoa",
+          time: "Up next",
+          kcal: 510,
+          status: MealSlotStatus.next,
+          isLogged: false,
+        ),
+        const MealSlot(
+          mealType: "Dinner",
+          name: "Light veggie stir-fry",
+          time: "7:30 PM",
+          kcal: 380,
+          status: MealSlotStatus.upcoming,
+          isLogged: false,
+        ),
+      ];
+    } else if (restriction == 'vegan') {
+      return [
+        const MealSlot(
+          mealType: "Breakfast",
+          name: "Avocado toast + cherry tomatoes",
+          time: "8:00 AM",
+          kcal: 320,
+          status: MealSlotStatus.done,
+          isLogged: true,
+        ),
+        const MealSlot(
+          mealType: "Snack",
+          name: "Tomatoes + hummus",
+          time: "11:24 AM",
+          kcal: 75,
+          status: MealSlotStatus.done,
+          isLogged: true,
+        ),
+        const MealSlot(
+          mealType: "Lunch",
+          name: "Grilled tofu + quinoa",
+          time: "Up next",
+          kcal: 510,
+          status: MealSlotStatus.next,
+          isLogged: false,
+        ),
+        const MealSlot(
+          mealType: "Dinner",
+          name: "Light veggie stir-fry",
+          time: "7:30 PM",
+          kcal: 380,
+          status: MealSlotStatus.upcoming,
+          isLogged: false,
+        ),
+      ];
+    } else if (restriction == 'keto') {
+      return [
+        const MealSlot(
+          mealType: "Breakfast",
+          name: "Scrambled eggs + avocado",
+          time: "8:00 AM",
+          kcal: 480,
+          status: MealSlotStatus.done,
+          isLogged: true,
+        ),
+        const MealSlot(
+          mealType: "Snack",
+          name: "Celery + peanut butter",
+          time: "11:24 AM",
+          kcal: 190,
+          status: MealSlotStatus.done,
+          isLogged: true,
+        ),
+        const MealSlot(
+          mealType: "Lunch",
+          name: "Grilled salmon + broccoli",
+          time: "Up next",
+          kcal: 620,
+          status: MealSlotStatus.next,
+          isLogged: false,
+        ),
+        const MealSlot(
+          mealType: "Dinner",
+          name: "Veggie stir-fry with zucchini",
+          time: "7:30 PM",
+          kcal: 310,
+          status: MealSlotStatus.upcoming,
+          isLogged: false,
+        ),
+      ];
+    } else {
+      // Default (Balanced/None)
+      return [
+        const MealSlot(
+          mealType: "Breakfast",
+          name: "Avocado toast + eggs",
+          time: "8:00 AM",
+          kcal: 420,
+          status: MealSlotStatus.done,
+          isLogged: true,
+        ),
+        const MealSlot(
+          mealType: "Snack",
+          name: "Tomatoes + grilled chicken",
+          time: "11:24 AM",
+          kcal: 125,
+          status: MealSlotStatus.done,
+          isLogged: true,
+        ),
+        const MealSlot(
+          mealType: "Lunch",
+          name: "Grilled salmon + quinoa",
+          time: "Up next",
+          kcal: 620,
+          status: MealSlotStatus.next,
+          isLogged: false,
+        ),
+        const MealSlot(
+          mealType: "Dinner",
+          name: "Light veggie stir-fry",
+          time: "7:30 PM",
+          kcal: 380,
+          status: MealSlotStatus.upcoming,
+          isLogged: false,
+        ),
+      ];
+    }
+  }
+
+  String _getDietaryRestrictionLabel(BuildContext context, String restriction) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (restriction) {
+      case 'vegetarian':
+        return l10n.planner_restriction_vegetarian;
+      case 'vegan':
+        return l10n.planner_restriction_vegan;
+      case 'gluten-free':
+        return l10n.planner_restriction_gluten_free;
+      case 'keto':
+        return l10n.planner_restriction_keto;
+      case 'halal':
+        return l10n.planner_restriction_halal;
+      case 'none':
+      default:
+        return 'Balanced';
+    }
+  }
+
+  Widget _buildPremiumPlannerTeaser(BuildContext context, int calorieGoal, String restriction) {
+    return SmartMealPlannerCard(
+      key: const ValueKey('teaser_card'),
+      goalKcal: calorieGoal,
+      dietLabel: _getDietaryRestrictionLabel(context, restriction),
+      completedMeals: 1,
+      totalMeals: 4,
+      meals: _getMealsForRestriction(restriction),
+      onLogTap: () {
+        HapticFeedback.mediumImpact();
+        context.push('/paywall');
+      },
+      onSwapTap: () {},
+      onRefreshTap: () {},
+      isTeaser: true,
+    );
+  }
+
+  void _swapCurrentMeal() {
+    setState(() {
+      if (_currentMealPlan == null) return;
+      final currentMeal = _currentMealPlan![2];
+      if (currentMeal.name.contains("quinoa") || currentMeal.name.contains("broccoli")) {
+        String swapName;
+        int swapKcal;
+        if (_lastRestriction == 'vegetarian' || _lastRestriction == 'vegan') {
+          swapName = "Chickpea salad + olive oil";
+          swapKcal = 480;
+        } else if (_lastRestriction == 'keto') {
+          swapName = "Turkey wrap in lettuce";
+          swapKcal = 350;
+        } else {
+          swapName = "Turkey wrap + spinach";
+          swapKcal = 540;
+        }
+        _currentMealPlan![2] = currentMeal.copyWith(
+          name: swapName,
+          kcal: swapKcal,
+        );
+      } else {
+        String origName;
+        int origKcal;
+        if (_lastRestriction == 'vegetarian' || _lastRestriction == 'vegan') {
+          origName = "Grilled tofu + quinoa";
+          origKcal = 510;
+        } else if (_lastRestriction == 'keto') {
+          origName = "Grilled salmon + broccoli";
+          origKcal = 620;
+        } else {
+          origName = "Grilled salmon + quinoa";
+          origKcal = 620;
+        }
+        _currentMealPlan![2] = currentMeal.copyWith(
+          name: origName,
+          kcal: origKcal,
+        );
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Swapped lunch suggestion!"),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _regeneratePlan() {
+    setState(() {
+      if (_lastRestriction == 'vegetarian') {
+        _currentMealPlan = [
+          const MealSlot(
+            mealType: "Breakfast",
+            name: "Greek yogurt + honey",
+            time: "8:00 AM",
+            kcal: 310,
+            status: MealSlotStatus.done,
+            isLogged: true,
+          ),
+          const MealSlot(
+            mealType: "Snack",
+            name: "Almonds + apple",
+            time: "11:24 AM",
+            kcal: 180,
+            status: MealSlotStatus.done,
+            isLogged: true,
+          ),
+          const MealSlot(
+            mealType: "Lunch",
+            name: "Lentil soup + spinach",
+            time: "Up next",
+            kcal: 450,
+            status: MealSlotStatus.next,
+            isLogged: false,
+          ),
+          const MealSlot(
+            mealType: "Dinner",
+            name: "Baked tofu + asparagus",
+            time: "7:30 PM",
+            kcal: 320,
+            status: MealSlotStatus.upcoming,
+            isLogged: false,
+          ),
+        ];
+      } else if (_lastRestriction == 'vegan') {
+        _currentMealPlan = [
+          const MealSlot(
+            mealType: "Breakfast",
+            name: "Oatmeal with almond milk",
+            time: "8:00 AM",
+            kcal: 290,
+            status: MealSlotStatus.done,
+            isLogged: true,
+          ),
+          const MealSlot(
+            mealType: "Snack",
+            name: "Almonds + apple",
+            time: "11:24 AM",
+            kcal: 180,
+            status: MealSlotStatus.done,
+            isLogged: true,
+          ),
+          const MealSlot(
+            mealType: "Lunch",
+            name: "Lentil soup + spinach",
+            time: "Up next",
+            kcal: 450,
+            status: MealSlotStatus.next,
+            isLogged: false,
+          ),
+          const MealSlot(
+            mealType: "Dinner",
+            name: "Baked tofu + asparagus",
+            time: "7:30 PM",
+            kcal: 320,
+            status: MealSlotStatus.upcoming,
+            isLogged: false,
+          ),
+        ];
+      } else if (_lastRestriction == 'keto') {
+        _currentMealPlan = [
+          const MealSlot(
+            mealType: "Breakfast",
+            name: "Fried eggs with bacon",
+            time: "8:00 AM",
+            kcal: 420,
+            status: MealSlotStatus.done,
+            isLogged: true,
+          ),
+          const MealSlot(
+            mealType: "Snack",
+            name: "Walnuts",
+            time: "11:24 AM",
+            kcal: 200,
+            status: MealSlotStatus.done,
+            isLogged: true,
+          ),
+          const MealSlot(
+            mealType: "Lunch",
+            name: "Steak salad + olive oil",
+            time: "Up next",
+            kcal: 580,
+            status: MealSlotStatus.next,
+            isLogged: false,
+          ),
+          const MealSlot(
+            mealType: "Dinner",
+            name: "Baked salmon + spinach",
+            time: "7:30 PM",
+            kcal: 410,
+            status: MealSlotStatus.upcoming,
+            isLogged: false,
+          ),
+        ];
+      } else {
+        _currentMealPlan = [
+          const MealSlot(
+            mealType: "Breakfast",
+            name: "Greek yogurt + honey",
+            time: "8:00 AM",
+            kcal: 310,
+            status: MealSlotStatus.done,
+            isLogged: true,
+          ),
+          const MealSlot(
+            mealType: "Snack",
+            name: "Almonds + apple",
+            time: "11:24 AM",
+            kcal: 180,
+            status: MealSlotStatus.done,
+            isLogged: true,
+          ),
+          const MealSlot(
+            mealType: "Lunch",
+            name: "Turkey breast + sweet potato",
+            time: "Up next",
+            kcal: 540,
+            status: MealSlotStatus.next,
+            isLogged: false,
+          ),
+          const MealSlot(
+            mealType: "Dinner",
+            name: "Baked cod + asparagus",
+            time: "7:30 PM",
+            kcal: 350,
+            status: MealSlotStatus.upcoming,
+            isLogged: false,
+          ),
+        ];
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Regenerated today's meal plan!"),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -59,7 +445,33 @@ class _HomeScreenState extends State<HomeScreen>
     } else {
       _animController.value = 1.0;
     }
+
+    // Smart Premium Encouragement (Aha Moment)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          final mealProvider = context.read<MealProvider>();
+          final hasAiMeal = mealProvider.todaysMeals.any((m) => m.scanSource == 'ai_scan') ||
+                            mealProvider.recentMeals.any((m) => m.scanSource == 'ai_scan');
+
+          if (hasAiMeal) {
+            final l10n = AppLocalizations.of(context)!;
+            PremiumPromptModal.show(
+              context,
+              title: l10n.aha_prompt_title,
+              subtitle: l10n.aha_prompt_subtitle,
+              buttonText: l10n.aha_prompt_btn,
+              icon: LucideIcons.sparkles,
+              entryPoint: PaywallEntryPoint.homeAha,
+              featureName: 'first_ai_scan',
+              hasCompletedValueAction: true,
+            );
+          }
+        }
+      });
+    });
   }
+
 
   @override
   void dispose() {
@@ -69,8 +481,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
     final mealState = context
         .select<MealProvider, ({bool loading, bool refreshing})>(
           (provider) => (
@@ -90,9 +500,6 @@ class _HomeScreenState extends State<HomeScreen>
     final recentMeals = context.select<MealProvider, List<Meal>>(
       (provider) => provider.recentMeals,
     );
-    final weeklyCalories = context.select<MealProvider, List<double>>(
-      (provider) => provider.getWeeklyCalorieTrend(),
-    );
 
     final calorieGoal = context.select<SettingsProvider, int>(
       (p) => math.max(p.dailyCalorieGoal, 1),
@@ -107,15 +514,6 @@ class _HomeScreenState extends State<HomeScreen>
       (p) => p.dailyFatGoal,
     );
     final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
-    final currentStreak = context.select<SettingsProvider, int>(
-      (p) => p.currentStreak,
-    );
-
-    final authState = context
-        .select<AuthProvider, ({String? name, bool isAnon})>(
-          (p) => (name: p.user?.displayName, isAnon: p.isAnonymous),
-        );
-
     final activityState = context.select<
       ActivityProvider,
       ({int steps, int burnedCalories, bool isTracking, String status})
@@ -128,32 +526,9 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
 
-    final waterState = context.select<WaterProvider, ({int total, int goal})>(
-      (p) => (total: p.total, goal: p.goal),
-    );
-
     final adjustedGoal = isPro ? calorieGoal + activityState.burnedCalories : calorieGoal;
     final remaining = adjustedGoal - totalCalories;
-    final yesterdayCalories =
-        weeklyCalories.length >= 2
-            ? weeklyCalories[weeklyCalories.length - 2].round()
-            : 0;
-    final waterProgress = (waterState.total / math.max(waterState.goal, 1))
-        .clamp(0.0, 1.0);
-    final stepsProgress = (activityState.steps / 10000).clamp(0.0, 1.0);
     final calorieProgress = (totalCalories / math.max(adjustedGoal, 1)).clamp(0.0, 1.4);
-    final proteinProgress = (macros.protein / math.max(proteinGoal, 1)).clamp(
-      0.0,
-      1.0,
-    );
-    final dailyScore = _dailyScore(
-      mealCount: mealCount,
-      calorieProgress: calorieProgress,
-      proteinProgress: proteinProgress,
-      waterProgress: waterProgress,
-      stepsProgress: stepsProgress,
-    );
-
     final showFirstLoadSkeleton =
         mealState.loading && totalCalories == 0 && recentMeals.isEmpty;
     return AppPageScaffold(
@@ -161,117 +536,68 @@ class _HomeScreenState extends State<HomeScreen>
       padding: EdgeInsets.zero,
       showHeader: false,
       extendBehindStatusBar: true,
+      backgroundColor:
+          Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF14130F)
+              : const Color(0xFFF9F8F5),
       child: ListView(
         padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + 6,
-          bottom: 160,
+          top: MediaQuery.of(context).padding.top + 16,
+          bottom: 132,
         ),
         physics: const BouncingScrollPhysics(),
         children: [
           _staggeredSlide(
             _itemAnims[0],
-            _HomeInset(
-              child: _HomeDashboardHeader(
-                isPro: isPro,
-                streak: currentStreak,
-                isRefreshing: mealState.refreshing,
-                onSettingsTap: () => context.push('/settings'),
-              ),
+            _MinimalHomeTopBar(
+              isPro: isPro,
+              isRefreshing: mealState.refreshing,
+              onSettingsTap: () => context.push('/settings'),
+              onProTap: () => context.push('/paywall'),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
           _staggeredSlide(
             _itemAnims[1],
             showFirstLoadSkeleton
-              ? const _HomeDashboardSkeleton()
-              : _CalorieDashboardCard(
-                  consumed: totalCalories,
-                  goal: adjustedGoal,
-                  remaining: remaining,
-                  mealCount: mealCount,
-                  protein: macros.protein,
-                  proteinGoal: proteinGoal,
-                  yesterdayCalories: yesterdayCalories,
-                  onAssistantTap: () => context.push('/assistant'),
-                ),
+                ? const _HomeDashboardSkeleton()
+                : _MinimalCalorieHero(
+                    consumed: totalCalories,
+                    goal: adjustedGoal,
+                    remaining: remaining,
+                    mealCount: mealCount,
+                    progress: calorieProgress,
+                  ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[2],
-            _HomeInset(
-              child: _ScanFoodButton(onTap: () => context.go('/snap')),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _staggeredSlide(
-            _itemAnims[3],
-            _MacroOverviewCard(
+            _MinimalMacroSection(
               macros: macros,
               proteinGoal: proteinGoal,
               carbGoal: carbGoal,
               fatGoal: fatGoal,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 2),
+          _staggeredSlide(
+            _itemAnims[3],
+            _MinimalToolsSection(
+              onPlannerTap: () => context.push('/planner'),
+              onCoachTap: () => context.push('/assistant'),
+            ),
+          ),
+          const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[4],
-            _TodayMealsPreviewCard(
+            _MinimalMealsSection(
               meals: recentMeals,
+              isPro: isPro,
               onViewAll: () => context.go('/log'),
               onScan: () => context.go('/snap'),
-              onManual: () => context.go('/log'),
+              onProTap: () => context.push('/paywall'),
             ),
           ),
-          const SizedBox(height: 10),
-          _staggeredSlide(
-            _itemAnims[5],
-            _SecondaryDashboardGrid(
-              waterTotal: waterState.total,
-              waterGoal: waterState.goal,
-              steps: activityState.steps,
-              burnedCalories: activityState.burnedCalories,
-              stepsUnit: l10n.home_steps_today,
-              activityLive: activityState.status == 'walking',
-              onWaterAdd: () => _addWater(context.read<WaterProvider>()),
-              onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
-              onActivityTap: () => context.push('/activity'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _staggeredSlide(
-            _itemAnims[6],
-            _CalendarProgressStrip(
-              weeklyCalories: weeklyCalories,
-              calorieGoal: calorieGoal,
-              dailyScore: dailyScore,
-              onTap: () => context.go('/reports'),
-            ),
-          ),
-          if (!isPro && recentMeals.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _staggeredSlide(
-              _itemAnims[7],
-              PremiumPromptCard(
-                style: PremiumPromptStyle.mini,
-                title: l10n.home_go_deeper_title,
-                subtitle: l10n.home_go_deeper_body,
-                buttonText: 'Pro',
-                icon: LucideIcons.sparkles,
-                onTap:
-                    () => PremiumConversionService().openPaywall(
-                      context,
-                      PaywallEntryPoint.homeAha,
-                    ),
-              ),
-            ),
-          ],
-          if (authState.isAnon && recentMeals.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            _staggeredSlide(
-              _itemAnims[7],
-              _SyncPromptCard(onSaveTap: () => AuthModal.show(context)),
-            ),
-          ],
           const SizedBox(height: 16),
         ],
       ),
@@ -339,116 +665,939 @@ class _HomeInset extends StatelessWidget {
   }
 }
 
-class _ScanFoodButton extends StatelessWidget {
-  final VoidCallback onTap;
+const _minimalInk = Color(0xFF1C1917);
+const _minimalMuted = Color(0xFFA8A29E);
+const _minimalLine = Color(0xFFE8E4DC);
+const _minimalGreen = Color(0xFF1A3D2B);
+const _minimalGreenText = Color(0xFF16733A);
 
-  const _ScanFoodButton({required this.onTap});
+class _MinimalHomeTopBar extends StatelessWidget {
+  final bool isPro;
+  final bool isRefreshing;
+  final VoidCallback onSettingsTap;
+  final VoidCallback onProTap;
+
+  const _MinimalHomeTopBar({
+    required this.isPro,
+    required this.isRefreshing,
+    required this.onSettingsTap,
+    required this.onProTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _minimalInk;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      child: Row(
+        children: [
+          AppScaleTap(
+            onTap: onSettingsTap,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'SnapCal',
+                  style: AppTypography.titleMedium.copyWith(
+                    color: ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child:
+                      isRefreshing
+                          ? Padding(
+                            key: const ValueKey('refreshing'),
+                            padding: const EdgeInsets.only(left: 8),
+                            child: SizedBox(
+                              width: 10,
+                              height: 10,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: isDark ? Colors.white70 : _minimalGreen,
+                              ),
+                            ),
+                          )
+                          : const SizedBox.shrink(key: ValueKey('idle')),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          AppScaleTap(
+            onTap: isPro ? onSettingsTap : onProTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: _minimalGreen,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isPro ? LucideIcons.gem : LucideIcons.crown,
+                    color: const Color(0xFF86EFAC),
+                    size: 12,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    isPro
+                        ? AppLocalizations.of(context)!.home_pro_badge
+                        : AppLocalizations.of(context)!.home_go_pro,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: const Color(0xFFF0FDF4),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MinimalCalorieHero extends StatelessWidget {
+  final int consumed;
+  final int goal;
+  final int remaining;
+  final int mealCount;
+  final double progress;
+
+  const _MinimalCalorieHero({
+    required this.consumed,
+    required this.goal,
+    required this.remaining,
+    required this.mealCount,
+    required this.progress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _minimalInk;
+    final muted = isDark ? Colors.white54 : _minimalMuted;
+    final track = isDark ? Colors.white.withValues(alpha: 0.10) : _minimalLine;
+    final isOverGoal = remaining < 0;
+
+    return Column(
+      children: [
+        SizedBox(
+          width: 168,
+          height: 168,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 900),
+                curve: Curves.easeOutCubic,
+                tween: Tween<double>(
+                  begin: 0,
+                  end: progress.clamp(0.0, 1.0),
+                ),
+                builder: (context, value, child) {
+                  return CircularProgressIndicator(
+                    value: value,
+                    strokeWidth: 7,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: track,
+                    color: isOverGoal ? AppColors.error : _minimalGreen,
+                  );
+                },
+              ),
+              Center(
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: isOverGoal ? AppColors.error : _minimalGreen,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        _formatNumber(remaining.abs()),
+                        style: AppTypography.displayLarge.copyWith(
+                          color: ink,
+                          fontSize: 40,
+                          height: 1,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      isOverGoal ? 'kcal over today' : l10n.home_kcal_left,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: muted,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Row(
+            children: [
+              Expanded(
+                child: _MinimalHeroStat(
+                  label: l10n.home_calories_eaten,
+                  value: _formatNumber(consumed),
+                  unit: 'kcal',
+                ),
+              ),
+              _MinimalDivider(isDark: isDark),
+              Expanded(
+                child: _MinimalHeroStat(
+                  label: l10n.home_metric_goal,
+                  value: _formatNumber(goal),
+                  unit: 'kcal',
+                  valueColor: _minimalGreenText,
+                ),
+              ),
+              _MinimalDivider(isDark: isDark),
+              Expanded(
+                child: _MinimalHeroStat(
+                  label: l10n.home_metric_meals,
+                  value: _formatNumber(mealCount),
+                  unit: l10n.log_entries.toLowerCase(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        const _MinimalSectionDivider(),
+      ],
+    );
+  }
+}
+
+class _MinimalHeroStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+  final Color? valueColor;
+
+  const _MinimalHeroStat({
+    required this.label,
+    required this.value,
+    required this.unit,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _minimalInk;
+    final muted = isDark ? Colors.white54 : const Color(0xFFB4AFA8);
+
+    return Column(
+      children: [
+        Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+          ),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: AppTypography.titleLarge.copyWith(
+              color: valueColor ?? ink,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              height: 1,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          unit,
+          style: AppTypography.labelSmall.copyWith(
+            color: muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+class _MinimalDivider extends StatelessWidget {
+  final bool isDark;
+
+  const _MinimalDivider({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 46,
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      color: isDark ? Colors.white.withValues(alpha: 0.09) : const Color(0xFFE2DED8),
+    );
+  }
+}
+
+class _MinimalSectionDivider extends StatelessWidget {
+  const _MinimalSectionDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(horizontal: 22),
+      color: isDark ? Colors.white.withValues(alpha: 0.08) : _minimalLine,
+    );
+  }
+}
+
+class _MinimalMacroSection extends StatelessWidget {
+  final Macros macros;
+  final int proteinGoal;
+  final int carbGoal;
+  final int fatGoal;
+
+  const _MinimalMacroSection({
+    required this.macros,
+    required this.proteinGoal,
+    required this.carbGoal,
+    required this.fatGoal,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _MinimalSectionLabel(text: l10n.home_section_macros_today),
+          const SizedBox(height: 14),
+          _MinimalMacroRow(
+            label: l10n.result_protein,
+            value: macros.protein,
+            goal: proteinGoal,
+          ),
+          const SizedBox(height: 12),
+          _MinimalMacroRow(
+            label: l10n.result_carbs,
+            value: macros.carbs,
+            goal: carbGoal,
+          ),
+          const SizedBox(height: 12),
+          _MinimalMacroRow(
+            label: l10n.result_fat,
+            value: macros.fat,
+            goal: fatGoal,
+          ),
+          const SizedBox(height: 18),
+          const _MinimalSectionDivider(),
+        ],
+      ),
+    );
+  }
+}
+
+class _MinimalMacroRow extends StatelessWidget {
+  final String label;
+  final int value;
+  final int goal;
+
+  const _MinimalMacroRow({
+    required this.label,
+    required this.value,
+    required this.goal,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _minimalInk;
+    final muted = isDark ? Colors.white60 : const Color(0xFF78716C);
+    final progress = (value / math.max(goal, 1)).clamp(0.0, 1.0);
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 62,
+          child: Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            height: 3,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.10) : _minimalLine,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 620),
+                curve: Curves.easeOutCubic,
+                tween: Tween<double>(begin: 0, end: progress),
+                builder: (context, animated, child) {
+                  return FractionallySizedBox(
+                    widthFactor: animated,
+                    heightFactor: 1,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: _minimalGreen,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 42,
+          child: Text(
+            '${_formatNumber(value)}g',
+            style: AppTypography.labelMedium.copyWith(
+              color: ink,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
+            textAlign: TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MinimalToolsSection extends StatelessWidget {
+  final VoidCallback onPlannerTap;
+  final VoidCallback onCoachTap;
+
+  const _MinimalToolsSection({
+    required this.onPlannerTap,
+    required this.onCoachTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _MinimalSectionLabel(text: 'Plan and coach'),
+          const SizedBox(height: 4),
+          _MinimalToolRow(
+            icon: LucideIcons.calendarDays,
+            title: l10n.planner_title,
+            subtitle: l10n.planner_generate,
+            onTap: onPlannerTap,
+          ),
+          _MinimalToolRow(
+            icon: LucideIcons.sparkles,
+            title: l10n.assistant_title,
+            subtitle: l10n.assistant_action_plan_next_meal,
+            onTap: onCoachTap,
+          ),
+          const SizedBox(height: 12),
+          const _MinimalSectionDivider(),
+        ],
+      ),
+    );
+  }
+}
+
+class _MinimalToolRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _MinimalToolRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _minimalInk;
+    final muted = isDark ? Colors.white54 : _minimalMuted;
+    final borderColor =
+        isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFECEAE6);
 
     return AppScaleTap(
       onTap: onTap,
       child: Container(
-        height: 62, // Taller premium feel
+        padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(
-            22,
-          ), // Matching card radius perfectly
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF10B981), // Premium emerald
-              Color(
-                0xFF0D9BD8,
-              ), // Radiant sky/teal highlight to add incredible depth!
-            ],
-          ),
-          border: Border.all(
-            color: Colors.white.withValues(
-              alpha: isDark ? 0.28 : 0.22,
-            ), // 3D glass edge highlight
-            width: 1.5,
-          ),
-          boxShadow: [
-            // Glowing neon shadow that makes the card pop off the screen!
-            BoxShadow(
-              color: const Color(
-                0xFF10B981,
-              ).withValues(alpha: isDark ? 0.38 : 0.26),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-              spreadRadius: -2,
+          border: Border(bottom: BorderSide(color: borderColor)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : const Color(0xFFEFF8EF),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: _minimalGreenText, size: 17),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: muted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(
+              LucideIcons.chevronRight,
+              color: _minimalGreenText,
+              size: 17,
             ),
           ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            children: [
-              // Luxurious scan graphic pattern in background
-              Positioned(
-                right: -12,
-                bottom: -12,
-                child: Icon(
-                  LucideIcons.scan,
-                  size: 92,
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
-              ),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Circular neon glow around scan icon
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.28),
-                            width: 1.2,
-                          ),
-                        ),
-                        child: const Icon(
-                          LucideIcons.scanLine,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        l10n.home_scan_food,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.3,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(
-                        LucideIcons.arrowRight,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
   }
 }
+
+class _MinimalMealsSection extends StatelessWidget {
+  final List<Meal> meals;
+  final bool isPro;
+  final VoidCallback onViewAll;
+  final VoidCallback onScan;
+  final VoidCallback onProTap;
+
+  const _MinimalMealsSection({
+    required this.meals,
+    required this.isPro,
+    required this.onViewAll,
+    required this.onScan,
+    required this.onProTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final hiddenMealCount = math.max(0, meals.length - 3);
+    final viewAllLabel =
+        meals.isEmpty
+            ? 'Open log'
+            : hiddenMealCount > 0
+                ? '${l10n.home_view_all} (${meals.length})'
+                : l10n.home_view_all;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 8),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: _MinimalSectionLabel(text: 'Today\'s meals')),
+              TextButton(
+                onPressed: onViewAll,
+                style: TextButton.styleFrom(
+                  foregroundColor: _minimalGreenText,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  viewAllLabel,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: _minimalGreenText,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (meals.isEmpty)
+            _MinimalEmptyMealRow(onTap: onScan)
+          else
+            ...meals.take(3).map(
+                  (meal) => _MinimalMealRow(meal: meal, onTap: onViewAll),
+                ),
+          if (!isPro) ...[
+            const _MinimalLockedMealRow(label: 'Lunch'),
+            const _MinimalLockedMealRow(label: 'Dinner'),
+            const SizedBox(height: 14),
+            _MinimalUnlockPlanCard(onTap: onProTap),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MinimalSectionLabel extends StatelessWidget {
+  final String text;
+
+  const _MinimalSectionLabel({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Text(
+      text.toUpperCase(),
+      style: AppTypography.labelSmall.copyWith(
+        color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+class _MinimalMealRow extends StatelessWidget {
+  final Meal meal;
+  final VoidCallback onTap;
+
+  const _MinimalMealRow({required this.meal, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _minimalInk;
+    final muted = isDark ? Colors.white54 : _minimalMuted;
+
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFECEAE6),
+            ),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              margin: const EdgeInsets.only(top: 6),
+              decoration: const BoxDecoration(
+                color: _minimalGreenText,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meal.foodName,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${meal.mealType ?? AppLocalizations.of(context)!.result_meal_snack} · ${meal.formattedTime}',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: muted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              _formatNumber(meal.calories),
+              style: AppTypography.bodyMedium.copyWith(
+                color: ink,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MinimalEmptyMealRow extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _MinimalEmptyMealRow({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Row(
+          children: [
+            Icon(
+              LucideIcons.scanLine,
+              color: isDark ? Colors.white54 : _minimalGreenText,
+              size: 17,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                AppLocalizations.of(context)!.home_first_meal_cta_title,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: isDark ? Colors.white : _minimalInk,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MinimalLockedMealRow extends StatelessWidget {
+  final String label;
+
+  const _MinimalLockedMealRow({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Opacity(
+      opacity: 0.40,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFECEAE6),
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              LucideIcons.lock,
+              color: isDark ? Colors.white60 : const Color(0xFF78716C),
+              size: 14,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: isDark ? Colors.white : _minimalInk,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '· · · · ·',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: isDark ? Colors.white54 : _minimalMuted,
+                      fontSize: 11,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '-',
+              style: AppTypography.bodyMedium.copyWith(
+                color: isDark ? Colors.white54 : const Color(0xFFC4BEB5),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MinimalUnlockPlanCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _MinimalUnlockPlanCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: _minimalGreen,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Unlock your full meal plan',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: const Color(0xFFF0FDF4),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Lunch · Dinner · Smart suggestions',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: const Color(0xFF86EFAC),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              LucideIcons.arrowRight,
+              color: Color(0xFF4ADE80),
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatNumber(int value) {
+  if (value < 10000) return '$value';
+  return value.toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (match) => ',',
+  );
+}
+
+
 
 /// A clean settings gear icon button that replaces the old avatar circle.
 /// Makes the navigation affordance immediately clear.
@@ -489,6 +1638,44 @@ class _HomeSettingsButton extends StatelessWidget {
             color: isPro
                 ? const Color(0xFFE29200)
                 : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeCoachButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _HomeCoachButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF5C5FE0).withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Icon(
+            LucideIcons.sparkles,
+            size: 15,
+            color: Colors.white,
           ),
         ),
       ),
@@ -557,6 +1744,10 @@ class _HomeDashboardHeader extends StatelessWidget {
               ],
             ),
           ),
+
+          // AI Coach Button
+          _HomeCoachButton(onTap: () => context.push('/assistant')),
+          const SizedBox(width: 8),
 
           // Right: streak badge + upgrade/pro indicator
           if (streak > 0) ...[
@@ -730,7 +1921,6 @@ class _CalorieDashboardCard extends StatelessWidget {
   final int protein;
   final int proteinGoal;
   final int yesterdayCalories;
-  final VoidCallback onAssistantTap;
 
   const _CalorieDashboardCard({
     required this.consumed,
@@ -740,7 +1930,6 @@ class _CalorieDashboardCard extends StatelessWidget {
     required this.protein,
     required this.proteinGoal,
     required this.yesterdayCalories,
-    required this.onAssistantTap,
   });
 
   @override
@@ -757,7 +1946,6 @@ class _CalorieDashboardCard extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 360;
-          final goalProgress = (consumed / goal).clamp(0.0, 1.25);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -813,15 +2001,6 @@ class _CalorieDashboardCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  _CalorieInsightPill(
-                    isOverGoal: isOverGoal,
-                    remaining: remaining,
-                    progress: goalProgress,
-                    statusColor: statusColor,
-                    compact: compact,
-                    onTap: onAssistantTap,
-                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -867,7 +2046,6 @@ class _YesterdayInsightRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final insight = _insightText;
     final comparison = _comparisonText;
 
@@ -877,7 +2055,7 @@ class _YesterdayInsightRow extends StatelessWidget {
           child: _MiniHeroChip(
             icon: LucideIcons.sparkles,
             label: insight,
-            color: statusColor,
+            color: _insightColor,
           ),
         ),
         const SizedBox(width: 8),
@@ -885,7 +2063,7 @@ class _YesterdayInsightRow extends StatelessWidget {
           child: _MiniHeroChip(
             icon: LucideIcons.history,
             label: comparison,
-            color: colorScheme.onSurfaceVariant,
+            color: _comparisonColor,
           ),
         ),
       ],
@@ -901,12 +2079,29 @@ class _YesterdayInsightRow extends StatelessWidget {
     return 'Next meal fits today';
   }
 
+  Color get _insightColor {
+    if (consumed == 0) return AppColors.primary;
+    if (remaining < 0) return AppColors.amber;
+    if (proteinGoal > 0 && protein < proteinGoal * 0.55) {
+      return AppColors.primaryDark;
+    }
+    return AppColors.green;
+  }
+
   String get _comparisonText {
     if (yesterdayCalories <= 0) return 'Build your baseline';
     final diff = consumed - yesterdayCalories;
     if (diff == 0) return 'Same as yesterday';
     if (diff < 0) return '${diff.abs()} kcal below yesterday';
     return '$diff kcal above yesterday';
+  }
+
+  Color get _comparisonColor {
+    if (yesterdayCalories <= 0) return AppColors.blue;
+    final diff = consumed - yesterdayCalories;
+    if (diff == 0) return AppColors.primary;
+    if (diff < 0) return AppColors.green;
+    return AppColors.amber;
   }
 }
 
@@ -930,7 +2125,7 @@ class _MiniHeroChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.10)),
+        border: Border.all(color: color.withValues(alpha: 0.16), width: 1.2),
       ),
       child: Row(
         children: [
@@ -940,8 +2135,8 @@ class _MiniHeroChip extends StatelessWidget {
             child: Text(
               label,
               style: AppTypography.labelSmall.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.82),
-                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface.withValues(alpha: 0.90),
+                fontWeight: FontWeight.w900,
                 letterSpacing: 0,
               ),
               maxLines: 1,
@@ -954,156 +2149,7 @@ class _MiniHeroChip extends StatelessWidget {
   }
 }
 
-class _CalorieInsightPill extends StatelessWidget {
-  final bool isOverGoal;
-  final int remaining;
-  final double progress;
-  final Color statusColor;
-  final bool compact;
-  final VoidCallback onTap;
 
-  const _CalorieInsightPill({
-    required this.isOverGoal,
-    required this.remaining,
-    required this.progress,
-    required this.statusColor,
-    required this.compact,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l10n = AppLocalizations.of(context)!;
-
-    return AppScaleTap(
-      onTap: onTap,
-      child: Tooltip(
-        message: l10n.assistant_title,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: (isDark ? Colors.white : colorScheme.primary).withValues(
-                  alpha: isDark ? 0.08 : 0.04,
-                ),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: (isDark ? Colors.white : colorScheme.primary)
-                      .withValues(alpha: isDark ? 0.15 : 0.12),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    blurRadius: 20,
-                    spreadRadius: -5,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _AnimatedSparkleIcon(color: statusColor),
-                  const SizedBox(width: 8),
-                  Text(
-                    l10n.assistant_title,
-                    style: AppTypography.labelLarge.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.95),
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.2,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AnimatedSparkleIcon extends StatefulWidget {
-  final Color color;
-  const _AnimatedSparkleIcon({required this.color});
-
-  @override
-  State<_AnimatedSparkleIcon> createState() => _AnimatedSparkleIconState();
-}
-
-class _AnimatedSparkleIconState extends State<_AnimatedSparkleIcon>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            // Outer Glow
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.color.withValues(
-                      alpha: 0.2 + (_controller.value * 0.3),
-                    ),
-                    blurRadius: 10 + (_controller.value * 10),
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-            ),
-            // The Icon
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [widget.color, AppColors.sky],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                LucideIcons.sparkles,
-                color: Colors.white,
-                size: 15,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
 
 class _DashboardSectionFrame extends StatelessWidget {
   final Widget child;
@@ -1587,10 +2633,10 @@ class _SecondaryDashboardGrid extends StatelessWidget {
                   icon: LucideIcons.droplets,
                   color: AppColors.sky,
                   title: l10n.water_hydration,
-                  primaryMetric: '$waterTotal ml',
-                  secondaryMetric: 'Goal: $waterGoal ml',
+                  primaryMetric: waterTotal == 0 ? '0 ml' : '$waterTotal ml',
+                  secondaryMetric: waterTotal == 0 ? 'Tap to log water' : 'Goal: $waterGoal ml',
                   progress: waterProgress,
-                  footerText: '+250ml per tap',
+                  footerText: waterTotal == 0 ? 'Start hydration goal' : '+250ml per tap',
                   liquidFill: true,
                   onTap: onWaterAdd,
                 ),
@@ -1603,10 +2649,10 @@ class _SecondaryDashboardGrid extends StatelessWidget {
                     icon: LucideIcons.footprints,
                     color: AppColors.primary,
                     title: l10n.home_metric_activity,
-                    primaryMetric: '$steps',
-                    secondaryMetric: '$burnedCalories activity kcal',
+                    primaryMetric: steps == 0 ? '0 steps' : '$steps',
+                    secondaryMetric: steps == 0 ? 'Start walking today' : '$burnedCalories activity kcal',
                     progress: stepsProgress,
-                    footerText: activityLive ? 'Walking • Live' : 'Steps today',
+                    footerText: steps == 0 ? 'Tap to log activity' : (activityLive ? 'Walking • Live' : 'Steps today'),
                     motionTrail: true,
                     motionActive: activityLive,
                     onTap: onActivityTap,

@@ -11,17 +11,38 @@ import '../../core/constants/app_constants.dart';
 class SettingsRepository {
   Box<UserSettings>? _settingsBox;
   final _settingsController = StreamController<UserSettings>.broadcast();
-  late final FirebaseFirestore _firestore;
-  late final FirebaseAuth _auth;
+  FirebaseFirestore? _firestore;
+  FirebaseAuth? _auth;
   StreamSubscription<User?>? _authSubscription;
+  Future<void>? _initFuture;
+  bool _initialized = false;
+
+  FirebaseFirestore get _firestoreClient =>
+      _firestore ??= FirebaseFirestore.instance;
+  FirebaseAuth get _authClient => _auth ??= FirebaseAuth.instance;
 
   /// Stream of user settings for reactive UI updates
   Stream<UserSettings> get settingsStream => _settingsController.stream;
 
   /// Initialize the repository
   Future<void> init() async {
-    _firestore = FirebaseFirestore.instance;
-    _auth = FirebaseAuth.instance;
+    if (_initialized) return;
+    final existingInit = _initFuture;
+    if (existingInit != null) return existingInit;
+
+    final initFuture = _initInternal();
+    _initFuture = initFuture;
+    try {
+      await initFuture;
+      _initialized = true;
+    } finally {
+      if (!_initialized) _initFuture = null;
+    }
+  }
+
+  Future<void> _initInternal() async {
+    _firestore ??= FirebaseFirestore.instance;
+    _auth ??= FirebaseAuth.instance;
     try {
       final encryptionKey = await SecurityService().getEncryptionKey();
       _settingsBox = await Hive.openBox<UserSettings>(
@@ -54,7 +75,7 @@ class SettingsRepository {
     _settingsController.add(initialSettings);
 
     await _authSubscription?.cancel();
-    _authSubscription = _auth.authStateChanges().listen((user) {
+    _authSubscription = _authClient.authStateChanges().listen((user) {
       if (user != null) {
         unawaited(syncFromFirestore());
       }
@@ -79,10 +100,10 @@ class SettingsRepository {
     _settingsController.add(settings);
 
     // 3. Sync to Firestore if logged in
-    final user = _auth.currentUser;
+    final user = _authClient.currentUser;
     if (user != null) {
       try {
-        await _firestore.collection('users').doc(user.uid).set({
+        await _firestoreClient.collection('users').doc(user.uid).set({
           'settings': settings.toJson(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
@@ -95,17 +116,20 @@ class SettingsRepository {
 
   /// Pull settings from Firestore
   Future<void> syncFromFirestore() async {
-    final user = _auth.currentUser;
+    final user = _authClient.currentUser;
     if (user == null) return;
 
     try {
-      final doc = await _firestore.collection('users').doc(user.uid).get();
+      final doc =
+          await _firestoreClient.collection('users').doc(user.uid).get();
       if (doc.exists && doc.data()?['settings'] != null) {
         final cloudSettings = UserSettings.fromJson(doc.data()!['settings']);
         final localSettings = getSettings();
 
         // Merge cloud settings with local isPro status (RevenueCat is the source of truth)
-        final mergedSettings = cloudSettings.copyWith(isPro: localSettings.isPro);
+        final mergedSettings = cloudSettings.copyWith(
+          isPro: localSettings.isPro,
+        );
 
         // Compare merged settings with local settings using mapEquals to avoid redundant writes
         if (!mapEquals(mergedSettings.toJson(), localSettings.toJson())) {

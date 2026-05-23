@@ -3,11 +3,29 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/metrics_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/ui_blocks.dart';
+
+const _settingsBgLight = Color(0xFFF9F8F5);
+const _settingsBgDark = Color(0xFF14130F);
+const _settingsInk = Color(0xFF1C1917);
+const _settingsLine = Color(0xFFE8E4DC);
+const _settingsGreen = Color(0xFF1A3D2B);
+const _settingsGreenText = Color(0xFF16733A);
+
+Color _settingsBg(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? _settingsBgDark
+      : _settingsBgLight;
+}
+
+Color _settingsText(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : _settingsInk;
+}
 
 class WeightEntryModal extends StatefulWidget {
   const WeightEntryModal({super.key});
@@ -65,9 +83,10 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: _settingsBg(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       // Use standard bottom sheet padding + keyboard insets
@@ -85,7 +104,9 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.35),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.14)
+                      : _settingsLine,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -96,11 +117,13 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
                   children: [
                     Row(
                       children: [
-                        const Icon(LucideIcons.scale, color: AppColors.primary),
+                        const Icon(LucideIcons.scale, color: _settingsGreenText),
                         const SizedBox(width: 10),
                         Text(
                           AppLocalizations.of(context)!.settings_body_profile,
-                          style: AppTypography.heading3,
+                          style: AppTypography.heading3.copyWith(
+                            color: _settingsText(context),
+                          ),
                         ),
                       ],
                     ),
@@ -135,6 +158,8 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
                 onPressed: _save,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(56),
+                  backgroundColor: _settingsGreen,
+                  foregroundColor: const Color(0xFFF0FDF4),
                 ),
                 child: Text(AppLocalizations.of(context)!.common_save_progress),
               ),

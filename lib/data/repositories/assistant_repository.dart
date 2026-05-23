@@ -8,8 +8,25 @@ import '../services/assistant_service.dart';
 
 class AssistantRepository {
   Box? _box;
+  Future<void>? _initFuture;
+  bool _initialized = false;
 
   Future<void> init() async {
+    if (_initialized) return;
+    final existingInit = _initFuture;
+    if (existingInit != null) return existingInit;
+
+    final initFuture = _initInternal();
+    _initFuture = initFuture;
+    try {
+      await initFuture;
+      _initialized = true;
+    } finally {
+      if (!_initialized) _initFuture = null;
+    }
+  }
+
+  Future<void> _initInternal() async {
     try {
       final encryptionKey = await SecurityService().getEncryptionKey();
       _box = await Hive.openBox(
@@ -99,17 +116,18 @@ class AssistantRepository {
 
   /// Save full chat history
   Future<void> saveChatHistory(List<dynamic> history) async {
-    final jsonList = history.map((e) {
-      if (e is Map) return e;
-      final res = e as AssistantResponse;
-      return {
-        'title': res.title,
-        'content': res.content,
-        'type': res.type,
-        'macros': res.macros,
-        'actions': res.actions?.map((a) => a.toJson()).toList(),
-      };
-    }).toList();
+    final jsonList =
+        history.map((e) {
+          if (e is Map) return e;
+          final res = e as AssistantResponse;
+          return {
+            'title': res.title,
+            'content': res.content,
+            'type': res.type,
+            'macros': res.macros,
+            'actions': res.actions?.map((a) => a.toJson()).toList(),
+          };
+        }).toList();
     await _box?.put('chat_history', jsonEncode(jsonList));
   }
 

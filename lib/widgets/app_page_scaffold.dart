@@ -54,6 +54,7 @@ class AppPageScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final pageBackground = backgroundColor ?? colorScheme.surface;
     final hPadding = Responsive.hPadding(context);
     final maxWidth = Responsive.maxWidth(context);
     final canPop = context.canPop();
@@ -158,19 +159,8 @@ class AppPageScaffold extends StatelessWidget {
       ),
     );
 
-    Widget body = DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.10),
-            colorScheme.surface,
-            colorScheme.surface,
-          ],
-          stops: const [0, 0.28, 1],
-        ),
-      ),
+    Widget body = ColoredBox(
+      color: pageBackground,
       child: Column(
         children: [
           AnimatedSwitcher(
@@ -204,26 +194,35 @@ class AppPageScaffold extends StatelessWidget {
         Theme.of(context).brightness == Brightness.dark
             ? SystemUiOverlayStyle.light.copyWith(
               statusBarColor: Colors.transparent,
-              systemNavigationBarColor: colorScheme.surface,
+              systemNavigationBarColor: pageBackground,
             )
             : SystemUiOverlayStyle.dark.copyWith(
               statusBarColor: Colors.transparent,
-              systemNavigationBarColor: colorScheme.surface,
+              systemNavigationBarColor: pageBackground,
             );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
       child: Scaffold(
         extendBodyBehindAppBar: extendBehindStatusBar,
-        backgroundColor: backgroundColor ?? colorScheme.surface,
-        body: background != null
-            ? Stack(
-                children: [
-                  Positioned.fill(child: background!),
-                  SafeArea(top: !extendBehindStatusBar, bottom: true, child: body),
-                ],
-              )
-            : SafeArea(top: !extendBehindStatusBar, bottom: true, child: body),
+        backgroundColor: pageBackground,
+        body:
+            background != null
+                ? Stack(
+                  children: [
+                    Positioned.fill(child: background!),
+                    SafeArea(
+                      top: !extendBehindStatusBar,
+                      bottom: true,
+                      child: body,
+                    ),
+                  ],
+                )
+                : SafeArea(
+                  top: !extendBehindStatusBar,
+                  bottom: true,
+                  child: body,
+                ),
         floatingActionButton: floatingActionButton,
       ),
     );

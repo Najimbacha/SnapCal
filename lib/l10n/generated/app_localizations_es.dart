@@ -3057,5 +3057,109 @@ class AppLocalizationsEs extends AppLocalizations {
   String get activity_score => 'Puntuación de actividad';
 
   @override
+  String get log_health_title => 'Salud SnapCal';
+
+  @override
+  String get log_key_metrics => 'Métricas clave';
+
+  @override
+  String get log_customize => 'Personalizar';
+
+  @override
+  String get log_metric_water => 'Agua';
+
+  @override
+  String get log_metric_energy_burned => 'Energía quemada';
+
+  @override
+  String get log_metric_steps => 'Pasos';
+
+  @override
+  String get log_metric_calories_intake => 'Calorías ingeridas';
+
+  @override
+  String get log_metric_carbs => 'Carbohidratos';
+
+  @override
+  String get log_metric_fat => 'Grasa';
+
+  @override
+  String get log_metric_protein => 'Proteína';
+
+  @override
+  String get log_metric_steps_unit => 'pasos';
+
+  @override
+  String get log_period_day => 'D';
+
+  @override
+  String get log_period_week => 'S';
+
+  @override
+  String get log_period_month => 'M';
+
+  @override
+  String get log_period_three_months => '3M';
+
+  @override
+  String get log_period_year => 'A';
+
+  @override
+  String get log_detail_this_day => 'Este día';
+
+  @override
+  String get log_detail_this_week => 'Esta semana';
+
+  @override
+  String get log_detail_this_month => 'Este mes';
+
+  @override
+  String get log_detail_this_three_months => 'Últimos 3 meses';
+
+  @override
+  String get log_detail_this_year => 'Este año';
+
+  @override
+  String log_metric_per_day_avg(String unit) {
+    return '$unit por día (prom.)';
+  }
+
+  @override
+  String get log_metric_goal_hit => 'Vas en objetivo.';
+
+  @override
+  String get log_metric_goal_miss => 'No has alcanzado tu objetivo.';
+
+  @override
+  String log_metric_left(String value) {
+    return '$value restantes';
+  }
+
+  @override
+  String get log_metric_below_range => 'Por debajo del rango';
+
+  @override
+  String get log_metric_no_data => 'Sin datos';
+
+  @override
+  String get log_metric_locked => 'Bloqueado';
+
+  @override
+  String get log_metric_history_locked => 'El historial completo es Pro';
+
+  @override
+  String get log_metric_detail_list_title => 'Este período';
+
+  @override
   String get common_days => 'días';
+
+  @override
+  String get aha_prompt_title => 'Acabas de ahorrar 10 minutos';
+
+  @override
+  String get aha_prompt_subtitle =>
+      'Imagina ahorrar este tiempo todos los días. Pásate a Pro para obtener escaneos de fotos ilimitados y un registro sin esfuerzo.';
+
+  @override
+  String get aha_prompt_btn => 'Pasar a Pro';
 }

@@ -5,6 +5,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 
+const _plannerInk = Color(0xFF1C1917);
+const _plannerLine = Color(0xFFE8E4DC);
+const _plannerGreen = Color(0xFF1A3D2B);
+
 class DaySummaryBar extends StatelessWidget {
   final int totalCalories;
   final int targetCalories;
@@ -23,14 +27,15 @@ class DaySummaryBar extends StatelessWidget {
     final delta = totalCalories - targetCalories;
     final isOver = delta > 50;
     final isUnder = delta < -50;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? const Color(0xFF201F1A) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : _plannerLine,
         ),
       ),
       child: Column(
@@ -45,7 +50,11 @@ class DaySummaryBar extends StatelessWidget {
                     '$totalCalories',
                     style: AppTypography.headlineSmall.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: isOver ? AppColors.error : context.textPrimaryColor,
+                      color: isOver
+                          ? AppColors.error
+                          : isDark
+                              ? Colors.white
+                              : _plannerInk,
                     ),
                   ),
                   Text(
@@ -90,8 +99,9 @@ class DaySummaryBar extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress,
               backgroundColor: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(4),
               valueColor: AlwaysStoppedAnimation(
-                isOver ? AppColors.error : AppColors.primary,
+                isOver ? AppColors.error : _plannerGreen,
               ),
               minHeight: 6,
             ),

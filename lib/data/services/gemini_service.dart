@@ -71,55 +71,47 @@ class AIService {
     'fr': 'French',
   };
 
-  /// Generate text-only response from Gemini (for Weekly Insights, etc.)
+  /// Generate text-only response — Gemini first, Groq as fallback
   Future<String> generateText(String prompt) async {
-    final apiKey = ConfigService().geminiApiKey;
-    if (apiKey.isEmpty) throw GeminiException('API Key missing');
-
-    final candidates = [
-      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
-      {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
-    ];
-
-    Object? lastError;
-
-    for (var candidate in candidates) {
-      final modelId = candidate['id']!;
-      final apiVer = candidate['ver']!;
-
-      try {
-        final response = await _dio.post(
-          'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$apiKey',
-          options: Options(
-            headers: {'Content-Type': 'application/json'},
-            sendTimeout: const Duration(seconds: 15),
-          ),
-          data: {
-            'contents': [
-              {
-                'parts': [
-                  {'text': prompt},
-                ],
-              },
-            ],
-            'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final text =
-              response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                  as String?;
-          if (text != null) return text;
+    // ── Tier 1 & 2: Gemini ──────────────────────────────────────────────
+    final geminiKey = ConfigService().geminiApiKey;
+    if (geminiKey.isNotEmpty) {
+      final candidates = [
+        {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
+        {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
+      ];
+      for (var candidate in candidates) {
+        final modelId = candidate['id']!;
+        final apiVer  = candidate['ver']!;
+        try {
+          final response = await _dio.post(
+            'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$geminiKey',
+            options: Options(
+              headers: {'Content-Type': 'application/json'},
+              sendTimeout: const Duration(seconds: 15),
+            ),
+            data: {
+              'contents': [
+                {
+                  'parts': [{'text': prompt}],
+                },
+              ],
+              'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
+            },
+          );
+          if (response.statusCode == 200) {
+            final text = response.data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+            if (text != null) return text;
+          }
+        } catch (e) {
+          debugPrint('❌ generateText Gemini ($modelId): $e');
         }
-      } catch (e) {
-        lastError = e;
-        debugPrint('❌ Text generation failed for $modelId: $e');
-        continue;
       }
     }
 
-    throw lastError ?? GeminiException('All text generation candidates failed');
+    // ── Tier 3: Groq (entire Gemini API down) ───────────────────────────
+    debugPrint('⚠️ Gemini unavailable — falling back to Groq for text generation');
+    return _generateTextWithGroq(prompt, maxTokens: 1024);
   }
 
   Future<String> generateMealInsight({
@@ -259,10 +251,10 @@ User daily targets:
 
     final base64Image = await compute(base64Encode, imageBytes);
 
-    // Prioritize ultra-low-cost models first to save on API costs
+    // Try 3.5-flash first (released May 2026, better quality), fall back to 2.5-flash
     final candidates = [
-      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'}, // Ultra-cheap, fast
       {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
+      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
     ];
 
     Object? lastError;
@@ -395,59 +387,61 @@ User daily targets:
     }
   }
 
-  /// Generate Weekly Meal Plan & Grocery List (with AI Hunter)
+  /// Generate Weekly Meal Plan & Grocery List
+  /// Chain: Gemini 3.5-flash → Gemini 2.5-flash → Groq 70b → Groq 8b → null (static fallback)
   Future<PlanGenerationResult?> generateWeeklyMealPlan(
     UserSettings settings,
   ) async {
     final prompt = _buildMealPlanPrompt(settings);
-    final apiKey = ConfigService().geminiApiKey;
-    if (apiKey.isEmpty) return null;
 
-    // Prioritize ultra-low-cost models first
-    final candidates = [
-      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
-      {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
-    ];
-
-    for (var candidate in candidates) {
-      final modelId = candidate['id']!;
-      final apiVer = candidate['ver']!;
-      try {
-        debugPrint('🍽️ MealPlanner: Hunting $modelId...');
-        final response = await _dio.post(
-          'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$apiKey',
-          options: Options(headers: {'Content-Type': 'application/json'}),
-          data: {
-            'contents': [
-              {
-                'parts': [
-                  {'text': prompt},
-                ],
-              },
-            ],
-            'generationConfig': {
-              'maxOutputTokens': 4096,
-              'temperature': 0.7,
-            }, // Reduced from 8192 since meal plan JSON is relatively small
-          },
-        );
-        if (response.statusCode == 200) {
-          final text =
-              response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                  as String?;
-          if (text != null) {
-            return await compute(_parseMealPlanJsonInIsolate, text);
+    // ── Tier 1 & 2: Gemini ──────────────────────────────────────────────
+    final geminiKey = ConfigService().geminiApiKey;
+    if (geminiKey.isNotEmpty) {
+      final candidates = [
+        {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
+        {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
+      ];
+      for (var candidate in candidates) {
+        final modelId = candidate['id']!;
+        final apiVer  = candidate['ver']!;
+        try {
+          debugPrint('🍽️ MealPlanner: trying Gemini $modelId...');
+          final response = await _dio.post(
+            'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$geminiKey',
+            options: Options(headers: {'Content-Type': 'application/json'}),
+            data: {
+              'contents': [
+                {
+                  'parts': [{'text': prompt}],
+                },
+              ],
+              'generationConfig': {'maxOutputTokens': 4096, 'temperature': 0.7},
+            },
+          );
+          if (response.statusCode == 200) {
+            final text = response.data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+            if (text != null) return await compute(_parseMealPlanJsonInIsolate, text);
           }
+        } catch (e) {
+          debugPrint('❌ MealPlanner Gemini ($modelId) failed: $e');
         }
-      } catch (e) {
-        debugPrint('❌ MealPlanner failed for $modelId: $e');
-        continue;
       }
     }
-    return null;
+
+    // ── Tier 3 & 4: Groq (entire Gemini API down) ───────────────────────
+    debugPrint('⚠️ Gemini down — falling back to Groq for meal plan');
+    try {
+      final groqText = await _generateTextWithGroq(prompt, maxTokens: 4096);
+      return await compute(_parseMealPlanJsonInIsolate, groqText);
+    } catch (e) {
+      debugPrint('❌ MealPlanner Groq also failed: $e');
+    }
+
+    return null; // Provider will use static fallback plan
   }
 
-  /// Regenerate a single day's meals with context of existing meals
+  /// Regenerate a single day's meals
+  /// Chain: Gemini 3.5-flash → Gemini 2.5-flash → Groq 70b → Groq 8b → null
   Future<PlanGenerationResult?> regenerateDay(
     UserSettings settings,
     int dayIndex,
@@ -456,13 +450,8 @@ User daily targets:
     final existingMealsContext = <String>[];
     final languageName = languageNames[settings.languageCode] ?? 'English';
     final dayNames = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+      'Friday', 'Saturday', 'Sunday',
     ];
     existingWeeklyMeals.forEach((day, meals) {
       if (day != dayIndex) {
@@ -473,10 +462,9 @@ User daily targets:
     });
 
     final calorieFloor = settings.gender == 'female' ? 1200 : 1500;
-    final safeTarget =
-        settings.dailyCalorieGoal < calorieFloor
-            ? calorieFloor
-            : settings.dailyCalorieGoal;
+    final safeTarget = settings.dailyCalorieGoal < calorieFloor
+        ? calorieFloor
+        : settings.dailyCalorieGoal;
 
     final prompt = '''
 You are a certified nutrition expert. Generate meals for ONE day only (${dayNames[dayIndex]}).
@@ -488,45 +476,106 @@ Output ONLY valid JSON:
 {"week_plan":{"$dayIndex":[{"meal_type":"Breakfast","name":"Name","portion":"1 bowl","calories":400,"protein_g":20,"carbs_g":45,"fat_g":12,"ingredients":["item"],"prep_time_mins":10}]},"grocery_list":[{"name":"Item","amount":"Qty","category":"Produce"}]}
 ''';
 
-    final apiKey = ConfigService().geminiApiKey;
-    if (apiKey.isEmpty) return null;
+    // ── Tier 1 & 2: Gemini ──────────────────────────────────────────────
+    final geminiKey = ConfigService().geminiApiKey;
+    if (geminiKey.isNotEmpty) {
+      final candidates = [
+        {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
+        {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
+      ];
+      for (var candidate in candidates) {
+        try {
+          final response = await _dio.post(
+            'https://generativelanguage.googleapis.com/${candidate['ver']}/models/${candidate['id']}:generateContent?key=$geminiKey',
+            options: Options(headers: {'Content-Type': 'application/json'}),
+            data: {
+              'contents': [
+                {
+                  'parts': [{'text': prompt}],
+                },
+              ],
+              'generationConfig': {'maxOutputTokens': 1024, 'temperature': 0.7},
+            },
+          );
+          if (response.statusCode == 200) {
+            final text = response.data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+            if (text != null) return await compute(_parseMealPlanJsonInIsolate, text);
+          }
+        } catch (e) {
+          debugPrint('❌ Regen day Gemini (${candidate['id']}) failed: $e');
+        }
+      }
+    }
 
-    // Prioritize ultra-low-cost models
-    final candidates = [
-      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
-      {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
+    // ── Tier 3 & 4: Groq (entire Gemini API down) ───────────────────────
+    debugPrint('⚠️ Gemini down — falling back to Groq for day regen');
+    try {
+      final groqText = await _generateTextWithGroq(prompt, maxTokens: 1024);
+      return await compute(_parseMealPlanJsonInIsolate, groqText);
+    } catch (e) {
+      debugPrint('❌ Regen day Groq also failed: $e');
+    }
+
+    return null;
+  }
+
+  /// Tier 3 & 4: Generate text via Groq when Gemini is unavailable.
+  /// Tries llama-3.3-70b-versatile first, then llama-3.1-8b-instant.
+  Future<String> _generateTextWithGroq(
+    String prompt, {
+    int maxTokens = 1024,
+  }) async {
+    final apiKey = ConfigService().groqApiKey;
+    if (apiKey.isEmpty) throw GeminiException('Groq API key missing');
+
+    // 70b = better quality for structured JSON; 8b = faster, higher rate limits
+    final models = [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
     ];
 
-    for (var candidate in candidates) {
+    Object? lastError;
+
+    for (final model in models) {
       try {
+        debugPrint('🦙 Groq text fallback: trying $model...');
         final response = await _dio.post(
-          'https://generativelanguage.googleapis.com/${candidate['ver']}/models/${candidate['id']}:generateContent?key=$apiKey',
-          options: Options(headers: {'Content-Type': 'application/json'}),
+          AppConstants.groqApiUrl,
+          options: Options(
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
+            },
+            sendTimeout: const Duration(seconds: 20),
+          ),
           data: {
-            'contents': [
+            'model': model,
+            'messages': [
               {
-                'parts': [
-                  {'text': prompt},
-                ],
+                'role': 'user',
+                'content': prompt,
               },
             ],
-            'generationConfig': {'maxOutputTokens': 1024, 'temperature': 0.7},
+            'max_tokens': maxTokens,
+            'temperature': 0.7,
           },
         );
+
         if (response.statusCode == 200) {
-          final text =
-              response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                  as String?;
-          if (text != null) {
-            return await compute(_parseMealPlanJsonInIsolate, text);
+          final content =
+              response.data['choices']?[0]?['message']?['content'] as String?;
+          if (content != null && content.isNotEmpty) {
+            debugPrint('✅ Groq $model succeeded');
+            return content;
           }
         }
       } catch (e) {
-        debugPrint('❌ Regen day failed: $e');
-        continue;
+        lastError = e;
+        debugPrint('❌ Groq $model failed: $e');
       }
     }
-    return null;
+
+    throw lastError ?? GeminiException('All Groq text candidates failed');
   }
 
   String _buildMealPlanPrompt(UserSettings settings) {
@@ -601,6 +650,11 @@ Keys 0-6 = Monday-Sunday. Each day must have exactly ${settings.mealsPerDay} mea
     final weekPlanMap = json['week_plan'] as Map<String, dynamic>;
     final Map<int, List<Meal>> weeklyMeals = {};
 
+    // Anchor all dates to the start of the current week (today's Monday)
+    final now = DateTime.now();
+    final weekdayOffset = now.weekday - 1; // Mon=0
+    final weekStart = DateTime(now.year, now.month, now.day - weekdayOffset);
+
     weekPlanMap.forEach((key, value) {
       int? dayIndex = int.tryParse(key);
       if (dayIndex == null) {
@@ -623,34 +677,51 @@ Keys 0-6 = Monday-Sunday. Each day must have exactly ${settings.mealsPerDay} mea
       }
       if (dayIndex == null) return;
 
-      final List<Meal> mealsList =
-          (value as List)
-              .map(
-                (m) => Meal(
-                  id: const Uuid().v4(),
-                  timestamp: DateTime.now().millisecondsSinceEpoch,
-                  dateString: 'Day $dayIndex',
-                  foodName: m['name'] ?? 'Unnamed Meal',
-                  portion: m['portion'] as String? ?? 'Standard portion',
-                  calories: _safeInt(m['calories']),
-                  macros: Macros(
-                    protein: _safeInt(m['protein_g']),
-                    carbs: _safeInt(m['carbs_g']),
-                    fat: _safeInt(m['fat_g']),
-                  ),
-                  mealType: m['meal_type'] as String?,
-                  ingredients:
-                      (m['ingredients'] as List?)
-                          ?.map((e) => e.toString())
-                          .toList(),
-                  prepTimeMins: _safeInt(m['prep_time_mins']),
-                ),
-              )
-              .toList();
+      final dayDate = weekStart.add(Duration(days: dayIndex));
+      final dateStr =
+          '${dayDate.year.toString().padLeft(4, '0')}-'
+          '${dayDate.month.toString().padLeft(2, '0')}-'
+          '${dayDate.day.toString().padLeft(2, '0')}';
+
+      final mealsList = (value as List).asMap().entries.map((entry) {
+        final mealIndex = entry.key;
+        final m = entry.value as Map<String, dynamic>;
+        // Give each meal a realistic time: 8am, 11am, 2pm, 5pm, 8pm
+        final mealHour = 8 + (mealIndex * 3);
+        final mealTimestamp = DateTime(
+          dayDate.year,
+          dayDate.month,
+          dayDate.day,
+          mealHour,
+        ).millisecondsSinceEpoch;
+
+        return Meal(
+          id: const Uuid().v4(),
+          timestamp: mealTimestamp,
+          dateString: dateStr,
+          foodName: m['name'] ?? 'Unnamed Meal',
+          portion: m['portion'] as String? ?? 'Standard portion',
+          calories: _safeInt(m['calories']),
+          macros: Macros(
+            protein: _safeInt(m['protein_g']),
+            carbs: _safeInt(m['carbs_g']),
+            fat: _safeInt(m['fat_g']),
+          ),
+          mealType: m['meal_type'] as String?,
+          ingredients:
+              (m['ingredients'] as List?)?.map((e) => e.toString()).toList(),
+          prepTimeMins: _safeInt(m['prep_time_mins']),
+          synced: true,
+          scanSource: 'meal_planner',
+        );
+      }).toList();
+
       weeklyMeals[dayIndex] = mealsList;
     });
 
-    final plan = MealPlan.createEmpty().copyWith(weeklyMeals: weeklyMeals);
+    final plan = MealPlan.createEmpty(
+      start: weekStart,
+    ).copyWith(weeklyMeals: weeklyMeals);
 
     final groceryListJson = json['grocery_list'] as List? ?? [];
     final groceryList =

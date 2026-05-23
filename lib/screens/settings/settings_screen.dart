@@ -26,6 +26,32 @@ import '../sync/sync_data_screen.dart';
 import 'widgets/weight_entry_modal.dart';
 import '../../widgets/premium_prompt_card.dart';
 
+const _settingsBgLight = Color(0xFFF9F8F5);
+const _settingsBgDark = Color(0xFF14130F);
+const _settingsInk = Color(0xFF1C1917);
+const _settingsMuted = Color(0xFFA8A29E);
+const _settingsLine = Color(0xFFE8E4DC);
+const _settingsGreen = Color(0xFF1A3D2B);
+const _settingsGreenText = Color(0xFF16733A);
+
+Color _settingsBg(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? _settingsBgDark
+      : _settingsBgLight;
+}
+
+Color _settingsText(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : _settingsInk;
+}
+
+Color _settingsSubtext(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? Colors.white54
+      : _settingsMuted;
+}
+
 class SettingsScreen extends StatelessWidget {
   final bool? showBack;
   const SettingsScreen({super.key, this.showBack});
@@ -40,6 +66,7 @@ class SettingsScreen extends StatelessWidget {
       forceShowBackButton: showBack,
       scrollable: true,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      backgroundColor: _settingsBg(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -264,18 +291,21 @@ void _showNumberDialog(
   required Future<void> Function(int) onSave,
 }) {
   final controller = TextEditingController(text: currentValue.toString());
-  final colorScheme = Theme.of(context).colorScheme;
 
   showDialog(
     context: context,
     builder:
         (dialogContext) => AlertDialog(
+          backgroundColor: _settingsBg(context),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
           title: Text(
             title,
-            style: AppTypography.heading3.copyWith(fontSize: 22),
+            style: AppTypography.heading3.copyWith(
+              color: _settingsText(context),
+              fontSize: 22,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -284,7 +314,7 @@ void _showNumberDialog(
               Text(
                 AppLocalizations.of(context)!.settings_enter_value(title),
                 style: AppTypography.bodySmall.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                  color: _settingsSubtext(context),
                 ),
               ),
               const SizedBox(height: 16),
@@ -294,15 +324,15 @@ void _showNumberDialog(
                 autofocus: true,
                 style: AppTypography.headlineSmall.copyWith(
                   fontWeight: FontWeight.w900,
-                  color: AppColors.primary,
+                  color: _settingsGreenText,
                 ),
                 decoration: InputDecoration(
                   suffixText: _getLocalOption(context, unit),
                   suffixStyle: AppTypography.titleMedium,
                   filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.3,
-                  ),
+                  fillColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : _settingsLine.withValues(alpha: 0.48),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -318,7 +348,7 @@ void _showNumberDialog(
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
                 AppLocalizations.of(context)!.common_cancel,
-                style: TextStyle(color: colorScheme.onSurfaceVariant),
+                style: TextStyle(color: _settingsSubtext(context)),
               ),
             ),
             FilledButton(
@@ -332,6 +362,8 @@ void _showNumberDialog(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
+                backgroundColor: _settingsGreen,
+                foregroundColor: const Color(0xFFF0FDF4),
               ),
               child: Text(AppLocalizations.of(context)!.common_confirm),
             ),
@@ -342,18 +374,21 @@ void _showNumberDialog(
 
 void _showNameDialog(BuildContext context, String currentName) {
   final controller = TextEditingController(text: currentName);
-  final colorScheme = Theme.of(context).colorScheme;
 
   showDialog(
     context: context,
     builder:
         (dialogContext) => AlertDialog(
+          backgroundColor: _settingsBg(context),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
           title: Text(
             AppLocalizations.of(context)!.settings_display_name,
-            style: AppTypography.heading3.copyWith(fontSize: 22),
+            style: AppTypography.heading3.copyWith(
+              color: _settingsText(context),
+              fontSize: 22,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -362,7 +397,7 @@ void _showNameDialog(BuildContext context, String currentName) {
               Text(
                 AppLocalizations.of(context)!.settings_how_to_call,
                 style: AppTypography.bodySmall.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                  color: _settingsSubtext(context),
                 ),
               ),
               const SizedBox(height: 16),
@@ -372,13 +407,13 @@ void _showNameDialog(BuildContext context, String currentName) {
                 textCapitalization: TextCapitalization.words,
                 style: AppTypography.headlineSmall.copyWith(
                   fontWeight: FontWeight.w900,
-                  color: AppColors.primary,
+                  color: _settingsGreenText,
                 ),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.3,
-                  ),
+                  fillColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : _settingsLine.withValues(alpha: 0.48),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -394,7 +429,7 @@ void _showNameDialog(BuildContext context, String currentName) {
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
                 AppLocalizations.of(context)!.common_cancel,
-                style: TextStyle(color: colorScheme.onSurfaceVariant),
+                style: TextStyle(color: _settingsSubtext(context)),
               ),
             ),
             FilledButton(
@@ -408,6 +443,8 @@ void _showNameDialog(BuildContext context, String currentName) {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
+                backgroundColor: _settingsGreen,
+                foregroundColor: const Color(0xFFF0FDF4),
               ),
               child: Text(AppLocalizations.of(context)!.settings_save_name),
             ),
@@ -481,7 +518,7 @@ Future<void> _selectTime(
         data: Theme.of(context).copyWith(
           colorScheme: Theme.of(
             context,
-          ).colorScheme.copyWith(primary: AppColors.primary),
+          ).colorScheme.copyWith(primary: _settingsGreenText),
         ),
         child: child!,
       );
@@ -516,11 +553,10 @@ class _SelectionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: _settingsBg(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
@@ -531,10 +567,15 @@ class _SelectionSheet extends StatelessWidget {
           const SizedBox(height: 20),
           ...options.map(
             (opt) => ListTile(
-              title: Text(_getLocalOption(context, opt), style: AppTypography.titleMedium),
+              title: Text(
+                _getLocalOption(context, opt),
+                style: AppTypography.titleMedium.copyWith(
+                  color: _settingsText(context),
+                ),
+              ),
               trailing:
                   opt == currentValue
-                      ? const Icon(LucideIcons.check, color: AppColors.primary)
+                      ? const Icon(LucideIcons.check, color: _settingsGreenText)
                       : null,
               onTap: () {
                 onSelect(opt);
@@ -566,13 +607,14 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder:
-        (context) => Container(
+    builder: (context) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Container(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).padding.bottom + 24,
           ),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+            color: _settingsBg(context),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           ),
           child: SingleChildScrollView(
@@ -587,7 +629,9 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.outlineVariant,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.14)
+                            : _settingsLine,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -595,13 +639,15 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
                   const SizedBox(height: 24),
                   Text(
                     AppLocalizations.of(context)!.settings_select_language,
-                    style: AppTypography.heading3,
+                    style: AppTypography.heading3.copyWith(
+                      color: _settingsText(context),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     AppLocalizations.of(context)!.settings_language_desc,
                     style: AppTypography.bodySmall.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: _settingsSubtext(context),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -656,7 +702,8 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
               ),
             ),
           ),
-        ),
+        );
+    },
   );
 }
 
@@ -677,7 +724,7 @@ class _LanguageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AppScaleTap(
       onTap: onTap,
       child: Container(
@@ -685,12 +732,16 @@ class _LanguageTile extends StatelessWidget {
         decoration: BoxDecoration(
           color:
               selected
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(20),
+                  ? _settingsGreenText.withValues(alpha: isDark ? 0.16 : 0.09)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : const Color(0x00FFFFFF)),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? AppColors.primary : Colors.transparent,
-            width: 2,
+            color: selected
+                ? _settingsGreenText.withValues(alpha: 0.24)
+                : (isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine),
+            width: 1,
           ),
         ),
         child: Row(
@@ -699,7 +750,7 @@ class _LanguageTile extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color:
-                    selected ? AppColors.primary : colorScheme.outlineVariant,
+                    selected ? _settingsGreenText : _settingsMuted.withValues(alpha: 0.55),
                 shape: BoxShape.circle,
               ),
               child: Text(
@@ -721,20 +772,20 @@ class _LanguageTile extends StatelessWidget {
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w900,
                       color:
-                          selected ? AppColors.primary : colorScheme.onSurface,
+                          selected ? _settingsGreenText : _settingsText(context),
                     ),
                   ),
                   Text(
                     subtitle,
                     style: AppTypography.labelSmall.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                      color: _settingsSubtext(context),
                     ),
                   ),
                 ],
               ),
             ),
             if (selected)
-              const Icon(LucideIcons.checkCircle2, color: AppColors.primary),
+              const Icon(LucideIcons.checkCircle2, color: _settingsGreenText),
           ],
         ),
       ),
@@ -761,8 +812,8 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveAccent = accent == AppColors.error ? accent : _settingsGreenText;
 
     return Material(
       color: Colors.transparent,
@@ -779,11 +830,11 @@ class _SettingRow extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: isDark ? 0.14 : 0.10),
+                  color: effectiveAccent.withValues(alpha: isDark ? 0.14 : 0.09),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
-                  child: Icon(icon, color: accent, size: 16),
+                  child: Icon(icon, color: effectiveAccent, size: 16),
                 ),
               ),
               const SizedBox(width: 14),
@@ -791,7 +842,7 @@ class _SettingRow extends StatelessWidget {
                 child: Text(
                   title,
                   style: AppTypography.titleMedium.copyWith(
-                    color: colorScheme.onSurface,
+                    color: _settingsText(context),
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
                     fontSize: 15,
@@ -802,7 +853,7 @@ class _SettingRow extends StatelessWidget {
               Text(
                 value,
                 style: AppTypography.bodyMedium.copyWith(
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  color: _settingsSubtext(context),
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
                 ),
@@ -811,7 +862,7 @@ class _SettingRow extends StatelessWidget {
               Icon(
                 LucideIcons.chevronRight,
                 size: 14,
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                color: _settingsSubtext(context).withValues(alpha: 0.55),
               ),
             ],
           ),
@@ -838,8 +889,8 @@ class _SwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveAccent = accent == AppColors.error ? accent : _settingsGreenText;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -848,12 +899,12 @@ class _SwitchRow extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: isDark ? 0.14 : 0.10),
+              decoration: BoxDecoration(
+              color: effectiveAccent.withValues(alpha: isDark ? 0.14 : 0.09),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
-              child: Icon(icon, color: accent, size: 16),
+              child: Icon(icon, color: effectiveAccent, size: 16),
             ),
           ),
           const SizedBox(width: 14),
@@ -861,7 +912,7 @@ class _SwitchRow extends StatelessWidget {
             child: Text(
               title,
               style: AppTypography.titleMedium.copyWith(
-                color: colorScheme.onSurface,
+                color: _settingsText(context),
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
                 fontSize: 15,
@@ -871,7 +922,7 @@ class _SwitchRow extends StatelessWidget {
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: AppColors.primary,
+            activeThumbColor: _settingsGreenText,
           ),
         ],
       ),
@@ -887,7 +938,6 @@ class _ThemeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.read<SettingsProvider>();
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final options = [
@@ -908,11 +958,11 @@ class _ThemeRow extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: isDark ? 0.14 : 0.10),
+                  color: _settingsGreenText.withValues(alpha: isDark ? 0.14 : 0.09),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
-                  child: Icon(LucideIcons.sunMoon, color: AppColors.primary, size: 16),
+                  child: Icon(LucideIcons.sunMoon, color: _settingsGreenText, size: 16),
                 ),
               ),
               const SizedBox(width: 14),
@@ -921,7 +971,7 @@ class _ThemeRow extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.titleMedium.copyWith(
-                  color: colorScheme.onSurface,
+                  color: _settingsText(context),
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.2,
                   fontSize: 15,
@@ -938,8 +988,8 @@ class _ThemeRow extends StatelessWidget {
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 color: isDark
-                    ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
-                    : colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : _settingsLine.withValues(alpha: 0.65),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -957,7 +1007,7 @@ class _ThemeRow extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? (isDark ? colorScheme.surfaceContainer : Colors.white)
+                              ? (isDark ? Colors.white.withValues(alpha: 0.09) : _settingsBgLight)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: isSelected
@@ -979,8 +1029,8 @@ class _ThemeRow extends StatelessWidget {
                               opt.$3,
                               size: 13,
                               color: isSelected
-                                  ? colorScheme.primary
-                                  : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                                  ? _settingsGreenText
+                                  : _settingsSubtext(context),
                             ),
                             const SizedBox(width: 5),
                             Text(
@@ -990,8 +1040,8 @@ class _ThemeRow extends StatelessWidget {
                                 fontWeight:
                                     isSelected ? FontWeight.w600 : FontWeight.w500,
                                 color: isSelected
-                                    ? colorScheme.primary
-                                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                                    ? _settingsGreenText
+                                    : _settingsSubtext(context),
                               ),
                             ),
                           ],
@@ -1048,7 +1098,7 @@ class _SettingsSectionFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1058,10 +1108,10 @@ class _SettingsSectionFrame extends StatelessWidget {
           child: Text(
             title.toUpperCase(),
             style: AppTypography.labelSmall.copyWith(
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-              fontSize: 11,
+              color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
+              fontSize: 10,
             ),
           ),
         ),
@@ -1078,9 +1128,9 @@ class _SettingsSectionFrame extends StatelessWidget {
                           Divider(
                             height: 1,
                             thickness: 0.5,
-                            color: colorScheme.outlineVariant.withValues(
-                              alpha: 0.08,
-                            ),
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : _settingsLine,
                             indent: 52,
                           ),
                       ],
@@ -1106,19 +1156,18 @@ class _SettingsSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: isDark ? colorScheme.surfaceContainerLow : colorScheme.surface,
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.04)
+            : const Color(0x00FFFFFF),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark
-              ? colorScheme.outlineVariant.withValues(alpha: 0.08)
-              : colorScheme.outlineVariant.withValues(alpha: 0.12),
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine,
           width: 0.8,
         ),
       ),
@@ -1164,7 +1213,6 @@ class _GuestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AppScaleTap(
@@ -1173,12 +1221,12 @@ class _GuestCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          color: isDark ? colorScheme.surfaceContainerLow : colorScheme.surface,
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : const Color(0x00FFFFFF),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDark
-                ? colorScheme.outlineVariant.withValues(alpha: 0.08)
-                : colorScheme.outlineVariant.withValues(alpha: 0.12),
+            color: isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine,
             width: 0.8,
           ),
         ),
@@ -1189,13 +1237,13 @@ class _GuestCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: isDark ? 0.4 : 0.6),
+                color: _settingsGreenText.withValues(alpha: isDark ? 0.16 : 0.09),
                 shape: BoxShape.circle,
               ),
               child: Center(
                 child: Icon(
                   LucideIcons.user,
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                  color: _settingsGreenText,
                   size: 22,
                 ),
               ),
@@ -1209,7 +1257,7 @@ class _GuestCard extends StatelessWidget {
                   Text(
                     l10n.settings_guest_account,
                     style: AppTypography.heading3.copyWith(
-                      color: colorScheme.onSurface,
+                      color: _settingsText(context),
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                       letterSpacing: -0.3,
@@ -1221,7 +1269,7 @@ class _GuestCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.labelSmall.copyWith(
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                      color: _settingsSubtext(context),
                       fontWeight: FontWeight.w400,
                       fontSize: 12,
                       letterSpacing: 0,
@@ -1234,17 +1282,17 @@ class _GuestCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
+                color: _settingsGreen.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.14),
+                  color: _settingsGreenText.withValues(alpha: 0.14),
                   width: 0.8,
                 ),
               ),
               child: Text(
                 l10n.settings_sign_in,
                 style: AppTypography.labelSmall.copyWith(
-                  color: AppColors.primary,
+                  color: _settingsGreenText,
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                   letterSpacing: 0,
@@ -1281,7 +1329,6 @@ class _MemberCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final initials = _initials(displayName);
 
@@ -1296,12 +1343,12 @@ class _MemberCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          color: isDark ? colorScheme.surfaceContainerLow : colorScheme.surface,
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : const Color(0x00FFFFFF),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDark
-                ? colorScheme.outlineVariant.withValues(alpha: 0.08)
-                : colorScheme.outlineVariant.withValues(alpha: 0.12),
+            color: isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine,
             width: 0.8,
           ),
         ),
@@ -1336,7 +1383,7 @@ class _MemberCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.heading3.copyWith(
-                            color: colorScheme.onSurface,
+                            color: _settingsText(context),
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
                             letterSpacing: -0.3,
@@ -1351,10 +1398,10 @@ class _MemberCard extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.08),
+                            color: _settingsGreen.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.15),
+                              color: _settingsGreenText.withValues(alpha: 0.15),
                               width: 0.8,
                             ),
                           ),
@@ -1363,14 +1410,14 @@ class _MemberCard extends StatelessWidget {
                             children: [
                               const Icon(
                                 LucideIcons.gem,
-                                color: AppColors.primary,
+                                color: _settingsGreenText,
                                 size: 8,
                               ),
                               const SizedBox(width: 3),
                               Text(
                                 l10n.settings_emerald_badge.toUpperCase(),
                                 style: AppTypography.labelSmall.copyWith(
-                                  color: AppColors.primary,
+                                  color: _settingsGreenText,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 8,
                                   letterSpacing: 0.5,
@@ -1388,7 +1435,7 @@ class _MemberCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.labelSmall.copyWith(
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                      color: _settingsSubtext(context),
                       fontWeight: FontWeight.w400,
                       fontSize: 12,
                       letterSpacing: 0,
@@ -1401,7 +1448,7 @@ class _MemberCard extends StatelessWidget {
             Icon(
               LucideIcons.chevronRight,
               size: 14,
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+              color: _settingsSubtext(context).withValues(alpha: 0.55),
             ),
           ],
         ),
@@ -1421,7 +1468,7 @@ class _InitialsAvatar extends StatelessWidget {
       width: 52,
       height: 52,
       decoration: const BoxDecoration(
-        gradient: AppColors.wellnessGlow,
+        color: _settingsGreen,
         shape: BoxShape.circle,
       ),
       child: Center(
@@ -1456,8 +1503,8 @@ class _CategoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveAccent = accent == AppColors.error ? accent : _settingsGreenText;
 
     return Material(
       color: Colors.transparent,
@@ -1475,11 +1522,11 @@ class _CategoryRow extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: isDark ? 0.14 : 0.10),
+                  color: effectiveAccent.withValues(alpha: isDark ? 0.14 : 0.09),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
-                  child: Icon(icon, color: accent, size: 16),
+                  child: Icon(icon, color: effectiveAccent, size: 16),
                 ),
               ),
               const SizedBox(width: 14),
@@ -1491,7 +1538,7 @@ class _CategoryRow extends StatelessWidget {
                     Text(
                       title,
                       style: AppTypography.titleMedium.copyWith(
-                        color: colorScheme.onSurface,
+                        color: _settingsText(context),
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.2,
                         fontSize: 15,
@@ -1504,7 +1551,7 @@ class _CategoryRow extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.labelSmall.copyWith(
-                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          color: _settingsSubtext(context),
                           fontWeight: FontWeight.w400,
                           fontSize: 12,
                           height: 1.3,
@@ -1519,7 +1566,7 @@ class _CategoryRow extends StatelessWidget {
               Icon(
                 LucideIcons.chevronRight,
                 size: 14,
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                color: _settingsSubtext(context).withValues(alpha: 0.55),
               ),
             ],
           ),
@@ -1540,6 +1587,7 @@ class _BodyProfileScreen extends StatelessWidget {
       subtitle: l10n.settings_body_profile_desc,
       scrollable: true,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      backgroundColor: _settingsBg(context),
       child: Column(
         children: [
           const _WeightProgressBar(),
@@ -1725,6 +1773,7 @@ class _NutritionGoalsScreen extends StatelessWidget {
       title: l10n.settings_nutrition_goals_title,
       scrollable: true,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      backgroundColor: _settingsBg(context),
       child: Column(
         children: [
           const _MacroCalorieRelationshipCard(),
@@ -1831,6 +1880,7 @@ class _PreferencesScreen extends StatelessWidget {
       title: l10n.settings_preferences_title,
       scrollable: true,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      backgroundColor: _settingsBg(context),
       child: Column(
         children: [
           _SettingsSectionFrame(
@@ -1962,6 +2012,7 @@ class _AccountScreen extends StatelessWidget {
       title: l10n.settings_account_title,
       scrollable: true,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      backgroundColor: _settingsBg(context),
       child: Column(
         children: [
           _SettingsSectionFrame(
@@ -2198,6 +2249,7 @@ class _DataSyncScreen extends StatelessWidget {
       title: l10n.settings_data_sync_title,
       scrollable: true,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      backgroundColor: _settingsBg(context),
       child: Column(
         children: [
           _SettingsSectionFrame(
@@ -2273,6 +2325,7 @@ class _AboutScreen extends StatelessWidget {
       title: l10n.settings_about_title,
       scrollable: true,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      backgroundColor: _settingsBg(context),
       child: Column(
         children: [
           _SettingsSectionFrame(
@@ -2327,7 +2380,6 @@ class _WeightProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Consumer2<MetricsProvider, SettingsProvider>(
@@ -2376,7 +2428,7 @@ class _WeightProgressBar extends StatelessWidget {
                     isLoss ? l10n.settings_weight_loss_progress : l10n.settings_weight_gain_progress,
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: colorScheme.onSurface,
+                      color: _settingsText(context),
                       fontSize: 14,
                     ),
                   ),
@@ -2384,7 +2436,7 @@ class _WeightProgressBar extends StatelessWidget {
                     '${(progress * 100).round()}%',
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
+                      color: _settingsGreenText,
                       fontSize: 14,
                     ),
                   ),
@@ -2400,21 +2452,14 @@ class _WeightProgressBar extends StatelessWidget {
                     children: [
                       Container(
                         color: isDark
-                            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
-                            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : _settingsLine,
                       ),
                       FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: progress,
                         child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primary,
-                                AppColors.primary.withValues(alpha: 0.7),
-                              ],
-                            ),
-                          ),
+                          color: _settingsGreenText,
                         ),
                       ),
                     ],
@@ -2449,7 +2494,7 @@ class _WeightProgressBar extends StatelessWidget {
                 Divider(
                   height: 1,
                   thickness: 0.5,
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.08),
+                  color: isDark ? Colors.white.withValues(alpha: 0.06) : _settingsLine,
                 ),
                 const SizedBox(height: 10),
                 Center(
@@ -2458,7 +2503,7 @@ class _WeightProgressBar extends StatelessWidget {
                         ? l10n.settings_goal_reached
                         : l10n.settings_left_to_reach_target(leftToGoal.toStringAsFixed(1), _getLocalUnit(context, unit)),
                     style: AppTypography.labelSmall.copyWith(
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                      color: _settingsSubtext(context),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -2487,7 +2532,6 @@ class _WeightLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: alignment,
       children: [
@@ -2495,8 +2539,8 @@ class _WeightLabel extends StatelessWidget {
           label.toUpperCase(),
           style: AppTypography.labelSmall.copyWith(
             color: isHighlight
-                ? AppColors.primary
-                : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                ? _settingsGreenText
+                : _settingsSubtext(context),
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
             fontSize: 9,
@@ -2507,7 +2551,7 @@ class _WeightLabel extends StatelessWidget {
           value,
           style: AppTypography.bodyMedium.copyWith(
             fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w600,
-            color: isHighlight ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+            color: isHighlight ? _settingsText(context) : _settingsSubtext(context),
             fontSize: 13,
           ),
         ),
@@ -2521,8 +2565,6 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Consumer<SettingsProvider>(
       builder: (context, settings, _) {
         final pGrams = settings.dailyProteinGoal;
@@ -2554,7 +2596,7 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
                 l10n.settings_macro_calorie_split,
                 style: AppTypography.titleMedium.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: colorScheme.onSurface,
+                  color: _settingsText(context),
                   fontSize: 14,
                 ),
               ),
@@ -2562,7 +2604,7 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
               Text(
                 l10n.settings_macro_calorie_split_desc,
                 style: AppTypography.labelSmall.copyWith(
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  color: _settingsSubtext(context),
                   fontWeight: FontWeight.w400,
                   fontSize: 12,
                 ),
@@ -2579,27 +2621,21 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
                         Expanded(
                           flex: (pPct * 1000).round(),
                           child: Container(
-                            decoration: const BoxDecoration(
-                              gradient: AppColors.proteinGradient,
-                            ),
+                            color: _settingsGreenText,
                           ),
                         ),
                       if (cPct > 0)
                         Expanded(
                           flex: (cPct * 1000).round(),
                           child: Container(
-                            decoration: const BoxDecoration(
-                              gradient: AppColors.carbsGradient,
-                            ),
+                            color: _settingsGreenText.withValues(alpha: 0.58),
                           ),
                         ),
                       if (fPct > 0)
                         Expanded(
                           flex: (fPct * 1000).round(),
                           child: Container(
-                            decoration: const BoxDecoration(
-                              gradient: AppColors.fatGradient,
-                            ),
+                            color: _settingsGreenText.withValues(alpha: 0.32),
                           ),
                         ),
                     ],
@@ -2616,21 +2652,21 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
                     grams: '$pGrams${l10n.settings_grams_unit}',
                     kcal: '${pKcal.round()} ${l10n.settings_kcal_unit}',
                     percentage: '${(pPct * 100).round()}%',
-                    color: AppColors.protein,
+                    color: _settingsGreenText,
                   ),
                   _MacroLegendItem(
                     label: l10n.settings_carbs,
                     grams: '$cGrams${l10n.settings_grams_unit}',
                     kcal: '${cKcal.round()} ${l10n.settings_kcal_unit}',
                     percentage: '${(cPct * 100).round()}%',
-                    color: AppColors.carbs,
+                    color: _settingsGreenText.withValues(alpha: 0.58),
                   ),
                   _MacroLegendItem(
                     label: l10n.settings_fat,
                     grams: '$fGrams${l10n.settings_grams_unit}',
                     kcal: '${fKcal.round()} ${l10n.settings_kcal_unit}',
                     percentage: '${(fPct * 100).round()}%',
-                    color: AppColors.fat,
+                    color: _settingsGreenText.withValues(alpha: 0.32),
                   ),
                 ],
               ),
@@ -2659,7 +2695,6 @@ class _MacroLegendItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2677,7 +2712,7 @@ class _MacroLegendItem extends StatelessWidget {
             Text(
               label,
               style: AppTypography.labelSmall.copyWith(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                color: _settingsSubtext(context),
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -2689,14 +2724,14 @@ class _MacroLegendItem extends StatelessWidget {
           grams,
           style: AppTypography.bodyMedium.copyWith(
             fontWeight: FontWeight.w700,
-            color: colorScheme.onSurface,
+            color: _settingsText(context),
             fontSize: 14,
           ),
         ),
         Text(
           '$kcal ($percentage)',
           style: AppTypography.labelSmall.copyWith(
-            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            color: _settingsSubtext(context),
             fontSize: 10,
           ),
         ),

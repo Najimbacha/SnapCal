@@ -13,17 +13,38 @@ class MealRepository {
   Box<List<String>>? _indexBox;
 
   final _mealsController = StreamController<List<Meal>>.broadcast();
-  late final FirebaseFirestore _firestore;
-  late final FirebaseAuth _auth;
+  FirebaseFirestore? _firestore;
+  FirebaseAuth? _auth;
   StreamSubscription<User?>? _authSubscription;
+  Future<void>? _initFuture;
+  bool _initialized = false;
+
+  FirebaseFirestore get _firestoreClient =>
+      _firestore ??= FirebaseFirestore.instance;
+  FirebaseAuth get _authClient => _auth ??= FirebaseAuth.instance;
 
   /// Stream of meals for the current date for reactive UI
   Stream<List<Meal>> get todaysMealsStream => _mealsController.stream;
 
   /// Initialize the repository
   Future<void> init() async {
-    _firestore = FirebaseFirestore.instance;
-    _auth = FirebaseAuth.instance;
+    if (_initialized) return;
+    final existingInit = _initFuture;
+    if (existingInit != null) return existingInit;
+
+    final initFuture = _initInternal();
+    _initFuture = initFuture;
+    try {
+      await initFuture;
+      _initialized = true;
+    } finally {
+      if (!_initialized) _initFuture = null;
+    }
+  }
+
+  Future<void> _initInternal() async {
+    _firestore ??= FirebaseFirestore.instance;
+    _auth ??= FirebaseAuth.instance;
     final encryptionKey = await SecurityService().getEncryptionKey();
     final cipher = HiveAesCipher(encryptionKey);
 
@@ -94,7 +115,7 @@ class MealRepository {
     _emitTodaysMeals();
 
     await _authSubscription?.cancel();
-    _authSubscription = _auth.authStateChanges().listen((user) {
+    _authSubscription = _authClient.authStateChanges().listen((user) {
       if (user != null) {
         unawaited(syncFromFirestore());
       }
@@ -197,11 +218,11 @@ class MealRepository {
 
   /// Sync single meal to Firestore
   Future<void> _syncMealToCloud(Meal meal) async {
-    final user = _auth.currentUser;
+    final user = _authClient.currentUser;
     if (user == null) return;
 
     try {
-      await _firestore
+      await _firestoreClient
           .collection('users')
           .doc(user.uid)
           .collection('meals')
@@ -214,11 +235,11 @@ class MealRepository {
 
   /// Delete meal from Firestore
   Future<void> _deleteMealFromCloud(String id) async {
-    final user = _auth.currentUser;
+    final user = _authClient.currentUser;
     if (user == null) return;
 
     try {
-      await _firestore
+      await _firestoreClient
           .collection('users')
           .doc(user.uid)
           .collection('meals')
@@ -231,12 +252,12 @@ class MealRepository {
 
   /// Pull all meals from Firestore
   Future<void> syncFromFirestore() async {
-    final user = _auth.currentUser;
+    final user = _authClient.currentUser;
     if (user == null) return;
 
     try {
       final snapshot =
-          await _firestore
+          await _firestoreClient
               .collection('users')
               .doc(user.uid)
               .collection('meals')

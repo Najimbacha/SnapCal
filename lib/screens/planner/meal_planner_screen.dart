@@ -11,7 +11,10 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
+import '../../data/models/meal.dart';
+import '../../data/models/meal_plan.dart';
 import '../../data/services/premium_conversion_service.dart';
+import '../../providers/meal_provider.dart';
 import '../../providers/planner_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
@@ -21,6 +24,13 @@ import '../../widgets/ui_blocks.dart';
 import 'widgets/day_summary_bar.dart';
 import 'widgets/meal_card.dart';
 import 'widgets/meal_preferences_sheet.dart';
+
+const _plannerInk = Color(0xFF1C1917);
+const _plannerMuted = Color(0xFFA8A29E);
+const _plannerLine = Color(0xFFE8E4DC);
+const _plannerGreen = Color(0xFF1A3D2B);
+const _plannerGreenText = Color(0xFF16733A);
+const _plannerBg = Color(0xFFF9F8F5);
 
 class MealPlannerScreen extends StatefulWidget {
   const MealPlannerScreen({super.key});
@@ -36,9 +46,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   late final AnimationController _animController;
   final List<Animation<double>> _itemAnims = [];
 
-  List<String> _getDayLabels(BuildContext context) {
+  List<String> _getDayLabels(BuildContext context, {MealPlan? plan}) {
     final l10n = AppLocalizations.of(context)!;
-    return [
+    final labels = [
       l10n.planner_day_mon,
       l10n.planner_day_tue,
       l10n.planner_day_wed,
@@ -47,6 +57,13 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
       l10n.planner_day_sat,
       l10n.planner_day_sun,
     ];
+    if (plan != null) {
+      return List.generate(7, (i) {
+        final date = plan.startDate.add(Duration(days: i));
+        return '${labels[i]} ${date.day}';
+      });
+    }
+    return labels;
   }
 
   @override
@@ -81,6 +98,16 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
     return AppPageScaffold(
       title: l10n.planner_smart_title,
       subtitle: null,
+      backgroundColor:
+          Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF14130F)
+              : _plannerBg,
+      headerDecoration: BoxDecoration(
+        color:
+            Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF14130F)
+                : _plannerBg,
+      ),
       trailing: _buildTrailingActions(context),
       child: Consumer2<PlannerProvider, SettingsProvider>(
         builder: (context, planner, settings, _) {
@@ -110,7 +137,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   Widget _buildTrailingActions(BuildContext context) {
     final planner = context.watch<PlannerProvider>();
     final settings = context.watch<SettingsProvider>();
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (planner.currentPlan == null || planner.isGenerating) {
       return const SizedBox.shrink();
@@ -122,62 +149,17 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
         if (_activeTab == 0 && settings.isPro && planner.canRegenerate)
           _ScaleTap(
             onTap: () => _confirmRegenerate(context, planner),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    LucideIcons.refreshCw,
-                    size: 14,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    AppLocalizations.of(context)!.snap_retake.substring(0, 5),
-                    style: AppTypography.labelLarge.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
+            child: _PlannerHeaderButton(
+              icon: LucideIcons.refreshCw,
+              isDark: isDark,
             ),
           ),
         const SizedBox(width: 8),
         _ScaleTap(
           onTap: () => _showPreferences(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: colorScheme.primary.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  LucideIcons.sparkles,
-                  size: 14,
-                  color: colorScheme.primary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  AppLocalizations.of(context)!.common_done.substring(0, 3),
-                  style: AppTypography.labelLarge.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+          child: _PlannerHeaderButton(
+            icon: LucideIcons.slidersHorizontal,
+            isDark: isDark,
           ),
         ),
       ],
@@ -185,6 +167,10 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   }
 
   Widget _buildGeneratingState() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _plannerInk;
+    final muted = isDark ? Colors.white54 : _plannerMuted;
+
     return Stack(
       children: [
         // Immersive blurred background
@@ -209,13 +195,13 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                   return Container(
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(
+                      color: _plannerGreen.withValues(
                         alpha: 0.05 + (0.05 * math.sin(value * math.pi)),
                       ),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withValues(
+                          color: _plannerGreen.withValues(
                             alpha: 0.1 * math.sin(value * math.pi),
                           ),
                           blurRadius: 40,
@@ -228,19 +214,20 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                 },
                 child: const CircularProgressIndicator(
                   strokeWidth: 3,
-                  color: AppColors.primary,
+                  color: _plannerGreen,
                 ),
               ),
               const SizedBox(height: 48),
               Text(
                 AppLocalizations.of(context)!.planner_creating,
                 style: AppTypography.heading3.copyWith(
+                  color: ink,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
+                  letterSpacing: 0,
                 ),
               ),
               const SizedBox(height: 16),
-              _GeneratingMessages(),
+              _GeneratingMessages(color: muted),
             ],
           ),
         ),
@@ -262,35 +249,104 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   }
 
   Widget _buildEmptyState(SettingsProvider settings) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _plannerInk;
+    final muted = isDark ? Colors.white54 : const Color(0xFF78716C);
+
     return Center(
-      child: AppEmptyState(
-        icon: LucideIcons.sparkles,
-        title: AppLocalizations.of(context)!.planner_smart_title,
-        body: AppLocalizations.of(context)!.planner_setup_body,
-        actionLabel: AppLocalizations.of(context)!.planner_generate,
-        onAction: () => _showPreferences(context),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : const Color(0xFFEFF8EF),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.calendarDays,
+                color: _plannerGreenText,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              l10n.planner_title,
+              style: AppTypography.displaySmall.copyWith(
+                color: ink,
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              l10n.planner_setup_body,
+              style: AppTypography.bodyMedium.copyWith(
+                color: muted,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+                letterSpacing: 0,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 26),
+            FilledButton.icon(
+              onPressed: () => _showPreferences(context),
+              icon: const Icon(LucideIcons.sparkles, size: 18),
+              label: Text(l10n.planner_generate),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
+                backgroundColor: _plannerGreen,
+                foregroundColor: const Color(0xFFF0FDF4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                textStyle: AppTypography.labelLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildPlanView(PlannerProvider planner, SettingsProvider settings) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Optimize Plan Button (Moved from Settings)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: const OptimizePlanButton(),
-        ),
-
-        // Tab bar (Weekly plan / Grocery)
+        // Fallback notice: shown when AI failed and a standard plan was used
+        if (planner.fallbackNotice != null)
+          _FallbackNoticeBanner(
+            onDismiss: planner.clearFallbackNotice,
+            isDark: isDark,
+          ),
+        _PlannerOverviewHeader(planner: planner, settings: settings),
+        const SizedBox(height: 14),
+        const OptimizePlanButton(),
+        const SizedBox(height: 14),
         Container(
-          padding: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainer.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(16),
+            color:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : const Color(0xFFF0EEE9),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : _plannerLine,
             ),
           ),
           child: Row(
@@ -305,7 +361,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                   },
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               Expanded(
                 child: _TabButton(
                   label: AppLocalizations.of(context)!.planner_tab_grocery,
@@ -341,62 +397,60 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
     return _staggeredSlide(
       _itemAnims[1],
       SizedBox(
-        height: 48,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: 7,
-          separatorBuilder: (context, index) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            final isSelected = _selectedDay == index;
-            return _ScaleTap(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedDay = index);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(
-                  color:
-                      isSelected
-                          ? AppColors.primary
-                          : Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
+          height: 48,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: 7,
+            separatorBuilder: (context, index) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final isSelected = _selectedDay == index;
+              final plan = context.read<PlannerProvider>().currentPlan;
+              return _ScaleTap(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _selectedDay = index);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  decoration: BoxDecoration(
                     color:
                         isSelected
-                            ? AppColors.primary
-                            : Theme.of(
-                              context,
-                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                  ),
-                  boxShadow: [
-                    if (isSelected)
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    _getDayLabels(context)[index],
-                    style: AppTypography.labelLarge.copyWith(
+                            ? _plannerGreen
+                            : Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : Colors.transparent,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
                       color:
                           isSelected
-                              ? Colors.white
-                              : context.textSecondaryColor,
-                      fontWeight:
-                          isSelected ? FontWeight.w900 : FontWeight.w600,
+                              ? _plannerGreen
+                              : Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white.withValues(alpha: 0.10)
+                                  : _plannerLine,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      _getDayLabels(context, plan: plan)[index],
+                      style: AppTypography.labelLarge.copyWith(
+                        color:
+                            isSelected
+                                ? Colors.white
+                                : Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white54
+                                    : const Color(0xFF78716C),
+                        fontWeight:
+                            isSelected ? FontWeight.w900 : FontWeight.w600,
+                        letterSpacing: 0,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
-      ),
     );
   }
 
@@ -408,7 +462,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
     final isPro = settings.isPro;
     final isLocked = !isPro && _selectedDay >= 2;
 
-    if (meals.isEmpty) {
+    if (meals.isEmpty && !isLocked) {
       return Center(
         child: AppEmptyState(
           icon: LucideIcons.utensils,
@@ -438,7 +492,12 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
 
             return _staggeredSlide(
               anim,
-              MealCard(meal: meals[index], isLocked: isLocked),
+              MealCard(
+                meal: meals[index],
+                isLocked: isLocked,
+                onLogMeal:
+                    isLocked ? null : () => _logPlannedMeal(meals[index]),
+              ),
             );
           },
         ),
@@ -529,16 +588,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
   //  GROCERY TAB
   // ========================
   Widget _buildGroceryTab(PlannerProvider provider, SettingsProvider settings) {
-    if (provider.groceryList.isEmpty) {
-      return Center(
-        child: AppEmptyState(
-          icon: LucideIcons.shoppingBag,
-          title: AppLocalizations.of(context)!.planner_grocery_empty,
-          body: AppLocalizations.of(context)!.planner_grocery_empty_body,
-        ),
-      );
-    }
-
+    // Pro gate FIRST — free users see upgrade prompt, not empty state
     if (!settings.isPro) {
       return Center(
         child: AppEmptyState(
@@ -547,6 +597,16 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
           body: AppLocalizations.of(context)!.planner_grocery_pro_body,
           actionLabel: AppLocalizations.of(context)!.planner_upgrade_pro,
           onAction: () => _showPaywall(context, PaywallEntryPoint.groceryList),
+        ),
+      );
+    }
+
+    if (provider.groceryList.isEmpty) {
+      return Center(
+        child: AppEmptyState(
+          icon: LucideIcons.shoppingBag,
+          title: AppLocalizations.of(context)!.planner_grocery_empty,
+          body: AppLocalizations.of(context)!.planner_grocery_empty_body,
         ),
       );
     }
@@ -566,13 +626,14 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                      padding: const EdgeInsets.fromLTRB(0, 22, 0, 8),
                       child: Text(
                         entry.key.toUpperCase(),
                         style: AppTypography.labelMedium.copyWith(
-                          color: AppColors.primary,
-                          letterSpacing: 2.0,
+                          color: _plannerGreenText,
+                          letterSpacing: 1.0,
                           fontWeight: FontWeight.w900,
+                          fontSize: 10,
                         ),
                       ),
                     ),
@@ -599,8 +660,8 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
             },
             icon: const Icon(LucideIcons.share2, size: 18),
             label: Text(AppLocalizations.of(context)!.planner_share),
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+            backgroundColor: _plannerGreen,
+            foregroundColor: const Color(0xFFF0FDF4),
           ),
         ),
       ],
@@ -617,6 +678,12 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
       return;
     }
 
+    final hasPlan = context.read<PlannerProvider>().currentPlan != null;
+    if (hasPlan) {
+      _showOverwriteDialogThenPreferences(context);
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -629,11 +696,76 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
     );
   }
 
+  Future<void> _showOverwriteDialogThenPreferences(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final navigator = Navigator.of(context);
+    final plannerProvider = context.read<PlannerProvider>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.planner_regenerate),
+        content: Text(
+          l10n.planner_regenerate_body(l10n.planner_day_mon).replaceAll(
+            l10n.planner_day_mon,
+            l10n.planner_smart_title,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.common_cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.planner_generate),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      showModalBottomSheet(
+        context: navigator.context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => MealPreferencesSheet(
+          onGenerate: () => plannerProvider.generateWeeklyPlan(),
+        ),
+      );
+    }
+  }
+
+
+
   void _showPaywall(BuildContext context, PaywallEntryPoint entryPoint) {
     PremiumConversionService().openPaywall(
       context,
       entryPoint,
       featureName: 'planner',
+    );
+  }
+
+  Future<void> _logPlannedMeal(Meal meal) async {
+    HapticFeedback.mediumImpact();
+    final mealProvider = context.read<MealProvider>();
+    final settings = context.read<SettingsProvider>();
+    await mealProvider.addMeal(
+      foodName: meal.foodName,
+      calories: meal.calories,
+      protein: meal.macros.protein,
+      carbs: meal.macros.carbs,
+      fat: meal.macros.fat,
+      portion: meal.portion,
+      settings: settings,
+      scanSource: 'meal_planner',
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.assistant_added_to_diary),
+      ),
     );
   }
 
@@ -684,6 +816,275 @@ Widget _staggeredSlide(Animation<double> animation, Widget child) {
     },
     child: child,
   );
+}
+
+class _FallbackNoticeBanner extends StatelessWidget {
+  final VoidCallback onDismiss;
+  final bool isDark;
+
+  const _FallbackNoticeBanner({
+    required this.onDismiss,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF2A1F0A)
+            : const Color(0xFFFEF9EC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF7C5A10)
+              : const Color(0xFFE8C96A),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            LucideIcons.info,
+            size: 16,
+            color: Color(0xFFB48A0F),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              AppLocalizations.of(context)!.planner_ai_disclaimer,
+              style: AppTypography.bodySmall.copyWith(
+                color: isDark
+                    ? const Color(0xFFD4A830)
+                    : const Color(0xFF7C5A10),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onDismiss,
+            child: Icon(
+              LucideIcons.x,
+              size: 16,
+              color: isDark
+                  ? const Color(0xFFD4A830)
+                  : const Color(0xFF7C5A10),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlannerHeaderButton extends StatelessWidget {
+  final IconData icon;
+  final bool isDark;
+
+  const _PlannerHeaderButton({required this.icon, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.07)
+                : const Color(0xFFF0EEE9),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : _plannerLine,
+        ),
+      ),
+      child: Icon(icon, size: 17, color: isDark ? Colors.white70 : _plannerInk),
+    );
+  }
+}
+
+class _PlannerOverviewHeader extends StatelessWidget {
+  final PlannerProvider planner;
+  final SettingsProvider settings;
+
+  const _PlannerOverviewHeader({
+    required this.planner,
+    required this.settings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _plannerInk;
+    final muted = isDark ? Colors.white54 : const Color(0xFF78716C);
+    final meals =
+        planner.currentPlan?.weeklyMeals.values
+            .expand((dayMeals) => dayMeals)
+            .toList() ??
+        [];
+    final totalCalories = meals.fold<int>(0, (sum, meal) => sum + meal.calories);
+    final dailyAverage = meals.isEmpty ? 0 : (totalCalories / 7).round();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : const Color(0xFFEFF8EF),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFD8ECDD),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.planner_title,
+                  style: AppTypography.headlineSmall.copyWith(
+                    color: ink,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _plannerGreen,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${settings.mealsPerDay} meals/day',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: const Color(0xFFF0FDF4),
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${settings.dietaryRestriction} - ${settings.cuisinePreference}',
+            style: AppTypography.bodySmall.copyWith(
+              color: muted,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _PlannerHeaderStat(
+                  label: l10n.planner_daily_goal,
+                  value: '${settings.dailyCalorieGoal}',
+                  unit: 'kcal',
+                  ink: ink,
+                  muted: muted,
+                ),
+              ),
+              Expanded(
+                child: _PlannerHeaderStat(
+                  label: 'Avg plan',
+                  value: '$dailyAverage',
+                  unit: 'kcal',
+                  ink: ink,
+                  muted: muted,
+                ),
+              ),
+              Expanded(
+                child: _PlannerHeaderStat(
+                  label: l10n.planner_tab_grocery,
+                  value: '${planner.groceryList.length}',
+                  unit: 'items',
+                  ink: ink,
+                  muted: muted,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlannerHeaderStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+  final Color ink;
+  final Color muted;
+
+  const _PlannerHeaderStat({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.ink,
+    required this.muted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: AppTypography.labelSmall.copyWith(
+            color: muted,
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.7,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: value,
+                style: AppTypography.titleLarge.copyWith(
+                  color: ink,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+              TextSpan(
+                text: ' $unit',
+                style: AppTypography.labelSmall.copyWith(
+                  color: muted,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _ScaleTap extends StatefulWidget {
@@ -774,12 +1175,12 @@ class _GroceryItemTile extends StatelessWidget {
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: isChecked ? AppColors.primary : Colors.transparent,
+                  color: isChecked ? _plannerGreen : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color:
                         isChecked
-                            ? AppColors.primary
+                            ? _plannerGreen
                             : colorScheme.outlineVariant,
                     width: 2,
                   ),
@@ -839,6 +1240,7 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -846,23 +1248,21 @@ class _TabButton extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.transparent,
+          color: selected ? _plannerGreen : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            if (selected)
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-          ],
         ),
         child: Center(
           child: Text(
             label,
             style: AppTypography.labelLarge.copyWith(
-              color: selected ? Colors.white : context.textSecondaryColor,
+              color:
+                  selected
+                      ? Colors.white
+                      : isDark
+                          ? Colors.white54
+                          : const Color(0xFF78716C),
               fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+              letterSpacing: 0,
             ),
           ),
         ),
@@ -872,6 +1272,10 @@ class _TabButton extends StatelessWidget {
 }
 
 class _GeneratingMessages extends StatefulWidget {
+  final Color color;
+
+  const _GeneratingMessages({required this.color});
+
   @override
   State<_GeneratingMessages> createState() => _GeneratingMessagesState();
 }
@@ -916,7 +1320,9 @@ class _GeneratingMessagesState extends State<_GeneratingMessages> {
         _getMessages(context)[_index],
         key: ValueKey(_index),
         style: AppTypography.bodyMedium.copyWith(
-          color: context.textSecondaryColor,
+          color: widget.color,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0,
         ),
       ),
     );

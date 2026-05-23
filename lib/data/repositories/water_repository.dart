@@ -7,9 +7,26 @@ import '../../core/constants/app_constants.dart';
 /// Repository for managing water intake data in Hive
 class WaterRepository {
   Box<WaterLog>? _waterBox;
+  Future<void>? _initFuture;
+  bool _initialized = false;
 
   /// Initialize the repository
   Future<void> init() async {
+    if (_initialized) return;
+    final existingInit = _initFuture;
+    if (existingInit != null) return existingInit;
+
+    final initFuture = _initInternal();
+    _initFuture = initFuture;
+    try {
+      await initFuture;
+      _initialized = true;
+    } finally {
+      if (!_initialized) _initFuture = null;
+    }
+  }
+
+  Future<void> _initInternal() async {
     try {
       final encryptionKey = await SecurityService().getEncryptionKey();
       _waterBox = await Hive.openBox<WaterLog>(
@@ -17,7 +34,9 @@ class WaterRepository {
         encryptionCipher: HiveAesCipher(encryptionKey),
       ).timeout(const Duration(seconds: 10));
     } catch (e) {
-      debugPrint('⚠️ WaterRepository: Box open failed, attempting recovery: $e');
+      debugPrint(
+        '⚠️ WaterRepository: Box open failed, attempting recovery: $e',
+      );
       try {
         await Hive.deleteBoxFromDisk(AppConstants.waterBoxName);
         final encryptionKey = await SecurityService().getEncryptionKey();
@@ -55,10 +74,10 @@ class WaterRepository {
   /// Remove the most recent water log
   Future<void> removeLastLog() async {
     if (_waterBox == null || _waterBox!.isEmpty) return;
-    
+
     final logs = _waterBox!.values.toList();
     logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    
+
     if (logs.isNotEmpty) {
       final latest = logs.first;
       final key = _waterBox!.keys.firstWhere(
@@ -77,7 +96,11 @@ class WaterRepository {
     final now = DateTime.now();
     final weekAgo = now.subtract(const Duration(days: 7));
     return _waterBox!.values
-        .where((log) => DateTime.fromMillisecondsSinceEpoch(log.timestamp).isAfter(weekAgo))
+        .where(
+          (log) => DateTime.fromMillisecondsSinceEpoch(
+            log.timestamp,
+          ).isAfter(weekAgo),
+        )
         .toList();
   }
 

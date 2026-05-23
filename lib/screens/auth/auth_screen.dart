@@ -11,6 +11,13 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/ui_blocks.dart';
 import '../../l10n/generated/app_localizations.dart';
 
+const _minimalBg = Color(0xFFF9F8F5);
+const _minimalDarkBg = Color(0xFF14130F);
+const _minimalInk = Color(0xFF1C1917);
+const _minimalLine = Color(0xFFE8E4DC);
+const _minimalGreen = Color(0xFF1A3D2B);
+const _minimalGreenText = Color(0xFF16733A);
+
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -169,39 +176,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // ── Premium Mesh Background ──
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(-0.8, -0.6),
-                  radius: 1.5,
-                  colors: [
-                    AppColors.primary.withValues(alpha: isDark ? 0.25 : 0.08),
-                    isDark ? const Color(0xFF090D11) : const Color(0xFFF8FAFC),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0.8, 1.2),
-                  radius: 1.2,
-                  colors: [
-                    AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.04),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          SafeArea(
+      backgroundColor: isDark ? _minimalDarkBg : _minimalBg,
+      body: SafeArea(
             child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -218,27 +194,11 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                           height: 80,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.primary.withValues(alpha: 0.25),
-                                AppColors.primary.withValues(alpha: 0.05),
-                              ],
-                            ),
+                            color: _minimalGreen.withValues(alpha: isDark ? 0.18 : 0.08),
                             border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.4),
-                              width: 1.5,
+                              color: isDark ? Colors.white.withValues(alpha: 0.10) : _minimalLine,
+                              width: 1,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.25,
-                                ),
-                                blurRadius: 30,
-                                spreadRadius: 4,
-                              ),
-                            ],
                           ),
                           child: ClipOval(
                             child: Image.asset(
@@ -332,8 +292,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                             decoration: BoxDecoration(
                                               color:
                                                   isDark
-                                                      ? Colors.white
-                                                      : const Color(0xFF1E293B),
+                                                      ? Colors.white.withValues(alpha: 0.10)
+                                                      : _minimalGreen,
                                               borderRadius:
                                                   BorderRadius.circular(100),
                                             ),
@@ -348,7 +308,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                                               color:
                                                                   isDark
                                                                       ? Colors
-                                                                          .black
+                                                                          .white
                                                                       : Colors
                                                                           .white,
                                                               strokeWidth: 2,
@@ -365,7 +325,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                                               color:
                                                                   isDark
                                                                       ? Colors
-                                                                          .black
+                                                                          .white
                                                                       : Colors
                                                                           .white,
                                                               fontWeight:
@@ -408,7 +368,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                                     : l10n.auth_sign_up_short,
                                                 style: AppTypography.titleMedium
                                                     .copyWith(
-                                                      color: AppColors.primary,
+                                                      color: _minimalGreenText,
                                                       fontWeight:
                                                           FontWeight.w700,
                                                     ),
@@ -503,14 +463,16 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                             child: _AuthSocialButton(
                                               label: l10n.sync_facebook,
                                               backgroundColor: const Color(
-                                                0xFF1877F2,
+                                                0x00FFFFFF,
                                               ),
-                                              textColor: Colors.white,
-                                              borderColor: Colors.transparent,
+                                              textColor: isDark ? Colors.white : _minimalInk,
+                                              borderColor: isDark
+                                                  ? Colors.white.withValues(alpha: 0.08)
+                                                  : _minimalLine,
                                               iconWidget: const FaIcon(
                                                 FontAwesomeIcons.facebookF,
                                                 size: 16,
-                                                color: Colors.white,
+                                                color: _minimalGreenText,
                                               ),
                                               isLoading: _facebookLoading,
                                               onTap: _handleFacebook,
@@ -526,21 +488,21 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                                       ? Colors.white.withValues(
                                                         alpha: 0.05,
                                                       )
-                                                      : Colors.black.withValues(
-                                                        alpha: 0.05,
-                                                      ),
+                                                      : const Color(0x00FFFFFF),
                                               textColor:
                                                   isDark
                                                       ? Colors.white
-                                                      : Colors.black,
-                                              borderColor: Colors.transparent,
+                                                      : _minimalInk,
+                                              borderColor: isDark
+                                                  ? Colors.white.withValues(alpha: 0.08)
+                                                  : _minimalLine,
                                               iconWidget: Icon(
                                                 LucideIcons.mail,
                                                 size: 16,
                                                 color:
                                                     isDark
                                                         ? Colors.white
-                                                        : Colors.black,
+                                                        : _minimalGreenText,
                                               ),
                                               isLoading: false,
                                               onTap:
@@ -564,8 +526,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-        ],
-      ),
     );
   }
 }
@@ -609,25 +569,17 @@ class _AuthSocialButton extends StatelessWidget {
                 backgroundColor ??
                 (isDark
                     ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.white.withValues(alpha: 0.8)),
+                    : const Color(0x00FFFFFF)),
             borderRadius: radius,
             border: Border.all(
               color:
                   borderColor ??
                   (isDark
                       ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.04)),
+                      : _minimalLine),
             ),
             boxShadow:
-                isDark && backgroundColor == null
-                    ? null
-                    : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -650,7 +602,7 @@ class _AuthSocialButton extends StatelessWidget {
                         maxLines: 1,
                         style: AppTypography.titleSmall.copyWith(
                           color:
-                              textColor ?? (isDark ? Colors.white : Colors.black),
+                              textColor ?? (isDark ? Colors.white : _minimalInk),
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.2,
                         ),
@@ -667,7 +619,7 @@ class _AuthSocialButton extends StatelessWidget {
                         maxLines: 1,
                         style: AppTypography.labelLarge.copyWith(
                           color:
-                              textColor ?? (isDark ? Colors.white : Colors.black),
+                              textColor ?? (isDark ? Colors.white : _minimalInk),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -708,13 +660,13 @@ class _AuthTextField extends StatelessWidget {
         color:
             isDark
                 ? Colors.white.withValues(alpha: 0.04)
-                : Colors.white.withValues(alpha: 0.8),
+                : const Color(0x00FFFFFF),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color:
               isDark
                   ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.04),
+                  : _minimalLine,
         ),
         boxShadow:
             isDark

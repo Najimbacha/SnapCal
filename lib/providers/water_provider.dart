@@ -21,7 +21,25 @@ class WaterProvider with ChangeNotifier {
   int get total => _todaysWaterMl; // Alias for cleaner UI code
   int get goal => 2000; // Fallback or from settings
   bool get isLoading => _isLoading;
-  int get completedGoalDays => _todaysWaterMl >= 2000 ? 1 : 0; // Simple fallback
+  int get completedGoalDays =>
+      _todaysWaterMl >= 2000 ? 1 : 0; // Simple fallback
+
+  int getTotalForDate(String dateString) {
+    if (app_date.DateUtils.isToday(dateString)) return _todaysWaterMl;
+    return _repository.getTotalWater(dateString);
+  }
+
+  Map<String, int> getTotalsForRange(DateTime start, DateTime end) {
+    final totals = <String, int>{};
+    var current = DateTime(start.year, start.month, start.day);
+    final last = DateTime(end.year, end.month, end.day);
+    while (!current.isAfter(last)) {
+      final dateString = app_date.DateUtils.getDateString(current);
+      totals[dateString] = getTotalForDate(dateString);
+      current = current.add(const Duration(days: 1));
+    }
+    return totals;
+  }
 
   /// Load today's water intake
   Future<void> _loadTodaysWater() async {
@@ -50,11 +68,11 @@ class WaterProvider with ChangeNotifier {
       );
 
       await _repository.addWater(log);
-      
+
       if (settings != null) {
         await settings.updateStreakOnMealLog(mealDate: log.dateString);
       }
-      
+
       await _loadTodaysWater();
     } finally {
       _isProcessing = false;

@@ -19,9 +19,12 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final navHeight = Responsive.navBarHeight(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final navColor =
+        isDark
+            ? const Color(0xFF14130F).withValues(alpha: 0.94)
+            : const Color(0xFFF9F8F5).withValues(alpha: 0.96);
 
     return ClipRect(
       child: BackdropFilter(
@@ -31,15 +34,16 @@ class BottomNavBar extends StatelessWidget {
           elevation: 0,
           notchMargin: 12,
           shape: const CircularNotchedRectangle(),
-          color: colorScheme.surface.withValues(alpha: isDark ? 0.86 : 0.94),
+          color: navColor,
           surfaceTintColor: Colors.transparent,
           child: Container(
             decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(
-                  color: colorScheme.outlineVariant.withValues(
-                    alpha: isDark ? 0.18 : 0.30,
-                  ),
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFE8E4DC),
                 ),
               ),
             ),
@@ -80,9 +84,12 @@ class BottomNavBar extends StatelessWidget {
     double navHeight,
   ) {
     final isSelected = currentIndex == index;
-    final colorScheme = Theme.of(context).colorScheme;
-    final activeColor = colorScheme.primary;
-    final inactiveColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.40);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const activeColor = Color(0xFF1A3D2B);
+    final inactiveColor =
+        isDark
+            ? Colors.white.withValues(alpha: 0.34)
+            : const Color(0xFFA8A29E);
 
     return Semantics(
       button: true,
@@ -105,33 +112,22 @@ class BottomNavBar extends StatelessWidget {
                 AnimatedScale(
                   duration: const Duration(milliseconds: 240),
                   curve: Curves.easeOutCubic,
-                  scale: isSelected ? 1.12 : 1.0,
+                  scale: isSelected ? 1.06 : 1.0,
                   child: Icon(
                     icon,
                     color: isSelected ? activeColor : inactiveColor,
-                    size: 27,
+                    size: 25,
                   ),
                 ),
                 const SizedBox(height: 4),
-                // Glowing dot indicator
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 280),
                   curve: Curves.easeOutCubic,
-                  width: isSelected ? 5 : 0,
-                  height: isSelected ? 5 : 0,
+                  width: isSelected ? 4 : 0,
+                  height: isSelected ? 4 : 0,
                   decoration: BoxDecoration(
                     color: activeColor,
                     shape: BoxShape.circle,
-                    boxShadow:
-                        isSelected
-                            ? [
-                              BoxShadow(
-                                color: activeColor.withValues(alpha: 0.5),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                            : null,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -141,7 +137,7 @@ class BottomNavBar extends StatelessWidget {
                   style: AppTypography.labelMedium.copyWith(
                     fontSize: 11,
                     letterSpacing: 0,
-                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
                     color: isSelected ? activeColor : inactiveColor,
                   ),
                   child: ConstrainedBox(

@@ -5568,11 +5568,209 @@ abstract class AppLocalizations {
   /// **'Activity score'**
   String get activity_score;
 
+  /// No description provided for @log_health_title.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal Health'**
+  String get log_health_title;
+
+  /// No description provided for @log_key_metrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Key metrics'**
+  String get log_key_metrics;
+
+  /// No description provided for @log_customize.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize'**
+  String get log_customize;
+
+  /// No description provided for @log_metric_water.
+  ///
+  /// In en, this message translates to:
+  /// **'Water'**
+  String get log_metric_water;
+
+  /// No description provided for @log_metric_energy_burned.
+  ///
+  /// In en, this message translates to:
+  /// **'Energy burned'**
+  String get log_metric_energy_burned;
+
+  /// No description provided for @log_metric_steps.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get log_metric_steps;
+
+  /// No description provided for @log_metric_calories_intake.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories intake'**
+  String get log_metric_calories_intake;
+
+  /// No description provided for @log_metric_carbs.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbs'**
+  String get log_metric_carbs;
+
+  /// No description provided for @log_metric_fat.
+  ///
+  /// In en, this message translates to:
+  /// **'Fat'**
+  String get log_metric_fat;
+
+  /// No description provided for @log_metric_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein'**
+  String get log_metric_protein;
+
+  /// No description provided for @log_metric_steps_unit.
+  ///
+  /// In en, this message translates to:
+  /// **'steps'**
+  String get log_metric_steps_unit;
+
+  /// No description provided for @log_period_day.
+  ///
+  /// In en, this message translates to:
+  /// **'D'**
+  String get log_period_day;
+
+  /// No description provided for @log_period_week.
+  ///
+  /// In en, this message translates to:
+  /// **'W'**
+  String get log_period_week;
+
+  /// No description provided for @log_period_month.
+  ///
+  /// In en, this message translates to:
+  /// **'M'**
+  String get log_period_month;
+
+  /// No description provided for @log_period_three_months.
+  ///
+  /// In en, this message translates to:
+  /// **'3M'**
+  String get log_period_three_months;
+
+  /// No description provided for @log_period_year.
+  ///
+  /// In en, this message translates to:
+  /// **'Y'**
+  String get log_period_year;
+
+  /// No description provided for @log_detail_this_day.
+  ///
+  /// In en, this message translates to:
+  /// **'This day'**
+  String get log_detail_this_day;
+
+  /// No description provided for @log_detail_this_week.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get log_detail_this_week;
+
+  /// No description provided for @log_detail_this_month.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get log_detail_this_month;
+
+  /// No description provided for @log_detail_this_three_months.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 3 months'**
+  String get log_detail_this_three_months;
+
+  /// No description provided for @log_detail_this_year.
+  ///
+  /// In en, this message translates to:
+  /// **'This year'**
+  String get log_detail_this_year;
+
+  /// No description provided for @log_metric_per_day_avg.
+  ///
+  /// In en, this message translates to:
+  /// **'{unit} per day (avg)'**
+  String log_metric_per_day_avg(String unit);
+
+  /// No description provided for @log_metric_goal_hit.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on track.'**
+  String get log_metric_goal_hit;
+
+  /// No description provided for @log_metric_goal_miss.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t hit your goal.'**
+  String get log_metric_goal_miss;
+
+  /// No description provided for @log_metric_left.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} left'**
+  String log_metric_left(String value);
+
+  /// No description provided for @log_metric_below_range.
+  ///
+  /// In en, this message translates to:
+  /// **'Below range'**
+  String get log_metric_below_range;
+
+  /// No description provided for @log_metric_no_data.
+  ///
+  /// In en, this message translates to:
+  /// **'No data'**
+  String get log_metric_no_data;
+
+  /// No description provided for @log_metric_locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get log_metric_locked;
+
+  /// No description provided for @log_metric_history_locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Full history is Pro'**
+  String get log_metric_history_locked;
+
+  /// No description provided for @log_metric_detail_list_title.
+  ///
+  /// In en, this message translates to:
+  /// **'This period'**
+  String get log_metric_detail_list_title;
+
   /// No description provided for @common_days.
   ///
   /// In en, this message translates to:
   /// **'days'**
   String get common_days;
+
+  /// No description provided for @aha_prompt_title.
+  ///
+  /// In en, this message translates to:
+  /// **'You just saved 10 minutes'**
+  String get aha_prompt_title;
+
+  /// No description provided for @aha_prompt_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Imagine saving this time every single day. Go Pro for unlimited photo scans and effortless tracking.'**
+  String get aha_prompt_subtitle;
+
+  /// No description provided for @aha_prompt_btn.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Pro'**
+  String get aha_prompt_btn;
 }
 
 class _AppLocalizationsDelegate

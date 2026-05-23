@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../core/theme/app_colors.dart';
-
 class HeroActionButton extends StatefulWidget {
   final VoidCallback onTap;
   final bool isActive;
@@ -67,8 +65,8 @@ class _HeroActionButtonState extends State<HeroActionButton>
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    const green = Color(0xFF1A3D2B);
 
     return GestureDetector(
       onTapDown: (_) {
@@ -103,16 +101,18 @@ class _HeroActionButtonState extends State<HeroActionButton>
                   clipBehavior: Clip.hardEdge,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppColors.premiumGradient,
+                    color: green,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: isDark ? 0.25 : 0.4),
-                      width: 0.8,
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.14)
+                          : const Color(0xFFF9F8F5),
+                      width: 4,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: colorScheme.primary.withValues(alpha: 0.25),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.14),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
@@ -159,8 +159,8 @@ class _HeroActionButtonState extends State<HeroActionButton>
                               ? LucideIcons.scanLine
                               : LucideIcons.camera,
                           key: ValueKey(_showScanIcon),
-                          color: colorScheme.onPrimary,
-                          size: 40,
+                          color: const Color(0xFFF0FDF4),
+                          size: 34,
                         ),
                       ),
                     ],
@@ -195,7 +195,7 @@ class _ShimmerOverlay extends StatelessWidget {
                 gradient: LinearGradient(
                   colors: [
                     Colors.white.withValues(alpha: 0.0),
-                    Colors.white.withValues(alpha: 0.15),
+                    Colors.white.withValues(alpha: 0.10),
                     Colors.white.withValues(alpha: 0.0),
                   ],
                 ),

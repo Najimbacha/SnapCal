@@ -8,11 +8,23 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/models/meal.dart';
 
+const _plannerInk = Color(0xFF1C1917);
+const _plannerMuted = Color(0xFFA8A29E);
+const _plannerLine = Color(0xFFE8E4DC);
+const _plannerGreen = Color(0xFF1A3D2B);
+const _plannerGreenText = Color(0xFF16733A);
+
 class MealCard extends StatefulWidget {
   final Meal meal;
   final bool isLocked;
+  final VoidCallback? onLogMeal;
 
-  const MealCard({super.key, required this.meal, this.isLocked = false});
+  const MealCard({
+    super.key,
+    required this.meal,
+    this.isLocked = false,
+    this.onLogMeal,
+  });
 
   @override
   State<MealCard> createState() => _MealCardState();
@@ -24,31 +36,23 @@ class _MealCardState extends State<MealCard> {
   @override
   Widget build(BuildContext context) {
     final m = widget.meal;
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: widget.isLocked
-            ? colorScheme.surfaceContainer.withValues(alpha: 0.5)
-            : colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
+            ? (isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF0EEE9))
+            : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: widget.isLocked
-              ? colorScheme.outlineVariant.withValues(alpha: 0.2)
-              : colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ? (isDark ? Colors.white.withValues(alpha: 0.06) : _plannerLine)
+              : (isDark ? Colors.white.withValues(alpha: 0.08) : _plannerLine),
         ),
-        boxShadow: [
-          if (!widget.isLocked)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -56,8 +60,8 @@ class _MealCardState extends State<MealCard> {
                 ? null
                 : () => setState(() => _expanded = !_expanded),
             child: widget.isLocked
-                ? _buildLockedCard(m, colorScheme)
-                : _buildActiveCard(m, colorScheme),
+                ? _buildLockedCard(m, Theme.of(context).colorScheme)
+                : _buildActiveCard(m, Theme.of(context).colorScheme),
           ),
         ),
       ),
@@ -138,15 +142,15 @@ class _MealCardState extends State<MealCard> {
               Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
-                  color: _mealTypeColor(m.mealType!).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _mealTypeIcon(m.mealType!),
-                  color: _mealTypeColor(m.mealType!),
-                  size: 20,
-                ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF8EF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _mealTypeIcon(m.mealType ?? 'Breakfast'),
+                    color: _plannerGreenText,
+                    size: 20,
+                  ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -154,18 +158,21 @@ class _MealCardState extends State<MealCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _getLocalizedMealType(context, m.mealType).toUpperCase(),
+                      _getLocalizedMealType(context, m.mealType ?? 'Breakfast').toUpperCase(),
                       style: AppTypography.labelSmall.copyWith(
-                        color: _mealTypeColor(m.mealType!),
+                        color: _plannerGreenText,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
+                        letterSpacing: 0.8,
                       ),
                     ),
                     Text(
                       m.foodName,
                       style: AppTypography.titleMedium.copyWith(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : _plannerInk,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
+                        letterSpacing: 0,
                         fontSize: 15,
                       ),
                       maxLines: 1,
@@ -177,12 +184,26 @@ class _MealCardState extends State<MealCard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    '${m.calories}',
-                    style: AppTypography.headlineSmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${m.calories}',
+                          style: AppTypography.headlineSmall.copyWith(
+                            color: _plannerGreen,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' kcal',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: _plannerGreen.withValues(alpha: 0.6),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   if (m.prepTimeMins != null && m.prepTimeMins! > 0)
@@ -196,6 +217,23 @@ class _MealCardState extends State<MealCard> {
                     ),
                 ],
               ),
+              if (widget.onLogMeal != null) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: AppLocalizations.of(context)!.snap_log_meal,
+                  onPressed: widget.onLogMeal,
+                  style: IconButton.styleFrom(
+                    backgroundColor: _plannerGreen,
+                    foregroundColor: const Color(0xFFF0FDF4),
+                    minimumSize: const Size(36, 36),
+                    fixedSize: const Size(36, 36),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(LucideIcons.plus, size: 17),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -211,13 +249,17 @@ class _MealCardState extends State<MealCard> {
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.07)
+                        : const Color(0xFFF0EEE9),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     _expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
                     size: 14,
-                    color: colorScheme.outline,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white54
+                        : _plannerMuted,
                   ),
                 ),
             ],
@@ -228,9 +270,15 @@ class _MealCardState extends State<MealCard> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : const Color(0xFFFAF9F6),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : _plannerLine,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,7 +286,7 @@ class _MealCardState extends State<MealCard> {
                   Text(
                     AppLocalizations.of(context)!.planner_ingredients.toUpperCase(),
                     style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.primary,
+                      color: _plannerGreenText,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.0,
                     ),
@@ -255,7 +303,7 @@ class _MealCardState extends State<MealCard> {
                                 width: 4,
                                 height: 4,
                                 decoration: const BoxDecoration(
-                                  color: AppColors.primary,
+                                  color: _plannerGreenText,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -281,16 +329,6 @@ class _MealCardState extends State<MealCard> {
         ],
       ),
     );
-  }
-
-  Color _mealTypeColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'breakfast': return const Color(0xFFF59E0B);
-      case 'lunch': return const Color(0xFF10B981);
-      case 'dinner': return const Color(0xFF6366F1);
-      case 'snack': return const Color(0xFFEC4899);
-      default: return AppColors.primary;
-    }
   }
 
   IconData _mealTypeIcon(String type) {

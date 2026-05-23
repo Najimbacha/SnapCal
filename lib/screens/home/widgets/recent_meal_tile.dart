@@ -15,6 +15,77 @@ class RecentMealTile extends StatelessWidget {
 
   const RecentMealTile({super.key, required this.meal, this.onTap});
 
+  String _getFoodEmoji(String foodName) {
+    final name = foodName.toLowerCase();
+    if (name.contains('avocado')) return '🥑';
+    if (name.contains('toast')) return '🍞';
+    if (name.contains('egg') || name.contains('scramble')) return '🍳';
+    if (name.contains('salad') ||
+        name.contains('spinach') ||
+        name.contains('veggie') ||
+        name.contains('vegetable') ||
+        name.contains('asparagus')) {
+      return '🥗';
+    }
+    if (name.contains('chicken') || name.contains('poultry')) return '🍗';
+    if (name.contains('turkey') || name.contains('wrap') || name.contains('sandwich')) return '🥪';
+    if (name.contains('salmon') || name.contains('cod') || name.contains('fish') || name.contains('seafood')) return '🐟';
+    if (name.contains('steak') || name.contains('beef') || name.contains('meat') || name.contains('pork')) return '🥩';
+    if (name.contains('apple')) return '🍎';
+    if (name.contains('banana')) return '🍌';
+    if (name.contains('berry') || name.contains('berries') || name.contains('fruit')) return '🍓';
+    if (name.contains('hummus') || name.contains('soup') || name.contains('bowl') || name.contains('lentil')) return '🥣';
+    if (name.contains('yogurt') || name.contains('cheese') || name.contains('dairy')) return '🥛';
+    if (name.contains('rice') || name.contains('quinoa') || name.contains('grain')) return '🍚';
+    if (name.contains('coffee') || name.contains('tea')) return '☕';
+    if (name.contains('shake') || name.contains('smoothie') || name.contains('protein')) return '🥤';
+    if (name.contains('nuts') || name.contains('almond') || name.contains('walnut') || name.contains('peanut')) return '🥜';
+    if (name.contains('tomato')) return '🍅';
+    if (name.contains('broccoli')) return '🥦';
+    return '🍽️';
+  }
+
+  Color _getFoodBgColor(String foodName) {
+    final name = foodName.toLowerCase();
+    if (name.contains('avocado') ||
+        name.contains('salad') ||
+        name.contains('spinach') ||
+        name.contains('veggie') ||
+        name.contains('broccoli') ||
+        name.contains('asparagus')) {
+      return const Color(0xFFE8F5E9); // Light green
+    }
+    if (name.contains('apple') ||
+        name.contains('berry') ||
+        name.contains('berries') ||
+        name.contains('tomato') ||
+        name.contains('steak') ||
+        name.contains('beef')) {
+      return const Color(0xFFFFEBEE); // Light red/pink
+    }
+    if (name.contains('egg') ||
+        name.contains('banana') ||
+        name.contains('hummus') ||
+        name.contains('toast') ||
+        name.contains('nuts') ||
+        name.contains('almond')) {
+      return const Color(0xFFFFF8E1); // Light amber/yellow
+    }
+    if (name.contains('salmon') ||
+        name.contains('chicken') ||
+        name.contains('turkey') ||
+        name.contains('fish')) {
+      return const Color(0xFFFFF3E0); // Light orange/peach
+    }
+    if (name.contains('water') ||
+        name.contains('shake') ||
+        name.contains('smoothie') ||
+        name.contains('protein')) {
+      return const Color(0xFFE3F2FD); // Light blue
+    }
+    return const Color(0xFFF3E5F5); // Light purple default
+  }
+
   @override
   Widget build(BuildContext context) {
     final macroTotal =
@@ -31,7 +102,9 @@ class RecentMealTile extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
+                color: meal.imageUri != null
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : _getFoodBgColor(meal.foodName),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ClipRRect(
@@ -41,14 +114,13 @@ class RecentMealTile extends StatelessWidget {
                         ? (meal.imageUri!.startsWith('http')
                             ? Image.network(meal.imageUri!, fit: BoxFit.cover)
                             : Image.file(
-                              File(meal.imageUri!),
-                              fit: BoxFit.cover,
-                            ))
+                                File(meal.imageUri!),
+                                fit: BoxFit.cover,
+                              ))
                         : Center(
-                          child: Icon(
-                            LucideIcons.utensilsCrossed,
-                            color: AppColors.primary.withValues(alpha: 0.5),
-                            size: 24,
+                          child: Text(
+                            _getFoodEmoji(meal.foodName),
+                            style: const TextStyle(fontSize: 28),
                           ),
                         ),
               ),

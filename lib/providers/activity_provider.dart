@@ -128,6 +128,30 @@ class ActivityProvider with ChangeNotifier {
     return _week.fold<int>(0, (sum, day) => sum + day.steps);
   }
 
+  Future<List<ActivitySummary>> fetchSummariesForRange(
+    DateTime start,
+    DateTime end,
+  ) async {
+    final normalizedStart = DateTime(start.year, start.month, start.day);
+    final normalizedEnd = DateTime(end.year, end.month, end.day);
+    final summaries = <ActivitySummary>[];
+    var current = normalizedStart;
+    while (!current.isAfter(normalizedEnd)) {
+      summaries.add(await _repository.fetchSummary(current));
+      current = current.add(const Duration(days: 1));
+    }
+    return summaries;
+  }
+
+  ActivitySummary? cachedSummaryForDate(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    if (_sameDay(_today.date, normalized)) return _today;
+    for (final summary in _week) {
+      if (_sameDay(summary.date, normalized)) return summary;
+    }
+    return null;
+  }
+
   String statusLabel() {
     switch (_trackingStatus) {
       case ActivityTrackingStatus.connected:
@@ -184,6 +208,10 @@ class ActivityProvider with ChangeNotifier {
     _trackingStatus = ActivityTrackingStatus.error;
     _errorMessage = error.toString();
     notifyListeners();
+  }
+
+  bool _sameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   @override

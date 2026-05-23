@@ -3,11 +3,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/ui_blocks.dart';
+
+const _plannerLine = Color(0xFFE8E4DC);
+const _plannerGreen = Color(0xFF1A3D2B);
+const _plannerGreenText = Color(0xFF16733A);
 
 class MealPreferencesSheet extends StatefulWidget {
   final VoidCallback onGenerate;
@@ -34,11 +37,12 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final sp = context.read<SettingsProvider>();
+    final sp = context.watch<SettingsProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        color: isDark ? const Color(0xFF14130F) : const Color(0xFFF9F8F5),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
         20, 12, 20, 86 + MediaQuery.of(context).padding.bottom,
@@ -66,10 +70,10 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
                 Container(
                   width: 48, height: 48,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(16),
+                    color: const Color(0xFFEFF8EF),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(LucideIcons.chefHat, color: AppColors.primary, size: 24),
+                  child: const Icon(LucideIcons.chefHat, color: _plannerGreenText, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -171,6 +175,8 @@ class _MealPreferencesSheetState extends State<MealPreferencesSheet> {
               label: Text(AppLocalizations.of(context)!.planner_generate_plan),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(54),
+                backgroundColor: _plannerGreen,
+                foregroundColor: const Color(0xFFF0FDF4),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
               ),
             ),
@@ -241,6 +247,7 @@ class _SegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -248,16 +255,21 @@ class _SegmentButton extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.14) : context.cardSoftColor,
+          color:
+              selected
+                  ? const Color(0xFFEFF8EF)
+                  : isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? AppColors.primary : context.dividerColor,
+            color: selected ? _plannerGreenText : _plannerLine,
             width: selected ? 1.5 : 1,
           ),
         ),
         child: Center(
           child: Text(label, style: AppTypography.labelLarge.copyWith(
-            color: selected ? AppColors.primary : context.textSecondaryColor,
+            color: selected ? _plannerGreenText : context.textSecondaryColor,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           )),
         ),
@@ -274,6 +286,7 @@ class _ChipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -281,15 +294,20 @@ class _ChipButton extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.14) : context.cardSoftColor,
+          color:
+              selected
+                  ? const Color(0xFFEFF8EF)
+                  : isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? AppColors.primary : context.dividerColor,
+            color: selected ? _plannerGreenText : _plannerLine,
             width: selected ? 1.5 : 1,
           ),
         ),
         child: Text(label, style: AppTypography.labelMedium.copyWith(
-          color: selected ? AppColors.primary : context.textSecondaryColor,
+          color: selected ? _plannerGreenText : context.textSecondaryColor,
           fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
         )),
       ),

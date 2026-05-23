@@ -11,6 +11,9 @@ import '../l10n/generated/app_localizations.dart';
 
 /// Provider for managing user settings and subscription state
 class SettingsProvider with ChangeNotifier {
+  // Local testing override. Set to false before release builds.
+  static const bool debugForcePro = true;
+
   final SettingsRepository _repository;
   final NotificationService _notificationService = NotificationService();
 
@@ -63,11 +66,12 @@ class SettingsProvider with ChangeNotifier {
   // Getters
   SettingsRepository get repository =>
       _repository; // Expose for mock subscription service
-  UserSettings get settings => _settings;
+  UserSettings get settings =>
+      debugForcePro ? _settings.copyWith(isPro: true) : _settings;
   bool get isLoading => _uiState.isBlocking;
   bool get isRefreshing => _uiState.isRefreshing;
   AsyncUiState get uiState => _uiState;
-  bool get isPro => _settings.isPro;
+  bool get isPro => debugForcePro || _settings.isPro;
   int get currentStreak => _settings.currentStreak;
 
   int get dailyCalorieGoal => _settings.dailyCalorieGoal;

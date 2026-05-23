@@ -3026,5 +3026,109 @@ class AppLocalizationsAr extends AppLocalizations {
   String get activity_score => 'درجة النشاط';
 
   @override
+  String get log_health_title => 'صحة SnapCal';
+
+  @override
+  String get log_key_metrics => 'المقاييس الرئيسية';
+
+  @override
+  String get log_customize => 'تخصيص';
+
+  @override
+  String get log_metric_water => 'الماء';
+
+  @override
+  String get log_metric_energy_burned => 'الطاقة المحروقة';
+
+  @override
+  String get log_metric_steps => 'الخطوات';
+
+  @override
+  String get log_metric_calories_intake => 'السعرات المتناولة';
+
+  @override
+  String get log_metric_carbs => 'الكربوهيدرات';
+
+  @override
+  String get log_metric_fat => 'الدهون';
+
+  @override
+  String get log_metric_protein => 'البروتين';
+
+  @override
+  String get log_metric_steps_unit => 'خطوة';
+
+  @override
+  String get log_period_day => 'ي';
+
+  @override
+  String get log_period_week => 'أ';
+
+  @override
+  String get log_period_month => 'ش';
+
+  @override
+  String get log_period_three_months => '3ش';
+
+  @override
+  String get log_period_year => 'س';
+
+  @override
+  String get log_detail_this_day => 'هذا اليوم';
+
+  @override
+  String get log_detail_this_week => 'هذا الأسبوع';
+
+  @override
+  String get log_detail_this_month => 'هذا الشهر';
+
+  @override
+  String get log_detail_this_three_months => 'آخر 3 أشهر';
+
+  @override
+  String get log_detail_this_year => 'هذا العام';
+
+  @override
+  String log_metric_per_day_avg(String unit) {
+    return '$unit يوميًا (متوسط)';
+  }
+
+  @override
+  String get log_metric_goal_hit => 'أنت ضمن الهدف.';
+
+  @override
+  String get log_metric_goal_miss => 'لم تصل إلى هدفك.';
+
+  @override
+  String log_metric_left(String value) {
+    return '$value متبقٍ';
+  }
+
+  @override
+  String get log_metric_below_range => 'أقل من النطاق';
+
+  @override
+  String get log_metric_no_data => 'لا توجد بيانات';
+
+  @override
+  String get log_metric_locked => 'مقفل';
+
+  @override
+  String get log_metric_history_locked => 'السجل الكامل في Pro';
+
+  @override
+  String get log_metric_detail_list_title => 'هذه الفترة';
+
+  @override
   String get common_days => 'أيام';
+
+  @override
+  String get aha_prompt_title => 'لقد وفرت للتو 10 دقائق';
+
+  @override
+  String get aha_prompt_subtitle =>
+      'تخيل توفير هذا الوقت كل يوم. اشترك في Pro للحصول على عمليات مسح صور غير محدودة وتتبع سهل.';
+
+  @override
+  String get aha_prompt_btn => 'كن برو';
 }

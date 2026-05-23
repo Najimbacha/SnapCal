@@ -93,9 +93,9 @@ class AppInitializer {
           (_) => debugPrint('✅ AppInitializer: NotificationService ready'),
         ),
       ]).timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 30),
         onTimeout: () {
-          debugPrint('⚠️ AppInitializer: Initialization timed out after 15s');
+          debugPrint('⚠️ AppInitializer: Initialization timed out after 30s');
           throw TimeoutException(
             'Core data services are taking too long to respond.',
           );

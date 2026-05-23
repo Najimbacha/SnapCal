@@ -17,6 +17,13 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/widgets/ui_blocks.dart';
 
+const _minimalBg = Color(0xFFF9F8F5);
+const _minimalDarkBg = Color(0xFF14130F);
+const _minimalInk = Color(0xFF1C1917);
+const _minimalLine = Color(0xFFE8E4DC);
+const _minimalGreen = Color(0xFF1A3D2B);
+const _minimalGreenText = Color(0xFF16733A);
+
 class PaywallScreen extends StatefulWidget {
   final bool limitReached;
   final PaywallEntryPoint entryPoint;
@@ -164,8 +171,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final topPadding = MediaQuery.of(context).padding.top;
-    final bgColor =
-        isDark ? AppColors.darkBackground : AppColors.lightBackground;
+    final bgColor = isDark ? _minimalDarkBg : _minimalBg;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -181,81 +187,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
           return Stack(
             children: [
-              // ─── AMBIENT COLOR BLOBS (Premium mesh gradient effect) ───
-              Positioned(
-                top: heroHeight - 50,
-                left: -100,
-                child: Container(
-                      width: 300,
-                      height: 300,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primary.withValues(
-                          alpha: isDark ? 0.45 : 0.12,
-                        ),
-                      ),
-                    )
-                    .animate(
-                      onPlay: (controller) => controller.repeat(reverse: true),
-                    )
-                    .scaleXY(
-                      end: 1.3,
-                      duration: 4.seconds,
-                      curve: Curves.easeInOutSine,
-                    ),
-              ),
-              Positioned(
-                bottom: -80,
-                right: -80,
-                child: Container(
-                      width: 250,
-                      height: 250,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.violet.withValues(
-                          alpha: isDark ? 0.45 : 0.12,
-                        ),
-                      ),
-                    )
-                    .animate(
-                      onPlay: (controller) => controller.repeat(reverse: true),
-                    )
-                    .scaleXY(
-                      end: 1.4,
-                      duration: 5.seconds,
-                      curve: Curves.easeInOutSine,
-                    ),
-              ),
-              Positioned(
-                bottom: 200,
-                left: -50,
-                child: Container(
-                      width: 200,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.sky.withValues(
-                          alpha: isDark ? 0.40 : 0.08,
-                        ),
-                      ),
-                    )
-                    .animate(
-                      onPlay: (controller) => controller.repeat(reverse: true),
-                    )
-                    .scaleXY(
-                      end: 1.2,
-                      duration: 3.5.seconds,
-                      curve: Curves.easeInOutSine,
-                    ),
-              ),
-              // Blur layer for glassmorphism
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                  child: Container(color: Colors.transparent),
-                ),
-              ),
-
               // ─── MAIN CONTENT ───
               Column(
                 children: [
@@ -351,12 +282,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       math.max(6.0, bottomPadding),
                     ),
                     decoration: BoxDecoration(
-                      color: colorScheme.surface.withValues(alpha: 0.88),
+                      color: bgColor.withValues(alpha: 0.96),
                       border: Border(
                         top: BorderSide(
-                          color: colorScheme.outlineVariant.withValues(
-                            alpha: 0.2,
-                          ),
+                          color: isDark ? Colors.white.withValues(alpha: 0.08) : _minimalLine,
                           width: 1.2,
                         ),
                       ),
@@ -395,7 +324,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                                   Icon(
                                     LucideIcons.shieldCheck,
                                     size: 13,
-                                    color: AppColors.primary,
+                                    color: _minimalGreenText,
                                   ),
                                   const SizedBox(width: 5),
                                   Flexible(
@@ -461,6 +390,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   Widget _buildContextualTitle(BuildContext context, bool compact) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
     String title;
     String subtitle;
@@ -501,21 +431,14 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
     return Column(
       children: [
-        ShaderMask(
-          shaderCallback:
-              (bounds) => AppColors.premiumGradient.createShader(
-                Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-              ),
-          blendMode: BlendMode.srcIn,
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white, // Color is replaced by the shader
-              fontSize: compact ? 22 : 26,
-              fontWeight: FontWeight.w900,
-              height: 1.1,
-            ),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: isDark ? Colors.white : _minimalInk,
+            fontSize: compact ? 22 : 26,
+            fontWeight: FontWeight.w900,
+            height: 1.1,
           ),
         ),
         SizedBox(height: compact ? 2 : 4),
@@ -562,13 +485,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             width: 22,
                             height: 22,
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
+                              color: _minimalGreenText.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(7),
                             ),
                             child: Icon(
                               LucideIcons.check,
                               size: 14,
-                              color: AppColors.primary,
+                              color: _minimalGreenText,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -599,7 +522,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
       return SizedBox(
         height: compact ? 108 : 122,
         child: const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+          child: CircularProgressIndicator(color: _minimalGreenText),
         ),
       );
     }
@@ -620,6 +543,27 @@ class _PaywallScreenState extends State<PaywallScreen> {
         break;
       }
     }
+
+    String monthlyEquivalent(Package package) {
+      try {
+        final price = package.storeProduct.price;
+        final priceString = package.storeProduct.priceString;
+        final monthlyPrice = price / 12.0;
+        
+        final regExp = RegExp(r'[0-9.,\s]+');
+        final symbol = priceString.replaceAll(regExp, '').trim();
+        
+        final formattedPrice = monthlyPrice.toStringAsFixed(2);
+        if (priceString.trim().startsWith(symbol)) {
+          return '$symbol$formattedPrice/mo';
+        } else {
+          return '$formattedPrice $symbol/mo';
+        }
+      } catch (e) {
+        return '\$3.33/mo';
+      }
+    }
+
     final l10n = AppLocalizations.of(context)!;
     final options = <Widget>[
       Expanded(
@@ -639,7 +583,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
           isSelected: _selectedPackage == yearly,
           onTap: () => setState(() => _selectedPackage = yearly),
           label: l10n.premium_plan_yearly,
-          subLabel: l10n.paywall_trial_7_day,
+          subLabel: monthlyEquivalent(yearly),
           showBadge: true,
           compact: compact,
         ),
@@ -700,16 +644,6 @@ class _PricingOption extends StatelessWidget {
                 height: compact ? 96 : 110,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
-                  boxShadow:
-                      isSelected
-                          ? [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.18),
-                              blurRadius: 22,
-                              offset: const Offset(0, 10),
-                            ),
-                          ]
-                          : null,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(18),
@@ -720,22 +654,18 @@ class _PricingOption extends StatelessWidget {
                           color:
                               isSelected
                                   ? (isDark
-                                      ? Colors.white.withValues(alpha: 0.08)
-                                      : Colors.white)
+                                      ? Colors.white.withValues(alpha: 0.07)
+                                      : const Color(0x00FFFFFF))
                                   : (isDark
                                       ? Colors.white.withValues(alpha: 0.03)
-                                      : Colors.white.withValues(alpha: 0.75)),
+                                      : const Color(0x00FFFFFF)),
                         ),
                       ),
                       if (isSelected) ...[
                         Positioned.fill(
                           child: Container(
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [AppColors.primary, AppColors.sky],
-                              ),
+                              color: _minimalGreen,
                             ),
                           ),
                         ),
@@ -745,8 +675,8 @@ class _PricingOption extends StatelessWidget {
                             decoration: BoxDecoration(
                               color:
                                   isDark
-                                      ? const Color(0xFF191A1C)
-                                      : Colors.white,
+                                      ? _minimalDarkBg
+                                      : _minimalBg,
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
@@ -779,7 +709,7 @@ class _PricingOption extends StatelessWidget {
                                 style: TextStyle(
                                   color:
                                       isSelected
-                                          ? AppColors.primary
+                                      ? _minimalGreenText
                                           : context.textSecondaryColor,
                                   fontSize: compact ? 10 : 11,
                                   fontWeight: FontWeight.w900,
@@ -832,11 +762,11 @@ class _PricingOption extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      gradient: AppColors.premiumGradient,
+                      color: _minimalGreen,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.4),
+                          color: _minimalGreen.withValues(alpha: 0.22),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
@@ -886,7 +816,7 @@ class _LuxeButton extends StatelessWidget {
       child: Container(
             height: height,
             decoration: BoxDecoration(
-              gradient: AppColors.premiumGradient,
+              color: _minimalGreen,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Stack(
@@ -945,14 +875,14 @@ class _LuxeButton extends StatelessWidget {
           .animate(onPlay: (controller) => controller.repeat(reverse: true))
           .boxShadow(
             begin: BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.34),
-              blurRadius: 18,
-              offset: const Offset(0, 9),
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 14,
+              offset: const Offset(0, 7),
             ),
             end: BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.8),
-              blurRadius: 32,
-              offset: const Offset(0, 12),
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 22,
+              offset: const Offset(0, 9),
             ),
             duration: 2.seconds,
             curve: Curves.easeInOutSine,
