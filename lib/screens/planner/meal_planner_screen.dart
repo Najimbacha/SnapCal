@@ -919,6 +919,7 @@ class _PlannerOverviewHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPro = settings.isPro;
     final ink = isDark ? Colors.white : _plannerInk;
     final muted = isDark ? Colors.white54 : const Color(0xFF78716C);
     final meals =
@@ -929,20 +930,25 @@ class _PlannerOverviewHeader extends StatelessWidget {
     final totalCalories = meals.fold<int>(0, (sum, meal) => sum + meal.calories);
     final dailyAverage = meals.isEmpty ? 0 : (totalCalories / 7).round();
 
+    const goldColor = Color(0xFFD4AF37);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color:
-            isDark
+        color: isPro
+            ? (isDark ? const Color(0xFF1D1B15) : const Color(0xFFFDFBF4))
+            : (isDark
                 ? Colors.white.withValues(alpha: 0.05)
-                : const Color(0xFFEFF8EF),
+                : const Color(0xFFEFF8EF)),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color:
-              isDark
+          color: isPro
+              ? goldColor.withValues(alpha: 0.3)
+              : (isDark
                   ? Colors.white.withValues(alpha: 0.08)
-                  : const Color(0xFFD8ECDD),
+                  : const Color(0xFFD8ECDD)),
+          width: isPro ? 1.4 : 1.0,
         ),
       ),
       child: Column(
@@ -951,14 +957,47 @@ class _PlannerOverviewHeader extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  l10n.planner_title,
-                  style: AppTypography.headlineSmall.copyWith(
-                    color: ink,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
-                  ),
+                child: Row(
+                  children: [
+                    Text(
+                      l10n.planner_title,
+                      style: AppTypography.headlineSmall.copyWith(
+                        color: ink,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    if (isPro) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _plannerGreen,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              LucideIcons.gem,
+                              color: Color(0xFF86EFAC),
+                              size: 10,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'PRO',
+                              style: AppTypography.labelSmall.copyWith(
+                                color: const Color(0xFFF0FDF4),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               Container(

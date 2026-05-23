@@ -10,8 +10,6 @@ import '../providers/meal_provider.dart';
 import '../providers/metrics_provider.dart';
 import '../providers/settings_provider.dart';
 
-const _plannerGreen = Color(0xFF1A3D2B);
-
 class OptimizePlanButton extends StatefulWidget {
   const OptimizePlanButton({super.key});
 
@@ -88,6 +86,21 @@ class _OptimizePlanButtonState extends State<OptimizePlanButton> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF1A3D2B),
+            Color(0xFF2C6B4E),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1A3D2B).withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: FilledButton.icon(
         onPressed: _isLoading ? null : _recalculate,
@@ -101,7 +114,7 @@ class _OptimizePlanButtonState extends State<OptimizePlanButton> {
                     color: Colors.white,
                   ),
                 )
-                : const Icon(LucideIcons.sparkles, size: 20),
+                : const Icon(LucideIcons.sparkles, size: 20, color: Color(0xFF86EFAC)),
         label: Text(
           _isLoading
               ? AppLocalizations.of(context)!.settings_optimizing
@@ -113,7 +126,8 @@ class _OptimizePlanButtonState extends State<OptimizePlanButton> {
           ),
         ),
         style: FilledButton.styleFrom(
-          backgroundColor: _plannerGreen,
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
           minimumSize: const Size.fromHeight(54),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),

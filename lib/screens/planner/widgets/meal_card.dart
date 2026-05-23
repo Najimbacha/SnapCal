@@ -82,10 +82,10 @@ class _MealCardState extends State<MealCard> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(LucideIcons.lock, color: colorScheme.primary, size: 14),
+                  child: const Icon(LucideIcons.lock, color: Color(0xFFD4AF37), size: 14),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -101,16 +101,24 @@ class _MealCardState extends State<MealCard> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(100),
+                    border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
                   ),
-                  child: Text(
-                    'PRO',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 9,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(LucideIcons.crown, color: Color(0xFFD4AF37), size: 10),
+                      const SizedBox(width: 4),
+                      Text(
+                        'PRO',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: const Color(0xFFD4AF37),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
