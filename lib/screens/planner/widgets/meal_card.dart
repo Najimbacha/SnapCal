@@ -33,6 +33,21 @@ class MealCard extends StatefulWidget {
 class _MealCardState extends State<MealCard> {
   bool _expanded = false;
 
+  Color _getMealTypeAccent(String type) {
+    switch (type.toLowerCase()) {
+      case 'breakfast':
+        return const Color(0xFFD4AF37); // Gold
+      case 'lunch':
+        return const Color(0xFF16733A); // Sleek Forest Green Text
+      case 'dinner':
+        return const Color(0xFF3B82F6); // Google Blue
+      case 'snack':
+        return const Color(0xFFEC4899); // Fuchsia/Pink
+      default:
+        return const Color(0xFF1A3D2B);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final m = widget.meal;
@@ -140,200 +155,216 @@ class _MealCardState extends State<MealCard> {
   }
 
   Widget _buildActiveCard(Meal m, ColorScheme colorScheme) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final accentColor = _getMealTypeAccent(m.mealType ?? 'Breakfast');
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF8EF),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _mealTypeIcon(m.mealType ?? 'Breakfast'),
-                    color: _plannerGreenText,
-                    size: 20,
-                  ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getLocalizedMealType(context, m.mealType ?? 'Breakfast').toUpperCase(),
-                      style: AppTypography.labelSmall.copyWith(
-                        color: _plannerGreenText,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    Text(
-                      m.foodName,
-                      style: AppTypography.titleMedium.copyWith(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : _plannerInk,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0,
-                        fontSize: 15,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '${m.calories}',
-                          style: AppTypography.headlineSmall.copyWith(
-                            color: _plannerGreen,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                          ),
-                        ),
-                        TextSpan(
-                          text: ' kcal',
-                          style: AppTypography.labelSmall.copyWith(
-                            color: _plannerGreen.withValues(alpha: 0.6),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (m.prepTimeMins != null && m.prepTimeMins! > 0)
-                    Text(
-                      '${m.prepTimeMins} ${AppLocalizations.of(context)!.common_mins.toUpperCase()}',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: context.textMutedColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 9,
-                      ),
-                    ),
-                ],
-              ),
-              if (widget.onLogMeal != null) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: AppLocalizations.of(context)!.snap_log_meal,
-                  onPressed: widget.onLogMeal,
-                  style: IconButton.styleFrom(
-                    backgroundColor: _plannerGreen,
-                    foregroundColor: const Color(0xFFF0FDF4),
-                    minimumSize: const Size(36, 36),
-                    fixedSize: const Size(36, 36),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(LucideIcons.plus, size: 17),
-                ),
-              ],
-            ],
+          Container(
+            width: 4.5,
+            color: accentColor,
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _MacroPill(label: 'P', value: m.macros.protein, color: AppColors.protein),
-              const SizedBox(width: 6),
-              _MacroPill(label: 'C', value: m.macros.carbs, color: AppColors.carbs),
-              const SizedBox(width: 6),
-              _MacroPill(label: 'F', value: m.macros.fat, color: AppColors.fat),
-              const Spacer(),
-              if (m.ingredients != null && m.ingredients!.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white.withValues(alpha: 0.07)
-                        : const Color(0xFFF0EEE9),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-                    size: 14,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white54
-                        : _plannerMuted,
-                  ),
-                ),
-            ],
-          ),
-          if (_expanded && m.ingredients != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : const Color(0xFFFAF9F6),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : _plannerLine,
-                ),
-              ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    AppLocalizations.of(context)!.planner_ingredients.toUpperCase(),
-                    style: AppTypography.labelSmall.copyWith(
-                      color: _plannerGreenText,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ...m.ingredients!.map((i) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            _mealTypeIcon(m.mealType ?? 'Breakfast'),
+                            color: accentColor,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Container(
-                                width: 4,
-                                height: 4,
-                                decoration: const BoxDecoration(
-                                  color: _plannerGreenText,
-                                  shape: BoxShape.circle,
-                                ),
+                            Text(
+                              _getLocalizedMealType(context, m.mealType ?? 'Breakfast').toUpperCase(),
+                              style: AppTypography.labelSmall.copyWith(
+                                color: accentColor,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                i,
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: context.textSecondaryColor,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.4,
-                                ),
+                            Text(
+                              m.foodName,
+                              style: AppTypography.titleMedium.copyWith(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : _plannerInk,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0,
+                                fontSize: 15,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
-                      )),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${m.calories}',
+                                  style: AppTypography.headlineSmall.copyWith(
+                                    color: _plannerGreen,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: ' kcal',
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: _plannerGreen.withValues(alpha: 0.6),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (m.prepTimeMins != null && m.prepTimeMins! > 0)
+                            Text(
+                              '${m.prepTimeMins} ${AppLocalizations.of(context)!.common_mins.toUpperCase()}',
+                              style: AppTypography.labelSmall.copyWith(
+                                color: context.textMutedColor,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 9,
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (widget.onLogMeal != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          tooltip: AppLocalizations.of(context)!.snap_log_meal,
+                          onPressed: widget.onLogMeal,
+                          style: IconButton.styleFrom(
+                            backgroundColor: accentColor,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(36, 36),
+                            fixedSize: const Size(36, 36),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(LucideIcons.plus, size: 17),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _MacroPill(label: 'P', value: m.macros.protein, color: AppColors.protein),
+                      const SizedBox(width: 6),
+                      _MacroPill(label: 'C', value: m.macros.carbs, color: AppColors.carbs),
+                      const SizedBox(width: 6),
+                      _MacroPill(label: 'F', value: m.macros.fat, color: AppColors.fat),
+                      const Spacer(),
+                      if (m.ingredients != null && m.ingredients!.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white.withValues(alpha: 0.07)
+                                : const Color(0xFFF0EEE9),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                            size: 14,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white54
+                                : _plannerMuted,
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (_expanded && m.ingredients != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withValues(alpha: 0.04)
+                            : const Color(0xFFFAF9F6),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : _plannerLine,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppLocalizations.of(context)!.planner_ingredients.toUpperCase(),
+                            style: AppTypography.labelSmall.copyWith(
+                              color: _plannerGreenText,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ...m.ingredients!.map((i) => Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Container(
+                                        width: 4,
+                                        height: 4,
+                                        decoration: const BoxDecoration(
+                                          color: _plannerGreenText,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        i,
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: context.textSecondaryColor,
+                                          fontWeight: FontWeight.w500,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -360,10 +391,10 @@ class _MacroPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(999),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: RichText(

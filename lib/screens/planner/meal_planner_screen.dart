@@ -414,21 +414,29 @@ class _MealPlannerScreenState extends State<MealPlannerScreen>
                   duration: const Duration(milliseconds: 250),
                   padding: const EdgeInsets.symmetric(horizontal: 18),
                   decoration: BoxDecoration(
-                    color:
-                        isSelected
-                            ? _plannerGreen
-                            : Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white.withValues(alpha: 0.06)
-                                : Colors.transparent,
-                    borderRadius: BorderRadius.circular(14),
+                    color: isSelected
+                        ? _plannerGreen
+                        : (Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.white),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color:
-                          isSelected
-                              ? _plannerGreen
-                              : Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.white.withValues(alpha: 0.10)
-                                  : _plannerLine,
+                      color: isSelected
+                          ? _plannerGreen
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white.withValues(alpha: 0.10)
+                              : _plannerLine),
+                      width: isSelected ? 1.5 : 1.0,
                     ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: _plannerGreen.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            )
+                          ]
+                        : null,
                   ),
                   child: Center(
                     child: Text(
@@ -936,8 +944,17 @@ class _PlannerOverviewHeader extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
+        gradient: isPro
+            ? LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF1E1B15), const Color(0xFF141917)]
+                    : [const Color(0xFFFAF7EE), const Color(0xFFF0F6F2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
         color: isPro
-            ? (isDark ? const Color(0xFF1D1B15) : const Color(0xFFFDFBF4))
+            ? null
             : (isDark
                 ? Colors.white.withValues(alpha: 0.05)
                 : const Color(0xFFEFF8EF)),
@@ -971,26 +988,36 @@ class _PlannerOverviewHeader extends StatelessWidget {
                     if (isPro) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: _plannerGreen,
-                          borderRadius: BorderRadius.circular(6),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFD4AF37), Color(0xFFF3C63F)],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFD4AF37).withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              LucideIcons.gem,
-                              color: Color(0xFF86EFAC),
+                              LucideIcons.crown,
+                              color: Colors.white,
                               size: 10,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               'PRO',
                               style: AppTypography.labelSmall.copyWith(
-                                color: const Color(0xFFF0FDF4),
+                                color: Colors.white,
                                 fontSize: 9,
                                 fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ],
