@@ -22,6 +22,7 @@ class ConfigService {
         'groq_model_id': AppConstants.defaultGroqScannerModel, // Matched to console
         'revenuecat_apple_api_key': AppConstants.defaultRevenueCatAppleApiKey,
         'revenuecat_google_api_key': AppConstants.defaultRevenueCatGoogleApiKey,
+        'backend_proxy_url': AppConstants.defaultBackendProxyUrl,
       });
 
       await _remoteConfig.setConfigSettings(RemoteConfigSettings(
@@ -86,5 +87,11 @@ class ConfigService {
   String get revenueCatGoogleApiKey {
     if (!_initialized) return AppConstants.defaultRevenueCatGoogleApiKey.trim();
     return _remoteConfig.getString('revenuecat_google_api_key').trim();
+  }
+
+  String get backendProxyUrl {
+    if (!_initialized) return AppConstants.defaultBackendProxyUrl;
+    final url = _remoteConfig.getString('backend_proxy_url').trim();
+    return url.isEmpty ? AppConstants.defaultBackendProxyUrl : url;
   }
 }

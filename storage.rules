@@ -1,0 +1,23 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper: Check if user is logged in
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Check path ownership
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Rules for user uploads (only allow images under their own folder path)
+    match /users/{userId}/scans/{fileName} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+                    && request.resource.size < 5 * 1024 * 1024 // Limit size to 5MB
+                    && request.resource.contentType.matches('image/.*'); // Allow only images
+    }
+  }
+}

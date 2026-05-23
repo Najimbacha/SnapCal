@@ -250,17 +250,19 @@ class MealRepository {
     }
   }
 
-  /// Pull all meals from Firestore
+  /// Pull recent meals (last 30 days) from Firestore to avoid cost spikes
   Future<void> syncFromFirestore() async {
     final user = _authClient.currentUser;
     if (user == null) return;
 
     try {
+      final cutoff = DateTime.now().subtract(const Duration(days: 30)).millisecondsSinceEpoch;
       final snapshot =
           await _firestoreClient
               .collection('users')
               .doc(user.uid)
               .collection('meals')
+              .where('timestamp', isGreaterThanOrEqualTo: cutoff)
               .get();
 
       for (var doc in snapshot.docs) {

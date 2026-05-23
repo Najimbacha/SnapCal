@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/config_service.dart';
 import '../models/meal.dart';
@@ -186,194 +187,52 @@ User daily targets:
     }
   }
 
-  /// Main method: Tries Groq first (faster), falls back to Gemini, then Manual
+  /// Calls backend proxy to analyze food image (Groq/Gemini fallback is handled on the server)
   Future<List<NutritionResult>> analyzeFood(
     Uint8List imageBytes, {
     String language = 'en',
   }) async {
-    String groqError = "Unknown";
     try {
-      // 1. Try Groq first (faster, higher free limits)
-      debugPrint("Attempting analysis with Groq...");
-      return await _detectWithGroq(imageBytes, language: language);
+      debugPrint("Attempting food analysis via backend proxy...");
+      final base64Image = await compute(base64Encode, imageBytes);
+      final proxyUrl = ConfigService().backendProxyUrl;
+      final endpoint = '$proxyUrl${AppConstants.backendScanFoodPath}';
+
+      // Fetch Firebase ID Token for secure backend auth validation
+      final user = FirebaseAuth.instance.currentUser;
+      String? idToken;
+      if (user != null) {
+        idToken = await user.getIdToken();
+      }
+
+      final response = await _dio.post(
+        endpoint,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (idToken != null) 'Authorization': 'Bearer $idToken',
+          },
+          sendTimeout: const Duration(seconds: 25),
+          receiveTimeout: const Duration(seconds: 25),
+        ),
+        data: {
+          'image': base64Image,
+          'language': language,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final text = response.data?.toString();
+        if (text != null) {
+          return await _parseResponse(text);
+        }
+      }
+      throw GeminiException('Backend returned invalid response (status: ${response.statusCode})');
     } catch (e) {
-      groqError = _extractDioError(e);
-      debugPrint("Groq failed ($groqError). Switching to Gemini...");
-      try {
-        // 2. Fallback to Gemini
-        return await _detectWithGeminiRetry(
-          imageBytes,
-          language: language,
-          maxRetries: 2,
-        );
-      } catch (e2) {
-        final geminiError = _extractDioError(e2);
-        throw GeminiException(
-          "AI Failed. Groq: $groqError | Gemini: $geminiError",
-        );
-      }
+      final errorDetail = _extractDioError(e);
+      debugPrint("Proxy scan failed: $errorDetail");
+      throw GeminiException("AI Scan failed via proxy: $errorDetail");
     }
-  }
-
-  /// Gemini with automatic retry for 429 rate-limit errors
-  Future<List<NutritionResult>> _detectWithGeminiRetry(
-    Uint8List imageBytes, {
-    String language = 'en',
-    int maxRetries = 3,
-  }) async {
-    for (int attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        return await _detectWithGemini(imageBytes, language: language);
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 429 && attempt < maxRetries) {
-          final waitSeconds = 15 * (attempt + 1); // 15s, 30s, 45s
-          debugPrint(
-            "⏳ Rate limited. Retrying in ${waitSeconds}s (attempt ${attempt + 1}/$maxRetries)...",
-          );
-          await Future.delayed(Duration(seconds: waitSeconds));
-          continue;
-        }
-        rethrow;
-      }
-    }
-    throw GeminiException(
-      'Gemini rate limit exceeded after $maxRetries retries',
-    );
-  }
-
-  /// Primary: Google Gemini (with Auto-Hunting)
-  Future<List<NutritionResult>> _detectWithGemini(
-    Uint8List imageBytes, {
-    String language = 'en',
-  }) async {
-    final apiKey = ConfigService().geminiApiKey;
-    if (apiKey.isEmpty) throw GeminiException('API Key missing');
-
-    final base64Image = await compute(base64Encode, imageBytes);
-
-    // Try 3.5-flash first (released May 2026, better quality), fall back to 2.5-flash
-    final candidates = [
-      {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
-      {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
-    ];
-
-    Object? lastError;
-
-    for (var candidate in candidates) {
-      final modelId = candidate['id']!;
-      final apiVer = candidate['ver']!;
-
-      try {
-        debugPrint('🧠 AIService: Hunting Gemini ($modelId on $apiVer)...');
-        final response = await _dio.post(
-          'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$apiKey',
-          options: Options(
-            headers: {'Content-Type': 'application/json'},
-            sendTimeout: const Duration(seconds: 10),
-          ),
-          data: {
-            'contents': [
-              {
-                'parts': [
-                  {'text': AppConstants.getGeminiSystemPrompt(language)},
-                  {
-                    'inline_data': {
-                      'mime_type': 'image/jpeg',
-                      'data': base64Image,
-                    },
-                  },
-                ],
-              },
-            ],
-            'generationConfig': {
-              'temperature': 0.4,
-              'maxOutputTokens': 512,
-            }, // Reduced max tokens for a simple JSON output
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final text =
-              response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                  as String?;
-          if (text != null) {
-            return await _parseResponse(text);
-          }
-        }
-      } catch (e) {
-        lastError = e;
-        debugPrint('❌ Hunting failed for $modelId: $e');
-        continue; // Try next candidate
-      }
-    }
-
-    throw lastError ?? GeminiException('All Gemini candidates failed');
-  }
-
-  /// Fallback: Groq (with Auto-Hunting)
-  Future<List<NutritionResult>> _detectWithGroq(
-    Uint8List imageBytes, {
-    String language = 'en',
-  }) async {
-    final apiKey = ConfigService().groqApiKey;
-    if (apiKey.isEmpty) throw GeminiException('API Key missing');
-
-    final base64Image = await compute(base64Encode, imageBytes);
-    final imageUrl = "data:image/jpeg;base64,$base64Image";
-
-    // List of Vision models to hunt through
-    final candidates = [
-      'meta-llama/llama-4-scout-17b-16e-instruct',
-    ];
-
-    Object? lastError;
-
-    for (var modelId in candidates) {
-      try {
-        debugPrint('🧠 AIService: Hunting Groq ($modelId)...');
-        final response = await _dio.post(
-          AppConstants.groqApiUrl,
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json',
-            },
-            sendTimeout: const Duration(seconds: 10),
-          ),
-          data: {
-            'model': modelId,
-            'messages': [
-              {
-                'role': 'user',
-                'content': [
-                  {
-                    'type': 'text',
-                    'text': AppConstants.getGeminiSystemPrompt(language),
-                  },
-                  {
-                    'type': 'image_url',
-                    'image_url': {'url': imageUrl},
-                  },
-                ],
-              },
-            ],
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final content = response.data['choices']?[0]?['message']?['content'];
-          if (content != null) {
-            return await _parseResponse(content.toString());
-          }
-        }
-      } catch (e) {
-        lastError = e;
-        debugPrint('❌ Hunting failed for $modelId: $e');
-        continue;
-      }
-    }
-
-    throw lastError ?? GeminiException('All Groq candidates failed');
   }
 
   /// Shared JSON Parser (Runs in Background Isolate)

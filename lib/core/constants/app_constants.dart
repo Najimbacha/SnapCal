@@ -22,6 +22,10 @@ class AppConstants {
   static const String groqApiUrl =
       'https://api.groq.com/openai/v1/chat/completions';
 
+  // Backend Proxy Configuration
+  static const String defaultBackendProxyUrl = 'https://snapcal-backend-production.up.railway.app';
+  static const String backendScanFoodPath = '/api/scan-food';
+
   // System Prompt for Gemini
   static String getGeminiSystemPrompt(String languageCode) {
     final languageName = _getLanguageName(languageCode);
