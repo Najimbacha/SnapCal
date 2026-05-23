@@ -24,6 +24,8 @@ import '../../widgets/ui_blocks.dart';
 import '../../widgets/premium_prompt_card.dart';
 import '../../data/services/premium_gate_service.dart';
 
+const _minimalGreen = Color(0xFF1A3D2B);
+
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
 
@@ -129,6 +131,9 @@ class _AssistantScreenState extends State<AssistantScreen>
         title: l10n.assistant_title,
         headerHeight: 56,
         padding: EdgeInsets.zero,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF14130F)
+            : const Color(0xFFF9F8F5),
         leading: const _CoachBackButton(),
         trailing: _NewChatHeaderButton(
           onTap:
@@ -445,7 +450,7 @@ class _AssistantScreenState extends State<AssistantScreen>
                     width: 44,
                     height: 44,
                     decoration: const BoxDecoration(
-                      gradient: AppColors.primaryGradient,
+                      color: _minimalGreen,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -571,11 +576,11 @@ class _CoachWelcomeExperience extends StatelessWidget {
                         width: 58,
                         height: 58,
                         decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
+                          color: _minimalGreen,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.28),
+                              color: _minimalGreen.withValues(alpha: 0.28),
                               blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
@@ -696,12 +701,12 @@ class _CoachBriefCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.10),
+                  color: _minimalGreen.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
                   LucideIcons.activity,
-                  color: AppColors.primary,
+                  color: _minimalGreen,
                   size: 18,
                 ),
               ),
@@ -739,7 +744,7 @@ class _CoachBriefCard extends StatelessWidget {
               minHeight: 8,
               backgroundColor: context.cardBorderColor.withValues(alpha: 0.5),
               valueColor: const AlwaysStoppedAnimation<Color>(
-                AppColors.primary,
+                _minimalGreen,
               ),
             ),
           ),
@@ -969,7 +974,7 @@ class _CoachThreadHeader extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
+              color: _minimalGreen,
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -1114,11 +1119,11 @@ class _LockedCoachPreview extends StatelessWidget {
                             width: 76,
                             height: 76,
                             decoration: BoxDecoration(
-                              gradient: AppColors.premiumGradient,
+                              color: _minimalGreen,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primary.withValues(
+                                  color: _minimalGreen.withValues(
                                     alpha: 0.3,
                                   ),
                                   blurRadius: 24,
@@ -1295,7 +1300,7 @@ class _ChatMessageTile extends StatelessWidget {
                   vertical: 14,
                 ),
                 decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
+                  color: _minimalGreen,
                   borderRadius: BorderRadius.circular(
                     22,
                   ).copyWith(bottomRight: const Radius.circular(6)),
@@ -1363,7 +1368,7 @@ class _ChatMessageTile extends StatelessWidget {
                   width: 34,
                   height: 34,
                   decoration: const BoxDecoration(
-                    gradient: AppColors.primaryGradient,
+                    color: _minimalGreen,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -1475,8 +1480,8 @@ class _RecipePlanCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppColors.primary.withValues(alpha: isDark ? 0.35 : 0.12),
-                      AppColors.violet.withValues(alpha: isDark ? 0.22 : 0.08),
+                      _minimalGreen.withValues(alpha: isDark ? 0.35 : 0.12),
+                      const Color(0xFF16733A).withValues(alpha: isDark ? 0.22 : 0.08),
                       AppColors.amber.withValues(alpha: isDark ? 0.14 : 0.08),
                     ],
                   ),
@@ -1490,7 +1495,7 @@ class _RecipePlanCard extends StatelessWidget {
                           width: 38,
                           height: 38,
                           decoration: const BoxDecoration(
-                            gradient: AppColors.premiumGradient,
+                            color: _minimalGreen,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -1889,7 +1894,7 @@ class _RecipeSteps extends StatelessWidget {
                 height: 26,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
+                  color: _minimalGreen,
                   shape: BoxShape.circle,
                 ),
                 child: Text(
