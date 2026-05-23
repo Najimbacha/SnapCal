@@ -585,6 +585,7 @@ class _HomeScreenState extends State<HomeScreen>
             _MinimalToolsSection(
               onPlannerTap: () => context.push('/planner'),
               onCoachTap: () => context.push('/assistant'),
+              isPro: isPro,
             ),
           ),
           const SizedBox(height: 2),
@@ -1128,10 +1129,12 @@ class _MinimalMacroRow extends StatelessWidget {
 class _MinimalToolsSection extends StatelessWidget {
   final VoidCallback onPlannerTap;
   final VoidCallback onCoachTap;
+  final bool isPro;
 
   const _MinimalToolsSection({
     required this.onPlannerTap,
     required this.onCoachTap,
+    required this.isPro,
   });
 
   @override
@@ -1144,20 +1147,31 @@ class _MinimalToolsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _MinimalSectionLabel(text: 'Plan and coach'),
-          const SizedBox(height: 4),
-          _MinimalToolRow(
-            icon: LucideIcons.calendarDays,
-            title: l10n.planner_title,
-            subtitle: l10n.planner_generate,
-            onTap: onPlannerTap,
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _PremiumBentoCard(
+                  icon: LucideIcons.calendarDays,
+                  title: l10n.planner_title,
+                  subtitle: l10n.planner_generate,
+                  isPro: isPro,
+                  onTap: onPlannerTap,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _PremiumBentoCard(
+                  icon: LucideIcons.sparkles,
+                  title: l10n.assistant_title,
+                  subtitle: 'Personalized AI advice',
+                  isPro: isPro,
+                  onTap: onCoachTap,
+                ),
+              ),
+            ],
           ),
-          _MinimalToolRow(
-            icon: LucideIcons.sparkles,
-            title: l10n.assistant_title,
-            subtitle: l10n.assistant_action_plan_next_meal,
-            onTap: onCoachTap,
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           const _MinimalSectionDivider(),
         ],
       ),
@@ -1165,84 +1179,151 @@ class _MinimalToolsSection extends StatelessWidget {
   }
 }
 
-class _MinimalToolRow extends StatelessWidget {
+class _PremiumBentoCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final bool isPro;
   final VoidCallback onTap;
 
-  const _MinimalToolRow({
+  const _PremiumBentoCard({
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.isPro,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? Colors.white : _minimalInk;
-    final muted = isDark ? Colors.white54 : _minimalMuted;
-    final borderColor =
-        isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFECEAE6);
+    
+    // Premium gold-leaf tone for borders and badges
+    const goldColor = Color(0xFFD4AF37); // Classic metallic gold
+    const goldLight = Color(0xFFF9F6E5); 
+    const goldDark = Color(0xFF231E12);
+    
+    final cardBg = isDark
+        ? const Color(0xFF161512) // Dark warm charcoal
+        : const Color(0xFFFCFBF9); // Organic warm white
+        
+    final borderColor = isDark
+        ? goldColor.withValues(alpha: 0.15)
+        : goldColor.withValues(alpha: 0.22);
+        
+    final textColor = isDark ? Colors.white : _minimalInk;
+    final subtitleColor = isDark ? Colors.white54 : _minimalMuted;
 
     return AppScaleTap(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 13),
+        height: 112,
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: borderColor)),
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: borderColor,
+            width: 1.4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: goldColor.withValues(alpha: isDark ? 0.04 : 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Row(
+        child: Stack(
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : const Color(0xFFEFF8EF),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: _minimalGreenText, size: 17),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: ink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0,
+            // Top right Pro indicator tag
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isPro ? _minimalGreen : goldColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isPro ? LucideIcons.gem : LucideIcons.crown,
+                      color: isPro ? const Color(0xFF86EFAC) : Colors.white,
+                      size: 8,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: muted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0,
+                    const SizedBox(width: 3),
+                    Text(
+                      'PRO',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: isPro ? const Color(0xFFF0FDF4) : Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 10),
-            const Icon(
-              LucideIcons.chevronRight,
-              color: _minimalGreenText,
-              size: 17,
+            
+            // Card Content
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Icon Badge Container
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: isDark ? goldDark : goldLight,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: goldColor.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      color: goldColor,
+                      size: 16,
+                    ),
+                  ),
+                ),
+                
+                // Titles
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: textColor,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: subtitleColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
