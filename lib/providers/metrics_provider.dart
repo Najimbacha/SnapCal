@@ -1,11 +1,20 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../core/resilience/app_failure.dart';
+import '../core/resilience/resilient_provider_mixin.dart';
+import '../core/resilience/retry_policy.dart';
+import '../core/resilience/safe_async.dart';
+import '../core/resilience/timeout_policy.dart';
 import '../core/services/security_service.dart';
 import '../core/state/async_ui_state.dart';
 import '../data/models/body_metric.dart';
+import '../data/services/upload_queue_service.dart';
 import 'settings_provider.dart';
 
-class MetricsProvider with ChangeNotifier {
+class MetricsProvider with ChangeNotifier, ResilientProviderMixin {
   static const String _boxName = 'body_metrics_box';
   Box<BodyMetric>? _box;
   SettingsProvider _settingsProvider;
@@ -35,27 +44,38 @@ class MetricsProvider with ChangeNotifier {
   int get photosCount => metricsWithPhotos.length;
 
   Future<void> _init() async {
-    try {
-      if (!Hive.isBoxOpen(_boxName)) {
-        final encryptionKey = await SecurityService().getEncryptionKey();
-        _box = await Hive.openBox<BodyMetric>(
-          _boxName,
-          encryptionCipher: HiveAesCipher(encryptionKey),
-        );
-      } else {
-        _box = Hive.box<BodyMetric>(_boxName);
-      }
-      _sortMetrics(); // Load without notifying
+    final result = await SafeAsync.run<void>(
+      label: 'Progress metrics init',
+      operation: () async {
+        if (!Hive.isBoxOpen(_boxName)) {
+          final encryptionKey = await SecurityService().getEncryptionKey();
+          _box = await Hive.openBox<BodyMetric>(
+            _boxName,
+            encryptionCipher: HiveAesCipher(encryptionKey),
+          );
+        } else {
+          _box = Hive.box<BodyMetric>(_boxName);
+        }
+        _sortMetrics();
+      },
+      timeout: TimeoutPolicy.localStorage,
+      retryPolicy: RetryPolicy.localStorage,
+      isActive: () => isProviderActive,
+    );
+    if (!isProviderActive) return;
+
+    if (result.isSuccess) {
       _uiState =
           _metrics.isEmpty
               ? const AsyncUiState.empty()
               : const AsyncUiState.success();
-    } catch (e) {
-      debugPrint('⚠️ MetricsProvider: failed to initialize: $e');
-      _uiState = const AsyncUiState.error('Progress data is unavailable.');
-    } finally {
-      notifyListeners(); // Single notify after full init
+    } else {
+      debugPrint(
+        '⚠️ MetricsProvider: failed to initialize: ${result.failure}',
+      );
+      _uiState = stateFromFailure(result.failure!);
     }
+    notifyListeners();
   }
 
   /// Sort/reload metrics from box without notifying listeners
@@ -78,37 +98,77 @@ class MetricsProvider with ChangeNotifier {
     double? bodyFat,
     DateTime? date,
   }) async {
-    final entryDate = date ?? DateTime.now();
+    const opKey = 'metrics:logWeight';
+    if (!canStartOperation(opKey)) return;
+    _uiState =
+        _metrics.isEmpty
+            ? const AsyncUiState.loading()
+            : const AsyncUiState.refreshing();
+    notifyListeners();
 
-    // Check if entry exists for this day
-    final existingIndex = _metrics.indexWhere(
-      (m) =>
-          m.date.year == entryDate.year &&
-          m.date.month == entryDate.month &&
-          m.date.day == entryDate.day,
-    );
+    try {
+      final entryDate = date ?? DateTime.now();
+      final result = await SafeAsync.run<void>(
+        label: 'Log progress weight',
+        operation: () async {
+          final existingIndex = _metrics.indexWhere(
+            (m) =>
+                m.date.year == entryDate.year &&
+                m.date.month == entryDate.month &&
+                m.date.day == entryDate.day,
+          );
 
-    if (existingIndex != -1) {
-      final existing = _metrics[existingIndex];
-      final updated = existing.copyWith(
-        weight: weight,
-        bodyFat: bodyFat ?? existing.bodyFat,
-        date: entryDate,
+          if (existingIndex != -1) {
+            final existing = _metrics[existingIndex];
+            final updated = existing.copyWith(
+              weight: weight,
+              bodyFat: bodyFat ?? existing.bodyFat,
+              date: entryDate,
+            );
+            await _box?.put(existing.key, updated);
+          } else {
+            final newMetric = BodyMetric(
+              date: entryDate,
+              weight: weight,
+              bodyFat: bodyFat,
+            );
+            await _box?.add(newMetric);
+          }
+          _sortMetrics();
+        },
+        timeout: TimeoutPolicy.localStorage,
+        retryPolicy: RetryPolicy.localStorage,
+        isActive: () => isProviderActive,
       );
-      await _box?.put(existing.key, updated);
-    } else {
-      final newMetric = BodyMetric(
-        date: entryDate,
-        weight: weight,
-        bodyFat: bodyFat,
+
+      if (result.isFailure) {
+        _uiState = stateFromFailure(
+          result.failure!,
+          hasFallback: _metrics.isNotEmpty,
+        );
+        return;
+      }
+
+      _uiState =
+          _metrics.isEmpty
+              ? const AsyncUiState.empty()
+              : const AsyncUiState.success();
+
+      unawaited(
+        SafeAsync.fireAndReport(
+          label: 'Recalculate nutrition plan after weight log',
+          operation:
+              () => _settingsProvider
+                  .recalculatePlan(currentWeightKg: weight)
+                  .then((_) {}),
+          timeout: TimeoutPolicy.localStorage,
+          retryPolicy: RetryPolicy.none,
+        ),
       );
-      await _box?.add(newMetric);
+    } finally {
+      finishOperation(opKey);
+      notifyListeners();
     }
-
-    _loadMetrics();
-
-    // Auto-recalculate nutrition plan with new weight
-    _settingsProvider.recalculatePlan(currentWeightKg: weight);
   }
 
   /// Add a progress photo to a specific date's entry (or today)
@@ -117,37 +177,117 @@ class MetricsProvider with ChangeNotifier {
     required bool isFront,
     DateTime? date,
   }) async {
-    final entryDate = date ?? DateTime.now();
-
-    // Check if entry exists for this day
-    final existingIndex = _metrics.indexWhere(
-      (m) =>
-          m.date.year == entryDate.year &&
-          m.date.month == entryDate.month &&
-          m.date.day == entryDate.day,
-    );
-
-    if (existingIndex != -1) {
-      final existing = _metrics[existingIndex];
-      final updated = existing.copyWith(
-        photoFrontPath: isFront ? photoPath : existing.photoFrontPath,
-        photoSidePath: !isFront ? photoPath : existing.photoSidePath,
+    const opKey = 'metrics:logProgressPhoto';
+    if (!canStartOperation(opKey)) return;
+    if (!File(photoPath).existsSync()) {
+      _uiState = const AsyncUiState.error(
+        'Progress photo file is missing.',
+        AppFailure(
+          type: AppFailureType.notFound,
+          message: 'Progress photo file is missing.',
+        ),
       );
-      await _box?.put(existing.key, updated);
-    } else {
-      // Must have a weight to create an entry, fallback to starting weight or 70.0
-      final weight =
-          currentWeight ?? _settingsProvider.settings.startingWeight ?? 70.0;
-      final newMetric = BodyMetric(
-        date: entryDate,
-        weight: weight,
-        photoFrontPath: isFront ? photoPath : null,
-        photoSidePath: !isFront ? photoPath : null,
-      );
-      await _box?.add(newMetric);
+      notifyListeners();
+      finishOperation(opKey);
+      return;
     }
 
-    _loadMetrics();
+    _uiState =
+        _metrics.isEmpty
+            ? const AsyncUiState.loading()
+            : const AsyncUiState.refreshing();
+    notifyListeners();
+
+    try {
+      final entryDate = date ?? DateTime.now();
+      final result = await SafeAsync.run<void>(
+        label: 'Log progress photo',
+        operation: () async {
+          final existingIndex = _metrics.indexWhere(
+            (m) =>
+                m.date.year == entryDate.year &&
+                m.date.month == entryDate.month &&
+                m.date.day == entryDate.day,
+          );
+
+          if (existingIndex != -1) {
+            final existing = _metrics[existingIndex];
+            final updated = existing.copyWith(
+              photoFrontPath: isFront ? photoPath : existing.photoFrontPath,
+              photoSidePath: !isFront ? photoPath : existing.photoSidePath,
+            );
+            await _box?.put(existing.key, updated);
+          } else {
+            final weight =
+                currentWeight ??
+                _settingsProvider.settings.startingWeight ??
+                70.0;
+            final newMetric = BodyMetric(
+              date: entryDate,
+              weight: weight,
+              photoFrontPath: isFront ? photoPath : null,
+              photoSidePath: !isFront ? photoPath : null,
+            );
+            await _box?.add(newMetric);
+          }
+
+          _sortMetrics();
+          await _enqueueProgressPhotoUpload(photoPath, entryDate, isFront);
+        },
+        timeout: TimeoutPolicy.localStorage,
+        retryPolicy: RetryPolicy.localStorage,
+        isActive: () => isProviderActive,
+      );
+
+      _uiState =
+          result.isSuccess
+              ? (_metrics.isEmpty
+                  ? const AsyncUiState.empty()
+                  : AsyncUiState.partial(
+                      message:
+                          'Photo saved locally and will upload in background.',
+                      pendingCount: UploadQueueService().pendingCount,
+                    ))
+              : stateFromFailure(
+                  result.failure!,
+                  hasFallback: _metrics.isNotEmpty,
+                  pendingCount: UploadQueueService().pendingCount,
+                );
+    } finally {
+      finishOperation(opKey);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _enqueueProgressPhotoUpload(
+    String photoPath,
+    DateTime entryDate,
+    bool isFront,
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final normalizedDate =
+        '${entryDate.year.toString().padLeft(4, '0')}'
+        '${entryDate.month.toString().padLeft(2, '0')}'
+        '${entryDate.day.toString().padLeft(2, '0')}';
+    final side = isFront ? 'front' : 'side';
+    final id = 'progress-photo:${user.uid}:$normalizedDate:$side';
+    final extension = photoPath.split('.').last.toLowerCase();
+    final safeExtension =
+        extension == 'png' || extension == 'webp' ? extension : 'jpg';
+
+    await UploadQueueService().enqueueFileUpload(
+      id: id,
+      localFilePath: photoPath,
+      storagePath:
+          'users/${user.uid}/progress_photos/'
+          '$normalizedDate-$side.$safeExtension',
+      metadata: {
+        'kind': 'progress_photo',
+        'date': normalizedDate,
+        'side': side,
+      },
+    );
   }
 
   /// Check if user can add a photo based on premium status

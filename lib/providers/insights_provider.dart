@@ -57,11 +57,18 @@ class InsightsProvider with ChangeNotifier {
         final dateString = app_date.DateUtils.getDateString(date);
 
         // Meal data
-        final dayMeals = weeklyMeals.where((m) => m.dateString == dateString).toList();
-        final dayCal = dayMeals.fold<int>(0, (sum, m) => sum + m.calories).toDouble();
-        final dayPro = dayMeals.fold<int>(0, (sum, m) => sum + m.macros.protein).toDouble();
-        final dayCarb = dayMeals.fold<int>(0, (sum, m) => sum + m.macros.carbs).toDouble();
-        final dayFat = dayMeals.fold<int>(0, (sum, m) => sum + m.macros.fat).toDouble();
+        final dayMeals =
+            weeklyMeals.where((m) => m.dateString == dateString).toList();
+        final dayCal =
+            dayMeals.fold<int>(0, (sum, m) => sum + m.calories).toDouble();
+        final dayPro =
+            dayMeals
+                .fold<int>(0, (sum, m) => sum + m.macros.protein)
+                .toDouble();
+        final dayCarb =
+            dayMeals.fold<int>(0, (sum, m) => sum + m.macros.carbs).toDouble();
+        final dayFat =
+            dayMeals.fold<int>(0, (sum, m) => sum + m.macros.fat).toDouble();
 
         dailyCalories.add(dayCal);
         dailyProtein.add(dayPro);
@@ -69,29 +76,36 @@ class InsightsProvider with ChangeNotifier {
         dailyFat.add(dayFat);
 
         // Water data
-        final dayWaterLogs = weeklyWaterLogs.where((l) => l.dateString == dateString).toList();
-        final dayWaterSum = dayWaterLogs.fold<int>(0, (sum, l) => sum + l.amountMl).toDouble();
+        final dayWaterLogs =
+            weeklyWaterLogs.where((l) => l.dateString == dateString).toList();
+        final dayWaterSum =
+            dayWaterLogs.fold<int>(0, (sum, l) => sum + l.amountMl).toDouble();
         dailyWater.add(dayWaterSum);
 
         if (dayMeals.isNotEmpty) daysLogged++;
         if (dayCal > 0 && (dayCal - calorieGoal).abs() <= 100) daysOnTrack++;
       }
 
-      final avgCal = dailyCalories.isNotEmpty
-          ? dailyCalories.reduce((a, b) => a + b) / dailyCalories.length
-          : 0.0;
-      final avgPro = dailyProtein.isNotEmpty
-          ? dailyProtein.reduce((a, b) => a + b) / dailyProtein.length
-          : 0.0;
-      final avgCarb = dailyCarbs.isNotEmpty
-          ? dailyCarbs.reduce((a, b) => a + b) / dailyCarbs.length
-          : 0.0;
-      final avgFatVal = dailyFat.isNotEmpty
-          ? dailyFat.reduce((a, b) => a + b) / dailyFat.length
-          : 0.0;
-      final avgWaterVal = dailyWater.isNotEmpty
-          ? dailyWater.reduce((a, b) => a + b) / dailyWater.length
-          : 0.0;
+      final avgCal =
+          dailyCalories.isNotEmpty
+              ? dailyCalories.reduce((a, b) => a + b) / dailyCalories.length
+              : 0.0;
+      final avgPro =
+          dailyProtein.isNotEmpty
+              ? dailyProtein.reduce((a, b) => a + b) / dailyProtein.length
+              : 0.0;
+      final avgCarb =
+          dailyCarbs.isNotEmpty
+              ? dailyCarbs.reduce((a, b) => a + b) / dailyCarbs.length
+              : 0.0;
+      final avgFatVal =
+          dailyFat.isNotEmpty
+              ? dailyFat.reduce((a, b) => a + b) / dailyFat.length
+              : 0.0;
+      final avgWaterVal =
+          dailyWater.isNotEmpty
+              ? dailyWater.reduce((a, b) => a + b) / dailyWater.length
+              : 0.0;
 
       // Generate AI insights
       List<String> aiInsights = [];
@@ -157,9 +171,9 @@ class InsightsProvider with ChangeNotifier {
     required List<double> dailyProtein,
     required String languageCode,
   }) async {
-    final languageName = {
-      'ar': 'Arabic', 'es': 'Spanish', 'fr': 'French'
-    }[languageCode] ?? 'English';
+    final languageName =
+        {'ar': 'Arabic', 'es': 'Spanish', 'fr': 'French'}[languageCode] ??
+        'English';
 
     final prompt = '''
 Analyze this weekly nutrition data and provide exactly 4 short, encouraging, actionable insights.
@@ -183,18 +197,24 @@ Return ONLY a JSON array of 4 strings, no explanation. Example:
 ''';
 
     final response = await _aiService.generateText(prompt);
-    
+
     // Parse the JSON array
     try {
-      final cleaned = response.trim()
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
+      final cleaned =
+          response
+              .trim()
+              .replaceAll('```json', '')
+              .replaceAll('```', '')
+              .trim();
       final List<dynamic> parsed = jsonDecode(cleaned);
       return parsed.map((e) => e.toString()).toList();
     } catch (e) {
       // Try to split by newlines if JSON parsing fails
-      return response.split('\n').where((l) => l.trim().isNotEmpty).take(4).toList();
+      return response
+          .split('\n')
+          .where((l) => l.trim().isNotEmpty)
+          .take(4)
+          .toList();
     }
   }
 

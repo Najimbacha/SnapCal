@@ -109,6 +109,15 @@ class UserSettings extends HiveObject {
   @HiveField(33)
   final bool dailyMotivationEnabled;
 
+  @HiveField(34)
+  final String? lastOpenedDate;
+
+  @HiveField(35)
+  final String? foodDislikes;
+
+  @HiveField(36)
+  final String? medicalNotes;
+
   UserSettings({
     required this.dailyCalorieGoal,
     required this.dailyProteinGoal,
@@ -143,6 +152,9 @@ class UserSettings extends HiveObject {
     this.dietaryRestriction = 'none',
     this.cuisinePreference = 'international',
     this.dailyMotivationEnabled = false,
+    this.lastOpenedDate,
+    this.foodDislikes,
+    this.medicalNotes,
     String? languageCode,
   }) : languageCode = languageCode ?? 'en';
 
@@ -181,6 +193,9 @@ class UserSettings extends HiveObject {
     String? cuisinePreference,
     String? languageCode,
     bool? dailyMotivationEnabled,
+    String? lastOpenedDate,
+    String? foodDislikes,
+    String? medicalNotes,
   }) {
     return UserSettings(
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -220,6 +235,9 @@ class UserSettings extends HiveObject {
       languageCode: languageCode ?? this.languageCode,
       dailyMotivationEnabled:
           dailyMotivationEnabled ?? this.dailyMotivationEnabled,
+      lastOpenedDate: lastOpenedDate ?? this.lastOpenedDate,
+      foodDislikes: foodDislikes ?? this.foodDislikes,
+      medicalNotes: medicalNotes ?? this.medicalNotes,
     );
   }
 
@@ -259,6 +277,9 @@ class UserSettings extends HiveObject {
       'cuisinePreference': cuisinePreference,
       'languageCode': languageCode,
       'dailyMotivationEnabled': dailyMotivationEnabled,
+      'lastOpenedDate': lastOpenedDate,
+      'foodDislikes': foodDislikes,
+      'medicalNotes': medicalNotes,
     };
   }
 
@@ -303,6 +324,9 @@ class UserSettings extends HiveObject {
           json['cuisinePreference'] as String? ?? 'international',
       languageCode: json['languageCode'] as String? ?? 'en',
       dailyMotivationEnabled: json['dailyMotivationEnabled'] as bool? ?? false,
+      lastOpenedDate: json['lastOpenedDate'] as String?,
+      foodDislikes: json['foodDislikes'] as String?,
+      medicalNotes: json['medicalNotes'] as String?,
     );
   }
 
@@ -343,6 +367,9 @@ class UserSettings extends HiveObject {
       cuisinePreference: 'international',
       languageCode: 'en',
       dailyMotivationEnabled: false,
+      lastOpenedDate: null,
+      foodDislikes: null,
+      medicalNotes: null,
     );
   }
 }

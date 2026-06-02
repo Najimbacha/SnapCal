@@ -20,8 +20,9 @@ class MealPlanAdapter extends TypeAdapter<MealPlan> {
       id: fields[0] as String,
       startDate: fields[1] as DateTime,
       endDate: fields[2] as DateTime,
-      weeklyMeals: (fields[3] as Map).map((dynamic k, dynamic v) =>
-          MapEntry(k as int, (v as List).cast<Meal>())),
+      weeklyMeals: (fields[3] as Map).map(
+        (dynamic k, dynamic v) => MapEntry(k as int, (v as List).cast<Meal>()),
+      ),
     );
   }
 

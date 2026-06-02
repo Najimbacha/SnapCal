@@ -1,23 +1,41 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // Helper: Check if user is logged in
-    function isAuthenticated() {
+    function signedIn() {
       return request.auth != null;
     }
 
-    // Helper: Check path ownership
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
     }
 
-    // Rules for user uploads (only allow images under their own folder path)
-    match /users/{userId}/scans/{fileName} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId)
-                    && request.resource.size < 5 * 1024 * 1024 // Limit size to 5MB
-                    && request.resource.contentType.matches('image/.*'); // Allow only images
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    function isSafeImageUpload() {
+      return request.resource != null
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Private food scan images. The UID in the path must match the signed-in user.
+    match /users/{uid}/scans/{scanId}/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid) && isSafeImageUpload();
+      allow delete: if isOwner(uid);
+    }
+
+    // Existing progress-photo feature, kept private and owner scoped.
+    match /users/{uid}/progress_photos/{fileName} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && isSafeImageUpload();
+      allow delete: if isOwner(uid);
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
     }
   }
 }

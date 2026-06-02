@@ -5,6 +5,7 @@ enum ProFeature {
   aiDetection,
   mealInsights,
   reports,
+  macroDetails,
   unlimitedAiCoach,
   nextMealAdvice,
   macroFixes,
@@ -29,6 +30,7 @@ class ProFeatureService {
       case ProFeature.unlimitedScans:
       case ProFeature.mealInsights:
       case ProFeature.reports:
+      case ProFeature.macroDetails:
       case ProFeature.unlimitedAiCoach:
       case ProFeature.fullWeekPlanner:
       case ProFeature.groceryList:
@@ -65,6 +67,8 @@ class ProFeatureService {
         return PaywallEntryPoint.plannerPreferences;
       case ProFeature.mealInsights:
         return PaywallEntryPoint.mealInsight;
+      case ProFeature.macroDetails:
+        return PaywallEntryPoint.macroDetails;
       case ProFeature.reports:
       case ProFeature.fullHistory:
         return PaywallEntryPoint.reportInsight;
@@ -104,9 +108,11 @@ class ProFeatureService {
         };
       case PaywallEntryPoint.reportInsight:
       case PaywallEntryPoint.mealInsight:
+      case PaywallEntryPoint.macroDetails:
         return const {
           ProFeature.reports,
           ProFeature.mealInsights,
+          ProFeature.macroDetails,
           ProFeature.macroFixes,
           ProFeature.unlimitedScans,
         };

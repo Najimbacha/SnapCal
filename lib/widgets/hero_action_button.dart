@@ -103,14 +103,17 @@ class _HeroActionButtonState extends State<HeroActionButton>
                     shape: BoxShape.circle,
                     color: green,
                     border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.14)
-                          : const Color(0xFFF9F8F5),
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.14)
+                              : const Color(0xFFF9F8F5),
                       width: 4,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.14),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.30 : 0.14,
+                        ),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
@@ -121,7 +124,7 @@ class _HeroActionButtonState extends State<HeroActionButton>
                     children: [
                       // Subtle Shimmer
                       _ShimmerOverlay(animation: _breatheController),
-                      
+
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 240),
                         switchInCurve: Curves.easeOutCubic,
@@ -185,7 +188,10 @@ class _ShimmerOverlay extends StatelessWidget {
       animation: animation,
       builder: (context, child) {
         return Transform.translate(
-          offset: Offset(-80 + (animation.value * 160), -80 + (animation.value * 160)),
+          offset: Offset(
+            -80 + (animation.value * 160),
+            -80 + (animation.value * 160),
+          ),
           child: Transform.rotate(
             angle: math.pi / 4,
             child: Container(

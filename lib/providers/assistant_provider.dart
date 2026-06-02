@@ -45,7 +45,18 @@ class AssistantProvider with ChangeNotifier {
     bool clearPrevious = false,
     bool forceFetch = false,
     String language = 'en',
+    int? age,
+    String? gender,
+    double? height,
+    double? weight,
+    double? targetWeight,
+    String? goalMode,
+    String? activityLevel,
+    String? foodDislikes,
+    String? medicalNotes,
   }) async {
+    if (_isLoading) return false;
+
     if (clearPrevious) {
       _history = [];
       _error = null;
@@ -76,7 +87,6 @@ class AssistantProvider with ChangeNotifier {
       }
     }
 
-    if (_isLoading) return false;
     _isLoading = true;
     _uiState =
         _history.isEmpty
@@ -97,6 +107,15 @@ class AssistantProvider with ChangeNotifier {
               currentCalories: currentCalories,
               targetCalories: targetCalories,
               language: language,
+              age: age,
+              gender: gender,
+              height: height,
+              weight: weight,
+              targetWeight: targetWeight,
+              goalMode: goalMode,
+              activityLevel: activityLevel,
+              foodDislikes: foodDislikes,
+              medicalNotes: medicalNotes,
             )
             .timeout(const Duration(seconds: 18));
       } else {
@@ -110,6 +129,15 @@ class AssistantProvider with ChangeNotifier {
               dietaryRestriction: dietaryRestriction,
               userQuery: userQuery,
               language: language,
+              age: age,
+              gender: gender,
+              height: height,
+              weight: weight,
+              targetWeight: targetWeight,
+              goalMode: goalMode,
+              activityLevel: activityLevel,
+              foodDislikes: foodDislikes,
+              medicalNotes: medicalNotes,
             )
             .timeout(const Duration(seconds: 15));
       }

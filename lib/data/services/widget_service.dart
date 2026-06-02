@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 
 class WidgetService {
-  static const String _groupId = 'group.com.najim.snapcal'; // Replace with your app group
+  static const String _groupId =
+      'group.com.najim.snapcal'; // Replace with your app group
   static const String _iosWidgetName = 'SnapCalWidget';
   static const String _androidWidgetName = 'SnapCalWidgetProvider';
 
@@ -28,8 +29,10 @@ class WidgetService {
         name: _androidWidgetName,
         iOSName: _iosWidgetName,
       );
-      
-      debugPrint("✅ WidgetService: Data updated for $remainingCalories kcal (Locked: $isLocked)");
+
+      debugPrint(
+        "✅ WidgetService: Data updated for $remainingCalories kcal (Locked: $isLocked)",
+      );
     } catch (e) {
       debugPrint("❌ WidgetService: Update Error: $e");
     }

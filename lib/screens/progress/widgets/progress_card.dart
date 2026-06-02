@@ -17,12 +17,15 @@ class ProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat('MMM d, yyyy').format(metric.date);
-    
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant, width: 1),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
+        ),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -31,16 +34,26 @@ class ProgressCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(dateStr, style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                dateStr,
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${metric.weight.toStringAsFixed(1)} kg',
-                  style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ],
@@ -49,11 +62,21 @@ class ProgressCard extends StatelessWidget {
           Row(
             children: [
               if (metric.photoFrontPath != null)
-                Expanded(child: _PhotoThumbnail(path: metric.photoFrontPath!, label: AppLocalizations.of(context)!.progress_front)),
+                Expanded(
+                  child: _PhotoThumbnail(
+                    path: metric.photoFrontPath!,
+                    label: AppLocalizations.of(context)!.progress_front,
+                  ),
+                ),
               if (metric.photoFrontPath != null && metric.photoSidePath != null)
                 const SizedBox(width: 12),
               if (metric.photoSidePath != null)
-                Expanded(child: _PhotoThumbnail(path: metric.photoSidePath!, label: AppLocalizations.of(context)!.progress_side)),
+                Expanded(
+                  child: _PhotoThumbnail(
+                    path: metric.photoSidePath!,
+                    label: AppLocalizations.of(context)!.progress_side,
+                  ),
+                ),
             ],
           ),
           if (onCompare != null) ...[
@@ -61,13 +84,17 @@ class ProgressCard extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onCompare,
               icon: const Icon(LucideIcons.slidersHorizontal, size: 16),
-              label: Text(AppLocalizations.of(context)!.progress_compare_previous),
+              label: Text(
+                AppLocalizations.of(context)!.progress_compare_previous,
+              ),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
-          ]
+          ],
         ],
       ),
     );
@@ -82,22 +109,34 @@ class _PhotoThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final exists = File(path).existsSync();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AspectRatio(
-          aspectRatio: 3/4,
+          aspectRatio: 3 / 4,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.file(File(path), fit: BoxFit.cover),
+            child:
+                exists
+                    ? Image.file(
+                      File(path),
+                      fit: BoxFit.cover,
+                      errorBuilder:
+                          (context, error, stackTrace) =>
+                              const Center(child: Icon(LucideIcons.imageOff)),
+                    )
+                    : const Center(child: Icon(LucideIcons.imageOff)),
           ),
         ),
         const SizedBox(height: 6),
         Text(
           label,
           textAlign: TextAlign.center,
-          style: AppTypography.labelSmall.copyWith(color: context.textSecondaryColor),
-        )
+          style: AppTypography.labelSmall.copyWith(
+            color: context.textSecondaryColor,
+          ),
+        ),
       ],
     );
   }

@@ -4,8 +4,10 @@ import 'package:hive/hive.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/security_service.dart';
+import '../../core/resilience/timeout_policy.dart';
 import '../models/user_settings.dart';
 import '../../core/constants/app_constants.dart';
+import '../services/sync_queue_service.dart';
 
 /// Repository for managing user settings in Hive and Firestore
 class SettingsRepository {
@@ -102,14 +104,31 @@ class SettingsRepository {
     // 3. Sync to Firestore if logged in
     final user = _authClient.currentUser;
     if (user != null) {
+      final appSettingsPath = 'users/${user.uid}/settings/app';
+      final profilePath = 'users/${user.uid}/private/profile';
+      final appSettingsPayload = _appSettingsPayload(settings);
+      final profilePayload = _profilePayload(settings);
       try {
-        await _firestoreClient.collection('users').doc(user.uid).set({
-          'settings': settings.toJson(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        await Future.wait([
+          _firestoreClient
+              .doc(appSettingsPath)
+              .set(appSettingsPayload, SetOptions(merge: true)),
+          _firestoreClient
+              .doc(profilePath)
+              .set(profilePayload, SetOptions(merge: true)),
+        ]).timeout(TimeoutPolicy.firestore);
       } catch (e) {
-        // Silently fail or queue for later
         debugPrint('Firestore Sync Error: $e');
+        await SyncQueueService().enqueueSet(
+          id: 'settings:set:${user.uid}',
+          documentPath: appSettingsPath,
+          data: appSettingsPayload,
+        );
+        await SyncQueueService().enqueueSet(
+          id: 'profile:set:${user.uid}',
+          documentPath: profilePath,
+          data: profilePayload,
+        );
       }
     }
   }
@@ -120,16 +139,30 @@ class SettingsRepository {
     if (user == null) return;
 
     try {
-      final doc =
-          await _firestoreClient.collection('users').doc(user.uid).get();
-      if (doc.exists && doc.data()?['settings'] != null) {
-        final cloudSettings = UserSettings.fromJson(doc.data()!['settings']);
-        final localSettings = getSettings();
+      final rootRef = _firestoreClient.collection('users').doc(user.uid);
+      final docs = await Future.wait([
+        rootRef.collection('settings').doc('app').get(),
+        rootRef.collection('private').doc('profile').get(),
+        rootRef.collection('subscription').doc('current').get(),
+        rootRef.get(),
+      ]).timeout(TimeoutPolicy.firestore);
 
-        // Merge cloud settings with local isPro status (RevenueCat is the source of truth)
-        final mergedSettings = cloudSettings.copyWith(
-          isPro: localSettings.isPro,
-        );
+      final appSettings = docs[0].data() ?? const <String, dynamic>{};
+      final profile = docs[1].data() ?? const <String, dynamic>{};
+      final subscription = docs[2].data() ?? const <String, dynamic>{};
+      final legacySettings = docs[3].data()?['settings'];
+      if (appSettings.isNotEmpty ||
+          profile.isNotEmpty ||
+          legacySettings is Map<String, dynamic>) {
+        final cloudSettings = UserSettings.fromJson({
+          if (legacySettings is Map<String, dynamic>) ...legacySettings,
+          ...profile,
+          ...appSettings,
+        });
+        final localSettings = getSettings();
+        final serverPro = subscription['isActive'] == true;
+
+        final mergedSettings = cloudSettings.copyWith(isPro: serverPro);
 
         // Compare merged settings with local settings using mapEquals to avoid redundant writes
         if (!mapEquals(mergedSettings.toJson(), localSettings.toJson())) {
@@ -169,7 +202,9 @@ class SettingsRepository {
   /// Update pro status
   Future<void> updateProStatus(bool isPro) async {
     final settings = getSettings();
-    await saveSettings(settings.copyWith(isPro: isPro));
+    final updated = settings.copyWith(isPro: isPro);
+    await _settingsBox?.put(AppConstants.settingsKey, updated);
+    _settingsController.add(updated);
   }
 
   /// Update streak
@@ -195,5 +230,42 @@ class SettingsRepository {
   void dispose() {
     _authSubscription?.cancel();
     _settingsController.close();
+  }
+
+  Map<String, dynamic> _appSettingsPayload(UserSettings settings) {
+    return {
+      'themeMode': settings.themeMode,
+      'languageCode': settings.languageCode,
+      'onboardingComplete': settings.onboardingComplete,
+      'notificationsEnabled': settings.notificationsEnabled,
+      'mealRemindersEnabled': settings.mealRemindersEnabled,
+      'dailyMotivationEnabled': settings.dailyMotivationEnabled,
+      'breakfastTime': settings.breakfastTime,
+      'lunchTime': settings.lunchTime,
+      'dinnerTime': settings.dinnerTime,
+      'weightUnit': settings.weightUnit,
+      'heightUnit': settings.heightUnit,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+    };
+  }
+
+  Map<String, dynamic> _profilePayload(UserSettings settings) {
+    return {
+      'age': settings.age,
+      'height': settings.height,
+      'weight': settings.startingWeight,
+      'targetWeight': settings.targetWeight,
+      'dailyCalorieGoal': settings.dailyCalorieGoal,
+      'dailyProteinGoal': settings.dailyProteinGoal,
+      'dailyCarbGoal': settings.dailyCarbGoal,
+      'dailyFatGoal': settings.dailyFatGoal,
+      'gender': settings.gender,
+      'activityLevel': settings.activityLevel,
+      'goalMode': settings.goalMode,
+      'dietaryRestriction': settings.dietaryRestriction,
+      'cuisinePreference': settings.cuisinePreference,
+      'mealsPerDay': settings.mealsPerDay,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+    };
   }
 }

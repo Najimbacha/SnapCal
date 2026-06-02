@@ -23,10 +23,6 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 const _minimalBg = Color(0xFFF9F8F5);
 const _minimalDarkBg = Color(0xFF14130F);
-const _minimalInk = Color(0xFF1C1917);
-const _minimalLine = Color(0xFFE8E4DC);
-const _minimalGreen = Color(0xFF1A3D2B);
-const _minimalGreenText = Color(0xFF16733A);
 
 class HealthMetricDetailScreen extends StatefulWidget {
   final LogMetricType metric;
@@ -47,37 +43,30 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
     final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? _minimalDarkBg : _minimalBg;
-    final accent = _metricAccentFor(widget.metric);
+    final accent = _metricAccentFor(context, widget.metric);
+    final isLockedMacro =
+        !context.watch<SettingsProvider>().isPro &&
+        _isMacroMetric(widget.metric);
 
-    final overlayStyle = isDark
-        ? SystemUiOverlayStyle.light.copyWith(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: bg,
-          )
-        : SystemUiOverlayStyle.dark.copyWith(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: bg,
-          );
+    final overlayStyle =
+        isDark
+            ? SystemUiOverlayStyle.light.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: bg,
+            )
+            : SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: bg,
+            );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
       child: Scaffold(
         backgroundColor: bg,
         body: SafeArea(
-          child: FutureBuilder<_MetricDetailData>(
-            future: _buildData(context),
-            builder: (context, snapshot) {
-              final data = snapshot.data;
-              return ListView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  MediaQuery.of(context).padding.top + 8,
-                  20,
-                  88,
-                ),
-                children: [
-                  _DetailHeader(
+          child:
+              isLockedMacro
+                  ? _LockedMacroMetricDetail(
                     title: _metricTitle(l10n, widget.metric),
                     accent: accent,
                     onBack: () {
@@ -87,77 +76,133 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
                         context.go('/log');
                       }
                     },
-                  ),
-                  const SizedBox(height: 18),
-                  _PeriodSelector(
-                    selected: _period,
-                    accent: accent,
-                    onChanged: (period) => setState(() {
-                      _period = period;
-                    }),
-                  ),
-                  const SizedBox(height: 20),
-                  _PeriodNavigation(
-                    title: _periodTitle(l10n, _period),
-                    canMoveNext: canMoveMetricPeriodForward(_period, _anchor),
-                    onPrevious: () => setState(() {
-                      _anchor = shiftMetricAnchor(_period, _anchor, -1);
-                    }),
-                    onNext: () => setState(() {
-                      _anchor = shiftMetricAnchor(_period, _anchor, 1);
-                    }),
-                    onCalendar: _pickAnchorDate,
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 20),
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      data == null)
-                    _MetricDetailLoading(accent: accent)
-                  else if (data != null) ...[
-                    _MetricHero(data: data, accent: accent, isDark: isDark),
-                    const SizedBox(height: 20),
-                    // Chart card
-                    Container(
-                      height: 248,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.04)
-                            : const Color(0x00FFFFFF),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : _minimalLine,
+                    onUnlock:
+                        () => PremiumConversionService().openPaywall(
+                          context,
+                          PaywallEntryPoint.macroDetails,
+                          featureName: 'metric_detail_${widget.metric.id}',
                         ),
-                      ),
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 14),
-                      child: _HealthMetricDetailChart(
-                        data: data,
-                        accent: accent,
-                        isDark: isDark,
-                        isPro: data.isPro,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    // Section header
-                    _SectionHeader(
-                      title: l10n.log_metric_detail_list_title,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 12),
-                    _MetricPointList(
-                      data: data,
-                      accent: accent,
-                      isDark: isDark,
-                      isPro: data.isPro,
-                      onLockedTap: _openHistoryPaywall,
-                      onUpgradeTap: _openHistoryPaywall,
-                    ),
-                  ],
-                ],
-              );
-            },
-          ),
+                  )
+                  : FutureBuilder<_MetricDetailData>(
+                    future: _buildData(context),
+                    builder: (context, snapshot) {
+                      final data = snapshot.data;
+                      return ListView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(
+                          20,
+                          MediaQuery.of(context).padding.top + 8,
+                          20,
+                          88,
+                        ),
+                        children: [
+                          _DetailHeader(
+                            title: _metricTitle(l10n, widget.metric),
+                            accent: accent,
+                            onBack: () {
+                              if (context.canPop()) {
+                                context.pop();
+                              } else {
+                                context.go('/log');
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 18),
+                          _PeriodSelector(
+                            selected: _period,
+                            accent: accent,
+                            onChanged:
+                                (period) => setState(() {
+                                  _period = period;
+                                }),
+                          ),
+                          const SizedBox(height: 20),
+                          _PeriodNavigation(
+                            title: _periodTitle(l10n, _period),
+                            canMoveNext: canMoveMetricPeriodForward(
+                              _period,
+                              _anchor,
+                            ),
+                            onPrevious:
+                                () => setState(() {
+                                  _anchor = shiftMetricAnchor(
+                                    _period,
+                                    _anchor,
+                                    -1,
+                                  );
+                                }),
+                            onNext:
+                                () => setState(() {
+                                  _anchor = shiftMetricAnchor(
+                                    _period,
+                                    _anchor,
+                                    1,
+                                  );
+                                }),
+                            onCalendar: _pickAnchorDate,
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 20),
+                          if (snapshot.connectionState ==
+                                  ConnectionState.waiting &&
+                              data == null)
+                            _MetricDetailLoading(accent: accent)
+                          else if (data != null) ...[
+                            _MetricHero(
+                              data: data,
+                              accent: accent,
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 20),
+                            // Chart card
+                            Container(
+                              height: 248,
+                              decoration: BoxDecoration(
+                                color:
+                                    isDark
+                                        ? Colors.white.withValues(alpha: 0.04)
+                                        : const Color(0x00FFFFFF),
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outlineVariant
+                                      .withValues(alpha: isDark ? 0.08 : 0.18),
+                                ),
+                              ),
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                20,
+                                16,
+                                14,
+                              ),
+                              child: _HealthMetricDetailChart(
+                                data: data,
+                                accent: accent,
+                                isDark: isDark,
+                                isPro: data.isPro,
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            // Section header
+                            _SectionHeader(
+                              title: l10n.log_metric_detail_list_title,
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 12),
+                            _MetricPointList(
+                              data: data,
+                              accent: accent,
+                              isDark: isDark,
+                              isPro: data.isPro,
+                              onLockedTap: _openHistoryPaywall,
+                              onUpgradeTap: _openHistoryPaywall,
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
         ),
       ),
     );
@@ -192,9 +237,10 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
         widget.metric == LogMetricType.energy ||
         widget.metric == LogMetricType.steps;
 
-    final activitySummaries = needsActivity
-        ? await activity.fetchSummariesForRange(range.start, range.end)
-        : <ActivitySummary>[];
+    final activitySummaries =
+        needsActivity
+            ? await activity.fetchSummariesForRange(range.start, range.end)
+            : <ActivitySummary>[];
     final activityByDate = {
       for (final summary in activitySummaries)
         metricDateString(summary.date): summary,
@@ -287,6 +333,92 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
   }
 }
 
+class _LockedMacroMetricDetail extends StatelessWidget {
+  final String title;
+  final Color accent;
+  final VoidCallback onBack;
+  final VoidCallback onUnlock;
+
+  const _LockedMacroMetricDetail({
+    required this.title,
+    required this.accent,
+    required this.onBack,
+    required this.onUnlock,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        MediaQuery.of(context).padding.top + 8,
+        20,
+        88,
+      ),
+      children: [
+        _DetailHeader(title: title, accent: accent, onBack: onBack),
+        const SizedBox(height: 28),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.white.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: accent.withValues(alpha: 0.20)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(LucideIcons.lock, color: accent, size: 21),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.macro_locked_title,
+                style: AppTypography.heading2.copyWith(
+                  color: _healthText(context),
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.macro_locked_body,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: _healthText(context).withValues(alpha: 0.62),
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: onUnlock,
+                  icon: const Icon(LucideIcons.sparkles, size: 17),
+                  label: Text(l10n.macro_unlock_cta),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ── Section header label ──────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
@@ -303,7 +435,7 @@ class _SectionHeader extends StatelessWidget {
           title.toUpperCase(),
           style: AppTypography.labelSmall.copyWith(
             color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             fontSize: 10,
             letterSpacing: 1,
           ),
@@ -329,9 +461,10 @@ class _DetailHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final chipColor = isDark
-        ? Colors.white.withValues(alpha: 0.06)
-        : const Color(0xFFE8E4DC).withValues(alpha: 0.56);
+    final chipColor =
+        isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : const Color(0xFFE8E4DC).withValues(alpha: 0.56);
 
     return Row(
       children: [
@@ -345,9 +478,10 @@ class _DetailHeader extends StatelessWidget {
               color: chipColor,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.06),
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06),
               ),
             ),
             child: Icon(
@@ -363,7 +497,7 @@ class _DetailHeader extends StatelessWidget {
             title,
             style: AppTypography.heading2.copyWith(
               color: _healthText(context),
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               fontSize: 26,
               letterSpacing: 0,
             ),
@@ -380,9 +514,10 @@ class _DetailHeader extends StatelessWidget {
             color: chipColor,
             shape: BoxShape.circle,
             border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.06),
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
             ),
           ),
           child: Icon(
@@ -418,55 +553,60 @@ class _PeriodSelector extends StatelessWidget {
       height: 52,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : const Color(0xFFE8E4DC).withValues(alpha: 0.48),
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : const Color(0xFFE8E4DC).withValues(alpha: 0.48),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.04),
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.04),
         ),
       ),
       child: Row(
-        children: LogMetricPeriod.values.map((period) {
-          final active = selected == period;
-          return Expanded(
-            child: AppScaleTap(
-              onTap: () => onChanged(period),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                height: double.infinity,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: active ? accent : null,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: active
-                      ? [
-                          BoxShadow(
-                            color: accent.withValues(alpha: 0.28),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Text(
-                  _periodCode(l10n, period),
-                  style: AppTypography.titleMedium.copyWith(
-                    color: active
-                        ? Colors.white
-                        : _healthText(context).withValues(alpha: 0.52),
-                    fontWeight: active ? FontWeight.w900 : FontWeight.w700,
-                    fontSize: 14,
-                    letterSpacing: 0,
+        children:
+            LogMetricPeriod.values.map((period) {
+              final active = selected == period;
+              return Expanded(
+                child: AppScaleTap(
+                  onTap: () => onChanged(period),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    height: double.infinity,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: active ? accent : null,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow:
+                          active
+                              ? [
+                                BoxShadow(
+                                  color: accent.withValues(alpha: 0.28),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                              : null,
+                    ),
+                    child: Text(
+                      _periodCode(l10n, period),
+                      style: AppTypography.titleMedium.copyWith(
+                        color:
+                            active
+                                ? Colors.white
+                                : _healthText(context).withValues(alpha: 0.52),
+                        fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                        fontSize: 14,
+                        letterSpacing: 0,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
       ),
     );
   }
@@ -503,7 +643,7 @@ class _PeriodNavigation extends StatelessWidget {
                 title,
                 style: AppTypography.heading2.copyWith(
                   color: _healthText(context),
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   fontSize: 28,
                   letterSpacing: 0,
                 ),
@@ -539,7 +679,11 @@ class _NavChip extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isDark;
 
-  const _NavChip({required this.icon, required this.onTap, required this.isDark});
+  const _NavChip({
+    required this.icon,
+    required this.onTap,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -551,21 +695,22 @@ class _NavChip extends StatelessWidget {
         height: 42,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.07)
-              : const Color(0xFFE8E4DC).withValues(alpha: 0.56),
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : const Color(0xFFE8E4DC).withValues(alpha: 0.56),
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.09)
-                : Colors.black.withValues(alpha: 0.07),
+            color:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.09)
+                    : Colors.black.withValues(alpha: 0.07),
           ),
         ),
         child: Icon(
           icon,
           size: 18,
-          color: _healthText(context)
-              .withValues(alpha: enabled ? 0.72 : 0.22),
+          color: _healthText(context).withValues(alpha: enabled ? 0.72 : 0.22),
         ),
       ),
     );
@@ -589,22 +734,24 @@ class _MetricHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final number = _formatInt(context, data.averageValue);
-    final progress = data.dailyGoal > 0
-        ? (data.averageValue / data.dailyGoal).clamp(0.0, 1.0)
-        : 0.0;
+    final progress =
+        data.dailyGoal > 0
+            ? (data.averageValue / data.dailyGoal).clamp(0.0, 1.0)
+            : 0.0;
     final isGoalHit = data.averageValue >= data.dailyGoal;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.04)
-            : const Color(0x00FFFFFF),
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : const Color(0x00FFFFFF),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : _minimalLine,
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: isDark ? 0.08 : 0.18),
         ),
       ),
       child: Column(
@@ -626,7 +773,7 @@ class _MetricHero extends StatelessWidget {
                         number,
                         style: AppTypography.displayLarge.copyWith(
                           color: _healthText(context),
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           fontSize: 48,
                           height: 0.95,
                           letterSpacing: 0,
@@ -652,25 +799,27 @@ class _MetricHero extends StatelessWidget {
               // Goal hit badge
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: isGoalHit
-                      ? accent.withValues(alpha: 0.10)
-                      : Colors.orange.withValues(alpha: 0.12),
+                  color:
+                      isGoalHit
+                          ? accent.withValues(alpha: 0.10)
+                          : Colors.orange.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: isGoalHit
-                        ? accent.withValues(alpha: 0.28)
-                        : Colors.orange.withValues(alpha: 0.22),
+                    color:
+                        isGoalHit
+                            ? accent.withValues(alpha: 0.28)
+                            : Colors.orange.withValues(alpha: 0.22),
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      isGoalHit
-                          ? LucideIcons.checkCircle2
-                          : LucideIcons.target,
+                      isGoalHit ? LucideIcons.checkCircle2 : LucideIcons.target,
                       size: 12,
                       color: isGoalHit ? accent : Colors.orange,
                     ),
@@ -679,7 +828,7 @@ class _MetricHero extends StatelessWidget {
                       data.goalStatus,
                       style: AppTypography.labelSmall.copyWith(
                         color: isGoalHit ? accent : Colors.orange,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         fontSize: 11,
                         letterSpacing: 0,
                       ),
@@ -697,7 +846,7 @@ class _MetricHero extends StatelessWidget {
                 '${(progress * 100).round()}%',
                 style: AppTypography.labelSmall.copyWith(
                   color: accent,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w600,
                   fontSize: 12,
                   letterSpacing: 0,
                 ),
@@ -711,8 +860,7 @@ class _MetricHero extends StatelessWidget {
                     child: Stack(
                       children: [
                         Container(
-                          color: accent.withValues(
-                              alpha: isDark ? 0.18 : 0.12),
+                          color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
                         ),
                         FractionallySizedBox(
                           widthFactor: progress,
@@ -725,10 +873,10 @@ class _MetricHero extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                '${_formatInt(context, data.dailyGoal)} goal',
+                l10n.log_metric_goal_value(_formatInt(context, data.dailyGoal)),
                 style: AppTypography.labelSmall.copyWith(
                   color: _healthText(context).withValues(alpha: 0.48),
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                   fontSize: 11,
                   letterSpacing: 0,
                 ),
@@ -794,20 +942,44 @@ class _DetailChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.isEmpty || points.isEmpty) return;
+    if (size.isEmpty ||
+        !size.width.isFinite ||
+        !size.height.isFinite ||
+        points.isEmpty) {
+      return;
+    }
+
+    final safePoints =
+        points
+            .map(
+              (point) => (
+                point: point,
+                value: math.max(0, point.value),
+                goal: math.max(0, point.goal),
+              ),
+            )
+            .toList();
+    if (safePoints.isEmpty) return;
+
     const rightGutter = 56.0;
     const bottomGutter = 32.0;
     final chartW = size.width - rightGutter;
     final chartH = size.height - bottomGutter;
+    if (chartW <= 0 || chartH <= 0) return;
 
-    final maxValue = points.fold<int>(0, (max, p) {
+    final maxValue = safePoints.fold<int>(0, (max, p) {
       return math.max(max, math.max(p.value, p.goal));
     });
     final yMax = math.max(maxValue, 1).toDouble();
-    final topGoal = points.fold<int>(0, (m, p) => math.max(m, p.goal));
+    final topGoal = safePoints.fold<int>(0, (m, p) => math.max(m, p.goal));
 
     // Horizontal grid lines
-    final gridLabels = [topGoal, (topGoal * 2 / 3).round(), (topGoal / 3).round(), 0];
+    final gridLabels = [
+      topGoal,
+      (topGoal * 2 / 3).round(),
+      (topGoal / 3).round(),
+      0,
+    ];
     for (final label in gridLabels) {
       final y = chartH - ((label / yMax).clamp(0.0, 1.0) * chartH);
       // Grid line
@@ -815,8 +987,9 @@ class _DetailChartPainter extends CustomPainter {
         Offset(0, y),
         Offset(chartW, y),
         Paint()
-          ..color = (isDark ? Colors.white : Colors.black)
-              .withValues(alpha: 0.06)
+          ..color = (isDark ? Colors.white : Colors.black).withValues(
+            alpha: 0.06,
+          )
           ..strokeWidth = 1,
       );
       // Right-side label
@@ -843,43 +1016,49 @@ class _DetailChartPainter extends CustomPainter {
     );
 
     // Bars
-    final count = points.length;
-    final gap = count <= 1
-        ? 0.0
-        : count <= 7
+    final count = safePoints.length;
+    final gap =
+        count <= 1
+            ? 0.0
+            : count <= 7
             ? 10.0
             : count <= 13
-                ? 6.0
-                : 3.0;
+            ? 6.0
+            : 3.0;
     final maxBarWidth = count <= 7 ? 36.0 : 16.0;
     final availW = math.max(0.0, chartW - (gap * (count - 1)));
     final barWidth = math.min(maxBarWidth, availW / count);
-    if (barWidth <= 0) return;
+    if (barWidth <= 0 || !barWidth.isFinite) return;
 
     final totalW = barWidth * count + gap * (count - 1);
     final startX = math.max(0.0, (chartW - totalW) / 2);
 
     for (var i = 0; i < count; i++) {
-      final point = points[i];
-      final normalized = (point.value / yMax).clamp(0.0, 1.0);
-      final barH = point.value == 0
-          ? 4.0
-          : math.max(8.0, normalized * chartH);
+      final safePoint = safePoints[i];
+      final point = safePoint.point;
+      final normalized = (safePoint.value / yMax).clamp(0.0, 1.0);
+      final barH =
+          safePoint.value == 0 ? 4.0 : math.max(8.0, normalized * chartH);
       final left = startX + i * (barWidth + gap);
+      if (!left.isFinite || !barH.isFinite || barH <= 0) continue;
       final rect = Rect.fromLTWH(left, chartH - barH, barWidth, barH);
-      final rRect =
-          RRect.fromRectAndRadius(rect, Radius.circular(barWidth / 2));
+      final rRect = RRect.fromRectAndRadius(
+        rect,
+        Radius.circular(barWidth / 2),
+      );
 
       final isLocked = point.locked;
 
       if (isLocked && !isPro) {
         // ── Free user: heavily muted + frosted look ──
         // Draw a very faint stub bar (25% height minimum so it's visible)
-        final stubH = math.max(barH * 0.4, 14.0);
-        final stubRect = Rect.fromLTWH(
-            left, chartH - stubH, barWidth, stubH);
+        final stubH = math.min(chartH, math.max(barH * 0.4, 14.0));
+        if (!stubH.isFinite || stubH <= 0) continue;
+        final stubRect = Rect.fromLTWH(left, chartH - stubH, barWidth, stubH);
         final stubRRect = RRect.fromRectAndRadius(
-            stubRect, Radius.circular(barWidth / 2));
+          stubRect,
+          Radius.circular(barWidth / 2),
+        );
         canvas.drawRRect(
           stubRRect,
           Paint()
@@ -893,9 +1072,12 @@ class _DetailChartPainter extends CustomPainter {
             ).createShader(stubRect),
         );
         // Hatching lines to reinforce locked state
-        final hatchPaint = Paint()
-          ..color = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06)
-          ..strokeWidth = 1.5;
+        final hatchPaint =
+            Paint()
+              ..color = (isDark ? Colors.white : Colors.black).withValues(
+                alpha: 0.06,
+              )
+              ..strokeWidth = 1.5;
         var hx = left;
         while (hx < left + barWidth + stubH) {
           canvas.drawLine(
@@ -911,12 +1093,13 @@ class _DetailChartPainter extends CustomPainter {
           rRect,
           Paint()
             ..shader = LinearGradient(
-              colors: isLocked
-                  ? [
-                      accent.withValues(alpha: 0.28),
-                      accent.withValues(alpha: 0.14),
-                    ]
-                  : [accent, accent.withValues(alpha: 0.55)],
+              colors:
+                  isLocked
+                      ? [
+                        accent.withValues(alpha: 0.28),
+                        accent.withValues(alpha: 0.14),
+                      ]
+                      : [accent, accent.withValues(alpha: 0.55)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ).createShader(rect),
@@ -930,9 +1113,7 @@ class _DetailChartPainter extends CustomPainter {
           canvas,
           label,
           Offset(left + barWidth / 2, chartH + 10),
-          isLocked && !isPro
-              ? labelColor.withValues(alpha: 0.35)
-              : labelColor,
+          isLocked && !isPro ? labelColor.withValues(alpha: 0.35) : labelColor,
           11,
           FontWeight.w700,
           center: true,
@@ -941,8 +1122,7 @@ class _DetailChartPainter extends CustomPainter {
     }
   }
 
-  void _drawDashedLine(
-      Canvas canvas, Offset start, Offset end, Paint paint) {
+  void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
     const dashLen = 5.0;
     const gapLen = 4.0;
     double dist = 0;
@@ -1023,47 +1203,75 @@ class _MetricPointList extends StatelessWidget {
     final rows = List.generate(reversed.length, (index) {
       final point = reversed[index];
       final locked = point.locked;
-      final progress = data.dailyGoal > 0
-          ? (point.value / data.dailyGoal).clamp(0.0, 1.0)
-          : 0.0;
+      final progress =
+          data.dailyGoal > 0
+              ? (point.value / data.dailyGoal).clamp(0.0, 1.0)
+              : 0.0;
       final isFirst = index == 0;
 
       return Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: 10),
         child: AppScaleTap(
           onTap: locked ? onLockedTap : null,
           child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 18, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: isFirst ? 0.06 : 0.035)
-                  : (isFirst
-                      ? Colors.white.withValues(alpha: 0.18)
-                      : const Color(0x00FFFFFF)),
-              borderRadius: BorderRadius.circular(16),
+              color:
+                  isDark
+                      ? (isFirst
+                          ? const Color(0xFF1E1D1A)
+                          : const Color(0xFF181714))
+                      : Colors.white,
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: isFirst
-                    ? accent.withValues(alpha: isDark ? 0.20 : 0.18)
-                    : (isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : _minimalLine),
+                color:
+                    isFirst
+                        ? accent.withValues(alpha: isDark ? 0.35 : 0.45)
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Theme.of(context).colorScheme.outlineVariant
+                                .withValues(alpha: 0.28)),
+                width: isFirst ? 1.4 : 1.0,
               ),
+              boxShadow: [
+                if (isFirst)
+                  BoxShadow(
+                    color: accent.withValues(alpha: isDark ? 0.08 : 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 4),
+                  )
+                else if (!isDark)
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.015),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+              ],
             ),
             child: Row(
               children: [
-                // Accent dot
+                // Styled double-ring glowing dot
                 Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(right: 12),
+                  width: isFirst ? 14 : 12,
+                  height: isFirst ? 14 : 12,
+                  margin: EdgeInsets.only(right: isFirst ? 10 : 12),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: locked
-                        ? _healthText(context).withValues(alpha: 0.18)
-                        : (isFirst
-                            ? accent
-                            : accent.withValues(alpha: 0.34)),
+                    color:
+                        locked
+                            ? _healthText(context).withValues(alpha: 0.12)
+                            : (isFirst
+                                ? accent.withValues(alpha: 0.2)
+                                : accent.withValues(alpha: 0.12)),
+                    border: Border.all(
+                      color:
+                          locked
+                              ? _healthText(context).withValues(alpha: 0.3)
+                              : (isFirst
+                                  ? accent
+                                  : accent.withValues(alpha: 0.4)),
+                      width: isFirst ? 3.5 : 2.5,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -1073,32 +1281,40 @@ class _MetricPointList extends StatelessWidget {
                       Text(
                         _pointLabel(context, point, data),
                         style: AppTypography.titleMedium.copyWith(
-                          color: _healthText(context)
-                              .withValues(alpha: isFirst ? 0.92 : 0.68),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+                          color: _healthText(
+                            context,
+                          ).withValues(alpha: isFirst ? 0.95 : 0.72),
+                          fontWeight:
+                              isFirst ? FontWeight.w700 : FontWeight.w600,
+                          fontSize: isFirst ? 16 : 15,
                           letterSpacing: 0,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (!locked && data.dailyGoal > 0) ...[
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(999),
                           child: SizedBox(
-                            height: 3,
+                            height:
+                                5, // Increased thickness for modern capsule/pill indicator
                             child: Stack(
                               children: [
                                 Container(
                                   color: accent.withValues(
-                                      alpha: isDark ? 0.14 : 0.10),
+                                    alpha: isDark ? 0.12 : 0.08,
+                                  ),
                                 ),
                                 FractionallySizedBox(
                                   widthFactor: progress,
                                   child: Container(
-                                    color: accent.withValues(
-                                        alpha: isFirst ? 0.90 : 0.50),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(999),
+                                      color: accent.withValues(
+                                        alpha: isFirst ? 1.0 : 0.6,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1113,11 +1329,14 @@ class _MetricPointList extends StatelessWidget {
                 if (locked)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : const Color(0xFFE8E4DC).withValues(alpha: 0.56),
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : const Color(0xFFE8E4DC).withValues(alpha: 0.56),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Icon(
@@ -1133,21 +1352,26 @@ class _MetricPointList extends StatelessWidget {
                         TextSpan(
                           text: _formatInt(context, point.value),
                           style: AppTypography.heading3.copyWith(
-                            color: isFirst
-                                ? accent
-                                : _healthText(context),
-                            fontWeight: FontWeight.w800,
+                            color:
+                                isFirst
+                                    ? accent
+                                    : _healthText(
+                                      context,
+                                    ).withValues(alpha: 0.85),
+                            fontWeight:
+                                isFirst ? FontWeight.bold : FontWeight.w600,
                             fontSize: isFirst ? 22 : 19,
-                            letterSpacing: 0,
+                            letterSpacing: -0.5,
                           ),
                         ),
                         if (data.unit.isNotEmpty)
                           TextSpan(
                             text: ' ${data.unit}',
                             style: AppTypography.labelMedium.copyWith(
-                              color: _healthText(context)
-                                  .withValues(alpha: 0.52),
-                              fontWeight: FontWeight.w700,
+                              color: _healthText(
+                                context,
+                              ).withValues(alpha: 0.52),
+                              fontWeight: FontWeight.w500,
                               fontSize: 13,
                               letterSpacing: 0,
                             ),
@@ -1187,9 +1411,10 @@ class _MetricDetailLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final shimmerBase = isDark
-        ? Colors.white.withValues(alpha: 0.06)
-        : Colors.black.withValues(alpha: 0.05);
+    final shimmerBase =
+        isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.05);
 
     Widget shimmerBox({
       required double height,
@@ -1197,19 +1422,20 @@ class _MetricDetailLoading extends StatelessWidget {
       double radius = 16,
     }) {
       return Container(
-        height: height,
-        width: width,
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: shimmerBase,
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      )
+            height: height,
+            width: width,
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: shimmerBase,
+              borderRadius: BorderRadius.circular(radius),
+            ),
+          )
           .animate(onPlay: (c) => c.repeat())
           .shimmer(
             duration: 1400.ms,
-            color: (isDark ? Colors.white : Colors.white)
-                .withValues(alpha: 0.08),
+            color: (isDark ? Colors.white : Colors.white).withValues(
+              alpha: 0.08,
+            ),
           );
     }
 
@@ -1343,10 +1569,10 @@ String _metricTitle(AppLocalizations l10n, LogMetricType type) {
 String _unitForMetric(AppLocalizations l10n, LogMetricType type) {
   switch (type) {
     case LogMetricType.water:
-      return 'ml';
+      return l10n.settings_milliliters_unit;
     case LogMetricType.energy:
     case LogMetricType.calories:
-      return 'cal';
+      return l10n.settings_kcal_unit;
     case LogMetricType.steps:
       return '';
     case LogMetricType.carbs:
@@ -1413,8 +1639,8 @@ String _shortPointLabel(
   String localeName,
 ) {
   if (count <= 7 && point.start == point.end) {
-    const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    return labels[point.start.weekday - 1];
+    final label = DateFormat.E(localeName).format(point.start);
+    return label.isEmpty ? '' : label.substring(0, 1);
   }
   if (count <= 12 && point.start.day == 1) {
     return DateFormat.MMM(localeName).format(point.start).substring(0, 1);
@@ -1440,14 +1666,33 @@ String _compactNumber(int value, String localeName) {
   return NumberFormat.decimalPattern(localeName).format(value);
 }
 
-Color _metricAccentFor(LogMetricType type) {
-  return _minimalGreenText;
+Color _metricAccentFor(BuildContext context, LogMetricType type) {
+  switch (type) {
+    case LogMetricType.calories:
+      return Theme.of(context).colorScheme.primary;
+    case LogMetricType.energy:
+      return Colors.orange;
+    case LogMetricType.steps:
+      return Theme.of(context).colorScheme.primary;
+    case LogMetricType.water:
+      return const Color(0xFF3B82F6);
+    case LogMetricType.protein:
+      return const Color(0xFF7C9A6D);
+    case LogMetricType.carbs:
+      return const Color(0xFF4F8CC9);
+    case LogMetricType.fat:
+      return const Color(0xFFD18B47);
+  }
 }
 
 Color _healthText(BuildContext context) {
-  return Theme.of(context).brightness == Brightness.dark
-      ? Colors.white
-      : _minimalInk;
+  return Theme.of(context).colorScheme.onSurface;
+}
+
+bool _isMacroMetric(LogMetricType type) {
+  return type == LogMetricType.protein ||
+      type == LogMetricType.carbs ||
+      type == LogMetricType.fat;
 }
 
 class _UpgradeCliffBanner extends StatelessWidget {
@@ -1463,6 +1708,10 @@ class _UpgradeCliffBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final onSurface = theme.colorScheme.onSurface;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -1470,22 +1719,26 @@ class _UpgradeCliffBanner extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _minimalGreen,
+          gradient: LinearGradient(
+            colors: [
+              primary.withValues(alpha: 0.14),
+              primary.withValues(alpha: 0.06),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: primary.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF86EFAC).withValues(alpha: 0.16),
+                color: primary.withValues(alpha: 0.16),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                LucideIcons.lock,
-                color: const Color(0xFF86EFAC),
-                size: 20,
-              ),
+              child: Icon(LucideIcons.lock, color: primary, size: 20),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -1493,30 +1746,27 @@ class _UpgradeCliffBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Full History Locked',
+                    AppLocalizations.of(
+                      context,
+                    )!.log_metric_full_history_locked,
                     style: TextStyle(
                       fontFamily: 'Outfit',
                       fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFF0FDF4),
+                      fontWeight: FontWeight.w500,
+                      color: onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Upgrade to Pro to view history beyond 14 days',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: const Color(0xFF86EFAC),
-                    ),
+                    AppLocalizations.of(
+                      context,
+                    )!.log_metric_full_history_upgrade,
+                    style: TextStyle(fontSize: 12, color: primary),
                   ),
                 ],
               ),
             ),
-            Icon(
-              LucideIcons.chevronRight,
-              color: const Color(0xFF86EFAC),
-              size: 20,
-            ),
+            Icon(LucideIcons.chevronRight, color: primary, size: 20),
           ],
         ),
       ),

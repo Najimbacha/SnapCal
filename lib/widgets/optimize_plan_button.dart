@@ -11,7 +11,9 @@ import '../providers/metrics_provider.dart';
 import '../providers/settings_provider.dart';
 
 class OptimizePlanButton extends StatefulWidget {
-  const OptimizePlanButton({super.key});
+  final bool compact;
+
+  const OptimizePlanButton({super.key, this.compact = false});
 
   @override
   State<OptimizePlanButton> createState() => _OptimizePlanButtonState();
@@ -83,44 +85,119 @@ class _OptimizePlanButtonState extends State<OptimizePlanButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const goldColor = Color(0xFFD4AF37);
+    const deepForest = Color(0xFF0A2114);
+
+    final LinearGradient btnGradient;
+    final Border? btnBorder;
+    final Color textColor;
+    final List<BoxShadow> shadow;
+
+    if (isDark) {
+      btnGradient = const LinearGradient(
+        colors: [
+          Color(0xFFF5D67B), // Light Gold
+          Color(0xFFD4AF37), // Metallic Gold
+          Color(0xFFB88E2F), // Dark Gold
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      btnBorder = null;
+      textColor = deepForest;
+      shadow = [
+        BoxShadow(
+          color: goldColor.withValues(alpha: 0.25),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+      ];
+    } else {
+      btnGradient = const LinearGradient(
+        colors: [
+          Color(0xFFFCF8EF), // Soft champagne
+          Color(0xFFF9F0DF), // Richer cream
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      btnBorder = Border.all(
+        color: const Color(0xFFE5C060), // Soft gold border
+        width: 1.2,
+      );
+      textColor = const Color(0xFF1A3D2B); // Deep Forest Green text
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+      ];
+    }
+
+    if (widget.compact) {
+      return IconButton(
+        tooltip: AppLocalizations.of(context)!.settings_optimize_btn,
+        onPressed: _isLoading ? null : _recalculate,
+        style: IconButton.styleFrom(
+          backgroundColor:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : const Color(0xFFFCF8EF),
+          foregroundColor: textColor,
+          minimumSize: const Size(36, 36),
+          fixedSize: const Size(36, 36),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFE8E4DC),
+            ),
+          ),
+        ),
+        icon:
+            _isLoading
+                ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: textColor,
+                  ),
+                )
+                : const Icon(LucideIcons.sparkles, size: 17),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF1A3D2B),
-            Color(0xFF2C6B4E),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1A3D2B).withValues(alpha: 0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        gradient: btnGradient,
+        border: btnBorder,
+        boxShadow: shadow,
       ),
       child: FilledButton.icon(
         onPressed: _isLoading ? null : _recalculate,
         icon:
             _isLoading
-                ? const SizedBox(
+                ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
-                    color: Colors.white,
+                    color: textColor,
                   ),
                 )
-                : const Icon(LucideIcons.sparkles, size: 20, color: Color(0xFF86EFAC)),
+                : Icon(LucideIcons.sparkles, size: 20, color: textColor),
         label: Text(
           _isLoading
               ? AppLocalizations.of(context)!.settings_optimizing
               : AppLocalizations.of(context)!.settings_optimize_btn,
           style: AppTypography.labelLarge.copyWith(
-            color: Colors.white,
+            color: textColor,
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
           ),

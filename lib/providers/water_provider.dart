@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../data/models/water_log.dart';
 import '../data/repositories/water_repository.dart';
 import '../core/utils/date_utils.dart' as app_date;
-import 'settings_provider.dart';
 
 /// Provider for managing water intake state
 class WaterProvider with ChangeNotifier {
@@ -54,7 +53,7 @@ class WaterProvider with ChangeNotifier {
   }
 
   /// Add water intake
-  Future<void> addWater(int amountMl, {SettingsProvider? settings}) async {
+  Future<void> addWater(int amountMl) async {
     if (_isProcessing) return;
     _isProcessing = true;
     notifyListeners();
@@ -68,11 +67,6 @@ class WaterProvider with ChangeNotifier {
       );
 
       await _repository.addWater(log);
-
-      if (settings != null) {
-        await settings.updateStreakOnMealLog(mealDate: log.dateString);
-      }
-
       await _loadTodaysWater();
     } finally {
       _isProcessing = false;

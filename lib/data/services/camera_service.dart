@@ -53,7 +53,7 @@ class CameraService extends ChangeNotifier {
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
-      
+
       _controller = newController;
 
       await newController.initialize();
@@ -87,13 +87,13 @@ class CameraService extends ChangeNotifier {
     if (_controller == null && !_isInitialized) return;
 
     debugPrint('📸 CameraService: Stopping camera and releasing hardware');
-    
+
     final controllerToDispose = _controller;
     _controller = null;
     _isInitialized = false;
     _isInitializing = false;
-    
-    // Notify listeners immediately so the UI stops using the controller 
+
+    // Notify listeners immediately so the UI stops using the controller
     // before we start the potentially slow disposal process.
     notifyListeners();
 

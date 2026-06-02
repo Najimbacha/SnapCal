@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Screen size categories for SnapCal
 enum ScreenSize {
-  small,    // Phones like Pixel 2, older small devices (< 380dp width)
+  small, // Phones like Pixel 2, older small devices (< 380dp width)
   standard, // Modern mainstream phones (380-600dp width)
-  tablet    // Large tablets and foldables (> 600dp width)
+  tablet, // Large tablets and foldables (> 600dp width)
 }
 
 /// Utility for responsive calculations across the app

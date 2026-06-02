@@ -13,6 +13,7 @@ import '../../core/theme/app_typography.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/meal_slot.dart';
 import 'widgets/smart_meal_planner_card.dart';
+import 'widgets/activity_health_connect_sheet.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
@@ -20,6 +21,7 @@ import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
+import '../../widgets/scan_choice_sheet.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/recent_meal_tile.dart';
 import '../../widgets/premium_prompt_modal.dart';
@@ -206,7 +208,11 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Widget _buildPremiumPlannerTeaser(BuildContext context, int calorieGoal, String restriction) {
+  Widget _buildPremiumPlannerTeaser(
+    BuildContext context,
+    int calorieGoal,
+    String restriction,
+  ) {
     return SmartMealPlannerCard(
       key: const ValueKey('teaser_card'),
       goalKcal: calorieGoal,
@@ -228,7 +234,8 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       if (_currentMealPlan == null) return;
       final currentMeal = _currentMealPlan![2];
-      if (currentMeal.name.contains("quinoa") || currentMeal.name.contains("broccoli")) {
+      if (currentMeal.name.contains("quinoa") ||
+          currentMeal.name.contains("broccoli")) {
         String swapName;
         int swapKcal;
         if (_lastRestriction == 'vegetarian' || _lastRestriction == 'vegan') {
@@ -451,8 +458,9 @@ class _HomeScreenState extends State<HomeScreen>
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
           final mealProvider = context.read<MealProvider>();
-          final hasAiMeal = mealProvider.todaysMeals.any((m) => m.scanSource == 'ai_scan') ||
-                            mealProvider.recentMeals.any((m) => m.scanSource == 'ai_scan');
+          final hasAiMeal =
+              mealProvider.todaysMeals.any((m) => m.scanSource == 'ai_scan') ||
+              mealProvider.recentMeals.any((m) => m.scanSource == 'ai_scan');
 
           if (hasAiMeal) {
             final l10n = AppLocalizations.of(context)!;
@@ -471,7 +479,6 @@ class _HomeScreenState extends State<HomeScreen>
       });
     });
   }
-
 
   @override
   void dispose() {
@@ -514,21 +521,39 @@ class _HomeScreenState extends State<HomeScreen>
       (p) => p.dailyFatGoal,
     );
     final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
+    final streak = context.select<SettingsProvider, int>(
+      (p) => p.currentStreak,
+    );
     final activityState = context.select<
       ActivityProvider,
-      ({int steps, int burnedCalories, bool isTracking, String status})
+      ({
+        int steps,
+        int burnedCalories,
+        bool caloriesEstimated,
+        bool isTracking,
+        String status,
+      })
     >(
       (p) => (
         steps: p.isTracking ? p.steps : 0,
         burnedCalories: p.isTracking ? p.burnedCalories : 0,
+        caloriesEstimated: p.caloriesAreEstimated,
         isTracking: p.isTracking,
         status: p.status,
       ),
     );
 
-    final adjustedGoal = isPro ? calorieGoal + activityState.burnedCalories : calorieGoal;
+    final waterState = context.select<WaterProvider, ({int total, int goal})>(
+      (p) => (total: p.total, goal: p.goal),
+    );
+
+    final adjustedGoal =
+        isPro ? calorieGoal + activityState.burnedCalories : calorieGoal;
     final remaining = adjustedGoal - totalCalories;
-    final calorieProgress = (totalCalories / math.max(adjustedGoal, 1)).clamp(0.0, 1.4);
+    final calorieProgress = (totalCalories / math.max(adjustedGoal, 1)).clamp(
+      0.0,
+      1.4,
+    );
     final showFirstLoadSkeleton =
         mealState.loading && totalCalories == 0 && recentMeals.isEmpty;
     return AppPageScaffold(
@@ -552,6 +577,7 @@ class _HomeScreenState extends State<HomeScreen>
             _MinimalHomeTopBar(
               isPro: isPro,
               isRefreshing: mealState.refreshing,
+              streak: streak,
               onSettingsTap: () => context.push('/settings'),
               onProTap: () => context.push('/paywall'),
             ),
@@ -562,40 +588,82 @@ class _HomeScreenState extends State<HomeScreen>
             showFirstLoadSkeleton
                 ? const _HomeDashboardSkeleton()
                 : _MinimalCalorieHero(
-                    consumed: totalCalories,
-                    goal: adjustedGoal,
-                    remaining: remaining,
-                    mealCount: mealCount,
-                    progress: calorieProgress,
-                  ),
+                  consumed: totalCalories,
+                  goal: adjustedGoal,
+                  remaining: remaining,
+                  mealCount: mealCount,
+                  progress: calorieProgress,
+                ),
           ),
           const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[2],
-            _MinimalMacroSection(
-              macros: macros,
-              proteinGoal: proteinGoal,
-              carbGoal: carbGoal,
-              fatGoal: fatGoal,
+            _SecondaryDashboardGrid(
+              waterTotal: waterState.total,
+              waterGoal: waterState.goal,
+              steps: activityState.steps,
+              burnedCalories: activityState.burnedCalories,
+              caloriesEstimated: activityState.caloriesEstimated,
+              stepsUnit: 'steps',
+              activityLive: activityState.isTracking,
+              onWaterAdd: () => _addWater(context.read<WaterProvider>()),
+              onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
+              onActivityTap: () => showActivityHealthConnectSheet(context),
             ),
           ),
           const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[3],
-            _MinimalToolsSection(
-              onPlannerTap: () => context.push('/planner'),
-              onCoachTap: () => context.push('/assistant'),
+            _MinimalMacroSection(
+              macros: macros,
+              proteinGoal: proteinGoal,
+              carbGoal: carbGoal,
+              fatGoal: fatGoal,
               isPro: isPro,
             ),
           ),
           const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[4],
+            _MinimalToolsSection(
+              onPlannerTap: () {
+                if (isPro) {
+                  context.push('/planner');
+                } else {
+                  PremiumConversionService().openPaywall(
+                    context,
+                    PaywallEntryPoint.plannerLockedDay,
+                    featureName: 'meal_planner',
+                  );
+                }
+              },
+              onCoachTap: () {
+                if (isPro) {
+                  context.push('/assistant');
+                } else {
+                  PremiumConversionService().openPaywall(
+                    context,
+                    PaywallEntryPoint.aiCoachLimit,
+                    featureName: 'ai_coach',
+                  );
+                }
+              },
+              isPro: isPro,
+            ),
+          ),
+          const SizedBox(height: 2),
+          _staggeredSlide(
+            _itemAnims[5],
             _MinimalMealsSection(
               meals: recentMeals,
               isPro: isPro,
               onViewAll: () => context.go('/log'),
-              onScan: () => context.go('/snap'),
+              onScan:
+                  () => showScanChoiceSheet(
+                    context: context,
+                    onFoodScan: () => context.go('/snap'),
+                    onBarcodeScan: () => context.go('/snap?mode=barcode'),
+                  ),
               onProTap: () => context.push('/paywall'),
             ),
           ),
@@ -675,12 +743,14 @@ const _minimalGreenText = Color(0xFF16733A);
 class _MinimalHomeTopBar extends StatelessWidget {
   final bool isPro;
   final bool isRefreshing;
+  final int streak;
   final VoidCallback onSettingsTap;
   final VoidCallback onProTap;
 
   const _MinimalHomeTopBar({
     required this.isPro,
     required this.isRefreshing,
+    required this.streak,
     required this.onSettingsTap,
     required this.onProTap,
   });
@@ -694,70 +764,161 @@ class _MinimalHomeTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Row(
         children: [
-          AppScaleTap(
-            onTap: onSettingsTap,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'SnapCal',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0,
-                  ),
+          // Logo/Branding
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'SnapCal',
+                style: AppTypography.titleMedium.copyWith(
+                  color: ink,
+                  fontSize: 22, // Increased for premium presence
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.8,
                 ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child:
-                      isRefreshing
-                          ? Padding(
-                            key: const ValueKey('refreshing'),
-                            padding: const EdgeInsets.only(left: 8),
-                            child: SizedBox(
-                              width: 10,
-                              height: 10,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                color: isDark ? Colors.white70 : _minimalGreen,
-                              ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child:
+                    isRefreshing
+                        ? Padding(
+                          key: const ValueKey('refreshing'),
+                          padding: const EdgeInsets.only(left: 8),
+                          child: SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                              color:
+                                  isDark
+                                      ? Colors.white70
+                                      : Theme.of(context).colorScheme.primary,
                             ),
-                          )
-                          : const SizedBox.shrink(key: ValueKey('idle')),
-                ),
-              ],
-            ),
+                          ),
+                        )
+                        : const SizedBox.shrink(key: ValueKey('idle')),
+              ),
+            ],
           ),
           const Spacer(),
+          // Streak Flame Badge (only if active)
+          if (streak >= 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color:
+                    isDark
+                        ? Colors.orange.withValues(alpha: 0.12)
+                        : const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color:
+                      isDark
+                          ? Colors.orange.withValues(alpha: 0.25)
+                          : Colors.orange.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.flame, color: Colors.orange, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$streak',
+                    style: TextStyle(
+                      color:
+                          isDark ? Colors.orange[300] : const Color(0xFFE65100),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          // Pro Badge / Go Pro
           AppScaleTap(
             onTap: isPro ? onSettingsTap : onProTap,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _minimalGreen,
-                borderRadius: BorderRadius.circular(20),
+                gradient:
+                    isPro
+                        ? const LinearGradient(
+                          colors: [
+                            Color(0xFF10B981),
+                            Color(0xFF059669),
+                          ], // Emerald
+                        )
+                        : const LinearGradient(
+                          colors: [
+                            Color(0xFF8B5CF6),
+                            Color(0xFFEC4899),
+                          ], // Gemini Gradient
+                        ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: (isPro
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFF8B5CF6))
+                        .withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     isPro ? LucideIcons.gem : LucideIcons.crown,
-                    color: const Color(0xFF86EFAC),
+                    color: Colors.white,
                     size: 12,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                   Text(
                     isPro
                         ? AppLocalizations.of(context)!.home_pro_badge
                         : AppLocalizations.of(context)!.home_go_pro,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: const Color(0xFFF0FDF4),
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Settings button
+          GestureDetector(
+            onTap: onSettingsTap,
+            child: Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.black.withValues(alpha: 0.04),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.04),
+                ),
+              ),
+              child: Icon(
+                LucideIcons.settings2,
+                color: isDark ? Colors.white70 : Colors.black87,
+                size: 16,
               ),
             ),
           ),
@@ -802,10 +963,7 @@ class _MinimalCalorieHero extends StatelessWidget {
               TweenAnimationBuilder<double>(
                 duration: const Duration(milliseconds: 900),
                 curve: Curves.easeOutCubic,
-                tween: Tween<double>(
-                  begin: 0,
-                  end: progress.clamp(0.0, 1.0),
-                ),
+                tween: Tween<double>(begin: 0, end: progress.clamp(0.0, 1.0)),
                 builder: (context, value, child) {
                   return CircularProgressIndicator(
                     value: value,
@@ -815,16 +973,6 @@ class _MinimalCalorieHero extends StatelessWidget {
                     color: isOverGoal ? AppColors.error : _minimalGreen,
                   );
                 },
-              ),
-              Center(
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: isOverGoal ? AppColors.error : _minimalGreen,
-                    shape: BoxShape.circle,
-                  ),
-                ),
               ),
               Center(
                 child: Column(
@@ -972,7 +1120,10 @@ class _MinimalDivider extends StatelessWidget {
       width: 1,
       height: 46,
       margin: const EdgeInsets.symmetric(horizontal: 6),
-      color: isDark ? Colors.white.withValues(alpha: 0.09) : const Color(0xFFE2DED8),
+      color:
+          isDark
+              ? Colors.white.withValues(alpha: 0.09)
+              : const Color(0xFFE2DED8),
     );
   }
 }
@@ -996,12 +1147,14 @@ class _MinimalMacroSection extends StatelessWidget {
   final int proteinGoal;
   final int carbGoal;
   final int fatGoal;
+  final bool isPro;
 
   const _MinimalMacroSection({
     required this.macros,
     required this.proteinGoal,
     required this.carbGoal,
     required this.fatGoal,
+    required this.isPro,
   });
 
   @override
@@ -1012,29 +1165,187 @@ class _MinimalMacroSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _MinimalSectionLabel(text: l10n.home_section_macros_today),
-          const SizedBox(height: 14),
-          _MinimalMacroRow(
-            label: l10n.result_protein,
-            value: macros.protein,
-            goal: proteinGoal,
-          ),
-          const SizedBox(height: 12),
-          _MinimalMacroRow(
-            label: l10n.result_carbs,
-            value: macros.carbs,
-            goal: carbGoal,
-          ),
-          const SizedBox(height: 12),
-          _MinimalMacroRow(
-            label: l10n.result_fat,
-            value: macros.fat,
-            goal: fatGoal,
-          ),
+          children: [
+            Row(
+              children: [
+                _MinimalSectionLabel(text: l10n.home_section_macros_today),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFD4A029), Color(0xFFE29200)],
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'PRO',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 7.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (isPro) ...[
+              _MinimalMacroRow(
+                label: l10n.result_protein,
+                value: macros.protein,
+                goal: proteinGoal,
+              ),
+              const SizedBox(height: 12),
+              _MinimalMacroRow(
+                label: l10n.result_carbs,
+                value: macros.carbs,
+                goal: carbGoal,
+              ),
+              const SizedBox(height: 12),
+              _MinimalMacroRow(
+                label: l10n.result_fat,
+                value: macros.fat,
+                goal: fatGoal,
+              ),
+            ] else
+              const _MacroPreviewCard(),
           const SizedBox(height: 18),
           const _MinimalSectionDivider(),
         ],
+      ),
+    );
+  }
+}
+
+class _MacroPreviewCard extends StatelessWidget {
+  const _MacroPreviewCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+    final cardBg =
+        isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7);
+    final borderColor =
+        isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : const Color(0xFFE8E4DC);
+    final muted =
+        isDark ? Colors.white38 : const Color(0xFFB4AFA8);
+    final mutedText =
+        isDark ? Colors.white60 : const Color(0xFF78716C);
+
+    final items = [
+      (l10n.result_protein, const Color(0xFF7C9A6D), 0.65),
+      (l10n.result_carbs, const Color(0xFF4F8CC9), 0.50),
+      (l10n.result_fat, const Color(0xFFD18B47), 0.40),
+    ];
+
+    return GestureDetector(
+      onTap: () => PremiumConversionService().openPaywall(
+        context,
+        PaywallEntryPoint.macroDetails,
+        featureName: 'home_macros',
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Three macro rows
+            ...items.map(
+              (item) => Padding(
+                padding: EdgeInsets.only(
+                  bottom: item == items.last ? 0 : 12,
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 56,
+                      child: Text(
+                        item.$1,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: mutedText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        height: 4,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: item.$2.withValues(alpha: isDark ? 0.10 : 0.15),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: FractionallySizedBox(
+                          widthFactor: item.$3,
+                          heightFactor: 1,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: item.$2.withValues(alpha: isDark ? 0.35 : 0.40),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Icon(LucideIcons.lock, size: 12, color: muted),
+                    const SizedBox(width: 4),
+                    Text(
+                      '—g',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.macro_unlock_card_title,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+                Icon(
+                  LucideIcons.chevronRight,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1080,7 +1391,8 @@ class _MinimalMacroRow extends StatelessWidget {
             height: 3,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.10) : _minimalLine,
+              color:
+                  isDark ? Colors.white.withValues(alpha: 0.10) : _minimalLine,
               borderRadius: BorderRadius.circular(3),
             ),
             child: Align(
@@ -1197,22 +1509,55 @@ class _PremiumBentoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    // Premium gold-leaf tone for borders and badges
+
+    // Theme-aware design tokens
     const goldColor = Color(0xFFD4AF37); // Classic metallic gold
-    const goldLight = Color(0xFFF9F6E5); 
-    const goldDark = Color(0xFF231E12);
-    
-    final cardBg = isDark
-        ? const Color(0xFF161512) // Dark warm charcoal
-        : const Color(0xFFFCFBF9); // Organic warm white
-        
-    final borderColor = isDark
-        ? goldColor.withValues(alpha: 0.15)
-        : goldColor.withValues(alpha: 0.22);
-        
-    final textColor = isDark ? Colors.white : _minimalInk;
-    final subtitleColor = isDark ? Colors.white54 : _minimalMuted;
+    final LinearGradient cardBg;
+    final Color borderColor;
+    final Color textColor;
+    final Color subtitleColor;
+    final Color iconBgColor;
+    final Color iconColor;
+    final List<BoxShadow> shadow;
+
+    if (isDark) {
+      cardBg = const LinearGradient(
+        colors: [
+          Color(0xFF0B2114), // Deep Forest Green
+          Color(0xFF0F321E), // Rich Emerald Forest Green
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      borderColor = goldColor.withValues(alpha: 0.3);
+      textColor = const Color(0xFFFAF8F5); // Warm cream text
+      subtitleColor = const Color(0xFFBDD2C6); // Soft sage/champagne text
+      iconBgColor = const Color(0xFF113620);
+      iconColor = goldColor;
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.25),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ];
+    } else {
+      cardBg = const LinearGradient(
+        colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+      );
+      borderColor = const Color(0xFFEFEBE4); // Soft champagne border
+      textColor = const Color(0xFF1A1A2E); // Deep charcoal text
+      subtitleColor = const Color(0xFF788C80); // Muted sage/olive
+      iconBgColor = const Color(0xFFFCF8EF); // Light champagne tint
+      iconColor = const Color(0xFFBA7517); // Rich gold/amber
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 16,
+          offset: const Offset(0, 6),
+        ),
+      ];
+    }
 
     return AppScaleTap(
       onTap: onTap,
@@ -1220,19 +1565,10 @@ class _PremiumBentoCard extends StatelessWidget {
         height: 112,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: cardBg,
+          gradient: cardBg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: borderColor,
-            width: 1.4,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: goldColor.withValues(alpha: isDark ? 0.04 : 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: borderColor, width: 1.2),
+          boxShadow: shadow,
         ),
         child: Stack(
           children: [
@@ -1241,34 +1577,63 @@ class _PremiumBentoCard extends StatelessWidget {
               top: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isPro ? _minimalGreen : goldColor,
-                  borderRadius: BorderRadius.circular(6),
+                  gradient:
+                      isPro
+                          ? (isDark
+                              ? const LinearGradient(
+                                colors: [Color(0xFF16472D), Color(0xFF1C5C3B)],
+                              )
+                              : const LinearGradient(
+                                colors: [Color(0xFFE2EFE0), Color(0xFFCDE2CC)],
+                              ))
+                          : const LinearGradient(
+                            colors: [Color(0xFFE5C060), Color(0xFFB88E2F)],
+                          ),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isPro
+                              ? (isDark
+                                  ? const Color(0xFF16472D)
+                                  : const Color(0xFFCDE2CC))
+                              : goldColor)
+                          .withValues(alpha: 0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       isPro ? LucideIcons.gem : LucideIcons.crown,
-                      color: isPro ? const Color(0xFF86EFAC) : Colors.white,
-                      size: 8,
+                      color:
+                          isPro && !isDark
+                              ? const Color(0xFF1E4620)
+                              : Colors.white,
+                      size: 9,
                     ),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 4),
                     Text(
                       'PRO',
                       style: AppTypography.labelSmall.copyWith(
-                        color: isPro ? const Color(0xFFF0FDF4) : Colors.white,
+                        color:
+                            isPro && !isDark
+                                ? const Color(0xFF1E4620)
+                                : Colors.white,
                         fontSize: 8,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.8,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            
+
             // Card Content
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1279,22 +1644,19 @@ class _PremiumBentoCard extends StatelessWidget {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: isDark ? goldDark : goldLight,
+                    color: iconBgColor,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: goldColor.withValues(alpha: 0.3),
+                      color:
+                          isDark
+                              ? goldColor.withValues(alpha: 0.25)
+                              : const Color(0xFFFAF2E6),
                       width: 1,
                     ),
                   ),
-                  child: Center(
-                    child: Icon(
-                      icon,
-                      color: goldColor,
-                      size: 16,
-                    ),
-                  ),
+                  child: Center(child: Icon(icon, color: iconColor, size: 16)),
                 ),
-                
+
                 // Titles
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1355,8 +1717,8 @@ class _MinimalMealsSection extends StatelessWidget {
         meals.isEmpty
             ? 'Open log'
             : hiddenMealCount > 0
-                ? '${l10n.home_view_all} (${meals.length})'
-                : l10n.home_view_all;
+            ? '${l10n.home_view_all} (${meals.length})'
+            : l10n.home_view_all;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 18, 22, 8),
@@ -1390,9 +1752,9 @@ class _MinimalMealsSection extends StatelessWidget {
           if (meals.isEmpty)
             _MinimalEmptyMealRow(onTap: onScan)
           else
-            ...meals.take(3).map(
-                  (meal) => _MinimalMealRow(meal: meal, onTap: onViewAll),
-                ),
+            ...meals
+                .take(3)
+                .map((meal) => _MinimalMealRow(meal: meal, onTap: onViewAll)),
           if (!isPro) ...[
             const _MinimalLockedMealRow(label: 'Lunch'),
             const _MinimalLockedMealRow(label: 'Dinner'),
@@ -1446,7 +1808,10 @@ class _MinimalMealRow extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFECEAE6),
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFECEAE6),
             ),
           ),
         ),
@@ -1563,7 +1928,10 @@ class _MinimalLockedMealRow extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFECEAE6),
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFECEAE6),
             ),
           ),
         ),
@@ -1622,13 +1990,67 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const goldColor = Color(0xFFD4AF37);
+
+    final LinearGradient cardBg;
+    final Color borderColor;
+    final Color textColor;
+    final Color subtitleColor;
+    final Color arrowColor;
+    final List<BoxShadow> shadow;
+
+    if (isDark) {
+      cardBg = const LinearGradient(
+        colors: [
+          Color(0xFF163E27), // Sleek Emerald
+          Color(0xFF0B2114), // Deep Forest Green
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      borderColor = goldColor.withValues(alpha: 0.4);
+      textColor = const Color(0xFFFAF8F5);
+      subtitleColor = const Color(0xFFE3D0A4);
+      arrowColor = goldColor;
+      shadow = [
+        BoxShadow(
+          color: const Color(0xFF0B2114).withValues(alpha: 0.2),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ];
+    } else {
+      cardBg = const LinearGradient(
+        colors: [
+          Color(0xFFFCF8EF), // Warm champagne light background
+          Color(0xFFF9F0DF),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      borderColor = const Color(0xFFE5C060).withValues(alpha: 0.5);
+      textColor = const Color(0xFF1A3D2B); // Deep Forest text
+      subtitleColor = const Color(0xFF888780); // Muted warm grey
+      arrowColor = const Color(0xFFBA7517); // Rich gold/amber
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ];
+    }
+
     return AppScaleTap(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: _minimalGreen,
+          gradient: cardBg,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor, width: 1.2),
+          boxShadow: shadow,
         ),
         child: Row(
           children: [
@@ -1639,9 +2061,9 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
                   Text(
                     'Unlock your full meal plan',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: const Color(0xFFF0FDF4),
+                      color: textColor,
                       fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       letterSpacing: 0,
                     ),
                   ),
@@ -1649,7 +2071,7 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
                   Text(
                     'Lunch · Dinner · Smart suggestions',
                     style: AppTypography.labelSmall.copyWith(
-                      color: const Color(0xFF86EFAC),
+                      color: subtitleColor,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0,
@@ -1658,11 +2080,7 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              LucideIcons.arrowRight,
-              color: Color(0xFF4ADE80),
-              size: 18,
-            ),
+            Icon(LucideIcons.arrowRight, color: arrowColor, size: 18),
           ],
         ),
       ),
@@ -1677,8 +2095,6 @@ String _formatNumber(int value) {
     (match) => ',',
   );
 }
-
-
 
 /// A clean settings gear icon button that replaces the old avatar circle.
 /// Makes the navigation affordance immediately clear.
@@ -1699,16 +2115,22 @@ class _HomeSettingsButton extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: isPro
-              ? const Color(0xFFFFD700).withValues(alpha: isDark ? 0.12 : 0.08)
-              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+          color:
+              isPro
+                  ? const Color(
+                    0xFFFFD700,
+                  ).withValues(alpha: isDark ? 0.12 : 0.08)
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
           shape: BoxShape.circle,
           border: Border.all(
-            color: isPro
-                ? const Color(0xFFFFD700).withValues(alpha: isDark ? 0.30 : 0.22)
-                : colorScheme.outlineVariant.withValues(
-                    alpha: isDark ? 0.18 : 0.12,
-                  ),
+            color:
+                isPro
+                    ? const Color(
+                      0xFFFFD700,
+                    ).withValues(alpha: isDark ? 0.30 : 0.22)
+                    : colorScheme.outlineVariant.withValues(
+                      alpha: isDark ? 0.18 : 0.12,
+                    ),
             width: 0.8,
           ),
         ),
@@ -1716,9 +2138,10 @@ class _HomeSettingsButton extends StatelessWidget {
           child: Icon(
             LucideIcons.settings2,
             size: 16,
-            color: isPro
-                ? const Color(0xFFE29200)
-                : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+            color:
+                isPro
+                    ? const Color(0xFFE29200)
+                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
           ),
         ),
       ),
@@ -1753,11 +2176,7 @@ class _HomeCoachButton extends StatelessWidget {
           ],
         ),
         child: const Center(
-          child: Icon(
-            LucideIcons.sparkles,
-            size: 15,
-            color: Colors.white,
-          ),
+          child: Icon(LucideIcons.sparkles, size: 15, color: Colors.white),
         ),
       ),
     );
@@ -1805,29 +2224,43 @@ class _HomeDashboardHeader extends StatelessWidget {
                 ),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 180),
-                  child: isRefreshing
-                      ? Padding(
-                          key: const ValueKey('refreshing'),
-                          padding: const EdgeInsets.only(left: 8),
-                          child: SizedBox(
-                            width: 11,
-                            height: 11,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: isPro
-                                  ? const Color(0xFFE29200)
-                                  : colorScheme.primary,
+                  child:
+                      isRefreshing
+                          ? Padding(
+                            key: const ValueKey('refreshing'),
+                            padding: const EdgeInsets.only(left: 8),
+                            child: SizedBox(
+                              width: 11,
+                              height: 11,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color:
+                                    isPro
+                                        ? const Color(0xFFE29200)
+                                        : colorScheme.primary,
+                              ),
                             ),
-                          ),
-                        )
-                      : const SizedBox.shrink(key: ValueKey('idle')),
+                          )
+                          : const SizedBox.shrink(key: ValueKey('idle')),
                 ),
               ],
             ),
           ),
 
           // AI Coach Button
-          _HomeCoachButton(onTap: () => context.push('/assistant')),
+          _HomeCoachButton(
+            onTap: () {
+              if (isPro) {
+                context.push('/assistant');
+              } else {
+                PremiumConversionService().openPaywall(
+                  context,
+                  PaywallEntryPoint.aiCoachLimit,
+                  featureName: 'ai_coach',
+                );
+              }
+            },
+          ),
           const SizedBox(width: 8),
 
           // Right: streak badge + upgrade/pro indicator
@@ -1841,8 +2274,6 @@ class _HomeDashboardHeader extends StatelessWidget {
     );
   }
 }
-
-
 
 class _PremiumProBadge extends StatelessWidget {
   final bool isPro;
@@ -1906,7 +2337,9 @@ class _PremiumProBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8B5CF6).withValues(alpha: isDark ? 0.35 : 0.20),
+              color: const Color(
+                0xFF8B5CF6,
+              ).withValues(alpha: isDark ? 0.35 : 0.20),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1933,17 +2366,11 @@ class _PremiumProBadge extends StatelessWidget {
   }
 }
 
-
-
-
 class _HeaderStreakBadge extends StatelessWidget {
   final int streak;
   final bool isPro;
 
-  const _HeaderStreakBadge({
-    required this.streak,
-    this.isPro = false,
-  });
+  const _HeaderStreakBadge({required this.streak, this.isPro = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1960,15 +2387,16 @@ class _HeaderStreakBadge extends StatelessWidget {
         border: Border.all(
           color: badgeColor.withValues(alpha: isDark ? 0.22 : 0.28),
         ),
-        boxShadow: isPro
-            ? [
-                BoxShadow(
-                  color: badgeColor.withValues(alpha: isDark ? 0.08 : 0.03),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                )
-              ]
-            : null,
+        boxShadow:
+            isPro
+                ? [
+                  BoxShadow(
+                    color: badgeColor.withValues(alpha: isDark ? 0.08 : 0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+                : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2051,7 +2479,10 @@ class _CalorieDashboardCard extends StatelessWidget {
                                             colorScheme.error,
                                             const Color(0xFFFF8A80),
                                           ]
-                                          : [AppColors.primary, AppColors.sky],
+                                          : [
+                                            colorScheme.primary,
+                                            AppColors.sky,
+                                          ],
                                 ).createShader(bounds),
                             blendMode: BlendMode.srcIn,
                             child: Text(
@@ -2127,8 +2558,32 @@ class _YesterdayInsightRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final insight = _insightText;
     final comparison = _comparisonText;
+
+    Color insightColor = AppColors.green;
+    if (consumed == 0) {
+      insightColor = colorScheme.primary;
+    } else if (remaining < 0) {
+      insightColor = AppColors.amber;
+    } else if (proteinGoal > 0 && protein < proteinGoal * 0.55) {
+      insightColor = colorScheme.primary.withValues(alpha: 0.85);
+    }
+
+    Color comparisonColor = AppColors.green;
+    if (yesterdayCalories <= 0) {
+      comparisonColor = AppColors.blue;
+    } else {
+      final diff = consumed - yesterdayCalories;
+      if (diff == 0) {
+        comparisonColor = colorScheme.primary;
+      } else if (diff < 0) {
+        comparisonColor = AppColors.green;
+      } else {
+        comparisonColor = AppColors.amber;
+      }
+    }
 
     return Row(
       children: [
@@ -2136,7 +2591,7 @@ class _YesterdayInsightRow extends StatelessWidget {
           child: _MiniHeroChip(
             icon: LucideIcons.sparkles,
             label: insight,
-            color: _insightColor,
+            color: insightColor,
           ),
         ),
         const SizedBox(width: 8),
@@ -2144,7 +2599,7 @@ class _YesterdayInsightRow extends StatelessWidget {
           child: _MiniHeroChip(
             icon: LucideIcons.history,
             label: comparison,
-            color: _comparisonColor,
+            color: comparisonColor,
           ),
         ),
       ],
@@ -2160,29 +2615,12 @@ class _YesterdayInsightRow extends StatelessWidget {
     return 'Next meal fits today';
   }
 
-  Color get _insightColor {
-    if (consumed == 0) return AppColors.primary;
-    if (remaining < 0) return AppColors.amber;
-    if (proteinGoal > 0 && protein < proteinGoal * 0.55) {
-      return AppColors.primaryDark;
-    }
-    return AppColors.green;
-  }
-
   String get _comparisonText {
     if (yesterdayCalories <= 0) return 'Build your baseline';
     final diff = consumed - yesterdayCalories;
     if (diff == 0) return 'Same as yesterday';
     if (diff < 0) return '${diff.abs()} kcal below yesterday';
     return '$diff kcal above yesterday';
-  }
-
-  Color get _comparisonColor {
-    if (yesterdayCalories <= 0) return AppColors.blue;
-    final diff = consumed - yesterdayCalories;
-    if (diff == 0) return AppColors.primary;
-    if (diff < 0) return AppColors.green;
-    return AppColors.amber;
   }
 }
 
@@ -2229,8 +2667,6 @@ class _MiniHeroChip extends StatelessWidget {
     );
   }
 }
-
-
 
 class _DashboardSectionFrame extends StatelessWidget {
   final Widget child;
@@ -2655,6 +3091,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
   final int waterGoal;
   final int steps;
   final int burnedCalories;
+  final bool caloriesEstimated;
   final String stepsUnit;
   final bool activityLive;
   final VoidCallback onWaterAdd;
@@ -2666,6 +3103,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
     required this.waterGoal,
     required this.steps,
     required this.burnedCalories,
+    required this.caloriesEstimated,
     required this.stepsUnit,
     required this.activityLive,
     required this.onWaterAdd,
@@ -2676,73 +3114,424 @@ class _SecondaryDashboardGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final normalizedWaterGoal = math.max(waterGoal, 1);
-    final waterProgress = (waterTotal / normalizedWaterGoal).clamp(0.0, 1.0);
     final stepsProgress = (steps / 10000).clamp(0.0, 1.0);
+    final caloriesText =
+        caloriesEstimated
+            ? '$burnedCalories estimated kcal'
+            : '$burnedCalories active kcal';
 
-    return _DashboardSectionFrame(
-      accentColor: AppColors.primary,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      margin: EdgeInsets.zero,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                l10n.home_daily_wellness,
-                style: AppTypography.titleMedium.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                ),
-              ),
-              const Spacer(),
-              Icon(
-                LucideIcons.activity,
-                color: colorScheme.onSurfaceVariant,
-                size: 18,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+          _MinimalSectionLabel(text: l10n.home_daily_wellness),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
-                child: _ModernMetricPanel(
-                  icon: LucideIcons.droplets,
-                  color: AppColors.sky,
-                  title: l10n.water_hydration,
-                  primaryMetric: waterTotal == 0 ? '0 ml' : '$waterTotal ml',
-                  secondaryMetric: waterTotal == 0 ? 'Tap to log water' : 'Goal: $waterGoal ml',
-                  progress: waterProgress,
-                  footerText: waterTotal == 0 ? 'Start hydration goal' : '+250ml per tap',
-                  liquidFill: true,
-                  onTap: onWaterAdd,
+                child: _WaterFillCard(
+                  total: waterTotal,
+                  goal: waterGoal,
+                  onAdd: onWaterAdd,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
-                child: AppPulse(
-                  pulsing: activityLive,
-                  child: _ModernMetricPanel(
-                    icon: LucideIcons.footprints,
-                    color: AppColors.primary,
-                    title: l10n.home_metric_activity,
-                    primaryMetric: steps == 0 ? '0 steps' : '$steps',
-                    secondaryMetric: steps == 0 ? 'Start walking today' : '$burnedCalories activity kcal',
-                    progress: stepsProgress,
-                    footerText: steps == 0 ? 'Tap to log activity' : (activityLive ? 'Walking • Live' : 'Steps today'),
-                    motionTrail: true,
-                    motionActive: activityLive,
-                    onTap: onActivityTap,
-                  ),
+                child: _MinimalWellnessCard(
+                  icon: LucideIcons.footprints,
+                  color: Theme.of(context).colorScheme.primary,
+                  title: l10n.home_metric_activity,
+                  value: steps == 0 ? '0 steps' : '$steps',
+                  subtitle: steps == 0 ? 'Start walking' : caloriesText,
+                  progress: stepsProgress,
+                  onTap: onActivityTap,
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WaterFillCard extends StatefulWidget {
+  final int total;
+  final int goal;
+  final VoidCallback onAdd;
+
+  const _WaterFillCard({
+    required this.total,
+    required this.goal,
+    required this.onAdd,
+  });
+
+  @override
+  State<_WaterFillCard> createState() => _WaterFillCardState();
+}
+
+class _WaterFillCardState extends State<_WaterFillCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _rippleController;
+  double _displayProgress = 0;
+  bool _showRipple = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _rippleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _rippleController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() => _showRipple = false);
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _displayProgress = (widget.total / widget.goal).clamp(0.0, 1.0);
+        });
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _WaterFillCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.total != oldWidget.total) {
+      _animateFill((widget.total / widget.goal).clamp(0.0, 1.0));
+    }
+  }
+
+  void _animateFill(double target) {
+    _rippleController.forward(from: 0);
+    setState(() => _showRipple = true);
+    setState(() => _displayProgress = target);
+  }
+
+  @override
+  void dispose() {
+    _rippleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final blue = const Color(0xFF3B82F6);
+    final progress = _displayProgress;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        widget.onAdd();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : const Color(0xFFE8E4DC),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon row — matches activity card
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: blue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    LucideIcons.droplets,
+                    size: 16,
+                    color: Color(0xFF3B82F6),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'Hydration',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Value row with compact water glass
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.total == 0 ? '0 ml' : '${widget.total} ml',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: isDark ? Colors.white : const Color(0xFF1C1917),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.total == 0
+                            ? 'Tap to log'
+                            : 'Goal: ${widget.goal} ml',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Compact water glass
+                SizedBox(
+                  width: 36,
+                  height: 42,
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: blue.withValues(alpha: 0.25),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Stack(
+                            children: [
+                              TweenAnimationBuilder<double>(
+                                duration: const Duration(milliseconds: 500),
+                                curve: Curves.easeOutCubic,
+                                tween: Tween<double>(begin: 0, end: progress),
+                                builder: (context, value, child) {
+                                  return Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Container(
+                                      width: double.infinity,
+                                      height: value * 36,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            blue.withValues(alpha: 0.5),
+                                            blue.withValues(alpha: 0.7),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (_showRipple)
+                                AnimatedBuilder(
+                                  animation: _rippleController,
+                                  builder: (context, child) {
+                                    return CustomPaint(
+                                      painter: _SplashRingPainter(
+                                        animation: _rippleController.value,
+                                        color: blue,
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Fill bar — matches activity card progress bar height
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  color: blue.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: FractionallySizedBox(
+                  widthFactor: progress,
+                  heightFactor: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: blue.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SplashRingPainter extends CustomPainter {
+  final double animation;
+  final Color color;
+
+  const _SplashRingPainter({
+    required this.animation,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide * 0.35 * (1 + animation * 0.5);
+    final alpha = ((1 - animation) * 120).round().clamp(0, 120);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = color.withValues(alpha: alpha / 255.0)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5 * (1 - animation),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SplashRingPainter oldDelegate) =>
+      oldDelegate.animation != animation;
+}
+
+class _MinimalWellnessCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String value;
+  final String subtitle;
+  final double progress;
+  final VoidCallback onTap;
+
+  const _MinimalWellnessCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.progress,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : const Color(0xFFE8E4DC),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 16, color: color),
+                ),
+                const Spacer(),
+                Text(
+                  title,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: AppTypography.titleMedium.copyWith(
+                color: isDark ? Colors.white : const Color(0xFF1C1917),
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: AppTypography.labelSmall.copyWith(
+                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 10),
+            Container(
+              height: 3,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: FractionallySizedBox(
+                widthFactor: progress,
+                heightFactor: 1,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2767,7 +3556,7 @@ class _TodayMealsPreviewCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return _DashboardSectionFrame(
-      accentColor: AppColors.primary,
+      accentColor: colorScheme.primary,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2787,7 +3576,7 @@ class _TodayMealsPreviewCard extends StatelessWidget {
                 onPressed: onViewAll,
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
-                  foregroundColor: AppColors.primary,
+                  foregroundColor: colorScheme.primary,
                   textStyle: AppTypography.labelLarge.copyWith(
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0,
@@ -2852,12 +3641,12 @@ class _EmptyMealsInline extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.10),
+              color: colorScheme.primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(
+            child: Icon(
               LucideIcons.utensilsCrossed,
-              color: AppColors.primary,
+              color: colorScheme.primary,
               size: 20,
             ),
           ),
@@ -2880,7 +3669,7 @@ class _EmptyMealsInline extends StatelessWidget {
             onPressed: onScan,
             style: FilledButton.styleFrom(
               visualDensity: VisualDensity.compact,
-              backgroundColor: AppColors.primary,
+              backgroundColor: colorScheme.primary,
               foregroundColor: Colors.white,
             ),
             child: Text(AppLocalizations.of(context)!.home_scan_food),
@@ -2918,7 +3707,7 @@ class _CalendarProgressStrip extends StatelessWidget {
     return AppScaleTap(
       onTap: onTap,
       child: _DashboardSectionFrame(
-        accentColor: AppColors.primary,
+        accentColor: colorScheme.primary,
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Row(
           children: [
@@ -2934,7 +3723,7 @@ class _CalendarProgressStrip extends StatelessWidget {
                     backgroundColor: colorScheme.outlineVariant.withValues(
                       alpha: 0.18,
                     ),
-                    color: _scoreColor(dailyScore),
+                    color: _scoreColor(context, dailyScore),
                     strokeCap: StrokeCap.round,
                   ),
                   Center(
@@ -3002,8 +3791,8 @@ class _CalendarProgressStrip extends StatelessWidget {
     );
   }
 
-  Color _scoreColor(int score) {
-    if (score >= 75) return AppColors.primary;
+  Color _scoreColor(BuildContext context, int score) {
+    if (score >= 75) return Theme.of(context).colorScheme.primary;
     if (score >= 45) return AppColors.amber;
     return AppColors.error;
   }
@@ -3030,7 +3819,7 @@ class _CalendarDayDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = _statusColor;
+    final color = _statusColor(context);
     return Column(
       children: [
         Text(
@@ -3073,10 +3862,12 @@ class _CalendarDayDot extends StatelessWidget {
     );
   }
 
-  Color get _statusColor {
+  Color _statusColor(BuildContext context) {
     if (calories == 0) return AppColors.lightTextSecondary;
     final ratio = calories / math.max(goal, 1);
-    if (ratio >= 0.75 && ratio <= 1.08) return AppColors.primary;
+    if (ratio >= 0.75 && ratio <= 1.08) {
+      return Theme.of(context).colorScheme.primary;
+    }
     if (ratio <= 1.18) return AppColors.amber;
     return AppColors.error;
   }
@@ -3371,7 +4162,7 @@ class _MetricLiquidFillPainter extends CustomPainter {
             end: Alignment.topRight,
             colors: [
               color.withValues(alpha: isDark ? 0.22 : 0.17),
-              AppColors.sky.withValues(alpha: isDark ? 0.16 : 0.12),
+              color.withValues(alpha: isDark ? 0.16 : 0.12),
             ],
           ).createShader(Offset.zero & size);
 
@@ -3466,12 +4257,7 @@ class _MetricStepTrailPainter extends CustomPainter {
           active ? (0.65 + 0.35 * math.sin((phase + t) * math.pi * 2)) : 0.72;
       final footAlpha = baseAlpha * fade;
       final footprintPaint =
-          Paint()
-            ..color = Color.lerp(
-              color,
-              AppColors.primary,
-              0.35,
-            )!.withValues(alpha: footAlpha);
+          Paint()..color = color.withValues(alpha: footAlpha);
 
       _drawFootprint(
         canvas,

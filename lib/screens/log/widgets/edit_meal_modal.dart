@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/models/meal.dart';
-import '../../../data/services/gemini_service.dart';
-import '../../../data/services/premium_conversion_service.dart';
-import '../../../providers/settings_provider.dart';
-import 'package:provider/provider.dart';
-import '../../../widgets/premium_prompt_card.dart';
 
 class EditMealModal extends StatefulWidget {
   final Meal meal;
@@ -35,7 +31,6 @@ class _EditMealModalState extends State<EditMealModal> {
   late TextEditingController _proteinController;
   late TextEditingController _carbsController;
   late TextEditingController _fatController;
-  Future<String>? _mealInsightFuture;
 
   @override
   void initState() {
@@ -70,7 +65,9 @@ class _EditMealModalState extends State<EditMealModal> {
   void _handleSave() {
     final updatedMeal = widget.meal.copyWith(
       foodName:
-          _nameController.text.isEmpty ? 'Unknown Meal' : _nameController.text,
+          _nameController.text.isEmpty
+              ? AppLocalizations.of(context)!.log_unknown_food
+              : _nameController.text,
       calories: int.tryParse(_caloriesController.text) ?? 0,
       portion: _portionController.text,
       macros: widget.meal.macros.copyWith(
@@ -80,259 +77,191 @@ class _EditMealModalState extends State<EditMealModal> {
       ),
     );
     widget.onSave(updatedMeal);
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final settings = context.watch<SettingsProvider>();
-
-    if (settings.isPro && _mealInsightFuture == null) {
-      _mealInsightFuture = AIService().generateMealInsight(
-        meal: widget.meal,
-        settings: settings.settings,
-        languageCode: settings.languageCode,
-      );
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark
+        ? const Color(0xFF1C1B1E)
+        : const Color(0xFFFCFCFA);
 
     return Container(
       decoration: BoxDecoration(
-        color: context.surfaceContainerColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        color: surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag Handle
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: context.textMutedColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-
-          Flexible(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                bottom:
-                    MediaQuery.of(context).viewInsets.bottom +
-                    MediaQuery.of(context).padding.bottom +
-                    120,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        l10n.log_edit_meal,
-                        style: AppTypography.heading3.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: context.textPrimaryColor,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed:
-                            widget.onCancel ?? () => Navigator.pop(context),
-                        icon: const Icon(LucideIcons.x),
-                        color: context.textSecondaryColor,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // CALORIES INPUT SECTION
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: context.dividerColor.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          l10n.log_calories_kcal.toUpperCase(),
-                          style: AppTypography.labelSmall.copyWith(
-                            color: context.textMutedColor,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        IntrinsicWidth(
-                          child: TextField(
-                            controller: _caloriesController,
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.displayMedium.copyWith(
-                              color: context.primaryColor,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 48,
-                            ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                              suffixText: ' kcal',
-                              suffixStyle: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // MAIN DETAILS
-                  _MinimalistInput(
-                    controller: _nameController,
-                    label: l10n.log_food_name,
-                    icon: LucideIcons.utensils,
-                    hint: l10n.log_food_hint,
-                  ),
-                  const SizedBox(height: 16),
-                  _MinimalistInput(
-                    controller: _portionController,
-                    label: l10n.log_portion_desc,
-                    icon: LucideIcons.scale,
-                    hint: l10n.log_portion_hint,
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // MACRO GRID
-                  Text(
-                    l10n.result_macronutrients,
-                    style: AppTypography.titleSmall.copyWith(
-                      color: context.textSecondaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _MinimalistMacroInput(
-                          label: l10n.result_protein,
-                          controller: _proteinController,
-                          unit: 'g',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _MinimalistMacroInput(
-                          label: l10n.result_carbs,
-                          controller: _carbsController,
-                          unit: 'g',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _MinimalistMacroInput(
-                          label: l10n.result_fat,
-                          controller: _fatController,
-                          unit: 'g',
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-                  if (settings.isPro && _mealInsightFuture != null) ...[
-                    _EditMealInsightCard(insight: _mealInsightFuture!),
-                    const SizedBox(height: 24),
-                  ] else if (!settings.isPro) ...[
-                    PremiumPromptCard(
-                      title: l10n.premium_analysis_title,
-                      subtitle: l10n.premium_analysis_body,
-                      buttonText: l10n.report_prompt_btn,
-                      icon: LucideIcons.wand2,
-                      onTap:
-                          () => PremiumConversionService().openPaywall(
-                            context,
-                            PaywallEntryPoint.mealInsight,
-                            featureName: 'meal_edit',
-                          ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // ACTIONS
-                  ElevatedButton(
-                    onPressed: _handleSave,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: context.primaryColor,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      l10n.log_save_entry,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-
-                  if (widget.meal.id != 'temp' && widget.meal.id != 'new') ...[
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () => _showDeleteConfirmation(context),
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                      ),
-                      child: Text(
-                        l10n.log_delete_entry,
-                        style: TextStyle(color: colorScheme.error),
-                      ),
-                    ),
-                  ],
-                ],
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 12),
+                width: 32,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : Colors.black.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-        ],
+
+            // Title row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.log_edit_meal,
+                  style: AppTypography.titleMedium.copyWith(
+                    color: context.textPrimaryColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                  ),
+                ),
+                IconButton(
+                  onPressed:
+                      widget.onCancel ?? () => Navigator.pop(context),
+                  icon: const Icon(LucideIcons.x),
+                  color: isDark ? Colors.white54 : const Color(0xFFA8A29E),
+                  iconSize: 20,
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Calorie field
+            _compactInput(
+              context: context,
+              controller: _caloriesController,
+              label: l10n.log_calories_kcal,
+              suffix: l10n.settings_kcal_unit,
+              center: true,
+              large: true,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 14),
+
+            // Food name
+            _compactInput(
+              context: context,
+              controller: _nameController,
+              label: l10n.log_food_name,
+              hint: l10n.log_food_hint,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 12),
+
+            // Portion
+            _compactInput(
+              context: context,
+              controller: _portionController,
+              label: l10n.log_portion_desc,
+              hint: l10n.log_portion_hint,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 16),
+
+            // Macros
+            Text(
+              l10n.result_macronutrients,
+              style: AppTypography.labelSmall.copyWith(
+                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                fontWeight: FontWeight.w500,
+                fontSize: 10,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _macroField(l10n.result_protein, _proteinController, const Color(0xFF7C9A6D), isDark, context),
+                const SizedBox(width: 8),
+                _macroField(l10n.result_carbs, _carbsController, const Color(0xFF4F8CC9), isDark, context),
+                const SizedBox(width: 8),
+                _macroField(l10n.result_fat, _fatController, const Color(0xFFD18B47), isDark, context),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Save
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _handleSave,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: context.primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  l10n.log_save_entry,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+
+            // Delete
+            if (widget.meal.id != 'temp' && widget.meal.id != 'new') ...[
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: () => _showDeleteConfirmation(context),
+                style: TextButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  l10n.log_delete_entry,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
   void _showDeleteConfirmation(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder:
           (context) => AlertDialog(
             backgroundColor: context.surfaceContainerColor,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
             ),
             title: Text(
               l10n.log_delete_meal_title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
             ),
-            content: Text(l10n.log_delete_meal_body),
+            content: Text(
+              l10n.log_delete_meal_body,
+              style: const TextStyle(fontSize: 14),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -346,8 +275,8 @@ class _EditMealModalState extends State<EditMealModal> {
                 child: Text(
                   l10n.common_delete,
                   style: TextStyle(
-                    color: colorScheme.error,
-                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -357,166 +286,109 @@ class _EditMealModalState extends State<EditMealModal> {
   }
 }
 
-class _EditMealInsightCard extends StatelessWidget {
-  final Future<String> insight;
-
-  const _EditMealInsightCard({required this.insight});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    return FutureBuilder<String>(
-      future: insight,
-      builder: (context, snapshot) {
-        final body =
-            snapshot.connectionState == ConnectionState.done
-                ? snapshot.data ?? l10n.result_ai_meal_body
-                : l10n.feature_insights_generating;
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: colorScheme.primaryContainer.withValues(alpha: 0.34),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: colorScheme.primary.withValues(alpha: 0.18),
-            ),
+Widget _compactInput({
+  required BuildContext context,
+  required TextEditingController controller,
+  required String label,
+  String? hint,
+  String? suffix,
+  bool center = false,
+  bool large = false,
+  required bool isDark,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        label,
+        style: AppTypography.labelSmall.copyWith(
+          color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+          fontWeight: FontWeight.w500,
+          fontSize: 10,
+          letterSpacing: 0.5,
+        ),
+      ),
+      const SizedBox(height: 6),
+      TextField(
+        controller: controller,
+        keyboardType: large ? TextInputType.number : null,
+        textAlign: center ? TextAlign.center : TextAlign.start,
+        style: AppTypography.bodyMedium.copyWith(
+          color: context.textPrimaryColor,
+          fontWeight: large ? FontWeight.w700 : FontWeight.w500,
+          fontSize: large ? 28 : 15,
+          height: 1.2,
+        ),
+        decoration: InputDecoration(
+          hintText: hint,
+          suffixText: suffix,
+          suffixStyle: TextStyle(
+            color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(LucideIcons.sparkles, color: colorScheme.primary, size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.result_ai_meal_insight,
-                      style: AppTypography.labelLarge.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      body,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.25,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          filled: true,
+          fillColor: isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : Colors.black.withValues(alpha: 0.03),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
           ),
-        );
-      },
-    );
-  }
-}
-
-class _MinimalistInput extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final String? hint;
-
-  const _MinimalistInput({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.hint,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTypography.labelSmall.copyWith(
-            color: context.textMutedColor,
-            fontWeight: FontWeight.bold,
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: center ? 16 : 14,
+            vertical: large ? 10 : 12,
           ),
         ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          style: AppTypography.bodyLarge,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: Icon(icon, size: 20),
-            filled: true,
-            fillColor: colorScheme.surfaceContainerLow,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }
 
-class _MinimalistMacroInput extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final String unit;
-
-  const _MinimalistMacroInput({
-    required this.label,
-    required this.controller,
-    required this.unit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+Widget _macroField(String label, TextEditingController controller, Color color, bool isDark, BuildContext context) {
+  return Expanded(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
-            color: context.textMutedColor,
-            fontWeight: FontWeight.bold,
+            fontSize: 9,
+            color: color.withValues(alpha: 0.8),
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+          style: AppTypography.titleSmall.copyWith(
+            color: context.textPrimaryColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            height: 1.0,
+          ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: colorScheme.surfaceContainerLow,
+            fillColor: isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.black.withValues(alpha: 0.03),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
             ),
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
+              horizontal: 8,
+              vertical: 10,
             ),
-            suffixText: unit,
-            suffixStyle: TextStyle(color: context.textMutedColor, fontSize: 12),
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
 }

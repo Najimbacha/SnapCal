@@ -19,7 +19,8 @@ class CalorieRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
     final remaining = goal - consumed;
-    final accent = remaining < 0 ? AppColors.error : Theme.of(context).colorScheme.primary;
+    final accent =
+        remaining < 0 ? AppColors.error : Theme.of(context).colorScheme.primary;
 
     return SizedBox(
       width: size,
@@ -66,7 +67,9 @@ class CalorieRing extends StatelessWidget {
               Text(
                 'of $goal kcal',
                 style: AppTypography.labelSmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                   letterSpacing: 0.5,
                 ),
               ),
@@ -78,19 +81,23 @@ class CalorieRing extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: ShapeDecoration(
-                  color: remaining < 0 
-                    ? Theme.of(context).colorScheme.errorContainer 
-                    : Theme.of(context).colorScheme.secondaryContainer,
+                  color:
+                      remaining < 0
+                          ? Theme.of(context).colorScheme.errorContainer
+                          : Theme.of(context).colorScheme.secondaryContainer,
                   shape: const StadiumBorder(),
                 ),
                 child: Text(
-                  remaining < 0 
-                      ? '${remaining.abs()} over' 
+                  remaining < 0
+                      ? '${remaining.abs()} over'
                       : '${remaining.abs()} left',
                   style: AppTypography.labelSmall.copyWith(
-                    color: remaining < 0 
-                      ? Theme.of(context).colorScheme.onErrorContainer 
-                      : Theme.of(context).colorScheme.onSecondaryContainer,
+                    color:
+                        remaining < 0
+                            ? Theme.of(context).colorScheme.onErrorContainer
+                            : Theme.of(
+                              context,
+                            ).colorScheme.onSecondaryContainer,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -121,22 +128,24 @@ class _RingPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - 18) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
-    
-    final track = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 16
-      ..strokeCap = StrokeCap.round
-      ..color = trackColor;
 
-    final active = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 16
-      ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(
-        colors: [secondaryColor, activeColor],
-        stops: const [0.0, 1.0],
-        transform: const GradientRotation(-math.pi / 2),
-      ).createShader(rect);
+    final track =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 16
+          ..strokeCap = StrokeCap.round
+          ..color = trackColor;
+
+    final active =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 16
+          ..strokeCap = StrokeCap.round
+          ..shader = SweepGradient(
+            colors: [secondaryColor, activeColor],
+            stops: const [0.0, 1.0],
+            transform: const GradientRotation(-math.pi / 2),
+          ).createShader(rect);
 
     canvas.drawCircle(center, radius, track);
     if (progress <= 0) return;

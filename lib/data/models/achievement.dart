@@ -2,7 +2,13 @@ import 'package:hive/hive.dart';
 
 part 'achievement.g.dart';
 
-enum AchievementCategory { consistency, precision, hydration, logging, progress }
+enum AchievementCategory {
+  consistency,
+  precision,
+  hydration,
+  logging,
+  progress,
+}
 
 /// An achievement that can be unlocked by the user
 @HiveType(typeId: 12)
@@ -47,7 +53,6 @@ class Achievement extends HiveObject {
   });
 
   AchievementCategory get category => AchievementCategory.values[categoryIndex];
-  double get progressPercent => targetValue > 0
-      ? (currentProgress / targetValue).clamp(0.0, 1.0)
-      : 0.0;
+  double get progressPercent =>
+      targetValue > 0 ? (currentProgress / targetValue).clamp(0.0, 1.0) : 0.0;
 }

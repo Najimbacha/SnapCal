@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -25,12 +26,15 @@ import '../../data/services/barcode_service.dart';
 import '../../data/services/subscription_service.dart';
 import '../../data/services/scan_gate_service.dart';
 import '../../data/services/premium_gate_service.dart';
-import '../../data/services/ad_service.dart';
+import '../../data/services/sync_queue_service.dart';
+import '../../data/services/upload_queue_service.dart';
 import '../../data/services/widget_service.dart';
+import 'app_lifecycle_service.dart';
 import '../utils/async_guard.dart';
 
 class AppInitializer {
   static bool _errorReportingConfigured = false;
+  static bool _lifecycleRecoveryConfigured = false;
 
   static Future<void> preInit() async {
     await _initFirebase();
@@ -47,6 +51,8 @@ class AppInitializer {
 
     try {
       debugPrint('🚀 AppInitializer: Setting System UI...');
+      AppLifecycleService().init();
+      _configureLifecycleRecovery();
       // 1. Critical System UI (Edge-to-Edge Support for Android 15+)
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setSystemUIOverlayStyle(
@@ -66,17 +72,9 @@ class AppInitializer {
       // 3. Initialize Hive
       await _initHive();
 
-      debugPrint(
-        '🚀 AppInitializer: Parallelizing Service & Repository Init...',
-      );
-      // 4. Initialize everything else in parallel after Hive/Firebase are ready
+      debugPrint('🚀 AppInitializer: Initializing critical repositories...');
+      // 4. Only local repositories needed by the first screen block startup.
       await Future.wait([
-        ScanGateService().init().then(
-          (_) => debugPrint('✅ AppInitializer: ScanGate ready'),
-        ),
-        PremiumGateService().init().then(
-          (_) => debugPrint('✅ AppInitializer: PremiumGate ready'),
-        ),
         mealRepository.init().then(
           (_) => debugPrint('✅ AppInitializer: MealRepo ready'),
         ),
@@ -88,9 +86,6 @@ class AppInitializer {
         ),
         assistantRepository.init().then(
           (_) => debugPrint('✅ AppInitializer: AssistantRepo ready'),
-        ),
-        NotificationService().init().then(
-          (_) => debugPrint('✅ AppInitializer: NotificationService ready'),
         ),
       ]).timeout(
         const Duration(seconds: 30),
@@ -119,26 +114,59 @@ class AppInitializer {
   static Future<void> _initBackgroundServices(
     SettingsRepository settingsRepository,
   ) async {
-    try {
-      // 1. Initialize Remote Config first so that subsequent services can read updated API keys/configs.
-      await runSilently(
-        'Remote config init',
-        () => ConfigService().init(),
-      ).timeout(const Duration(seconds: 10));
+    await _runOptionalBackgroundService(
+      'Remote config init',
+      () => ConfigService().init().timeout(const Duration(seconds: 10)),
+    );
 
-      // 2. Initialize remaining background services in parallel
-      await Future.wait([
-        runSilently(
-          'Subscription init',
-          () => SubscriptionService.init(settingsRepository),
-        ),
-        runSilently('Ad init', () => AdService().init()),
-        runSilently('Widget init', WidgetService.init),
-        runSilently('Service warmup', _warmupSingletons),
-      ]).timeout(const Duration(seconds: 10));
-      debugPrint('⚡ Background services ready');
-    } catch (e) {
-      debugPrint('⚠️ Background service init warning: $e');
+    await Future.wait([
+      _runOptionalBackgroundService('Scan gate init', ScanGateService().init),
+      _runOptionalBackgroundService(
+        'Premium gate init',
+        PremiumGateService().init,
+      ),
+      _runOptionalBackgroundService('Sync queue init', SyncQueueService().init),
+      _runOptionalBackgroundService(
+        'Upload queue init',
+        UploadQueueService().init,
+      ),
+      _runOptionalBackgroundService('Notification init', () async {
+        await NotificationService().init();
+      }),
+      _runOptionalBackgroundService(
+        'Subscription init',
+        () => SubscriptionService.init(settingsRepository),
+      ),
+      _runOptionalBackgroundService('Widget init', WidgetService.init),
+      _runOptionalBackgroundService(
+        'Sync queue flush',
+        () => SyncQueueService().flushDue(),
+      ),
+      _runOptionalBackgroundService(
+        'Upload queue flush',
+        () => UploadQueueService().flushDue(),
+      ),
+      _runOptionalBackgroundService('Service warmup', _warmupSingletons),
+    ]);
+    debugPrint('⚡ Background services ready');
+  }
+
+  static Future<void> _runOptionalBackgroundService(
+    String name,
+    Future<void> Function() task,
+  ) async {
+    try {
+      await runSilently(name, task).timeout(const Duration(seconds: 12));
+    } catch (e, stack) {
+      debugPrint('⚠️ AppInitializer: optional service "$name" failed: $e');
+      if (Firebase.apps.isNotEmpty) {
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          fatal: false,
+          reason: 'Optional background service failed: $name',
+        );
+      }
     }
   }
 
@@ -146,6 +174,36 @@ class AppInitializer {
     AIService();
     BarcodeService();
     debugPrint('⚡ Services warmed up');
+  }
+
+  static void _configureLifecycleRecovery() {
+    if (_lifecycleRecoveryConfigured) return;
+    _lifecycleRecoveryConfigured = true;
+
+    AppLifecycleService().addListener(() {
+      final lifecycle = AppLifecycleService();
+      if (!lifecycle.isResumed) return;
+      unawaited(
+        _runOptionalBackgroundService(
+          'Lifecycle sync queue flush',
+          () => SyncQueueService().flushDue(),
+        ),
+      );
+      unawaited(
+        _runOptionalBackgroundService(
+          'Lifecycle upload queue flush',
+          () => UploadQueueService().flushDue(),
+        ),
+      );
+      unawaited(
+        _runOptionalBackgroundService(
+          'Lifecycle subscription verify',
+          () async {
+            await SubscriptionService().verifyCurrentEntitlement();
+          },
+        ),
+      );
+    });
   }
 
   static Future<void> _initFirebase() async {
@@ -158,6 +216,16 @@ class AppInitializer {
       } else {
         debugPrint('🔥 Firebase already initialized');
       }
+      await FirebaseAppCheck.instance.activate(
+        providerAndroid:
+            kDebugMode
+                ? const AndroidDebugProvider()
+                : const AndroidPlayIntegrityProvider(),
+        providerApple:
+            kDebugMode
+                ? const AppleDebugProvider()
+                : const AppleAppAttestProvider(),
+      );
       await _configureCrashlyticsAfterFirebase();
     } catch (e) {
       _logFirebaseInitFailure(e);
@@ -282,7 +350,22 @@ class AppInitializer {
         ),
       );
     }
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    FirebaseCrashlytics.instance.recordError(
+      error,
+      stack,
+      fatal: !_isRecoverableInitializerFailure(error),
+    );
+  }
+
+  static bool _isRecoverableInitializerFailure(Object error) {
+    final message = error.toString();
+    if (message.contains('Secure storage unavailable')) return true;
+    if (error is PlatformException) {
+      return error.code == 'StepDetection' ||
+          error.message?.contains('StepDetection not available') == true ||
+          error.message?.contains('not available on this device') == true;
+    }
+    return false;
   }
 
   static void _logFirebaseInitFailure(Object error) {

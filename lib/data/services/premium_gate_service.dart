@@ -137,6 +137,6 @@ class PremiumGateService {
 
   bool hasReachedAiLimit(bool isPremium) {
     if (isPremium) return false;
-    return getAiMessagesUsed() >= 5; // Example: 5 free AI messages
+    return getAiMessagesUsed() >= 1; // 1 free AI message per day
   }
 }

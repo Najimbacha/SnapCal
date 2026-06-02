@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/meal.dart';
-import '../../../widgets/ui_blocks.dart';
 
 /// Swipeable tile for displaying a meal in the log with Elite styling
 class MealListTile extends StatelessWidget {
   final Meal meal;
+  final bool isPro;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
   const MealListTile({
     super.key,
     required this.meal,
+    required this.isPro,
     required this.onTap,
     required this.onDelete,
   });
@@ -23,6 +25,7 @@ class MealListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
 
     return Dismissible(
       key: Key(meal.id),
@@ -32,123 +35,99 @@ class MealListTile extends StatelessWidget {
         onDelete();
       },
       background: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+          color: AppColors.error.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
         ),
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        child: const Icon(LucideIcons.trash2, color: AppColors.error, size: 28),
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(LucideIcons.trash2, color: AppColors.error, size: 22),
       ),
-      child: AppScaleTap(
+      child: GestureDetector(
         onTap: onTap,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: context.cardColor,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color:
-                  isDark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : Colors.black.withValues(alpha: 0.03),
-              width: 1.5,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.03),
+              width: 1.0,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
-              ),
-            ],
           ),
           child: Row(
             children: [
-              // Category Icon Container
+              // Icon
               Container(
-                width: 56,
-                height: 56,
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary.withValues(alpha: 0.1),
-                      AppColors.primary.withValues(alpha: 0.05),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                  ),
+                  color: context.primaryColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Center(
-                  child: Icon(
-                    _getMealIcon(meal),
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
+                child: Icon(
+                  _getMealIcon(meal),
+                  color: context.primaryColor,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 16),
-
-              // Info Section
+              const SizedBox(width: 12),
+              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      meal.foodName,
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                        fontSize: 16,
-                        color: context.textPrimaryColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(
-                          LucideIcons.clock,
-                          size: 10,
-                          color: context.textMutedColor,
+                        Flexible(
+                          child: Text(
+                            meal.foodName,
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: context.textPrimaryColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(LucideIcons.clock, size: 9, color: context.textMutedColor),
                         const SizedBox(width: 4),
                         Text(
                           meal.formattedTime,
                           style: AppTypography.labelSmall.copyWith(
                             color: context.textMutedColor,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 11,
                           ),
                         ),
-                        if (meal.portion != null &&
-                            meal.portion!.isNotEmpty) ...[
-                          const SizedBox(width: 8),
+                        if (meal.portion != null && meal.portion!.isNotEmpty) ...[
+                          const SizedBox(width: 6),
                           Container(
-                            width: 3,
-                            height: 3,
+                            width: 2, height: 2,
                             decoration: BoxDecoration(
-                              color: context.textMutedColor.withValues(
-                                alpha: 0.3,
-                              ),
+                              color: context.textMutedColor.withValues(alpha: 0.3),
                               shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
+                          const SizedBox(width: 6),
+                          Flexible(
                             child: Text(
                               meal.portion!,
                               style: AppTypography.labelSmall.copyWith(
-                                color: context.textMutedColor.withValues(
-                                  alpha: 0.7,
-                                ),
+                                color: context.textMutedColor.withValues(alpha: 0.7),
                                 fontWeight: FontWeight.w500,
+                                fontSize: 11,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -160,9 +139,8 @@ class MealListTile extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // Metrics Section
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              // Calories
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -172,44 +150,35 @@ class MealListTile extends StatelessWidget {
                     children: [
                       Text(
                         '${meal.calories}',
-                        style: AppTypography.heading3.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 22,
-                          letterSpacing: -1,
+                        style: AppTypography.titleMedium.copyWith(
+                          color: context.primaryColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
                         ),
                       ),
                       const SizedBox(width: 2),
                       Text(
-                        'KCAL',
+                        l10n.settings_kcal_unit,
                         style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.primary.withValues(alpha: 0.8),
-                          fontWeight: FontWeight.w900,
+                          color: context.primaryColor.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w600,
                           fontSize: 8,
-                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _EliteMacroPill(
-                        color: AppColors.protein,
-                        value: '${meal.macros.protein}',
-                      ),
-                      const SizedBox(width: 6),
-                      _EliteMacroPill(
-                        color: AppColors.carbs,
-                        value: '${meal.macros.carbs}',
-                      ),
-                      const SizedBox(width: 6),
-                      _EliteMacroPill(
-                        color: AppColors.fat,
-                        value: '${meal.macros.fat}',
-                      ),
-                    ],
-                  ),
+                  if (isPro) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _EliteMacroPill(color: AppColors.protein, value: '${meal.macros.protein}'),
+                        const SizedBox(width: 4),
+                        _EliteMacroPill(color: AppColors.carbs, value: '${meal.macros.carbs}'),
+                        const SizedBox(width: 4),
+                        _EliteMacroPill(color: AppColors.fat, value: '${meal.macros.fat}'),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -260,20 +229,12 @@ class _EliteMacroPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
-      ),
-      child: Text(
-        value,
-        style: AppTypography.labelSmall.copyWith(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-        ),
+    return Text(
+      value,
+      style: AppTypography.labelSmall.copyWith(
+        color: color.withValues(alpha: 0.7),
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
       ),
     );
   }

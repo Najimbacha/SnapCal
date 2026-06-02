@@ -46,18 +46,17 @@ class AppSectionCard extends StatelessWidget {
               : colorScheme.surfaceContainer),
       borderRadius: radius,
       border: Border.all(
-        color: glass
-            ? colorScheme.outlineVariant.withValues(alpha: 0.24)
-            : (isDark
-                ? colorScheme.outlineVariant.withValues(alpha: 0.3)
-                : AppColors.lightCardBorder),
+        color:
+            glass
+                ? colorScheme.outlineVariant.withValues(alpha: 0.24)
+                : (isDark
+                    ? colorScheme.outlineVariant.withValues(alpha: 0.3)
+                    : AppColors.lightCardBorder),
         width: glass ? 1.5 : 1.0,
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(
-            alpha: isDark ? 0.18 : 0.06,
-          ),
+          color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.06),
           blurRadius: glass ? 22 : 14,
           offset: const Offset(0, 10),
         ),
@@ -356,24 +355,28 @@ class ActionChipButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return AppScaleTap(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark 
-              ? colorScheme.primary.withValues(alpha: 0.08)
-              : colorScheme.primary.withValues(alpha: 0.04),
+          color:
+              isDark
+                  ? colorScheme.primary.withValues(alpha: 0.08)
+                  : colorScheme.primary.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isDark 
-                ? colorScheme.primary.withValues(alpha: 0.15)
-                : AppColors.lightCardBorder,
+            color:
+                isDark
+                    ? colorScheme.primary.withValues(alpha: 0.15)
+                    : AppColors.lightCardBorder,
           ),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withValues(alpha: isDark ? 0.04 : 0.02),
+              color: colorScheme.primary.withValues(
+                alpha: isDark ? 0.04 : 0.02,
+              ),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),

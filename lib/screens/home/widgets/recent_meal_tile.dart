@@ -17,9 +17,15 @@ class RecentMealTile extends StatelessWidget {
 
   String _getFoodEmoji(String foodName) {
     final name = foodName.toLowerCase();
-    if (name.contains('avocado')) return '🥑';
-    if (name.contains('toast')) return '🍞';
-    if (name.contains('egg') || name.contains('scramble')) return '🍳';
+    if (name.contains('avocado')) {
+      return '🥑';
+    }
+    if (name.contains('toast')) {
+      return '🍞';
+    }
+    if (name.contains('egg') || name.contains('scramble')) {
+      return '🍳';
+    }
     if (name.contains('salad') ||
         name.contains('spinach') ||
         name.contains('veggie') ||
@@ -27,21 +33,73 @@ class RecentMealTile extends StatelessWidget {
         name.contains('asparagus')) {
       return '🥗';
     }
-    if (name.contains('chicken') || name.contains('poultry')) return '🍗';
-    if (name.contains('turkey') || name.contains('wrap') || name.contains('sandwich')) return '🥪';
-    if (name.contains('salmon') || name.contains('cod') || name.contains('fish') || name.contains('seafood')) return '🐟';
-    if (name.contains('steak') || name.contains('beef') || name.contains('meat') || name.contains('pork')) return '🥩';
-    if (name.contains('apple')) return '🍎';
-    if (name.contains('banana')) return '🍌';
-    if (name.contains('berry') || name.contains('berries') || name.contains('fruit')) return '🍓';
-    if (name.contains('hummus') || name.contains('soup') || name.contains('bowl') || name.contains('lentil')) return '🥣';
-    if (name.contains('yogurt') || name.contains('cheese') || name.contains('dairy')) return '🥛';
-    if (name.contains('rice') || name.contains('quinoa') || name.contains('grain')) return '🍚';
-    if (name.contains('coffee') || name.contains('tea')) return '☕';
-    if (name.contains('shake') || name.contains('smoothie') || name.contains('protein')) return '🥤';
-    if (name.contains('nuts') || name.contains('almond') || name.contains('walnut') || name.contains('peanut')) return '🥜';
-    if (name.contains('tomato')) return '🍅';
-    if (name.contains('broccoli')) return '🥦';
+    if (name.contains('chicken') || name.contains('poultry')) {
+      return '🍗';
+    }
+    if (name.contains('turkey') ||
+        name.contains('wrap') ||
+        name.contains('sandwich')) {
+      return '🥪';
+    }
+    if (name.contains('salmon') ||
+        name.contains('cod') ||
+        name.contains('fish') ||
+        name.contains('seafood')) {
+      return '🐟';
+    }
+    if (name.contains('steak') ||
+        name.contains('beef') ||
+        name.contains('meat') ||
+        name.contains('pork')) {
+      return '🥩';
+    }
+    if (name.contains('apple')) {
+      return '🍎';
+    }
+    if (name.contains('banana')) {
+      return '🍌';
+    }
+    if (name.contains('berry') ||
+        name.contains('berries') ||
+        name.contains('fruit')) {
+      return '🍓';
+    }
+    if (name.contains('hummus') ||
+        name.contains('soup') ||
+        name.contains('bowl') ||
+        name.contains('lentil')) {
+      return '🥣';
+    }
+    if (name.contains('yogurt') ||
+        name.contains('cheese') ||
+        name.contains('dairy')) {
+      return '🥛';
+    }
+    if (name.contains('rice') ||
+        name.contains('quinoa') ||
+        name.contains('grain')) {
+      return '🍚';
+    }
+    if (name.contains('coffee') || name.contains('tea')) {
+      return '☕';
+    }
+    if (name.contains('shake') ||
+        name.contains('smoothie') ||
+        name.contains('protein')) {
+      return '🥤';
+    }
+    if (name.contains('nuts') ||
+        name.contains('almond') ||
+        name.contains('walnut') ||
+        name.contains('peanut')) {
+      return '🥜';
+    }
+    if (name.contains('tomato')) {
+      return '🍅';
+    }
+    if (name.contains('broccoli')) {
+      return '🥦';
+    }
     return '🍽️';
   }
 
@@ -91,6 +149,12 @@ class RecentMealTile extends StatelessWidget {
     final macroTotal =
         meal.macros.protein + meal.macros.carbs + meal.macros.fat;
 
+    final imageUri = meal.imageUri;
+    final localImageExists =
+        imageUri != null && !imageUri.startsWith('http')
+            ? File(imageUri).existsSync()
+            : false;
+
     return AppScaleTap(
       onTap: onTap ?? () => context.push('/log'),
       child: Padding(
@@ -102,21 +166,46 @@ class RecentMealTile extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: meal.imageUri != null
-                    ? AppColors.primary.withValues(alpha: 0.1)
-                    : _getFoodBgColor(meal.foodName),
+                color:
+                    imageUri != null
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : _getFoodBgColor(meal.foodName),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child:
-                    meal.imageUri != null
-                        ? (meal.imageUri!.startsWith('http')
-                            ? Image.network(meal.imageUri!, fit: BoxFit.cover)
-                            : Image.file(
-                                File(meal.imageUri!),
-                                fit: BoxFit.cover,
-                              ))
+                    imageUri != null
+                        ? (imageUri.startsWith('http')
+                            ? Image.network(
+                              imageUri,
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (context, error, stackTrace) => Center(
+                                    child: Text(
+                                      _getFoodEmoji(meal.foodName),
+                                      style: const TextStyle(fontSize: 28),
+                                    ),
+                                  ),
+                            )
+                            : localImageExists
+                            ? Image.file(
+                              File(imageUri),
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (context, error, stackTrace) => Center(
+                                    child: Text(
+                                      _getFoodEmoji(meal.foodName),
+                                      style: const TextStyle(fontSize: 28),
+                                    ),
+                                  ),
+                            )
+                            : Center(
+                              child: Text(
+                                _getFoodEmoji(meal.foodName),
+                                style: const TextStyle(fontSize: 28),
+                              ),
+                            ))
                         : Center(
                           child: Text(
                             _getFoodEmoji(meal.foodName),

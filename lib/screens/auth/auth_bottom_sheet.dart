@@ -176,10 +176,7 @@ class _AuthBottomSheetState extends State<AuthBottomSheet>
           topRight: Radius.circular(32),
         ),
         border: Border.all(
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : _minimalLine,
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : _minimalLine,
           width: 1.5,
         ),
         boxShadow: [
@@ -225,9 +222,14 @@ class _AuthBottomSheetState extends State<AuthBottomSheet>
                       height: 60,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _minimalGreen.withValues(alpha: isDark ? 0.18 : 0.08),
+                        color: _minimalGreen.withValues(
+                          alpha: isDark ? 0.18 : 0.08,
+                        ),
                         border: Border.all(
-                          color: isDark ? Colors.white.withValues(alpha: 0.10) : _minimalLine,
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.10)
+                                  : _minimalLine,
                           width: 1.2,
                         ),
                       ),
@@ -321,7 +323,9 @@ class _AuthBottomSheetState extends State<AuthBottomSheet>
                                         decoration: BoxDecoration(
                                           color:
                                               isDark
-                                                  ? Colors.white.withValues(alpha: 0.10)
+                                                  ? Colors.white.withValues(
+                                                    alpha: 0.10,
+                                                  )
                                                   : _minimalGreen,
                                           borderRadius: BorderRadius.circular(
                                             100,
@@ -337,8 +341,9 @@ class _AuthBottomSheetState extends State<AuthBottomSheet>
                                                         CircularProgressIndicator(
                                                           color:
                                                               isDark
-                                                              ? Colors.white
-                                                              : Colors.white,
+                                                                  ? Colors.white
+                                                                  : Colors
+                                                                      .white,
                                                           strokeWidth: 2,
                                                         ),
                                                   )
@@ -471,13 +476,15 @@ class _AuthBottomSheetState extends State<AuthBottomSheet>
                                   animation: _staggeredAnims![3],
                                   child: _AuthSocialButton(
                                     label: l10n.sync_facebook,
-                                    backgroundColor: const Color(
-                                      0x00FFFFFF,
-                                    ),
-                                    textColor: isDark ? Colors.white : _minimalInk,
-                                    borderColor: isDark
-                                        ? Colors.white.withValues(alpha: 0.08)
-                                        : _minimalLine,
+                                    backgroundColor: const Color(0x00FFFFFF),
+                                    textColor:
+                                        isDark ? Colors.white : _minimalInk,
+                                    borderColor:
+                                        isDark
+                                            ? Colors.white.withValues(
+                                              alpha: 0.08,
+                                            )
+                                            : _minimalLine,
                                     iconWidget: const FaIcon(
                                       FontAwesomeIcons.facebookF,
                                       size: 14,
@@ -499,12 +506,13 @@ class _AuthBottomSheetState extends State<AuthBottomSheet>
                                             )
                                             : const Color(0x00FFFFFF),
                                     textColor:
+                                        isDark ? Colors.white : _minimalInk,
+                                    borderColor:
                                         isDark
-                                            ? Colors.white
-                                            : _minimalInk,
-                                    borderColor: isDark
-                                        ? Colors.white.withValues(alpha: 0.08)
-                                        : _minimalLine,
+                                            ? Colors.white.withValues(
+                                              alpha: 0.08,
+                                            )
+                                            : _minimalLine,
                                     iconWidget: Icon(
                                       LucideIcons.mail,
                                       size: 14,
@@ -580,8 +588,7 @@ class _AuthSocialButton extends StatelessWidget {
                       ? Colors.white.withValues(alpha: 0.08)
                       : _minimalLine),
             ),
-            boxShadow:
-                null,
+            boxShadow: null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -599,8 +606,7 @@ class _AuthSocialButton extends StatelessWidget {
                   child: Text(
                     label,
                     style: AppTypography.titleSmall.copyWith(
-                      color:
-                          textColor ?? (isDark ? Colors.white : _minimalInk),
+                      color: textColor ?? (isDark ? Colors.white : _minimalInk),
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.2,
                     ),
@@ -645,10 +651,7 @@ class _AuthTextField extends StatelessWidget {
                 : const Color(0x00FFFFFF),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : _minimalLine,
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : _minimalLine,
         ),
       ),
       child: TextFormField(

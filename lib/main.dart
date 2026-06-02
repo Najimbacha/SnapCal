@@ -180,9 +180,6 @@ class _SnapCalAppState extends State<SnapCalApp> {
             ChangeNotifierProvider(
               create: (_) => SettingsProvider(_settingsRepository),
             ),
-            ChangeNotifierProvider(
-              create: (_) => MealProvider(_mealRepository),
-            ),
             Provider<WaterRepository>.value(value: _waterRepository),
             ChangeNotifierProvider(
               create: (_) => WaterProvider(_waterRepository),
@@ -213,6 +210,10 @@ class _SnapCalAppState extends State<SnapCalApp> {
               update:
                   (context, settings, planner) =>
                       planner!..updateSettings(settings),
+            ),
+            ChangeNotifierProxyProvider<PlannerProvider, MealProvider>(
+              create: (_) => MealProvider(_mealRepository),
+              update: (context, planner, meal) => meal!..attachPlanner(planner),
             ),
             ProxyProvider3<
               MealProvider,

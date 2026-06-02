@@ -9,7 +9,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../providers/water_provider.dart';
-import '../../../providers/settings_provider.dart';
 import '../../../widgets/ui_blocks.dart';
 
 class WaterTrackingCard extends StatefulWidget {
@@ -19,7 +18,8 @@ class WaterTrackingCard extends StatefulWidget {
   State<WaterTrackingCard> createState() => _WaterTrackingCardState();
 }
 
-class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTickerProviderStateMixin {
+class _WaterTrackingCardState extends State<WaterTrackingCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _waveController;
 
   @override
@@ -57,9 +57,15 @@ class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTicker
                 decoration: BoxDecoration(
                   color: AppColors.carbs.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.carbs.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AppColors.carbs.withValues(alpha: 0.2),
+                  ),
                 ),
-                child: const Icon(LucideIcons.droplets, color: AppColors.carbs, size: 24),
+                child: const Icon(
+                  LucideIcons.droplets,
+                  color: AppColors.carbs,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -85,7 +91,10 @@ class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTicker
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.carbs.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -122,7 +131,7 @@ class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTicker
                           _waveController.stop();
                         }
                       }
-                      
+
                       return CustomPaint(
                         size: const Size(double.infinity, 12),
                         painter: _WaterWaveBarPainter(
@@ -144,7 +153,11 @@ class _WaterTrackingCardState extends State<WaterTrackingCard> with SingleTicker
             children: [
               _WaterButton(label: '+250 ml', amount: 250),
               _WaterButton(label: '+500 ml', amount: 500),
-              _WaterButton(label: AppLocalizations.of(context)!.water_custom, amount: 0, isCustom: true),
+              _WaterButton(
+                label: AppLocalizations.of(context)!.water_custom,
+                amount: 0,
+                isCustom: true,
+              ),
             ],
           ),
         ],
@@ -168,18 +181,20 @@ class _WaterWaveBarPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (progress <= 0) return;
 
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
 
     final fillWidth = size.width * progress;
     final path = Path();
-    
+
     path.moveTo(0, size.height);
-    
+
     // Wave at the top edge of the water bar
     for (double i = 0; i <= fillWidth; i++) {
-      final double waveHeight = math.sin((i / 40) + (animationValue * 2 * math.pi)) * 3.0;
+      final double waveHeight =
+          math.sin((i / 40) + (animationValue * 2 * math.pi)) * 3.0;
       path.lineTo(i, (size.height * 0.4) + waveHeight);
     }
 
@@ -188,15 +203,18 @@ class _WaterWaveBarPainter extends CustomPainter {
     path.close();
 
     canvas.drawPath(path, paint);
-    
+
     // Solid fill below the wave
-    canvas.drawRect(Rect.fromLTWH(0, size.height * 0.5, fillWidth, size.height * 0.5), paint);
+    canvas.drawRect(
+      Rect.fromLTWH(0, size.height * 0.5, fillWidth, size.height * 0.5),
+      paint,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _WaterWaveBarPainter oldDelegate) => 
-    oldDelegate.animationValue != animationValue || 
-    oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _WaterWaveBarPainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue ||
+      oldDelegate.progress != progress;
 }
 
 class _WaterButton extends StatelessWidget {
@@ -220,10 +238,7 @@ class _WaterButton extends StatelessWidget {
         if (isCustom) {
           _showCustomWaterDialog(context);
         } else {
-          context.read<WaterProvider>().addWater(
-            amount,
-            settings: context.read<SettingsProvider>(),
-          );
+          context.read<WaterProvider>().addWater(amount);
         }
       },
     );
@@ -253,10 +268,7 @@ class _WaterButton extends StatelessWidget {
               onPressed: () {
                 final value = int.tryParse(controller.text);
                 if (value != null && value > 0) {
-                  context.read<WaterProvider>().addWater(
-                    value,
-                    settings: context.read<SettingsProvider>(),
-                  );
+                  context.read<WaterProvider>().addWater(value);
                   Navigator.pop(dialogContext);
                 }
               },

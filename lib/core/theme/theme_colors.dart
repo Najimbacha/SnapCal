@@ -8,15 +8,16 @@ extension ThemeColors on BuildContext {
   // Backgrounds
   Color get backgroundColor => Theme.of(this).scaffoldBackgroundColor;
   Color get surfaceColor => Theme.of(this).colorScheme.surface;
-  Color get surfaceContainerColor => Theme.of(this).colorScheme.surfaceContainer;
+  Color get surfaceContainerColor =>
+      Theme.of(this).colorScheme.surfaceContainer;
   Color get cardColor => Theme.of(this).colorScheme.surfaceContainerLowest;
   Color get cardSoftColor => Theme.of(this).colorScheme.surfaceContainerHigh;
-  
+
   Color get primaryColor => Theme.of(this).colorScheme.primary;
   Color get primaryContainer => Theme.of(this).colorScheme.primaryContainer;
-  
+
   Color get dividerColor => Theme.of(this).dividerColor;
-  
+
   Color get overlayColor =>
       isDarkMode
           ? Colors.black.withValues(alpha: 0.32)
@@ -28,7 +29,8 @@ extension ThemeColors on BuildContext {
   Color get textMutedColor => Theme.of(this).colorScheme.outline;
 
   // Glass effects (Expressive M3 often uses tonal elevations instead of raw glass)
-  Color get glassBackgroundColor => Theme.of(this).colorScheme.surfaceContainerHigh.withValues(alpha: 0.4);
+  Color get glassBackgroundColor =>
+      Theme.of(this).colorScheme.surfaceContainerHigh.withValues(alpha: 0.4);
   Color get glassBorderColor => Theme.of(this).colorScheme.outlineVariant;
 
   // Card border — visible in light mode, subtle in dark

@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../data/models/activity_summary.dart';
+import '../../data/services/activity_service.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -18,6 +19,7 @@ import '../../widgets/ui_blocks.dart';
 import '../../widgets/ambient_mesh_background.dart';
 import '../../widgets/activity_ring_gauge.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import 'widgets/activity_health_connect_sheet.dart';
 
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
@@ -75,7 +77,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _DisclaimerCard(),
+          _DisclaimerCard(activity: activity),
           const SizedBox(height: 14),
           if (isPro)
             _PremiumActivityDashboard(activity: activity)
@@ -170,6 +172,9 @@ class _TrackingStatusCard extends StatelessWidget {
                         ? null
                         : activity.isConnected
                         ? activity.syncNow
+                        : activity.trackingStatus ==
+                            ActivityTrackingStatus.healthConnectUnavailable
+                        ? activity.openInstallOrUpdate
                         : activity.startTracking,
                 icon:
                     activity.isSyncing
@@ -181,9 +186,25 @@ class _TrackingStatusCard extends StatelessWidget {
                         : Icon(
                           activity.isConnected
                               ? LucideIcons.refreshCw
-                              : LucideIcons.play,
+                              : activity.trackingStatus ==
+                                  ActivityTrackingStatus
+                                      .healthConnectUnavailable
+                              ? LucideIcons.download
+                              : LucideIcons.link,
                         ),
-                label: Text(activity.isConnected ? 'Sync' : 'Enable'),
+                label: Text(
+                  activity.isConnected
+                      ? 'Sync'
+                      : activity.trackingStatus ==
+                          ActivityTrackingStatus.healthConnectUnavailable
+                      ? 'Install'
+                      : 'Connect',
+                ),
+              ),
+              IconButton(
+                tooltip: 'Health Connect details',
+                onPressed: () => showActivityHealthConnectSheet(context),
+                icon: const Icon(LucideIcons.settings),
               ),
             ],
           ),
@@ -194,6 +215,10 @@ class _TrackingStatusCard extends StatelessWidget {
 }
 
 class _DisclaimerCard extends StatelessWidget {
+  final ActivityProvider activity;
+
+  const _DisclaimerCard({required this.activity});
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -214,7 +239,9 @@ class _DisclaimerCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              l10n.activity_calorie_estimate_disclaimer,
+              activity.caloriesAreEstimated
+                  ? l10n.activity_calorie_estimate_disclaimer
+                  : 'Calories are active energy read from Health Connect.',
               style: AppTypography.bodySmall.copyWith(
                 color: context.textPrimaryColor,
                 fontWeight: FontWeight.w700,
@@ -245,7 +272,7 @@ class _PremiumActivityDashboard extends StatelessWidget {
               child: _MetricCard(
                 icon: LucideIcons.flame,
                 color: Colors.orange,
-                label: l10n.activity_estimated_calories,
+                label: activity.caloriesLabel,
                 value: '${today.activityCalories}',
                 unit: l10n.settings_kcal_unit,
               ),
@@ -270,7 +297,8 @@ class _PremiumActivityDashboard extends StatelessWidget {
                 icon: LucideIcons.dumbbell,
                 color: AppColors.violet,
                 label: l10n.activity_workout_calories,
-                value: '${today.manualWorkoutCalories}',
+                value:
+                    '${today.workouts.fold<int>(0, (sum, workout) => sum + workout.calories)}',
                 unit: l10n.settings_kcal_unit,
               ),
             ),
@@ -289,7 +317,7 @@ class _PremiumActivityDashboard extends StatelessWidget {
         const SizedBox(height: 18),
         _WeeklyStepChart(week: activity.week),
         const SizedBox(height: 18),
-        _ManualWorkoutCard(activity: activity),
+        _HealthConnectWorkoutCard(activity: activity),
         const SizedBox(height: 18),
         _InsightCard(activity: activity),
       ],
@@ -473,134 +501,62 @@ class _WeeklyStepChart extends StatelessWidget {
   }
 }
 
-class _ManualWorkoutCard extends StatelessWidget {
+class _HealthConnectWorkoutCard extends StatelessWidget {
   final ActivityProvider activity;
 
-  const _ManualWorkoutCard({required this.activity});
+  const _HealthConnectWorkoutCard({required this.activity});
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final workout =
+        activity.today.workouts.isEmpty ? null : activity.today.workouts.first;
+    final title =
+        workout == null ? 'No workout data today' : _workoutTypeLabel(workout);
+    final subtitle =
+        workout == null
+            ? 'Health Connect has no workout session records for today.'
+            : '${workout.duration.inMinutes} min • ${workout.calories} kcal from Health Connect';
+
     return AppSectionCard(
       padding: const EdgeInsets.all(18),
       glass: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l10n.activity_manual_workouts,
+          const Icon(LucideIcons.dumbbell, color: AppColors.violet),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w900,
                     color: context.textPrimaryColor,
                   ),
                 ),
-              ),
-              TextButton.icon(
-                onPressed: () => _showWorkoutSheet(context, activity),
-                icon: const Icon(LucideIcons.plus, size: 16),
-                label: Text(l10n.home_add),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (activity.today.workouts.isEmpty)
-            Text(
-              l10n.activity_no_manual_workouts,
-              style: AppTypography.bodySmall.copyWith(
-                color: context.textMutedColor,
-              ),
-            )
-          else
-            ...activity.today.workouts.map(
-              (workout) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(LucideIcons.dumbbell),
-                title: Text(_workoutTypeLabel(context, workout.type)),
-                subtitle: Text(
-                  l10n.common_minutes_short(workout.duration.inMinutes),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: context.textMutedColor,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                trailing: Text(l10n.common_kcal_value(workout.calories)),
-              ),
+              ],
             ),
+          ),
         ],
       ),
     );
   }
 
-  String _workoutTypeLabel(BuildContext context, String type) {
-    if (type == WorkoutEntry.defaultType ||
-        type == WorkoutEntry.legacyDefaultType) {
-      return AppLocalizations.of(context)!.activity_default_workout;
+  String _workoutTypeLabel(WorkoutEntry workout) {
+    if (workout.type == WorkoutEntry.defaultType ||
+        workout.type == WorkoutEntry.legacyDefaultType) {
+      return 'Workout';
     }
-    return type;
-  }
-
-  void _showWorkoutSheet(BuildContext context, ActivityProvider activity) {
-    final l10n = AppLocalizations.of(context)!;
-    final typeController = TextEditingController(
-      text: l10n.activity_default_workout,
-    );
-    final caloriesController = TextEditingController();
-    final minutesController = TextEditingController(text: '30');
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder:
-          (sheetContext) => Padding(
-            padding: EdgeInsets.fromLTRB(
-              24,
-              24,
-              24,
-              MediaQuery.of(sheetContext).viewInsets.bottom + 24,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.activity_add_workout, style: AppTypography.heading3),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: typeController,
-                  decoration: InputDecoration(
-                    labelText: l10n.activity_workout_type,
-                  ),
-                ),
-                TextField(
-                  controller: caloriesController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: l10n.result_calories),
-                ),
-                TextField(
-                  controller: minutesController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: l10n.activity_minutes),
-                ),
-                const SizedBox(height: 18),
-                FilledButton(
-                  onPressed: () {
-                    final calories = int.tryParse(caloriesController.text) ?? 0;
-                    final minutes = int.tryParse(minutesController.text) ?? 0;
-                    if (calories <= 0 || minutes <= 0) return;
-                    activity.addManualWorkout(
-                      type: typeController.text,
-                      calories: calories,
-                      start: DateTime.now().subtract(
-                        Duration(minutes: minutes),
-                      ),
-                      duration: Duration(minutes: minutes),
-                    );
-                    Navigator.pop(sheetContext);
-                  },
-                  child: Text(l10n.activity_save_workout),
-                ),
-              ],
-            ),
-          ),
-    );
+    return workout.type;
   }
 }
 

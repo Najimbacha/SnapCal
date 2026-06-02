@@ -57,44 +57,51 @@ class _LiquidCalorieCircleState extends State<LiquidCalorieCircle>
             duration: const Duration(seconds: 1),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              boxShadow: isSuccess ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                  blurRadius: 30,
-                  spreadRadius: 10,
-                )
-              ] : [],
+              boxShadow:
+                  isSuccess
+                      ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          blurRadius: 30,
+                          spreadRadius: 10,
+                        ),
+                      ]
+                      : [],
               border: Border.all(
-                color: isSuccess 
-                  ? AppColors.primary.withValues(alpha: 0.4)
-                  : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.2),
+                color:
+                    isSuccess
+                        ? AppColors.primary.withValues(alpha: 0.4)
+                        : Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withValues(alpha: 0.2),
                 width: 8,
               ),
             ),
           ),
-          
+
           // Liquid Container (Clip)
           ClipPath(
             clipper: _CircleClipper(),
             child: AnimatedBuilder(
               animation: _waveController,
               builder: (context, child) {
-    // Detect if we are hidden by a bottom nav tab switch
-    final tickerActive = TickerMode.valuesOf(context).enabled;
-    if (tickerActive != _waveController.isAnimating) {
-      if (tickerActive) {
-        _waveController.repeat();
-      } else {
-        _waveController.stop();
-      }
-    }
+                // Detect if we are hidden by a bottom nav tab switch
+                final tickerActive = TickerMode.valuesOf(context).enabled;
+                if (tickerActive != _waveController.isAnimating) {
+                  if (tickerActive) {
+                    _waveController.repeat();
+                  } else {
+                    _waveController.stop();
+                  }
+                }
 
-    return CustomPaint(
+                return CustomPaint(
                   size: widget.size,
                   painter: _WavePainter(
                     animationValue: _waveController.value,
                     percentage: percentage,
-                    mainColor: isSuccess ? AppColors.primary : AppColors.primary,
+                    mainColor:
+                        isSuccess ? AppColors.primary : AppColors.primary,
                     isDark: isDark,
                     isSuccess: isSuccess,
                   ),
@@ -108,7 +115,9 @@ class _LiquidCalorieCircleState extends State<LiquidCalorieCircle>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                isSuccess ? AppLocalizations.of(context)!.home_goal_reached : '${widget.target - widget.current}',
+                isSuccess
+                    ? AppLocalizations.of(context)!.home_goal_reached
+                    : '${widget.target - widget.current}',
                 style: AppTypography.heading1.copyWith(
                   fontSize: isSuccess ? 32 : 52, // Massive, cinematic size
                   fontWeight: FontWeight.w900,
@@ -126,9 +135,14 @@ class _LiquidCalorieCircleState extends State<LiquidCalorieCircle>
               ),
               const SizedBox(height: 2),
               Text(
-                (isSuccess ? AppLocalizations.of(context)!.home_completed : AppLocalizations.of(context)!.home_kcal_left).toUpperCase(),
+                (isSuccess
+                        ? AppLocalizations.of(context)!.home_completed
+                        : AppLocalizations.of(context)!.home_kcal_left)
+                    .toUpperCase(),
                 style: AppTypography.labelSmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
                   letterSpacing: 2.0, // High-end dashboard spacing
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
@@ -175,12 +189,44 @@ class _WavePainter extends CustomPainter {
     final double fillLevel = height - (percentage * height);
 
     if (isSuccess) {
-      _drawWave(canvas, size, fillLevel, 1.0, 15, mainColor.withValues(alpha: 0.4), 0.0);
-      _drawWave(canvas, size, fillLevel, 0.7, 20, mainColor.withValues(alpha: 0.6), math.pi / 2);
+      _drawWave(
+        canvas,
+        size,
+        fillLevel,
+        1.0,
+        15,
+        mainColor.withValues(alpha: 0.4),
+        0.0,
+      );
+      _drawWave(
+        canvas,
+        size,
+        fillLevel,
+        0.7,
+        20,
+        mainColor.withValues(alpha: 0.6),
+        math.pi / 2,
+      );
       _drawWave(canvas, size, fillLevel, 1.4, 12, mainColor, math.pi);
     } else {
-      _drawWave(canvas, size, fillLevel, 1.0, 10, mainColor.withValues(alpha: 0.3), 0.0);
-      _drawWave(canvas, size, fillLevel, 0.8, 15, mainColor.withValues(alpha: 0.5), math.pi / 2);
+      _drawWave(
+        canvas,
+        size,
+        fillLevel,
+        1.0,
+        10,
+        mainColor.withValues(alpha: 0.3),
+        0.0,
+      );
+      _drawWave(
+        canvas,
+        size,
+        fillLevel,
+        0.8,
+        15,
+        mainColor.withValues(alpha: 0.5),
+        math.pi / 2,
+      );
       _drawWave(canvas, size, fillLevel, 1.2, 8, mainColor, math.pi);
     }
   }
@@ -194,15 +240,22 @@ class _WavePainter extends CustomPainter {
     Color color,
     double phaseShift,
   ) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
 
     final path = Path();
     path.moveTo(0, fillLevel);
 
     for (double i = 0; i <= size.width; i++) {
-      final double waveHeight = math.sin((i / size.width * 2 * math.pi) + (animationValue * 2 * math.pi * waveSpeed) + phaseShift) * waveAmplitude;
+      final double waveHeight =
+          math.sin(
+            (i / size.width * 2 * math.pi) +
+                (animationValue * 2 * math.pi * waveSpeed) +
+                phaseShift,
+          ) *
+          waveAmplitude;
       path.lineTo(i, fillLevel + waveHeight);
     }
 
@@ -214,7 +267,7 @@ class _WavePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _WavePainter oldDelegate) => 
-    oldDelegate.animationValue != animationValue || 
-    oldDelegate.percentage != percentage;
+  bool shouldRepaint(covariant _WavePainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue ||
+      oldDelegate.percentage != percentage;
 }

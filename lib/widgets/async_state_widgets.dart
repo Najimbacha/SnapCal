@@ -159,6 +159,122 @@ class AppAsyncOverlay extends StatelessWidget {
   }
 }
 
+class RetryButton extends StatefulWidget {
+  final Future<void> Function() onRetry;
+  final String label;
+
+  const RetryButton({super.key, required this.onRetry, required this.label});
+
+  @override
+  State<RetryButton> createState() => _RetryButtonState();
+}
+
+class _RetryButtonState extends State<RetryButton> {
+  bool _isRetrying = false;
+
+  Future<void> _handleRetry() async {
+    if (_isRetrying) return;
+    setState(() => _isRetrying = true);
+    try {
+      await widget.onRetry();
+    } finally {
+      if (mounted) setState(() => _isRetrying = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: _isRetrying ? null : _handleRetry,
+      icon:
+          _isRetrying
+              ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : const Icon(LucideIcons.refreshCw, size: 16),
+      label: Text(widget.label),
+    );
+  }
+}
+
+class OfflineActionBanner extends StatelessWidget {
+  final String message;
+  final Future<void> Function()? onRetry;
+
+  const OfflineActionBanner({super.key, required this.message, this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppInlineFallback(
+      icon: LucideIcons.wifiOff,
+      title: 'Offline',
+      message: message,
+      actionLabel: onRetry == null ? null : 'Retry',
+      onAction: onRetry == null ? null : () => onRetry!(),
+    );
+  }
+}
+
+class AppStateView extends StatelessWidget {
+  final AsyncUiState state;
+  final WidgetBuilder successBuilder;
+  final Widget? loading;
+  final Widget? empty;
+  final Widget? offline;
+  final Widget? error;
+  final Future<void> Function()? onRetry;
+
+  const AppStateView({
+    super.key,
+    required this.state,
+    required this.successBuilder,
+    this.loading,
+    this.empty,
+    this.offline,
+    this.error,
+    this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    switch (state.phase) {
+      case AsyncUiPhase.loading:
+        return loading ?? const AppSectionSkeleton();
+      case AsyncUiPhase.empty:
+        return empty ??
+            AppInlineFallback(
+              icon: LucideIcons.inbox,
+              title: 'Nothing here yet',
+              message: state.message ?? 'There is no data to show.',
+            );
+      case AsyncUiPhase.offline:
+        return offline ??
+            OfflineActionBanner(
+              message:
+                  state.message ??
+                  'You are offline. Cached data is still available.',
+              onRetry: onRetry,
+            );
+      case AsyncUiPhase.error:
+        return error ??
+            AppInlineFallback(
+              title: 'Something went wrong',
+              message: state.message ?? 'Please try again.',
+              actionLabel: onRetry == null ? null : 'Retry',
+              onAction: onRetry == null ? null : () => onRetry!(),
+            );
+      case AsyncUiPhase.retrying:
+      case AsyncUiPhase.refreshing:
+      case AsyncUiPhase.partial:
+      case AsyncUiPhase.success:
+      case AsyncUiPhase.idle:
+        return AppAsyncOverlay(state: state, child: successBuilder(context));
+    }
+  }
+}
+
 void showFriendlyFallbackSnack(
   BuildContext context,
   String message, {

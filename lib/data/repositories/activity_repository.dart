@@ -1,26 +1,22 @@
 import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart';
-
 import '../models/activity_summary.dart';
 import '../services/activity_service.dart';
+import '../services/health_connect_service.dart';
 
 class ActivityRepository {
-  ActivityRepository({ActivityService? service})
-    : _service = service ?? ActivityService();
+  ActivityRepository({HealthConnectService? service})
+    : _service = service ?? HealthConnectService();
 
-  final ActivityService _service;
-  final Uuid _uuid = const Uuid();
+  final HealthConnectService _service;
 
   static const String _boxName = 'activity_box';
   static const String _statusKey = 'tracking_status';
   static const String _lastSyncedAtKey = 'last_synced_at';
   static const String _stepGoalKey = 'step_goal';
-  static const String _offsetKey = 'steps_offset';
-  static const String _lastResetKey = 'last_reset_date';
   static const int defaultStepGoal = 10000;
   static const double caloriesPerStep = 0.04;
 
-  ActivityService get service => _service;
+  HealthConnectService get service => _service;
 
   Future<Box> get _box async => Hive.openBox(_boxName);
 
@@ -32,26 +28,31 @@ class ActivityRepository {
   Future<ActivityTrackingStatus> getSavedStatus() async {
     final box = await _box;
     final name = box.get(_statusKey) as String?;
+    if (name == 'disconnected') return ActivityTrackingStatus.notConnected;
+    if (name == 'unsupported') {
+      return ActivityTrackingStatus.healthConnectUnavailable;
+    }
     return ActivityTrackingStatus.values.firstWhere(
       (status) => status.name == name,
-      orElse: () => ActivityTrackingStatus.disconnected,
+      orElse: () => ActivityTrackingStatus.notConnected,
     );
   }
 
   Future<ActivityTrackingStatus> refreshTrackingStatus() async {
-    final status = await _service.checkStatus();
+    final status = await _resolveStatus(requestPermission: false);
     await saveStatus(status);
     return status;
   }
 
   Future<ActivityTrackingStatus> connect() async {
-    final status = await _service.requestPermission();
+    final status = await _resolveStatus(requestPermission: true);
     await saveStatus(status);
     return status;
   }
 
   Future<void> disconnect() async {
-    await saveStatus(ActivityTrackingStatus.disconnected);
+    await _service.disconnect();
+    await saveStatus(ActivityTrackingStatus.notConnected);
   }
 
   Future<void> saveStatus(ActivityTrackingStatus status) async {
@@ -76,38 +77,51 @@ class ActivityRepository {
     await box.put(_stepGoalKey, goal.clamp(1000, 100000));
   }
 
-  Future<ActivitySummary> recordStepReading(int rawSteps) async {
-    final box = await _box;
-    final today = dateKey(DateTime.now());
-    final lastReset = box.get(_lastResetKey) as String?;
-    var offset = box.get(_offsetKey, defaultValue: -1) as int;
-
-    if (lastReset != today || offset == -1 || rawSteps < offset) {
-      offset = rawSteps;
-      await box.put(_offsetKey, offset);
-      await box.put(_lastResetKey, today);
-    }
-
-    final steps = (rawSteps - offset).clamp(0, 999999);
-    await box.put(_stepsKey(today), steps);
-    await _markSynced();
-    return fetchToday();
-  }
-
   Future<ActivitySummary> fetchToday() {
     return fetchSummary(DateTime.now());
   }
 
   Future<ActivitySummary> fetchSummary(DateTime date) async {
-    final box = await _box;
-    final key = dateKey(date);
-    final steps = box.get(_stepsKey(key), defaultValue: 0) as int;
     final stepGoal = await getStepGoal();
-    final workouts = await getWorkoutsForDate(date);
+    final hasPermissions = await _service.hasPermissions();
+    if (!hasPermissions) {
+      return normalize(
+        date: date,
+        steps: 0,
+        stepGoal: stepGoal,
+        activityCalories: 0,
+        activityCaloriesEstimated: true,
+        workouts: const [],
+        stepStreak: 0,
+      );
+    }
+
+    final start = DateTime(date.year, date.month, date.day);
+    final now = DateTime.now();
+    final end =
+        _sameDay(start, now)
+            ? now
+            : DateTime(date.year, date.month, date.day + 1);
+    final steps = await _service.getStepsForDateRange(start, end);
+    final calories =
+        _sameDay(start, now)
+            ? await _service.getTodayActiveCaloriesBurned(fallbackSteps: steps)
+            : HealthConnectCalories(
+              calories: (steps * caloriesPerStep).round(),
+              isEstimated: true,
+            );
+    final workoutSummary =
+        _sameDay(start, now)
+            ? await _service.getTodayWorkoutSummary()
+            : await _service.getWorkoutSummaryForRange(start, end);
+    final workouts = _workoutsFromSummary(start, workoutSummary);
+    await _markSynced();
     return normalize(
       date: date,
       steps: steps,
       stepGoal: stepGoal,
+      activityCalories: calories.calories,
+      activityCaloriesEstimated: calories.isEstimated,
       workouts: workouts,
       stepStreak: await getStepStreak(),
     );
@@ -130,16 +144,19 @@ class ActivityRepository {
     required DateTime date,
     required int steps,
     required int stepGoal,
+    int? activityCalories,
+    bool activityCaloriesEstimated = true,
     required List<WorkoutEntry> workouts,
     required int stepStreak,
   }) {
-    final manualWorkoutCalories = workouts.fold<int>(
+    final workoutCalories = workouts.fold<int>(
       0,
       (sum, workout) => sum + workout.calories,
     );
-    final estimatedActivityCalories = (steps * caloriesPerStep).round();
+    final displayCalories =
+        activityCalories ?? (steps * caloriesPerStep).round();
     final stepScore = ((steps / stepGoal.clamp(1, 100000)) * 70).clamp(0, 70);
-    final workoutScore = (manualWorkoutCalories / 10).clamp(0, 20);
+    final workoutScore = (workoutCalories / 10).clamp(0, 20);
     final streakScore = stepStreak.clamp(0, 10);
 
     final sortedWorkouts = List<WorkoutEntry>.from(workouts)
@@ -149,8 +166,9 @@ class ActivityRepository {
       date: DateTime(date.year, date.month, date.day),
       steps: steps.clamp(0, 999999),
       stepGoal: stepGoal,
-      activityCalories: estimatedActivityCalories,
-      manualWorkoutCalories: manualWorkoutCalories.clamp(0, 99999),
+      activityCalories: displayCalories.clamp(0, 99999),
+      activityCaloriesEstimated: activityCaloriesEstimated,
+      manualWorkoutCalories: 0,
       stepStreak: stepStreak,
       activityScore: (stepScore + workoutScore + streakScore).round(),
       workouts: sortedWorkouts,
@@ -159,15 +177,21 @@ class ActivityRepository {
 
   Future<int> getStepStreak() async {
     final goal = await getStepGoal();
-    final box = await _box;
     final today = DateTime.now();
     var streak = 0;
 
     for (int i = 0; i < 365; i++) {
-      final date = DateTime(today.year, today.month, today.day).subtract(
-        Duration(days: i),
-      );
-      final steps = box.get(_stepsKey(dateKey(date)), defaultValue: 0) as int;
+      final date = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).subtract(Duration(days: i));
+      final start = DateTime(date.year, date.month, date.day);
+      final end =
+          _sameDay(start, today)
+              ? today
+              : DateTime(date.year, date.month, date.day + 1);
+      final steps = await _service.getStepsForDateRange(start, end);
       if (steps < goal) break;
       streak++;
     }
@@ -182,7 +206,7 @@ class ActivityRepository {
     required Duration duration,
   }) async {
     final workout = WorkoutEntry(
-      id: _uuid.v4(),
+      id: 'legacy-manual-${start.millisecondsSinceEpoch}',
       type: type.trim().isEmpty ? WorkoutEntry.defaultType : type.trim(),
       start: start,
       end: start.add(duration),
@@ -224,7 +248,43 @@ class ActivityRepository {
     await box.put(_lastSyncedAtKey, DateTime.now().millisecondsSinceEpoch);
   }
 
-  String _stepsKey(String date) => 'steps_$date';
-
   String _workoutsKey(String date) => 'manual_workouts_$date';
+
+  Future<ActivityTrackingStatus> _resolveStatus({
+    required bool requestPermission,
+  }) async {
+    final availability = await _service.checkAvailability();
+    if (availability != HealthConnectAvailability.available) {
+      return ActivityTrackingStatus.healthConnectUnavailable;
+    }
+
+    final hasPermissions = await _service.hasPermissions();
+    if (hasPermissions) return ActivityTrackingStatus.connected;
+    if (!requestPermission) return ActivityTrackingStatus.notConnected;
+
+    final granted = await _service.requestPermissions();
+    return granted
+        ? ActivityTrackingStatus.connected
+        : ActivityTrackingStatus.permissionDenied;
+  }
+
+  List<WorkoutEntry> _workoutsFromSummary(
+    DateTime date,
+    HealthConnectWorkoutSummary summary,
+  ) {
+    if (!summary.hasWorkout) return const [];
+    return [
+      WorkoutEntry(
+        id: 'health-connect-${dateKey(date)}',
+        type: summary.primaryType ?? WorkoutEntry.defaultType,
+        start: date,
+        end: date.add(summary.duration),
+        calories: summary.calories,
+      ),
+    ];
+  }
+
+  bool _sameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
 }

@@ -1,40 +1,239 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper: Checks if the user is authenticated
-    function isAuthenticated() {
+    function signedIn() {
       return request.auth != null;
     }
 
-    // Helper: Checks if the logged-in user matches the document path ID
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
     }
 
-    // Helper: Checks if the logged-in user has the "admin" custom claim
     function isAdmin() {
-      return isAuthenticated() && request.auth.token.role == "admin";
+      return signedIn() && request.auth.token.admin == true;
     }
 
-    // ─── USER PROFILE RULES ───
-    match /users/{userId} {
-      // Users can read/write their own profiles; Admins can read everything
-      allow read: if isOwner(userId) || isAdmin();
-      allow create, update: if isOwner(userId);
-      allow delete: if isAdmin(); // Only admins can delete profiles
+    function hasOnly(keys) {
+      return request.resource.data.keys().hasOnly(keys);
+    }
 
-      // ─── NESTED MEALS & SETTINGS ───
-      // Automatically inherits owner checks for all nested subcollections
-      match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId) || isAdmin();
+    function changedOnly(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    function validClientTimestamp(value) {
+      return value is timestamp || value is int || value == request.time;
+    }
+
+    function noTrustedUserFields() {
+      return !request.resource.data.keys().hasAny([
+        'uid',
+        'ownerId',
+        'role',
+        'admin',
+        'isAdmin',
+        'isPro',
+        'subscriptionStatus',
+        'entitlement',
+        'entitlementId',
+        'usage',
+        'quota',
+        'serverNutritionResult',
+        'serverCalories',
+        'serverProtein',
+        'serverCarbs',
+        'serverFat',
+        'serverComputedTotals',
+        'processingError',
+        'updatedByServer'
+      ]);
+    }
+
+    function validUserRootCreate(uid) {
+      return isOwner(uid)
+        && hasOnly(['displayName', 'photoUrl', 'email', 'createdAt', 'updatedAt'])
+        && (!request.resource.data.keys().hasAny(['createdAt']) || validClientTimestamp(request.resource.data.createdAt))
+        && (!request.resource.data.keys().hasAny(['updatedAt']) || validClientTimestamp(request.resource.data.updatedAt));
+    }
+
+    function validUserRootUpdate() {
+      return changedOnly(['displayName', 'photoUrl', 'updatedAt'])
+        && noTrustedUserFields()
+        && (!request.resource.data.keys().hasAny(['createdAt']) || request.resource.data.createdAt == resource.data.createdAt)
+        && (!request.resource.data.keys().hasAny(['updatedAt']) || validClientTimestamp(request.resource.data.updatedAt));
+    }
+
+    function validPrivateProfile() {
+      return hasOnly([
+        'age',
+        'height',
+        'weight',
+        'targetWeight',
+        'targetCalories',
+        'dailyCalorieGoal',
+        'dailyProteinGoal',
+        'dailyCarbGoal',
+        'dailyFatGoal',
+        'gender',
+        'activityLevel',
+        'goalMode',
+        'dietaryPreferences',
+        'dietaryRestriction',
+        'cuisinePreference',
+        'mealsPerDay',
+        'updatedAt'
+      ])
+      && noTrustedUserFields();
+    }
+
+    function validAppSettings() {
+      return hasOnly([
+        'themeMode',
+        'languageCode',
+        'onboardingComplete',
+        'notificationsEnabled',
+        'mealRemindersEnabled',
+        'dailyMotivationEnabled',
+        'breakfastTime',
+        'lunchTime',
+        'dinnerTime',
+        'weightUnit',
+        'heightUnit',
+        'updatedAt'
+      ])
+      && noTrustedUserFields();
+    }
+
+    function validMeal() {
+      return hasOnly([
+        'id',
+        'timestamp',
+        'dateString',
+        'imageUri',
+        'foodName',
+        'calories',
+        'macros',
+        'synced',
+        'ingredients',
+        'prepTimeMins',
+        'mealType',
+        'portion',
+        'scanConfidence',
+        'scanSource',
+        'aiRationale',
+        'originalCalories',
+        'userCorrected'
+      ])
+      && noTrustedUserFields()
+      && request.resource.data.id is string
+      && request.resource.data.foodName is string
+      && request.resource.data.calories is int
+      && request.resource.data.macros is map;
+    }
+
+    function validDailyLog() {
+      return hasOnly(['userEditableEntries', 'createdAt', 'updatedAt'])
+        && !request.resource.data.keys().hasAny(['serverComputedTotals']);
+    }
+
+    function validFoodScanCreate() {
+      return hasOnly(['storagePath', 'createdAt', 'inputSource', 'clientMetadata'])
+        && request.resource.data.storagePath is string
+        && request.resource.data.storagePath.matches('users/' + request.auth.uid + '/scans/[^/]+/[^/]+')
+        && request.resource.data.inputSource in ['camera', 'gallery'];
+    }
+
+    match /users/{uid} {
+      // A user can read only their own profile. Admin reads are narrow and claim based.
+      allow get, list: if isOwner(uid) || isAdmin();
+
+      // The root user document contains only basic profile display fields.
+      allow create: if validUserRootCreate(uid);
+      allow update: if isOwner(uid) && validUserRootUpdate();
+      allow delete: if false;
+
+      match /private/profile {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid) && validPrivateProfile();
+        allow delete: if false;
+      }
+
+      match /settings/app {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid) && validAppSettings();
+        allow delete: if false;
+      }
+
+      // Existing editable meal history is preserved for compatibility.
+      match /meals/{mealId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid) && validMeal() && request.resource.data.id == mealId;
+        allow delete: if isOwner(uid);
+      }
+
+      match /dailyLogs/{dateId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid) && validDailyLog();
+        allow delete: if isOwner(uid);
+      }
+
+      // Clients can create a minimal scan request, but server-owned status and nutrition fields are denied.
+      match /foodScans/{scanId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid) && validFoodScanCreate();
+        allow update, delete: if false;
+      }
+
+      match /uploads/{uploadId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid)
+          && hasOnly(['storagePath', 'contentType', 'createdAt', 'scanId', 'status'])
+          && request.resource.data.storagePath.matches('users/' + uid + '/scans/[^/]+/[^/]+')
+          && request.resource.data.contentType.matches('image/.*')
+          && request.resource.data.status == 'uploaded';
+        allow update, delete: if false;
+      }
+
+      // Subscription and usage are trusted server records. Admin SDK bypasses rules.
+      match /subscription/{docId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+
+      match /usage/{docId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+
+      // No other user subcollection is client writable.
+      match /{document=**} {
+        allow read, write: if false;
       }
     }
 
-    // ─── GLOBAL CONFIGS (Read-only for all, write for Admin) ───
+    match /adminUsers/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /systemConfig/{configId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     match /system_config/{configId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

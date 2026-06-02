@@ -38,12 +38,14 @@ class _ActivityRingGaugeState extends State<ActivityRingGauge>
   }
 
   void _initAnimations() {
-    _progressAnimation = Tween<double>(begin: 0, end: widget.progress).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
-    _stepsAnimation = Tween<double>(begin: 0, end: widget.steps.toDouble()).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _progressAnimation = Tween<double>(
+      begin: 0,
+      end: widget.progress,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _stepsAnimation = Tween<double>(
+      begin: 0,
+      end: widget.steps.toDouble(),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -158,17 +160,19 @@ class _RingPainter extends CustomPainter {
 
     final rect = Rect.fromCircle(center: center, radius: radius);
 
-    final bgPaint = Paint()
-      ..color = backgroundColor
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final bgPaint =
+        Paint()
+          ..color = backgroundColor
+          ..strokeWidth = strokeWidth
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
 
-    final fgPaint = Paint()
-      ..shader = gradient.createShader(rect)
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final fgPaint =
+        Paint()
+          ..shader = gradient.createShader(rect)
+          ..strokeWidth = strokeWidth
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
 
     // Draw background track
     canvas.drawArc(rect, startAngle, sweepAngle, false, bgPaint);

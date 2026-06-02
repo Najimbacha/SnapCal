@@ -2311,6 +2311,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get result_portion_label => 'Porción';
 
   @override
+  String get result_add_item => 'Add Item';
+
+  @override
+  String get result_nutrition_details => 'Nutrition Details';
+
+  @override
+  String get result_unlock_nutrition => 'Unlock nutrition details';
+
+  @override
+  String get result_add_to_log => 'Add to Log';
+
+  @override
   String get paywall_cancel_anytime =>
       'Cancela cuando quieras. Sin compromiso.';
 
@@ -2884,6 +2896,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get paywall_billing_monthly => 'Facturado mensualmente';
+
+  @override
+  String get paywall_billing_lifetime => 'Pago único';
+
+  @override
   String get assistant_action_fix_macros => 'Ajustar mis macros de hoy';
 
   @override
@@ -3078,6 +3096,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get log_metric_calories_intake => 'Calorías ingeridas';
 
   @override
+  String get log_macro_unlock_tracking => 'Unlock macro tracking';
+
+  @override
   String get log_metric_carbs => 'Carbohidratos';
 
   @override
@@ -3162,4 +3183,250 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get aha_prompt_btn => 'Pasar a Pro';
+
+  @override
+  String get macro_locked_title => 'Los macros son Pro';
+
+  @override
+  String get macro_locked_body =>
+      'Desbloquea detalles de proteína, carbohidratos y grasas con SnapCal Pro.';
+
+  @override
+  String get macro_unlock_cta => 'Desbloquear macros';
+
+  @override
+  String get macro_locked_placeholder => 'Bloqueado';
+
+  @override
+  String get macro_unlock_card_title => 'Unlock your macro breakdown';
+
+  @override
+  String get macro_unlock_card_body =>
+      'See protein, carbs and fat progress for every meal.';
+
+  @override
+  String get common_unlock => 'Desbloquear';
+
+  @override
+  String get scan_choice_title => 'Elige el tipo de escaneo';
+
+  @override
+  String get scan_choice_subtitle =>
+      'Registra una comida desde una foto o escanea un alimento envasado.';
+
+  @override
+  String get scan_choice_food_title => 'Escanear comida';
+
+  @override
+  String get scan_choice_food_subtitle =>
+      'Usa la cámara para nutrición instantánea con IA.';
+
+  @override
+  String get scan_choice_barcode_title => 'Escanear código';
+
+  @override
+  String get scan_choice_barcode_subtitle =>
+      'Encuentra alimentos envasados por código de barras.';
+
+  @override
+  String get planner_empty_headline =>
+      'Plan inteligente personalizado de 7 días';
+
+  @override
+  String get planner_empty_body =>
+      'SnapCal crea comidas según tus calorías, macros, preferencias y compras.';
+
+  @override
+  String get planner_empty_benefit_adaptive => 'Guía adaptativa';
+
+  @override
+  String get planner_empty_benefit_macros => 'Macros equilibrados';
+
+  @override
+  String get planner_empty_benefit_grocery => 'Lista de compras';
+
+  @override
+  String get planner_adjust_preferences => 'Ajustar preferencias';
+
+  @override
+  String get planner_meals_unit => 'comidas';
+
+  @override
+  String get planner_items_unit => 'artículos';
+
+  @override
+  String get planner_avg_plan => 'Promedio';
+
+  @override
+  String get planner_protein_coverage => 'Proteína';
+
+  @override
+  String get planner_guidance_protein =>
+      'Falta proteína; prioriza proteína en la próxima comida.';
+
+  @override
+  String get planner_guidance_light =>
+      'Calorías ajustadas; mantén ligera la próxima comida.';
+
+  @override
+  String get planner_guidance_balanced =>
+      'Vas bien; sigue las comidas planeadas.';
+
+  @override
+  String get planner_prep_time => 'Tiempo de preparación';
+
+  @override
+  String get planner_prep_quick => 'Rápido';
+
+  @override
+  String get planner_prep_balanced => 'Equilibrado';
+
+  @override
+  String get planner_prep_batch => 'Por lotes';
+
+  @override
+  String get planner_budget => 'Presupuesto';
+
+  @override
+  String get planner_budget_value => 'Económico';
+
+  @override
+  String get planner_budget_standard => 'Estándar';
+
+  @override
+  String get planner_budget_premium => 'Premium';
+
+  @override
+  String get planner_advanced_preferences => 'Preferencias avanzadas';
+
+  @override
+  String get planner_advanced_preferences_body =>
+      'Alergias, gustos, equipo, porciones y días de entrenamiento quedan para una próxima mejora.';
+
+  @override
+  String get planner_swap_title => 'Cambiar comida';
+
+  @override
+  String get planner_swap_intent => 'Elige un objetivo';
+
+  @override
+  String get planner_swap_lower_calorie => 'Menos calorías';
+
+  @override
+  String get planner_swap_higher_protein => 'Más proteína';
+
+  @override
+  String get planner_swap_faster_prep => 'Más rápido';
+
+  @override
+  String get planner_swap_cheaper => 'Más barato';
+
+  @override
+  String get planner_swap_custom_note => 'Añadir nota opcional';
+
+  @override
+  String get planner_swap_note_hint => 'ej. pollo, ensalada, pasta...';
+
+  @override
+  String get planner_swap_generate => 'Generar cambio';
+
+  @override
+  String get planner_swap_with_note => 'Cambiar con nota';
+
+  @override
+  String get planner_swap_loading => 'Buscando alternativa...';
+
+  @override
+  String get planner_swap_success =>
+      'Comida reemplazada con una alternativa práctica.';
+
+  @override
+  String get planner_grocery_ready => 'Lista de ya tengo';
+
+  @override
+  String get planner_already_have => 'Ya lo tienes';
+
+  @override
+  String get planner_rebalance_notice_light =>
+      'Plan reajustado: las comidas restantes son más ligeras hoy.';
+
+  @override
+  String get planner_rebalance_notice_protein =>
+      'Plan reajustado: las comidas restantes priorizan proteína.';
+
+  @override
+  String get planner_today_plan => 'Plan de hoy';
+
+  @override
+  String get planner_today_meals => 'Comidas de hoy';
+
+  @override
+  String get planner_planned_unit => 'planeadas';
+
+  @override
+  String get planner_planned_for_today => 'Planeado para hoy';
+
+  @override
+  String get planner_logged => 'Registrado';
+
+  @override
+  String get planner_upcoming => 'Próxima';
+
+  @override
+  String get planner_alert_next_protein =>
+      'La próxima comida debe priorizar proteína';
+
+  @override
+  String get planner_alert_on_track => 'El plan va bien';
+
+  @override
+  String get planner_alert_follow_plan => 'Sigue la próxima comida planificada';
+
+  @override
+  String get planner_alert_fix_it => 'Ajustar';
+
+  @override
+  String get planner_week_complete_title => 'Este plan de comidas terminó';
+
+  @override
+  String get planner_generate_current_week => 'Generar plan de esta semana';
+
+  @override
+  String get settings_milliliters_unit => 'ml';
+
+  @override
+  String get log_customize_metrics_desc =>
+      'Elige qué métricas aparecen en tu panel';
+
+  @override
+  String get log_metric_full_history_locked => 'Historial completo bloqueado';
+
+  @override
+  String get log_metric_full_history_upgrade =>
+      'Actualiza a Pro para ver historial de más de 14 días';
+
+  @override
+  String planner_swap_replacing(Object food) {
+    return 'Reemplazando: $food';
+  }
+
+  @override
+  String planner_rebalance_notice_adjusted(Object count) {
+    return 'Plan reajustado: $count \$_temp0 ajustadas para hoy.';
+  }
+
+  @override
+  String planner_alert_protein_short(Object grams) {
+    return 'Faltan ${grams}g de proteína hoy';
+  }
+
+  @override
+  String planner_week_complete_body(Object date) {
+    return 'Tu último plan terminó el $date. Genera un plan nuevo para la semana actual.';
+  }
+
+  @override
+  String log_metric_goal_value(Object value) {
+    return 'objetivo $value';
+  }
 }

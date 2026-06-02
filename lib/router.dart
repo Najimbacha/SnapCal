@@ -13,6 +13,7 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/assistant/assistant_screen.dart';
 import 'screens/home/activity_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
+import 'widgets/scan_choice_sheet.dart';
 import 'providers/auth_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/planner/meal_planner_screen.dart';
@@ -164,9 +165,16 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
             routes: [
               GoRoute(
                 path: '/snap',
-                pageBuilder:
-                    (context, state) =>
-                        const NoTransitionPage(child: SnapScreen()),
+                pageBuilder: (context, state) {
+                  final initialMode =
+                      state.uri.queryParameters['mode'] == 'barcode'
+                          ? SnapInitialMode.barcode
+                          : SnapInitialMode.food;
+                  return NoTransitionPage(
+                    key: ValueKey(state.uri.toString()),
+                    child: SnapScreen(initialMode: initialMode),
+                  );
+                },
               ),
             ],
           ),
@@ -225,42 +233,58 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _mapBranchToNav(int branchIndex) {
-    if (branchIndex < 2) return branchIndex;
-    return -1;
+  /// Tracks the last non-snap branch so the nav bar doesn't lose highlighting
+  /// when the user is on the Snap (camera) screen.
+  int _lastNonSnapBranch = 0;
+
+  /// Maps branch index (0-4) to bottom nav index (0-3).
+  /// Snap (branch 2) is not in the nav bar — preserve last non-snap tab.
+  int _branchToNav(int branchIndex) {
+    if (branchIndex < 2) return branchIndex; // Home(0)→0, Log(1)→1
+    if (branchIndex == 2) {
+      return _branchToNav(_lastNonSnapBranch); // Snap → preserve
+    }
+    return branchIndex - 1; // Reports(3)→2, Profile(4)→3
   }
 
-  int _mapNavToBranch(int navIndex) {
-    return navIndex;
+  /// Maps bottom nav index (0-3) to branch index (skipping Snap at index 2).
+  int _navToBranch(int navIndex) {
+    if (navIndex < 2) return navIndex; // Home(0)→0, Log(1)→1
+    return navIndex + 1; // Reports(2)→3, Profile(3)→4
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentNavIndex = _mapBranchToNav(
-      widget.navigationShell.currentIndex,
-    );
+    final currentBranch = widget.navigationShell.currentIndex;
+    if (currentBranch != 2) {
+      _lastNonSnapBranch = currentBranch;
+    }
 
     return Scaffold(
       extendBody: true,
       body: widget.navigationShell,
       floatingActionButton:
-          widget.navigationShell.currentIndex == 2
+          currentBranch == 2
               ? null
               : Transform.translate(
                 offset: const Offset(0, 28),
                 child: HeroActionButton(
                   isActive: false,
                   onTap: () {
-                    widget.navigationShell.goBranch(2, initialLocation: false);
+                    showScanChoiceSheet(
+                      context: context,
+                      onFoodScan: () => context.go('/snap'),
+                      onBarcodeScan: () => context.go('/snap?mode=barcode'),
+                    );
                   },
                 ),
               ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomNavBar(
-        currentIndex: currentNavIndex,
+        currentIndex: _branchToNav(currentBranch),
         onTap: (index) {
           HapticFeedback.selectionClick();
-          final branchIndex = _mapNavToBranch(index);
+          final branchIndex = _navToBranch(index);
           widget.navigationShell.goBranch(
             branchIndex,
             initialLocation: branchIndex == widget.navigationShell.currentIndex,

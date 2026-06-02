@@ -3,8 +3,8 @@ class AppConstants {
   AppConstants._();
 
   // API Configuration (Managed via Firebase Remote Config)
-  static const String defaultGeminiApiKey = 'Your-Gemini-Key';
-  static const String defaultGroqApiKey = 'Your-Groq-Key';
+  static const String defaultGeminiApiKey = '';
+  static const String defaultGroqApiKey = '';
   static const String defaultRevenueCatAppleApiKey = String.fromEnvironment(
     'REVENUECAT_APPLE_API_KEY',
     defaultValue: '',
@@ -13,17 +13,19 @@ class AppConstants {
     'REVENUECAT_GOOGLE_API_KEY',
     defaultValue: 'goog_fgVDYvjpkxPzXqwYLndFXKGNEUr',
   );
-  
+
   // Model IDs
   static const String defaultGeminiModel = 'gemini-2.5-flash';
   static const String defaultGroqCoachModel = 'llama-3.1-8b-instant';
-  static const String defaultGroqScannerModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
+  static const String defaultGroqScannerModel =
+      'meta-llama/llama-4-scout-17b-16e-instruct';
 
   static const String groqApiUrl =
       'https://api.groq.com/openai/v1/chat/completions';
 
   // Backend Proxy Configuration
-  static const String defaultBackendProxyUrl = 'https://snapcal-backend-production.up.railway.app';
+  static const String defaultBackendProxyUrl =
+      'https://snapcal-backend-production.up.railway.app';
   static const String backendScanFoodPath = '/api/scan-food';
 
   // System Prompt for Gemini
@@ -67,14 +69,19 @@ Rules:
 
   static String _getLanguageName(String code) {
     switch (code) {
-      case 'ar': return 'Arabic';
-      case 'es': return 'Spanish';
-      case 'fr': return 'French';
-      default: return 'English';
+      case 'ar':
+        return 'Arabic';
+      case 'es':
+        return 'Spanish';
+      case 'fr':
+        return 'French';
+      default:
+        return 'English';
     }
   }
 
-  static const String geminiSystemPrompt = ''; // Deprecated in favor of getGeminiSystemPrompt
+  static const String geminiSystemPrompt =
+      ''; // Deprecated in favor of getGeminiSystemPrompt
 
   // Storage Keys
   static const String mealsBoxName = 'meals_box';
@@ -82,6 +89,8 @@ Rules:
   static const String settingsBoxName = 'settings_box';
   static const String waterBoxName = 'water_box';
   static const String assistantBoxName = 'assistant_box';
+  static const String syncQueueBoxName = 'sync_queue_box';
+  static const String uploadQueueBoxName = 'upload_queue_box';
   static const String settingsKey = 'user_settings';
 
   // Default User Goals
@@ -97,6 +106,7 @@ Rules:
   // Image Processing
   static const int maxImageSize = 768;
   static const int imageQuality = 70;
+  static const int maxImageUploadBytes = 5 * 1024 * 1024;
 
   // Animation Durations
   static const Duration shortAnimation = Duration(milliseconds: 200);

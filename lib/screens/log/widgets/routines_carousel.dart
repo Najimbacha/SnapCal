@@ -74,7 +74,7 @@ class RoutinesCarousel extends StatelessWidget {
             style: AppTypography.labelSmall.copyWith(
               color: colorScheme.onSurfaceVariant,
               letterSpacing: 2.0,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w500,
               fontSize: 10,
             ),
           ),
@@ -163,7 +163,7 @@ class _RoutineCard extends StatelessWidget {
                   '${template.totalCalories}',
                   style: AppTypography.labelSmall.copyWith(
                     color: context.primaryColor,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
                 ),
@@ -173,7 +173,7 @@ class _RoutineCard extends StatelessWidget {
             Text(
               template.name,
               style: AppTypography.bodyMedium.copyWith(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w600,
                 color: context.textPrimaryColor,
                 letterSpacing: -0.2,
               ),
@@ -182,10 +182,12 @@ class _RoutineCard extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              AppLocalizations.of(context)!.common_items_count(template.items.length),
+              AppLocalizations.of(
+                context,
+              )!.common_items_count(template.items.length),
               style: AppTypography.labelSmall.copyWith(
                 color: context.textMutedColor,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
                 fontSize: 10,
               ),
             ),
@@ -221,7 +223,7 @@ class _RoutineOptionsSheet extends StatelessWidget {
             Text(
               '${template.emoji} ${template.name}',
               style: AppTypography.heading3.copyWith(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 24),
@@ -231,7 +233,7 @@ class _RoutineOptionsSheet extends StatelessWidget {
                 AppLocalizations.of(context)!.common_delete,
                 style: AppTypography.bodyLarge.copyWith(
                   color: AppColors.error,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               onTap: () async {

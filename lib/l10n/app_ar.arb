@@ -429,7 +429,7 @@
   "onboarding_activity_moderately": "نشط باعتدال",
   "onboarding_activity_moderately_desc": "تمرين 3-5 أيام/أسبوع",
   "onboarding_activity_active": "نشط جداً (6-7 أيام)",
-  "onboarding_activity_active_desc": "تمرين شاق يومياً تقريباً",
+  "onboarding_activity_active_desc": "تمرين منتظم خلال الأسبوع",
   "onboarding_result_eyebrow": "خطتك",
   "onboarding_result_title": "هدفك جاهز.",
   "onboarding_result_kcal_day": "سعرة / يوم",
@@ -460,7 +460,6 @@
   "onboarding_activity_light_mover": "متحرك خفيف",
   "onboarding_activity_light_mover_desc": "1-3 أيام/أسبوع",
   "onboarding_activity_active_title": "نشط بدنياً (3-5 أيام)",
-  "onboarding_activity_active_desc": "تمرين منتظم خلال الأسبوع",
   "onboarding_activity_athlete": "رياضي",
   "onboarding_activity_athlete_desc": "6-7 أيام/أسبوع",
   "onboarding_activity_footer": "تم اختيار نشط افتراضياً. انقر مرة واحدة وسنستمر في الحركة.",
@@ -521,7 +520,9 @@
   "onboarding_result_weekly_rate": "~{rate} كجم / أسبوع",
   "@onboarding_result_weekly_rate": {
     "placeholders": {
-      "rate": { "type": "String" }
+      "rate": {
+        "type": "String"
+      }
     }
   },
   "error_connection_title": "مشكلة في الاتصال",
@@ -548,7 +549,9 @@
   "report_body_fat_pct": "{percent}٪ دهون",
   "@report_body_fat_pct": {
     "placeholders": {
-      "percent": { "type": "String" }
+      "percent": {
+        "type": "String"
+      }
     }
   },
   "weight_hint": "الوزن",
@@ -572,9 +575,21 @@
   "feature_insights_title": "ملخص الأسبوع",
   "feature_insights_desc": "مراجعة أسبوعك",
   "feature_insights_avg_cal": "متوسط {cal} سعرة/يوم",
-  "@feature_insights_avg_cal": {"placeholders": {"cal": {"type": "String"}}},
+  "@feature_insights_avg_cal": {
+    "placeholders": {
+      "cal": {
+        "type": "String"
+      }
+    }
+  },
   "feature_insights_on_track": "{days} أيام على المسار",
-  "@feature_insights_on_track": {"placeholders": {"days": {"type": "String"}}},
+  "@feature_insights_on_track": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
   "feature_insights_generating": "جاري توليد الرؤى...",
   "feature_insights_share": "شارك أسبوعي",
   "feature_templates_title": "روتينياتي",
@@ -587,7 +602,13 @@
   "feature_templates_logged": "تم تسجيل الروتين بنجاح!",
   "feature_achievements_title": "الإنجازات",
   "feature_achievements_unlocked": "تم فتح {count}",
-  "@feature_achievements_unlocked": {"placeholders": {"count": {"type": "String"}}},
+  "@feature_achievements_unlocked": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
   "achievement_first_flame": "الشعلة الأولى",
   "achievement_first_flame_desc": "سجل وجبتك الأولى",
   "achievement_consistency_king": "ملك الاستمرارية",
@@ -627,16 +648,6 @@
   "feature_insights_subtitle": "ملخصك الأسبوعي للتغذية بالذكاء الاصطناعي جاهز!",
   "feature_insights_share_text": "اطلع على ملخصي الأسبوعي للتغذية من سناب كال! 📊",
   "settings_guest_title": "احمِ تقدمك",
-  "settings_guest_subtitle": "سجل الدخول لمزامنة بياناتك بأمان.",
-  "activity_tracking_status": "حالة التتبع",
-  "activity_active": "نشط",
-  "activity_description": "أجهزة الاستشعار في هاتفك تتبع خطواتك بنشاط لحرق السعرات الحرارية اليوم.",
-  "activity_authorize_desc": "لتتبع خطواتك تلقائيًا، يرجى السماح بالتعرف على النشاط.",
-  "activity_authorize_btn": "السماح بالتتبع",
-  "activity_motivation_low": "كل خطوة مهمة. دعنا نتحرك اليوم!",
-  "activity_motivation_mid": "أنت في طريقك! المشي السريع قد يساعدك في الوصول إلى هدفك.",
-  "activity_motivation_high": "اقتربت من الوصول! أنت تحقق أهداف نشاطك.",
-  "activity_motivation_elite": "رائع! أنت في منطقة النشاط النخبة اليوم.",
   "home_scan_food": "مسح الطعام",
   "home_go_pro": "كن برو",
   "home_pro_badge": "برو",
@@ -680,7 +691,13 @@
   "activity_steps_synced": "تتم مزامنة خطواتك في الوقت الفعلي.",
   "activity_enable_tracking": "فعّل التتبع لرؤية تقدمك.",
   "feature_insights_share_error": "خطأ أثناء المشاركة: {error}",
-  "@feature_insights_share_error": {"placeholders": {"error": {"type": "String"}}},
+  "@feature_insights_share_error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "feature_insights_empty": "لا توجد بيانات لهذا الأسبوع بعد.",
   "feature_insights_calorie_trend": "اتجاه السعرات",
   "feature_insights_ai_coach": "رؤى مدرب الذكاء الاصطناعي",
@@ -736,27 +753,75 @@
   "paywall_coach_subtitle": "افتح تدريباً غير محدود وإرشاداً للعناصر الغذائية واقتراحات وجبات مناسبة ليومك.",
   "paywall_planner_subtitle": "افتح خططاً أسبوعية كاملة وقوائم مشتريات وتفضيلات وإعادة توليد وجبات بالذكاء الاصطناعي.",
   "paywall_reports_subtitle": "افتح تحليلاً أعمق واتجاهات أسبوعية واقتراحات عملية بالذكاء الاصطناعي بعد كل {feature}.",
-  "@paywall_reports_subtitle": {"placeholders": {"feature": {"type": "String"}}},
+  "@paywall_reports_subtitle": {
+    "placeholders": {
+      "feature": {
+        "type": "String"
+      }
+    }
+  },
   "paywall_progress_subtitle": "افتح المزيد من صور التقدم والمقارنات وتتبع التحول بعد الحد الشهري المجاني.",
   "paywall_ad_removal_subtitle": "اشترك في Pro لإزالة الإعلانات وفتح تجربة التغذية الكاملة بالذكاء الاصطناعي.",
   "progress_weight_trend": "اتجاه الوزن",
   "progress_log_custom_weight": "اضغط لتسجيل وزنك المخصص",
   "log_calories_eaten": "السعرات المستهلكة",
   "log_kcal_over": "{amount} فوق الهدف",
-  "@log_kcal_over": {"placeholders": {"amount": {"type": "int"}}},
+  "@log_kcal_over": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "log_kcal_left": "{amount} متبقية",
-  "@log_kcal_left": {"placeholders": {"amount": {"type": "int"}}},
+  "@log_kcal_left": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "log_no_details": "لم يتم تسجيل تفاصيل لهذا اليوم بعد.",
   "log_over_target_insight": "سجلت {amount} سعرة فوق الهدف. راجع الوجبات الأثقل أدناه.",
-  "@log_over_target_insight": {"placeholders": {"amount": {"type": "int"}}},
+  "@log_over_target_insight": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
   "log_low_protein_insight": "سجلت {calories} سعرة وكان البروتين أقل من الهدف.",
-  "@log_low_protein_insight": {"placeholders": {"calories": {"type": "int"}}},
+  "@log_low_protein_insight": {
+    "placeholders": {
+      "calories": {
+        "type": "int"
+      }
+    }
+  },
   "log_water_behind_insight": "سجلت {calories} سعرة. لا يزال شرب الماء أقل من الهدف اليوم.",
-  "@log_water_behind_insight": {"placeholders": {"calories": {"type": "int"}}},
+  "@log_water_behind_insight": {
+    "placeholders": {
+      "calories": {
+        "type": "int"
+      }
+    }
+  },
   "log_balanced_day_insight": "سجلت {calories} سعرة مع يوم متوازن حتى الآن.",
-  "@log_balanced_day_insight": {"placeholders": {"calories": {"type": "int"}}},
+  "@log_balanced_day_insight": {
+    "placeholders": {
+      "calories": {
+        "type": "int"
+      }
+    }
+  },
   "feature_templates_save_desc": "احفظ هذه العناصر الـ {count} للتسجيل لاحقاً بلمسة واحدة.",
-  "@feature_templates_save_desc": {"placeholders": {"count": {"type": "int"}}},
+  "@feature_templates_save_desc": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "achievement_category_consistency": "الاستمرارية",
   "achievement_category_precision": "الدقة",
   "achievement_category_hydration": "الترطيب",
@@ -765,7 +830,13 @@
   "achievement_unlocked_label": "مفتوح",
   "report_pdf_title": "تقرير التغذية بالذكاء الاصطناعي",
   "report_pdf_user": "المستخدم: {name}",
-  "@report_pdf_user": {"placeholders": {"name": {"type": "String"}}},
+  "@report_pdf_user": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "report_pdf_weekly_performance": "الأداء الأسبوعي",
   "report_pdf_total_protein": "إجمالي البروتين",
   "report_pdf_active_streak": "سلسلة النشاط",
@@ -788,15 +859,45 @@
   "onboarding_safety_surplus_capped": "حددنا فائض السعرات لإبقاء الخطة واقعية.",
   "onboarding_safety_floor": "أبقينا هدفك فوق الحد الأدنى الآمن للسعرات.",
   "onboarding_safety_floor_extra": "{note} تم تطبيق الحد الأدنى الآمن للسعرات.",
-  "@onboarding_safety_floor_extra": {"placeholders": {"note": {"type": "String"}}},
+  "@onboarding_safety_floor_extra": {
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
   "onboarding_insight_desk": "{calories} سعرة تجعل خطتك واقعية مع نمط نشاط منخفض.",
-  "@onboarding_insight_desk": {"placeholders": {"calories": {"type": "int"}}},
+  "@onboarding_insight_desk": {
+    "placeholders": {
+      "calories": {
+        "type": "int"
+      }
+    }
+  },
   "onboarding_insight_light": "{calories} سعرة تمنحك هدفاً ثابتاً يناسب حركة أسبوعية خفيفة.",
-  "@onboarding_insight_light": {"placeholders": {"calories": {"type": "int"}}},
+  "@onboarding_insight_light": {
+    "placeholders": {
+      "calories": {
+        "type": "int"
+      }
+    }
+  },
   "onboarding_insight_athlete": "{calories} سعرة تدعم احتياج التدريب دون تسريع الوتيرة كثيراً.",
-  "@onboarding_insight_athlete": {"placeholders": {"calories": {"type": "int"}}},
+  "@onboarding_insight_athlete": {
+    "placeholders": {
+      "calories": {
+        "type": "int"
+      }
+    }
+  },
   "onboarding_insight_default": "{calories} سعرة توازن بين هدفك وحجم جسمك ومستوى نشاطك الحالي.",
-  "@onboarding_insight_default": {"placeholders": {"calories": {"type": "int"}}},
+  "@onboarding_insight_default": {
+    "placeholders": {
+      "calories": {
+        "type": "int"
+      }
+    }
+  },
   "onboarding_tip_desk": "المشي 20 دقيقة بعد الوجبات طريقة سهلة لتحسين الالتزام.",
   "onboarding_tip_light": "جلستا حركة إضافيتان أسبوعياً ستجعلان هذا الهدف أسهل للاستمرار.",
   "onboarding_tip_athlete": "وزع البروتين على كل وجبة لدعم التعافي والسيطرة على الشهية.",
@@ -923,7 +1024,15 @@
   "paywall_benefit_ad_free": "بدون إعلانات",
   "paywall_benefit_smart_planner": "مخطط ذكي",
   "paywall_price_target": "السعر المستهدف {price}",
-  "@paywall_price_target": {"placeholders": {"price": {"type": "String"}}},
+  "@paywall_price_target": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_billing_monthly": "فاتورة شهرية",
+  "paywall_billing_lifetime": "دفع لمرة واحدة",
   "assistant_action_fix_macros": "اضبط الماكروز اليوم",
   "assistant_action_plan_next_meal": "خطط وجبتي التالية",
   "assistant_action_light_dinner": "اقترح عشاءً خفيفًا",
@@ -942,7 +1051,13 @@
   "assistant_adjust_macros": "عدّل الماكروز",
   "assistant_ask_follow_up": "اسأل متابعة",
   "activity_steps_goal": "الهدف: {steps} خطوة",
-  "@activity_steps_goal": {"placeholders": {"steps": {"type": "int"}}},
+  "@activity_steps_goal": {
+    "placeholders": {
+      "steps": {
+        "type": "int"
+      }
+    }
+  },
   "activity_unlock_pro_title": "افتح ميزات النشاط الاحترافية",
   "activity_unlock_pro_subtitle": "قم بالترقية لفتح تعديل هدف السعرات من الخطوات، والسلاسل الأسبوعية، وسعرات التمارين اليدوية، ودرجة النشاط، والرؤى.",
   "activity_manual_workouts": "تمارين يدوية",
@@ -953,13 +1068,37 @@
   "activity_minutes": "الدقائق",
   "activity_save_workout": "حفظ التمرين",
   "activity_insight_goal_met": "بلغ متوسط خطواتك {steps} خطوة هذا الأسبوع وأنت تحقق هدف الخطوات.",
-  "@activity_insight_goal_met": {"placeholders": {"steps": {"type": "int"}}},
+  "@activity_insight_goal_met": {
+    "placeholders": {
+      "steps": {
+        "type": "int"
+      }
+    }
+  },
   "activity_insight_goal_gap": "بلغ متوسط خطواتك {steps} خطوة هذا الأسبوع. يمكن لمشي قصير أن يساعدك على سد الفجوة.",
-  "@activity_insight_goal_gap": {"placeholders": {"steps": {"type": "int"}}},
+  "@activity_insight_goal_gap": {
+    "placeholders": {
+      "steps": {
+        "type": "int"
+      }
+    }
+  },
   "common_minutes_short": "{minutes} د",
-  "@common_minutes_short": {"placeholders": {"minutes": {"type": "int"}}},
+  "@common_minutes_short": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "common_kcal_value": "{calories} سعرة",
-  "@common_kcal_value": {"placeholders": {"calories": {"type": "int"}}},
+  "@common_kcal_value": {
+    "placeholders": {
+      "calories": {
+        "type": "int"
+      }
+    }
+  },
   "splash_status_initializing": "تهيئة محرك ذكاء السعرات...",
   "splash_status_database": "فتح قاعدة البيانات المشفرة...",
   "splash_status_ai_gateways": "إعداد مدرب الذكاء الاصطناعي وبوابات Gemini...",
@@ -968,9 +1107,21 @@
   "auth_google_sign_in_failed": "فشل تسجيل الدخول عبر Google",
   "auth_facebook_sign_in_failed": "فشل تسجيل الدخول عبر Facebook",
   "auth_google_sign_in_failed_code": "فشل تسجيل الدخول عبر Google ({code}). يرجى المحاولة مرة أخرى.",
-  "@auth_google_sign_in_failed_code": {"placeholders": {"code": {"type": "String"}}},
+  "@auth_google_sign_in_failed_code": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "auth_firebase_google_sign_in_failed": "تعذر على Firebase إكمال تسجيل الدخول عبر Google ({code}).",
-  "@auth_firebase_google_sign_in_failed": {"placeholders": {"code": {"type": "String"}}},
+  "@auth_firebase_google_sign_in_failed": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "barcode_unknown_product": "منتج غير معروف",
   "barcode_default_portion": "لكل حصة/100 جم",
   "activity_calorie_estimate_disclaimer": "السعرات مقدّرة من الخطوات وقد لا تكون دقيقة تمامًا.",
@@ -1000,11 +1151,23 @@
   "log_detail_this_three_months": "آخر 3 أشهر",
   "log_detail_this_year": "هذا العام",
   "log_metric_per_day_avg": "{unit} يوميًا (متوسط)",
-  "@log_metric_per_day_avg": {"placeholders": {"unit": {"type": "String"}}},
+  "@log_metric_per_day_avg": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
   "log_metric_goal_hit": "أنت ضمن الهدف.",
   "log_metric_goal_miss": "لم تصل إلى هدفك.",
   "log_metric_left": "{value} متبقٍ",
-  "@log_metric_left": {"placeholders": {"value": {"type": "String"}}},
+  "@log_metric_left": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "log_metric_below_range": "أقل من النطاق",
   "log_metric_no_data": "لا توجد بيانات",
   "log_metric_locked": "مقفل",
@@ -1013,6 +1176,76 @@
   "common_days": "أيام",
   "aha_prompt_title": "لقد وفرت للتو 10 دقائق",
   "aha_prompt_subtitle": "تخيل توفير هذا الوقت كل يوم. اشترك في Pro للحصول على عمليات مسح صور غير محدودة وتتبع سهل.",
-  "aha_prompt_btn": "كن برو"
+  "aha_prompt_btn": "كن برو",
+  "macro_locked_title": "المغذيات الكبرى ميزة Pro",
+  "macro_locked_body": "افتح تفاصيل البروتين والكربوهيدرات والدهون مع SnapCal Pro.",
+  "macro_unlock_cta": "افتح المغذيات الكبرى",
+  "macro_locked_placeholder": "مقفل",
+  "common_unlock": "فتح",
+  "scan_choice_title": "اختر نوع المسح",
+  "scan_choice_subtitle": "سجل وجبة من صورة أو امسح طعاماً مغلفاً.",
+  "scan_choice_food_title": "مسح الطعام",
+  "scan_choice_food_subtitle": "استخدم الكاميرا لتقدير التغذية فوراً بالذكاء الاصطناعي.",
+  "scan_choice_barcode_title": "مسح الباركود",
+  "scan_choice_barcode_subtitle": "ابحث عن الطعام المغلف بواسطة الباركود.",
+  "planner_empty_headline": "تخطيط ذكي ومخصص للوجبات لمدة 7 أيام",
+  "planner_empty_body": "يبني SnapCal وجباتك حول السعرات والماكروز والتفضيلات واحتياجات التسوق.",
+  "planner_empty_benefit_adaptive": "إرشاد يومي تكيفي",
+  "planner_empty_benefit_macros": "وجبات متوازنة",
+  "planner_empty_benefit_grocery": "قائمة تسوق",
+  "planner_adjust_preferences": "تعديل التفضيلات",
+  "planner_meals_unit": "وجبات",
+  "planner_items_unit": "عناصر",
+  "planner_avg_plan": "متوسط الخطة",
+  "planner_protein_coverage": "البروتين",
+  "planner_guidance_protein": "البروتين متأخر؛ اجعل الوجبة التالية غنية بالبروتين.",
+  "planner_guidance_light": "السعرات محدودة؛ اجعل الوجبة التالية أخف.",
+  "planner_guidance_balanced": "أنت على المسار؛ اتبع الوجبات المخططة.",
+  "planner_prep_time": "وقت التحضير",
+  "planner_prep_quick": "سريع",
+  "planner_prep_balanced": "متوازن",
+  "planner_prep_batch": "تحضير مسبق",
+  "planner_budget": "الميزانية",
+  "planner_budget_value": "اقتصادي",
+  "planner_budget_standard": "قياسي",
+  "planner_budget_premium": "فاخر",
+  "planner_advanced_preferences": "تفضيلات متقدمة",
+  "planner_advanced_preferences_body": "الحساسيات، والأطعمة غير المرغوبة، والمعدات، والحصص، وأيام التمرين ستأتي في ترقية لاحقة.",
+  "planner_swap_title": "استبدال الوجبة",
+  "planner_swap_intent": "اختر الهدف",
+  "planner_swap_lower_calorie": "سعرات أقل",
+  "planner_swap_higher_protein": "بروتين أعلى",
+  "planner_swap_faster_prep": "تحضير أسرع",
+  "planner_swap_cheaper": "أقل تكلفة",
+  "planner_swap_custom_note": "إضافة ملاحظة اختيارية",
+  "planner_swap_note_hint": "مثلاً دجاج، سلطة، مكرونة...",
+  "planner_swap_generate": "إنشاء بديل",
+  "planner_swap_with_note": "استبدال مع ملاحظة",
+  "planner_swap_loading": "جارٍ البحث عن وجبة بديلة...",
+  "planner_swap_success": "تم استبدال الوجبة ببديل عملي.",
+  "planner_grocery_ready": "قائمة المتوفر لديك",
+  "planner_already_have": "متوفر لديك",
+  "planner_rebalance_notice_light": "تمت موازنة الخطة: الوجبات المتبقية أخف لهذا اليوم.",
+  "planner_rebalance_notice_protein": "تمت موازنة الخطة: الوجبات المتبقية تركز على البروتين.",
+  "planner_today_plan": "خطة اليوم",
+  "planner_today_meals": "وجبات اليوم",
+  "planner_planned_unit": "مخططة",
+  "planner_planned_for_today": "مخطط لليوم",
+  "planner_logged": "تم التسجيل",
+  "planner_upcoming": "قادمة",
+  "planner_alert_next_protein": "اجعل الوجبة التالية غنية بالبروتين",
+  "planner_alert_on_track": "الخطة على المسار",
+  "planner_alert_follow_plan": "اتبع الوجبة المخططة التالية",
+  "planner_alert_fix_it": "تعديل",
+  "planner_week_complete_title": "اكتملت خطة الوجبات هذه",
+  "planner_generate_current_week": "إنشاء خطة هذا الأسبوع",
+  "settings_milliliters_unit": "مل",
+  "log_customize_metrics_desc": "اختر المقاييس التي تظهر في لوحة التحكم",
+  "log_metric_full_history_locked": "السجل الكامل مقفل",
+  "log_metric_full_history_upgrade": "اشترك في Pro لعرض السجل لأكثر من 14 يومًا",
+  "planner_swap_replacing": "استبدال: {food}",
+  "planner_rebalance_notice_adjusted": "تمت موازنة الخطة: تم تعديل {count} من الوجبات المتبقية لهذا اليوم.",
+  "planner_alert_protein_short": "ينقصك {grams}غ بروتين اليوم",
+  "planner_week_complete_body": "انتهت خطتك السابقة في {date}. أنشئ خطة جديدة للأسبوع الحالي.",
+  "log_metric_goal_value": "هدف {value}"
 }
-

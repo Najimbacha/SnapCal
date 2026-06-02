@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
+import '../../../core/resilience/timeout_policy.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
@@ -23,18 +24,23 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
   String? _frontPath;
   String? _sidePath;
   bool _isSaving = false;
+  bool _isPicking = false;
 
   Future<void> _takePhoto(bool isFront) async {
+    if (_isPicking) return;
+    setState(() => _isPicking = true);
     try {
-      final XFile? file = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.front,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      
-      if (file != null) {
+      final XFile? file = await _picker
+          .pickImage(
+            source: ImageSource.camera,
+            preferredCameraDevice: CameraDevice.front,
+            maxWidth: 1024,
+            maxHeight: 1024,
+            imageQuality: 85,
+          )
+          .timeout(TimeoutPolicy.gallery);
+
+      if (file != null && await File(file.path).exists()) {
         setState(() {
           if (isFront) {
             _frontPath = file.path;
@@ -46,30 +52,43 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.progress_failed_camera)),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.progress_failed_camera),
+          ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isPicking = false);
     }
   }
 
   Future<void> _save() async {
-    if (_frontPath == null && _sidePath == null) return;
-    
+    if (_isSaving || (_frontPath == null && _sidePath == null)) return;
+
     setState(() => _isSaving = true);
-    
+
     final metricsProvider = context.read<MetricsProvider>();
-    
-    // Save front if taken
-    if (_frontPath != null) {
-      await metricsProvider.logProgressPhoto(_frontPath!, isFront: true);
+    try {
+      if (_frontPath != null && await File(_frontPath!).exists()) {
+        await metricsProvider.logProgressPhoto(_frontPath!, isFront: true);
+      }
+
+      if (_sidePath != null && await File(_sidePath!).exists()) {
+        await metricsProvider.logProgressPhoto(_sidePath!, isFront: false);
+      }
+
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.progress_failed_camera),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
-    
-    // Save side if taken
-    if (_sidePath != null) {
-      await metricsProvider.logProgressPhoto(_sidePath!, isFront: false);
-    }
-    
-    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -86,7 +105,7 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
                   child: _CaptureSlot(
                     title: AppLocalizations.of(context)!.progress_front_view,
                     path: _frontPath,
-                    onTap: () => _takePhoto(true),
+                    onTap: _isPicking ? null : () => _takePhoto(true),
                     onClear: () => setState(() => _frontPath = null),
                   ),
                 ),
@@ -95,7 +114,7 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
                   child: _CaptureSlot(
                     title: AppLocalizations.of(context)!.progress_side_view,
                     path: _sidePath,
-                    onTap: () => _takePhoto(false),
+                    onTap: _isPicking ? null : () => _takePhoto(false),
                     onClear: () => setState(() => _sidePath = null),
                   ),
                 ),
@@ -106,16 +125,31 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: FilledButton.icon(
-              onPressed: (_frontPath != null || _sidePath != null) && !_isSaving ? _save : null,
-              icon: _isSaving 
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Icon(LucideIcons.check),
-              label: Text(_isSaving 
-                  ? AppLocalizations.of(context)!.progress_saving 
-                  : AppLocalizations.of(context)!.progress_save_progress),
+              onPressed:
+                  (_frontPath != null || _sidePath != null) && !_isSaving
+                      ? _save
+                      : null,
+              icon:
+                  _isSaving
+                      ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                      : const Icon(LucideIcons.check),
+              label: Text(
+                _isSaving
+                    ? AppLocalizations.of(context)!.progress_saving
+                    : AppLocalizations.of(context)!.progress_save_progress,
+              ),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ),
@@ -129,10 +163,15 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
 class _CaptureSlot extends StatelessWidget {
   final String title;
   final String? path;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final VoidCallback onClear;
 
-  const _CaptureSlot({required this.title, required this.path, required this.onTap, required this.onClear});
+  const _CaptureSlot({
+    required this.title,
+    required this.path,
+    required this.onTap,
+    required this.onClear,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -148,42 +187,65 @@ class _CaptureSlot extends StatelessWidget {
                 color: Theme.of(context).colorScheme.surfaceContainer,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: path == null ? Theme.of(context).colorScheme.outlineVariant : AppColors.primary,
+                  color:
+                      path == null
+                          ? Theme.of(context).colorScheme.outlineVariant
+                          : AppColors.primary,
                   width: 2,
                 ),
               ),
-              child: path == null
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(LucideIcons.camera, size: 32, color: context.textSecondaryColor),
-                          const SizedBox(height: 8),
-                          Text(AppLocalizations.of(context)!.progress_tap_to_snap, style: AppTypography.labelMedium.copyWith(color: context.textSecondaryColor)),
-                        ],
-                      ),
-                    )
-                  : Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: Image.file(File(path!), fit: BoxFit.cover),
+              child:
+                  path == null
+                      ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              LucideIcons.camera,
+                              size: 32,
+                              color: context.textSecondaryColor,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.progress_tap_to_snap,
+                              style: AppTypography.labelMedium.copyWith(
+                                color: context.textSecondaryColor,
+                              ),
+                            ),
+                          ],
                         ),
-                        Positioned(
-                          top: 8, right: 8,
-                          child: IconButton.filled(
-                            onPressed: onClear,
-                            icon: const Icon(LucideIcons.x, size: 16),
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.black.withValues(alpha: 0.6),
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(32, 32),
+                      )
+                      : Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child:
+                                File(path!).existsSync()
+                                    ? Image.file(File(path!), fit: BoxFit.cover)
+                                    : const Center(
+                                      child: Icon(LucideIcons.imageOff),
+                                    ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: IconButton.filled(
+                              onPressed: onClear,
+                              icon: const Icon(LucideIcons.x, size: 16),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.black.withValues(
+                                  alpha: 0.6,
+                                ),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(32, 32),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
             ),
           ),
         ),

@@ -138,12 +138,14 @@ class PremiumPromptCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: isDark ? colorScheme.surfaceContainerLow : colorScheme.surface,
+            color:
+                isDark ? colorScheme.surfaceContainerLow : colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isDark
-                  ? colorScheme.outlineVariant.withValues(alpha: 0.08)
-                  : colorScheme.outlineVariant.withValues(alpha: 0.12),
+              color:
+                  isDark
+                      ? colorScheme.outlineVariant.withValues(alpha: 0.08)
+                      : colorScheme.outlineVariant.withValues(alpha: 0.12),
               width: 0.8,
             ),
           ),
@@ -154,7 +156,9 @@ class PremiumPromptCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.08),
+                  color: AppColors.primary.withValues(
+                    alpha: isDark ? 0.12 : 0.08,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
@@ -171,9 +175,10 @@ class PremiumPromptCard extends StatelessWidget {
                       style: AppTypography.labelSmall.copyWith(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.92)
-                            : AppColors.lightTextPrimary,
+                        color:
+                            isDark
+                                ? Colors.white.withValues(alpha: 0.92)
+                                : AppColors.lightTextPrimary,
                         letterSpacing: 0,
                       ),
                     ),
@@ -195,7 +200,10 @@ class PremiumPromptCard extends StatelessWidget {
               const SizedBox(width: 12),
               // Ghost CTA pill — same language as the Sign In button
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),

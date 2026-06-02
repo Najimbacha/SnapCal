@@ -73,7 +73,7 @@ class MealAdapter extends TypeAdapter<Meal> {
       scanSource: fields[13] as String?,
       aiRationale: fields[14] as String?,
       originalCalories: fields[15] as int?,
-      userCorrected: fields[16] as bool? ?? false,
+      userCorrected: fields[16] as bool,
     );
   }
 

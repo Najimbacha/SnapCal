@@ -344,14 +344,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _bgController,
-              builder: (context, _) => CustomPaint(
-                painter: _MeshPainter(
-                  progress: _bgController.value,
-                  color1: context.primaryColor,
-                  color2: AppColors.tertiarySeed,
-                  isDark: isDark,
-                ),
-              ),
+              builder:
+                  (context, _) => CustomPaint(
+                    painter: _MeshPainter(
+                      progress: _bgController.value,
+                      color1: context.primaryColor,
+                      color2: AppColors.tertiarySeed,
+                      isDark: isDark,
+                    ),
+                  ),
             ),
           ),
 
@@ -856,7 +857,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ShaderMask(
-                shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
+                shaderCallback:
+                    (bounds) => AppColors.primaryGradient.createShader(bounds),
                 blendMode: BlendMode.srcIn,
                 child: Text(
                   res.dailyCalories.toString(),
@@ -1029,7 +1031,10 @@ class _HeaderButton extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.black.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(13),
               border: Border.all(color: context.cardBorderColor),
             ),
@@ -1051,7 +1056,10 @@ class _ProgressBar extends StatelessWidget {
     return Container(
       height: 6,
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(99),
       ),
       child: FractionallySizedBox(
@@ -1107,24 +1115,25 @@ class _PrimaryButton extends StatelessWidget {
           ],
         ),
         child: Center(
-          child: loading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
+          child:
+              loading
+                  ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                  : Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                )
-              : Text(
-                  text,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
         ),
       ),
     );
@@ -1142,7 +1151,10 @@ class _FeaturePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.black.withValues(alpha: 0.03),
         border: Border.all(color: context.cardBorderColor),
         borderRadius: BorderRadius.circular(99),
       ),
@@ -1242,23 +1254,27 @@ class _ChoiceCard extends StatelessWidget {
         curve: Curves.easeOutQuint,
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: selected
-              ? primaryColor.withValues(alpha: isDark ? 0.12 : 0.08)
-              : context.cardColor,
+          color:
+              selected
+                  ? primaryColor.withValues(alpha: isDark ? 0.12 : 0.08)
+                  : context.cardColor,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: selected ? primaryColor : context.cardBorderColor,
             width: selected ? 2.0 : 1.2,
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: isDark ? 0.15 : 0.08),
-                    blurRadius: 20,
-                    offset: Offset.zero,
-                  ),
-                ]
-              : [],
+          boxShadow:
+              selected
+                  ? [
+                    BoxShadow(
+                      color: primaryColor.withValues(
+                        alpha: isDark ? 0.15 : 0.08,
+                      ),
+                      blurRadius: 20,
+                      offset: Offset.zero,
+                    ),
+                  ]
+                  : [],
         ),
         child: Column(
           children: [
@@ -1266,9 +1282,12 @@ class _ChoiceCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: selected
-                    ? primaryColor.withValues(alpha: 0.18)
-                    : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                color:
+                    selected
+                        ? primaryColor.withValues(alpha: 0.18)
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.04)),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -1358,15 +1377,16 @@ class _ToggleBtn extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: active ? AppColors.primaryGradient : null,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: active
-              ? [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: 0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [],
+          boxShadow:
+              active
+                  ? [
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : [],
         ),
         child: Center(
           child: Text(
@@ -1409,7 +1429,8 @@ class _NumberInput extends StatefulWidget {
 
 class _NumberInputState extends State<_NumberInput> {
   FocusNode? _internalFocusNode;
-  FocusNode get _effectiveFocusNode => widget.focusNode ?? (_internalFocusNode ??= FocusNode());
+  FocusNode get _effectiveFocusNode =>
+      widget.focusNode ?? (_internalFocusNode ??= FocusNode());
   bool _isFocused = false;
 
   @override
@@ -1447,13 +1468,19 @@ class _NumberInputState extends State<_NumberInput> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = context.primaryColor;
 
-    final bgColor = widget.isAccent
-        ? (_isFocused ? primaryColor.withValues(alpha: 0.18) : primaryColor.withValues(alpha: 0.08))
-        : (_isFocused ? primaryColor.withValues(alpha: 0.1) : context.cardColor);
+    final bgColor =
+        widget.isAccent
+            ? (_isFocused
+                ? primaryColor.withValues(alpha: 0.18)
+                : primaryColor.withValues(alpha: 0.08))
+            : (_isFocused
+                ? primaryColor.withValues(alpha: 0.1)
+                : context.cardColor);
 
-    final borderColor = widget.isAccent
-        ? primaryColor.withValues(alpha: 0.4)
-        : (_isFocused ? primaryColor : context.cardBorderColor);
+    final borderColor =
+        widget.isAccent
+            ? primaryColor.withValues(alpha: 0.4)
+            : (_isFocused ? primaryColor : context.cardBorderColor);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -1467,15 +1494,16 @@ class _NumberInputState extends State<_NumberInput> {
           color: _isFocused ? primaryColor : borderColor,
           width: _isFocused ? 1.6 : 1.2,
         ),
-        boxShadow: _isFocused
-            ? [
-                BoxShadow(
-                  color: primaryColor.withValues(alpha: isDark ? 0.1 : 0.04),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                )
-              ]
-            : [],
+        boxShadow:
+            _isFocused
+                ? [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: isDark ? 0.1 : 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+                : [],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -1552,7 +1580,8 @@ class _InputBox extends StatefulWidget {
 
 class _InputBoxState extends State<_InputBox> {
   FocusNode? _internalFocusNode;
-  FocusNode get _effectiveFocusNode => widget.focusNode ?? (_internalFocusNode ??= FocusNode());
+  FocusNode get _effectiveFocusNode =>
+      widget.focusNode ?? (_internalFocusNode ??= FocusNode());
   bool _isFocused = false;
 
   @override
@@ -1594,7 +1623,10 @@ class _InputBoxState extends State<_InputBox> {
       curve: Curves.easeOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
-        color: _isFocused ? primaryColor.withValues(alpha: 0.08) : context.cardColor,
+        color:
+            _isFocused
+                ? primaryColor.withValues(alpha: 0.08)
+                : context.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _isFocused ? primaryColor : context.cardBorderColor,
@@ -1695,15 +1727,16 @@ class _ActivityCard extends StatelessWidget {
             color: selected ? activeBorderColor : context.cardBorderColor,
             width: selected ? 2.0 : 1.2,
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: color.withValues(alpha: isDark ? 0.2 : 0.08),
-                    blurRadius: 20,
-                    offset: Offset.zero,
-                  ),
-                ]
-              : [],
+          boxShadow:
+              selected
+                  ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: isDark ? 0.2 : 0.08),
+                      blurRadius: 20,
+                      offset: Offset.zero,
+                    ),
+                  ]
+                  : [],
         ),
         child: Row(
           children: [
@@ -1711,9 +1744,12 @@ class _ActivityCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: selected
-                    ? color.withValues(alpha: 0.2)
-                    : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)),
+                color:
+                    selected
+                        ? color.withValues(alpha: 0.2)
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.04)),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Center(
@@ -1728,7 +1764,12 @@ class _ActivityCard extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: selected ? (isDark ? Colors.white : context.textPrimaryColor) : context.textPrimaryColor,
+                      color:
+                          selected
+                              ? (isDark
+                                  ? Colors.white
+                                  : context.textPrimaryColor)
+                              : context.textPrimaryColor,
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1737,9 +1778,12 @@ class _ActivityCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: selected
-                          ? (isDark ? Colors.white.withValues(alpha: 0.7) : context.textSecondaryColor)
-                          : context.textSecondaryColor,
+                      color:
+                          selected
+                              ? (isDark
+                                  ? Colors.white.withValues(alpha: 0.7)
+                                  : context.textSecondaryColor)
+                              : context.textSecondaryColor,
                       fontSize: 13,
                     ),
                   ),
@@ -1806,7 +1850,8 @@ class _MacroBox extends StatelessWidget {
       child: Column(
         children: [
           ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(colors: colors).createShader(bounds),
+            shaderCallback:
+                (bounds) => LinearGradient(colors: colors).createShader(bounds),
             blendMode: BlendMode.srcIn,
             child: Text(
               value,

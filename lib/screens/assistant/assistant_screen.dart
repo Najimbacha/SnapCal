@@ -44,6 +44,7 @@ class _AssistantScreenState extends State<AssistantScreen>
   @override
   void initState() {
     super.initState();
+
     _staggerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
@@ -55,15 +56,16 @@ class _AssistantScreenState extends State<AssistantScreen>
   }
 
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      });
-    }
+    if (!mounted || !_scrollController.hasClients) return;
+
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   @override
@@ -77,7 +79,16 @@ class _AssistantScreenState extends State<AssistantScreen>
 
   void _loadInitialRecommendations() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !context.read<ConnectivityService>().isOnline) return;
+      if (!mounted) return;
+      if (!context.read<ConnectivityService>().isOnline) {
+        showFriendlyFallbackSnack(
+          context,
+          AppLocalizations.of(context)?.common_offline_mode ??
+              "Offline Mode: Check your internet connection",
+          icon: LucideIcons.wifiOff,
+        );
+        return;
+      }
       _fetchRecommendations(clearPrevious: true);
     });
   }
@@ -131,26 +142,44 @@ class _AssistantScreenState extends State<AssistantScreen>
         title: l10n.assistant_title,
         headerHeight: 56,
         padding: EdgeInsets.zero,
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFF14130F)
-            : const Color(0xFFF9F8F5),
+        backgroundColor:
+            Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF14130F)
+                : const Color(0xFFF9F8F5),
         leading: const _CoachBackButton(),
-        trailing: _NewChatHeaderButton(
-          onTap:
+        trailing: _CoachHeaderActions(
+          isPro: isPro,
+          onNewChat:
               () =>
                   _fetchRecommendations(clearPrevious: true, forceFetch: true),
+          onOpenProfile: () => _showCoachProfileBottomSheet(context),
+          onOpenReport: () => _showWeeklyReportDialog(context),
         ),
         bottomBar: _buildInputArea(context, isPro),
         child: Consumer<AssistantProvider>(
           builder: (context, assistant, _) {
-            final content = _buildChatContent(context, assistant);
             final hasReachedLimit = PremiumGateService().hasReachedAiLimit(
               isPro,
             );
+            final showLockedPreview =
+                !isPro && assistant.history.isEmpty && hasReachedLimit;
+
+            if (showLockedPreview) {
+              return const _LockedCoachPreview();
+            }
+
+            final chatContent = _buildChatContent(context, assistant);
+            final mainLayout = Column(
+              children: [
+                const _CoachMetricsHeader(),
+                Expanded(child: chatContent),
+              ],
+            );
+
             if (!isPro && hasReachedLimit) {
               return Stack(
                 children: [
-                  content,
+                  mainLayout,
                   Positioned(
                     bottom: 20,
                     left: 20,
@@ -172,10 +201,7 @@ class _AssistantScreenState extends State<AssistantScreen>
                 ],
               );
             }
-            if (!isPro && assistant.history.isEmpty && hasReachedLimit) {
-              return const _LockedCoachPreview();
-            }
-            return content;
+            return mainLayout;
           },
         ),
       ),
@@ -230,6 +256,14 @@ class _AssistantScreenState extends State<AssistantScreen>
     }
 
     Future<void> submitCoachQuery([String? preset]) async {
+      if (!context.read<ConnectivityService>().isOnline) {
+        showFriendlyFallbackSnack(
+          context,
+          l10n.common_offline_mode,
+          icon: LucideIcons.wifiOff,
+        );
+        return;
+      }
       final q = (preset ?? _searchController.text).trim();
       if (q.isEmpty && _selectedImageBytes == null) return;
 
@@ -323,8 +357,6 @@ class _AssistantScreenState extends State<AssistantScreen>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _ComposerQuickQuestions(onSelect: submitCoachQuery),
-          const SizedBox(height: 10),
           if (_selectedImageBytes != null) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -382,15 +414,18 @@ class _AssistantScreenState extends State<AssistantScreen>
           Container(
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: context.backgroundColor,
+              color: isDark ? const Color(0xFF0D2517) : Colors.white,
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: context.primaryColor.withValues(alpha: 0.16),
+                color:
+                    isDark
+                        ? const Color(0xFFD4AF37).withValues(alpha: 0.35)
+                        : const Color(0xFFEFEBE4),
                 width: 1.3,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
                   blurRadius: 18,
                   offset: const Offset(0, 7),
                 ),
@@ -404,13 +439,26 @@ class _AssistantScreenState extends State<AssistantScreen>
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: context.cardColor,
+                      color:
+                          isDark
+                              ? const Color(0xFF143324)
+                              : const Color(0xFFFCF8EF),
                       shape: BoxShape.circle,
-                      border: Border.all(color: context.cardBorderColor),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? const Color(
+                                  0xFFD4AF37,
+                                ).withValues(alpha: 0.25)
+                                : const Color(0xFFFAF2E6),
+                      ),
                     ),
                     child: Icon(
                       LucideIcons.camera,
-                      color: context.primaryColor,
+                      color:
+                          isDark
+                              ? const Color(0xFFD4AF37)
+                              : const Color(0xFFBA7517),
                       size: 19,
                     ),
                   ),
@@ -422,15 +470,24 @@ class _AssistantScreenState extends State<AssistantScreen>
                     minLines: 1,
                     maxLines: 3,
                     textCapitalization: TextCapitalization.sentences,
-                    cursorColor: context.primaryColor,
+                    cursorColor:
+                        isDark
+                            ? const Color(0xFFD4AF37)
+                            : const Color(0xFFBA7517),
                     style: AppTypography.bodyMedium.copyWith(
-                      color: context.textPrimaryColor,
+                      color:
+                          isDark
+                              ? const Color(0xFFFAF8F5)
+                              : const Color(0xFF1A1A2E),
                       fontWeight: FontWeight.w600,
                     ),
                     decoration: InputDecoration(
                       hintText: l10n.assistant_input_hint,
                       hintStyle: AppTypography.bodyMedium.copyWith(
-                        color: context.textMutedColor,
+                        color:
+                            isDark
+                                ? const Color(0xFFBDD2C6)
+                                : const Color(0xFF788C80),
                         fontWeight: FontWeight.w600,
                       ),
                       isDense: true,
@@ -450,12 +507,17 @@ class _AssistantScreenState extends State<AssistantScreen>
                     width: 44,
                     height: 44,
                     decoration: const BoxDecoration(
-                      color: _minimalGreen,
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFE5C060), Color(0xFFB88E2F)],
+                      ),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.arrowUp,
-                      color: Colors.white,
+                      color:
+                          isDark
+                              ? const Color(0xFF0A2114)
+                              : const Color(0xFF1A3D2B),
                       size: 21,
                     ),
                   ),
@@ -463,66 +525,6 @@ class _AssistantScreenState extends State<AssistantScreen>
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ComposerQuickQuestions extends StatelessWidget {
-  final ValueChanged<String> onSelect;
-
-  const _ComposerQuickQuestions({required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final questions = [
-      (LucideIcons.target, l10n.assistant_quick_macros),
-      (LucideIcons.utensils, l10n.assistant_quick_next_meal),
-      (LucideIcons.dumbbell, l10n.assistant_quick_snack),
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          for (var i = 0; i < questions.length; i++) ...[
-            AppScaleTap(
-              onTap: () => onSelect(questions[i].$2),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: context.backgroundColor,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: context.cardBorderColor),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      questions[i].$1,
-                      size: 14,
-                      color: context.primaryColor,
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      questions[i].$2,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: context.textPrimaryColor,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (i != questions.length - 1) const SizedBox(width: 8),
-          ],
         ],
       ),
     );
@@ -541,16 +543,13 @@ class _CoachWelcomeExperience extends StatelessWidget {
     final settings = context.watch<SettingsProvider>();
     final meals = mealProvider.todaysMeals;
     final calories = mealProvider.todaysTotalCalories;
-    final targetCalories = settings.dailyCalorieGoal;
+    final targetCalories =
+        settings.dailyCalorieGoal > 0 ? settings.dailyCalorieGoal : 2000;
     final caloriesLeft = (targetCalories - calories).clamp(0, 99999).toInt();
     final proteinGap =
         (settings.dailyProteinGoal - mealProvider.todaysTotalMacros.protein)
             .clamp(0, 999)
             .toInt();
-    final progress =
-        targetCalories <= 0
-            ? 0.0
-            : (calories / targetCalories).clamp(0.0, 1.0).toDouble();
     final lastMeal =
         meals.isEmpty ? l10n.assistant_no_meals_logged : meals.last.foodName;
     final action =
@@ -562,6 +561,32 @@ class _CoachWelcomeExperience extends StatelessWidget {
             ? l10n.assistant_action_light
             : l10n.assistant_action_balanced;
 
+    final coachMessage = _calculateCoachMessage(
+      context: context,
+      calories: calories,
+      targetCalories: targetCalories,
+      protein: mealProvider.todaysTotalMacros.protein,
+      targetProtein:
+          settings.dailyProteinGoal > 0 ? settings.dailyProteinGoal : 120,
+      carbs: mealProvider.todaysTotalMacros.carbs,
+      targetCarbs: settings.dailyCarbGoal > 0 ? settings.dailyCarbGoal : 220,
+      fat: mealProvider.todaysTotalMacros.fat,
+      targetFat: settings.dailyFatGoal > 0 ? settings.dailyFatGoal : 65,
+      languageCode: settings.languageCode,
+      mealCount: meals.length,
+    );
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const goldColor = Color(0xFFD4AF37);
+    final Color cardBg =
+        isDark ? const Color(0xFF0F2618) : const Color(0xFFFCF8EF);
+    final Color borderColor =
+        isDark
+            ? goldColor.withValues(alpha: 0.25)
+            : const Color(0xFFE5C060).withValues(alpha: 0.3);
+    final Color textColor =
+        isDark ? const Color(0xFFFAF8F5) : const Color(0xFF1A3D2B);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
       child: Center(
@@ -570,26 +595,29 @@ class _CoachWelcomeExperience extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Welcome Title Row
               Row(
                 children: [
                   Container(
-                        width: 58,
-                        height: 58,
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
-                          color: _minimalGreen,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFE5C060), Color(0xFFB88E2F)],
+                          ),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: _minimalGreen.withValues(alpha: 0.28),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
+                              color: goldColor.withValues(alpha: 0.35),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
                         child: const Icon(
                           LucideIcons.sparkles,
-                          color: Colors.white,
-                          size: 26,
+                          color: Color(0xFF0A2114),
+                          size: 20,
                         ),
                       )
                       .animate(onPlay: (c) => c.repeat(reverse: true))
@@ -599,20 +627,18 @@ class _CoachWelcomeExperience extends StatelessWidget {
                         end: const Offset(1.04, 1.04),
                         curve: Curves.easeInOut,
                       ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l10n.assistant_initial_prompt,
-                          style: AppTypography.headlineSmall.copyWith(
+                          "AI Recommendations",
+                          style: AppTypography.titleLarge.copyWith(
                             color: context.textPrimaryColor,
                             fontWeight: FontWeight.w900,
-                            height: 1.08,
                           ),
                         ),
-                        const SizedBox(height: 5),
                         Text(
                           l10n.assistant_meals_logged_today(meals.length),
                           style: AppTypography.bodySmall.copyWith(
@@ -626,27 +652,120 @@ class _CoachWelcomeExperience extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              _CoachBriefCard(
-                calories: calories,
-                targetCalories: targetCalories,
-                caloriesLeft: caloriesLeft,
-                proteinGap: proteinGap,
-                lastMeal: lastMeal,
-                action: action,
-                progress: progress,
+
+              // Prominent Coach's Insight Bubble / Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: borderColor, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.25 : 0.05,
+                      ),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          LucideIcons.sparkles,
+                          color: goldColor,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "TODAY'S FOCUS & ADVICE",
+                          style: AppTypography.labelSmall.copyWith(
+                            color:
+                                isDark
+                                    ? const Color(0xFFE5C060)
+                                    : const Color(0xFFBA7517),
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      coachMessage,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.w700,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
-              _CoachActionChips(onSelect: onSelect),
-              const SizedBox(height: 18),
+
+              // Side-by-side Capsules for Last Meal & Next Move
+              Row(
+                children: [
+                  Expanded(
+                    child: _CoachCapsuleTile(
+                      icon: LucideIcons.utensils,
+                      label: l10n.assistant_last_meal,
+                      value: lastMeal,
+                      isDark: isDark,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _CoachCapsuleTile(
+                      icon: LucideIcons.target,
+                      label: "Next Move",
+                      value: action,
+                      isDark: isDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Recommended inquiries section header
               Text(
-                l10n.assistant_ask_coach_header,
+                "Recommended Queries",
                 style: AppTypography.titleMedium.copyWith(
                   color: context.textPrimaryColor,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 10),
-              _RecommendationGrid(onSelect: onSelect),
+              const SizedBox(height: 12),
+
+              // Recommended Queries Stack (replaces the chips and old grid)
+              _RecommendedCard(
+                icon: LucideIcons.utensils,
+                title: "Plan My Next Meal",
+                subtitle:
+                    "Get healthy meal ideas tailored to your calorie budget",
+                onTap: () => onSelect("Suggest next meal based on target"),
+              ),
+              const SizedBox(height: 12),
+              _RecommendedCard(
+                icon: LucideIcons.target,
+                title: "Optimize My Macros",
+                subtitle:
+                    "Get tips on how to hit your protein, carbs, and fat target",
+                onTap: () => onSelect("What are my macro targets?"),
+              ),
+              const SizedBox(height: 12),
+              _RecommendedCard(
+                icon: LucideIcons.lightbulb,
+                title: "Daily Nutrition Tips",
+                subtitle:
+                    "Learn quick dietary tricks based on your profile & goals",
+                onTap: () => onSelect("Tell me some quick nutrition tips"),
+              ),
             ],
           ),
         ),
@@ -655,306 +774,156 @@ class _CoachWelcomeExperience extends StatelessWidget {
   }
 }
 
-class _CoachBriefCard extends StatelessWidget {
-  final int calories;
-  final int targetCalories;
-  final int caloriesLeft;
-  final int proteinGap;
-  final String lastMeal;
-  final String action;
-  final double progress;
+class _CoachCapsuleTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isDark;
 
-  const _CoachBriefCard({
-    required this.calories,
-    required this.targetCalories,
-    required this.caloriesLeft,
-    required this.proteinGap,
-    required this.lastMeal,
-    required this.action,
-    required this.progress,
+  const _CoachCapsuleTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const goldColor = Color(0xFFD4AF37);
+    final Color chipBg =
+        isDark ? const Color(0xFF112A1C) : const Color(0xFFF2FDF4);
+    final Color iconColor = isDark ? goldColor : const Color(0xFF1E4620);
+    final Color labelColor =
+        isDark ? const Color(0xFFBDD2C6) : const Color(0xFF788C80);
+    final Color valueColor =
+        isDark ? const Color(0xFFFAF8F5) : const Color(0xFF1A1A2E);
+    final Color borderColor =
+        isDark ? goldColor.withValues(alpha: 0.15) : const Color(0xFFD4ECD8);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: chipBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: iconColor),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: AppTypography.labelSmall.copyWith(
+                  color: labelColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.bodySmall.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecommendedCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _RecommendedCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l10n = AppLocalizations.of(context)!;
+    const goldColor = Color(0xFFD4AF37);
+    final Color cardBg = context.cardColor;
+    final Color borderColor = context.cardBorderColor;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: context.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: context.cardBorderColor, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: _minimalGreen.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  LucideIcons.activity,
-                  color: _minimalGreen,
-                  size: 18,
-                ),
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor, width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.14 : 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.primaryColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  l10n.assistant_brief_today,
-                  style: AppTypography.titleMedium.copyWith(
-                    color: context.textPrimaryColor,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  l10n.assistant_live,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: context.cardBorderColor.withValues(alpha: 0.5),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                _minimalGreen,
+              child: Icon(
+                icon,
+                color: isDark ? goldColor : context.primaryColor,
+                size: 20,
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _CoachStatTile(
-                  label: l10n.assistant_brief_left,
-                  value: "$caloriesLeft",
-                  unit: "kcal",
-                  icon: LucideIcons.flame,
-                ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.titleSmall.copyWith(
+                      color: context.textPrimaryColor,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.textSecondaryColor,
+                      fontSize: 11,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _CoachStatTile(
-                  label: l10n.assistant_protein_gap,
-                  value: "${proteinGap}g",
-                  unit: l10n.assistant_to_goal,
-                  icon: LucideIcons.dumbbell,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _CoachSignalChip(
-            icon: LucideIcons.utensils,
-            label: l10n.assistant_last_meal,
-            value: lastMeal,
-          ),
-          const SizedBox(height: 8),
-          _CoachSignalChip(
-            icon: LucideIcons.target,
-            label: l10n.assistant_next_move,
-            value: action,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CoachStatTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final String unit;
-  final IconData icon;
-
-  const _CoachStatTile({
-    required this.label,
-    required this.value,
-    required this.unit,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: context.backgroundColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.cardBorderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: context.primaryColor),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: AppTypography.labelMedium.copyWith(
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              LucideIcons.chevronRight,
               color: context.textMutedColor,
-              fontWeight: FontWeight.w800,
+              size: 18,
             ),
-          ),
-          const SizedBox(height: 2),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Flexible(
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.titleLarge.copyWith(
-                    color: context.textPrimaryColor,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 1),
-                child: Text(
-                  unit,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: context.textSecondaryColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
-}
-
-class _CoachSignalChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _CoachSignalChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: context.backgroundColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: context.primaryColor),
-          const SizedBox(width: 9),
-          Text(
-            "$label:",
-            style: AppTypography.bodySmall.copyWith(
-              color: context.textMutedColor,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.bodySmall.copyWith(
-                color: context.textPrimaryColor,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CoachActionChips extends StatelessWidget {
-  final ValueChanged<String> onSelect;
-
-  const _CoachActionChips({required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final actions = [
-      (LucideIcons.target, l10n.assistant_action_fix_macros),
-      (LucideIcons.utensils, l10n.assistant_action_plan_next_meal),
-      (LucideIcons.salad, l10n.assistant_action_light_dinner),
-    ];
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children:
-          actions
-              .map(
-                (action) => AppScaleTap(
-                  onTap: () => onSelect(action.$2),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: context.cardColor,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: context.cardBorderColor),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(action.$1, size: 15, color: context.primaryColor),
-                        const SizedBox(width: 7),
-                        Text(
-                          action.$2,
-                          style: AppTypography.labelMedium.copyWith(
-                            color: context.textPrimaryColor,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
     );
   }
 }
@@ -1037,45 +1006,6 @@ class _CoachBackButton extends StatelessWidget {
   }
 }
 
-class _NewChatHeaderButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _NewChatHeaderButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Tooltip(
-      message: l10n.assistant_start_new_chat,
-      child: AppScaleTap(
-        onTap: onTap,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: context.cardColor,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: context.cardBorderColor),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add_rounded, size: 17, color: context.primaryColor),
-              const SizedBox(width: 5),
-              Text(
-                l10n.assistant_new_chat,
-                style: AppTypography.labelMedium.copyWith(
-                  color: context.textPrimaryColor,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _LockedCoachPreview extends StatelessWidget {
   const _LockedCoachPreview();
 
@@ -1123,9 +1053,7 @@ class _LockedCoachPreview extends StatelessWidget {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: _minimalGreen.withValues(
-                                    alpha: 0.3,
-                                  ),
+                                  color: _minimalGreen.withValues(alpha: 0.3),
                                   blurRadius: 24,
                                 ),
                               ],
@@ -1263,6 +1191,7 @@ class _ChatMessageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isUser;
     final String content;
     String title = l10n.assistant_coach_insight;
@@ -1284,9 +1213,32 @@ class _ChatMessageTile extends StatelessWidget {
       content = '';
     }
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     if (isUser) {
+      final LinearGradient userGrad;
+      final Color userTextColor;
+
+      if (isDark) {
+        userGrad = const LinearGradient(
+          colors: [
+            Color(0xFFE5C060), // Light Gold
+            Color(0xFFB88E2F), // Dark Gold
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+        userTextColor = const Color(0xFF0A2013);
+      } else {
+        userGrad = const LinearGradient(
+          colors: [
+            Color(0xFFFCF8EF), // Warm champagne
+            Color(0xFFF5EAD2),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+        userTextColor = const Color(0xFF1A3D2B); // Forest green text
+      }
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: Row(
@@ -1300,13 +1252,15 @@ class _ChatMessageTile extends StatelessWidget {
                   vertical: 14,
                 ),
                 decoration: BoxDecoration(
-                  color: _minimalGreen,
+                  gradient: userGrad,
                   borderRadius: BorderRadius.circular(
                     22,
                   ).copyWith(bottomRight: const Radius.circular(6)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
+                      color: const Color(
+                        0xFFD4AF37,
+                      ).withValues(alpha: isDark ? 0.15 : 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -1316,8 +1270,9 @@ class _ChatMessageTile extends StatelessWidget {
                   data: content,
                   styleSheet: MarkdownStyleSheet(
                     p: AppTypography.bodyMedium.copyWith(
-                      color: Colors.white,
+                      color: userTextColor,
                       height: 1.45,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -1342,22 +1297,65 @@ class _ChatMessageTile extends StatelessWidget {
       );
     }
 
+    const goldColor = Color(0xFFD4AF37);
+
+    final Color bubbleBg;
+    final Color borderColor;
+    final Color sparklesBg;
+    final Color sparklesColor;
+    final Color titleColor;
+    final Color subtitleColor;
+    final Color textColor;
+    final Color boldTextColor;
+    final Color bulletColor;
+    final List<BoxShadow> shadow;
+
+    if (isDark) {
+      bubbleBg = const Color(0xFF0B2114);
+      borderColor = goldColor.withValues(alpha: 0.35);
+      sparklesBg = const Color(0xFF143324);
+      sparklesColor = goldColor;
+      titleColor = const Color(0xFFFAF8F5);
+      subtitleColor = const Color(0xFFBDD2C6);
+      textColor = const Color(0xFFFAF8F5);
+      boldTextColor = const Color(0xFFE5C060);
+      bulletColor = goldColor;
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.15),
+          blurRadius: 16,
+          offset: const Offset(0, 7),
+        ),
+      ];
+    } else {
+      bubbleBg = Colors.white;
+      borderColor = const Color(0xFFEFEBE4);
+      sparklesBg = const Color(0xFFFCF8EF);
+      sparklesColor = const Color(0xFFBA7517);
+      titleColor = const Color(0xFF1A1A2E);
+      subtitleColor = const Color(0xFF788C80);
+      textColor = const Color(0xFF1A1A2E);
+      boldTextColor = const Color(0xFFBA7517);
+      bulletColor = const Color(0xFFBA7517);
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 16,
+          offset: const Offset(0, 6),
+        ),
+      ];
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: context.cardColor,
+          color: bubbleBg,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: context.cardBorderColor, width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
-              blurRadius: 16,
-              offset: const Offset(0, 7),
-            ),
-          ],
+          border: Border.all(color: borderColor, width: 1.2),
+          boxShadow: shadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1367,14 +1365,14 @@ class _ChatMessageTile extends StatelessWidget {
                 Container(
                   width: 34,
                   height: 34,
-                  decoration: const BoxDecoration(
-                    color: _minimalGreen,
+                  decoration: BoxDecoration(
+                    color: sparklesBg,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     LucideIcons.sparkles,
                     size: 16,
-                    color: Colors.white,
+                    color: sparklesColor,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1385,7 +1383,7 @@ class _ChatMessageTile extends StatelessWidget {
                       Text(
                         title,
                         style: AppTypography.titleSmall.copyWith(
-                          color: context.textPrimaryColor,
+                          color: titleColor,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -1394,7 +1392,7 @@ class _ChatMessageTile extends StatelessWidget {
                             ? l10n.assistant_recipe_estimated_macros
                             : l10n.assistant_personalized_from_today,
                         style: AppTypography.labelSmall.copyWith(
-                          color: context.textMutedColor,
+                          color: subtitleColor,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1412,15 +1410,15 @@ class _ChatMessageTile extends StatelessWidget {
               data: content,
               styleSheet: MarkdownStyleSheet(
                 p: AppTypography.bodyMedium.copyWith(
-                  color: context.textPrimaryColor,
+                  color: textColor,
                   height: 1.48,
                 ),
                 strong: AppTypography.bodyMedium.copyWith(
-                  color: context.textPrimaryColor,
+                  color: boldTextColor,
                   fontWeight: FontWeight.w900,
                 ),
                 listBullet: AppTypography.bodyMedium.copyWith(
-                  color: context.primaryColor,
+                  color: bulletColor,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -1447,25 +1445,85 @@ class _RecipePlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final parsed = _ParsedRecipe.fromMarkdown(content);
     final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const goldColor = Color(0xFFD4AF37);
+
+    final Color cardBg;
+    final Color borderColor;
+    final List<BoxShadow> shadow;
+    final LinearGradient headerGrad;
+    final Color chefHatBg;
+    final Color chefHatColor;
+    final Color titleColor;
+    final Color subtitleColor;
+    final Color badgeBg;
+    final Color badgeText;
+    final Color badgeBorder;
+
+    final Color textBodyColor;
+    final Color bulletBodyColor;
+
+    if (isDark) {
+      cardBg = const Color(0xFF0B2114);
+      borderColor = goldColor.withValues(alpha: 0.35);
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.22),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
+      ];
+      headerGrad = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF143020), Color(0xFF0B2114)],
+      );
+      chefHatBg = const Color(0xFF1C462E);
+      chefHatColor = goldColor;
+      titleColor = const Color(0xFFFAF8F5);
+      subtitleColor = const Color(0xFFBDD2C6);
+      badgeBg = const Color(0xFF143020);
+      badgeText = goldColor;
+      badgeBorder = goldColor.withValues(alpha: 0.35);
+      textBodyColor = const Color(0xFFFAF8F5);
+      bulletBodyColor = goldColor;
+    } else {
+      cardBg = Colors.white;
+      borderColor = const Color(0xFFEFEBE4);
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
+      ];
+      headerGrad = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFFCF8EF), Color(0xFFFAF2E6)],
+      );
+      chefHatBg = const Color(0xFFFCF8EF);
+      chefHatColor = const Color(0xFFBA7517);
+      titleColor = const Color(0xFF1A1A2E);
+      subtitleColor = const Color(0xFF788C80);
+      badgeBg = const Color(0xFFFCF8EF);
+      badgeText = const Color(0xFFBA7517);
+      badgeBorder = const Color(0xFFE5C060).withValues(alpha: 0.5);
+      textBodyColor = const Color(0xFF1A1A2E);
+      bulletBodyColor = const Color(0xFFBA7517);
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: context.cardColor,
+          color: cardBg,
           borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: context.cardBorderColor, width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          border: Border.all(color: borderColor, width: 1.2),
+          boxShadow: shadow,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(26),
@@ -1475,17 +1533,7 @@ class _RecipePlanCard extends StatelessWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      _minimalGreen.withValues(alpha: isDark ? 0.35 : 0.12),
-                      const Color(0xFF16733A).withValues(alpha: isDark ? 0.22 : 0.08),
-                      AppColors.amber.withValues(alpha: isDark ? 0.14 : 0.08),
-                    ],
-                  ),
-                ),
+                decoration: BoxDecoration(gradient: headerGrad),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1494,13 +1542,13 @@ class _RecipePlanCard extends StatelessWidget {
                         Container(
                           width: 38,
                           height: 38,
-                          decoration: const BoxDecoration(
-                            color: _minimalGreen,
+                          decoration: BoxDecoration(
+                            color: chefHatBg,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             LucideIcons.chefHat,
-                            color: Colors.white,
+                            color: chefHatColor,
                             size: 19,
                           ),
                         ),
@@ -1514,7 +1562,7 @@ class _RecipePlanCard extends StatelessWidget {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: AppTypography.titleLarge.copyWith(
-                                  color: context.textPrimaryColor,
+                                  color: titleColor,
                                   fontWeight: FontWeight.w900,
                                   height: 1.08,
                                 ),
@@ -1523,7 +1571,7 @@ class _RecipePlanCard extends StatelessWidget {
                               Text(
                                 l10n.assistant_step_recipe_plan,
                                 style: AppTypography.labelMedium.copyWith(
-                                  color: context.textSecondaryColor,
+                                  color: subtitleColor,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -1537,21 +1585,17 @@ class _RecipePlanCard extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(
-                              alpha: isDark ? 0.10 : 0.72,
-                            ),
+                            color: badgeBg,
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.white.withValues(
-                                alpha: isDark ? 0.12 : 0.45,
-                              ),
-                            ),
+                            border: Border.all(color: badgeBorder),
                           ),
                           child: Text(
-                            l10n.assistant_recipe,
-                            style: AppTypography.labelSmall.copyWith(
-                              color: context.textPrimaryColor,
+                            "RECIPE",
+                            style: TextStyle(
+                              color: badgeText,
+                              fontSize: 8,
                               fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
                             ),
                           ),
                         ),
@@ -1600,11 +1644,11 @@ class _RecipePlanCard extends StatelessWidget {
                           data: content,
                           styleSheet: MarkdownStyleSheet(
                             p: AppTypography.bodyMedium.copyWith(
-                              color: context.textPrimaryColor,
+                              color: textBodyColor,
                               height: 1.48,
                             ),
                             listBullet: AppTypography.bodyMedium.copyWith(
-                              color: context.primaryColor,
+                              color: bulletBodyColor,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -2078,111 +2122,1265 @@ class _CoachResponseActions extends StatelessWidget {
   }
 }
 
-class _RecommendationGrid extends StatelessWidget {
-  final Function(String) onSelect;
-  const _RecommendationGrid({required this.onSelect});
+// ── CUSTOM WIDGETS AND DIALOGS FOR AI COACH ──
+
+class _CoachHeaderActions extends StatelessWidget {
+  final VoidCallback onNewChat;
+  final VoidCallback onOpenProfile;
+  final VoidCallback onOpenReport;
+  final bool isPro;
+
+  const _CoachHeaderActions({
+    required this.onNewChat,
+    required this.onOpenProfile,
+    required this.onOpenReport,
+    required this.isPro,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final items = [
-      _QueryItem(
-        label: l10n.assistant_starter_cal_desc,
-        icon: LucideIcons.flame,
-      ),
-      _QueryItem(
-        label: l10n.assistant_starter_meal_desc,
-        icon: LucideIcons.utensils,
-      ),
-      _QueryItem(
-        label: l10n.assistant_starter_plans_desc,
-        icon: LucideIcons.clipboardList,
-      ),
-      _QueryItem(
-        label: l10n.assistant_starter_tips_desc,
-        icon: LucideIcons.lightbulb,
-      ),
-    ];
-
-    return Column(
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        for (var item in items) ...[
-          _QueryChip(
-            label: item.label,
-            icon: item.icon,
-            onTap: () => onSelect(item.label),
-          ),
-          const SizedBox(height: 12),
-        ],
+        _HeaderActionButton(
+          icon: LucideIcons.barChart3,
+          tooltip: "Weekly Report",
+          onTap: onOpenReport,
+          showProBadge: !isPro,
+        ),
+        const SizedBox(width: 8),
+        _HeaderActionButton(
+          icon: LucideIcons.user,
+          tooltip: "Coach Profile",
+          onTap: onOpenProfile,
+        ),
+        const SizedBox(width: 8),
+        _HeaderActionButton(
+          icon: Icons.add_rounded,
+          tooltip: "New Chat",
+          onTap: onNewChat,
+          iconColor: context.primaryColor,
+        ),
       ],
     );
   }
 }
 
-class _QueryItem {
-  final String label;
+class _HeaderActionButton extends StatelessWidget {
   final IconData icon;
-  _QueryItem({required this.label, required this.icon});
-}
-
-class _QueryChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
+  final String tooltip;
   final VoidCallback onTap;
-  const _QueryChip({
-    required this.label,
+  final bool showProBadge;
+  final Color? iconColor;
+
+  const _HeaderActionButton({
     required this.icon,
+    required this.tooltip,
     required this.onTap,
+    this.showProBadge = false,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return AppScaleTap(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: context.cardColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: context.cardBorderColor, width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.14 : 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
+    final Color iconColorResolved =
+        iconColor ??
+        (isDark ? const Color(0xFFE5C060) : const Color(0xFFBA7517));
+
+    return Tooltip(
+      message: tooltip,
+      child: AppScaleTap(
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: context.primaryColor.withValues(alpha: 0.1),
+                color: context.cardColor,
                 shape: BoxShape.circle,
+                border: Border.all(color: context.cardBorderColor),
               ),
-              child: Icon(icon, color: context.primaryColor, size: 20),
+              child: Icon(icon, size: 18, color: iconColorResolved),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: AppTypography.titleMedium.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+            if (showProBadge)
+              Positioned(
+                top: -3,
+                right: -3,
+                child: Container(
+                  padding: const EdgeInsets.all(2.5),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFD4AF37),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.lock,
+                    size: 8,
+                    color: Colors.black,
+                  ),
                 ),
               ),
-            ),
-            Icon(
-              LucideIcons.chevronRight,
-              color: context.textMutedColor,
-              size: 18,
-            ),
           ],
         ),
       ),
     );
   }
+}
+
+class _CoachMetricsHeader extends StatelessWidget {
+  const _CoachMetricsHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final mealProvider = context.watch<MealProvider>();
+    final settingsProvider = context.watch<SettingsProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final calories = mealProvider.todaysTotalCalories;
+    final targetCalories =
+        settingsProvider.dailyCalorieGoal > 0
+            ? settingsProvider.dailyCalorieGoal
+            : 2000;
+    final remaining = (targetCalories - calories).clamp(0, 9999).toInt();
+
+    final protein = mealProvider.todaysTotalMacros.protein;
+    final targetProtein =
+        settingsProvider.dailyProteinGoal > 0
+            ? settingsProvider.dailyProteinGoal
+            : 120;
+
+    final carbs = mealProvider.todaysTotalMacros.carbs;
+    final targetCarbs =
+        settingsProvider.dailyCarbGoal > 0
+            ? settingsProvider.dailyCarbGoal
+            : 220;
+
+    final fat = mealProvider.todaysTotalMacros.fat;
+    final targetFat =
+        settingsProvider.dailyFatGoal > 0 ? settingsProvider.dailyFatGoal : 65;
+
+    final calorieProgress = (calories / targetCalories).clamp(0.0, 1.0);
+
+    final Color cardBg =
+        isDark ? const Color(0xFF0F2618) : const Color(0xFFFCF8EF);
+    final Color borderColor =
+        isDark
+            ? const Color(0xFFD4AF37).withValues(alpha: 0.15)
+            : const Color(0xFFE5C060).withValues(alpha: 0.2);
+    final Color textColor =
+        isDark ? const Color(0xFFFAF8F5) : const Color(0xFF1A3D2B);
+    final Color secondaryTextColor =
+        isDark ? const Color(0xFFBDD2C6) : const Color(0xFF788C80);
+    final Color progressVal =
+        isDark ? const Color(0xFFE5C060) : const Color(0xFFBA7517);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(LucideIcons.flame, size: 16, color: progressVal),
+                  const SizedBox(width: 6),
+                  Text(
+                    "Calories",
+                    style: AppTypography.titleSmall.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                "$calories / $targetCalories kcal ($remaining left)",
+                style: AppTypography.labelSmall.copyWith(
+                  color: secondaryTextColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: calorieProgress,
+              minHeight: 6,
+              backgroundColor:
+                  isDark ? const Color(0xFF183D26) : const Color(0xFFEFEBE4),
+              valueColor: AlwaysStoppedAnimation<Color>(progressVal),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _MacroProgressItem(
+                  label: "Protein",
+                  value: protein,
+                  target: targetProtein,
+                  color: const Color(0xFF22C55E),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MacroProgressItem(
+                  label: "Carbs",
+                  value: carbs,
+                  target: targetCarbs,
+                  color: const Color(0xFF3B82F6),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MacroProgressItem(
+                  label: "Fat",
+                  value: fat,
+                  target: targetFat,
+                  color: const Color(0xFFEAB308),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _calculateCoachMessage({
+  required BuildContext context,
+  required int calories,
+  required int targetCalories,
+  required int protein,
+  required int targetProtein,
+  required int carbs,
+  required int targetCarbs,
+  required int fat,
+  required int targetFat,
+  required String languageCode,
+  required int mealCount,
+}) {
+  if (mealCount == 0) {
+    if (languageCode == 'ar') {
+      return "لم تقم بتسجيل أي وجبات اليوم بعد! فلنبدأ بوجبة فطور صحية أو وجبة سريعة.";
+    } else if (languageCode == 'es') {
+      return "¡Aún no has registrado ninguna comida hoy! Empecemos con un desayuno saludable o una comida rápida.";
+    } else if (languageCode == 'fr') {
+      return "Vous n'avez pas encore enregistré de repas aujourd'hui! Commençons par un petit-déjeuner sain ou un repas rapide.";
+    } else {
+      return "You haven't logged any meals today yet! Let's start with a healthy breakfast or quick meal.";
+    }
+  } else if (calories > targetCalories) {
+    if (languageCode == 'ar') {
+      return "السعرات الحرارية تتجاوز هدفك اليومي. حاول التركيز على وجبات خفيفة أو أطعمة منخفضة السعرات.";
+    } else if (languageCode == 'es') {
+      return "Las calorías superan tu objetivo diario. Intenta concentrarte en comidas siguientes más ligeras o bocadillos bajos en calorías.";
+    } else if (languageCode == 'fr') {
+      return "Les calories dépassent votre objectif quotidien. Essayez de vous concentrer sur des repas suivants plus légers ou des collations peu caloriques.";
+    } else {
+      return "Calories are above your daily target. Try to focus on lighter next meals or low-calorie snacks.";
+    }
+  } else if (calories >= targetCalories * 0.85 &&
+      calories <= targetCalories * 1.05) {
+    if (languageCode == 'ar') {
+      return "أنت على المسار الصحيح تمامًا وقريب من هدف السعرات الحرارية اليومي! استمر في هذا الأداء المتناسق.";
+    } else if (languageCode == 'es') {
+      return "¡Vas por buen camino y cerca de tu objetivo diario de calorías! Sigue así con el trabajo constante.";
+    } else if (languageCode == 'fr') {
+      return "Vous êtes sur la bonne voie et proche de votre objectif calorique quotidien! Continuez votre excellent travail.";
+    } else {
+      return "You are right on track and near your daily calorie target! Keep up the consistent work.";
+    }
+  } else if (protein < targetProtein * 0.5) {
+    if (languageCode == 'ar') {
+      return "كمية البروتين التي تناولتها منخفضة اليوم. فكر في إضافة أطعمة غنية بالبروتين مثل صدر الدجاج، البيض، أو التوفو إلى وجبتك التالية.";
+    } else if (languageCode == 'es') {
+      return "Tu consumo de proteínas es bajo hoy. Considera agregar alimentos ricos en proteínas como pechuga de pollo, huevos o tofu en tu próxima comida.";
+    } else if (languageCode == 'fr') {
+      return "Votre apport en protéines est faible aujourd'hui. Pensez à ajouter des aliments riches en protéines comme du blanc de poulet, des œufs ou du tofu à votre prochain repas.";
+    } else {
+      return "Your protein intake is low today. Consider adding high-protein foods like chicken breast, eggs, or tofu to your next meal.";
+    }
+  } else if (carbs > targetCarbs * 0.85) {
+    if (languageCode == 'ar') {
+      return "الكربوهيدرات مرتفعة قليلاً. عادل وجبتك القادمة بالدهون الصحية، البروتين الخالي من الدهون، والألياف.";
+    } else if (languageCode == 'es') {
+      return "Los carbohidratos están un poco altos. Equilibra tu próxima comida con grasas saludables, proteínas magras y fibra.";
+    } else if (languageCode == 'fr') {
+      return "Les glucides sont un peu élevés. Équilibrez votre prochain repas avec des graisses saines, des protéines magras et des fibres.";
+    } else {
+      return "Carbohydrates are running a bit high. Balance your next meal with healthy fats, lean protein, and fiber.";
+    }
+  } else {
+    if (languageCode == 'ar') {
+      return "استمر في تتبع وجباتك وحافظ على استمراريتك للوصول إلى هدف وزنك!";
+    } else if (languageCode == 'es') {
+      return "¡Sigue registrando tus comidas y mantente constante para lograr tu peso objetivo!";
+    } else if (languageCode == 'fr') {
+      return "Continuez à suivre vos repas et restez régulier pour atteindre votre objectif de poids!";
+    } else {
+      return "Keep tracking your meals and stay consistent to reach your weight goal!";
+    }
+  }
+}
+
+class _MacroProgressItem extends StatelessWidget {
+  final String label;
+  final int value;
+  final int target;
+  final Color color;
+
+  const _MacroProgressItem({
+    required this.label,
+    required this.value,
+    required this.target,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final progress = target > 0 ? (value / target).clamp(0.0, 1.0) : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color:
+                    isDark ? const Color(0xFFBDD2C6) : const Color(0xFF788C80),
+                fontWeight: FontWeight.w800,
+                fontSize: 10,
+              ),
+            ),
+            Text(
+              "$value/${target}g",
+              style: AppTypography.labelSmall.copyWith(
+                color:
+                    isDark ? const Color(0xFFFAF8F5) : const Color(0xFF1A3D2B),
+                fontWeight: FontWeight.w900,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 4,
+            backgroundColor:
+                isDark ? const Color(0xFF183D26) : const Color(0xFFEFEBE4),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+void _showCoachProfileBottomSheet(BuildContext context) {
+  final settings = context.read<SettingsProvider>();
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+  final ageController = TextEditingController(
+    text: settings.age?.toString() ?? '',
+  );
+  final heightController = TextEditingController(
+    text: settings.height?.toString() ?? '',
+  );
+  final weightController = TextEditingController(
+    text: settings.startingWeight?.toString() ?? '',
+  );
+  final targetWeightController = TextEditingController(
+    text: settings.targetWeight?.toString() ?? '',
+  );
+  final foodDislikesController = TextEditingController(
+    text: settings.foodDislikes ?? '',
+  );
+  final medicalNotesController = TextEditingController(
+    text: settings.medicalNotes ?? '',
+  );
+
+  String selectedGender = settings.gender ?? 'other';
+  String selectedGoalMode = settings.goalMode;
+  String selectedActivityLevel = settings.activityLevel ?? 'moderatelyActive';
+  String selectedDietPreference = settings.dietaryRestriction;
+
+  // Dynanically safeguard dropdown options to prevent any crash if the DB state contains an unexpected/unlisted value
+  final List<String> genderOptions = ['male', 'female', 'other'];
+  if (!genderOptions.contains(selectedGender)) {
+    genderOptions.add(selectedGender);
+  }
+
+  final List<String> goalModeOptions = ['lose', 'gain', 'maintain'];
+  if (!goalModeOptions.contains(selectedGoalMode)) {
+    goalModeOptions.add(selectedGoalMode);
+  }
+
+  final List<String> activityOptions = [
+    'sedentary',
+    'lightlyActive',
+    'moderatelyActive',
+    'veryActive',
+  ];
+  if (!activityOptions.contains(selectedActivityLevel)) {
+    activityOptions.add(selectedActivityLevel);
+  }
+
+  final List<String> dietOptions = [
+    'none',
+    'vegetarian',
+    'vegan',
+    'gluten-free',
+    'keto',
+    'halal',
+  ];
+  if (!dietOptions.contains(selectedDietPreference)) {
+    dietOptions.add(selectedDietPreference);
+  }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF14130F) : const Color(0xFFF9F8F5),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+              border: Border.all(
+                color:
+                    isDark
+                        ? const Color(0xFFD4AF37).withValues(alpha: 0.15)
+                        : const Color(0xFFE5C060).withValues(alpha: 0.2),
+                width: 1.5,
+              ),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              16,
+              20,
+              16 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.black12,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(
+                        LucideIcons.user,
+                        color:
+                            isDark
+                                ? const Color(0xFFE5C060)
+                                : const Color(0xFFBA7517),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Coach Profile Setup",
+                        style: AppTypography.titleLarge.copyWith(
+                          color:
+                              isDark
+                                  ? const Color(0xFFFAF8F5)
+                                  : const Color(0xFF1A3D2B),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildFormField(
+                          label: "Age (years)",
+                          controller: ageController,
+                          keyboardType: TextInputType.number,
+                          isDark: isDark,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDropdownField<String>(
+                          label: "Gender",
+                          value: selectedGender,
+                          items:
+                              genderOptions.map((opt) {
+                                String label = opt;
+                                switch (opt) {
+                                  case 'male':
+                                    label = "Male";
+                                    break;
+                                  case 'female':
+                                    label = "Female";
+                                    break;
+                                  case 'other':
+                                    label = "Other";
+                                    break;
+                                }
+                                return DropdownMenuItem(
+                                  value: opt,
+                                  child: Text(label),
+                                );
+                              }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => selectedGender = val);
+                            }
+                          },
+                          isDark: isDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildFormField(
+                          label: "Height (cm)",
+                          controller: heightController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          isDark: isDark,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildFormField(
+                          label: "Current Weight (kg)",
+                          controller: weightController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          isDark: isDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildFormField(
+                          label: "Goal Weight (kg)",
+                          controller: targetWeightController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          isDark: isDark,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDropdownField<String>(
+                          label: "Goal Mode",
+                          value: selectedGoalMode,
+                          items:
+                              goalModeOptions.map((opt) {
+                                String label = opt;
+                                switch (opt) {
+                                  case 'lose':
+                                    label = "Lose Weight";
+                                    break;
+                                  case 'gain':
+                                    label = "Gain Weight";
+                                    break;
+                                  case 'maintain':
+                                    label = "Maintain";
+                                    break;
+                                }
+                                return DropdownMenuItem(
+                                  value: opt,
+                                  child: Text(label),
+                                );
+                              }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => selectedGoalMode = val);
+                            }
+                          },
+                          isDark: isDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDropdownField<String>(
+                          label: "Activity Level",
+                          value: selectedActivityLevel,
+                          items:
+                              activityOptions.map((opt) {
+                                String label = opt;
+                                switch (opt) {
+                                  case 'sedentary':
+                                    label = "Sedentary";
+                                    break;
+                                  case 'lightlyActive':
+                                    label = "Lightly Active";
+                                    break;
+                                  case 'moderatelyActive':
+                                    label = "Moderately Active";
+                                    break;
+                                  case 'veryActive':
+                                    label = "Very Active";
+                                    break;
+                                }
+                                return DropdownMenuItem(
+                                  value: opt,
+                                  child: Text(label),
+                                );
+                              }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => selectedActivityLevel = val);
+                            }
+                          },
+                          isDark: isDark,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDropdownField<String>(
+                          label: "Diet Preference",
+                          value: selectedDietPreference,
+                          items:
+                              dietOptions.map((opt) {
+                                String label = opt;
+                                switch (opt) {
+                                  case 'none':
+                                    label = "None";
+                                    break;
+                                  case 'vegetarian':
+                                    label = "Vegetarian";
+                                    break;
+                                  case 'vegan':
+                                    label = "Vegan";
+                                    break;
+                                  case 'gluten-free':
+                                    label = "Gluten Free";
+                                    break;
+                                  case 'keto':
+                                    label = "Keto";
+                                    break;
+                                  case 'halal':
+                                    label = "Halal";
+                                    break;
+                                }
+                                return DropdownMenuItem(
+                                  value: opt,
+                                  child: Text(label),
+                                );
+                              }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => selectedDietPreference = val);
+                            }
+                          },
+                          isDark: isDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildFormField(
+                    label:
+                        "Food Dislikes (comma separated, e.g. peanuts, dairy)",
+                    controller: foodDislikesController,
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildFormField(
+                    label: "Medical Notes / Allergies / Conditions (optional)",
+                    controller: medicalNotesController,
+                    isDark: isDark,
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: Text(
+                            "Cancel",
+                            style: AppTypography.titleMedium.copyWith(
+                              color: isDark ? Colors.white60 : Colors.black54,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE5C060), Color(0xFFB88E2F)],
+                            ),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final int? age = int.tryParse(ageController.text);
+                              final double? height = double.tryParse(
+                                heightController.text,
+                              );
+                              final double? weight = double.tryParse(
+                                weightController.text,
+                              );
+                              final double? targetWeight = double.tryParse(
+                                targetWeightController.text,
+                              );
+
+                              await settings.updateCoachProfile(
+                                age: age,
+                                height: height,
+                                startingWeight: weight,
+                                targetWeight: targetWeight,
+                                gender: selectedGender,
+                                goalMode: selectedGoalMode,
+                                activityLevel: selectedActivityLevel,
+                                dietaryRestriction:
+                                    selectedDietPreference == 'none'
+                                        ? null
+                                        : selectedDietPreference,
+                                foodDislikes:
+                                    foodDislikesController.text.trim().isEmpty
+                                        ? null
+                                        : foodDislikesController.text.trim(),
+                                medicalNotes:
+                                    medicalNotesController.text.trim().isEmpty
+                                        ? null
+                                        : medicalNotesController.text.trim(),
+                              );
+
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      "Coach profile updated successfully!",
+                                    ),
+                                    backgroundColor:
+                                        isDark
+                                            ? const Color(0xFF143324)
+                                            : const Color(0xFF1A3D2B),
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: Text(
+                              "Save Profile",
+                              style: AppTypography.titleMedium.copyWith(
+                                color: const Color(0xFF0A2114),
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+Widget _buildFormField({
+  required String label,
+  required TextEditingController controller,
+  TextInputType? keyboardType,
+  required bool isDark,
+  int maxLines = 1,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: isDark ? const Color(0xFFBDD2C6) : const Color(0xFF788C80),
+        ),
+      ),
+      const SizedBox(height: 5),
+      TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white : Colors.black87,
+        ),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: isDark ? const Color(0xFF1C221D) : const Color(0xFFF1EDE4),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildDropdownField<T>({
+  required String label,
+  required T? value,
+  required List<DropdownMenuItem<T>> items,
+  required ValueChanged<T?> onChanged,
+  required bool isDark,
+}) {
+  final seenValues = <T?>{};
+  final dedupedItems =
+      items.where((item) => seenValues.add(item.value)).toList();
+  final safeValue =
+      dedupedItems.any((item) => item.value == value) ? value : null;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: isDark ? const Color(0xFFBDD2C6) : const Color(0xFF788C80),
+        ),
+      ),
+      const SizedBox(height: 5),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C221D) : const Color(0xFFF1EDE4),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            value: safeValue,
+            items: dedupedItems,
+            onChanged: onChanged,
+            icon: Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: isDark ? const Color(0xFFD4AF37) : const Color(0xFFBA7517),
+            ),
+            dropdownColor:
+                isDark ? const Color(0xFF14130F) : const Color(0xFFF9F8F5),
+            isExpanded: true,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+void _showWeeklyReportDialog(BuildContext context) {
+  final settings = context.read<SettingsProvider>();
+  final mealProvider = context.read<MealProvider>();
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+  if (!settings.isPro) {
+    PremiumConversionService().openPaywall(
+      context,
+      PaywallEntryPoint.reportInsight,
+      featureName: 'weekly_report',
+    );
+    return;
+  }
+
+  final avgCalories = mealProvider.getWeeklyAverageCalories();
+  final weeklyMacros = mealProvider.getWeeklyMacroSummary();
+  final avgProtein = (weeklyMacros.protein / 7.0).round();
+
+  final trend = mealProvider.getWeeklyCalorieTrend();
+  final calorieGoal =
+      settings.dailyCalorieGoal > 0 ? settings.dailyCalorieGoal : 2000;
+  final today = DateTime.now();
+
+  double closestDiff = double.infinity;
+  int bestDayIndex = -1;
+  for (int i = 0; i < trend.length; i++) {
+    final calories = trend[i];
+    if (calories <= 0) continue;
+    final diff = (calories - calorieGoal).abs();
+    if (diff < closestDiff) {
+      closestDiff = diff.toDouble();
+      bestDayIndex = i;
+    }
+  }
+
+  String bestDayStr;
+  if (bestDayIndex != -1) {
+    final bestDate = today.subtract(Duration(days: 6 - bestDayIndex));
+    final weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    bestDayStr = weekdays[bestDate.weekday - 1];
+  } else {
+    bestDayStr = 'No data logged';
+  }
+
+  final avgCarbs = (weeklyMacros.carbs / 7.0).round();
+  final avgFat = (weeklyMacros.fat / 7.0).round();
+
+  final targetProtein =
+      settings.dailyProteinGoal > 0 ? settings.dailyProteinGoal : 120;
+  final targetCarbs = settings.dailyCarbGoal > 0 ? settings.dailyCarbGoal : 220;
+  final targetFat = settings.dailyFatGoal > 0 ? settings.dailyFatGoal : 65;
+
+  final proteinRatio = avgProtein / targetProtein;
+  final carbRatio = avgCarbs / targetCarbs;
+  final fatRatio = avgFat / targetFat;
+
+  String weakestArea = 'Protein Intake';
+  double lowestRatio = proteinRatio;
+
+  if (carbRatio < lowestRatio) {
+    lowestRatio = carbRatio;
+    weakestArea = 'Carbohydrates';
+  }
+  if (fatRatio < lowestRatio) {
+    lowestRatio = fatRatio;
+    weakestArea = 'Fat Balance';
+  }
+
+  if (lowestRatio >= 0.85) {
+    weakestArea = 'Calorie consistency';
+  }
+
+  String nextWeekTarget = '';
+  if (weakestArea == 'Protein Intake') {
+    nextWeekTarget =
+        'Hit ${targetProtein}g Protein daily (Add eggs, chicken, Greek yogurt)';
+  } else if (weakestArea == 'Carbohydrates') {
+    nextWeekTarget =
+        'Focus on ${targetCarbs}g complex carbs (oats, brown rice, sweet potatoes)';
+  } else if (weakestArea == 'Fat Balance') {
+    nextWeekTarget =
+        'Aim for ${targetFat}g healthy fats (avocado, nuts, olive oil)';
+  } else {
+    nextWeekTarget =
+        'Maintain calorie target of $calorieGoal kcal (Keep tracking daily)';
+  }
+
+  final Color cardBg =
+      isDark ? const Color(0xFF14130F) : const Color(0xFFF9F8F5);
+  final Color titleColor =
+      isDark ? const Color(0xFFFAF8F5) : const Color(0xFF1A3D2B);
+  final Color goldAccent =
+      isDark ? const Color(0xFFE5C060) : const Color(0xFFB88E2F);
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color:
+                  isDark
+                      ? const Color(0xFFD4AF37).withValues(alpha: 0.15)
+                      : const Color(0xFFE5C060).withValues(alpha: 0.2),
+              width: 1.5,
+            ),
+          ),
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: goldAccent.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      LucideIcons.barChart3,
+                      color: goldAccent,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Weekly Summary",
+                          style: AppTypography.titleLarge.copyWith(
+                            color: titleColor,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          "AI Coach Premium Report",
+                          style: AppTypography.labelSmall.copyWith(
+                            color: goldAccent,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _buildReportRow(
+                icon: LucideIcons.flame,
+                label: "Average Daily Calories",
+                value: "$avgCalories kcal",
+                subValue: "Goal: $calorieGoal kcal",
+                color: goldAccent,
+                isDark: isDark,
+              ),
+              const SizedBox(height: 12),
+              _buildReportRow(
+                icon: LucideIcons.dumbbell,
+                label: "Average Daily Protein",
+                value: "${avgProtein}g",
+                subValue: "Goal: ${targetProtein}g",
+                color: const Color(0xFF22C55E),
+                isDark: isDark,
+              ),
+              const SizedBox(height: 12),
+              _buildReportRow(
+                icon: LucideIcons.calendarCheck,
+                label: "Best Performing Day",
+                value: bestDayStr,
+                subValue: "Closest to goals",
+                color: const Color(0xFF3B82F6),
+                isDark: isDark,
+              ),
+              const SizedBox(height: 12),
+              _buildReportRow(
+                icon: LucideIcons.alertTriangle,
+                label: "Weakest Nutrition Area",
+                value: weakestArea,
+                subValue:
+                    lowestRatio < 0.85 ? "Below target" : "Excellent control",
+                color:
+                    lowestRatio < 0.85
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFF22C55E),
+                isDark: isDark,
+              ),
+              const SizedBox(height: 16),
+
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: goldAccent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: goldAccent.withValues(alpha: 0.15)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "RECOMMENDED NEXT TARGET",
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: goldAccent,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      nextWeekTarget,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: titleColor,
+                        fontWeight: FontWeight.w800,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFE5C060), Color(0xFFB88E2F)],
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: Text(
+                    "Dismiss Report",
+                    style: AppTypography.titleMedium.copyWith(
+                      color: const Color(0xFF0A2114),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildReportRow({
+  required IconData icon,
+  required String label,
+  required String value,
+  required String subValue,
+  required Color color,
+  required bool isDark,
+}) {
+  return Row(
+    children: [
+      Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: color, size: 18),
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: AppTypography.bodySmall.copyWith(
+                color:
+                    isDark ? const Color(0xFFBDD2C6) : const Color(0xFF788C80),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              subValue,
+              style: AppTypography.labelSmall.copyWith(
+                color: isDark ? Colors.white30 : Colors.black38,
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+      Text(
+        value,
+        style: AppTypography.titleSmall.copyWith(
+          color: isDark ? const Color(0xFFFAF8F5) : const Color(0xFF1A3D2B),
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    ],
+  );
 }

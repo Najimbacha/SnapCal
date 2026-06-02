@@ -180,44 +180,34 @@ class SettingsScreen extends StatelessWidget {
                     title: l10n.settings_step_tracking,
                     accent: AppColors.sky,
                     children: [
-                      _CategoryRow(
+                      _SwitchRow(
                         icon: LucideIcons.watch,
-                        accent: activity.isConnected
-                            ? AppColors.success
-                            : AppColors.sky,
-                        title: activity.sourceName,
-                        subtitle: activity.isSyncing
-                            ? l10n.settings_syncing_activity
-                            : _getLocalStatus(context, activity.statusLabel()),
-                        onTap: () => context.push('/activity'),
-                      ),
-                      _CategoryRow(
-                        icon: LucideIcons.refreshCw,
-                        accent: AppColors.sky,
-                        title: l10n.settings_sync_now,
-                        subtitle: activity.lastSyncedAt == null
-                            ? l10n.settings_sync_now_desc
-                            : l10n.settings_last_synced(
-                                TimeOfDay.fromDateTime(activity.lastSyncedAt!).format(context),
-                              ),
-                        onTap: activity.isSyncing ? () {} : () => activity.syncNow(),
+                        accent:
+                            activity.isConnected
+                                ? AppColors.success
+                                : AppColors.sky,
+                        title: 'Health Connect',
+                        subtitle:
+                            activity.isSyncing
+                                ? l10n.settings_syncing_activity
+                                : _getLocalStatus(
+                                  context,
+                                  activity.statusLabel(),
+                                ),
+                        value: activity.isConnected,
+                        onChanged:
+                            activity.isSyncing
+                                ? (_) {}
+                                : (enabled) {
+                                  if (enabled) {
+                                    activity.startTracking();
+                                  } else {
+                                    activity.disconnect();
+                                  }
+                                },
                       ),
                     ],
                   ),
-                  if (activity.isConnected) ...[
-                    const SizedBox(height: 12),
-                    _SettingsSurface(
-                      accent: AppColors.error,
-                      padding: EdgeInsets.zero,
-                      child: _CategoryRow(
-                        icon: LucideIcons.unlink,
-                        accent: AppColors.error,
-                        title: l10n.settings_disconnect_steps,
-                        subtitle: l10n.settings_disconnect_steps_desc,
-                        onTap: () => activity.disconnect(),
-                      ),
-                    ),
-                  ],
                 ],
               );
             },
@@ -330,9 +320,10 @@ void _showNumberDialog(
                   suffixText: _getLocalOption(context, unit),
                   suffixStyle: AppTypography.titleMedium,
                   filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : _settingsLine.withValues(alpha: 0.48),
+                  fillColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : _settingsLine.withValues(alpha: 0.48),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -411,9 +402,10 @@ void _showNameDialog(BuildContext context, String currentName) {
                 ),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : _settingsLine.withValues(alpha: 0.48),
+                  fillColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : _settingsLine.withValues(alpha: 0.48),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -454,6 +446,7 @@ void _showNameDialog(BuildContext context, String currentName) {
 }
 
 void _showGenderSelector(BuildContext context, SettingsProvider settings) {
+  final currentWeightKg = context.read<MetricsProvider>().currentWeight;
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
@@ -462,7 +455,11 @@ void _showGenderSelector(BuildContext context, SettingsProvider settings) {
           title: AppLocalizations.of(context)!.settings_gender,
           options: const ['male', 'female', 'other'],
           currentValue: settings.gender ?? 'male',
-          onSelect: (value) => settings.updateBodyProfile(gender: value),
+          onSelect:
+              (value) => settings.updateBodyProfile(
+                gender: value,
+                currentWeightKg: currentWeightKg,
+              ),
         ),
   );
 }
@@ -610,99 +607,96 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
     builder: (context) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       return Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).padding.bottom + 24,
-          ),
-          decoration: BoxDecoration(
-            color: _settingsBg(context),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.14)
-                            : _settingsLine,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 24,
+        ),
+        decoration: BoxDecoration(
+          color: _settingsBg(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.14)
+                              : _settingsLine,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    AppLocalizations.of(context)!.settings_select_language,
-                    style: AppTypography.heading3.copyWith(
-                      color: _settingsText(context),
-                    ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  AppLocalizations.of(context)!.settings_select_language,
+                  style: AppTypography.heading3.copyWith(
+                    color: _settingsText(context),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    AppLocalizations.of(context)!.settings_language_desc,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: _settingsSubtext(context),
-                    ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppLocalizations.of(context)!.settings_language_desc,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: _settingsSubtext(context),
                   ),
-                  const SizedBox(height: 24),
-                  _LanguageTile(
-                    title: 'English',
-                    subtitle:
-                        AppLocalizations.of(context)!.settings_lang_en_desc,
-                    code: 'en',
-                    selected: settings.languageCode == 'en',
-                    onTap: () {
-                      settings.setLanguage('en');
-                      Navigator.pop(context);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _LanguageTile(
-                    title: 'العربية',
-                    subtitle:
-                        AppLocalizations.of(context)!.settings_lang_ar_desc,
-                    code: 'ar',
-                    selected: settings.languageCode == 'ar',
-                    onTap: () {
-                      settings.setLanguage('ar');
-                      Navigator.pop(context);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _LanguageTile(
-                    title: 'Español',
-                    subtitle:
-                        AppLocalizations.of(context)!.settings_lang_es_desc,
-                    code: 'es',
-                    selected: settings.languageCode == 'es',
-                    onTap: () {
-                      settings.setLanguage('es');
-                      Navigator.pop(context);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _LanguageTile(
-                    title: 'Français',
-                    subtitle:
-                        AppLocalizations.of(context)!.settings_lang_fr_desc,
-                    code: 'fr',
-                    selected: settings.languageCode == 'fr',
-                    onTap: () {
-                      settings.setLanguage('fr');
-                      Navigator.pop(context);
-                    },
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 24),
+                _LanguageTile(
+                  title: 'English',
+                  subtitle: AppLocalizations.of(context)!.settings_lang_en_desc,
+                  code: 'en',
+                  selected: settings.languageCode == 'en',
+                  onTap: () {
+                    settings.setLanguage('en');
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _LanguageTile(
+                  title: 'العربية',
+                  subtitle: AppLocalizations.of(context)!.settings_lang_ar_desc,
+                  code: 'ar',
+                  selected: settings.languageCode == 'ar',
+                  onTap: () {
+                    settings.setLanguage('ar');
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _LanguageTile(
+                  title: 'Español',
+                  subtitle: AppLocalizations.of(context)!.settings_lang_es_desc,
+                  code: 'es',
+                  selected: settings.languageCode == 'es',
+                  onTap: () {
+                    settings.setLanguage('es');
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _LanguageTile(
+                  title: 'Français',
+                  subtitle: AppLocalizations.of(context)!.settings_lang_fr_desc,
+                  code: 'fr',
+                  selected: settings.languageCode == 'fr',
+                  onTap: () {
+                    settings.setLanguage('fr');
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
             ),
           ),
-        );
+        ),
+      );
     },
   );
 }
@@ -738,9 +732,12 @@ class _LanguageTile extends StatelessWidget {
                       : const Color(0x00FFFFFF)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected
-                ? _settingsGreenText.withValues(alpha: 0.24)
-                : (isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine),
+            color:
+                selected
+                    ? _settingsGreenText.withValues(alpha: 0.24)
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : _settingsLine),
             width: 1,
           ),
         ),
@@ -750,7 +747,9 @@ class _LanguageTile extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color:
-                    selected ? _settingsGreenText : _settingsMuted.withValues(alpha: 0.55),
+                    selected
+                        ? _settingsGreenText
+                        : _settingsMuted.withValues(alpha: 0.55),
                 shape: BoxShape.circle,
               ),
               child: Text(
@@ -772,7 +771,9 @@ class _LanguageTile extends StatelessWidget {
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w900,
                       color:
-                          selected ? _settingsGreenText : _settingsText(context),
+                          selected
+                              ? _settingsGreenText
+                              : _settingsText(context),
                     ),
                   ),
                   Text(
@@ -793,8 +794,6 @@ class _LanguageTile extends StatelessWidget {
   }
 }
 
-
-
 class _SettingRow extends StatelessWidget {
   final IconData icon;
   final Color accent;
@@ -813,7 +812,8 @@ class _SettingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveAccent = accent == AppColors.error ? accent : _settingsGreenText;
+    final effectiveAccent =
+        accent == AppColors.error ? accent : _settingsGreenText;
 
     return Material(
       color: Colors.transparent,
@@ -830,7 +830,9 @@ class _SettingRow extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: effectiveAccent.withValues(alpha: isDark ? 0.14 : 0.09),
+                  color: effectiveAccent.withValues(
+                    alpha: isDark ? 0.14 : 0.09,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -876,6 +878,7 @@ class _SwitchRow extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final String title;
+  final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -883,6 +886,7 @@ class _SwitchRow extends StatelessWidget {
     required this.icon,
     required this.accent,
     required this.title,
+    this.subtitle,
     required this.value,
     required this.onChanged,
   });
@@ -890,7 +894,8 @@ class _SwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveAccent = accent == AppColors.error ? accent : _settingsGreenText;
+    final effectiveAccent =
+        accent == AppColors.error ? accent : _settingsGreenText;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -899,24 +904,43 @@ class _SwitchRow extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-              decoration: BoxDecoration(
+            decoration: BoxDecoration(
               color: effectiveAccent.withValues(alpha: isDark ? 0.14 : 0.09),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(
-              child: Icon(icon, color: effectiveAccent, size: 16),
-            ),
+            child: Center(child: Icon(icon, color: effectiveAccent, size: 16)),
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              title,
-              style: AppTypography.titleMedium.copyWith(
-                color: _settingsText(context),
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
-                fontSize: 15,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.titleMedium.copyWith(
+                    color: _settingsText(context),
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                    fontSize: 15,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: _settingsSubtext(context),
+                      fontWeight: FontWeight.w400,
+                      fontSize: 12,
+                      height: 1.3,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           Switch.adaptive(
@@ -941,9 +965,21 @@ class _ThemeRow extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final options = [
-      ('system', AppLocalizations.of(context)!.settings_theme_system, LucideIcons.smartphone),
-      ('light', AppLocalizations.of(context)!.settings_theme_light, LucideIcons.sun),
-      ('dark', AppLocalizations.of(context)!.settings_theme_dark, LucideIcons.moon),
+      (
+        'system',
+        AppLocalizations.of(context)!.settings_theme_system,
+        LucideIcons.smartphone,
+      ),
+      (
+        'light',
+        AppLocalizations.of(context)!.settings_theme_light,
+        LucideIcons.sun,
+      ),
+      (
+        'dark',
+        AppLocalizations.of(context)!.settings_theme_dark,
+        LucideIcons.moon,
+      ),
     ];
 
     return Padding(
@@ -958,11 +994,17 @@ class _ThemeRow extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: _settingsGreenText.withValues(alpha: isDark ? 0.14 : 0.09),
+                  color: _settingsGreenText.withValues(
+                    alpha: isDark ? 0.14 : 0.09,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
-                  child: Icon(LucideIcons.sunMoon, color: _settingsGreenText, size: 16),
+                  child: Icon(
+                    LucideIcons.sunMoon,
+                    color: _settingsGreenText,
+                    size: 16,
+                  ),
                 ),
               ),
               const SizedBox(width: 14),
@@ -987,69 +1029,79 @@ class _ThemeRow extends StatelessWidget {
               height: 36,
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : _settingsLine.withValues(alpha: 0.65),
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : _settingsLine.withValues(alpha: 0.65),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
-                children: options.map((opt) {
-                  final isSelected = currentMode == opt.$1;
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        settings.setThemeMode(opt.$1);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? (isDark ? Colors.white.withValues(alpha: 0.09) : _settingsBgLight)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: isDark ? 0.15 : 0.05,
-                                    ),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
+                children:
+                    options.map((opt) {
+                      final isSelected = currentMode == opt.$1;
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            settings.setThemeMode(opt.$1);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeOutCubic,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color:
+                                  isSelected
+                                      ? (isDark
+                                          ? Colors.white.withValues(alpha: 0.09)
+                                          : _settingsBgLight)
+                                      : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow:
+                                  isSelected
+                                      ? [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: isDark ? 0.15 : 0.05,
+                                          ),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ]
+                                      : null,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  opt.$3,
+                                  size: 13,
+                                  color:
+                                      isSelected
+                                          ? _settingsGreenText
+                                          : _settingsSubtext(context),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  opt.$2,
+                                  style: AppTypography.labelMedium.copyWith(
+                                    fontSize: 11.5,
+                                    fontWeight:
+                                        isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                    color:
+                                        isSelected
+                                            ? _settingsGreenText
+                                            : _settingsSubtext(context),
                                   ),
-                                ]
-                              : null,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              opt.$3,
-                              size: 13,
-                              color: isSelected
-                                  ? _settingsGreenText
-                                  : _settingsSubtext(context),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 5),
-                            Text(
-                              opt.$2,
-                              style: AppTypography.labelMedium.copyWith(
-                                fontSize: 11.5,
-                                fontWeight:
-                                    isSelected ? FontWeight.w600 : FontWeight.w500,
-                                color: isSelected
-                                    ? _settingsGreenText
-                                    : _settingsSubtext(context),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
               ),
             ),
           ),
@@ -1128,9 +1180,10 @@ class _SettingsSectionFrame extends StatelessWidget {
                           Divider(
                             height: 1,
                             thickness: 0.5,
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.06)
-                                : _settingsLine,
+                            color:
+                                isDark
+                                    ? Colors.white.withValues(alpha: 0.06)
+                                    : _settingsLine,
                             indent: 52,
                           ),
                       ],
@@ -1162,9 +1215,10 @@ class _SettingsSurface extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.04)
-            : const Color(0x00FFFFFF),
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : const Color(0x00FFFFFF),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine,
@@ -1221,12 +1275,14 @@ class _GuestCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.04)
-              : const Color(0x00FFFFFF),
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : const Color(0x00FFFFFF),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine,
+            color:
+                isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine,
             width: 0.8,
           ),
         ),
@@ -1237,7 +1293,9 @@ class _GuestCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: _settingsGreenText.withValues(alpha: isDark ? 0.16 : 0.09),
+                color: _settingsGreenText.withValues(
+                  alpha: isDark ? 0.16 : 0.09,
+                ),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -1343,12 +1401,14 @@ class _MemberCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.04)
-              : const Color(0x00FFFFFF),
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : const Color(0x00FFFFFF),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine,
+            color:
+                isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine,
             width: 0.8,
           ),
         ),
@@ -1360,13 +1420,16 @@ class _MemberCard extends StatelessWidget {
               height: 52,
               decoration: const BoxDecoration(shape: BoxShape.circle),
               child: ClipOval(
-                child: auth.photoURL != null
-                    ? Image.network(
-                        auth.photoURL!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => _InitialsAvatar(initials: initials),
-                      )
-                    : _InitialsAvatar(initials: initials),
+                child:
+                    auth.photoURL != null
+                        ? Image.network(
+                          auth.photoURL!,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (context, error, stackTrace) =>
+                                  _InitialsAvatar(initials: initials),
+                        )
+                        : _InitialsAvatar(initials: initials),
               ),
             ),
             const SizedBox(width: 16),
@@ -1504,7 +1567,8 @@ class _CategoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveAccent = accent == AppColors.error ? accent : _settingsGreenText;
+    final effectiveAccent =
+        accent == AppColors.error ? accent : _settingsGreenText;
 
     return Material(
       color: Colors.transparent,
@@ -1522,7 +1586,9 @@ class _CategoryRow extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: effectiveAccent.withValues(alpha: isDark ? 0.14 : 0.09),
+                  color: effectiveAccent.withValues(
+                    alpha: isDark ? 0.14 : 0.09,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -1608,31 +1674,42 @@ class _BodyProfileScreen extends StatelessWidget {
                     ),
               ),
               Consumer<SettingsProvider>(
-                builder: (context, settings, _) => Column(
-                  children: [
-                    _SettingRow(
-                      icon: LucideIcons.calendar,
-                      accent: AppColors.primary,
-                      title: l10n.settings_age,
-                      value: settings.age?.toString() ?? '--',
-                      onTap:
-                          () => _showNumberDialog(
-                            context,
-                            title: l10n.settings_age,
-                            currentValue: settings.age ?? 25,
-                            unit: 'yrs',
-                            onSave: (value) => settings.updateBodyProfile(age: value),
-                          ),
+                builder:
+                    (context, settings, _) => Column(
+                      children: [
+                        _SettingRow(
+                          icon: LucideIcons.calendar,
+                          accent: AppColors.primary,
+                          title: l10n.settings_age,
+                          value: settings.age?.toString() ?? '--',
+                          onTap:
+                              () => _showNumberDialog(
+                                context,
+                                title: l10n.settings_age,
+                                currentValue: settings.age ?? 25,
+                                unit: 'yrs',
+                                onSave:
+                                    (value) => settings.updateBodyProfile(
+                                      age: value,
+                                      currentWeightKg:
+                                          context
+                                              .read<MetricsProvider>()
+                                              .currentWeight,
+                                    ),
+                              ),
+                        ),
+                        _SettingRow(
+                          icon: LucideIcons.userCircle,
+                          accent: AppColors.primary,
+                          title: l10n.settings_gender,
+                          value:
+                              settings.gender != null
+                                  ? _getLocalGender(context, settings.gender!)
+                                  : '--',
+                          onTap: () => _showGenderSelector(context, settings),
+                        ),
+                      ],
                     ),
-                    _SettingRow(
-                      icon: LucideIcons.userCircle,
-                      accent: AppColors.primary,
-                      title: l10n.settings_gender,
-                      value: settings.gender != null ? _getLocalGender(context, settings.gender!) : '--',
-                      onTap: () => _showGenderSelector(context, settings),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -1698,7 +1775,13 @@ class _BodyProfileScreen extends StatelessWidget {
                             if (data.$2 == 'lb') kg = value / 2.20462;
                             return context
                                 .read<SettingsProvider>()
-                                .updateBodyProfile(targetWeight: kg);
+                                .updateBodyProfile(
+                                  targetWeight: kg,
+                                  currentWeightKg:
+                                      context
+                                          .read<MetricsProvider>()
+                                          .currentWeight,
+                                );
                           },
                         ),
                   );
@@ -1732,7 +1815,13 @@ class _BodyProfileScreen extends StatelessWidget {
                             if (data.$2 == 'in') cm = value * 2.54;
                             return context
                                 .read<SettingsProvider>()
-                                .updateBodyProfile(height: cm);
+                                .updateBodyProfile(
+                                  height: cm,
+                                  currentWeightKg:
+                                      context
+                                          .read<MetricsProvider>()
+                                          .currentWeight,
+                                );
                           },
                         ),
                   );
@@ -1746,14 +1835,15 @@ class _BodyProfileScreen extends StatelessWidget {
             accent: AppColors.primary,
             children: [
               Consumer<SettingsProvider>(
-                builder: (context, settings, _) => _SettingRow(
-                  icon: LucideIcons.settings,
-                  accent: AppColors.primary,
-                  title: l10n.settings_units,
-                  value:
-                      '${_getLocalUnit(context, settings.weightUnit).toUpperCase()} / ${_getLocalUnit(context, settings.heightUnit).toUpperCase()}',
-                  onTap: () => _showUnitSelector(context, settings),
-                ),
+                builder:
+                    (context, settings, _) => _SettingRow(
+                      icon: LucideIcons.settings,
+                      accent: AppColors.primary,
+                      title: l10n.settings_units,
+                      value:
+                          '${_getLocalUnit(context, settings.weightUnit).toUpperCase()} / ${_getLocalUnit(context, settings.heightUnit).toUpperCase()}',
+                      onTap: () => _showUnitSelector(context, settings),
+                    ),
               ),
             ],
           ),
@@ -1769,6 +1859,7 @@ class _NutritionGoalsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isPro = context.select<SettingsProvider, bool>((s) => s.isPro);
     return AppPageScaffold(
       title: l10n.settings_nutrition_goals_title,
       scrollable: true,
@@ -1776,7 +1867,17 @@ class _NutritionGoalsScreen extends StatelessWidget {
       backgroundColor: _settingsBg(context),
       child: Column(
         children: [
-          const _MacroCalorieRelationshipCard(),
+          if (isPro)
+            const _MacroCalorieRelationshipCard()
+          else
+            _LockedMacroGoalsCard(
+              onTap:
+                  () => PremiumConversionService().openPaywall(
+                    context,
+                    PaywallEntryPoint.macroDetails,
+                    featureName: 'settings_macro_split',
+                  ),
+            ),
           const SizedBox(height: 24),
           _SettingsSectionFrame(
             title: l10n.settings_nutrition_goals, // "Nutrition Goals"
@@ -1810,18 +1911,27 @@ class _NutritionGoalsScreen extends StatelessWidget {
                       icon: LucideIcons.beef,
                       accent: AppColors.primary,
                       title: l10n.settings_protein,
-                      value: '$value${l10n.settings_grams_unit}',
+                      value:
+                          isPro
+                              ? '$value${l10n.settings_grams_unit}'
+                              : l10n.macro_locked_placeholder,
                       onTap:
-                          () => _showNumberDialog(
-                            context,
-                            title: l10n.settings_protein,
-                            currentValue: value,
-                            unit: 'g',
-                            onSave:
-                                context
-                                    .read<SettingsProvider>()
-                                    .updateProteinGoal,
-                          ),
+                          isPro
+                              ? () => _showNumberDialog(
+                                context,
+                                title: l10n.settings_protein,
+                                currentValue: value,
+                                unit: 'g',
+                                onSave:
+                                    context
+                                        .read<SettingsProvider>()
+                                        .updateProteinGoal,
+                              )
+                              : () => PremiumConversionService().openPaywall(
+                                context,
+                                PaywallEntryPoint.macroDetails,
+                                featureName: 'settings_protein_goal',
+                              ),
                     ),
               ),
               Selector<SettingsProvider, int>(
@@ -1831,16 +1941,27 @@ class _NutritionGoalsScreen extends StatelessWidget {
                       icon: LucideIcons.wheat,
                       accent: AppColors.primary,
                       title: l10n.settings_carbs,
-                      value: '$value${l10n.settings_grams_unit}',
+                      value:
+                          isPro
+                              ? '$value${l10n.settings_grams_unit}'
+                              : l10n.macro_locked_placeholder,
                       onTap:
-                          () => _showNumberDialog(
-                            context,
-                            title: l10n.settings_carbs,
-                            currentValue: value,
-                            unit: 'g',
-                            onSave:
-                                context.read<SettingsProvider>().updateCarbGoal,
-                          ),
+                          isPro
+                              ? () => _showNumberDialog(
+                                context,
+                                title: l10n.settings_carbs,
+                                currentValue: value,
+                                unit: 'g',
+                                onSave:
+                                    context
+                                        .read<SettingsProvider>()
+                                        .updateCarbGoal,
+                              )
+                              : () => PremiumConversionService().openPaywall(
+                                context,
+                                PaywallEntryPoint.macroDetails,
+                                featureName: 'settings_carb_goal',
+                              ),
                     ),
               ),
               Selector<SettingsProvider, int>(
@@ -1850,16 +1971,27 @@ class _NutritionGoalsScreen extends StatelessWidget {
                       icon: LucideIcons.droplets,
                       accent: AppColors.primary,
                       title: l10n.settings_fat,
-                      value: '$value${l10n.settings_grams_unit}',
+                      value:
+                          isPro
+                              ? '$value${l10n.settings_grams_unit}'
+                              : l10n.macro_locked_placeholder,
                       onTap:
-                          () => _showNumberDialog(
-                            context,
-                            title: l10n.settings_fat,
-                            currentValue: value,
-                            unit: 'g',
-                            onSave:
-                                context.read<SettingsProvider>().updateFatGoal,
-                          ),
+                          isPro
+                              ? () => _showNumberDialog(
+                                context,
+                                title: l10n.settings_fat,
+                                currentValue: value,
+                                unit: 'g',
+                                onSave:
+                                    context
+                                        .read<SettingsProvider>()
+                                        .updateFatGoal,
+                              )
+                              : () => PremiumConversionService().openPaywall(
+                                context,
+                                PaywallEntryPoint.macroDetails,
+                                featureName: 'settings_fat_goal',
+                              ),
                     ),
               ),
             ],
@@ -1939,35 +2071,47 @@ class _PreferencesScreen extends StatelessWidget {
                     accent: AppColors.primary,
                     children: [
                       Consumer<SettingsProvider>(
-                        builder: (context, settings, _) => Column(
-                          children: [
-                            _SettingRow(
-                              icon: LucideIcons.egg,
-                              accent: AppColors.primary,
-                              title: l10n.settings_breakfast_time,
-                              value: settings.breakfastTime,
-                              onTap:
-                                  () =>
-                                      _selectTime(context, settings, 'breakfast'),
+                        builder:
+                            (context, settings, _) => Column(
+                              children: [
+                                _SettingRow(
+                                  icon: LucideIcons.egg,
+                                  accent: AppColors.primary,
+                                  title: l10n.settings_breakfast_time,
+                                  value: settings.breakfastTime,
+                                  onTap:
+                                      () => _selectTime(
+                                        context,
+                                        settings,
+                                        'breakfast',
+                                      ),
+                                ),
+                                _SettingRow(
+                                  icon: LucideIcons.utensils,
+                                  accent: AppColors.primary,
+                                  title: l10n.settings_lunch_time,
+                                  value: settings.lunchTime,
+                                  onTap:
+                                      () => _selectTime(
+                                        context,
+                                        settings,
+                                        'lunch',
+                                      ),
+                                ),
+                                _SettingRow(
+                                  icon: LucideIcons.moon,
+                                  accent: AppColors.primary,
+                                  title: l10n.settings_dinner_time,
+                                  value: settings.dinnerTime,
+                                  onTap:
+                                      () => _selectTime(
+                                        context,
+                                        settings,
+                                        'dinner',
+                                      ),
+                                ),
+                              ],
                             ),
-                            _SettingRow(
-                              icon: LucideIcons.utensils,
-                              accent: AppColors.primary,
-                              title: l10n.settings_lunch_time,
-                              value: settings.lunchTime,
-                              onTap:
-                                  () => _selectTime(context, settings, 'lunch'),
-                            ),
-                            _SettingRow(
-                              icon: LucideIcons.moon,
-                              accent: AppColors.primary,
-                              title: l10n.settings_dinner_time,
-                              value: settings.dinnerTime,
-                              onTap:
-                                  () => _selectTime(context, settings, 'dinner'),
-                            ),
-                          ],
-                        ),
                       ),
                     ],
                   ),
@@ -1981,18 +2125,19 @@ class _PreferencesScreen extends StatelessWidget {
             accent: AppColors.primary,
             children: [
               Consumer<SettingsProvider>(
-                builder: (context, settings, _) => Column(
-                  children: [
-                    _ThemeRow(currentMode: settings.themeMode),
-                    _SettingRow(
-                      icon: LucideIcons.languages,
-                      accent: AppColors.primary,
-                      title: l10n.settings_language,
-                      value: _getLanguageName(settings.languageCode),
-                      onTap: () => _showLanguageSelector(context, settings),
+                builder:
+                    (context, settings, _) => Column(
+                      children: [
+                        _ThemeRow(currentMode: settings.themeMode),
+                        _SettingRow(
+                          icon: LucideIcons.languages,
+                          accent: AppColors.primary,
+                          title: l10n.settings_language,
+                          value: _getLanguageName(settings.languageCode),
+                          onTap: () => _showLanguageSelector(context, settings),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -2093,37 +2238,81 @@ class _AccountScreen extends StatelessWidget {
 
     HapticFeedback.mediumImpact();
 
-    try {
-      final success = await subService.restorePurchases().timeout(
-        const Duration(seconds: 20),
-      );
-
-      if (success) {
+    final result = await subService.restorePurchasesDetailed();
+    if (!context.mounted) return;
+    switch (result.status) {
+      case SubscriptionStatus.active:
         settingsProvider.refresh();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(l10n.premium_restore_success),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
+        _showSubscriptionSnackBar(
+          messenger,
+          l10n.premium_restore_success,
+          color: AppColors.primary,
+          icon: LucideIcons.sparkles,
         );
-      } else {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(l10n.premium_restore_empty),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
+        return;
+      case SubscriptionStatus.pending:
+        _showSubscriptionSnackBar(
+          messenger,
+          _settingsSubscriptionCopy(
+            context,
+            _SettingsSubscriptionCopyKey.restorePending,
           ),
+          color: AppColors.warning,
+          icon: LucideIcons.clock,
         );
-      }
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(l10n.premium_restore_fail),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        return;
+      case SubscriptionStatus.cancelled:
+        _showSubscriptionSnackBar(
+          messenger,
+          _settingsSubscriptionCopy(
+            context,
+            _SettingsSubscriptionCopyKey.restoreCancelled,
+          ),
+          color: AppColors.primary,
+          icon: LucideIcons.checkCircle2,
+        );
+        return;
+      case SubscriptionStatus.noPurchase:
+        _showSubscriptionSnackBar(
+          messenger,
+          l10n.premium_restore_empty,
+          color: AppColors.warning,
+          icon: LucideIcons.refreshCw,
+        );
+        return;
+      case SubscriptionStatus.offline:
+        _showSubscriptionSnackBar(
+          messenger,
+          _settingsSubscriptionCopy(
+            context,
+            _SettingsSubscriptionCopyKey.restoreOffline,
+          ),
+          color: AppColors.warning,
+          icon: LucideIcons.wifiOff,
+        );
+        return;
+      case SubscriptionStatus.storeUnavailable:
+        _showSubscriptionSnackBar(
+          messenger,
+          _settingsSubscriptionCopy(
+            context,
+            _SettingsSubscriptionCopyKey.storeSlow,
+          ),
+          color: AppColors.warning,
+          icon: LucideIcons.clock,
+        );
+        return;
+      case SubscriptionStatus.failed:
+        _showSubscriptionSnackBar(
+          messenger,
+          _settingsSubscriptionCopy(
+            context,
+            _SettingsSubscriptionCopyKey.restoreFailed,
+          ),
+          color: AppColors.warning,
+          icon: LucideIcons.refreshCw,
+        );
+        return;
     }
   }
 
@@ -2389,14 +2578,19 @@ class _WeightProgressBar extends StatelessWidget {
         final currentWeightKg = metrics.currentWeight ?? startWeightKg;
         final targetWeightKg = settings.targetWeight;
 
-        if (startWeightKg == null || targetWeightKg == null || currentWeightKg == null) {
+        if (startWeightKg == null ||
+            targetWeightKg == null ||
+            currentWeightKg == null) {
           return const SizedBox.shrink();
         }
 
         // Convert weights for display
-        final double startWeight = unit == 'lb' ? startWeightKg * 2.20462 : startWeightKg;
-        final double currentWeight = unit == 'lb' ? currentWeightKg * 2.20462 : currentWeightKg;
-        final double targetWeight = unit == 'lb' ? targetWeightKg * 2.20462 : targetWeightKg;
+        final double startWeight =
+            unit == 'lb' ? startWeightKg * 2.20462 : startWeightKg;
+        final double currentWeight =
+            unit == 'lb' ? currentWeightKg * 2.20462 : currentWeightKg;
+        final double targetWeight =
+            unit == 'lb' ? targetWeightKg * 2.20462 : targetWeightKg;
 
         // Calculate progress percentage
         double progress = 0.0;
@@ -2404,10 +2598,12 @@ class _WeightProgressBar extends StatelessWidget {
         if (diffTotal > 0.01) {
           if (targetWeight < startWeight) {
             // Weight loss goal
-            progress = (startWeight - currentWeight) / (startWeight - targetWeight);
+            progress =
+                (startWeight - currentWeight) / (startWeight - targetWeight);
           } else {
             // Weight gain goal
-            progress = (currentWeight - startWeight) / (targetWeight - startWeight);
+            progress =
+                (currentWeight - startWeight) / (targetWeight - startWeight);
           }
           progress = progress.clamp(0.0, 1.0);
         }
@@ -2425,7 +2621,9 @@ class _WeightProgressBar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isLoss ? l10n.settings_weight_loss_progress : l10n.settings_weight_gain_progress,
+                    isLoss
+                        ? l10n.settings_weight_loss_progress
+                        : l10n.settings_weight_gain_progress,
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w700,
                       color: _settingsText(context),
@@ -2451,16 +2649,15 @@ class _WeightProgressBar extends StatelessWidget {
                   child: Stack(
                     children: [
                       Container(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : _settingsLine,
+                        color:
+                            isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : _settingsLine,
                       ),
                       FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: progress,
-                        child: Container(
-                          color: _settingsGreenText,
-                        ),
+                        child: Container(color: _settingsGreenText),
                       ),
                     ],
                   ),
@@ -2473,18 +2670,21 @@ class _WeightProgressBar extends StatelessWidget {
                 children: [
                   _WeightLabel(
                     label: l10n.settings_weight_start,
-                    value: '${startWeight.toStringAsFixed(1)} ${_getLocalUnit(context, unit)}',
+                    value:
+                        '${startWeight.toStringAsFixed(1)} ${_getLocalUnit(context, unit)}',
                     alignment: CrossAxisAlignment.start,
                   ),
                   _WeightLabel(
                     label: l10n.settings_weight_current,
-                    value: '${currentWeight.toStringAsFixed(1)} ${_getLocalUnit(context, unit)}',
+                    value:
+                        '${currentWeight.toStringAsFixed(1)} ${_getLocalUnit(context, unit)}',
                     isHighlight: true,
                     alignment: CrossAxisAlignment.center,
                   ),
                   _WeightLabel(
                     label: l10n.settings_weight_target,
-                    value: '${targetWeight.toStringAsFixed(1)} ${_getLocalUnit(context, unit)}',
+                    value:
+                        '${targetWeight.toStringAsFixed(1)} ${_getLocalUnit(context, unit)}',
                     alignment: CrossAxisAlignment.end,
                   ),
                 ],
@@ -2494,14 +2694,20 @@ class _WeightProgressBar extends StatelessWidget {
                 Divider(
                   height: 1,
                   thickness: 0.5,
-                  color: isDark ? Colors.white.withValues(alpha: 0.06) : _settingsLine,
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : _settingsLine,
                 ),
                 const SizedBox(height: 10),
                 Center(
                   child: Text(
                     leftToGoal <= 0.1
                         ? l10n.settings_goal_reached
-                        : l10n.settings_left_to_reach_target(leftToGoal.toStringAsFixed(1), _getLocalUnit(context, unit)),
+                        : l10n.settings_left_to_reach_target(
+                          leftToGoal.toStringAsFixed(1),
+                          _getLocalUnit(context, unit),
+                        ),
                     style: AppTypography.labelSmall.copyWith(
                       color: _settingsSubtext(context),
                       fontWeight: FontWeight.w500,
@@ -2538,9 +2744,7 @@ class _WeightLabel extends StatelessWidget {
         Text(
           label.toUpperCase(),
           style: AppTypography.labelSmall.copyWith(
-            color: isHighlight
-                ? _settingsGreenText
-                : _settingsSubtext(context),
+            color: isHighlight ? _settingsGreenText : _settingsSubtext(context),
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
             fontSize: 9,
@@ -2551,7 +2755,10 @@ class _WeightLabel extends StatelessWidget {
           value,
           style: AppTypography.bodyMedium.copyWith(
             fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w600,
-            color: isHighlight ? _settingsText(context) : _settingsSubtext(context),
+            color:
+                isHighlight
+                    ? _settingsText(context)
+                    : _settingsSubtext(context),
             fontSize: 13,
           ),
         ),
@@ -2620,9 +2827,7 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
                       if (pPct > 0)
                         Expanded(
                           flex: (pPct * 1000).round(),
-                          child: Container(
-                            color: _settingsGreenText,
-                          ),
+                          child: Container(color: _settingsGreenText),
                         ),
                       if (cPct > 0)
                         Expanded(
@@ -2678,6 +2883,72 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
   }
 }
 
+class _LockedMacroGoalsCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _LockedMacroGoalsCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return AppScaleTap(
+      onTap: onTap,
+      child: _SettingsSurface(
+        accent: AppColors.primary,
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _settingsGreenText.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                LucideIcons.lock,
+                color: _settingsGreenText,
+                size: 19,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.macro_locked_title,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: _settingsText(context),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.macro_locked_body,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: _settingsSubtext(context),
+                      fontWeight: FontWeight.w500,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Icon(
+              LucideIcons.chevronRight,
+              color: _settingsSubtext(context),
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MacroLegendItem extends StatelessWidget {
   final String label;
   final String grams;
@@ -2703,10 +2974,7 @@ class _MacroLegendItem extends StatelessWidget {
             Container(
               width: 8,
               height: 8,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 6),
             Text(
@@ -2740,23 +3008,116 @@ class _MacroLegendItem extends StatelessWidget {
   }
 }
 
+enum _SettingsSubscriptionCopyKey {
+  restorePending,
+  restoreCancelled,
+  restoreOffline,
+  storeSlow,
+  restoreFailed,
+}
+
+String _settingsSubscriptionCopy(
+  BuildContext context,
+  _SettingsSubscriptionCopyKey key,
+) {
+  final locale = AppLocalizations.of(context)!.localeName.split('_').first;
+  final copy = switch (locale) {
+    'ar' => <_SettingsSubscriptionCopyKey, String>{
+      _SettingsSubscriptionCopyKey.restorePending:
+          'الاستعادة قيد المعالجة. سيتم تفعيل Pro تلقائيا بعد تأكيد المتجر.',
+      _SettingsSubscriptionCopyKey.restoreCancelled:
+          'تم إلغاء الاستعادة. لم يتم تغيير الاشتراك.',
+      _SettingsSubscriptionCopyKey.restoreOffline:
+          'لا يمكن التحقق الآن. حاول مرة أخرى عند عودة الاتصال.',
+      _SettingsSubscriptionCopyKey.storeSlow:
+          'المتجر يستغرق وقتا أطول من المعتاد. إذا اكتمل الدفع، سيتم تفعيل Pro تلقائيا.',
+      _SettingsSubscriptionCopyKey.restoreFailed:
+          'تعذرت الاستعادة الآن. تحقق من الاتصال وحاول مرة أخرى.',
+    },
+    'es' => <_SettingsSubscriptionCopyKey, String>{
+      _SettingsSubscriptionCopyKey.restorePending:
+          'La restauración se está procesando. Pro se activará automáticamente cuando la tienda la confirme.',
+      _SettingsSubscriptionCopyKey.restoreCancelled:
+          'Restauración cancelada. Tu suscripción no cambió.',
+      _SettingsSubscriptionCopyKey.restoreOffline:
+          'No podemos verificarlo ahora. Inténtalo de nuevo cuando vuelva la conexión.',
+      _SettingsSubscriptionCopyKey.storeSlow:
+          'La tienda está tardando más de lo normal. Si el pago se completó, Pro se activará automáticamente.',
+      _SettingsSubscriptionCopyKey.restoreFailed:
+          'No pudimos restaurar ahora. Revisa tu conexión e inténtalo de nuevo.',
+    },
+    'fr' => <_SettingsSubscriptionCopyKey, String>{
+      _SettingsSubscriptionCopyKey.restorePending:
+          'La restauration est en cours. Pro sera activé automatiquement après confirmation du store.',
+      _SettingsSubscriptionCopyKey.restoreCancelled:
+          'Restauration annulée. Votre abonnement n’a pas changé.',
+      _SettingsSubscriptionCopyKey.restoreOffline:
+          'Vérification impossible pour le moment. Réessayez lorsque la connexion revient.',
+      _SettingsSubscriptionCopyKey.storeSlow:
+          'Le store prend plus de temps que prévu. Si le paiement a abouti, Pro sera activé automatiquement.',
+      _SettingsSubscriptionCopyKey.restoreFailed:
+          'Restauration impossible pour le moment. Vérifiez votre connexion et réessayez.',
+    },
+    _ => <_SettingsSubscriptionCopyKey, String>{
+      _SettingsSubscriptionCopyKey.restorePending:
+          'Restore is processing. Pro will unlock automatically when the store confirms it.',
+      _SettingsSubscriptionCopyKey.restoreCancelled:
+          'Restore cancelled. Your subscription was not changed.',
+      _SettingsSubscriptionCopyKey.restoreOffline:
+          'We cannot verify right now. Try again when your connection returns.',
+      _SettingsSubscriptionCopyKey.storeSlow:
+          'The store is taking longer than usual. If payment completed, Pro will unlock automatically.',
+      _SettingsSubscriptionCopyKey.restoreFailed:
+          'We could not restore right now. Check your connection and try again.',
+    },
+  };
+  return copy[key]!;
+}
+
+void _showSubscriptionSnackBar(
+  ScaffoldMessengerState messenger,
+  String message, {
+  required Color color,
+  required IconData icon,
+}) {
+  messenger.hideCurrentSnackBar();
+  messenger.showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message)),
+        ],
+      ),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
+
 String _getLocalStatus(BuildContext context, String status) {
   final l10n = AppLocalizations.of(context)!;
   switch (status.toLowerCase()) {
     case 'tracking enabled':
     case 'enabled':
+    case 'connected':
       return l10n.settings_status_enabled;
+    case 'no health connect data today':
+      return 'No Health Connect data today';
     case 'permission denied':
     case 'denied':
       return l10n.settings_status_denied;
     case 'unsupported device':
     case 'unsupported':
+    case 'health connect unavailable':
       return l10n.settings_status_unsupported;
     case 'tracking error':
     case 'error':
       return l10n.settings_status_error;
     case 'tracking off':
     case 'off':
+    case 'not connected':
     default:
       return l10n.settings_status_off;
   }
@@ -2798,7 +3159,10 @@ String _getLocalOption(BuildContext context, String option) {
   if (normalized == 'male' || normalized == 'female' || normalized == 'other') {
     return _getLocalGender(context, normalized);
   }
-  if (normalized == 'kg' || normalized == 'lb' || normalized == 'cm' || normalized == 'in') {
+  if (normalized == 'kg' ||
+      normalized == 'lb' ||
+      normalized == 'cm' ||
+      normalized == 'in') {
     return _getLocalUnit(context, normalized);
   }
   if (normalized == 'yrs') {

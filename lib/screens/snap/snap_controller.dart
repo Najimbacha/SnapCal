@@ -4,6 +4,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import '../../data/services/gemini_service.dart';
 import '../../data/services/barcode_service.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/resilience/retry_policy.dart';
+import '../../core/resilience/safe_async.dart';
+import '../../core/resilience/timeout_policy.dart';
 import '../../core/utils/image_utils.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -25,6 +29,8 @@ class SnapController extends ChangeNotifier {
 
   final AIService _geminiService = AIService();
   final BarcodeService _barcodeService = BarcodeService();
+  int _operationGeneration = 0;
+  bool _disposed = false;
 
   SnapController() {
     CameraService().addListener(notifyListeners);
@@ -96,6 +102,8 @@ class SnapController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _operationGeneration++;
     CameraService().removeListener(notifyListeners);
     super.dispose();
   }
@@ -110,9 +118,10 @@ class SnapController extends ChangeNotifier {
     required Function() onShowManualInput,
   }) async {
     if (_isCapturing || _isAnalyzing) return;
+    final op = ++_operationGeneration;
 
     final l10n = AppLocalizations.of(context)!;
-    final hasInternet = await connectivity.refreshReachability();
+    final hasInternet = await connectivity.refreshReachability(force: true);
     if (!hasInternet) {
       HapticFeedback.vibrate();
       _errorMessage = l10n.snap_offline_error;
@@ -137,9 +146,18 @@ class SnapController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final XFile imageFile = await CameraService().controller!.takePicture();
-      final bytes = await imageFile.readAsBytes();
+      final XFile imageFile = await CameraService().controller!
+          .takePicture()
+          .timeout(TimeoutPolicy.camera);
+      if (_disposed || op != _operationGeneration) return;
+      final bytes = await imageFile.readAsBytes().timeout(
+        TimeoutPolicy.gallery,
+      );
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
+      if (_capturedImageBytes!.length > AppConstants.maxImageUploadBytes) {
+        throw GeminiException('Image is too large to upload safely.');
+      }
+      if (_disposed || op != _operationGeneration) return;
       _isCapturing = false;
       _isAnalyzing = true;
       notifyListeners();
@@ -149,15 +167,27 @@ class SnapController extends ChangeNotifier {
         if (cached != null) {
           _analysisResults = cached;
         } else {
-          _analysisResults = await _geminiService
-              .analyzeFood(
-                _capturedImageBytes!,
-                language: settingsProvider.languageCode,
-              )
-              .timeout(const Duration(seconds: 18));
+          final result = await SafeAsync.run<List<NutritionResult>>(
+            label: 'AI food scan',
+            operation:
+                () => _geminiService.analyzeFood(
+                  _capturedImageBytes!,
+                  language: settingsProvider.languageCode,
+                ),
+            timeout: TimeoutPolicy.aiScan,
+            retryPolicy: RetryPolicy.ai,
+            operationKey: 'snap:cameraScan',
+            isActive: () => !_disposed && op == _operationGeneration,
+          );
+          if (result.isFailure) throw GeminiException(result.failure!.message);
+          _analysisResults = result.requireData;
+          if (_analysisResults!.isEmpty) {
+            throw GeminiException('No food detected.');
+          }
           mealProvider.cacheAnalysis(_capturedImageBytes!, _analysisResults!);
         }
 
+        if (_disposed || op != _operationGeneration) return;
         await _recordFreeScanIfNeeded(settingsProvider);
         _isAnalyzing = false;
         notifyListeners();
@@ -166,6 +196,7 @@ class SnapController extends ChangeNotifier {
         _isAnalyzing = false;
         if (!context.mounted) return;
         _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
+        _capturedImageBytes = null;
         notifyListeners();
         onShowManualInput();
       }
@@ -174,6 +205,7 @@ class SnapController extends ChangeNotifier {
       _isAnalyzing = false;
       if (!context.mounted) return;
       _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
+      _capturedImageBytes = null;
       notifyListeners();
       onShowManualInput();
     }
@@ -189,9 +221,10 @@ class SnapController extends ChangeNotifier {
     required Function() onShowManualInput,
   }) async {
     if (_isAnalyzing) return;
+    final op = ++_operationGeneration;
 
     final l10n = AppLocalizations.of(context)!;
-    final hasInternet = await connectivity.refreshReachability();
+    final hasInternet = await connectivity.refreshReachability(force: true);
     if (!hasInternet) {
       HapticFeedback.vibrate();
       _errorMessage = l10n.snap_offline_error;
@@ -217,20 +250,37 @@ class SnapController extends ChangeNotifier {
       if (imageFile == null) return;
 
       HapticFeedback.selectionClick();
-      final bytes = await imageFile.readAsBytes();
+      final bytes = await imageFile.readAsBytes().timeout(
+        TimeoutPolicy.gallery,
+      );
 
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
+      if (_capturedImageBytes!.length > AppConstants.maxImageUploadBytes) {
+        throw GeminiException('Image is too large to upload safely.');
+      }
+      if (_disposed || op != _operationGeneration) return;
       _isAnalyzing = true;
       _errorMessage = null;
       notifyListeners();
 
       try {
-        _analysisResults = await _geminiService
-            .analyzeFood(
-              _capturedImageBytes!,
-              language: settingsProvider.languageCode,
-            )
-            .timeout(const Duration(seconds: 18));
+        final result = await SafeAsync.run<List<NutritionResult>>(
+          label: 'Gallery food scan',
+          operation:
+              () => _geminiService.analyzeFood(
+                _capturedImageBytes!,
+                language: settingsProvider.languageCode,
+              ),
+          timeout: TimeoutPolicy.aiScan,
+          retryPolicy: RetryPolicy.ai,
+          operationKey: 'snap:galleryScan',
+          isActive: () => !_disposed && op == _operationGeneration,
+        );
+        if (result.isFailure) throw GeminiException(result.failure!.message);
+        _analysisResults = result.requireData;
+        if (_analysisResults!.isEmpty) {
+          throw GeminiException('No food detected.');
+        }
         await _recordFreeScanIfNeeded(settingsProvider);
         _isAnalyzing = false;
         notifyListeners();
@@ -239,6 +289,7 @@ class SnapController extends ChangeNotifier {
         _isAnalyzing = false;
         if (!context.mounted) return;
         _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
+        _capturedImageBytes = null;
         notifyListeners();
         onShowManualInput();
       }
@@ -246,7 +297,9 @@ class SnapController extends ChangeNotifier {
       _isAnalyzing = false;
       if (!context.mounted) return;
       _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
+      _capturedImageBytes = null;
       notifyListeners();
+      onShowManualInput();
     }
   }
 
@@ -254,44 +307,59 @@ class SnapController extends ChangeNotifier {
     String code, {
     required BuildContext context,
     required SettingsProvider settingsProvider,
+    required ConnectivityService connectivity,
     required Function() onShowPaywall,
     required Function() onShowResult,
     required Function() onShowManualInput,
   }) async {
     if (_isAnalyzing) return;
+    final op = ++_operationGeneration;
+    final l10n = AppLocalizations.of(context)!;
 
-    if (!ScanGateService().canScan(settingsProvider.isPro)) {
+    final hasInternet = await connectivity.refreshReachability(force: true);
+    if (!hasInternet) {
       isScanningBarcode = false;
-      onShowPaywall();
+      HapticFeedback.vibrate();
+      _errorMessage = l10n.snap_offline_error;
+      notifyListeners();
+      onShowManualInput();
       return;
     }
 
+    // Barcode scanning is free and unrestricted for all users
     isScanningBarcode = false;
     _isAnalyzing = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final result = await _barcodeService
-          .fetchProductByBarcode(code)
-          .timeout(const Duration(seconds: 8));
+      final lookup = await SafeAsync.run<NutritionResult?>(
+        label: 'Barcode lookup',
+        operation: () => _barcodeService.fetchProductByBarcode(code),
+        timeout: TimeoutPolicy.barcode,
+        retryPolicy: RetryPolicy.network,
+        operationKey: 'snap:barcode:$code',
+        isActive: () => !_disposed && op == _operationGeneration,
+      );
+      if (lookup.isFailure) throw lookup.failure!;
+      final result = lookup.data;
       if (result != null) {
         _analysisResults = [result];
-        await _recordFreeScanIfNeeded(settingsProvider);
+        // Barcode scans are free and do not increment the daily scan limit
         _isAnalyzing = false;
         notifyListeners();
         onShowResult();
       } else {
         _isAnalyzing = false;
         if (!context.mounted) return;
-        _errorMessage = AppLocalizations.of(context)!.error_barcode_not_found;
+        _errorMessage = l10n.error_barcode_not_found;
         notifyListeners();
         onShowManualInput();
       }
     } catch (e) {
       _isAnalyzing = false;
       if (!context.mounted) return;
-      _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
+      _errorMessage = l10n.error_scan_failed;
       notifyListeners();
       onShowManualInput();
     }

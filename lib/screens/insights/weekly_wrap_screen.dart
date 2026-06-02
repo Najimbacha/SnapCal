@@ -11,6 +11,9 @@ import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/core/theme/app_typography.dart';
 import 'package:snapcal/providers/insights_provider.dart';
 import 'package:snapcal/providers/settings_provider.dart';
+import 'package:snapcal/providers/meal_provider.dart';
+import 'package:snapcal/providers/activity_provider.dart';
+import 'package:snapcal/data/repositories/water_repository.dart';
 import 'package:snapcal/data/services/premium_conversion_service.dart';
 import 'package:snapcal/widgets/app_page_scaffold.dart';
 import 'package:snapcal/widgets/glass_card.dart';
@@ -27,6 +30,25 @@ class WeeklyWrapScreen extends StatefulWidget {
 
 class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
   final ScreenshotController _screenshotController = ScreenshotController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final settings = context.read<SettingsProvider>();
+        if (settings.isPro) {
+          context.read<InsightsProvider>().generateWeeklyReport(
+            meals: context.read<MealProvider>(),
+            settings: settings,
+            activity: context.read<ActivityProvider>(),
+            waterRepo: context.read<WaterRepository>(),
+            languageCode: settings.languageCode,
+          );
+        }
+      }
+    });
+  }
 
   Future<void> _shareReport() async {
     final l10n = AppLocalizations.of(context)!;
@@ -106,9 +128,29 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
       return AppPageScaffold(
         title: l10n.feature_insights_title,
         child: Center(
-          child: Text(
-            l10n.feature_insights_empty,
-            style: AppTypography.titleMedium,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                l10n.feature_insights_empty,
+                style: AppTypography.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () {
+                  insightsProvider.generateWeeklyReport(
+                    meals: context.read<MealProvider>(),
+                    settings: settings,
+                    activity: context.read<ActivityProvider>(),
+                    waterRepo: context.read<WaterRepository>(),
+                    languageCode: settings.languageCode,
+                  );
+                },
+                icon: const Icon(LucideIcons.refreshCw, size: 16),
+                label: Text(l10n.common_try_again),
+              ),
+            ],
           ),
         ),
       );

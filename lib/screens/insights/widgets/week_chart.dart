@@ -32,7 +32,9 @@ class WeekChart extends StatelessWidget {
                     showTitles: true,
                     getTitlesWidget: (value, meta) {
                       final days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-                      if (value.toInt() < 0 || value.toInt() >= days.length) return const SizedBox.shrink();
+                      if (value.toInt() < 0 || value.toInt() >= days.length) {
+                        return const SizedBox.shrink();
+                      }
                       return Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
@@ -44,25 +46,32 @@ class WeekChart extends StatelessWidget {
                     reservedSize: 28,
                   ),
                 ),
-                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
               ),
               gridData: const FlGridData(show: false),
               borderData: FlBorderData(show: false),
-              barGroups: dailyCalories.asMap().entries.map((entry) {
-                return BarChartGroupData(
-                  x: entry.key,
-                  barRods: [
-                    BarChartRodData(
-                      toY: entry.value,
-                      color: AppColors.primary,
-                      width: 16,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ],
-                );
-              }).toList(),
+              barGroups:
+                  dailyCalories.asMap().entries.map((entry) {
+                    return BarChartGroupData(
+                      x: entry.key,
+                      barRods: [
+                        BarChartRodData(
+                          toY: entry.value,
+                          color: AppColors.primary,
+                          width: 16,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    );
+                  }).toList(),
             ),
           ),
         ),

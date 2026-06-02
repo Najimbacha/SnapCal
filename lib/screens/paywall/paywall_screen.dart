@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -44,6 +45,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
   bool _isLoading = false;
   Package? _selectedPackage;
   List<Package> _packages = [];
+  String? _purchaseNotice;
 
   @override
   void initState() {
@@ -76,44 +78,44 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Future<void> _handlePurchase() async {
-    if (_isLoading || _selectedPackage == null) return;
+    if (_isLoading) return;
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return;
+    }
+    if (_selectedPackage == null) {
+      final message = _purchaseCopy(context, _PurchaseCopyKey.plansUnavailable);
+      setState(() => _purchaseNotice = message);
+      _showPurchaseSnackBar(
+        ScaffoldMessenger.of(context),
+        message,
+        backgroundColor: AppColors.warning,
+        icon: LucideIcons.refreshCw,
+      );
+      unawaited(_loadOfferings());
+      return;
+    }
+
     HapticFeedback.heavyImpact();
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _purchaseNotice = null;
+    });
 
     final settingsProvider = context.read<SettingsProvider>();
     final messenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
     final subService = SubscriptionService();
     final l10n = AppLocalizations.of(context)!;
 
-    try {
-      final success = await subService
-          .purchasePackage(_selectedPackage!)
-          .timeout(const Duration(seconds: 25));
-      if (!mounted) return;
-      if (success) {
-        settingsProvider.refresh();
-        router.pop();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(l10n.premium_welcome),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-        );
-      } else {
-        _showErrorSnackBar(messenger, l10n.paywall_purchase_failed);
-      }
-    } catch (e) {
-      if (mounted) {
-        _showErrorSnackBar(messenger, l10n.paywall_purchase_failed);
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    final result = await subService.purchasePackageDetailed(_selectedPackage!);
+    if (!mounted) return;
+    _handleSubscriptionResult(
+      result,
+      messenger: messenger,
+      settingsProvider: settingsProvider,
+      successMessage: l10n.premium_welcome,
+      isRestore: false,
+    );
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _handleRestore() async {
@@ -125,40 +127,127 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final subService = SubscriptionService();
     final l10n = AppLocalizations.of(context)!;
 
-    try {
-      final success = await subService.restorePurchases().timeout(
-        const Duration(seconds: 20),
-      );
-      if (!mounted) return;
+    final result = await subService.restorePurchasesDetailed();
+    if (!mounted) return;
+    _handleSubscriptionResult(
+      result,
+      messenger: messenger,
+      settingsProvider: settingsProvider,
+      successMessage: l10n.premium_restore_success,
+      isRestore: true,
+    );
+    if (mounted) setState(() => _isLoading = false);
+  }
 
-      if (success) {
+  void _handleSubscriptionResult(
+    SubscriptionResult result, {
+    required ScaffoldMessengerState messenger,
+    required SettingsProvider settingsProvider,
+    required String successMessage,
+    required bool isRestore,
+  }) {
+    switch (result.status) {
+      case SubscriptionStatus.active:
         settingsProvider.refresh();
-        context.pop();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(l10n.premium_restore_success),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
+        if (mounted && context.canPop()) {
+          context.pop();
+        }
+        _showPurchaseSnackBar(
+          messenger,
+          successMessage,
+          backgroundColor: AppColors.primary,
+          icon: LucideIcons.sparkles,
         );
-      } else {
-        _showErrorSnackBar(messenger, l10n.premium_restore_empty);
-      }
-    } catch (e) {
-      if (mounted) _showErrorSnackBar(messenger, l10n.premium_restore_fail);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+        return;
+      case SubscriptionStatus.pending:
+        final message = _purchaseCopy(
+          context,
+          isRestore
+              ? _PurchaseCopyKey.restorePending
+              : _PurchaseCopyKey.purchasePending,
+        );
+        setState(() => _purchaseNotice = message);
+        _showPurchaseSnackBar(
+          messenger,
+          message,
+          backgroundColor: AppColors.warning,
+          icon: LucideIcons.clock,
+        );
+        return;
+      case SubscriptionStatus.cancelled:
+        _showPurchaseSnackBar(
+          messenger,
+          _purchaseCopy(context, _PurchaseCopyKey.purchaseCancelled),
+          backgroundColor: AppColors.primary,
+          icon: LucideIcons.checkCircle2,
+        );
+        return;
+      case SubscriptionStatus.noPurchase:
+        _showPurchaseSnackBar(
+          messenger,
+          _purchaseCopy(context, _PurchaseCopyKey.restoreNoPurchase),
+          backgroundColor: AppColors.warning,
+          icon: LucideIcons.refreshCw,
+        );
+        return;
+      case SubscriptionStatus.offline:
+        final message = _purchaseCopy(
+          context,
+          isRestore
+              ? _PurchaseCopyKey.restoreOffline
+              : _PurchaseCopyKey.purchaseOffline,
+        );
+        setState(() => _purchaseNotice = message);
+        _showPurchaseSnackBar(
+          messenger,
+          message,
+          backgroundColor: AppColors.warning,
+          icon: LucideIcons.wifiOff,
+        );
+        return;
+      case SubscriptionStatus.storeUnavailable:
+        final message = _purchaseCopy(context, _PurchaseCopyKey.storeSlow);
+        setState(() => _purchaseNotice = message);
+        _showPurchaseSnackBar(
+          messenger,
+          message,
+          backgroundColor: AppColors.warning,
+          icon: LucideIcons.clock,
+        );
+        return;
+      case SubscriptionStatus.failed:
+        _showPurchaseSnackBar(
+          messenger,
+          _purchaseCopy(
+            context,
+            isRestore
+                ? _PurchaseCopyKey.restoreFailed
+                : _PurchaseCopyKey.purchaseFailed,
+          ),
+          backgroundColor: AppColors.warning,
+          icon: LucideIcons.refreshCw,
+        );
+        return;
     }
   }
 
-  void _showErrorSnackBar(ScaffoldMessengerState messenger, String error) {
+  void _showPurchaseSnackBar(
+    ScaffoldMessengerState messenger,
+    String message, {
+    required Color backgroundColor,
+    required IconData icon,
+  }) {
+    messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
-        content: Text(error),
-        backgroundColor: AppColors.error,
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
@@ -173,217 +262,275 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final topPadding = MediaQuery.of(context).padding.top;
     final bgColor = isDark ? _minimalDarkBg : _minimalBg;
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: LayoutBuilder(
-        builder: (context, viewport) {
-          final compact = viewport.maxHeight < 760;
-          final tight = viewport.maxHeight < 700;
-          final heroHeight = ((viewport.maxWidth + 22) * 0.95).clamp(
-            228.0,
-            399.0,
-          );
-          final hPad = compact ? 20.0 : 24.0;
+    final ambientGradient =
+        isDark
+            ? const LinearGradient(
+              colors: [Color(0xFF0B0E0C), Color(0xFF05120B)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            )
+            : const LinearGradient(
+              colors: [Color(0xFFFFFDF9), Color(0xFFEAF5F0)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            );
 
-          return Stack(
-            children: [
-              // ─── MAIN CONTENT ───
-              Column(
-                children: [
-                  // ─── HERO: Full-width food scanning carousel ───
-                  SizedBox(
-                    height: heroHeight,
-                    child: Stack(
-                      children: [
-                        const Positioned.fill(child: _FoodScanShowcase()),
-                        // Close button (top-left, over image)
-                        Positioned(
-                          top: topPadding + 4,
-                          left: hPad,
-                          child: IconButton(
-                            onPressed: () => context.pop(),
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.black.withValues(
-                                alpha: 0.32,
-                              ),
-                            ),
-                            icon: const Icon(
-                              LucideIcons.x,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                        // Restore button (top-right, over image)
-                        Positioned(
-                          top: topPadding + 10,
-                          right: hPad,
-                          child: GestureDetector(
-                            onTap: _handleRestore,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.32),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                AppLocalizations.of(context)!.paywall_restore,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(gradient: ambientGradient),
+        child: LayoutBuilder(
+          builder: (context, viewport) {
+            final compact = viewport.maxHeight < 760;
+            final tight = viewport.maxHeight < 700;
+            final heroHeight = ((viewport.maxWidth + 22) * 0.90).clamp(
+              216.0,
+              379.0,
+            );
+            final hPad = compact ? 20.0 : 24.0;
+
+            return Stack(
+              children: [
+                // ─── MAIN CONTENT ───
+                Column(
+                  children: [
+                    // ─── HERO: Full-width food scanning carousel ───
+                    SizedBox(
+                      height: heroHeight,
+                      child: Stack(
+                        children: [
+                          const Positioned.fill(child: _FoodScanShowcase()),
+                          // Close button (top-left, over image)
+                          Positioned(
+                            top: topPadding + 8,
+                            left: hPad,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(100),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                                child: GestureDetector(
+                                  onTap: () => context.pop(),
+                                  child: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.black.withValues(
+                                        alpha: 0.25,
+                                      ),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.20,
+                                        ),
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      LucideIcons.x,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ─── CONTENT below the hero ───
-                  Expanded(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.symmetric(horizontal: hPad),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 420),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SizedBox(height: tight ? 10 : 14),
-                              _buildContextualTitle(context, compact),
-                              SizedBox(height: tight ? 10 : 14),
-                              _buildCheckmarkBenefits(context, compact),
-                              SizedBox(
-                                height: tight ? 16 : 22,
-                              ), // Clears the plan badge
-                              _buildPricingRow(context, compact),
-                              const SizedBox(
-                                height: 10,
-                              ), // Space before sticky footer
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // ─── PINNED STICKY BOTTOM SECTION ───
-                  Container(
-                    padding: EdgeInsets.fromLTRB(
-                      hPad,
-                      6,
-                      hPad,
-                      math.max(6.0, bottomPadding),
-                    ),
-                    decoration: BoxDecoration(
-                      color: bgColor.withValues(alpha: 0.96),
-                      border: Border(
-                        top: BorderSide(
-                          color: isDark ? Colors.white.withValues(alpha: 0.08) : _minimalLine,
-                          width: 1.2,
-                        ),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 420),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _LuxeButton(
-                                text:
-                                    _selectedPackage?.packageType ==
-                                            PackageType.annual
-                                        ? AppLocalizations.of(
-                                          context,
-                                        )!.premium_start_trial
-                                        : AppLocalizations.of(
-                                          context,
-                                        )!.paywall_unlock_snapcal_pro,
-                                isLoading: _isLoading,
-                                height: tight ? 48 : 52,
-                                onTap: _handlePurchase,
-                              ).animate().fadeIn(
-                                delay: 100.ms,
-                                duration: 200.ms,
-                              ),
-                              const SizedBox(height: 6),
-                              // Cancel anytime
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    LucideIcons.shieldCheck,
-                                    size: 13,
-                                    color: _minimalGreenText,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Flexible(
+                          // Restore button (top-right, over image)
+                          Positioned(
+                            top: topPadding + 8,
+                            right: hPad,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                                child: GestureDetector(
+                                  onTap: _handleRestore,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.25,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.20,
+                                        ),
+                                        width: 1.0,
+                                      ),
+                                    ),
                                     child: Text(
                                       AppLocalizations.of(
                                         context,
-                                      )!.paywall_cancel_anytime,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: colorScheme.onSurfaceVariant
-                                            .withValues(alpha: 0.72),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                                      )!.paywall_restore,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                              const SizedBox(height: 4),
-                              Wrap(
-                                alignment: WrapAlignment.center,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 8,
-                                runSpacing: 2,
-                                children: [
-                                  _FooterLink(
-                                    label:
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.settings_privacy,
-                                    onTap: () {},
-                                  ),
-                                  Text(
-                                    "·",
-                                    style: TextStyle(
-                                      color: colorScheme.outlineVariant,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                  _FooterLink(
-                                    label:
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.paywall_terms_conditions,
-                                    onTap: () {},
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ─── CONTENT below the hero ───
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.symmetric(horizontal: hPad),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(height: tight ? 4 : 8),
+                                _buildContextualTitle(context, compact),
+                                SizedBox(height: tight ? 6 : 10),
+                                _buildCheckmarkBenefits(context, compact),
+                                SizedBox(
+                                  height: tight ? 12 : 16,
+                                ), // Clears the plan badge
+                                _buildPricingRow(context, compact),
+                                const SizedBox(
+                                  height: 4,
+                                ), // Space before sticky footer
+                              ],
+                            ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
+
+                    // ─── PINNED STICKY BOTTOM SECTION ───
+                    Container(
+                      padding: EdgeInsets.fromLTRB(
+                        hPad,
+                        6,
+                        hPad,
+                        math.max(6.0, bottomPadding),
+                      ),
+                      decoration: BoxDecoration(
+                        color: bgColor.withValues(alpha: 0.96),
+                        border: Border(
+                          top: BorderSide(
+                            color:
+                                isDark
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : _minimalLine,
+                            width: 1.2,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _LuxeButton(
+                                  text:
+                                      _selectedPackage?.packageType ==
+                                              PackageType.annual
+                                          ? AppLocalizations.of(
+                                            context,
+                                          )!.premium_start_trial
+                                          : AppLocalizations.of(
+                                            context,
+                                          )!.paywall_unlock_snapcal_pro,
+                                  isLoading: _isLoading,
+                                  height: tight ? 48 : 52,
+                                  onTap: _handlePurchase,
+                                ).animate().fadeIn(
+                                  delay: 100.ms,
+                                  duration: 200.ms,
+                                ),
+                                if (_purchaseNotice != null) ...[
+                                  const SizedBox(height: 8),
+                                  _PurchaseNoticeBanner(
+                                    message: _purchaseNotice!,
+                                  ),
+                                ],
+                                const SizedBox(height: 6),
+                                // Cancel anytime
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      LucideIcons.shieldCheck,
+                                      size: 13,
+                                      color: _minimalGreenText,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Flexible(
+                                      child: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.paywall_cancel_anytime,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: colorScheme.onSurfaceVariant
+                                              .withValues(alpha: 0.72),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 2,
+                                  children: [
+                                    _FooterLink(
+                                      label:
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.settings_privacy,
+                                      onTap: () {},
+                                    ),
+                                    Text(
+                                      "·",
+                                      style: TextStyle(
+                                        color: colorScheme.outlineVariant,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    _FooterLink(
+                                      label:
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.paywall_terms_conditions,
+                                      onTap: () {},
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -418,12 +565,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
       title = l10n.paywall_progress_journey_title;
       subtitle = l10n.paywall_progress_journey_subtitle;
     } else if (widget.entryPoint == PaywallEntryPoint.reportInsight ||
+        widget.entryPoint == PaywallEntryPoint.macroDetails ||
         widget.entryPoint == PaywallEntryPoint.mealInsight) {
       title = l10n.paywall_analytics_title;
       subtitle = l10n.paywall_analytics_subtitle;
     } else if (widget.entryPoint == PaywallEntryPoint.adRemoval) {
       title = l10n.paywall_focused_title;
-      subtitle = l10n.paywall_focused_subtitle;
+      subtitle = l10n.paywall_ad_removal_subtitle;
     } else {
       title = l10n.paywall_upgrade_experience_title;
       subtitle = l10n.paywall_upgrade_experience_subtitle;
@@ -463,7 +611,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
       l10n.paywall_benefit_ai_guidance,
       l10n.paywall_benefit_full_history,
       l10n.paywall_benefit_weekly_reports,
-      l10n.paywall_benefit_ad_free,
       l10n.paywall_benefit_smart_planner,
     ];
 
@@ -549,10 +696,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
         final price = package.storeProduct.price;
         final priceString = package.storeProduct.priceString;
         final monthlyPrice = price / 12.0;
-        
+
         final regExp = RegExp(r'[0-9.,\s]+');
         final symbol = priceString.replaceAll(regExp, '').trim();
-        
+
         final formattedPrice = monthlyPrice.toStringAsFixed(2);
         if (priceString.trim().startsWith(symbol)) {
           return '$symbol$formattedPrice/mo';
@@ -572,7 +719,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
           isSelected: _selectedPackage == monthly,
           onTap: () => setState(() => _selectedPackage = monthly),
           label: l10n.premium_plan_monthly,
-          subLabel: l10n.paywall_price_target(r'$9.99'),
+          subLabel: l10n.paywall_billing_monthly,
           compact: compact,
         ),
       ),
@@ -596,7 +743,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
             isSelected: _selectedPackage == lifetime,
             onTap: () => setState(() => _selectedPackage = lifetime),
             label: l10n.premium_plan_lifetime,
-            subLabel: l10n.paywall_price_target(r'$149.99'),
+            subLabel: l10n.paywall_billing_lifetime,
             compact: compact,
           ),
         ),
@@ -644,28 +791,32 @@ class _PricingOption extends StatelessWidget {
                 height: compact ? 96 : 110,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
+                  boxShadow:
+                      isSelected
+                          ? [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF2EE59D,
+                              ).withValues(alpha: 0.18),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ]
+                          : null,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(18),
                   child: Stack(
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color:
-                              isSelected
-                                  ? (isDark
-                                      ? Colors.white.withValues(alpha: 0.07)
-                                      : const Color(0x00FFFFFF))
-                                  : (isDark
-                                      ? Colors.white.withValues(alpha: 0.03)
-                                      : const Color(0x00FFFFFF)),
-                        ),
-                      ),
                       if (isSelected) ...[
                         Positioned.fill(
                           child: Container(
-                            decoration: BoxDecoration(
-                              color: _minimalGreen,
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF1A3D2B), Color(0xFF2EE59D)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
                             ),
                           ),
                         ),
@@ -673,10 +824,7 @@ class _PricingOption extends StatelessWidget {
                           child: Container(
                             margin: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color:
-                                  isDark
-                                      ? _minimalDarkBg
-                                      : _minimalBg,
+                              color: isDark ? _minimalDarkBg : _minimalBg,
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
@@ -685,13 +833,17 @@ class _PricingOption extends StatelessWidget {
                         Positioned.fill(
                           child: Container(
                             decoration: BoxDecoration(
+                              color:
+                                  isDark
+                                      ? Colors.white.withValues(alpha: 0.02)
+                                      : Colors.black.withValues(alpha: 0.01),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
                                 color:
                                     isDark
-                                        ? Colors.white.withValues(alpha: 0.15)
-                                        : context.cardBorderColor,
-                                width: 1,
+                                        ? Colors.white.withValues(alpha: 0.08)
+                                        : Colors.black.withValues(alpha: 0.06),
+                                width: 1.0,
                               ),
                             ),
                           ),
@@ -709,7 +861,7 @@ class _PricingOption extends StatelessWidget {
                                 style: TextStyle(
                                   color:
                                       isSelected
-                                      ? _minimalGreenText
+                                          ? _minimalGreenText
                                           : context.textSecondaryColor,
                                   fontSize: compact ? 10 : 11,
                                   fontWeight: FontWeight.w900,
@@ -762,11 +914,17 @@ class _PricingOption extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: _minimalGreen,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF165C38), Color(0xFF26B06E)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: _minimalGreen.withValues(alpha: 0.22),
+                          color: const Color(
+                            0xFF165C38,
+                          ).withValues(alpha: 0.22),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
@@ -796,6 +954,151 @@ class _PricingOption extends StatelessWidget {
   }
 }
 
+enum _PurchaseCopyKey {
+  plansUnavailable,
+  purchasePending,
+  restorePending,
+  purchaseCancelled,
+  purchaseOffline,
+  restoreOffline,
+  storeSlow,
+  restoreNoPurchase,
+  purchaseFailed,
+  restoreFailed,
+}
+
+String _purchaseCopy(BuildContext context, _PurchaseCopyKey key) {
+  final locale = AppLocalizations.of(context)!.localeName.split('_').first;
+  final copy = switch (locale) {
+    'ar' => <_PurchaseCopyKey, String>{
+      _PurchaseCopyKey.plansUnavailable:
+          'خطط الاشتراك ما زالت قيد التحميل. تحقق من الاتصال وحاول مرة أخرى.',
+      _PurchaseCopyKey.purchasePending:
+          'عملية الشراء قيد المعالجة. سيتم تفعيل Pro تلقائيا بعد تأكيد المتجر.',
+      _PurchaseCopyKey.restorePending:
+          'الاستعادة قيد المعالجة. سيتم تفعيل Pro تلقائيا بعد تأكيد المتجر.',
+      _PurchaseCopyKey.purchaseCancelled:
+          'تم إلغاء الشراء. لم يتم خصم أي مبلغ.',
+      _PurchaseCopyKey.purchaseOffline:
+          'انقطع الاتصال أثناء التحقق. إذا اكتمل الدفع، سيتم تفعيل Pro تلقائيا عند عودة الاتصال.',
+      _PurchaseCopyKey.restoreOffline:
+          'لا يمكن التحقق الآن. حاول مرة أخرى عند عودة الاتصال.',
+      _PurchaseCopyKey.storeSlow:
+          'المتجر يستغرق وقتا أطول من المعتاد. إذا اكتمل الدفع، سيتم تفعيل Pro تلقائيا.',
+      _PurchaseCopyKey.restoreNoPurchase:
+          'لم نجد اشتراكا نشطا على حساب المتجر هذا.',
+      _PurchaseCopyKey.purchaseFailed:
+          'تعذر إكمال الشراء. لم يتم تفعيل Pro. حاول مرة أخرى.',
+      _PurchaseCopyKey.restoreFailed:
+          'تعذرت الاستعادة الآن. تحقق من الاتصال وحاول مرة أخرى.',
+    },
+    'es' => <_PurchaseCopyKey, String>{
+      _PurchaseCopyKey.plansUnavailable:
+          'Los planes todavía se están cargando. Revisa tu conexión e inténtalo de nuevo.',
+      _PurchaseCopyKey.purchasePending:
+          'La compra se está procesando. Pro se activará automáticamente cuando la tienda la confirme.',
+      _PurchaseCopyKey.restorePending:
+          'La restauración se está procesando. Pro se activará automáticamente cuando la tienda la confirme.',
+      _PurchaseCopyKey.purchaseCancelled:
+          'Compra cancelada. No se realizó ningún cargo.',
+      _PurchaseCopyKey.purchaseOffline:
+          'Se perdió la conexión durante la verificación. Si el pago se completó, Pro se activará automáticamente al volver la conexión.',
+      _PurchaseCopyKey.restoreOffline:
+          'No podemos verificarlo ahora. Inténtalo de nuevo cuando vuelva la conexión.',
+      _PurchaseCopyKey.storeSlow:
+          'La tienda está tardando más de lo normal. Si el pago se completó, Pro se activará automáticamente.',
+      _PurchaseCopyKey.restoreNoPurchase:
+          'No encontramos una suscripción activa en esta cuenta de la tienda.',
+      _PurchaseCopyKey.purchaseFailed:
+          'No pudimos completar la compra. Pro no se activó. Inténtalo de nuevo.',
+      _PurchaseCopyKey.restoreFailed:
+          'No pudimos restaurar ahora. Revisa tu conexión e inténtalo de nuevo.',
+    },
+    'fr' => <_PurchaseCopyKey, String>{
+      _PurchaseCopyKey.plansUnavailable:
+          'Les offres sont encore en chargement. Vérifiez votre connexion et réessayez.',
+      _PurchaseCopyKey.purchasePending:
+          'L’achat est en cours de traitement. Pro sera activé automatiquement après confirmation du store.',
+      _PurchaseCopyKey.restorePending:
+          'La restauration est en cours. Pro sera activé automatiquement après confirmation du store.',
+      _PurchaseCopyKey.purchaseCancelled: 'Achat annulé. Aucun débit effectué.',
+      _PurchaseCopyKey.purchaseOffline:
+          'La connexion a été interrompue pendant la vérification. Si le paiement a abouti, Pro sera activé automatiquement au retour de la connexion.',
+      _PurchaseCopyKey.restoreOffline:
+          'Vérification impossible pour le moment. Réessayez lorsque la connexion revient.',
+      _PurchaseCopyKey.storeSlow:
+          'Le store prend plus de temps que prévu. Si le paiement a abouti, Pro sera activé automatiquement.',
+      _PurchaseCopyKey.restoreNoPurchase:
+          'Aucun abonnement actif trouvé sur ce compte du store.',
+      _PurchaseCopyKey.purchaseFailed:
+          'Impossible de finaliser l’achat. Pro n’a pas été activé. Réessayez.',
+      _PurchaseCopyKey.restoreFailed:
+          'Restauration impossible pour le moment. Vérifiez votre connexion et réessayez.',
+    },
+    _ => <_PurchaseCopyKey, String>{
+      _PurchaseCopyKey.plansUnavailable:
+          'Plans are still loading. Check your connection and try again.',
+      _PurchaseCopyKey.purchasePending:
+          'Your purchase is processing. Pro will unlock automatically when the store confirms it.',
+      _PurchaseCopyKey.restorePending:
+          'Restore is processing. Pro will unlock automatically when the store confirms it.',
+      _PurchaseCopyKey.purchaseCancelled:
+          'Purchase cancelled. No charge was made.',
+      _PurchaseCopyKey.purchaseOffline:
+          'Connection dropped during verification. If payment completed, Pro will unlock automatically when you are back online.',
+      _PurchaseCopyKey.restoreOffline:
+          'We cannot verify right now. Try again when your connection returns.',
+      _PurchaseCopyKey.storeSlow:
+          'The store is taking longer than usual. If payment completed, Pro will unlock automatically.',
+      _PurchaseCopyKey.restoreNoPurchase:
+          'No active subscription was found for this store account.',
+      _PurchaseCopyKey.purchaseFailed:
+          'We could not complete the purchase. Pro was not activated. Please try again.',
+      _PurchaseCopyKey.restoreFailed:
+          'We could not restore right now. Check your connection and try again.',
+    },
+  };
+  return copy[key]!;
+}
+
+class _PurchaseNoticeBanner extends StatelessWidget {
+  final String message;
+
+  const _PurchaseNoticeBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: isDark ? 0.18 : 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.warning.withValues(alpha: isDark ? 0.36 : 0.18),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(LucideIcons.clock, size: 16, color: AppColors.warning),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: context.textPrimaryColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _LuxeButton extends StatelessWidget {
   final String text;
   final bool isLoading;
@@ -819,73 +1122,54 @@ class _LuxeButton extends StatelessWidget {
               color: _minimalGreen,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (!isLoading)
-                  Positioned.fill(
-                    child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(18),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              stops: const [0.0, 0.45, 0.5, 0.55, 1.0],
-                              colors: [
-                                Colors.white.withValues(alpha: 0.0),
-                                Colors.white.withValues(alpha: 0.0),
-                                Colors.white.withValues(alpha: 0.4),
-                                Colors.white.withValues(alpha: 0.0),
-                                Colors.white.withValues(alpha: 0.0),
-                              ],
-                            ),
-                          ),
-                        )
-                        .animate(onPlay: (controller) => controller.repeat())
-                        .shimmer(
-                          delay: 2.seconds,
-                          duration: 1500.ms,
-                          color: Colors.white.withValues(alpha: 0.3),
+            child: Center(
+              child:
+                  isLoading
+                      ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
                         ),
-                  ),
-                Center(
-                  child:
-                      isLoading
-                          ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                          : Text(
-                            text,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                ),
-              ],
+                      )
+                      : Text(
+                        text,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
             ),
           )
           .animate(onPlay: (controller) => controller.repeat(reverse: true))
           .boxShadow(
-            begin: BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
+            begin: const BoxShadow(
+              color: Color(0x2A1A3D2B),
               blurRadius: 14,
-              offset: const Offset(0, 7),
+              offset: Offset(0, 6),
             ),
-            end: BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 22,
-              offset: const Offset(0, 9),
+            end: const BoxShadow(
+              color: Color(0x661A3D2B),
+              blurRadius: 24,
+              offset: Offset(0, 8),
             ),
-            duration: 2.seconds,
+            duration: 1200.ms,
             curve: Curves.easeInOutSine,
+          )
+          .scale(
+            begin: const Offset(1.0, 1.0),
+            end: const Offset(1.025, 1.025),
+            duration: 1200.ms,
+            curve: Curves.easeInOutSine,
+          )
+          .animate(onPlay: (controller) => controller.repeat())
+          .shimmer(
+            delay: 2.seconds,
+            duration: 1500.ms,
+            color: Colors.white.withValues(alpha: 0.35),
           ),
     );
   }
@@ -1114,7 +1398,7 @@ class _FoodScanShowcaseState extends State<_FoodScanShowcase>
             top: 0,
             left: 0,
             right: 0,
-            bottom: 22,
+            bottom: 14,
             child: PageView.builder(
               controller: _pageController,
               onPageChanged: (index) {

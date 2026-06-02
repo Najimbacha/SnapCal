@@ -1,8 +1,8 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/ui_blocks.dart';
@@ -12,9 +12,24 @@ import '../../../providers/settings_provider.dart';
 
 enum HealthMetricChartStyle { bars, line }
 
-const _minimalInk = Color(0xFF1C1917);
-const _minimalGreen = Color(0xFF1A3D2B);
-const _minimalGreenText = Color(0xFF16733A);
+Color _metricAccentFor(BuildContext context, LogMetricType type) {
+  switch (type) {
+    case LogMetricType.calories:
+      return Theme.of(context).colorScheme.primary;
+    case LogMetricType.energy:
+      return Colors.orange;
+    case LogMetricType.steps:
+      return Theme.of(context).colorScheme.primary;
+    case LogMetricType.water:
+      return const Color(0xFF3B82F6);
+    case LogMetricType.protein:
+      return const Color(0xFF7C9A6D);
+    case LogMetricType.carbs:
+      return const Color(0xFF4F8CC9);
+    case LogMetricType.fat:
+      return const Color(0xFFD18B47);
+  }
+}
 
 class HealthMetricCardData {
   final LogMetricType type;
@@ -70,9 +85,9 @@ class HealthMetricDashboard extends StatelessWidget {
                 title.toUpperCase(),
                 style: AppTypography.labelSmall.copyWith(
                   color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-                  fontWeight: FontWeight.w800,
-                  fontSize: 10,
-                  letterSpacing: 1,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  letterSpacing: 1.2,
                 ),
               ),
             ),
@@ -83,7 +98,7 @@ class HealthMetricDashboard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
             const spacing = 10.0;
@@ -91,17 +106,19 @@ class HealthMetricDashboard extends StatelessWidget {
             return Wrap(
               spacing: spacing,
               runSpacing: spacing,
-              children: cards
-                  .map(
-                    (card) => SizedBox(
-                      width: cardWidth,
-                      child: HealthMetricCard(
-                        data: card,
-                        onTap: () => onMetricTap(card.type),
-                      ),
-                    ),
-                  )
-                  .toList(),
+              children:
+                  cards
+                      .map(
+                        (card) => SizedBox(
+                          width: cardWidth,
+                          child: HealthMetricCard(
+                            key: ValueKey(card.type.id),
+                            data: card,
+                            onTap: () => onMetricTap(card.type),
+                          ),
+                        ),
+                      )
+                      .toList(),
             );
           },
         ),
@@ -125,7 +142,7 @@ class _CustomizeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = _minimalGreenText;
+    final accent = Theme.of(context).colorScheme.primary;
     return AppScaleTap(
       onTap: onTap,
       child: Container(
@@ -134,7 +151,7 @@ class _CustomizeButton extends StatelessWidget {
           label,
           style: AppTypography.labelSmall.copyWith(
             color: accent,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
             fontSize: 12,
             letterSpacing: 0,
           ),
@@ -155,31 +172,97 @@ class HealthMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : _minimalInk;
-    const accent = _minimalGreen;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final accent = _metricAccentFor(context, data.type);
 
     final isPro = context.watch<SettingsProvider>().isPro;
-    final isLocked = !isPro && (data.type == LogMetricType.protein ||
-        data.type == LogMetricType.carbs ||
-        data.type == LogMetricType.fat);
+    final isLocked =
+        !isPro &&
+        (data.type == LogMetricType.protein ||
+            data.type == LogMetricType.carbs ||
+            data.type == LogMetricType.fat);
 
-    final cardColor = isDark
-        ? Colors.white.withValues(alpha: 0.045)
-        : const Color(0x00FFFFFF);
+    final cardColor =
+        isDark
+            ? Colors.white.withValues(alpha: 0.045)
+            : const Color(0xFFFFFFFF);
 
     // Progress fraction (capped at 1.0)
-    final todayValue =
-        data.values.isNotEmpty ? data.values.last : 0;
-    final progress =
-        data.goal > 0 ? (todayValue / data.goal).clamp(0.0, 1.0) : 0.0;
+    final todayValue = data.values.isNotEmpty ? data.values.last : 0;
     final hasData = todayValue > 0;
+
+    if (isLocked) {
+      return AppScaleTap(
+        onTap: () {
+          PremiumConversionService().openPaywall(
+            context,
+            PaywallEntryPoint.macroDetails,
+            featureName: 'macro_metrics',
+          );
+        },
+        child: Container(
+          height: 132,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : const Color(0xFFEFEBE4),
+              width: 1.0,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    data.title,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: isDark ? Colors.white60 : const Color(0xFF78716C),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Center(
+                child: Column(
+                  children: [
+                    Icon(LucideIcons.lock, size: 16, color: isDark ? Colors.white30 : const Color(0xFFA8A29E)),
+                    const SizedBox(height: 4),
+                    Text(
+                      AppLocalizations.of(context)!.common_unlock.toUpperCase(),
+                      style: AppTypography.labelSmall.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 9,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+            ],
+          ),
+        ),
+      );
+    }
 
     return AppScaleTap(
       onTap: () {
         if (isLocked) {
           PremiumConversionService().openPaywall(
             context,
-            PaywallEntryPoint.settings,
+            PaywallEntryPoint.macroDetails,
             featureName: 'macro_metrics',
           );
         } else {
@@ -187,343 +270,142 @@ class HealthMetricCard extends StatelessWidget {
         }
       },
       child: Container(
-        height: 158,
-        padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+        height: 132,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : const Color(0xFFE8E4DC),
+                ? Colors.white.withValues(alpha: 0.06)
+                : const Color(0xFFEFEBE4),
             width: 1.0,
           ),
         ),
         child: Stack(
           children: [
             Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            data.title,
-                            style: AppTypography.titleSmall.copyWith(
-                              color: isDark
-                                  ? Colors.white60
-                                  : const Color(0xFF78716C),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                              letterSpacing: 0,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // Arc progress + icon badge
-                        _ArcIconBadge(
-                          icon: data.icon,
-                          accent: accent,
-                          progress: progress,
-                          isDark: isDark,
-                        ),
-                      ],
+                    Text(
+                      data.title,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: isDark ? Colors.white54 : const Color(0xFF78716C),
+                        fontWeight: FontWeight.w500,
+                        fontSize: 10,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          data.value,
-                          style: AppTypography.displayLarge.copyWith(
-                            color: textColor,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 27,
-                            height: 1.0,
-                            letterSpacing: 0,
-                          ),
+                    if (!isLocked)
+                      Container(
+                        width: 24,
+                        height: 24,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        if (data.unit.isNotEmpty) ...[
-                          const SizedBox(width: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              data.unit,
-                              style: AppTypography.titleMedium.copyWith(
-                                color: isDark
-                                    ? Colors.white54
-                                    : const Color(0xFFA8A29E),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                letterSpacing: 0,
-                              ),
+                        child: Icon(data.icon, color: accent, size: 13),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Value
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      data.value,
+                      style: AppTypography.displayLarge.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 26,
+                        height: 1.0,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    if (data.unit.isNotEmpty) ...[
+                      const SizedBox(width: 3),
+                      Text(
+                        data.unit,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Mini chart
+                Expanded(
+                  child: HealthMetricMiniChart(
+                    values: data.values,
+                    goal: data.goal,
+                    style: data.chartStyle,
+                    accent: accent,
+                    surfaceColor: cardColor,
+                    isDark: isDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // Status
+                Text(
+                  data.status,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: hasData
+                        ? accent.withValues(alpha: 0.7)
+                        : textColor.withValues(alpha: 0.35),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 10,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+            if (isLocked)
+              Positioned(
+                top: 0, left: 0, right: 0, bottom: 0,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(13),
+                  child: Container(
+                    color: (isDark ? Colors.black : Colors.white).withValues(alpha: 0.55),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.lock, size: 14, color: isDark ? Colors.white38 : const Color(0xFFA8A29E)),
+                          const SizedBox(height: 6),
+                          Text(
+                            data.title,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: isDark ? Colors.white38 : const Color(0xFFA8A29E),
+                              fontWeight: FontWeight.w500,
+                              fontSize: 10,
                             ),
                           ),
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 7),
-                    Expanded(
-                      child: HealthMetricMiniChart(
-                        values: data.values,
-                        goal: data.goal,
-                        style: data.chartStyle,
-                        accent: accent,
-                        surfaceColor: cardColor,
-                        isDark: isDark,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    _BottomRow(
-                      status: data.status,
-                      progress: progress,
-                      accent: accent,
-                      hasData: hasData,
-                      textColor: textColor,
-                      isDark: isDark,
-                    ),
-                  ],
-                ),
-              if (isLocked)
-              Positioned(
-                  top: 44,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
-                      child: Container(
-                        color: (isDark ? Colors.black : Colors.white)
-                            .withValues(alpha: isDark ? 0.48 : 0.50),
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _minimalGreen,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  LucideIcons.lock,
-                                  color: Colors.white,
-                                  size: 13,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'UNLOCK',
-                                  style: TextStyle(
-                                    fontFamily: 'Outfit',
-                                    color: Colors.white.withValues(alpha: 0.95),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.8,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                   ),
                 ),
-            ],
+              ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Arc icon badge ────────────────────────────────────────────────────────────
-
-class _ArcIconBadge extends StatelessWidget {
-  final IconData icon;
-  final Color accent;
-  final double progress;
-  final bool isDark;
-
-  const _ArcIconBadge({
-    required this.icon,
-    required this.accent,
-    required this.progress,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const size = 38.0;
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _ArcPainter(
-          progress: progress,
-          accent: accent,
-          isDark: isDark,
-        ),
-        child: Center(
-          child: Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: isDark ? 0.20 : 0.13),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: accent, size: 15),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ArcPainter extends CustomPainter {
-  final double progress;
-  final Color accent;
-  final bool isDark;
-
-  const _ArcPainter({
-    required this.progress,
-    required this.accent,
-    required this.isDark,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Rect.fromLTWH(2, 2, size.width - 4, size.height - 4);
-    const startAngle = -math.pi / 2;
-
-    // Track arc
-    canvas.drawArc(
-      rect,
-      startAngle,
-      2 * math.pi,
-      false,
-      Paint()
-        ..color = accent.withValues(alpha: isDark ? 0.16 : 0.12)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round,
-    );
-
-    if (progress > 0) {
-      // Progress arc
-      canvas.drawArc(
-        rect,
-        startAngle,
-        2 * math.pi * progress,
-        false,
-        Paint()
-          ..color = accent
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _ArcPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.accent != accent;
-}
-
-// ── Bottom row: progress bar + label ─────────────────────────────────────────
-
-class _BottomRow extends StatelessWidget {
-  final String status;
-  final double progress;
-  final Color accent;
-  final bool hasData;
-  final Color textColor;
-  final bool isDark;
-
-  const _BottomRow({
-    required this.status,
-    required this.progress,
-    required this.accent,
-    required this.hasData,
-    required this.textColor,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Thin linear progress bar
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: SizedBox(
-            height: 4,
-            child: Stack(
-              children: [
-                // Track
-                Container(
-                  color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
-                ),
-                // Fill
-                if (hasData)
-                  FractionallySizedBox(
-                    widthFactor: progress,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            accent,
-                            accent.withValues(alpha: 0.7),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 7),
-        // Status label
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-          decoration: BoxDecoration(
-            color: hasData
-                ? accent.withValues(alpha: isDark ? 0.18 : 0.10)
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : Colors.black.withValues(alpha: 0.04)),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            status,
-            style: AppTypography.labelSmall.copyWith(
-              color: hasData
-                  ? accent
-                  : textColor.withValues(alpha: 0.50),
-              fontWeight: FontWeight.w800,
-              fontSize: 10.5,
-              letterSpacing: 0,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
+// ── Bottom row (kept for compatibility, no longer used) ─────────────────────
 
 // ── Mini chart ────────────────────────────────────────────────────────────────
 
@@ -589,14 +471,14 @@ class _MiniChartPainter extends CustomPainter {
     final yMax = math.max(maxValue, 1).toDouble();
 
     // Goal guide line (dashed)
-    final guidePaint = Paint()
-      ..color = guide
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
+    final guidePaint =
+        Paint()
+          ..color = guide
+          ..strokeWidth = 1.5
+          ..strokeCap = StrokeCap.round;
     const dashWidth = 4.0;
     const dashGap = 4.0;
-    final yGoal =
-        size.height - ((goal / yMax).clamp(0.0, 1.0) * size.height);
+    final yGoal = size.height - ((goal / yMax).clamp(0.0, 1.0) * size.height);
     double x = 0;
     while (x < size.width) {
       canvas.drawLine(
@@ -624,19 +506,19 @@ class _MiniChartPainter extends CustomPainter {
       final height = math.max(3.0, normalized * size.height);
       final left = index * (barWidth + gap);
       final rect = Rect.fromLTWH(left, size.height - height, barWidth, height);
-      final rRect =
-          RRect.fromRectAndRadius(rect, Radius.circular(barWidth / 2));
+      final rRect = RRect.fromRectAndRadius(
+        rect,
+        Radius.circular(barWidth / 2),
+      );
 
       // Use gradient fill for bars
-      final paint = Paint()
-        ..shader = LinearGradient(
-          colors: [
-            accent,
-            accent.withValues(alpha: 0.55),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ).createShader(rect);
+      final paint =
+          Paint()
+            ..shader = LinearGradient(
+              colors: [accent, accent.withValues(alpha: 0.55)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ).createShader(rect);
 
       canvas.drawRRect(rRect, paint);
     }
@@ -646,10 +528,12 @@ class _MiniChartPainter extends CustomPainter {
     final points = <Offset>[];
     final usableHeight = size.height - 8;
     for (var index = 0; index < data.length; index++) {
-      final x = data.length == 1
-          ? size.width / 2
-          : (size.width / (data.length - 1)) * index;
-      final y = 4 +
+      final x =
+          data.length == 1
+              ? size.width / 2
+              : (size.width / (data.length - 1)) * index;
+      final y =
+          4 +
           usableHeight -
           ((data[index] / yMax).clamp(0.0, 1.0) * usableHeight);
       points.add(Offset(x, y));
@@ -660,10 +544,11 @@ class _MiniChartPainter extends CustomPainter {
       final path = _buildSmoothPath(points);
 
       // Gradient area fill under the line
-      final fillPath = Path.from(path)
-        ..lineTo(points.last.dx, size.height)
-        ..lineTo(points.first.dx, size.height)
-        ..close();
+      final fillPath =
+          Path.from(path)
+            ..lineTo(points.last.dx, size.height)
+            ..lineTo(points.first.dx, size.height)
+            ..close();
 
       canvas.drawPath(
         fillPath,

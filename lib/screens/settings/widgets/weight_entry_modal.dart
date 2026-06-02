@@ -44,7 +44,7 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
     final provider = context.read<MetricsProvider>();
     final settings = context.read<SettingsProvider>();
     final lastMetric = provider.metrics.isEmpty ? null : provider.metrics.first;
-    
+
     double? weightValue = provider.currentWeight;
     if (weightValue != null && settings.weightUnit == 'lb') {
       weightValue = weightValue * 2.20462;
@@ -68,7 +68,7 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
   void _save() {
     final rawWeight = double.tryParse(_weightController.text);
     if (rawWeight == null || rawWeight <= 0) return;
-    
+
     final settings = context.read<SettingsProvider>();
     double weightInKg = rawWeight;
     if (settings.weightUnit == 'lb') {
@@ -104,9 +104,10 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.14)
-                      : _settingsLine,
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.14)
+                          : _settingsLine,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -117,7 +118,10 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
                   children: [
                     Row(
                       children: [
-                        const Icon(LucideIcons.scale, color: _settingsGreenText),
+                        const Icon(
+                          LucideIcons.scale,
+                          color: _settingsGreenText,
+                        ),
                         const SizedBox(width: 10),
                         Text(
                           AppLocalizations.of(context)!.settings_body_profile,

@@ -92,6 +92,15 @@ class AssistantService {
     String dietaryRestriction = 'none',
     String? userQuery,
     String language = 'en',
+    int? age,
+    String? gender,
+    double? height,
+    double? weight,
+    double? targetWeight,
+    String? goalMode,
+    String? activityLevel,
+    String? foodDislikes,
+    String? medicalNotes,
   }) async {
     try {
       final prompt = _buildPrompt(
@@ -103,6 +112,15 @@ class AssistantService {
         dietaryRestriction: dietaryRestriction,
         userQuery: userQuery,
         language: language,
+        age: age,
+        gender: gender,
+        height: height,
+        weight: weight,
+        targetWeight: targetWeight,
+        goalMode: goalMode,
+        activityLevel: activityLevel,
+        foodDislikes: foodDislikes,
+        medicalNotes: medicalNotes,
       );
 
       final response = await _dio.post(
@@ -188,6 +206,15 @@ class AssistantService {
     required int currentCalories,
     required int targetCalories,
     String language = 'en',
+    int? age,
+    String? gender,
+    double? height,
+    double? weight,
+    double? targetWeight,
+    String? goalMode,
+    String? activityLevel,
+    String? foodDislikes,
+    String? medicalNotes,
   }) async {
     try {
       final apiKey = ConfigService().geminiApiKey;
@@ -201,6 +228,18 @@ class AssistantService {
       final prompt = """
 You are the SnapCal AI Wellness Coach.
 STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE.
+
+USER COACH PROFILE:
+- Age: ${age ?? 'N/A'}
+- Gender: ${gender ?? 'N/A'}
+- Height: ${height ?? 'N/A'} cm
+- Current Weight: ${weight ?? 'N/A'} kg
+- Goal Weight: ${targetWeight ?? 'N/A'} kg
+- Goal Type: ${goalMode ?? 'N/A'}
+- Activity Level: ${activityLevel ?? 'N/A'}
+- Food Dislikes: ${foodDislikes ?? 'None specified'}
+- Medical Notes: ${medicalNotes ?? 'None specified'}
+
 The user has sent a photo. ${userQuery != null ? "User says: $userQuery" : "Analyze what is in the photo."}
 
 ${userQuery == null ? "If it's food, provide nutrition info. If it's a body photo, provide encouragement and progress tips." : ""}
@@ -280,6 +319,15 @@ User Stats: $currentCalories / $targetCalories kcal.
     required String dietaryRestriction,
     String? userQuery,
     String language = 'en',
+    int? age,
+    String? gender,
+    double? height,
+    double? weight,
+    double? targetWeight,
+    String? goalMode,
+    String? activityLevel,
+    String? foodDislikes,
+    String? medicalNotes,
   }) {
     final languageName = AIService.languageNames[language] ?? 'English';
     final remainingCalories = targetCalories - currentCalories;
@@ -289,9 +337,28 @@ User Stats: $currentCalories / $targetCalories kcal.
     final remainingFat = targetMacros['fat']! - currentMacros['fat']!;
 
     return """
-You are the SnapCal AI Nutritionist. 
+You are the SnapCal AI Nutritionist / Coach. 
 Your goal is to provide practical nutrition coaching that is clear, structured, and useful.
 STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE.
+
+USER COACH PROFILE:
+- Age: ${age ?? 'N/A'}
+- Gender: ${gender ?? 'N/A'}
+- Height: ${height ?? 'N/A'} cm
+- Current Weight: ${weight ?? 'N/A'} kg
+- Goal Weight: ${targetWeight ?? 'N/A'} kg
+- Goal Type: ${goalMode ?? 'N/A'}
+- Activity Level: ${activityLevel ?? 'N/A'}
+- Diet Preference: $dietaryRestriction
+- Food Dislikes: ${foodDislikes ?? 'None specified'}
+- Medical Notes: ${medicalNotes ?? 'None specified'}
+
+COACHING LOGIC RULES:
+- If the user's protein intake is low compared to their target, suggest protein-rich foods (e.g., chicken breast, tofu, eggs, greek yogurt).
+- If the user's calories are too high or close to their limit, suggest lighter next meals or healthy snacks.
+- If the user's carbs are high, suggest balancing their next meal with lean protein and fiber.
+- If the user is near their target weight or calorie/macro goals, encourage consistency and highlight their progress.
+- If the user misses meals or logged very little food, suggest simple, quick-to-prepare balanced meals.
 
 STYLE RULES:
 1. NO INTRODUCTIONS. No "Hello", "Sure", or "I recommend".

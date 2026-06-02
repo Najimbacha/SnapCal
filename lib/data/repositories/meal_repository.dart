@@ -4,8 +4,10 @@ import 'package:hive/hive.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/security_service.dart';
+import '../../core/resilience/timeout_policy.dart';
 import '../models/meal.dart';
 import '../../core/constants/app_constants.dart';
+import '../services/sync_queue_service.dart';
 
 /// Repository for managing meal data in Hive and Firestore
 class MealRepository {
@@ -151,20 +153,21 @@ class MealRepository {
 
   /// Add a new meal
   Future<void> addMeal(Meal meal) async {
-    await _mealsBox?.put(meal.id, meal);
-
-    // Update index
-    if (_indexBox != null) {
-      final date = meal.dateString;
-      final ids = _indexBox!.get(date) ?? [];
-      if (!ids.contains(meal.id)) {
-        ids.add(meal.id);
-        await _indexBox!.put(date, ids);
-      }
-    }
-
+    await _saveMealLocalOnly(meal);
     _emitTodaysMeals();
     await _syncMealToCloud(meal);
+  }
+
+  Future<void> _saveMealLocalOnly(Meal meal) async {
+    await _mealsBox?.put(meal.id, meal);
+
+    if (_indexBox == null) return;
+    final date = meal.dateString;
+    final ids = _indexBox!.get(date) ?? [];
+    if (!ids.contains(meal.id)) {
+      ids.add(meal.id);
+      await _indexBox!.put(date, ids);
+    }
   }
 
   /// Update an existing meal
@@ -220,16 +223,20 @@ class MealRepository {
   Future<void> _syncMealToCloud(Meal meal) async {
     final user = _authClient.currentUser;
     if (user == null) return;
+    final path = 'users/${user.uid}/meals/${meal.id}';
 
     try {
       await _firestoreClient
-          .collection('users')
-          .doc(user.uid)
-          .collection('meals')
-          .doc(meal.id)
-          .set(meal.toJson());
+          .doc(path)
+          .set(meal.toJson())
+          .timeout(TimeoutPolicy.firestore);
     } catch (e) {
       debugPrint('Meal Sync Error: $e');
+      await SyncQueueService().enqueueSet(
+        id: 'meal:set:${user.uid}:${meal.id}',
+        documentPath: path,
+        data: meal.toJson(),
+      );
     }
   }
 
@@ -237,16 +244,19 @@ class MealRepository {
   Future<void> _deleteMealFromCloud(String id) async {
     final user = _authClient.currentUser;
     if (user == null) return;
+    final path = 'users/${user.uid}/meals/$id';
 
     try {
       await _firestoreClient
-          .collection('users')
-          .doc(user.uid)
-          .collection('meals')
-          .doc(id)
-          .delete();
+          .doc(path)
+          .delete()
+          .timeout(TimeoutPolicy.firestore);
     } catch (e) {
       debugPrint('Meal Delete Sync Error: $e');
+      await SyncQueueService().enqueueDelete(
+        id: 'meal:delete:${user.uid}:$id',
+        documentPath: path,
+      );
     }
   }
 
@@ -256,21 +266,38 @@ class MealRepository {
     if (user == null) return;
 
     try {
-      final cutoff = DateTime.now().subtract(const Duration(days: 30)).millisecondsSinceEpoch;
-      final snapshot =
-          await _firestoreClient
-              .collection('users')
-              .doc(user.uid)
-              .collection('meals')
-              .where('timestamp', isGreaterThanOrEqualTo: cutoff)
-              .get();
+      final cutoff =
+          DateTime.now()
+              .subtract(const Duration(days: 30))
+              .millisecondsSinceEpoch;
+      final snapshot = await _firestoreClient
+          .collection('users')
+          .doc(user.uid)
+          .collection('meals')
+          .where('timestamp', isGreaterThanOrEqualTo: cutoff)
+          .get()
+          .timeout(TimeoutPolicy.firestore);
 
       for (var doc in snapshot.docs) {
         final cloudMeal = Meal.fromJson(doc.data());
-        if (_mealsBox != null && !_mealsBox!.containsKey(cloudMeal.id)) {
-          await addMeal(cloudMeal);
+        if (_mealsBox == null) continue;
+
+        if (!_mealsBox!.containsKey(cloudMeal.id)) {
+          // New meal from cloud — add locally
+          await _saveMealLocalOnly(cloudMeal);
+        } else {
+          // Existing meal — update only if cloud has a newer timestamp
+          // (last-saved-wins strategy using timestamp as proxy)
+          final localMeal = _mealsBox!.get(cloudMeal.id);
+          if (localMeal != null && cloudMeal.timestamp > localMeal.timestamp) {
+            debugPrint(
+              'Meal ${cloudMeal.id}: updating local copy with cloud version',
+            );
+            await _saveMealLocalOnly(cloudMeal);
+          }
         }
       }
+      _emitTodaysMeals();
     } catch (e) {
       debugPrint('Meal Pull Error: $e');
     }

@@ -5,21 +5,25 @@ import 'package:snapcal/data/services/pro_feature_service.dart';
 void main() {
   const service = ProFeatureService();
 
-  test('every paywall entry point maps to at least one claimed Pro feature', () {
-    for (final entryPoint in PaywallEntryPoint.values) {
-      expect(
-        service.featuresForEntryPoint(entryPoint),
-        isNotEmpty,
-        reason: '${entryPoint.name} should have claim coverage',
-      );
-    }
-  });
+  test(
+    'every paywall entry point maps to at least one claimed Pro feature',
+    () {
+      for (final entryPoint in PaywallEntryPoint.values) {
+        expect(
+          service.featuresForEntryPoint(entryPoint),
+          isNotEmpty,
+          reason: '${entryPoint.name} should have claim coverage',
+        );
+      }
+    },
+  );
 
   test('claimed Pro-only benefits are unavailable to free users', () {
     const proOnlyFeatures = {
       ProFeature.unlimitedScans,
       ProFeature.mealInsights,
       ProFeature.reports,
+      ProFeature.macroDetails,
       ProFeature.unlimitedAiCoach,
       ProFeature.fullWeekPlanner,
       ProFeature.groceryList,
@@ -57,5 +61,16 @@ void main() {
       expect(service.canUse(feature, isPro: false), isTrue);
       expect(service.canUse(feature, isPro: true), isTrue);
     }
+  });
+
+  test('macro details route to the macro paywall entry point', () {
+    expect(
+      service.entryPointFor(ProFeature.macroDetails),
+      PaywallEntryPoint.macroDetails,
+    );
+    expect(
+      service.featuresForEntryPoint(PaywallEntryPoint.macroDetails),
+      contains(ProFeature.macroDetails),
+    );
   });
 }

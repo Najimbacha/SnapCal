@@ -35,14 +35,19 @@ class TemplateProvider with ChangeNotifier {
       id: _uuid.v4(),
       name: name,
       emoji: emoji,
-      items: meals.map((m) => TemplateItem(
-        foodName: m.foodName,
-        calories: m.calories,
-        protein: m.macros.protein,
-        carbs: m.macros.carbs,
-        fat: m.macros.fat,
-        servingSize: m.portion,
-      )).toList(),
+      items:
+          meals
+              .map(
+                (m) => TemplateItem(
+                  foodName: m.foodName,
+                  calories: m.calories,
+                  protein: m.macros.protein,
+                  carbs: m.macros.carbs,
+                  fat: m.macros.fat,
+                  servingSize: m.portion,
+                ),
+              )
+              .toList(),
       createdAt: DateTime.now().millisecondsSinceEpoch,
     );
 
@@ -106,7 +111,7 @@ class TemplateProvider with ChangeNotifier {
   /// Update template name/emoji
   Future<void> updateTemplate(String id, {String? name, String? emoji}) async {
     final template = _templates.firstWhere((t) => t.id == id);
-    
+
     final updated = MealTemplate(
       id: template.id,
       name: name ?? template.name,

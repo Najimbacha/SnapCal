@@ -110,7 +110,7 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
             Text(
               l10n.feature_templates_save_prompt,
               style: AppTypography.headlineSmall.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
@@ -227,7 +227,7 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
                         )
                         : Text(
                           l10n.feature_templates_save_btn,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
               ),
             ),

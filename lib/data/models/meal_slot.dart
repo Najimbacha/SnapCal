@@ -1,9 +1,9 @@
 enum MealSlotStatus { done, next, upcoming }
 
 class MealSlot {
-  final String mealType;    // "Breakfast", "Lunch", "Snack", "Dinner"
-  final String name;        // Suggested meal name
-  final String time;        // "8:00 AM", "Up next", "7:30 PM"
+  final String mealType; // "Breakfast", "Lunch", "Snack", "Dinner"
+  final String name; // Suggested meal name
+  final String time; // "8:00 AM", "Up next", "7:30 PM"
   final int kcal;
   final MealSlotStatus status;
   final bool isLogged;

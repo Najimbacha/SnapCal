@@ -1,15 +1,13 @@
-import 'dart:async';
-
-import 'package:flutter/foundation.dart';
-import 'package:pedometer/pedometer.dart';
+import 'package:flutter/widgets.dart';
 
 import '../data/models/activity_summary.dart';
 import '../data/repositories/activity_repository.dart';
 import '../data/services/activity_service.dart';
 
-class ActivityProvider with ChangeNotifier {
+class ActivityProvider with ChangeNotifier, WidgetsBindingObserver {
   ActivityProvider({ActivityRepository? repository})
     : _repository = repository ?? ActivityRepository() {
+    WidgetsBinding.instance.addObserver(this);
     syncNow();
   }
 
@@ -17,19 +15,19 @@ class ActivityProvider with ChangeNotifier {
 
   ActivitySummary _today = ActivitySummary.empty(DateTime.now());
   List<ActivitySummary> _week = const [];
-  ActivityTrackingStatus _trackingStatus = ActivityTrackingStatus.disconnected;
+  ActivityTrackingStatus _trackingStatus = ActivityTrackingStatus.loading;
   bool _isSyncing = false;
+  bool _hasAttemptedConnection = false;
+  bool _disposed = false;
   String? _errorMessage;
   DateTime? _lastSyncedAt;
-  String _motionStatus = 'stationary';
-
-  StreamSubscription<StepCount>? _stepSubscription;
-  StreamSubscription<PedestrianStatus>? _statusSubscription;
 
   ActivitySummary get today => _today;
   List<ActivitySummary> get week => _week;
   ActivityTrackingStatus get trackingStatus => _trackingStatus;
-  bool get isConnected => _trackingStatus == ActivityTrackingStatus.connected;
+  bool get isConnected =>
+      _trackingStatus == ActivityTrackingStatus.connected ||
+      _trackingStatus == ActivityTrackingStatus.emptyData;
   bool get isSyncing => _isSyncing;
   String? get errorMessage => _errorMessage;
   DateTime? get lastSyncedAt => _lastSyncedAt;
@@ -38,16 +36,19 @@ class ActivityProvider with ChangeNotifier {
   int get steps => _today.steps;
   int get stepGoal => _today.stepGoal;
   int get burnedCalories => _today.activityCalories;
+  bool get caloriesAreEstimated => _today.activityCaloriesEstimated;
+  String get caloriesLabel =>
+      caloriesAreEstimated ? 'Estimated calories' : 'Active calories';
   int get manualWorkoutCalories => _today.manualWorkoutCalories;
   int get stepStreak => _today.stepStreak;
   int get activityScore => _today.activityScore;
   bool get isTracking => isConnected;
-  String get status => _motionStatus;
+  String get status => isConnected ? 'connected' : 'not connected';
 
   int netCalories(int foodCalories) => foodCalories - burnedCalories;
 
   void updateWeight(double? weight) {
-    // Step calories are intentionally estimated with a fixed formula.
+    // Health Connect active calories are preferred; step calories are fallback.
   }
 
   Future<bool> authorize() => startTracking();
@@ -56,13 +57,15 @@ class ActivityProvider with ChangeNotifier {
 
   Future<bool> startTracking() async {
     try {
+      _hasAttemptedConnection = true;
+      _trackingStatus = ActivityTrackingStatus.loading;
+      _notify();
       _trackingStatus = await _repository.connect();
       if (isConnected) {
-        _listenToPedometer();
         await syncNow();
         return true;
       }
-      notifyListeners();
+      _notify();
       return false;
     } catch (error) {
       _setError(error);
@@ -71,13 +74,11 @@ class ActivityProvider with ChangeNotifier {
   }
 
   Future<void> disconnect() async {
-    await _stepSubscription?.cancel();
-    await _statusSubscription?.cancel();
-    _stepSubscription = null;
-    _statusSubscription = null;
     await _repository.disconnect();
-    _trackingStatus = ActivityTrackingStatus.disconnected;
-    notifyListeners();
+    _trackingStatus = ActivityTrackingStatus.notConnected;
+    _today = ActivitySummary.empty(DateTime.now());
+    _week = const [];
+    _notify();
   }
 
   Future<void> syncNow() async {
@@ -85,12 +86,21 @@ class ActivityProvider with ChangeNotifier {
     _setSyncing(true);
     try {
       _trackingStatus = await _repository.refreshTrackingStatus();
-      _today = await _repository.fetchToday();
-      _week = await _repository.fetchLast7Days();
-      _lastSyncedAt = await _repository.getLastSyncedAt();
-      if (isConnected) _listenToPedometer();
+      if (isConnected) {
+        _today = await _repository.fetchToday();
+        _week = await _repository.fetchLast7Days();
+        if (_today.steps == 0 &&
+            _today.activityCalories == 0 &&
+            _today.workouts.isEmpty) {
+          _trackingStatus = ActivityTrackingStatus.emptyData;
+        }
+        _lastSyncedAt = await _repository.getLastSyncedAt();
+      } else {
+        _today = ActivitySummary.empty(DateTime.now());
+        _week = const [];
+      }
       _errorMessage = null;
-      notifyListeners();
+      _notify();
     } catch (error) {
       _setError(error);
     } finally {
@@ -152,61 +162,48 @@ class ActivityProvider with ChangeNotifier {
     return null;
   }
 
-  String statusLabel() {
-    switch (_trackingStatus) {
-      case ActivityTrackingStatus.connected:
-        return 'Tracking enabled';
-      case ActivityTrackingStatus.permissionDenied:
-        return 'Permission denied';
-      case ActivityTrackingStatus.unsupported:
-        return 'Unsupported device';
-      case ActivityTrackingStatus.error:
-        return 'Tracking error';
-      case ActivityTrackingStatus.disconnected:
-        return 'Tracking off';
-    }
+  Future<void> openHealthConnectSettings() {
+    return _repository.service.openHealthConnectSettings();
   }
 
-  void _listenToPedometer() {
-    if (_stepSubscription != null) return;
+  Future<void> openInstallOrUpdate() {
+    return _repository.service.openInstallOrUpdate();
+  }
 
-    _stepSubscription = _repository.service.stepCountStream.listen(
-      (event) async {
-        try {
-          _today = await _repository.recordStepReading(event.steps);
-          _week = await _repository.fetchLast7Days();
-          _lastSyncedAt = await _repository.getLastSyncedAt();
-          notifyListeners();
-        } catch (error) {
-          debugPrint('Pedometer step error: $error');
-        }
-      },
-      onError: (Object error) {
-        debugPrint('Pedometer stream error: $error');
-        _setError(error);
-      },
-    );
-
-    _statusSubscription = _repository.service.pedestrianStatusStream.listen(
-      (event) {
-        _motionStatus = event.status;
-        notifyListeners();
-      },
-      onError: (Object error) {
-        debugPrint('Pedestrian status error: $error');
-      },
-    );
+  String statusLabel() {
+    switch (_trackingStatus) {
+      case ActivityTrackingStatus.loading:
+        return 'Loading';
+      case ActivityTrackingStatus.connected:
+        return 'Connected';
+      case ActivityTrackingStatus.emptyData:
+        return 'No Health Connect data today';
+      case ActivityTrackingStatus.permissionDenied:
+        return 'Permission denied';
+      case ActivityTrackingStatus.healthConnectUnavailable:
+        return 'Health Connect unavailable';
+      case ActivityTrackingStatus.error:
+        return 'Tracking error';
+      case ActivityTrackingStatus.notConnected:
+        return 'Not connected';
+    }
   }
 
   void _setSyncing(bool value) {
     if (_isSyncing == value) return;
     _isSyncing = value;
-    notifyListeners();
+    _notify();
   }
 
   void _setError(Object error) {
     _trackingStatus = ActivityTrackingStatus.error;
     _errorMessage = error.toString();
+    debugPrint('Activity sync error: $error');
+    _notify();
+  }
+
+  void _notify() {
+    if (_disposed) return;
     notifyListeners();
   }
 
@@ -215,9 +212,17 @@ class ActivityProvider with ChangeNotifier {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        (isConnected || _hasAttemptedConnection)) {
+      syncNow();
+    }
+  }
+
+  @override
   void dispose() {
-    _stepSubscription?.cancel();
-    _statusSubscription?.cancel();
+    _disposed = true;
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 }

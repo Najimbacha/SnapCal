@@ -13,6 +13,7 @@ enum PaywallEntryPoint {
   progressPhotoLimit,
   reportInsight,
   mealInsight,
+  macroDetails,
   adRemoval,
   settings,
   homeAha,

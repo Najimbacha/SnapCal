@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/meal.dart';
 import '../data/repositories/meal_repository.dart';
+import '../core/services/app_lifecycle_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/gemini_service.dart';
 import '../data/services/pro_feature_service.dart';
 import '../core/state/async_ui_state.dart';
 import 'settings_provider.dart';
+import 'planner_provider.dart';
 
 /// Provider for managing meal state
 class MealProvider with ChangeNotifier {
@@ -20,6 +22,8 @@ class MealProvider with ChangeNotifier {
   AsyncUiState _uiState = const AsyncUiState.success();
   bool _isMutating = false;
   StreamSubscription<List<Meal>>? _mealsSubscription;
+  PlannerProvider? _plannerProvider;
+  int _lastMemoryPressureCount = 0;
 
   // Cache for AI analysis results to avoid redundant scans
   final Map<String, List<NutritionResult>> _analysisCache = {};
@@ -36,12 +40,21 @@ class MealProvider with ChangeNotifier {
       }
       notifyListeners();
     });
+    AppLifecycleService().addListener(_handleLifecycleEvent);
   }
 
   @override
   void dispose() {
     _mealsSubscription?.cancel();
+    AppLifecycleService().removeListener(_handleLifecycleEvent);
     super.dispose();
+  }
+
+  void _handleLifecycleEvent() {
+    final count = AppLifecycleService().memoryPressureCount;
+    if (count == _lastMemoryPressureCount) return;
+    _lastMemoryPressureCount = count;
+    _analysisCache.clear();
   }
 
   // Getters
@@ -114,6 +127,10 @@ class MealProvider with ChangeNotifier {
   /// Read meals for date without changing the selected log date.
   List<Meal> getMealsForDate(String dateString) {
     return _repository.getMealsByDate(dateString);
+  }
+
+  void attachPlanner(PlannerProvider plannerProvider) {
+    _plannerProvider = plannerProvider;
   }
 
   bool canViewDate(String dateString, {required bool isPro}) {
@@ -263,6 +280,11 @@ class MealProvider with ChangeNotifier {
       } else {
         await loadMealsForDate(_selectedDate, notify: false);
       }
+
+      await _plannerProvider?.rebalanceAfterMealLog(
+        loggedMeal: meal,
+        loggedMealsForDate: _repository.getMealsByDate(meal.dateString),
+      );
     } finally {
       _isMutating = false;
       _uiState =

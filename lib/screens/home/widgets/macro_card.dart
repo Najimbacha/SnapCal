@@ -29,10 +29,7 @@ class MacroCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: color.withValues(alpha: 0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.05),
@@ -101,9 +98,7 @@ class MacroCard extends StatelessWidget {
                     widthFactor: value.clamp(0.0, 1.0),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [color, barEndColor],
-                        ),
+                        gradient: LinearGradient(colors: [color, barEndColor]),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),

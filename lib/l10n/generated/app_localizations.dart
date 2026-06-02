@@ -4308,6 +4308,30 @@ abstract class AppLocalizations {
   /// **'Portion'**
   String get result_portion_label;
 
+  /// No description provided for @result_add_item.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Item'**
+  String get result_add_item;
+
+  /// No description provided for @result_nutrition_details.
+  ///
+  /// In en, this message translates to:
+  /// **'Nutrition Details'**
+  String get result_nutrition_details;
+
+  /// No description provided for @result_unlock_nutrition.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock nutrition details'**
+  String get result_unlock_nutrition;
+
+  /// No description provided for @result_add_to_log.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Log'**
+  String get result_add_to_log;
+
   /// No description provided for @paywall_cancel_anytime.
   ///
   /// In en, this message translates to:
@@ -5286,6 +5310,18 @@ abstract class AppLocalizations {
   /// **'{price} target'**
   String paywall_price_target(String price);
 
+  /// No description provided for @paywall_billing_monthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Billed monthly'**
+  String get paywall_billing_monthly;
+
+  /// No description provided for @paywall_billing_lifetime.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time payment'**
+  String get paywall_billing_lifetime;
+
   /// No description provided for @assistant_action_fix_macros.
   ///
   /// In en, this message translates to:
@@ -5607,8 +5643,14 @@ abstract class AppLocalizations {
   /// No description provided for @log_metric_calories_intake.
   ///
   /// In en, this message translates to:
-  /// **'Calories intake'**
+  /// **'Calories'**
   String get log_metric_calories_intake;
+
+  /// No description provided for @log_macro_unlock_tracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock macro tracking'**
+  String get log_macro_unlock_tracking;
 
   /// No description provided for @log_metric_carbs.
   ///
@@ -5771,6 +5813,444 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Go Pro'**
   String get aha_prompt_btn;
+
+  /// No description provided for @macro_locked_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Macros are Pro'**
+  String get macro_locked_title;
+
+  /// No description provided for @macro_locked_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock protein, carbs, and fat details with SnapCal Pro.'**
+  String get macro_locked_body;
+
+  /// No description provided for @macro_unlock_cta.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with SnapCal Pro'**
+  String get macro_unlock_cta;
+
+  /// No description provided for @macro_locked_placeholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get macro_locked_placeholder;
+
+  /// No description provided for @macro_unlock_card_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock your macro breakdown'**
+  String get macro_unlock_card_title;
+
+  /// No description provided for @macro_unlock_card_body.
+  ///
+  /// In en, this message translates to:
+  /// **'See protein, carbs and fat progress for every meal.'**
+  String get macro_unlock_card_body;
+
+  /// No description provided for @common_unlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get common_unlock;
+
+  /// No description provided for @scan_choice_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose scan type'**
+  String get scan_choice_title;
+
+  /// No description provided for @scan_choice_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a meal from a photo or scan packaged food.'**
+  String get scan_choice_subtitle;
+
+  /// No description provided for @scan_choice_food_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan food'**
+  String get scan_choice_food_title;
+
+  /// No description provided for @scan_choice_food_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the camera for instant AI nutrition.'**
+  String get scan_choice_food_subtitle;
+
+  /// No description provided for @scan_choice_barcode_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan barcode'**
+  String get scan_choice_barcode_title;
+
+  /// No description provided for @scan_choice_barcode_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Find packaged food by barcode.'**
+  String get scan_choice_barcode_subtitle;
+
+  /// No description provided for @planner_empty_headline.
+  ///
+  /// In en, this message translates to:
+  /// **'Personalized 7-day smart meal planning'**
+  String get planner_empty_headline;
+
+  /// No description provided for @planner_empty_body.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal builds meals around your calories, macros, preferences, and grocery needs.'**
+  String get planner_empty_body;
+
+  /// No description provided for @planner_empty_benefit_adaptive.
+  ///
+  /// In en, this message translates to:
+  /// **'Adaptive day guidance'**
+  String get planner_empty_benefit_adaptive;
+
+  /// No description provided for @planner_empty_benefit_macros.
+  ///
+  /// In en, this message translates to:
+  /// **'Macro-balanced meals'**
+  String get planner_empty_benefit_macros;
+
+  /// No description provided for @planner_empty_benefit_grocery.
+  ///
+  /// In en, this message translates to:
+  /// **'Grocery list'**
+  String get planner_empty_benefit_grocery;
+
+  /// No description provided for @planner_adjust_preferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust preferences'**
+  String get planner_adjust_preferences;
+
+  /// No description provided for @planner_meals_unit.
+  ///
+  /// In en, this message translates to:
+  /// **'meals'**
+  String get planner_meals_unit;
+
+  /// No description provided for @planner_items_unit.
+  ///
+  /// In en, this message translates to:
+  /// **'items'**
+  String get planner_items_unit;
+
+  /// No description provided for @planner_avg_plan.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg plan'**
+  String get planner_avg_plan;
+
+  /// No description provided for @planner_protein_coverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein'**
+  String get planner_protein_coverage;
+
+  /// No description provided for @planner_guidance_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein is behind; keep the next meal protein-forward.'**
+  String get planner_guidance_protein;
+
+  /// No description provided for @planner_guidance_light.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories are tight; keep the next meal lighter.'**
+  String get planner_guidance_light;
+
+  /// No description provided for @planner_guidance_balanced.
+  ///
+  /// In en, this message translates to:
+  /// **'You are on pace; follow the planned meals.'**
+  String get planner_guidance_balanced;
+
+  /// No description provided for @planner_prep_time.
+  ///
+  /// In en, this message translates to:
+  /// **'Prep time'**
+  String get planner_prep_time;
+
+  /// No description provided for @planner_prep_quick.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick'**
+  String get planner_prep_quick;
+
+  /// No description provided for @planner_prep_balanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get planner_prep_balanced;
+
+  /// No description provided for @planner_prep_batch.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch'**
+  String get planner_prep_batch;
+
+  /// No description provided for @planner_budget.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get planner_budget;
+
+  /// No description provided for @planner_budget_value.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get planner_budget_value;
+
+  /// No description provided for @planner_budget_standard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get planner_budget_standard;
+
+  /// No description provided for @planner_budget_premium.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium'**
+  String get planner_budget_premium;
+
+  /// No description provided for @planner_advanced_preferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced preferences'**
+  String get planner_advanced_preferences;
+
+  /// No description provided for @planner_advanced_preferences_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Allergies, dislikes, equipment, servings, and training-day planning are reserved for a later upgrade.'**
+  String get planner_advanced_preferences_body;
+
+  /// No description provided for @planner_swap_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap meal'**
+  String get planner_swap_title;
+
+  /// No description provided for @planner_swap_intent.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a goal'**
+  String get planner_swap_intent;
+
+  /// No description provided for @planner_swap_lower_calorie.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower calorie'**
+  String get planner_swap_lower_calorie;
+
+  /// No description provided for @planner_swap_higher_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Higher protein'**
+  String get planner_swap_higher_protein;
+
+  /// No description provided for @planner_swap_faster_prep.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster prep'**
+  String get planner_swap_faster_prep;
+
+  /// No description provided for @planner_swap_cheaper.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheaper'**
+  String get planner_swap_cheaper;
+
+  /// No description provided for @planner_swap_custom_note.
+  ///
+  /// In en, this message translates to:
+  /// **'Add optional note'**
+  String get planner_swap_custom_note;
+
+  /// No description provided for @planner_swap_note_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. chicken, salad, pasta...'**
+  String get planner_swap_note_hint;
+
+  /// No description provided for @planner_swap_generate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate swap'**
+  String get planner_swap_generate;
+
+  /// No description provided for @planner_swap_with_note.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap with note'**
+  String get planner_swap_with_note;
+
+  /// No description provided for @planner_swap_loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding alternative meal...'**
+  String get planner_swap_loading;
+
+  /// No description provided for @planner_swap_success.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal replaced with a practical alternative.'**
+  String get planner_swap_success;
+
+  /// No description provided for @planner_grocery_ready.
+  ///
+  /// In en, this message translates to:
+  /// **'Already-have checklist'**
+  String get planner_grocery_ready;
+
+  /// No description provided for @planner_already_have.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have'**
+  String get planner_already_have;
+
+  /// No description provided for @planner_rebalance_notice_light.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan rebalanced: remaining meals are now lighter for today.'**
+  String get planner_rebalance_notice_light;
+
+  /// No description provided for @planner_rebalance_notice_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan rebalanced: remaining meals now prioritize protein.'**
+  String get planner_rebalance_notice_protein;
+
+  /// No description provided for @planner_today_plan.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\\\'s Plan'**
+  String get planner_today_plan;
+
+  /// No description provided for @planner_today_meals.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\\\'s meals'**
+  String get planner_today_meals;
+
+  /// No description provided for @planner_planned_unit.
+  ///
+  /// In en, this message translates to:
+  /// **'planned'**
+  String get planner_planned_unit;
+
+  /// No description provided for @planner_planned_for_today.
+  ///
+  /// In en, this message translates to:
+  /// **'Planned for today'**
+  String get planner_planned_for_today;
+
+  /// No description provided for @planner_logged.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged'**
+  String get planner_logged;
+
+  /// No description provided for @planner_upcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get planner_upcoming;
+
+  /// No description provided for @planner_alert_next_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Next meal should be protein-forward'**
+  String get planner_alert_next_protein;
+
+  /// No description provided for @planner_alert_on_track.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan is on target'**
+  String get planner_alert_on_track;
+
+  /// No description provided for @planner_alert_follow_plan.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow the next planned meal'**
+  String get planner_alert_follow_plan;
+
+  /// No description provided for @planner_alert_fix_it.
+  ///
+  /// In en, this message translates to:
+  /// **'Fix it'**
+  String get planner_alert_fix_it;
+
+  /// No description provided for @planner_week_complete_title.
+  ///
+  /// In en, this message translates to:
+  /// **'This meal plan is complete'**
+  String get planner_week_complete_title;
+
+  /// No description provided for @planner_generate_current_week.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate this week\\\'s plan'**
+  String get planner_generate_current_week;
+
+  /// No description provided for @settings_milliliters_unit.
+  ///
+  /// In en, this message translates to:
+  /// **'ml'**
+  String get settings_milliliters_unit;
+
+  /// No description provided for @log_customize_metrics_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which metrics appear on your dashboard'**
+  String get log_customize_metrics_desc;
+
+  /// No description provided for @log_metric_full_history_locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Full History Locked'**
+  String get log_metric_full_history_locked;
+
+  /// No description provided for @log_metric_full_history_upgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Pro to view history beyond 14 days'**
+  String get log_metric_full_history_upgrade;
+
+  /// No description provided for @planner_swap_replacing.
+  ///
+  /// In en, this message translates to:
+  /// **'Replacing: {food}'**
+  String planner_swap_replacing(Object food);
+
+  /// No description provided for @planner_rebalance_notice_adjusted.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan rebalanced: {count} remaining \$_temp0 adjusted for today.'**
+  String planner_rebalance_notice_adjusted(Object count);
+
+  /// No description provided for @planner_alert_protein_short.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein {grams}g short today'**
+  String planner_alert_protein_short(Object grams);
+
+  /// No description provided for @planner_week_complete_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your last plan ended on {date}. Generate a fresh plan for the current week.'**
+  String planner_week_complete_body(Object date);
+
+  /// No description provided for @log_metric_goal_value.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} goal'**
+  String log_metric_goal_value(Object value);
 }
 
 class _AppLocalizationsDelegate

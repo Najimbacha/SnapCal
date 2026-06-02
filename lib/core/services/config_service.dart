@@ -15,29 +15,25 @@ class ConfigService {
     try {
       _remoteConfig = FirebaseRemoteConfig.instance;
       await _remoteConfig.setDefaults({
-        'gemini_api_key': AppConstants.defaultGeminiApiKey,
-        'groq_api_key': AppConstants.defaultGroqApiKey,
         'gemini_model_id': AppConstants.defaultGeminiModel,
         'groq_coach_model': AppConstants.defaultGroqCoachModel,
-        'groq_model_id': AppConstants.defaultGroqScannerModel, // Matched to console
+        'groq_model_id':
+            AppConstants.defaultGroqScannerModel, // Matched to console
         'revenuecat_apple_api_key': AppConstants.defaultRevenueCatAppleApiKey,
         'revenuecat_google_api_key': AppConstants.defaultRevenueCatGoogleApiKey,
         'backend_proxy_url': AppConstants.defaultBackendProxyUrl,
       });
 
-      await _remoteConfig.setConfigSettings(RemoteConfigSettings(
-        fetchTimeout: const Duration(minutes: 1),
-        minimumFetchInterval: Duration.zero, // Force fresh pull for debugging
-      ));
+      await _remoteConfig.setConfigSettings(
+        RemoteConfigSettings(
+          fetchTimeout: const Duration(minutes: 1),
+          minimumFetchInterval: Duration.zero, // Force fresh pull for debugging
+        ),
+      );
 
       await fetchAndActivate();
-      
-      // REAL TRACE: confirm what is actually inside Remote Config
+
       _initialized = true; // Set this BEFORE logging so the getters work
-      final gKey = geminiApiKey;
-      final grKey = groqApiKey;
-      debugPrint('🔑 ConfigService: Gemini Key (Prefix): ${gKey.length >= 5 ? gKey.substring(0, 5) : gKey}...');
-      debugPrint('🔑 ConfigService: Groq Key (Prefix): ${grKey.length >= 4 ? grKey.substring(0, 4) : grKey}...');
     } catch (e) {
       debugPrint('❌ ConfigService: Initialization failed: $e');
     }
@@ -55,13 +51,11 @@ class ConfigService {
   }
 
   String get geminiApiKey {
-    if (!_initialized) return AppConstants.defaultGeminiApiKey.trim();
-    return _remoteConfig.getString('gemini_api_key').trim();
+    return '';
   }
 
   String get groqApiKey {
-    if (!_initialized) return AppConstants.defaultGroqApiKey.trim();
-    return _remoteConfig.getString('groq_api_key').trim();
+    return '';
   }
 
   String get geminiModelId {

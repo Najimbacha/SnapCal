@@ -63,8 +63,8 @@ class DatePickerBar extends StatelessWidget {
                   Text(
                     app_date.DateUtils.getDateLabel(selectedDate, l10n: l10n),
                     style: AppTypography.titleMedium.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0,
                       color: context.textPrimaryColor,
                     ),
                   ),
@@ -84,7 +84,7 @@ class DatePickerBar extends StatelessWidget {
                             l10n.log_return_today,
                             style: AppTypography.labelSmall.copyWith(
                               fontSize: 9,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w500,
                               color: context.primaryColor,
                               letterSpacing: 0.5,
                             ),

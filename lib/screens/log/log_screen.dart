@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_typography.dart';
+import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../providers/activity_provider.dart';
 import '../../providers/meal_provider.dart';
@@ -18,7 +19,8 @@ import '../../data/services/premium_conversion_service.dart';
 import 'models/log_metric_models.dart';
 import 'widgets/health_metric_dashboard.dart';
 import 'widgets/horizontal_day_calendar.dart';
-
+import 'widgets/meal_list_tile.dart';
+import 'widgets/edit_meal_modal.dart';
 
 class LogScreen extends StatefulWidget {
   const LogScreen({super.key});
@@ -32,9 +34,9 @@ class _LogScreenState extends State<LogScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MealProvider>().loadMealsForDate(
-        app_date.DateUtils.getTodayString(),
-      );
+      if (!mounted) return;
+      final mealProvider = context.read<MealProvider>();
+      mealProvider.loadMealsForDate(mealProvider.selectedDate);
     });
   }
 
@@ -57,6 +59,7 @@ class _LogScreenState extends State<LogScreen> {
       settings: settings,
       activity: activity,
       water: water,
+      mealProvider: mealProvider,
     );
 
     return AppPageScaffold(
@@ -70,24 +73,103 @@ class _LogScreenState extends State<LogScreen> {
               : const Color(0xFFF9F8F5),
       child: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(
-          22,
-          MediaQuery.of(context).padding.top + 16,
-          22,
-          112,
-        ),
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 112),
         children: [
           _HealthLogHeader(
+            selectedDate: mealProvider.selectedDate,
             onProfileTap: () => context.push('/settings'),
+          ),
+          const SizedBox(height: 10),
+          HorizontalDayCalendar(
+            selectedDate: mealProvider.selectedDate,
+            dailySummaries: summaries,
+            onDateSelected: (dateStr) {
+              mealProvider.loadMealsForDate(dateStr);
+            },
+            isDateLocked:
+                (dateStr) =>
+                    !mealProvider.canViewDate(dateStr, isPro: settings.isPro),
+            onLockedDateSelected: (dateStr) {
+              PremiumConversionService().openPaywall(
+                context,
+                PaywallEntryPoint.settings,
+                featureName: 'history_days',
+              );
+            },
           ),
           const SizedBox(height: 24),
           HealthMetricDashboard(
             title: l10n.log_key_metrics,
             actionLabel: l10n.log_customize,
-            cards: dashboardCards,
+            cards: settings.isPro ? dashboardCards : dashboardCards.take(4).toList(),
             onMetricTap: (type) => context.push('/log/metric/${type.id}'),
             onCustomize: () => _showCustomizeSheet(context, l10n),
           ),
+          if (!settings.isPro) ...[
+            const SizedBox(height: 16),
+            _CompactMacroCard(
+              onTap: () => PremiumConversionService().openPaywall(
+                context,
+                PaywallEntryPoint.macroDetails,
+                featureName: 'log_macros',
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          Text(
+            l10n.home_metric_meals.toUpperCase(),
+            style: AppTypography.labelSmall.copyWith(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white38
+                  : const Color(0xFFB4AFA8),
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (mealProvider.selectedDateMeals.isEmpty)
+            _EmptyMealsState(l10n: l10n)
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: mealProvider.selectedDateMeals.length,
+              itemBuilder: (context, index) {
+                final meal = mealProvider.selectedDateMeals[index];
+                return MealListTile(
+                  meal: meal,
+                  isPro: settings.isPro,
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder:
+                          (modalContext) => EditMealModal(
+                            meal: meal,
+                            onSave: (updatedMeal) {
+                              mealProvider.updateMeal(updatedMeal);
+                              Navigator.of(modalContext).pop();
+                            },
+                            onDelete: () {
+                              Navigator.of(modalContext).pop();
+                              mealProvider.deleteMeal(
+                                meal.id,
+                                settings: settings,
+                              );
+                            },
+                            onCancel: () => Navigator.of(modalContext).pop(),
+                          ),
+                    );
+                  },
+                  onDelete: () {
+                    mealProvider.deleteMeal(meal.id, settings: settings);
+                  },
+                );
+              },
+            ),
         ],
       ),
     );
@@ -193,15 +275,16 @@ class _LogScreenState extends State<LogScreen> {
     required SettingsProvider settings,
     required ActivityProvider activity,
     required WaterProvider water,
+    required MealProvider mealProvider,
   }) {
     final l10n = AppLocalizations.of(context)!;
     final today = summaries.firstWhere(
-      (summary) => app_date.DateUtils.isToday(summary.dateString),
+      (summary) => summary.dateString == mealProvider.selectedDate,
       orElse:
           () =>
               summaries.isEmpty
                   ? DailySummary(
-                    dateString: app_date.DateUtils.getTodayString(),
+                    dateString: mealProvider.selectedDate,
                     calories: 0,
                     calorieGoal: settings.dailyCalorieGoal,
                     protein: 0,
@@ -233,23 +316,36 @@ class _LogScreenState extends State<LogScreen> {
             ? lastSeven.map((summary) => summary.steps).toList()
             : activity.week.map((day) => day.steps).toList();
 
+    final isSelectedDateToday = app_date.DateUtils.isToday(
+      mealProvider.selectedDate,
+    );
+    final selectedDateParsed = DateTime.tryParse(mealProvider.selectedDate);
+    final selectedActivitySummary =
+        selectedDateParsed == null
+            ? null
+            : activity.cachedSummaryForDate(selectedDateParsed);
     final energyToday =
         activity.isTracking
-            ? activity.burnedCalories + activity.manualWorkoutCalories
+            ? (isSelectedDateToday
+                ? (activity.burnedCalories + activity.manualWorkoutCalories)
+                : ((selectedActivitySummary?.activityCalories ?? 0) +
+                    (selectedActivitySummary?.manualWorkoutCalories ?? 0)))
             : 0;
-    final energyGoal = (activity.stepGoal * 0.04).round();
+    final energyGoal =
+        ((selectedActivitySummary?.stepGoal ?? activity.stepGoal) * 0.04)
+            .round();
 
     return [
       HealthMetricCardData(
         type: LogMetricType.calories,
         title: l10n.log_metric_calories_intake,
         value: _formatInt(context, today.calories),
-        unit: 'cal',
+        unit: l10n.settings_kcal_unit,
         status: _metricStatus(
           context,
           today.calories,
           today.calorieGoal,
-          'cal',
+          l10n.settings_kcal_unit,
         ),
         values: lastSeven.map((summary) => summary.calories).toList(),
         goal: today.calorieGoal,
@@ -260,8 +356,13 @@ class _LogScreenState extends State<LogScreen> {
         type: LogMetricType.energy,
         title: l10n.log_metric_energy_burned,
         value: _formatInt(context, energyToday),
-        unit: 'cal',
-        status: _metricStatus(context, energyToday, energyGoal, 'cal'),
+        unit: l10n.settings_kcal_unit,
+        status: _metricStatus(
+          context,
+          energyToday,
+          energyGoal,
+          l10n.settings_kcal_unit,
+        ),
         values: activityTrend,
         goal: energyGoal,
         chartStyle: HealthMetricChartStyle.bars,
@@ -287,8 +388,13 @@ class _LogScreenState extends State<LogScreen> {
         type: LogMetricType.water,
         title: l10n.log_metric_water,
         value: _formatInt(context, today.waterMl),
-        unit: 'ml',
-        status: _metricStatus(context, today.waterMl, today.waterGoal, 'ml'),
+        unit: l10n.settings_milliliters_unit,
+        status: _metricStatus(
+          context,
+          today.waterMl,
+          today.waterGoal,
+          l10n.settings_milliliters_unit,
+        ),
         values: lastSeven.map((summary) => summary.waterMl).toList(),
         goal: today.waterGoal,
         chartStyle: HealthMetricChartStyle.bars,
@@ -350,15 +456,20 @@ class _LogScreenState extends State<LogScreen> {
 }
 
 class _HealthLogHeader extends StatelessWidget {
+  final String selectedDate;
   final VoidCallback? onProfileTap;
-  const _HealthLogHeader({this.onProfileTap});
+  const _HealthLogHeader({required this.selectedDate, this.onProfileTap});
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? Colors.white : const Color(0xFF1C1917);
-    final muted = isDark ? Colors.white54 : const Color(0xFFA8A29E);
+    final parsed = DateTime.tryParse(selectedDate);
+    final dateFormatted = parsed != null
+        ? DateFormat.yMMMMd(l10n.localeName).format(parsed)
+        : selectedDate;
+    final muted = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white38
+        : const Color(0xFFA8A29E);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,50 +479,34 @@ class _HealthLogHeader extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                l10n.log_health_title,
+                dateFormatted,
                 style: AppTypography.titleMedium.copyWith(
-                  color: ink,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                  letterSpacing: 0,
+                  color: context.textPrimaryColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
                 ),
               ),
             ),
             GestureDetector(
               onTap: onProfileTap,
               child: Container(
-                width: 38,
-                height: 38,
+                width: 36,
+                height: 36,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: isDark
+                  color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white.withValues(alpha: 0.06)
-                      : const Color(0xFFE8E4DC).withValues(alpha: 0.56),
+                      : Colors.black.withValues(alpha: 0.04),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.04),
-                  ),
                 ),
                 child: Icon(
                   LucideIcons.settings2,
                   color: muted,
-                  size: 18,
+                  size: 17,
                 ),
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 10),
-        Text(
-          l10n.log_key_metrics,
-          style: AppTypography.labelSmall.copyWith(
-            color: muted,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
-          ),
         ),
       ],
     );
@@ -440,8 +535,221 @@ String _formatInt(BuildContext context, int value) {
   ).format(value);
 }
 
+// ── Empty meals state ────────────────────────────────────────────────────────
 
+class _EmptyMealsState extends StatelessWidget {
+  final AppLocalizations l10n;
+  const _EmptyMealsState({required this.l10n});
 
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? Colors.white38 : const Color(0xFFB4AFA8);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.utensilsCrossed,
+            size: 32,
+            color: muted,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            l10n.home_no_meals_title,
+            style: AppTypography.titleSmall.copyWith(
+              color: isDark ? Colors.white60 : const Color(0xFF78716C),
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.home_no_meals_body,
+            style: AppTypography.labelSmall.copyWith(
+              color: muted,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Compact locked macro card ────────────────────────────────────────────────
+
+class _CompactMacroCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _CompactMacroCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
+    final cardBg =
+        isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7);
+    final borderColor =
+        isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : const Color(0xFFE8E4DC);
+    final muted =
+        isDark ? Colors.white38 : const Color(0xFFB4AFA8);
+    final mutedText =
+        isDark ? Colors.white60 : const Color(0xFF78716C);
+
+    final macros = [
+      (l10n.result_protein, const Color(0xFF7C9A6D), 0.65),
+      (l10n.result_carbs, const Color(0xFF4F8CC9), 0.50),
+      (l10n.result_fat, const Color(0xFFD18B47), 0.40),
+    ];
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.home_section_macros,
+                  style: AppTypography.titleSmall.copyWith(
+                    color:
+                        isDark ? Colors.white : const Color(0xFF1C1917),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    'PRO',
+                    style: TextStyle(
+                      color: mutedText,
+                      fontSize: 7,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Three macro columns
+            Row(
+              children: macros.map(
+                (m) => Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        m.$1,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: mutedText,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.lock, size: 10, color: muted),
+                          const SizedBox(width: 3),
+                          Text(
+                            '— g',
+                            style: AppTypography.labelMedium.copyWith(
+                              color: muted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        height: 3,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: m.$2.withValues(
+                            alpha: isDark ? 0.10 : 0.15,
+                          ),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: FractionallySizedBox(
+                          widthFactor: m.$3,
+                          heightFactor: 1,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: m.$2.withValues(
+                                alpha: isDark ? 0.35 : 0.40,
+                              ),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ).toList(),
+            ),
+
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.log_macro_unlock_tracking,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+                Icon(
+                  LucideIcons.chevronRight,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 // ── Customize metrics bottom sheet ───────────────────────────────────────────
 
@@ -459,13 +767,13 @@ class _CustomizeMetricsSheet extends StatelessWidget {
     final isPro = context.read<SettingsProvider>().isPro;
 
     final allMetrics = [
-      (l10n.log_metric_calories_intake, '🔥', false),
-      (l10n.log_metric_energy_burned, '⚡', false),
-      (l10n.log_metric_steps, '👟', false),
-      (l10n.log_metric_water, '💧', false),
-      (l10n.log_metric_protein, '💪', true),
-      (l10n.log_metric_carbs, '🌾', true),
-      (l10n.log_metric_fat, '🫧', true),
+      (l10n.log_metric_calories_intake, 'Calories', LucideIcons.utensils, false),
+      (l10n.log_metric_energy_burned, 'Energy', LucideIcons.flame, false),
+      (l10n.log_metric_steps, 'Steps', LucideIcons.footprints, false),
+      (l10n.log_metric_water, 'Water', LucideIcons.droplets, false),
+      (l10n.log_metric_protein, 'Protein', Icons.fitness_center_rounded, true),
+      (l10n.log_metric_carbs, 'Carbs', Icons.grain_rounded, true),
+      (l10n.log_metric_fat, 'Fat', Icons.circle_rounded, true),
     ];
 
     return Container(
@@ -485,8 +793,9 @@ class _CustomizeMetricsSheet extends StatelessWidget {
             height: 4,
             margin: const EdgeInsets.only(top: 14, bottom: 20),
             decoration: BoxDecoration(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.12),
+              color: (isDark ? Colors.white : Colors.black).withValues(
+                alpha: 0.12,
+              ),
               borderRadius: BorderRadius.circular(999),
             ),
           ),
@@ -500,19 +809,19 @@ class _CustomizeMetricsSheet extends StatelessWidget {
                     l10n.log_customize,
                     style: AppTypography.heading3.copyWith(
                       color: isDark ? Colors.white : const Color(0xFF202124),
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w600,
                       fontSize: 22,
-                      letterSpacing: -0.5,
+                      letterSpacing: 0,
                     ),
                   ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text(
-                    'Done',
+                    l10n.common_done,
                     style: TextStyle(
                       color: accent,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w500,
                       fontSize: 15,
                     ),
                   ),
@@ -523,7 +832,7 @@ class _CustomizeMetricsSheet extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text(
-              'Choose which metrics appear on your dashboard',
+              l10n.log_customize_metrics_desc,
               style: AppTypography.bodyMedium.copyWith(
                 color: (isDark ? Colors.white : const Color(0xFF202124))
                     .withValues(alpha: 0.54),
@@ -534,7 +843,7 @@ class _CustomizeMetricsSheet extends StatelessWidget {
           const SizedBox(height: 16),
           // Metric list
           ...allMetrics.map((item) {
-            final isGated = item.$3;
+            final isGated = item.$4;
             final isRowLocked = isGated && !isPro;
 
             return Padding(
@@ -544,29 +853,43 @@ class _CustomizeMetricsSheet extends StatelessWidget {
                   if (isRowLocked) {
                     PremiumConversionService().openPaywall(
                       context,
-                      PaywallEntryPoint.settings,
+                      PaywallEntryPoint.macroDetails,
                       featureName: 'customize_macros',
                     );
                   }
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: isRowLocked ? 0.02 : 0.05)
-                        : Colors.black.withValues(alpha: isRowLocked ? 0.01 : 0.03),
+                    color:
+                        isDark
+                            ? Colors.white.withValues(
+                              alpha: isRowLocked ? 0.02 : 0.05,
+                            )
+                            : Colors.black.withValues(
+                              alpha: isRowLocked ? 0.01 : 0.03,
+                            ),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.07)
-                          : Colors.black.withValues(alpha: 0.06),
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.07)
+                              : Colors.black.withValues(alpha: 0.06),
                     ),
                   ),
                   child: Row(
                     children: [
-                      Text(item.$2, style: TextStyle(fontSize: 20, color: isRowLocked ? Colors.grey : null)),
+                      Icon(
+                        item.$3,
+                        size: 18,
+                        color: isRowLocked
+                            ? Colors.grey
+                            : (isDark ? Colors.white60 : const Color(0xFF78716C)),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Row(
@@ -574,29 +897,39 @@ class _CustomizeMetricsSheet extends StatelessWidget {
                             Text(
                               item.$1,
                               style: AppTypography.titleMedium.copyWith(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: isRowLocked ? 0.40 : 0.88)
-                                    : const Color(0xFF202124).withValues(alpha: isRowLocked ? 0.40 : 1.0),
-                                fontWeight: FontWeight.w700,
+                                color:
+                                    isDark
+                                        ? Colors.white.withValues(
+                                          alpha: isRowLocked ? 0.40 : 0.88,
+                                        )
+                                        : const Color(0xFF202124).withValues(
+                                          alpha: isRowLocked ? 0.40 : 1.0,
+                                        ),
+                                fontWeight: FontWeight.w500,
                                 fontSize: 15,
                               ),
                             ),
                             if (isRowLocked) ...[
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFD700).withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 1.5,
                                 ),
-                                child: const Text(
-                                  'PRO',
+                                decoration: BoxDecoration(
+                                  color: (isDark ? Colors.white : Colors.black)
+                                      .withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Text(
+                                  l10n.home_pro_badge,
                                   style: TextStyle(
-                                    color: Color(0xFFE29200),
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.5,
+                                    color: isDark
+                                        ? Colors.white38
+                                        : const Color(0xFFA8A29E),
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
                                   ),
                                 ),
                               ),
@@ -605,11 +938,14 @@ class _CustomizeMetricsSheet extends StatelessWidget {
                         ),
                       ),
                       Icon(
-                        isRowLocked ? LucideIcons.lock : Icons.drag_handle_rounded,
-                        color: isRowLocked
-                            ? const Color(0xFFE29200)
-                            : (isDark ? Colors.white : Colors.black)
-                                .withValues(alpha: 0.28),
+                        isRowLocked
+                            ? LucideIcons.lock
+                            : Icons.drag_handle_rounded,
+                        color:
+                            isRowLocked
+                                ? const Color(0xFFE29200)
+                                : (isDark ? Colors.white : Colors.black)
+                                    .withValues(alpha: 0.28),
                         size: isRowLocked ? 16 : 22,
                       ),
                     ],

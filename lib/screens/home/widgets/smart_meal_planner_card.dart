@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../data/models/meal_slot.dart';
 import '../../../widgets/ui_blocks.dart';
 
@@ -30,21 +29,74 @@ class SmartMealPlannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const goldColor = Color(0xFFD4AF37);
+
+    // Theme-aware styles
+    final Color cardBgColor;
+    final Color borderColor;
+    final List<BoxShadow> cardShadow;
+    final LinearGradient headerGradient;
+    final Color headerBorderColor;
+    final Color titleColor;
+    final Color subtitleColor;
+    final Color progressTrackColor;
+    final Color labelColor;
+    final Color refreshBtnBg;
+    final Color refreshIconColor;
+
+    if (isDark) {
+      cardBgColor = const Color(0xFF0B2114); // Deep Forest Green
+      borderColor = goldColor.withValues(alpha: 0.35);
+      cardShadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.25),
+          blurRadius: 20,
+          offset: const Offset(0, 10),
+        ),
+      ];
+      headerGradient = const LinearGradient(
+        colors: [Color(0xFF163E27), Color(0xFF0B2114)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      headerBorderColor = const Color(0x33D4AF37);
+      titleColor = const Color(0xFFFAF8F5);
+      subtitleColor = const Color(0xFFBDD2C6);
+      progressTrackColor = const Color(0xFF143020);
+      labelColor = const Color(0xFFBDD2C6);
+      refreshBtnBg = const Color(0xFF143A24);
+      refreshIconColor = goldColor;
+    } else {
+      cardBgColor = const Color(0xFFFFFFFF); // Pure White
+      borderColor = const Color(0xFFEFEBE4); // Champagne/light border
+      cardShadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
+      ];
+      headerGradient = const LinearGradient(
+        colors: [Color(0xFFFCF8EF), Color(0xFFFAF2E6)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      headerBorderColor = const Color(0xFFEFEBE4);
+      titleColor = const Color(0xFF1A1A2E); // Charcoal
+      subtitleColor = const Color(0xFF788C80); // Muted sage
+      progressTrackColor = const Color(0xFFF1F3F5); // Light grey track
+      labelColor = const Color(0xFF788C80);
+      refreshBtnBg = const Color(0xFFFCF8EF);
+      refreshIconColor = const Color(0xFFBA7517); // Rich gold/amber
+    }
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE0E0FD),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF5C5FE0).withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
+        border: Border.all(color: borderColor, width: 1.2),
+        boxShadow: cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -53,11 +105,10 @@ class SmartMealPlannerCard extends StatelessWidget {
           // 1. Header Section
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            decoration: BoxDecoration(
+              gradient: headerGradient,
+              border: Border(
+                bottom: BorderSide(color: headerBorderColor, width: 1.0),
               ),
             ),
             child: Stack(
@@ -71,19 +122,10 @@ class SmartMealPlannerCard extends StatelessWidget {
                     height: 90,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.07),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: -40,
-                  bottom: -45,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.05),
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : const Color(0xFFFAF2E6).withValues(alpha: 0.2),
                     ),
                   ),
                 ),
@@ -95,16 +137,19 @@ class SmartMealPlannerCard extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.calendar_today_rounded,
-                                color: Colors.white,
-                                size: 16,
+                                color:
+                                    isDark
+                                        ? goldColor
+                                        : const Color(0xFFBA7517),
+                                size: 15,
                               ),
                               const SizedBox(width: 8),
-                              const Text(
+                              Text(
                                 "Smart Meal Planner",
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: titleColor,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 15,
                                   letterSpacing: -0.2,
@@ -113,24 +158,32 @@ class SmartMealPlannerCard extends StatelessWidget {
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
+                                  horizontal: 7,
+                                  vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.22),
-                                  borderRadius: BorderRadius.circular(99),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.25),
-                                    width: 1.0,
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFE5C060),
+                                      Color(0xFFB88E2F),
+                                    ],
                                   ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: goldColor.withValues(alpha: 0.25),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
                                 child: const Text(
                                   "PRO",
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 9,
+                                    fontSize: 8,
                                     fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.2,
+                                    letterSpacing: 1.0,
                                   ),
                                 ),
                               ),
@@ -140,9 +193,9 @@ class SmartMealPlannerCard extends StatelessWidget {
                           Text(
                             "Optimized for your $goalKcal kcal goal · $dietLabel",
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
+                              color: subtitleColor,
                               fontSize: 11,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -151,12 +204,12 @@ class SmartMealPlannerCard extends StatelessWidget {
                     IconButton(
                       icon: Icon(
                         Icons.refresh_rounded,
-                        color: Colors.white.withValues(alpha: 0.80),
+                        color: refreshIconColor,
                         size: 20,
                       ),
                       onPressed: onRefreshTap,
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.white.withValues(alpha: 0.12),
+                        backgroundColor: refreshBtnBg,
                         padding: const EdgeInsets.all(8),
                       ),
                     ),
@@ -170,17 +223,17 @@ class SmartMealPlannerCard extends StatelessWidget {
 
           // 2. Progress Bar Section
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       "Today's plan",
                       style: TextStyle(
-                        color: AppColors.textSecondary,
+                        color: labelColor,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -189,8 +242,8 @@ class SmartMealPlannerCard extends StatelessWidget {
                       isTeaser
                           ? "2 of 4 suggestions unlocked"
                           : "$completedMeals of $totalMeals meals done",
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: labelColor,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -202,7 +255,7 @@ class SmartMealPlannerCard extends StatelessWidget {
                   height: 6,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEEEEE),
+                    color: progressTrackColor,
                     borderRadius: BorderRadius.circular(99),
                   ),
                   child: Stack(
@@ -210,17 +263,18 @@ class SmartMealPlannerCard extends StatelessWidget {
                       FractionallySizedBox(
                         widthFactor: (isTeaser
                                 ? 0.5
-                                : (completedMeals / (totalMeals > 0 ? totalMeals : 1)))
+                                : (completedMeals /
+                                    (totalMeals > 0 ? totalMeals : 1)))
                             .clamp(0.0, 1.0),
                         child: Container(
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
+                              colors: [Color(0xFFE5C060), Color(0xFFD4AF37)],
                             ),
                             borderRadius: BorderRadius.circular(99),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF7C3AED).withValues(alpha: 0.3),
+                                color: goldColor.withValues(alpha: 0.25),
                                 blurRadius: 6,
                                 offset: const Offset(0, 1),
                               ),
@@ -235,159 +289,201 @@ class SmartMealPlannerCard extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
           // 3. Meal Slots List
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: isTeaser
-                ? Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      Column(
-                        children: [
-                          if (meals.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: _buildMealSlotRow(meals[0]),
-                            ),
-                          if (meals.length > 1)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: _buildMealSlotRow(meals[1]),
-                            ),
-                          ClipRect(
-                            child: ImageFiltered(
-                              imageFilter: ImageFilter.blur(sigmaX: 5.5, sigmaY: 5.5),
-                              child: Opacity(
-                                opacity: 0.25,
-                                child: AbsorbPointer(
-                                  child: Column(
-                                    children: List.generate(
-                                      meals.length > 2 ? meals.length - 2 : 0,
-                                      (index) => Padding(
-                                        padding: EdgeInsets.only(
-                                          bottom: index == meals.length - 3 ? 0.0 : 8.0,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child:
+                isTeaser
+                    ? Stack(
+                      alignment: Alignment.bottomCenter,
+                      children: [
+                        Column(
+                          children: [
+                            if (meals.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: _buildMealSlotRow(context, meals[0]),
+                              ),
+                            if (meals.length > 1)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: _buildMealSlotRow(context, meals[1]),
+                              ),
+                            ClipRect(
+                              child: ImageFiltered(
+                                imageFilter: ImageFilter.blur(
+                                  sigmaX: 5.5,
+                                  sigmaY: 5.5,
+                                ),
+                                child: Opacity(
+                                  opacity: 0.20,
+                                  child: AbsorbPointer(
+                                    child: Column(
+                                      children: List.generate(
+                                        meals.length > 2 ? meals.length - 2 : 0,
+                                        (index) => Padding(
+                                          padding: EdgeInsets.only(
+                                            bottom:
+                                                index == meals.length - 3
+                                                    ? 0.0
+                                                    : 8.0,
+                                          ),
+                                          child: _buildMealSlotRow(
+                                            context,
+                                            meals[index + 2],
+                                          ),
                                         ),
-                                        child: _buildMealSlotRow(meals[index + 2]),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      // Upgrade Nudge Overlay
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.white.withValues(alpha: 0.70),
-                                Colors.white.withValues(alpha: 0.95),
-                                Colors.white,
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
+                          ],
+                        ),
+                        // Upgrade Nudge Overlay
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 18,
                             ),
-                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.lock_rounded,
-                                    color: Color(0xFF7C3AED),
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  const Text(
-                                    "Unlock Lunch & Dinner Plans",
-                                    style: TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors:
+                                    isDark
+                                        ? [
+                                          const Color(
+                                            0xFF0B2114,
+                                          ).withValues(alpha: 0.70),
+                                          const Color(
+                                            0xFF0B2114,
+                                          ).withValues(alpha: 0.95),
+                                          const Color(0xFF0B2114),
+                                        ]
+                                        : [
+                                          Colors.white.withValues(alpha: 0.70),
+                                          Colors.white.withValues(alpha: 0.95),
+                                          Colors.white,
+                                        ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
                               ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                "Get the full 4-meal daily schedule personalized for you",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(16),
                               ),
-                              const SizedBox(height: 12),
-                              AppScaleTap(
-                                onTap: onLogTap,
-                                child: Container(
-                                  width: double.infinity,
-                                  height: 42,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.lock_rounded,
+                                      color:
+                                          isDark
+                                              ? goldColor
+                                              : const Color(0xFFBA7517),
+                                      size: 15,
                                     ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFF5C5FE0).withValues(alpha: 0.25),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      "Unlock with SnapCal Pro",
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "Unlock Lunch & Dinner Plans",
                                       style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
+                                        color:
+                                            isDark
+                                                ? const Color(0xFFFAF8F5)
+                                                : const Color(0xFF1A3D2B),
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Get the full 4-meal daily schedule personalized for you",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color:
+                                        isDark
+                                            ? const Color(0xFFBDD2C6)
+                                            : const Color(0xFF788C80),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                AppScaleTap(
+                                  onTap: onLogTap,
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFFE5C060),
+                                          Color(0xFFB88E2F),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: goldColor.withValues(
+                                            alpha: 0.25,
+                                          ),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Center(
+                                      child: Text(
+                                        "Unlock with SnapCal Pro",
+                                        style: TextStyle(
+                                          color: Color(
+                                            0xFF0A2114,
+                                          ), // Forest text
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: List.generate(meals.length, (index) {
-                      final slot = meals[index];
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          bottom: index == meals.length - 1 ? 0.0 : 8.0,
-                        ),
-                        child: _buildMealSlotRow(slot),
-                      );
-                    }),
-                  ),
+                      ],
+                    )
+                    : Column(
+                      children: List.generate(meals.length, (index) {
+                        final slot = meals[index];
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            bottom: index == meals.length - 1 ? 0.0 : 8.0,
+                          ),
+                          child: _buildMealSlotRow(context, slot),
+                        );
+                      }),
+                    ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
           // 4. Action Buttons Row
           if (!isTeaser) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(
                 children: [
                   Expanded(
@@ -397,14 +493,14 @@ class SmartMealPlannerCard extends StatelessWidget {
                         height: 44,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF10B981), Color(0xFF047857)],
+                            colors: [Color(0xFFE5C060), Color(0xFFB88E2F)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                              color: goldColor.withValues(alpha: 0.25),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -414,15 +510,15 @@ class SmartMealPlannerCard extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.qr_code_scanner_rounded,
-                              color: Colors.white,
+                              Icons.check_circle_rounded,
+                              color: Color(0xFF0A2114),
                               size: 16,
                             ),
                             SizedBox(width: 6),
                             Text(
                               "Log this meal",
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFF0A2114),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                               ),
@@ -437,73 +533,90 @@ class SmartMealPlannerCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildMealSlotRow(MealSlot slot) {
+  Widget _buildMealSlotRow(BuildContext context, MealSlot slot) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Color bg;
     Border? border;
     Decoration? iconDecoration;
     IconData iconData;
     Color iconColor;
-    Color nameColor = AppColors.textPrimary;
-    Color metaColor = AppColors.textSecondary;
-    Color kcalColor = AppColors.textPrimary;
+    const goldColor = Color(0xFFD4AF37);
+    Color nameColor;
+    Color metaColor;
+    Color kcalColor;
     bool isBoldName = false;
     bool isBoldKcal = false;
     List<BoxShadow>? rowShadows;
 
-    // Determine metadata text
     String meta;
     if (slot.status == MealSlotStatus.done) {
-      bg = AppColors.slotDoneBg;
-      border = Border.all(color: const Color(0xFFEEF0FF), width: 1.0);
+      bg = isDark ? const Color(0xFF0D2517) : const Color(0xFFF2FDF4);
+      border = Border.all(
+        color: isDark ? const Color(0xFF1C462E) : const Color(0xFFD4ECD8),
+        width: 1.0,
+      );
       iconDecoration = BoxDecoration(
-        color: const Color(0xFFE0E0FD),
+        color: isDark ? const Color(0xFF1C462E) : const Color(0xFFE2EFE0),
         borderRadius: BorderRadius.circular(10),
       );
       iconData = Icons.check_rounded;
-      iconColor = AppColors.primary;
+      iconColor = isDark ? goldColor : const Color(0xFF1E4620);
       meta = "${slot.mealType} · ${slot.time} · Logged";
+      nameColor = isDark ? const Color(0xFFFAF8F5) : const Color(0xFF1A1A2E);
+      metaColor = isDark ? const Color(0xFFBDD2C6) : const Color(0xFF788C80);
+      kcalColor = nameColor;
     } else if (slot.status == MealSlotStatus.next) {
-      bg = AppColors.slotNextBg;
-      border = Border.all(color: const Color(0xFFC7C9F8), width: 1.5);
+      bg = isDark ? const Color(0xFF123421) : const Color(0xFFFCF8EF);
+      border = Border.all(
+        color: goldColor.withValues(alpha: isDark ? 0.5 : 0.6),
+        width: 1.4,
+      );
       iconDecoration = BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
+          colors: [Color(0xFFE5C060), Color(0xFFB88E2F)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(10),
       );
       iconData = Icons.restaurant_rounded;
-      iconColor = Colors.white;
-      nameColor = AppColors.primary;
-      metaColor = AppColors.primaryDark;
-      kcalColor = AppColors.primary;
+      iconColor = const Color(0xFF0A2114);
+      nameColor = isDark ? const Color(0xFFE5C060) : const Color(0xFFBA7517);
+      metaColor = isDark ? const Color(0xFFE3D0A4) : const Color(0xFF888780);
+      kcalColor = nameColor;
       isBoldName = true;
       isBoldKcal = true;
-      meta = "${slot.mealType} · ${slot.time} · 380 kcal left after";
+      meta = "${slot.mealType} · ${slot.time} · Up Next";
       rowShadows = [
         BoxShadow(
-          color: const Color(0xFF5C5FE0).withValues(alpha: 0.08),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
+          color: goldColor.withValues(alpha: isDark ? 0.10 : 0.05),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
         ),
       ];
     } else {
-      bg = AppColors.slotUpcomingBg.withValues(alpha: 0.7);
+      bg = isDark ? const Color(0xFF0A1D13) : const Color(0xFFF9FAFB);
+      border = Border.all(
+        color: isDark ? const Color(0xFF153322) : const Color(0xFFE2E8F0),
+        width: 1.0,
+      );
       iconDecoration = BoxDecoration(
-        color: const Color(0xFFDDDDDD),
+        color: isDark ? const Color(0xFF153322) : const Color(0xFFEEF2F6),
         borderRadius: BorderRadius.circular(10),
       );
       iconData = Icons.nightlight_round;
-      iconColor = const Color(0xFF888888);
+      iconColor = isDark ? const Color(0xFF8BA596) : const Color(0xFF64748B);
       meta = "${slot.mealType} · ${slot.time} · Planned";
+      nameColor = isDark ? const Color(0xFFDCD8D3) : const Color(0xFF334155);
+      metaColor = isDark ? const Color(0xFF8BA596) : const Color(0xFF64748B);
+      kcalColor = nameColor;
     }
 
     return Container(
@@ -520,13 +633,7 @@ class SmartMealPlannerCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: iconDecoration,
-            child: Center(
-              child: Icon(
-                iconData,
-                color: iconColor,
-                size: 18,
-              ),
-            ),
+            child: Center(child: Icon(iconData, color: iconColor, size: 18)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -604,16 +711,22 @@ class _SwapButtonState extends State<_SwapButton>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const goldColor = Color(0xFFD4AF37);
+
     return AppScaleTap(
       onTap: _handleTap,
       child: Container(
         width: 80,
         height: 44,
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
+          color: isDark ? const Color(0xFF123220) : const Color(0xFFFCF8EF),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFFE2E8F0),
+            color:
+                isDark
+                    ? goldColor.withValues(alpha: 0.35)
+                    : const Color(0xFFE5C060).withValues(alpha: 0.6),
             width: 1,
           ),
         ),
@@ -622,17 +735,17 @@ class _SwapButtonState extends State<_SwapButton>
           children: [
             RotationTransition(
               turns: _controller,
-              child: const Icon(
+              child: Icon(
                 Icons.refresh_rounded,
-                color: AppColors.textSecondary,
+                color: isDark ? goldColor : const Color(0xFFBA7517),
                 size: 16,
               ),
             ),
             const SizedBox(width: 4),
-            const Text(
+            Text(
               "Swap",
               style: TextStyle(
-                color: AppColors.textSecondary,
+                color: isDark ? goldColor : const Color(0xFFBA7517),
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -649,22 +762,54 @@ class MacroInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const goldColor = Color(0xFFD4AF37);
+
+    final Color cardBg;
+    final Color borderColor;
+    final Color textColor;
+    final Color highlightColor;
+    final Color iconBg;
+    final Color iconColor;
+    final List<BoxShadow> shadow;
+
+    if (isDark) {
+      cardBg = const Color(0xFF0B2114);
+      borderColor = goldColor.withValues(alpha: 0.35);
+      textColor = const Color(0xFFFAF8F5);
+      highlightColor = goldColor;
+      iconBg = const Color(0xFF1C462E);
+      iconColor = goldColor;
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.2),
+          blurRadius: 16,
+          offset: const Offset(0, 8),
+        ),
+      ];
+    } else {
+      cardBg = const Color(0xFFFFFFFF);
+      borderColor = const Color(0xFFEFEBE4);
+      textColor = const Color(0xFF1A1A2E);
+      highlightColor = const Color(0xFFBA7517);
+      iconBg = const Color(0xFFFCF8EF);
+      iconColor = const Color(0xFFBA7517);
+      shadow = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 16,
+          offset: const Offset(0, 8),
+        ),
+      ];
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE0E0FD),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFE0E0FD).withValues(alpha: 0.4),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: borderColor, width: 1.2),
+        boxShadow: shadow,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -673,19 +818,18 @@ class MacroInsightCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF3E0),
+              color: iconBg,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: const Color(0xFFFFE0B2),
+                color:
+                    isDark
+                        ? goldColor.withValues(alpha: 0.30)
+                        : const Color(0xFFFAF2E6),
                 width: 1,
               ),
             ),
-            child: const Center(
-              child: Icon(
-                Icons.lightbulb_rounded,
-                color: Color(0xFFBA7517),
-                size: 20,
-              ),
+            child: Center(
+              child: Icon(Icons.lightbulb_rounded, color: iconColor, size: 20),
             ),
           ),
           const SizedBox(width: 12),
@@ -693,19 +837,19 @@ class MacroInsightCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "On track for your goal",
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: highlightColor,
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   "You're hitting 92g protein today. Add 10g more at dinner to reach your target. Try Greek yogurt as a side.",
                   style: TextStyle(
-                    color: AppColors.textSecondary,
+                    color: textColor,
                     fontSize: 11,
                     height: 1.5,
                     fontWeight: FontWeight.w500,

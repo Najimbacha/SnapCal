@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import 'package:snapcal/l10n/generated/app_localizations.dart';
-
 class BarcodeScannerView extends StatefulWidget {
   final Function(String barcode) onBarcodeDetected;
   final VoidCallback onCancel;
@@ -46,75 +44,71 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
               widget.onBarcodeDetected(code);
             },
           ),
+
+          // Subtle gradient overlay
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.38),
-              ),
-            ),
-          ),
-          Center(
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.72,
-              height: 190,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-            ),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 24,
-            left: 20,
-            right: 20,
-            child: Row(
-              children: [
-                _RoundButton(
-                  icon: LucideIcons.arrowLeft,
-                  onTap: widget.onCancel,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.snap_scan_barcode,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        AppLocalizations.of(context)!.snap_barcode_hint,
-                        style: const TextStyle(color: Colors.white70),
-                      ),
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.30),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.45),
                     ],
+                    stops: const [0, 0.3, 1],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
+
+          // Barcode guide brackets
+          Center(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.72,
+              height: 170,
+              child: CustomPaint(
+                painter: _BarcodeBracketPainter(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+          ),
+
+          // Close button
           Positioned(
-            bottom: MediaQuery.of(context).padding.bottom + 28,
-            left: 20,
-            right: 20,
+            top: MediaQuery.of(context).padding.top + 12,
+            left: 16,
+            child: GestureDetector(
+              onTap: widget.onCancel,
+              child: Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(LucideIcons.x, color: Colors.white, size: 18),
+              ),
+            ),
+          ),
+
+          // Bottom controls
+          Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 24,
+            left: 0,
+            right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _RoundButton(
-                  icon: LucideIcons.zap,
-                  label: AppLocalizations.of(context)!.snap_torch,
-                  onTap: _controller.toggleTorch,
-                ),
-                const SizedBox(width: 16),
-                _RoundButton(
-                  icon: LucideIcons.refreshCw,
-                  label: AppLocalizations.of(context)!.snap_flip,
-                  onTap: _controller.switchCamera,
-                ),
+                _iconButton(LucideIcons.zap, () => _controller.toggleTorch()),
+                const SizedBox(width: 32),
+                _iconButton(LucideIcons.refreshCw, () => _controller.switchCamera()),
               ],
             ),
           ),
@@ -122,38 +116,69 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
       ),
     );
   }
-}
 
-class _RoundButton extends StatelessWidget {
-  final IconData icon;
-  final String? label;
-  final VoidCallback onTap;
-
-  const _RoundButton({required this.icon, required this.onTap, this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
+  Widget _iconButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        width: 44,
+        height: 44,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          color: Colors.black.withValues(alpha: 0.25),
+          shape: BoxShape.circle,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: 18),
-            if (label != null) ...[
-              const SizedBox(width: 8),
-              Text(label!, style: const TextStyle(color: Colors.white)),
-            ],
-          ],
-        ),
+        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
+}
+
+class _BarcodeBracketPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+
+  const _BarcodeBracketPainter({
+    required this.color,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    const cl = 28.0;
+    final w = size.width;
+    final h = size.height;
+    const r = 12.0;
+
+    // Top-left
+    canvas.drawPath(
+      Path()..moveTo(0, cl)..lineTo(0, r)..quadraticBezierTo(0, 0, r, 0)..lineTo(cl, 0),
+      paint,
+    );
+    // Top-right
+    canvas.drawPath(
+      Path()..moveTo(w - cl, 0)..lineTo(w - r, 0)..quadraticBezierTo(w, 0, w, r)..lineTo(w, cl),
+      paint,
+    );
+    // Bottom-left
+    canvas.drawPath(
+      Path()..moveTo(0, h - cl)..lineTo(0, h - r)..quadraticBezierTo(0, h, r, h)..lineTo(cl, h),
+      paint,
+    );
+    // Bottom-right
+    canvas.drawPath(
+      Path()..moveTo(w - cl, h)..lineTo(w - r, h)..quadraticBezierTo(w, h, w, h - r)..lineTo(w, h - cl),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _BarcodeBracketPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

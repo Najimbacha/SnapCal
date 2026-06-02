@@ -99,7 +99,8 @@ class MealTemplate extends HiveObject {
     id: json['id'] as String,
     name: json['name'] as String,
     emoji: json['emoji'] as String? ?? '🍽️',
-    items: (json['items'] as List).map((i) => TemplateItem.fromJson(i)).toList(),
+    items:
+        (json['items'] as List).map((i) => TemplateItem.fromJson(i)).toList(),
     createdAt: json['createdAt'] as int,
     usageCount: json['usageCount'] as int? ?? 0,
   );

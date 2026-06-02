@@ -19,14 +19,13 @@ class InsightCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(LucideIcons.sparkles, color: AppColors.primary, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  insight,
-                  style: AppTypography.bodyMedium,
-                ),
+              const Icon(
+                LucideIcons.sparkles,
+                color: AppColors.primary,
+                size: 20,
               ),
+              const SizedBox(width: 12),
+              Expanded(child: Text(insight, style: AppTypography.bodyMedium)),
             ],
           ),
         ),

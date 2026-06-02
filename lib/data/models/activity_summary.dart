@@ -3,6 +3,7 @@ class ActivitySummary {
   final int steps;
   final int stepGoal;
   final int activityCalories;
+  final bool activityCaloriesEstimated;
   final int manualWorkoutCalories;
   final int stepStreak;
   final int activityScore;
@@ -13,6 +14,7 @@ class ActivitySummary {
     this.steps = 0,
     this.stepGoal = 10000,
     this.activityCalories = 0,
+    this.activityCaloriesEstimated = true,
     this.manualWorkoutCalories = 0,
     this.stepStreak = 0,
     this.activityScore = 0,
@@ -28,6 +30,7 @@ class ActivitySummary {
     int? steps,
     int? stepGoal,
     int? activityCalories,
+    bool? activityCaloriesEstimated,
     int? manualWorkoutCalories,
     int? stepStreak,
     int? activityScore,
@@ -38,6 +41,8 @@ class ActivitySummary {
       steps: steps ?? this.steps,
       stepGoal: stepGoal ?? this.stepGoal,
       activityCalories: activityCalories ?? this.activityCalories,
+      activityCaloriesEstimated:
+          activityCaloriesEstimated ?? this.activityCaloriesEstimated,
       manualWorkoutCalories:
           manualWorkoutCalories ?? this.manualWorkoutCalories,
       stepStreak: stepStreak ?? this.stepStreak,

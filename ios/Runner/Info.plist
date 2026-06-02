@@ -74,8 +74,6 @@
 	<string>SnapCal needs access to your photo library to pick images of food for calorie counting.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>SnapCal needs access to motion sensors to track your steps and calculate active calorie burn.</string>
-	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-9095390056353710~4012783261</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

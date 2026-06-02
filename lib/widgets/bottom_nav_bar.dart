@@ -87,9 +87,7 @@ class BottomNavBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const activeColor = Color(0xFF1A3D2B);
     final inactiveColor =
-        isDark
-            ? Colors.white.withValues(alpha: 0.34)
-            : const Color(0xFFA8A29E);
+        isDark ? Colors.white.withValues(alpha: 0.34) : const Color(0xFFA8A29E);
 
     return Semantics(
       button: true,

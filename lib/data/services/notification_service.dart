@@ -8,8 +8,9 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
+  static NotificationService? customInstance;
   static final NotificationService _instance = NotificationService._internal();
-  factory NotificationService() => _instance;
+  factory NotificationService() => customInstance ?? _instance;
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -17,44 +18,57 @@ class NotificationService {
 
   static const int _dailyMotivationBaseId = 1000;
   static const int _dailyMotivationScheduleDays = 14;
+  static const String _androidNotificationIcon = 'ic_stat_notification';
   static const MethodChannel _timeZoneChannel = MethodChannel(
     'snapcal/timezone',
   );
 
   bool _timeZoneInitialized = false;
+  Future<void>? _timeZoneInitFuture;
+  Future<void>? _initFuture;
 
   Future<void> init() async {
-    await _ensureTimeZoneInitialized();
+    _initFuture ??= _initSafely();
+    return _initFuture!;
+  }
 
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+  Future<void> _initSafely() async {
+    try {
+      await _ensureTimeZoneInitialized();
 
-    const DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-        );
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings(_androidNotificationIcon);
 
-    const InitializationSettings settings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
+      const DarwinInitializationSettings initializationSettingsIOS =
+          DarwinInitializationSettings(
+            requestAlertPermission: true,
+            requestBadgePermission: true,
+            requestSoundPermission: true,
+          );
 
-    await _notificationsPlugin.initialize(
-      settings: settings,
-      onDidReceiveNotificationResponse: (details) {
-        // Handle notification tap
-      },
-    );
+      const InitializationSettings settings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsIOS,
+      );
 
-    // Request permissions for Android 13+
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      await _notificationsPlugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission();
+      await _notificationsPlugin.initialize(
+        settings: settings,
+        onDidReceiveNotificationResponse: (details) {
+          // Handle notification tap
+        },
+      );
+
+      // Request permissions for Android 13+
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await _notificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
+            ?.requestNotificationsPermission();
+      }
+    } catch (e, stack) {
+      debugPrint('⚠️ NotificationService: init failed: $e');
+      debugPrint(stack.toString());
     }
   }
 
@@ -97,6 +111,7 @@ class NotificationService {
           channelDescription: channelDescription,
           importance: Importance.max,
           priority: Priority.high,
+          icon: _androidNotificationIcon,
           color: const Color(0xFF10B981),
           ledColor: const Color(0xFF10B981),
           ledOnMs: 1000,
@@ -123,6 +138,7 @@ class NotificationService {
     required String channelDescription,
     required int hour,
     required int minute,
+    bool skipToday = false,
   }) async {
     if (messages.isEmpty) return;
 
@@ -139,7 +155,7 @@ class NotificationService {
       minute,
     );
 
-    if (firstDate.isBefore(now)) {
+    if (skipToday || firstDate.isBefore(now)) {
       firstDate = firstDate.add(const Duration(days: 1));
     }
 
@@ -166,6 +182,7 @@ class NotificationService {
             channelDescription: channelDescription,
             importance: Importance.defaultImportance,
             priority: Priority.defaultPriority,
+            icon: _androidNotificationIcon,
             color: Color(0xFF10B981),
           ),
           iOS: const DarwinNotificationDetails(
@@ -202,7 +219,12 @@ class NotificationService {
 
   Future<void> _ensureTimeZoneInitialized() async {
     if (_timeZoneInitialized) return;
+    _timeZoneInitFuture ??= _initializeTimeZone();
+    await _timeZoneInitFuture;
+  }
 
+  Future<void> _initializeTimeZone() async {
+    if (_timeZoneInitialized) return;
     tz_data.initializeTimeZones();
     final timeZoneName = await _getLocalTimeZoneName();
     final location = _resolveLocation(timeZoneName);
@@ -251,7 +273,7 @@ class NotificationService {
           channelDescription: channelDescription,
           importance: Importance.max,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: _androidNotificationIcon,
           color: const Color(0xFF10B981),
         ),
         iOS: const DarwinNotificationDetails(
@@ -278,6 +300,18 @@ class NotificationService {
   /// Cancel a specific notification
   Future<void> cancelNotification(int id) async {
     await _notificationsPlugin.cancel(id: id);
+  }
+
+  @visibleForTesting
+  Future<void> ensureTimeZoneInitializedForTesting() {
+    return _ensureTimeZoneInitialized();
+  }
+
+  @visibleForTesting
+  void resetForTesting() {
+    _timeZoneInitialized = false;
+    _timeZoneInitFuture = null;
+    _initFuture = null;
   }
 }
 

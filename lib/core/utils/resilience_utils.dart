@@ -22,7 +22,9 @@ class ResilienceUtils {
         return await operation().timeout(
           timeoutDuration,
           onTimeout: () {
-            throw TimeoutException('Request timed out after ${timeoutDuration.inSeconds}s');
+            throw TimeoutException(
+              'Request timed out after ${timeoutDuration.inSeconds}s',
+            );
           },
         );
       } on Exception catch (e) {
@@ -30,16 +32,23 @@ class ResilienceUtils {
         final shouldRetry = retryIf == null || retryIf(e);
 
         if (isLastAttempt || !shouldRetry) {
-          debugPrint('❌ ResilienceUtils: Attempts exhausted or retry denied. Error: $e');
+          debugPrint(
+            '❌ ResilienceUtils: Attempts exhausted or retry denied. Error: $e',
+          );
           rethrow;
         }
 
         // Exponential backoff delay: delay = initialDelay * 2^(attempt - 1) + random jitter
-        final delayMs = (initialDelay.inMilliseconds * pow(2, attempts - 1)).toInt();
-        final jitter = Random().nextInt(100); // 0-100ms jitter to prevent sync collisions
+        final delayMs =
+            (initialDelay.inMilliseconds * pow(2, attempts - 1)).toInt();
+        final jitter = Random().nextInt(
+          100,
+        ); // 0-100ms jitter to prevent sync collisions
         final totalDelay = Duration(milliseconds: delayMs + jitter);
 
-        debugPrint('⚠️ ResilienceUtils: Attempt $attempts failed ($e). Retrying in ${totalDelay.inMilliseconds}ms...');
+        debugPrint(
+          '⚠️ ResilienceUtils: Attempt $attempts failed ($e). Retrying in ${totalDelay.inMilliseconds}ms...',
+        );
         await Future.delayed(totalDelay);
       }
     }

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'sync_queue_service.dart';
+import 'upload_queue_service.dart';
 
 /// Enhanced Connectivity Service using connectivity_plus for stable network tracking.
 class ConnectivityService with ChangeNotifier {
@@ -68,6 +70,10 @@ class ConnectivityService with ChangeNotifier {
     if (reachable != _hasInternetAccess) {
       _hasInternetAccess = reachable;
       notifyListeners();
+    }
+    if (reachable) {
+      unawaited(SyncQueueService().flushDue());
+      unawaited(UploadQueueService().flushDue());
     }
     return hasInternetAccess;
   }

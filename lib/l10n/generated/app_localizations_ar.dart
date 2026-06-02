@@ -2295,6 +2295,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get result_portion_label => 'الحصة';
 
   @override
+  String get result_add_item => 'Add Item';
+
+  @override
+  String get result_nutrition_details => 'Nutrition Details';
+
+  @override
+  String get result_unlock_nutrition => 'Unlock nutrition details';
+
+  @override
+  String get result_add_to_log => 'Add to Log';
+
+  @override
   String get paywall_cancel_anytime => 'يمكنك الإلغاء في أي وقت. بلا التزام.';
 
   @override
@@ -2859,6 +2871,12 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get paywall_billing_monthly => 'فاتورة شهرية';
+
+  @override
+  String get paywall_billing_lifetime => 'دفع لمرة واحدة';
+
+  @override
   String get assistant_action_fix_macros => 'اضبط الماكروز اليوم';
 
   @override
@@ -3047,6 +3065,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get log_metric_calories_intake => 'السعرات المتناولة';
 
   @override
+  String get log_macro_unlock_tracking => 'Unlock macro tracking';
+
+  @override
   String get log_metric_carbs => 'الكربوهيدرات';
 
   @override
@@ -3131,4 +3152,246 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get aha_prompt_btn => 'كن برو';
+
+  @override
+  String get macro_locked_title => 'المغذيات الكبرى ميزة Pro';
+
+  @override
+  String get macro_locked_body =>
+      'افتح تفاصيل البروتين والكربوهيدرات والدهون مع SnapCal Pro.';
+
+  @override
+  String get macro_unlock_cta => 'افتح المغذيات الكبرى';
+
+  @override
+  String get macro_locked_placeholder => 'مقفل';
+
+  @override
+  String get macro_unlock_card_title => 'Unlock your macro breakdown';
+
+  @override
+  String get macro_unlock_card_body =>
+      'See protein, carbs and fat progress for every meal.';
+
+  @override
+  String get common_unlock => 'فتح';
+
+  @override
+  String get scan_choice_title => 'اختر نوع المسح';
+
+  @override
+  String get scan_choice_subtitle => 'سجل وجبة من صورة أو امسح طعاماً مغلفاً.';
+
+  @override
+  String get scan_choice_food_title => 'مسح الطعام';
+
+  @override
+  String get scan_choice_food_subtitle =>
+      'استخدم الكاميرا لتقدير التغذية فوراً بالذكاء الاصطناعي.';
+
+  @override
+  String get scan_choice_barcode_title => 'مسح الباركود';
+
+  @override
+  String get scan_choice_barcode_subtitle =>
+      'ابحث عن الطعام المغلف بواسطة الباركود.';
+
+  @override
+  String get planner_empty_headline => 'تخطيط ذكي ومخصص للوجبات لمدة 7 أيام';
+
+  @override
+  String get planner_empty_body =>
+      'يبني SnapCal وجباتك حول السعرات والماكروز والتفضيلات واحتياجات التسوق.';
+
+  @override
+  String get planner_empty_benefit_adaptive => 'إرشاد يومي تكيفي';
+
+  @override
+  String get planner_empty_benefit_macros => 'وجبات متوازنة';
+
+  @override
+  String get planner_empty_benefit_grocery => 'قائمة تسوق';
+
+  @override
+  String get planner_adjust_preferences => 'تعديل التفضيلات';
+
+  @override
+  String get planner_meals_unit => 'وجبات';
+
+  @override
+  String get planner_items_unit => 'عناصر';
+
+  @override
+  String get planner_avg_plan => 'متوسط الخطة';
+
+  @override
+  String get planner_protein_coverage => 'البروتين';
+
+  @override
+  String get planner_guidance_protein =>
+      'البروتين متأخر؛ اجعل الوجبة التالية غنية بالبروتين.';
+
+  @override
+  String get planner_guidance_light =>
+      'السعرات محدودة؛ اجعل الوجبة التالية أخف.';
+
+  @override
+  String get planner_guidance_balanced =>
+      'أنت على المسار؛ اتبع الوجبات المخططة.';
+
+  @override
+  String get planner_prep_time => 'وقت التحضير';
+
+  @override
+  String get planner_prep_quick => 'سريع';
+
+  @override
+  String get planner_prep_balanced => 'متوازن';
+
+  @override
+  String get planner_prep_batch => 'تحضير مسبق';
+
+  @override
+  String get planner_budget => 'الميزانية';
+
+  @override
+  String get planner_budget_value => 'اقتصادي';
+
+  @override
+  String get planner_budget_standard => 'قياسي';
+
+  @override
+  String get planner_budget_premium => 'فاخر';
+
+  @override
+  String get planner_advanced_preferences => 'تفضيلات متقدمة';
+
+  @override
+  String get planner_advanced_preferences_body =>
+      'الحساسيات، والأطعمة غير المرغوبة، والمعدات، والحصص، وأيام التمرين ستأتي في ترقية لاحقة.';
+
+  @override
+  String get planner_swap_title => 'استبدال الوجبة';
+
+  @override
+  String get planner_swap_intent => 'اختر الهدف';
+
+  @override
+  String get planner_swap_lower_calorie => 'سعرات أقل';
+
+  @override
+  String get planner_swap_higher_protein => 'بروتين أعلى';
+
+  @override
+  String get planner_swap_faster_prep => 'تحضير أسرع';
+
+  @override
+  String get planner_swap_cheaper => 'أقل تكلفة';
+
+  @override
+  String get planner_swap_custom_note => 'إضافة ملاحظة اختيارية';
+
+  @override
+  String get planner_swap_note_hint => 'مثلاً دجاج، سلطة، مكرونة...';
+
+  @override
+  String get planner_swap_generate => 'إنشاء بديل';
+
+  @override
+  String get planner_swap_with_note => 'استبدال مع ملاحظة';
+
+  @override
+  String get planner_swap_loading => 'جارٍ البحث عن وجبة بديلة...';
+
+  @override
+  String get planner_swap_success => 'تم استبدال الوجبة ببديل عملي.';
+
+  @override
+  String get planner_grocery_ready => 'قائمة المتوفر لديك';
+
+  @override
+  String get planner_already_have => 'متوفر لديك';
+
+  @override
+  String get planner_rebalance_notice_light =>
+      'تمت موازنة الخطة: الوجبات المتبقية أخف لهذا اليوم.';
+
+  @override
+  String get planner_rebalance_notice_protein =>
+      'تمت موازنة الخطة: الوجبات المتبقية تركز على البروتين.';
+
+  @override
+  String get planner_today_plan => 'خطة اليوم';
+
+  @override
+  String get planner_today_meals => 'وجبات اليوم';
+
+  @override
+  String get planner_planned_unit => 'مخططة';
+
+  @override
+  String get planner_planned_for_today => 'مخطط لليوم';
+
+  @override
+  String get planner_logged => 'تم التسجيل';
+
+  @override
+  String get planner_upcoming => 'قادمة';
+
+  @override
+  String get planner_alert_next_protein => 'اجعل الوجبة التالية غنية بالبروتين';
+
+  @override
+  String get planner_alert_on_track => 'الخطة على المسار';
+
+  @override
+  String get planner_alert_follow_plan => 'اتبع الوجبة المخططة التالية';
+
+  @override
+  String get planner_alert_fix_it => 'تعديل';
+
+  @override
+  String get planner_week_complete_title => 'اكتملت خطة الوجبات هذه';
+
+  @override
+  String get planner_generate_current_week => 'إنشاء خطة هذا الأسبوع';
+
+  @override
+  String get settings_milliliters_unit => 'مل';
+
+  @override
+  String get log_customize_metrics_desc =>
+      'اختر المقاييس التي تظهر في لوحة التحكم';
+
+  @override
+  String get log_metric_full_history_locked => 'السجل الكامل مقفل';
+
+  @override
+  String get log_metric_full_history_upgrade =>
+      'اشترك في Pro لعرض السجل لأكثر من 14 يومًا';
+
+  @override
+  String planner_swap_replacing(Object food) {
+    return 'استبدال: $food';
+  }
+
+  @override
+  String planner_rebalance_notice_adjusted(Object count) {
+    return 'تمت موازنة الخطة: تم تعديل $count من الوجبات المتبقية لهذا اليوم.';
+  }
+
+  @override
+  String planner_alert_protein_short(Object grams) {
+    return 'ينقصك $gramsغ بروتين اليوم';
+  }
+
+  @override
+  String planner_week_complete_body(Object date) {
+    return 'انتهت خطتك السابقة في $date. أنشئ خطة جديدة للأسبوع الحالي.';
+  }
+
+  @override
+  String log_metric_goal_value(Object value) {
+    return 'هدف $value';
+  }
 }

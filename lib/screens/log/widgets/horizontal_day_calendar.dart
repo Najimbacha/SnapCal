@@ -2,8 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 
 class DailySummary {
@@ -73,7 +74,7 @@ class HorizontalDayCalendar extends StatefulWidget {
 }
 
 class _HorizontalDayCalendarState extends State<HorizontalDayCalendar> {
-  static const double _cellWidth = 58;
+  static const double _cellWidth = 50;
   late final ScrollController _controller;
 
   @override
@@ -116,14 +117,14 @@ class _HorizontalDayCalendarState extends State<HorizontalDayCalendar> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 88,
+      height: 56,
       child: ListView.separated(
         controller: _controller,
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         itemCount: widget.dailySummaries.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 2),
         itemBuilder: (context, index) {
           final summary = widget.dailySummaries[index];
           final locked = widget.isDateLocked?.call(summary.dateString) ?? false;
@@ -162,129 +163,51 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final statusColor = _statusColor;
     final date = DateTime.parse(summary.dateString);
     final today = _isToday(date);
-    final dotAlpha = selected ? 1.0 : 0.72;
+    final l10n = AppLocalizations.of(context)!;
+    final dayLabel = today ? l10n.common_today : DateFormat.E(l10n.localeName).format(date);
 
     return Semantics(
       button: true,
       selected: selected,
-      label: today ? 'Today' : '${_weekdayLabel(date)}, ${date.day}',
+      label: today ? l10n.common_today : DateFormat.yMMMMEEEEd(l10n.localeName).format(date),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          width: 58,
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 7),
+          duration: const Duration(milliseconds: 200),
+          width: 50,
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color:
-                selected
-                    ? AppColors.primary.withValues(alpha: 0.11)
-                    : colorScheme.surfaceContainerHighest.withValues(
-                      alpha:
-                          Theme.of(context).brightness == Brightness.dark
-                              ? 0.14
-                              : 0.34,
-                    ),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color:
-                  selected
-                      ? AppColors.primary
-                      : colorScheme.outlineVariant.withValues(alpha: 0.18),
-              width: selected ? 1.4 : 1,
-            ),
+            color: selected
+                ? colorScheme.primary.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      today ? 'Today' : _weekdayLabel(date),
-                      style: AppTypography.labelSmall.copyWith(
-                        color:
-                            selected
-                                ? AppColors.primary
-                                : colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w900,
-                        fontSize: today ? 9 : 10,
-                        letterSpacing: 0,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (locked) ...[
-                    const SizedBox(width: 2),
-                    Icon(
-                      Icons.lock_rounded,
-                      size: 9,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                ],
-              ),
-              SizedBox(
-                width: 32,
-                height: 32,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CircularProgressIndicator(
-                      value:
-                          summary.hasData
-                              ? summary.calorieProgress.clamp(0.0, 1.0)
-                              : 0,
-                      strokeWidth: 3.0,
-                      backgroundColor: colorScheme.outlineVariant.withValues(
-                        alpha: 0.16,
-                      ),
-                      color: statusColor,
-                      strokeCap: StrokeCap.round,
-                    ),
-                    Center(
-                      child: Text(
-                        '${date.day}',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                    ),
-                  ],
+              Text(
+                dayLabel,
+                style: AppTypography.labelSmall.copyWith(
+                  color: selected
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 9,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _TinyIndicator(
-                    color: AppColors.protein,
-                    active: summary.proteinProgress >= 0.75,
-                    alpha: dotAlpha,
-                  ),
-                  _TinyIndicator(
-                    color: AppColors.carbs,
-                    active: summary.carbProgress >= 0.5,
-                    alpha: dotAlpha,
-                  ),
-                  _TinyIndicator(
-                    color: AppColors.sky,
-                    active: summary.waterProgress >= 1.0,
-                    alpha: dotAlpha,
-                  ),
-                  _TinyIndicator(
-                    color: AppColors.primary,
-                    active: summary.stepProgress >= 1.0,
-                    alpha: dotAlpha,
-                  ),
-                ],
+              const SizedBox(height: 4),
+              Text(
+                '${date.day}',
+                style: AppTypography.titleSmall.copyWith(
+                  color: selected ? colorScheme.primary : colorScheme.onSurface,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  fontSize: 15,
+                ),
               ),
             ],
           ),
@@ -293,48 +216,10 @@ class _DayCell extends StatelessWidget {
     );
   }
 
-  Color get _statusColor {
-    if (!summary.hasData) return AppColors.lightTextSecondary;
-    final ratio = summary.calorieProgress;
-    if (ratio >= 0.75 && ratio <= 1.08) return AppColors.primary;
-    if (ratio <= 1.18) return AppColors.amber;
-    return AppColors.error;
-  }
-
   bool _isToday(DateTime date) {
     final now = DateTime.now();
     return date.year == now.year &&
         date.month == now.month &&
         date.day == now.day;
-  }
-
-  String _weekdayLabel(DateTime date) {
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return labels[date.weekday - 1];
-  }
-}
-
-class _TinyIndicator extends StatelessWidget {
-  final Color color;
-  final bool active;
-  final double alpha;
-
-  const _TinyIndicator({
-    required this.color,
-    required this.active,
-    required this.alpha,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 4,
-      height: 4,
-      margin: const EdgeInsets.symmetric(horizontal: 1.5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: active ? alpha : 0.16),
-        shape: BoxShape.circle,
-      ),
-    );
   }
 }

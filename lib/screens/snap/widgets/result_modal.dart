@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -9,8 +7,6 @@ import '../../../providers/settings_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
-import '../../../core/utils/date_utils.dart' as app_date;
-import '../../../data/models/meal.dart';
 import '../../../data/services/premium_conversion_service.dart';
 import '../../../data/services/gemini_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -49,8 +45,6 @@ class _ResultModalState extends State<ResultModal> {
   late final TextEditingController _mealTitleController;
   late List<_ReviewFoodItem> _items;
   bool _isSaving = false;
-  bool _localizedDefaultTitleApplied = false;
-  Future<String>? _mealInsightFuture;
 
   int get _totalCalories => _items.fold(0, (sum, item) => sum + item.calories);
   int get _totalProtein => _items.fold(0, (sum, item) => sum + item.protein);
@@ -74,7 +68,7 @@ class _ResultModalState extends State<ResultModal> {
     }
 
     _mealTitleController = TextEditingController(
-      text: _items.length == 1 ? _items.first.name : 'Feast',
+      text: 'Meal Review',
     );
   }
 
@@ -83,48 +77,13 @@ class _ResultModalState extends State<ResultModal> {
     super.didChangeDependencies();
     final l10n = AppLocalizations.of(context);
     if (l10n != null) {
-      if (!_localizedDefaultTitleApplied &&
-          _items.length != 1 &&
-          _mealTitleController.text == 'Feast') {
-        _mealTitleController.text = l10n.result_feast;
-        _localizedDefaultTitleApplied = true;
-      }
       if (_items.length == 1 && _items.first.name == 'Food') {
         _items = [_items.first.copyWith(name: l10n.result_food)];
         if (_mealTitleController.text == 'Food') {
-          _mealTitleController.text = l10n.result_food;
+          _mealTitleController.text = 'Meal Review';
         }
       }
     }
-
-    final settings = context.read<SettingsProvider>();
-    if (settings.isPro && _mealInsightFuture == null) {
-      _mealInsightFuture = AIService().generateMealInsight(
-        meal: _buildInsightMeal(),
-        settings: settings.settings,
-        languageCode: settings.languageCode,
-      );
-    }
-  }
-
-  Meal _buildInsightMeal() {
-    final name =
-        _mealTitleController.text.trim().isEmpty
-            ? _items.first.name
-            : _mealTitleController.text.trim();
-    return Meal(
-      id: 'preview',
-      timestamp: DateTime.now().millisecondsSinceEpoch,
-      dateString: app_date.DateUtils.getTodayString(),
-      foodName: name,
-      calories: _totalCalories,
-      macros: Macros(
-        protein: _totalProtein,
-        carbs: _totalCarbs,
-        fat: _totalFat,
-      ),
-      portion: _items.map((item) => item.portion).join(', '),
-    );
   }
 
   @override
@@ -171,36 +130,21 @@ class _ResultModalState extends State<ResultModal> {
   }
 
   void _dismissForSave() {
-    final navigator = Navigator.of(context, rootNavigator: true);
-    if (navigator.canPop()) {
-      navigator.pop();
+    if (context.mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
     }
   }
 
-  Future<void> _editMealTitle() async {
-    final controller = TextEditingController(text: _mealTitleController.text);
-    final value = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => _TextEditSheet(
-            title: AppLocalizations.of(context)!.result_meal_name,
-            controller: controller,
-            hintText: AppLocalizations.of(context)!.result_feast,
-          ),
-    );
-    if (value == null || value.trim().isEmpty) return;
-    setState(() => _mealTitleController.text = value.trim());
-  }
-
   Future<void> _editItem(int index) async {
-    debugPrint('_editItem called for index $index');
     final edited = await showModalBottomSheet<_ReviewFoodItem>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _FoodEditSheet(item: _items[index]),
+      builder:
+          (context) => _FoodEditSheet(
+            item: _items[index],
+            isPro: context.read<SettingsProvider>().isPro,
+          ),
     );
     if (edited == null) return;
     setState(() => _items[index] = edited);
@@ -211,7 +155,11 @@ class _ResultModalState extends State<ResultModal> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _FoodEditSheet(item: _ReviewFoodItem.empty()),
+      builder:
+          (context) => _FoodEditSheet(
+            item: _ReviewFoodItem.empty(),
+            isPro: context.read<SettingsProvider>().isPro,
+          ),
     );
     if (added == null) return;
     setState(() => _items.add(added));
@@ -220,11 +168,11 @@ class _ResultModalState extends State<ResultModal> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final height = media.size.height * 0.94;
-    final sheetTop = height * 0.25;
+    const photoHeight = 180.0;
+    final sheetTop = photoHeight - 18.0;
 
     return SizedBox(
-      height: height,
+      height: media.size.height,
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         child: Material(
@@ -235,8 +183,8 @@ class _ResultModalState extends State<ResultModal> {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: sheetTop + 42,
-                child: _PhotoHeader(
+                height: photoHeight,
+                child: _PhotoPreview(
                   imageBytes: widget.imageBytes,
                   onBack: () {
                     Navigator.pop(context);
@@ -249,21 +197,7 @@ class _ResultModalState extends State<ResultModal> {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                child: _ReviewSheet(
-                  mealTitleController: _mealTitleController,
-                  totalCalories: _totalCalories,
-                  totalCarbs: _totalCarbs,
-                  totalProtein: _totalProtein,
-                  totalFat: _totalFat,
-                  items: _items,
-                  mealInsightFuture: _mealInsightFuture,
-                  onEditTitle: _editMealTitle,
-                  onEditItem: _editItem,
-                  onAddFood: _addManualFood,
-                  bottomPadding: media.padding.bottom,
-                  onSave: _save,
-                  isSaving: _isSaving,
-                ),
+                child: _buildReviewSheet(media.padding.bottom),
               ),
             ],
           ),
@@ -271,13 +205,543 @@ class _ResultModalState extends State<ResultModal> {
       ),
     );
   }
+
+  Widget _buildReviewSheet(double bottomPadding) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPro = context.read<SettingsProvider>().isPro;
+    final sheetBg =
+        isDark ? const Color(0xFF14130F) : const Color(0xFFFAFAF8);
+    final textPrimary =
+        isDark ? Colors.white : const Color(0xFF1C1917);
+    final textSecondary =
+        isDark ? Colors.white38 : const Color(0xFFB4AFA8);
+    final textMuted =
+        isDark ? Colors.white54 : const Color(0xFFA8A29E);
+    final dividerColor =
+        isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.06);
+
+    Color foodColor(int index) {
+      const colors = [
+        Color(0xFFE8644A), Color(0xFFF0A03C),
+        Color(0xFF7C9A6D), Color(0xFF4F8CC9),
+        Color(0xFFD18B47), Color(0xFFA855F7),
+      ];
+      return colors[index % colors.length];
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: sheetBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 4),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: textSecondary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
+              physics: const BouncingScrollPhysics(),
+              children: [
+                // Title + calorie counter row
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Meal Review',
+                            style: AppTypography.titleMedium.copyWith(
+                              color: textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 22,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Estimated from photo',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: textSecondary,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              '$_totalCalories',
+                              style: AppTypography.headlineSmall.copyWith(
+                                color: textPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 32,
+                                height: 1.0,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'kcal',
+                              style: AppTypography.titleMedium.copyWith(
+                                color: textMuted,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_items.length} ${_items.length == 1 ? 'item' : 'items'}',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: textSecondary,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Accent bar
+                Container(
+                  height: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Macro preview card
+                GestureDetector(
+                  onTap: isPro
+                      ? null
+                      : () => PremiumConversionService().openPaywall(
+                        context,
+                        PaywallEntryPoint.macroDetails,
+                        featureName: 'result_macros',
+                      ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.04)
+                          : Theme.of(context).colorScheme.primary.withValues(alpha: isPro ? 0.06 : 0.04),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              _macroMini('Protein', _totalProtein, const Color(0xFF7C9A6D), isDark, showValue: isPro),
+                              const SizedBox(width: 4),
+                              _macroMini('Carbs', _totalCarbs, const Color(0xFF4F8CC9), isDark, showValue: isPro),
+                              const SizedBox(width: 4),
+                              _macroMini('Fat', _totalFat, const Color(0xFFD18B47), isDark, showValue: isPro),
+                            ],
+                          ),
+                        ),
+                        if (!isPro) ...[
+                          const SizedBox(width: 8),
+                          Icon(
+                            LucideIcons.chevronRight,
+                            size: 16,
+                            color: isDark ? Colors.white24 : const Color(0xFFD6D3D1),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Food items header
+                Row(
+                  children: [
+                    Text(
+                      'Detected foods',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${_items.length}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Food items list
+                ...List.generate(_items.length, (index) {
+                  final item = _items[index];
+                  final isLast = index == _items.length - 1;
+                  final dotColor = foodColor(index);
+                  return GestureDetector(
+                    onTap: () => _editItem(index),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: isLast
+                              ? BorderSide.none
+                              : BorderSide(color: dividerColor, width: 1),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: dotColor.withValues(alpha: 0.7),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: AppTypography.titleSmall.copyWith(
+                                    color: textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item.portion,
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${item.calories}',
+                            style: AppTypography.titleSmall.copyWith(
+                              color: textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            'kcal',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: textSecondary,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 24,
+                            height: 24,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : Colors.black.withValues(alpha: 0.03),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(
+                              LucideIcons.chevronRight,
+                              size: 14,
+                              color: isDark ? Colors.white38 : const Color(0xFFD6D3D1),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 4),
+
+                // Add Item button
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: GestureDetector(
+                    onTap: _addManualFood,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            LucideIcons.plus,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          l10n.result_add_item,
+                          style: AppTypography.titleSmall.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (!isPro) ...[
+                  const SizedBox(height: 24),
+
+                  // Nutrition Details (locked)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.03)
+                          : Colors.black.withValues(alpha: 0.02),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.05),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              l10n.result_nutrition_details,
+                              style: AppTypography.labelSmall.copyWith(
+                                color: textMuted,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                gradient: AppColors.premiumGradient,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'PRO',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 7.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(child: _macroLockColumn(l10n.result_protein, isDark)),
+                            Expanded(child: _macroLockColumn(l10n.result_carbs, isDark)),
+                            Expanded(child: _macroLockColumn(l10n.result_fat, isDark)),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        GestureDetector(
+                          onTap: () => PremiumConversionService().openPaywall(
+                            context,
+                            PaywallEntryPoint.macroDetails,
+                            featureName: 'result_nutrition',
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                l10n.result_unlock_nutrition,
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Icon(
+                                LucideIcons.chevronRight,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Bottom save button
+          Container(
+            padding: EdgeInsets.fromLTRB(22, 8, 22, bottomPadding + 12),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: dividerColor,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D6A4F),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                  shadowColor: const Color(0xFF2D6A4F).withValues(alpha: 0.3),
+                ),
+                child:
+                    _isSaving
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(LucideIcons.plus, size: 18, color: Colors.white.withValues(alpha: 0.9)),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${l10n.result_add_to_log} · $_totalCalories kcal',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _macroLockColumn(String label, bool isDark) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+            fontWeight: FontWeight.w500,
+            fontSize: 10,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Icon(
+          LucideIcons.lock,
+          size: 12,
+          color: isDark ? Colors.white24 : const Color(0xFFD6D3D1),
+        ),
+      ],
+    );
+  }
 }
 
-class _PhotoHeader extends StatelessWidget {
+// ── Photo preview ──────────────────────────────────────────────────────────
+
+class _PhotoPreview extends StatelessWidget {
   final Uint8List? imageBytes;
   final VoidCallback onBack;
 
-  const _PhotoHeader({required this.imageBytes, required this.onBack});
+  const _PhotoPreview({required this.imageBytes, required this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -300,815 +764,120 @@ class _PhotoHeader extends StatelessWidget {
               ),
             ),
           ),
+        // Gradient overlay
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withValues(alpha: 0.28),
+                Colors.black.withValues(alpha: 0.30),
                 Colors.transparent,
-                Colors.black.withValues(alpha: 0.10),
+                Colors.black.withValues(alpha: 0.18),
+                Colors.black.withValues(alpha: 0.06),
               ],
+            ),
+          ),
+        ),
+        // Bottom fade for smooth sheet transition
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 24,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.04),
+                ],
+              ),
             ),
           ),
         ),
         SafeArea(
           bottom: false,
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: _HeaderIconButton(
-                icon: LucideIcons.chevronLeft,
-                onTap: onBack,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeaderIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _HeaderIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: 0.18),
-        ),
-        child: Icon(icon, color: Colors.white, size: 26),
-      ),
-    );
-  }
-}
-
-class _ReviewSheet extends StatelessWidget {
-  final TextEditingController mealTitleController;
-  final int totalCalories;
-  final int totalCarbs;
-  final int totalProtein;
-  final int totalFat;
-  final List<_ReviewFoodItem> items;
-  final Future<String>? mealInsightFuture;
-  final VoidCallback onEditTitle;
-  final ValueChanged<int> onEditItem;
-  final VoidCallback onAddFood;
-  final double bottomPadding;
-  final VoidCallback onSave;
-  final bool isSaving;
-
-  const _ReviewSheet({
-    required this.mealTitleController,
-    required this.totalCalories,
-    required this.totalCarbs,
-    required this.totalProtein,
-    required this.totalFat,
-    required this.items,
-    required this.mealInsightFuture,
-    required this.onEditTitle,
-    required this.onEditItem,
-    required this.onAddFood,
-    required this.bottomPadding,
-    required this.onSave,
-    required this.isSaving,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
-    final colorScheme = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkBackground : const Color(0xFFFDFDFD),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      child: Stack(
-        children: [
-          if (!isDark)
-            const Positioned(top: 0, left: 0, right: 0, child: _ZigZagEdge()),
-          Column(
+          child: Row(
             children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(26, 14, 26, 22),
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                mealTitleController.text.trim().isEmpty
-                                    ? 'FEAST'
-                                    : mealTitleController.text
-                                        .trim()
-                                        .toUpperCase(),
-                                style: AppTypography.headlineSmall.copyWith(
-                                  color: colorScheme.onSurface,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        InkWell(
-                          onTap: onEditTitle,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(
-                              LucideIcons.edit3,
-                              color: colorScheme.onSurfaceVariant,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    const _ReceiptDivider(),
-                    const SizedBox(height: 12),
-                    _MacroBillSummary(
-                      calories: totalCalories,
-                      carbs: totalCarbs,
-                      protein: totalProtein,
-                      fat: totalFat,
-                    ),
-                    if (settings.isPro && mealInsightFuture != null) ...[
-                      const SizedBox(height: 12),
-                      _AiMealInsightCard(insight: mealInsightFuture!),
-                    ] else if (!settings.isPro) ...[
-                      const SizedBox(height: 12),
-                      _PremiumInsightStrip(
-                        onTap:
-                            () => PremiumConversionService().openPaywall(
-                              context,
-                              PaywallEntryPoint.mealInsight,
-                              featureName: 'meal_result',
-                            ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    const _ReceiptDivider(),
-                    const SizedBox(height: 10),
-                    // Perforated Divider
-                    const _ReceiptDivider(),
-                    const SizedBox(height: 12),
-
-                    ...List.generate(items.length, (index) {
-                      final item = items[index];
-                      return _FoodReviewRow(
-                        item: item,
-                        onTap: () => onEditItem(index),
-                      );
-                    }),
-
-                    const SizedBox(height: 8),
-                    const _ReceiptDivider(),
-                    const SizedBox(height: 18),
-                    _MoreFoodButton(onTap: onAddFood),
-                  ],
-                ),
-              ),
               Padding(
-                padding: EdgeInsets.fromLTRB(26, 8, 26, bottomPadding + 12),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 58,
-                      child: FilledButton(
-                        onPressed: isSaving ? null : onSave,
-                        style: FilledButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient: AppColors.premiumGradient,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Container(
-                            alignment: Alignment.center,
-                            child:
-                                isSaving
-                                    ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.4,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                    : Text(
-                                      l10n?.snap_log_meal ?? 'Log this meal',
-                                      style: AppTypography.titleMedium.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 0,
-                                      ),
-                                    ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ),
-            ], // End of Column children
-          ), // End of Column
-        ], // End of Stack children
-      ), // End of Stack
-    ); // End of Container
-  }
-}
-
-class _FoodReviewRow extends StatelessWidget {
-  final _ReviewFoodItem item;
-  final VoidCallback onTap;
-
-  const _FoodReviewRow({required this.item, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  item.name.toUpperCase(),
-                  style: AppTypography.titleSmall.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: _DottedLeader(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${item.calories}',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'monospace', // Gives it that receipt feel
-                  ),
-                ),
-                Text(
-                  ' KCAL',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              item.portion.toLowerCase(),
-              style: AppTypography.labelSmall.copyWith(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                fontWeight: FontWeight.w700,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PremiumInsightStrip extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _PremiumInsightStrip({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-            decoration: BoxDecoration(
-              color: (isDark ? Colors.white : AppColors.primary).withValues(
-                alpha: isDark ? 0.055 : 0.045,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.primary.withValues(
-                  alpha: isDark ? 0.24 : 0.18,
-                ),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    gradient: AppColors.premiumGradient,
-                    borderRadius: BorderRadius.circular(11),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.18),
-                        blurRadius: 12,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
+                    shape: BoxShape.circle,
+                    color: Colors.black.withValues(alpha: 0.22),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      width: 1,
+                    ),
                   ),
-                  child: const Icon(
-                    LucideIcons.sparkles,
-                    color: Colors.white,
-                    size: 17,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.result_ai_meal_insight,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.labelMedium.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        AppLocalizations.of(context)!.result_ai_meal_body,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.74,
-                          ),
-                          fontSize: 11,
-                          height: 1.1,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                  child: InkWell(
+                    onTap: onBack,
+                    customBorder: const CircleBorder(),
+                    child: const Icon(
+                      LucideIcons.chevronLeft,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Container(
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
+                    horizontal: 14,
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
+                    color: Colors.black.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.20),
+                      color: Colors.white.withValues(alpha: 0.12),
+                      width: 1,
                     ),
                   ),
-                  child: Text(
-                    'PRO',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
-                      fontSize: 10,
-                    ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.camera,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Retake',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AiMealInsightCard extends StatelessWidget {
-  final Future<String> insight;
-
-  const _AiMealInsightCard({required this.insight});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return FutureBuilder<String>(
-      future: insight,
-      builder: (context, snapshot) {
-        final text =
-            snapshot.connectionState == ConnectionState.done
-                ? snapshot.data ??
-                    AppLocalizations.of(context)!.result_ai_meal_body
-                : AppLocalizations.of(context)!.feature_insights_generating;
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.18),
-            ),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                LucideIcons.sparkles,
-                color: AppColors.primary,
-                size: 18,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.result_ai_meal_insight,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      text,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.25,
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-}
-
-class _DottedLeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final boxWidth = constraints.constrainWidth();
-        const dashWidth = 2.0;
-        const dashSpace = 4.0;
-        final dashCount = (boxWidth / (dashWidth + dashSpace)).floor();
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(dashCount, (_) {
-            return SizedBox(
-              width: dashWidth,
-              height: 1,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                ),
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-}
-
-class _ReceiptDivider extends StatelessWidget {
-  const _ReceiptDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(
-        40,
-        (index) => Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            height: 1.5,
-            decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.outlineVariant.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MoreFoodButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _MoreFoodButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        height: 54,
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-            style: BorderStyle.solid,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(LucideIcons.plus, color: colorScheme.primary, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              AppLocalizations.of(context)!.result_add_new_item,
-              style: AppTypography.labelLarge.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MacroBillSummary extends StatelessWidget {
-  final int calories, carbs, protein, fat;
-  const _MacroBillSummary({
-    required this.calories,
-    required this.carbs,
-    required this.protein,
-    required this.fat,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Column(
-      children: [
-        _SummaryLine(
-          label: l10n.result_total_calories,
-          value: '$calories',
-          unit: 'KCAL',
-          color: AppColors.primary,
-          isHero: true,
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: _SummaryLine(
-                label: l10n.result_carbs,
-                value: '${carbs}g',
-                color: AppColors.carbs,
-                icon: LucideIcons.wheat,
-                small: true,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _SummaryLine(
-                label: l10n.result_protein,
-                value: '${protein}g',
-                color: AppColors.protein,
-                icon: LucideIcons.beef,
-                small: true,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _SummaryLine(
-                label: l10n.result_fat,
-                value: '${fat}g',
-                color: AppColors.fat,
-                icon: LucideIcons.droplets,
-                small: true,
-              ),
-            ),
-          ],
         ),
       ],
     );
   }
 }
 
-class _SummaryLine extends StatelessWidget {
-  final String label, value;
-  final String? unit;
-  final Color color;
-  final bool small;
-  final bool isHero;
-  final IconData? icon;
-
-  const _SummaryLine({
-    required this.label,
-    required this.value,
-    this.unit,
-    required this.color,
-    this.small = false,
-    this.isHero = false,
-    this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (isHero) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: isDark ? 0.12 : 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.15), width: 1.2),
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: AppTypography.labelSmall.copyWith(
-                fontWeight: FontWeight.w900,
-                color: color,
-                letterSpacing: 1.2,
-                fontSize: 9,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  value,
-                  style: AppTypography.displaySmall.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'monospace',
-                    fontSize: 28,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  unit ?? '',
-                  style: AppTypography.titleSmall.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDark ? 0.1 : 0.05),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.1), width: 1),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: AppTypography.titleSmall.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w900,
-              fontFamily: 'monospace',
-            ),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: color.withValues(alpha: 0.8),
-              fontWeight: FontWeight.w900,
-              fontSize: 8,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ZigZagEdge extends StatelessWidget {
-  const _ZigZagEdge();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 8,
-      child: Row(
-        children: List.generate(
-          20,
-          (index) => Expanded(child: CustomPaint(painter: _TrianglePainter())),
-        ),
-      ),
-    );
-  }
-}
-
-class _TrianglePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = const Color(0xFFFDFDFD)
-          ..style = PaintingStyle.fill;
-    final path =
-        Path()
-          ..moveTo(0, size.height)
-          ..lineTo(size.width / 2, 0)
-          ..lineTo(size.width, size.height)
-          ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
+// ── Food edit sheet ────────────────────────────────────────────────────────
 
 class _FoodEditSheet extends StatefulWidget {
   final _ReviewFoodItem item;
+  final bool isPro;
 
-  const _FoodEditSheet({required this.item});
+  const _FoodEditSheet({required this.item, required this.isPro});
 
   @override
   State<_FoodEditSheet> createState() => _FoodEditSheetState();
@@ -1131,10 +900,31 @@ class _FoodEditSheetState extends State<_FoodEditSheet> {
     _protein = TextEditingController(text: widget.item.protein.toString());
     _carbs = TextEditingController(text: widget.item.carbs.toString());
     _fat = TextEditingController(text: widget.item.fat.toString());
+    _portion.addListener(_onPortionChanged);
+  }
+
+  double _parsePortionValue(String text) {
+    final match = RegExp(r'^([\d.]+)').firstMatch(text.trim());
+    if (match == null) return 0;
+    return double.tryParse(match.group(1)!) ?? 0;
+  }
+
+  void _onPortionChanged() {
+    final baseValue = _parsePortionValue(widget.item.portion);
+    final newValue = _parsePortionValue(_portion.text);
+    if (newValue <= 0 || baseValue <= 0) return;
+    final multiplier = newValue / baseValue;
+    if ((multiplier - 1.0).abs() < 0.01) return;
+
+    _calories.text = (widget.item.calories * multiplier).round().toString();
+    _protein.text = (widget.item.protein * multiplier).round().toString();
+    _carbs.text = (widget.item.carbs * multiplier).round().toString();
+    _fat.text = (widget.item.fat * multiplier).round().toString();
   }
 
   @override
   void dispose() {
+    _portion.removeListener(_onPortionChanged);
     _name.dispose();
     _portion.dispose();
     _calories.dispose();
@@ -1166,127 +956,293 @@ class _FoodEditSheetState extends State<_FoodEditSheet> {
     return _EditSheetFrame(
       title: l10n.result_food_details,
       bottom: bottom,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _EditField(label: l10n.result_food, controller: _name),
-          _EditField(label: l10n.result_portion_label, controller: _portion),
-          Row(
-            children: [
-              Expanded(
-                child: _EditField(
-                  label: l10n.result_calories,
-                  controller: _calories,
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _EditField(
-                  label: l10n.result_carbs,
-                  controller: _carbs,
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: _EditField(
-                  label: l10n.result_protein,
-                  controller: _protein,
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _EditField(
-                  label: l10n.result_fat,
-                  controller: _fat,
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: FilledButton(
-              onPressed: _submit,
-              style: FilledButton.styleFrom(
-                padding: EdgeInsets.zero,
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: AppColors.premiumGradient,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Container(
-                  alignment: Alignment.center,
-                  child: Text(
-                    l10n.common_done,
-                    style: AppTypography.titleMedium.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _EditField(label: l10n.result_food, controller: _name),
+            _PortionSelector(
+              controller: _portion,
+              label: l10n.result_portion_label,
+            ),
+            _EditField(
+              label: l10n.result_calories,
+              controller: _calories,
+              keyboardType: TextInputType.number,
+            ),
+            if (widget.isPro) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: _EditField(
+                      label: l10n.result_carbs,
+                      controller: _carbs,
+                      keyboardType: TextInputType.number,
                     ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _EditField(
+                      label: l10n.result_protein,
+                      controller: _protein,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              _EditField(
+                label: l10n.result_fat,
+                controller: _fat,
+                keyboardType: TextInputType.number,
+              ),
+            ] else
+              _LockedMacroEditPrompt(
+                onTap:
+                    () => PremiumConversionService().openPaywall(
+                      context,
+                      PaywallEntryPoint.macroDetails,
+                      featureName: 'result_edit_macros',
+                    ),
+              ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: FilledButton(
+                onPressed: _submit,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D6A4F),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  l10n.common_done,
+                  style: AppTypography.titleMedium.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TextEditSheet extends StatelessWidget {
-  final String title;
-  final TextEditingController controller;
-  final String hintText;
+// ── Portion selector ───────────────────────────────────────────────────────
 
-  const _TextEditSheet({
-    required this.title,
+class _PortionSelector extends StatefulWidget {
+  final TextEditingController controller;
+  final String label;
+
+  const _PortionSelector({
     required this.controller,
-    required this.hintText,
+    required this.label,
   });
 
   @override
+  State<_PortionSelector> createState() => _PortionSelectorState();
+}
+
+class _PortionSelectorState extends State<_PortionSelector> {
+  final _portions = ['1 cup', '1 serving', '100g', '1 piece'];
+  String? _selected;
+  bool _showCustom = false;
+  late final TextEditingController _customController;
+
+  @override
+  void initState() {
+    super.initState();
+    _customController = TextEditingController();
+    final current = widget.controller.text;
+    if (_portions.contains(current)) {
+      _selected = current;
+    } else if (current.isNotEmpty && current != '100.0g') {
+      _showCustom = true;
+      _customController.text = current;
+    } else {
+      _selected = '100g';
+      widget.controller.text = '100g';
+    }
+  }
+
+  @override
+  void dispose() {
+    _customController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return _EditSheetFrame(
-      title: title,
-      bottom: bottom,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _EditField(
-            label: title,
-            controller: controller,
-            hintText: hintText,
-            autofocus: true,
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: FilledButton(
-              onPressed: () => Navigator.pop(context, controller.text),
-              child: Text(AppLocalizations.of(context)!.common_done),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              widget.label,
+              style: AppTypography.labelSmall.copyWith(
+                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
+              ),
             ),
           ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ..._portions.map(
+                (p) => ChoiceChip(
+                  label: Text(
+                    p,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight:
+                          _selected == p ? FontWeight.w600 : FontWeight.w500,
+                      color:
+                          _selected == p
+                              ? Colors.white
+                              : (isDark ? Colors.white70 : const Color(0xFF78716C)),
+                    ),
+                  ),
+                  selected: _selected == p,
+                  selectedColor: primary,
+                  backgroundColor: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.03),
+                  side: BorderSide.none,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  onSelected: (_) {
+                    setState(() {
+                      _selected = p;
+                      _showCustom = false;
+                      widget.controller.text = p;
+                    });
+                  },
+                ),
+              ),
+              if (!_showCustom)
+                ChoiceChip(
+                  label: Text(
+                    'Custom',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color:
+                          isDark ? Colors.white70 : const Color(0xFF78716C),
+                    ),
+                  ),
+                  selected: false,
+                  backgroundColor: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.03),
+                  side: BorderSide.none,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  onSelected: (_) {
+                    setState(() {
+                      _selected = null;
+                      _showCustom = true;
+                      widget.controller.text = '';
+                    });
+                  },
+                ),
+            ],
+          ),
+          if (_showCustom)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: TextField(
+                controller: _customController,
+                autofocus: true,
+                style: AppTypography.bodyLarge.copyWith(
+                  color: isDark ? Colors.white : const Color(0xFF1C1917),
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'e.g. 2 cups',
+                  filled: true,
+                  fillColor: isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.black.withValues(alpha: 0.03),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (v) => widget.controller.text = v,
+              ),
+            ),
         ],
       ),
     );
   }
 }
+
+// ── Locked macro edit prompt ────────────────────────────────────────────────
+
+class _LockedMacroEditPrompt extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _LockedMacroEditPrompt({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Row(
+          children: [
+            Icon(
+              LucideIcons.lock,
+              size: 14,
+              color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              l10n.result_unlock_nutrition,
+              style: AppTypography.labelSmall.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+            const Spacer(),
+            Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Edit sheet frame ────────────────────────────────────────────────────────
 
 class _EditSheetFrame extends StatelessWidget {
   final String title;
@@ -1301,51 +1257,44 @@ class _EditSheetFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(26, 12, 26, 26),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
-              blurRadius: 30,
-              offset: const Offset(0, -10),
-            ),
-          ],
+          color: isDark ? const Color(0xFF14130F) : const Color(0xFFFDFDFD),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SafeArea(
           top: false,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: Container(
-                  width: 38,
+                  width: 36,
                   height: 4,
+                  margin: const EdgeInsets.only(bottom: 18),
                   decoration: BoxDecoration(
-                    color: colorScheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(99),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.15)
+                        : Colors.black.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
               Text(
                 title,
-                style: AppTypography.headlineSmall.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
+                style: AppTypography.titleMedium.copyWith(
+                  color: isDark ? Colors.white : const Color(0xFF1C1917),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
                 ),
               ),
               const SizedBox(height: 18),
-              child,
+              Expanded(child: child),
             ],
           ),
         ),
@@ -1353,6 +1302,8 @@ class _EditSheetFrame extends StatelessWidget {
     );
   }
 }
+
+// ── Edit field ──────────────────────────────────────────────────────────────
 
 class _EditField extends StatelessWidget {
   final String label;
@@ -1371,7 +1322,6 @@ class _EditField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
@@ -1382,12 +1332,11 @@ class _EditField extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 6),
             child: Text(
-              label.toUpperCase(),
+              label,
               style: AppTypography.labelSmall.copyWith(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-                fontSize: 10,
+                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
               ),
             ),
           ),
@@ -1396,28 +1345,22 @@ class _EditField extends StatelessWidget {
             keyboardType: keyboardType,
             autofocus: autofocus,
             style: AppTypography.bodyLarge.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF1C1917),
+              fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
               hintText: hintText,
               filled: true,
-              fillColor: colorScheme.surfaceContainerHighest.withValues(
-                alpha: isDark ? 0.3 : 0.4,
-              ),
+              fillColor: isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.black.withValues(alpha: 0.03),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
             ),
           ),
@@ -1426,6 +1369,8 @@ class _EditField extends StatelessWidget {
     );
   }
 }
+
+// ── Review food item data model ─────────────────────────────────────────────
 
 class _ReviewFoodItem {
   final String name;
@@ -1483,4 +1428,89 @@ class _ReviewFoodItem {
       fat: 0,
     );
   }
+}
+
+// ── Macro preview helper for result screen ─────────────────────────────────
+
+Widget _macroMini(String label, int value, Color color, bool isDark, {bool showValue = false}) {
+  if (showValue) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${value}g',
+            style: AppTypography.titleSmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  return Expanded(
+    child: Column(
+      children: [
+        Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: 2,
+          margin: const EdgeInsets.only(bottom: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDark ? 0.10 : 0.15),
+            borderRadius: BorderRadius.circular(2),
+          ),
+          child: FractionallySizedBox(
+            widthFactor: (value / 100).clamp(0.0, 1.0),
+            heightFactor: 1,
+            child: Container(
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: isDark ? 0.35 : 0.40),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              LucideIcons.lock,
+              size: 10,
+              color: isDark ? Colors.white24 : const Color(0xFFD6D3D1),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              '${value}g',
+              style: AppTypography.labelSmall.copyWith(
+                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }

@@ -8,11 +8,13 @@ import '../data/services/notification_service.dart';
 import '../data/services/calorie_onboarding_service.dart';
 import '../core/state/async_ui_state.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../core/services/app_lifecycle_service.dart';
 
 /// Provider for managing user settings and subscription state
 class SettingsProvider with ChangeNotifier {
-  // Local testing override. Set to false before release builds.
-  static const bool debugForcePro = true;
+  // Pro display state is cached locally, but authorization is enforced by the
+  // backend from server-verified subscription records.
+  static const bool debugForcePro = false;
 
   final SettingsRepository _repository;
   final NotificationService _notificationService = NotificationService();
@@ -25,19 +27,27 @@ class SettingsProvider with ChangeNotifier {
   SettingsProvider(this._repository) {
     _loadInitialSettings();
     _validateStreakOnStart();
+    AppLifecycleService().addListener(_onLifecycleChanged);
   }
 
-  /// Ensure streak isn't stale when app opens
+  /// Ensure streak isn't stale when app opens.
+  /// If the last logged date is more than 1 day ago, the consecutive streak
+  /// is broken. Set to 0 so the next meal log can restart it at 1.
+  /// Do NOT alter lastLoggedDate — that reflects the actual last logged day.
   void _validateStreakOnStart() {
     final today = app_date.DateUtils.getTodayString();
     final yesterday = app_date.DateUtils.getPreviousDay(today);
     final lastLogged = _settings.lastLoggedDate;
 
     if (lastLogged != null && lastLogged != today && lastLogged != yesterday) {
-      // Streak broken due to inactivity
-      _settings = _settings.copyWith(currentStreak: 0);
-      _repository.saveSettings(_settings);
-      notifyListeners();
+      // Streak broken due to inactivity. Set the consecutive counter to 0
+      // (the chain is broken), but keep lastLoggedDate unchanged so the
+      // next meal log correctly restarts at 1 (not 0).
+      if (_settings.currentStreak > 0) {
+        _settings = _settings.copyWith(currentStreak: 0);
+        _repository.saveSettings(_settings);
+        notifyListeners();
+      }
     }
   }
 
@@ -55,23 +65,30 @@ class SettingsProvider with ChangeNotifier {
       notifyListeners();
     });
     _syncNotifications();
+    updateLastOpenedDate();
   }
 
   @override
   void dispose() {
+    AppLifecycleService().removeListener(_onLifecycleChanged);
     _settingsSubscription?.cancel();
     super.dispose();
+  }
+
+  void _onLifecycleChanged() {
+    if (AppLifecycleService().isResumed) {
+      updateLastOpenedDate();
+    }
   }
 
   // Getters
   SettingsRepository get repository =>
       _repository; // Expose for mock subscription service
-  UserSettings get settings =>
-      debugForcePro ? _settings.copyWith(isPro: true) : _settings;
+  UserSettings get settings => _settings;
   bool get isLoading => _uiState.isBlocking;
   bool get isRefreshing => _uiState.isRefreshing;
   AsyncUiState get uiState => _uiState;
-  bool get isPro => debugForcePro || _settings.isPro;
+  bool get isPro => _settings.isPro;
   int get currentStreak => _settings.currentStreak;
 
   int get dailyCalorieGoal => _settings.dailyCalorieGoal;
@@ -110,6 +127,9 @@ class SettingsProvider with ChangeNotifier {
   String get lunchTime => _settings.lunchTime;
   String get dinnerTime => _settings.dinnerTime;
   String get languageCode => _settings.languageCode ?? 'en';
+  String? get lastOpenedDate => _settings.lastOpenedDate;
+  String? get foodDislikes => _settings.foodDislikes;
+  String? get medicalNotes => _settings.medicalNotes;
 
   /// Update language
   Future<void> setLanguage(String code) async {
@@ -200,12 +220,16 @@ class SettingsProvider with ChangeNotifier {
   Future<void> _scheduleDailyMotivation() async {
     final time = _getDailyMotivationTime();
     final l10n = _localizationsFor(languageCode);
+    final today = app_date.DateUtils.getTodayString();
+    final hasEngagedToday =
+        _settings.lastOpenedDate == today || _settings.lastLoggedDate == today;
     await _notificationService.scheduleDailyMotivation(
       messages: _getDailyMotivationMessages(languageCode),
       channelName: l10n.notif_daily_motivation_channel,
       channelDescription: l10n.notif_daily_motivation_channel_description,
       hour: time.key,
       minute: time.value,
+      skipToday: hasEngagedToday,
     );
   }
 
@@ -395,13 +419,13 @@ class SettingsProvider with ChangeNotifier {
 
   /// Check if user can add more meals today (free tier limit)
   bool canAddMeal(int currentMealCount) {
-    if (_settings.isPro) return true;
+    if (isPro) return true;
     return ScanGateService().canScan(false);
   }
 
   /// Get remaining free meals today
   int getRemainingFreeMeals(int currentMealCount) {
-    if (_settings.isPro) return -1; // Unlimited
+    if (isPro) return -1; // Unlimited
     final count = ScanGateService().getTodayScanCount();
     return (3 - count).clamp(0, 3);
   }
@@ -434,10 +458,9 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Upgrade to pro (Manual/Mock fallback)
+  /// Upgrade to pro (disabled: premium access is server verified)
   Future<void> upgradeToPro() async {
-    _settings = _settings.copyWith(isPro: true);
-    await _repository.saveSettings(_settings);
+    refresh();
     notifyListeners();
   }
 
@@ -448,6 +471,8 @@ class SettingsProvider with ChangeNotifier {
     int? age,
     String? gender,
     String? activityLevel,
+    double? currentWeightKg,
+    bool recalculateNutrition = true,
   }) async {
     _settings = _settings.copyWith(
       height: height ?? _settings.height,
@@ -458,6 +483,44 @@ class SettingsProvider with ChangeNotifier {
     );
     await _repository.saveSettings(_settings);
     notifyListeners();
+
+    if (recalculateNutrition) {
+      await _recalculatePlanIfProfileComplete(currentWeightKg);
+    }
+  }
+
+  /// Update Coach Profile fields
+  Future<void> updateCoachProfile({
+    double? height,
+    double? targetWeight,
+    int? age,
+    String? gender,
+    String? activityLevel,
+    String? dietaryRestriction,
+    String? foodDislikes,
+    String? medicalNotes,
+    double? startingWeight,
+    String? goalMode,
+    bool recalculateNutrition = true,
+  }) async {
+    _settings = _settings.copyWith(
+      height: height ?? _settings.height,
+      targetWeight: targetWeight ?? _settings.targetWeight,
+      age: age ?? _settings.age,
+      gender: gender ?? _settings.gender,
+      activityLevel: activityLevel ?? _settings.activityLevel,
+      dietaryRestriction: dietaryRestriction ?? _settings.dietaryRestriction,
+      foodDislikes: foodDislikes ?? _settings.foodDislikes,
+      medicalNotes: medicalNotes ?? _settings.medicalNotes,
+      startingWeight: startingWeight ?? _settings.startingWeight,
+      goalMode: goalMode ?? _settings.goalMode,
+    );
+    await _repository.saveSettings(_settings);
+    notifyListeners();
+
+    if (recalculateNutrition) {
+      await _recalculatePlanIfProfileComplete(startingWeight);
+    }
   }
 
   /// Update planner preferences (meals per day, dietary restriction, cuisine)
@@ -577,6 +640,18 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Update the date when the app was last opened/resumed.
+  /// If it is a new day, this updates lastOpenedDate and triggers notification rescheduling.
+  Future<void> updateLastOpenedDate() async {
+    final today = app_date.DateUtils.getTodayString();
+    if (_settings.lastOpenedDate != today) {
+      _settings = _settings.copyWith(lastOpenedDate: today);
+      await _repository.saveSettings(_settings);
+      await _syncNotifications();
+      notifyListeners();
+    }
+  }
+
   /// Called when a meal is deleted. If it was the only meal for that day,
   /// we may need to adjust the streak backwards.
   Future<void> adjustStreakOnDeletion({
@@ -670,6 +745,15 @@ class SettingsProvider with ChangeNotifier {
       }
       notifyListeners();
     }
+  }
+
+  Future<bool> _recalculatePlanIfProfileComplete(
+    double? preferredCurrentWeightKg,
+  ) async {
+    final currentWeightKg =
+        preferredCurrentWeightKg ?? _settings.startingWeight;
+    if (currentWeightKg == null) return false;
+    return recalculatePlan(currentWeightKg: currentWeightKg);
   }
 
   /// Refresh settings

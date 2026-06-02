@@ -25,19 +25,30 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
   double _sliderPosition = 0.5;
   bool _showSide = false;
 
-  String? get _currentPhoto => _showSide ? widget.current.photoSidePath : widget.current.photoFrontPath;
-  String? get _previousPhoto => _showSide ? widget.previous.photoSidePath : widget.previous.photoFrontPath;
+  String? get _currentPhoto =>
+      _showSide ? widget.current.photoSidePath : widget.current.photoFrontPath;
+  String? get _previousPhoto =>
+      _showSide
+          ? widget.previous.photoSidePath
+          : widget.previous.photoFrontPath;
+
+  bool _fileExists(String? path) => path != null && File(path).existsSync();
 
   @override
   Widget build(BuildContext context) {
-    final hasBothFront = widget.current.photoFrontPath != null && widget.previous.photoFrontPath != null;
-    final hasBothSide = widget.current.photoSidePath != null && widget.previous.photoSidePath != null;
-    
+    final hasBothFront =
+        widget.current.photoFrontPath != null &&
+        widget.previous.photoFrontPath != null;
+    final hasBothSide =
+        widget.current.photoSidePath != null &&
+        widget.previous.photoSidePath != null;
+
     // Automatically fallback if the selected view doesn't exist
     if (_showSide && !hasBothSide) _showSide = false;
     if (!_showSide && !hasBothFront && hasBothSide) _showSide = true;
 
-    final canCompare = _currentPhoto != null && _previousPhoto != null;
+    final canCompare =
+        _fileExists(_currentPhoto) && _fileExists(_previousPhoto);
     final weightDiff = widget.current.weight - widget.previous.weight;
 
     return Container(
@@ -50,14 +61,15 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
         children: [
           const SizedBox(height: 12),
           Container(
-            width: 44, height: 4,
+            width: 44,
+            height: 4,
             decoration: BoxDecoration(
               color: Colors.grey.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(999),
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -67,14 +79,18 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(AppLocalizations.of(context)!.progress_comparison, style: AppTypography.heading3),
+                    Text(
+                      AppLocalizations.of(context)!.progress_comparison,
+                      style: AppTypography.heading3,
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                      AppLocalizations.of(context)!.progress_weight_diff(
-                        weightDiff.toStringAsFixed(1),
-                      ),
+                      AppLocalizations.of(
+                        context,
+                      )!.progress_weight_diff(weightDiff.toStringAsFixed(1)),
                       style: AppTypography.bodySmall.copyWith(
-                        color: weightDiff <= 0 ? AppColors.protein : AppColors.fat,
+                        color:
+                            weightDiff <= 0 ? AppColors.protein : AppColors.fat,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -83,11 +99,22 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                 if (hasBothFront && hasBothSide)
                   SegmentedButton<bool>(
                     segments: [
-                      ButtonSegment(value: false, label: Text(AppLocalizations.of(context)!.progress_front)),
-                      ButtonSegment(value: true, label: Text(AppLocalizations.of(context)!.progress_side)),
+                      ButtonSegment(
+                        value: false,
+                        label: Text(
+                          AppLocalizations.of(context)!.progress_front,
+                        ),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text(
+                          AppLocalizations.of(context)!.progress_side,
+                        ),
+                      ),
                     ],
                     selected: {_showSide},
-                    onSelectionChanged: (set) => setState(() => _showSide = set.first),
+                    onSelectionChanged:
+                        (set) => setState(() => _showSide = set.first),
                     style: SegmentedButton.styleFrom(
                       textStyle: AppTypography.labelSmall,
                     ),
@@ -96,7 +123,7 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          
+
           if (!canCompare)
             Expanded(child: _buildMissingPhotos(context))
           else
@@ -106,7 +133,7 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                 child: _buildSlider(context),
               ),
             ),
-          
+
           const SizedBox(height: 20),
         ],
       ),
@@ -133,6 +160,9 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                   child: Image.file(
                     File(_currentPhoto!),
                     fit: BoxFit.cover,
+                    errorBuilder:
+                        (context, error, stackTrace) =>
+                            _buildMissingPhotos(context),
                   ),
                 ),
                 // Before (Previous) - Top layer clipped
@@ -142,6 +172,9 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                     child: Image.file(
                       File(_previousPhoto!),
                       fit: BoxFit.cover,
+                      errorBuilder:
+                          (context, error, stackTrace) =>
+                              _buildMissingPhotos(context),
                     ),
                   ),
                 ),
@@ -154,11 +187,24 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                     children: [
                       Expanded(child: Container(width: 4, color: Colors.white)),
                       Container(
-                        width: 28, height: 28,
-                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [
-                          BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 0)
-                        ]),
-                        child: const Icon(Icons.swap_horiz, size: 18, color: Colors.black),
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.swap_horiz,
+                          size: 18,
+                          color: Colors.black,
+                        ),
                       ),
                       Expanded(child: Container(width: 4, color: Colors.white)),
                     ],
@@ -166,7 +212,8 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                 ),
                 // Date Labels
                 Positioned(
-                  left: 12, top: 12,
+                  left: 12,
+                  top: 12,
                   child: _DateChip(
                     date: widget.previous.date,
                     label: AppLocalizations.of(context)!.progress_before,
@@ -216,7 +263,10 @@ class _DateChip extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(label, style: AppTypography.labelSmall.copyWith(color: Colors.white70)),
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(color: Colors.white70),
+          ),
           Text(
             DateFormat('MM/dd/yy').format(date),
             style: AppTypography.labelMedium.copyWith(color: Colors.white),
@@ -237,5 +287,6 @@ class _SliderClipper extends CustomClipper<Rect> {
   }
 
   @override
-  bool shouldReclip(_SliderClipper oldClipper) => position != oldClipper.position;
+  bool shouldReclip(_SliderClipper oldClipper) =>
+      position != oldClipper.position;
 }

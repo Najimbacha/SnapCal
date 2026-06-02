@@ -37,7 +37,6 @@ class WeeklyReport {
   }) : generatedAt = generatedAt ?? DateTime.now();
 
   double get calorieGoalDiff => avgCalories > 0 ? avgCalories : 0;
-  bool get isNewThisWeek => generatedAt.isAfter(
-    DateTime.now().subtract(const Duration(days: 7)),
-  );
+  bool get isNewThisWeek =>
+      generatedAt.isAfter(DateTime.now().subtract(const Duration(days: 7)));
 }
