@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.REQUIRE_APP_CHECK = 'false';
 process.env.REVENUECAT_WEBHOOK_AUTH = 'Bearer test-webhook-secret';
 
-const { app, normalizeNutrition, isSafeId, setAuthVerifierForTest } = require('../server');
+const { app, normalizeNutrition, normalizeAiJsonText, isSafeId, setAuthVerifierForTest } = require('../server');
 
 function request(server, method, path, { headers = {}, body } = {}) {
   return new Promise((resolve, reject) => {
@@ -57,6 +57,26 @@ test('nutrition parser normalizes bounded result fields', () => {
   const parsed = normalizeNutrition('{"items":[{"food_name":"Rice","calories":999999,"protein":3,"carbs":45,"fat":2}]}');
   assert.equal(parsed.items[0].calories, 5000);
   assert.equal(parsed.items[0].food_name, 'Rice');
+});
+
+test('AI JSON normalizer extracts fenced JSON only', () => {
+  const normalized = normalizeAiJsonText('Sure:\n```json\n{"week_plan":{"0":[]},"grocery_list":[]}\n```');
+  assert.deepEqual(JSON.parse(normalized), {
+    week_plan: { 0: [] },
+    grocery_list: [],
+  });
+});
+
+test('AI JSON normalizer repairs common adjacent object response', () => {
+  const normalized = normalizeAiJsonText('{"week_plan":{"0":[{"name":"A"} {"name":"B",}]},"grocery_list":[],}');
+  assert.deepEqual(JSON.parse(normalized).week_plan[0], [
+    { name: 'A' },
+    { name: 'B' },
+  ]);
+});
+
+test('AI JSON normalizer rejects non-JSON text', () => {
+  assert.throws(() => normalizeAiJsonText('I cannot make a meal plan right now.'), /json-not-found/);
 });
 
 test('missing auth token is rejected', async () => {

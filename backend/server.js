@@ -305,11 +305,69 @@ function normalizeNutrition(rawText) {
 }
 
 function extractJson(text) {
-  const cleaned = String(text || '').replace(/```json|```/g, '').trim();
+  const cleaned = String(text || '').replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
   const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if (start < 0 || end < start) throw new Error('json-not-found');
-  return cleaned.slice(start, end + 1);
+  if (start < 0) throw new Error('json-not-found');
+
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
+  for (let i = start; i < cleaned.length; i++) {
+    const char = cleaned[i];
+    if (escaping) {
+      escaping = false;
+      continue;
+    }
+    if (char === '\\') {
+      escaping = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === '{') depth += 1;
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return cleaned.slice(start, i + 1);
+    }
+  }
+
+  throw new Error('json-not-found');
+}
+
+function repairAiJson(jsonText) {
+  return String(jsonText || '')
+    .replace(/```(?:json)?/gi, '')
+    .replace(/```/g, '')
+    .trim()
+    .replace(/,\s*([}\]])/g, '$1')
+    .replace(/}\s*{/g, '},{')
+    .replace(/]\s*{/g, '],{')
+    .replace(/}\s*"/g, '},"');
+}
+
+function normalizeAiJsonText(rawText) {
+  const extracted = extractJson(rawText);
+  try {
+    JSON.parse(extracted);
+    return extracted;
+  } catch (_) {
+    const repaired = repairAiJson(extracted);
+    JSON.parse(repaired);
+    return repaired;
+  }
+}
+
+function buildJsonPrompt(prompt) {
+  return [
+    'Return ONLY one valid JSON object. No markdown, no explanation, no code fences.',
+    'Use double-quoted JSON keys and strings. Do not include trailing commas.',
+    'The response must parse with JSON.parse.',
+    '',
+    prompt,
+  ].join('\n');
 }
 
 function clampInt(value, min, max) {
@@ -318,8 +376,8 @@ function clampInt(value, min, max) {
   return Math.max(min, Math.min(max, Math.round(parsed)));
 }
 
-async function callAiWithImage(base64Data, language) {
-  const systemPrompt = getSystemPrompt(language);
+async function callAiWithImage(base64Data, language, customPrompt = null) {
+  const systemPrompt = customPrompt || getSystemPrompt(language);
   const groqApiKey = process.env.GROQ_API_KEY;
   let groqError = null;
 
@@ -378,15 +436,17 @@ async function callAiWithImage(base64Data, language) {
 }
 
 async function callAiText(prompt, options = {}) {
+  const requireJson = options.responseMimeType === 'application/json' || options.requireJson === true;
+  const effectivePrompt = requireJson ? buildJsonPrompt(prompt) : prompt;
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (geminiApiKey) {
     try {
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash'}:generateContent?key=${geminiApiKey}`,
         {
-          contents: [{ parts: [{ text: prompt }] }],
+          contents: [{ parts: [{ text: effectivePrompt }] }],
           generationConfig: {
-            temperature: options.temperature ?? 0.7,
+            temperature: requireJson ? 0.2 : (options.temperature ?? 0.7),
             maxOutputTokens: options.maxOutputTokens || 2048,
             ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
           },
@@ -394,7 +454,7 @@ async function callAiText(prompt, options = {}) {
         { headers: { 'Content-Type': 'application/json' }, timeout: options.timeout || 25000 },
       );
       const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) return text;
+      if (text) return requireJson ? normalizeAiJsonText(text) : text;
     } catch (err) {
       console.error('Gemini text failed:', err.response?.data || err.message);
     }
@@ -402,19 +462,36 @@ async function callAiText(prompt, options = {}) {
 
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey) throw new Error('ai-not-configured');
-  const response = await axios.post(
-    'https://api.groq.com/openai/v1/chat/completions',
-    {
-      model: options.groqModel || process.env.GROQ_TEXT_MODEL || 'llama-3.1-8b-instant',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: options.maxOutputTokens || 2048,
-      temperature: options.temperature ?? 0.7,
-    },
-    { headers: { Authorization: `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }, timeout: options.timeout || 25000 },
-  );
+  const groqPayload = {
+    model: options.groqModel || process.env.GROQ_TEXT_MODEL || 'llama-3.1-8b-instant',
+    messages: [
+      ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
+      { role: 'user', content: effectivePrompt },
+    ],
+    max_tokens: options.maxOutputTokens || 2048,
+    temperature: requireJson ? 0.2 : (options.temperature ?? 0.7),
+    ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
+  };
+  let response;
+  try {
+    response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      groqPayload,
+      { headers: { Authorization: `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }, timeout: options.timeout || 25000 },
+    );
+  } catch (err) {
+    if (!requireJson || err.response?.status !== 400) throw err;
+    const retryPayload = { ...groqPayload };
+    delete retryPayload.response_format;
+    response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      retryPayload,
+      { headers: { Authorization: `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }, timeout: options.timeout || 25000 },
+    );
+  }
   const content = response.data?.choices?.[0]?.message?.content;
   if (!content) throw new Error('empty-groq-response');
-  return content;
+  return requireJson ? normalizeAiJsonText(content) : content;
 }
 
 async function writeAuditLog({ actorUid, action, targetUid, result, metadata = {} }) {
@@ -571,6 +648,7 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => 
     const text = await callAiText(body.prompt, {
       maxOutputTokens: Math.min(Number(body.maxOutputTokens || 2048), 8192),
       responseMimeType: body.responseMimeType === 'application/json' ? 'application/json' : undefined,
+      requireJson: body.responseMimeType === 'application/json',
       temperature: typeof body.temperature === 'number' ? body.temperature : 0.7,
       timeout: Math.min(Number(body.timeoutMs || 25000), 55000),
     });
@@ -578,6 +656,21 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => 
   } catch (error) {
     console.error('AI text request failed:', error.message);
     return safeError(res, 500, 'AI request failed.');
+  }
+});
+
+app.post('/api/ai/image', authenticateToken, verifyAppCheck, async (req, res) => {
+  const body = req.body || {};
+  if (!assertPlainObject(body) || typeof body.prompt !== 'string' || typeof body.image !== 'string') {
+    return safeError(res, 400, 'Invalid AI image request.');
+  }
+
+  try {
+    const text = await callAiWithImage(body.image, cleanLanguage(body.language || 'en'), body.prompt);
+    return res.status(200).json({ text });
+  } catch (error) {
+    console.error('AI image request failed:', error.message);
+    return safeError(res, 500, 'AI image request failed.');
   }
 });
 
@@ -713,6 +806,7 @@ module.exports = {
   app,
   normalizeNutrition,
   extractJson,
+  normalizeAiJsonText,
   isSafeId,
   setAuthVerifierForTest(verifier) {
     if (process.env.NODE_ENV !== 'test') {
