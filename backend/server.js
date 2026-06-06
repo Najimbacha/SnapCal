@@ -9,7 +9,7 @@ const admin = require('firebase-admin');
 const rateLimit = require('express-rate-limit');
 
 const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '1mb';
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
 const REQUIRE_APP_CHECK = process.env.REQUIRE_APP_CHECK === 'true';
 const REVENUECAT_WEBHOOK_AUTH = process.env.REVENUECAT_WEBHOOK_AUTH || '';
@@ -782,10 +782,74 @@ app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, requ
   return res.status(200).json({ ok: true });
 });
 
-// Backward compatible endpoint: authenticated, but no longer accepts anonymous public traffic.
-app.post('/api/scan-food', scanLimiter, authenticateToken, verifyAppCheck, async (req, res) => {
-  return safeError(res, 410, 'Use the private upload scan flow.');
+// ── V1 Scan Endpoint ───────────────────────────────────────────
+// Accepts base64 image, validates auth, calls AI, returns nutrition.
+// No image is stored anywhere — processed in memory only.
+// 30-second timeout enforced by the AI provider call.
+app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req, res) => {
+  const { image, language = 'en' } = req.body || {};
+  const hasAuth = !!req.headers.authorization;
+  const hasImage = !!image && typeof image === 'string';
+  console.log(
+    JSON.stringify({
+      event: 'scan.request',
+      method: 'POST',
+      path: '/v1/scan',
+      authPresent: hasAuth,
+      imagePresent: hasImage,
+      imageSize: hasImage ? Buffer.byteLength(image, 'utf8') : 0,
+    })
+  );
+
+  if (!hasImage) {
+    return safeError(res, 400, 'Missing image field (base64 string).');
+  }
+  const imageBytes = Buffer.from(image, 'base64');
+  if (imageBytes.length > MAX_IMAGE_BYTES) {
+    return safeError(res, 413, 'Image too large (max 10 MB).');
+  }
+
+  try {
+    const raw = await callAiWithImage(image, cleanLanguage(language));
+    const nutrition = normalizeNutrition(raw);
+    const totals = nutrition.items.reduce((acc, item) => ({
+      calories: acc.calories + item.calories,
+      protein: acc.protein + item.protein,
+      carbs: acc.carbs + item.carbs,
+      fat: acc.fat + item.fat,
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+    console.log(JSON.stringify({ event: 'scan.success', status: 200 }));
+    return res.status(200).json({ items: nutrition.items, totals });
+  } catch (error) {
+    console.error(
+      JSON.stringify({ event: 'scan.error', status: 502, error: error.message })
+    );
+    return safeError(res, 502, 'AI analysis failed. Please try again.');
+  }
 });
+
+// ── Debug routes (non-production) ──────────────────────────────
+if (process.env.NODE_ENV !== 'production') {
+  const routeTable = [
+    { method: 'GET', path: '/' },
+    { method: 'GET', path: '/health' },
+    { method: 'POST', path: '/v1/scan' },
+    { method: 'POST', path: '/api/food-scans' },
+    { method: 'POST', path: '/api/food-scans/:scanId/process' },
+    { method: 'DELETE', path: '/api/food-scans/:scanId' },
+    { method: 'GET', path: '/api/premium-status' },
+    { method: 'POST', path: '/api/ai/text' },
+    { method: 'POST', path: '/api/ai/image' },
+    { method: 'POST', path: '/api/revenuecat/webhook' },
+    { method: 'GET', path: '/api/admin/users/:uid/summary' },
+    { method: 'POST', path: '/api/admin/users/:uid/access' },
+  ];
+
+  app.get('/debug/routes', (req, res) => {
+    res.json({ routes: routeTable });
+  });
+}
 
 app.use((err, req, res, next) => {
   if (err?.type === 'entity.too.large') {
