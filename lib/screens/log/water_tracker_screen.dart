@@ -25,11 +25,12 @@ class WaterTrackerScreen extends StatefulWidget {
 class _WaterTrackerScreenState extends State<WaterTrackerScreen>
     with TickerProviderStateMixin {
   int _selectedMl = 250;
-  int _lastTotalMl = 0;
   late AnimationController _waveController;
-  late AnimationController _fillController;
-  late Animation<double> _fillAnimation;
-  bool _isAdding = false;
+  late AnimationController _riseController;
+  late Animation<double> _riseAnimation;
+  int _fromMl = 0;
+  int _targetMl = 0;
+  bool _isFilling = false;
 
   static const _presets = [250, 350, 500, 1000];
 
@@ -40,12 +41,12 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
       vsync: this,
       duration: const Duration(seconds: 5),
     )..repeat();
-    _fillController = AnimationController(
+    _riseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 800),
     );
-    _fillAnimation = CurvedAnimation(
-      parent: _fillController,
+    _riseAnimation = CurvedAnimation(
+      parent: _riseController,
       curve: Curves.easeOutCubic,
     );
   }
@@ -53,26 +54,31 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
   @override
   void dispose() {
     _waveController.dispose();
-    _fillController.dispose();
+    _riseController.dispose();
     super.dispose();
   }
 
-  double _displayProgress(double targetProgress) {
-    if (!_fillController.isAnimating) return targetProgress;
-    final from = _lastTotalMl / math.max(_goal, 1);
-    return from + (targetProgress - from) * _fillAnimation.value;
+  double get _goal => 2000;
+
+  double get _displayedMl {
+    if (!_riseController.isAnimating) return _targetMl.toDouble();
+    return _fromMl + (_targetMl - _fromMl) * _riseAnimation.value;
   }
 
-  int get _goal => 2000;
-
   Future<void> _addWater(WaterProvider water) async {
-    if (_isAdding) return;
-    setState(() => _isAdding = true);
+    if (_isFilling) return;
+    setState(() => _isFilling = true);
     HapticFeedback.heavyImpact();
-    _lastTotalMl = water.total;
-    _fillController.forward(from: 0);
+
+    _fromMl = _targetMl = water.total;
+    setState(() {});
+
     await water.addWater(_selectedMl);
-    if (mounted) setState(() => _isAdding = false);
+
+    _targetMl = water.total;
+    _riseController.forward(from: 0);
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (mounted) setState(() => _isFilling = false);
   }
 
   @override
@@ -89,11 +95,20 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
             final goal = math.max(water.goal, 1);
             final total = water.total;
             final targetProgress = (total / goal).clamp(0.0, 1.0);
-            final displayProgress = _displayProgress(targetProgress);
+
+            // Keep _displayedMl synced with real total when not animating
+            if (!_riseController.isAnimating && _targetMl != total) {
+              _targetMl = total;
+              _fromMl = total;
+            }
+
+            final displayMl = _riseController.isAnimating
+                ? _fromMl + (_targetMl - _fromMl) * _riseAnimation.value
+                : total.toDouble();
+            final displayProgress = (displayMl / goal).clamp(0.0, 1.0);
 
             return Stack(
               children: [
-                // ── Animated gradient background ──────────────────────
                 AnimatedBuilder(
                   animation: _waveController,
                   builder: (_, __) {
@@ -117,7 +132,6 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                   },
                 ),
 
-                // ── Glass orb decorations ─────────────────────────────
                 Positioned(
                   top: -80,
                   right: -60,
@@ -153,11 +167,9 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                   ),
                 ),
 
-                // ── Safe content ─────────────────────────────────────
                 SafeArea(
                   child: Column(
                     children: [
-                      // ── Top bar ─────────────────────────────────────
                       Padding(
                         padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
                         child: Row(
@@ -213,14 +225,11 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    'Today',
-                                    style: TextStyle(
-                                      color: _textSecondary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
+                                  Text('Today',
+                                      style: TextStyle(
+                                          color: _textSecondary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500)),
                                 ],
                               ),
                             ),
@@ -228,20 +237,16 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                         ),
                       ),
 
-                      // ── Title ───────────────────────────────────────
                       const Padding(
                         padding: EdgeInsets.fromLTRB(24, 12, 24, 0),
                         child: Row(
                           children: [
-                            Text(
-                              'Hydration',
-                              style: TextStyle(
-                                color: _textPrimary,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
+                            Text('Hydration',
+                                style: TextStyle(
+                                    color: _textPrimary,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.5)),
                             Spacer(),
                           ],
                         ),
@@ -249,17 +254,17 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
 
                       const SizedBox(height: 24),
 
-                      // ── Hero water card ─────────────────────────────
                       AnimatedBuilder(
                         animation: Listenable.merge(
-                            [_waveController, _fillController]),
+                            [_waveController, _riseController]),
                         builder: (_, __) {
                           final pulse = 0.5 + _waveController.value * 0.5;
-                          final dp = _fillController.isAnimating
-                              ? _displayProgress(targetProgress)
+                          final dp = _riseController.isAnimating
+                              ? displayProgress
                               : targetProgress;
                           return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20),
                             child: Container(
                               height: 260,
                               decoration: BoxDecoration(
@@ -269,8 +274,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: _blue
-                                        .withOpacity(0.15 + pulse * 0.15),
+                                    color: _blue.withOpacity(
+                                        0.15 + pulse * 0.15),
                                     blurRadius: 40,
                                     spreadRadius: 2,
                                   ),
@@ -292,33 +297,26 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           const SizedBox(height: 8),
-                                          Text(
-                                            '$total',
-                                            style: TextStyle(
-                                              fontSize: 72,
-                                              fontWeight: FontWeight.w800,
-                                              color: Colors.white
-                                                  .withOpacity(0.95),
-                                              height: 0.95,
-                                              letterSpacing: -2,
-                                              shadows: [
-                                                Shadow(
-                                                  color:
-                                                      _blue.withOpacity(0.3),
-                                                  blurRadius: 20,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Text(
-                                            'of ${goal}ml',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.white
-                                                  .withOpacity(0.45),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
+                                          Text('${total.ceil()}',
+                                              style: TextStyle(
+                                                  fontSize: 72,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Colors.white
+                                                      .withOpacity(0.95),
+                                                  height: 0.95,
+                                                  letterSpacing: -2,
+                                                  shadows: [
+                                                    Shadow(
+                                                        color: _blue
+                                                            .withOpacity(0.3),
+                                                        blurRadius: 20)
+                                                  ])),
+                                          Text('of ${goal}ml',
+                                              style: TextStyle(
+                                                  fontSize: 16,
+                                                  color: Colors.white
+                                                      .withOpacity(0.45),
+                                                  fontWeight: FontWeight.w500)),
                                           const SizedBox(height: 14),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
@@ -329,9 +327,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(
-                                                color: Colors.white
-                                                    .withOpacity(0.1),
-                                              ),
+                                                  color: Colors.white
+                                                      .withOpacity(0.1)),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
@@ -341,14 +338,13 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                                     color: _cyan),
                                                 const SizedBox(width: 6),
                                                 Text(
-                                                  '${(targetProgress * 100).round()}% of goal',
-                                                  style: TextStyle(
-                                                    color: _textPrimary
-                                                        .withOpacity(0.7),
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
+                                                    '${(targetProgress * 100).round()}% of goal',
+                                                    style: TextStyle(
+                                                        color: _textPrimary
+                                                            .withOpacity(0.7),
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w600)),
                                               ],
                                             ),
                                           ),
@@ -365,9 +361,9 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
 
                       const SizedBox(height: 28),
 
-                      // ── Preset buttons ─────────────────────────────
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: _presets.map((ml) {
                             final isSel = _selectedMl == ml;
@@ -398,7 +394,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                     color: isSel
                                         ? null
                                         : Colors.white.withOpacity(0.04),
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius:
+                                        BorderRadius.circular(20),
                                     border: Border.all(
                                       color: isSel
                                           ? _blue.withOpacity(0.5)
@@ -408,7 +405,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                     boxShadow: isSel
                                         ? [
                                             BoxShadow(
-                                              color: _blue.withOpacity(0.2),
+                                              color:
+                                                  _blue.withOpacity(0.2),
                                               blurRadius: 16,
                                               spreadRadius: 1,
                                             ),
@@ -416,29 +414,25 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                         : null,
                                   ),
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        '$ml',
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800,
-                                          color: isSel
-                                              ? Colors.white
-                                              : _textSecondary,
-                                        ),
-                                      ),
-                                      Text(
-                                        'ml',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: isSel
-                                              ? Colors.white.withOpacity(0.7)
-                                              : _textSecondary
-                                                  .withOpacity(0.6),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                                      Text('$ml',
+                                          style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w800,
+                                              color: isSel
+                                                  ? Colors.white
+                                                  : _textSecondary)),
+                                      Text('ml',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: isSel
+                                                  ? Colors.white
+                                                      .withOpacity(0.7)
+                                                  : _textSecondary
+                                                      .withOpacity(0.6),
+                                              fontWeight: FontWeight.w600)),
                                     ],
                                   ),
                                 ),
@@ -450,11 +444,12 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
 
                       const SizedBox(height: 24),
 
-                      // ── CTA button ─────────────────────────────────
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 20),
                         child: GestureDetector(
-                          onTap: _isAdding ? null : () => _addWater(water),
+                          onTap:
+                              _isFilling ? null : () => _addWater(water),
                           child: AnimatedBuilder(
                             animation: _waveController,
                             builder: (_, __) {
@@ -463,7 +458,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                               return Container(
                                 height: 62,
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(24),
+                                  borderRadius:
+                                      BorderRadius.circular(24),
                                   gradient: LinearGradient(
                                     colors: [
                                       _blue.withOpacity(0.9),
@@ -482,11 +478,12 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                   ],
                                 ),
                                 child: Center(
-                                  child: _isAdding
+                                  child: _isFilling
                                       ? const SizedBox(
                                           width: 24,
                                           height: 24,
-                                          child: CircularProgressIndicator(
+                                          child:
+                                              CircularProgressIndicator(
                                             strokeWidth: 2.5,
                                             color: Colors.white,
                                           ),
@@ -510,14 +507,12 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                               ),
                                             ),
                                             const SizedBox(width: 10),
-                                            Text(
-                                              'Add $_selectedMl ml',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
+                                            Text('Add $_selectedMl ml',
+                                                style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 18,
+                                                    fontWeight:
+                                                        FontWeight.w700)),
                                           ],
                                         ),
                                 ),
@@ -529,9 +524,9 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
 
                       const SizedBox(height: 14),
 
-                      // ── Quick actions row ──────────────────────────
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
                             _QuickAction(
@@ -548,7 +543,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                     : '${goal - total} ml remaining',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: _textSecondary.withOpacity(0.6),
+                                  color: _textSecondary
+                                      .withOpacity(0.6),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -609,10 +605,6 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Wave painter
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _WavePainter extends CustomPainter {
   final double progress;
   final double wave;
@@ -651,7 +643,6 @@ class _WavePainter extends CustomPainter {
     path.close();
     canvas.drawPath(path, waterPaint);
 
-    // Surface glow line
     final glowPaint = Paint()
       ..color = _blueGlow.withOpacity(0.3 + glowIntensity * 0.2)
       ..style = PaintingStyle.stroke
@@ -666,7 +657,6 @@ class _WavePainter extends CustomPainter {
     }
     canvas.drawPath(glowPath, glowPaint);
 
-    // Floating particles
     if (fillH > 1) {
       final dotPaint = Paint()..color = Colors.white.withOpacity(0.25);
       for (int i = 0; i < 8; i++) {
@@ -687,10 +677,6 @@ class _WavePainter extends CustomPainter {
       old.glowIntensity != glowIntensity;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Quick action pill
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -709,7 +695,8 @@ class _QuickAction extends StatelessWidget {
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(enabled ? 0.06 : 0.03),
           borderRadius: BorderRadius.circular(14),
@@ -720,24 +707,19 @@ class _QuickAction extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 14,
-              color: enabled
-                  ? _textSecondary
-                  : _textSecondary.withOpacity(0.3),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+            Icon(icon,
+                size: 14,
                 color: enabled
                     ? _textSecondary
-                    : _textSecondary.withOpacity(0.3),
-              ),
-            ),
+                    : _textSecondary.withOpacity(0.3)),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: enabled
+                        ? _textSecondary
+                        : _textSecondary.withOpacity(0.3))),
           ],
         ),
       ),
