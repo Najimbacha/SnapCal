@@ -44,6 +44,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
     _fillBounceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
+      value: 1.0,
     );
     _fillBounce = CurvedAnimation(
       parent: _fillBounceController,
@@ -65,7 +66,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
     setState(() => _isAdding = true);
     HapticFeedback.heavyImpact();
     await water.addWater(_selectedMl);
-    _fillBounceController.forward(from: 0);
+    _fillBounceController.value = 0.7;
+    _fillBounceController.forward();
     await Future.delayed(const Duration(milliseconds: 200));
     if (mounted) setState(() => _isAdding = false);
   }
