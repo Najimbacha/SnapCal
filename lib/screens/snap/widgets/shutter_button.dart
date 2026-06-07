@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/theme/app_colors.dart';
 
 class ShutterButton extends StatefulWidget {
   final VoidCallback? onPressed;
@@ -15,6 +16,9 @@ class _ShutterButtonState extends State<ShutterButton>
     with TickerProviderStateMixin {
   late AnimationController _pressController;
   late Animation<double> _pressScale;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnim;
+  late Animation<double> _glowAnim;
 
   @override
   void initState() {
@@ -26,17 +30,30 @@ class _ShutterButtonState extends State<ShutterButton>
     _pressScale = Tween<double>(begin: 1.0, end: 0.92).animate(
       CurvedAnimation(parent: _pressController, curve: Curves.easeInOut),
     );
+
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    _glowAnim = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _pressController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null && !widget.isLoading;
+    final primaryColor = AppColors.primary;
 
     return GestureDetector(
       onTapDown: isEnabled ? (_) => _pressController.forward() : null,
@@ -49,18 +66,23 @@ class _ShutterButtonState extends State<ShutterButton>
           : null,
       onTapCancel: () => _pressController.reverse(),
       child: AnimatedBuilder(
-        animation: _pressScale,
+        animation: Listenable.merge([_pressScale, _pulseAnim, _glowAnim]),
         builder: (context, child) {
+          final scale = _pressScale.value * (isEnabled ? _pulseAnim.value : 1.0);
+          final glowOpacity = isEnabled ? _glowAnim.value : 0.0;
           return Transform.scale(
-            scale: _pressScale.value,
+            scale: scale,
             child: Container(
-              width: 72,
-              height: 72,
+              width: 76,
+              height: 76,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: isEnabled
-                    ? const LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF059669)],
+                    ? LinearGradient(
+                        colors: [
+                          primaryColor.withValues(alpha: 0.9),
+                          primaryColor,
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )
@@ -69,9 +91,14 @@ class _ShutterButtonState extends State<ShutterButton>
                 boxShadow: isEnabled
                     ? [
                         BoxShadow(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                          blurRadius: 16,
-                          spreadRadius: 1,
+                          color: primaryColor.withValues(alpha: 0.35 * glowOpacity),
+                          blurRadius: 20 + (10 * glowOpacity),
+                          spreadRadius: 2 * glowOpacity,
+                        ),
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.15 * glowOpacity),
+                          blurRadius: 40,
+                          spreadRadius: 5 * glowOpacity,
                         ),
                       ]
                     : null,
@@ -89,7 +116,7 @@ class _ShutterButtonState extends State<ShutterButton>
                     : const Icon(
                         Icons.camera_alt_rounded,
                         color: Colors.white,
-                        size: 30,
+                        size: 32,
                       ),
               ),
             ),

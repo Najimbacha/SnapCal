@@ -410,87 +410,90 @@ class _ResultModalState extends State<ResultModal> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 54,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    AppColors.primary.withValues(alpha: 0.85),
-                                    AppColors.primary,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.3),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: ElevatedButton(
-                              onPressed: _isSaving ? null : _save,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20)),
-                              ),
-                              child: _isSaving
-                                  ? const SizedBox(
-                                      width: 18, height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2, color: Colors.white))
-                                  : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text('Add To Log',
-                                            style: AppTypography.titleSmall.copyWith(
-                                                color: Colors.white, fontSize: 14,
-                                                fontWeight: FontWeight.w900)),
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          height: 22,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 7),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(999),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text('$_totalCalories',
-                                                  style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w900)),
-                                              const SizedBox(width: 2),
-                                              Text('kcal',
-                                                  style: TextStyle(
-                                                      color: Colors.white
-                                                          .withValues(alpha: 0.7),
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.w700)),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                             ),
-                           ),
-                          ),
                         ],
                       ),
                     ),
                     ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primary.withValues(alpha: 0.85),
+                                AppColors.primary,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                          onPressed: _isSaving ? null : _save,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20)),
+                          ),
+                          child: _isSaving
+                              ? const SizedBox(
+                                  width: 18, height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text('Add To Log',
+                                        style: AppTypography.titleSmall.copyWith(
+                                            color: Colors.white, fontSize: 14,
+                                            fontWeight: FontWeight.w900)),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      height: 22,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 7),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('$_totalCalories',
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w900)),
+                                          const SizedBox(width: 2),
+                                          Text('kcal',
+                                              style: TextStyle(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.7),
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                          ),
+                        ),
+                       ),
+                      ),
                   ],
                 ),
               ),
@@ -780,29 +783,6 @@ class _MacroProportionBar extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            _macroLabel('${(pFrac * 100).round()}% P', AppColors.protein),
-            const SizedBox(width: 12),
-            _macroLabel('${(cFrac * 100).round()}% C', AppColors.carbs),
-            const SizedBox(width: 12),
-            _macroLabel('${(fFrac * 100).round()}% F', AppColors.fat),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _macroLabel(String text, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 8, height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(text, style: TextStyle(
-            color: _reviewMuted, fontSize: 10, fontWeight: FontWeight.w700)),
       ],
     );
   }
