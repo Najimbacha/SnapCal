@@ -85,6 +85,38 @@ class AppColors {
     end: Alignment.bottomRight,
   );
 
+  // ============= COACH / ASSISTANT THEME =============
+  static const Color homeCoachAccent = Color(0xFF5C5FE0);
+  static const Color secondary = Color(0xFF8B5CF6);
+  static const Color calories = Color(0xFF5C5FE0);
+  static const Color vividBlue = Color(0xFF3B82F6);
+  static const Color premiumGold = Color(0xFFF59E0B);
+  static const Color homePlannerAccent = Color(0xFF3B82F6);
+  static const Color homePremiumBackground = Color(0xFF1A1A2E);
+
+  // ============= ONBOARDING / UTILITY COLORS =============
+  static const Color dangerRed = Color(0xFFEF4444);
+  static const Color warningAmber = Color(0xFFF59E0B);
+
+  // ============= SURFACE & NEUTRAL COLORS =============
+  static const Color neutralDarkDeep = Color(0xFF1A1A2E);
+  static const Color neutralDarkDeepAlt = Color(0xFF2D2D44);
+  static const Color neutralCoolSurface = Color(0xFFF2F3F7);
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color primaryContainer = Color(0xFFE0E0FD);
+
+  // ============= WARM THEME COLORS =============
+  static const Color warmDarkSurface = Color(0xFF1C1B1F);
+  static const Color minimalBg = Color(0xFFFEFCF7);
+  static const Color warmInk = Color(0xFF1C1917);
+
+  // ============= LEGACY / FOOD CARD COLORS =============
+  static const Color legacyDeepForest = Color(0xFF1B4332);
+  static const Color legacyGreenText = Color(0xFF40916C);
+  static const Color oliveAccent = Color(0xFF7C9A6D);
+  static const Color blueAccent = Color(0xFF4F8CC9);
+  static const Color warmOrange = Color(0xFFD18B47);
+
   // ============= MACRO GRADIENT FILLS =============
   static const LinearGradient proteinGradient = LinearGradient(
     colors: [Color(0xFF7C9A6D), Color(0xFFA3C293)],

@@ -15,6 +15,7 @@ import '../../data/models/meal.dart';
 import '../../data/models/meal_slot.dart';
 import 'widgets/smart_meal_planner_card.dart';
 import 'widgets/activity_health_connect_sheet.dart';
+import '../log/widgets/hydration_sheet.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
@@ -607,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen>
               caloriesEstimated: activityState.caloriesEstimated,
               stepsUnit: 'steps',
               activityLive: activityState.isTracking,
-              onWaterTap: () => context.push('/water'),
+              onWaterTap: () => showHydrationSheet(context),
               onWaterAdd: () => _addWater(context.read<WaterProvider>()),
               onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
               onActivityTap: () => showActivityHealthConnectSheet(context),

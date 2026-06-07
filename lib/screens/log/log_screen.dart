@@ -18,6 +18,7 @@ import '../../widgets/app_page_scaffold.dart';
 import '../../data/services/premium_conversion_service.dart';
 import 'models/log_metric_models.dart';
 import 'widgets/health_metric_dashboard.dart';
+import 'widgets/hydration_sheet.dart';
 import 'widgets/horizontal_day_calendar.dart';
 import 'widgets/meal_list_tile.dart';
 import 'widgets/edit_meal_modal.dart';
@@ -102,7 +103,13 @@ class _LogScreenState extends State<LogScreen> {
             title: l10n.log_key_metrics,
             actionLabel: l10n.log_customize,
             cards: settings.isPro ? dashboardCards : dashboardCards.take(4).toList(),
-            onMetricTap: (type) => context.push('/log/metric/${type.id}'),
+            onMetricTap: (type) {
+              if (type == LogMetricType.water) {
+                showHydrationSheet(context);
+              } else {
+                context.push('/log/metric/${type.id}');
+              }
+            },
             onCustomize: () => _showCustomizeSheet(context, l10n),
           ),
           if (!settings.isPro) ...[

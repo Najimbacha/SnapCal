@@ -23,6 +23,8 @@ class SubscriptionService {
   bool _configured = false;
   bool _customerInfoListenerRegistered = false;
   Future<void>? _initFuture;
+  EntitlementInfo? _currentEntitlement;
+  Offering? _currentOffering;
 
   static const String _entitlementId = "pro";
   static const Set<String> _proProductIds = {
@@ -102,6 +104,15 @@ class SubscriptionService {
   }
 
   bool get isConfigured => _configured;
+  bool get isPurchaseInFlight => _purchaseInFlight;
+
+  Future<bool> hasActivePremiumEntitlement() async {
+    return _currentEntitlement?.isActive == true;
+  }
+
+  Future<bool> hasValidCurrentOffering() async {
+    return _currentOffering != null;
+  }
 
   Future<void> _syncRevenueCatIdentity(User? user) async {
     if (!_configured) return;
@@ -142,6 +153,8 @@ class SubscriptionService {
   }
 
   Future<void> _processCustomerInfo(CustomerInfo customerInfo) async {
+    _currentEntitlement =
+        customerInfo.entitlements.all[_entitlementId];
     debugPrint("RevenueCat Customer ID: ${customerInfo.originalAppUserId}");
     debugPrint(
       "RevenueCat Active Entitlements: "

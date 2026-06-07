@@ -6251,6 +6251,370 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{value} goal'**
   String log_metric_goal_value(Object value);
+
+  /// No description provided for @onboarding_pace_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your pace'**
+  String get onboarding_pace_title;
+
+  /// No description provided for @onboarding_pace_error_target_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a target weight first'**
+  String get onboarding_pace_error_target_required;
+
+  /// No description provided for @onboarding_pace_error_pace_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a pace to continue'**
+  String get onboarding_pace_error_pace_required;
+
+  /// No description provided for @onboarding_pace_gentle.
+  ///
+  /// In en, this message translates to:
+  /// **'Gentle'**
+  String get onboarding_pace_gentle;
+
+  /// No description provided for @onboarding_pace_gentle_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Slower progress, easier to sustain'**
+  String get onboarding_pace_gentle_desc;
+
+  /// No description provided for @onboarding_pace_balanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get onboarding_pace_balanced;
+
+  /// No description provided for @onboarding_pace_balanced_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Steady progress with moderate adjustment'**
+  String get onboarding_pace_balanced_desc;
+
+  /// No description provided for @onboarding_pace_faster.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster'**
+  String get onboarding_pace_faster;
+
+  /// No description provided for @onboarding_pace_faster_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick results, more adjustment needed'**
+  String get onboarding_pace_faster_desc;
+
+  /// No description provided for @onboarding_pace_target_weight.
+  ///
+  /// In en, this message translates to:
+  /// **'Target weight'**
+  String get onboarding_pace_target_weight;
+
+  /// No description provided for @onboarding_pace_target_date.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated by {date}'**
+  String onboarding_pace_target_date(String date);
+
+  /// No description provided for @onboarding_pace_weekly_rate.
+  ///
+  /// In en, this message translates to:
+  /// **'~{rate} {unit}/week'**
+  String onboarding_pace_weekly_rate(String rate, String unit);
+
+  /// No description provided for @onboarding_plan_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan is ready'**
+  String get onboarding_plan_title;
+
+  /// No description provided for @onboarding_plan_explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Personalized targets based on your inputs'**
+  String get onboarding_plan_explanation;
+
+  /// No description provided for @onboarding_plan_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein'**
+  String get onboarding_plan_protein;
+
+  /// No description provided for @onboarding_plan_carbs.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbs'**
+  String get onboarding_plan_carbs;
+
+  /// No description provided for @onboarding_plan_fat.
+  ///
+  /// In en, this message translates to:
+  /// **'Fat'**
+  String get onboarding_plan_fat;
+
+  /// No description provided for @onboarding_plan_grams.
+  ///
+  /// In en, this message translates to:
+  /// **'{grams}g'**
+  String onboarding_plan_grams(int grams);
+
+  /// No description provided for @onboarding_plan_start.
+  ///
+  /// In en, this message translates to:
+  /// **'Start plan'**
+  String get onboarding_plan_start;
+
+  /// No description provided for @onboarding_plan_adjust.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust'**
+  String get onboarding_plan_adjust;
+
+  /// No description provided for @onboarding_plan_maintenance_estimate.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintain current weight with tracked nutrition'**
+  String get onboarding_plan_maintenance_estimate;
+
+  /// No description provided for @onboarding_goal_summary_lose.
+  ///
+  /// In en, this message translates to:
+  /// **'Lose {rate} {unit}/week'**
+  String onboarding_goal_summary_lose(String rate, String unit);
+
+  /// No description provided for @onboarding_goal_summary_maintain.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintain current weight'**
+  String get onboarding_goal_summary_maintain;
+
+  /// No description provided for @onboarding_goal_summary_build.
+  ///
+  /// In en, this message translates to:
+  /// **'Build {rate} {unit}/week'**
+  String onboarding_goal_summary_build(String rate, String unit);
+
+  /// No description provided for @onboarding_goal_summary_track.
+  ///
+  /// In en, this message translates to:
+  /// **'Track nutrition without a weight target'**
+  String get onboarding_goal_summary_track;
+
+  /// No description provided for @onboarding_safety_zero_loss.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current weight matches your target. We\'ll focus on maintaining with tracked nutrition.'**
+  String get onboarding_safety_zero_loss;
+
+  /// No description provided for @onboarding_safety_zero_gain.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current weight matches your target. We\'ll focus on maintaining with tracked nutrition.'**
+  String get onboarding_safety_zero_gain;
+
+  /// No description provided for @onboarding_safety_adjusted_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'{originalRate} {unit} was too aggressive. We adjusted to {actualRate} {unit} for safety.'**
+  String onboarding_safety_adjusted_detail(
+    String originalRate,
+    String unit,
+    String actualRate,
+  );
+
+  /// No description provided for @onboarding_safety_updated_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated target by {date}'**
+  String onboarding_safety_updated_goal(String date);
+
+  /// No description provided for @onboarding_safety_adjusted_fallback.
+  ///
+  /// In en, this message translates to:
+  /// **'We adjusted your plan to keep it safe and realistic.'**
+  String get onboarding_safety_adjusted_fallback;
+
+  /// No description provided for @onboarding_adjusted_badge.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusted'**
+  String get onboarding_adjusted_badge;
+
+  /// No description provided for @onboarding_profile_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us about yourself'**
+  String get onboarding_profile_title;
+
+  /// No description provided for @onboarding_profile_weight.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get onboarding_profile_weight;
+
+  /// No description provided for @onboarding_profile_sex_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Sex'**
+  String get onboarding_profile_sex_label;
+
+  /// No description provided for @onboarding_error_sex_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Select your sex to continue'**
+  String get onboarding_error_sex_required;
+
+  /// No description provided for @onboarding_error_adult_only.
+  ///
+  /// In en, this message translates to:
+  /// **'You must be at least 13 years old'**
+  String get onboarding_error_adult_only;
+
+  /// No description provided for @onboarding_already_account.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account?'**
+  String get onboarding_already_account;
+
+  /// No description provided for @onboarding_scan_meal_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan your meal'**
+  String get onboarding_scan_meal_title;
+
+  /// No description provided for @onboarding_scan_scanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzing your meal...'**
+  String get onboarding_scan_scanning;
+
+  /// No description provided for @onboarding_scan_ai_label.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get onboarding_scan_ai_label;
+
+  /// No description provided for @onboarding_scan_kcal.
+  ///
+  /// In en, this message translates to:
+  /// **'kcal'**
+  String get onboarding_scan_kcal;
+
+  /// No description provided for @onboarding_goal_title.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s your goal?'**
+  String get onboarding_goal_title;
+
+  /// No description provided for @onboarding_goal_lose.
+  ///
+  /// In en, this message translates to:
+  /// **'Lose weight'**
+  String get onboarding_goal_lose;
+
+  /// No description provided for @onboarding_goal_lose_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Calorie deficit to shed body fat'**
+  String get onboarding_goal_lose_desc;
+
+  /// No description provided for @onboarding_goal_maintain.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintain'**
+  String get onboarding_goal_maintain;
+
+  /// No description provided for @onboarding_goal_maintain_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep your current weight stable'**
+  String get onboarding_goal_maintain_desc;
+
+  /// No description provided for @onboarding_goal_build.
+  ///
+  /// In en, this message translates to:
+  /// **'Build muscle'**
+  String get onboarding_goal_build;
+
+  /// No description provided for @onboarding_goal_build_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Calorie surplus for lean mass gain'**
+  String get onboarding_goal_build_desc;
+
+  /// No description provided for @onboarding_goal_track.
+  ///
+  /// In en, this message translates to:
+  /// **'Track only'**
+  String get onboarding_goal_track;
+
+  /// No description provided for @onboarding_goal_track_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Log meals without a weight target'**
+  String get onboarding_goal_track_desc;
+
+  /// No description provided for @onboarding_activity_sitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Sitting'**
+  String get onboarding_activity_sitting;
+
+  /// No description provided for @onboarding_activity_sitting_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Desk job, little exercise'**
+  String get onboarding_activity_sitting_desc;
+
+  /// No description provided for @onboarding_activity_light.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get onboarding_activity_light;
+
+  /// No description provided for @onboarding_activity_light_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'1-3 days of exercise per week'**
+  String get onboarding_activity_light_desc;
+
+  /// No description provided for @onboarding_activity_very.
+  ///
+  /// In en, this message translates to:
+  /// **'Very active'**
+  String get onboarding_activity_very;
+
+  /// No description provided for @onboarding_activity_very_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'6-7 days of exercise per week'**
+  String get onboarding_activity_very_desc;
+
+  /// No description provided for @onboarding_plan_kcal_day.
+  ///
+  /// In en, this message translates to:
+  /// **'kcal / day'**
+  String get onboarding_plan_kcal_day;
+
+  /// No description provided for @onboarding_finish_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create your plan. Please try again.'**
+  String get onboarding_finish_error;
+
+  /// No description provided for @onboarding_error_target_lower.
+  ///
+  /// In en, this message translates to:
+  /// **'Target must be lower than current weight'**
+  String get onboarding_error_target_lower;
+
+  /// No description provided for @onboarding_error_target_higher.
+  ///
+  /// In en, this message translates to:
+  /// **'Target must be higher than current weight'**
+  String get onboarding_error_target_higher;
 }
 
 class _AppLocalizationsDelegate

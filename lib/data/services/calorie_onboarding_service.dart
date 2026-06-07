@@ -25,6 +25,7 @@ class OnboardingProfileInput {
   final String activityLevel;
   final String weightUnit;
   final String heightUnit;
+  final double? selectedWeeklyRateKg;
 
   const OnboardingProfileInput({
     required this.age,
@@ -36,6 +37,7 @@ class OnboardingProfileInput {
     required this.activityLevel,
     required this.weightUnit,
     required this.heightUnit,
+    this.selectedWeeklyRateKg,
   });
 }
 

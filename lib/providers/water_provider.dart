@@ -8,20 +8,24 @@ class WaterProvider with ChangeNotifier {
   final WaterRepository _repository;
 
   int _todaysWaterMl = 0;
+  int _goalMl = 2000;
   bool _isLoading = false;
-  bool _isProcessing = false; // Guard for rapid clicks
+  bool _isProcessing = false;
 
   WaterProvider(this._repository) {
     _loadTodaysWater();
   }
 
-  // Getters
   int get todaysWaterMl => _todaysWaterMl;
-  int get total => _todaysWaterMl; // Alias for cleaner UI code
-  int get goal => 2000; // Fallback or from settings
+  int get total => _todaysWaterMl;
+  int get goal => _goalMl;
   bool get isLoading => _isLoading;
-  int get completedGoalDays =>
-      _todaysWaterMl >= 2000 ? 1 : 0; // Simple fallback
+  int get completedGoalDays => _todaysWaterMl >= _goalMl ? 1 : 0;
+
+  void setGoal(int ml) {
+    _goalMl = ml;
+    notifyListeners();
+  }
 
   int getTotalForDate(String dateString) {
     if (app_date.DateUtils.isToday(dateString)) return _todaysWaterMl;
@@ -74,14 +78,14 @@ class WaterProvider with ChangeNotifier {
     }
   }
 
-  /// Remove water intake (undo)
+  /// Undo the last water addition by removing the most recent log entry.
   Future<void> removeWater(int amountMl) async {
     if (_isProcessing) return;
     _isProcessing = true;
     notifyListeners();
 
     try {
-      await _repository.removeLastLog(); // Or specific amount logic
+      await _repository.removeLastLog();
       await _loadTodaysWater();
     } finally {
       _isProcessing = false;
@@ -89,15 +93,19 @@ class WaterProvider with ChangeNotifier {
     }
   }
 
-  /// Clear water for today (for testing or reset)
+  /// Clear all water logged today
   Future<void> resetToday() async {
-    // This isn't strictly necessary for MVP but good for testing
+    final today = app_date.DateUtils.getTodayString();
+    await _repository.clearLogsForDate(today);
+    _todaysWaterMl = 0;
+    notifyListeners();
   }
 
   /// Clear all water data (logout)
   Future<void> clear() async {
     await _repository.clearAll();
     _todaysWaterMl = 0;
+    _goalMl = 2000;
     notifyListeners();
   }
 }

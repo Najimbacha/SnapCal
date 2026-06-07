@@ -7,7 +7,6 @@ import 'screens/snap/snap_screen.dart';
 import 'screens/log/log_screen.dart';
 import 'screens/log/health_metric_detail_screen.dart';
 import 'screens/log/models/log_metric_models.dart';
-import 'screens/log/water_tracker_screen.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'screens/settings/settings_screen.dart';
@@ -128,18 +127,9 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
             (context, state) => _sharedAxisPage(state, const ActivityScreen()),
       ),
       GoRoute(
-        path: '/water',
-        pageBuilder:
-            (context, state) =>
-                _sharedAxisPage(state, const WaterTrackerScreen()),
-      ),
-      GoRoute(
         path: '/log/metric/:metric',
         pageBuilder: (context, state) {
           final metric = LogMetricType.fromId(state.pathParameters['metric']);
-          if (metric == LogMetricType.water) {
-            return _sharedAxisPage(state, const WaterTrackerScreen());
-          }
           return _sharedAxisPage(
             state,
             HealthMetricDetailScreen(metric: metric ?? LogMetricType.calories),

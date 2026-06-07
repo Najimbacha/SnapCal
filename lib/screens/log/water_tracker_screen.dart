@@ -58,13 +58,6 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
     super.dispose();
   }
 
-  double get _goal => 2000;
-
-  double get _displayedMl {
-    if (!_riseController.isAnimating) return _targetMl.toDouble();
-    return _fromMl + (_targetMl - _fromMl) * _riseAnimation.value;
-  }
-
   Future<void> _addWater(WaterProvider water) async {
     if (_isFilling) return;
     setState(() => _isFilling = true);

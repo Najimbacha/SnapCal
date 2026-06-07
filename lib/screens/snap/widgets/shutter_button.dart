@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../core/theme/app_colors.dart';
 
 class ShutterButton extends StatefulWidget {
   final VoidCallback? onPressed;
@@ -18,7 +17,6 @@ class _ShutterButtonState extends State<ShutterButton>
   late Animation<double> _pressScale;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
-  late Animation<double> _glowAnim;
 
   @override
   void initState() {
@@ -35,10 +33,7 @@ class _ShutterButtonState extends State<ShutterButton>
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-    _glowAnim = Tween<double>(begin: 0.5, end: 1.0).animate(
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.04).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
@@ -53,7 +48,6 @@ class _ShutterButtonState extends State<ShutterButton>
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null && !widget.isLoading;
-    final primaryColor = AppColors.primary;
 
     return GestureDetector(
       onTapDown: isEnabled ? (_) => _pressController.forward() : null,
@@ -66,58 +60,49 @@ class _ShutterButtonState extends State<ShutterButton>
           : null,
       onTapCancel: () => _pressController.reverse(),
       child: AnimatedBuilder(
-        animation: Listenable.merge([_pressScale, _pulseAnim, _glowAnim]),
+        animation: Listenable.merge([_pressScale, _pulseAnim]),
         builder: (context, child) {
-          final scale = _pressScale.value * (isEnabled ? _pulseAnim.value : 1.0);
-          final glowOpacity = isEnabled ? _glowAnim.value : 0.0;
+          final scale =
+              _pressScale.value * (isEnabled ? _pulseAnim.value : 1.0);
           return Transform.scale(
             scale: scale,
-            child: Container(
+            child: SizedBox(
               width: 76,
               height: 76,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: isEnabled
-                    ? LinearGradient(
-                        colors: [
-                          primaryColor.withValues(alpha: 0.9),
-                          primaryColor,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: isEnabled ? null : Colors.grey.shade700,
-                boxShadow: isEnabled
-                    ? [
-                        BoxShadow(
-                          color: primaryColor.withValues(alpha: 0.35 * glowOpacity),
-                          blurRadius: 20 + (10 * glowOpacity),
-                          spreadRadius: 2 * glowOpacity,
-                        ),
-                        BoxShadow(
-                          color: primaryColor.withValues(alpha: 0.15 * glowOpacity),
-                          blurRadius: 40,
-                          spreadRadius: 5 * glowOpacity,
-                        ),
-                      ]
-                    : null,
-              ),
               child: Center(
-                child: widget.isLoading
-                    ? const SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.camera_alt_rounded,
-                        color: Colors.white,
-                        size: 32,
-                      ),
+                child: Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isEnabled ? Colors.white : Colors.grey.shade600,
+                      width: 4,
+                    ),
+                    color: Colors.transparent,
+                  ),
+                  child: Center(
+                    child: widget.isLoading
+                        ? const SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isEnabled
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
+                            ),
+                          ),
+                  ),
+                ),
               ),
             ),
           );

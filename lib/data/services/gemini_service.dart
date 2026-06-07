@@ -705,25 +705,6 @@ Keys 0-6 = Day 1 to Day 7. Each day must have exactly ${settings.mealsPerDay} me
     }
   }
 
-  /// Extracts detailed error message from DioException
-  String _extractDioError(Object error) {
-    if (error is DioException) {
-      if (error.response != null && error.response!.data != null) {
-        try {
-          final data = error.response!.data;
-          if (data is Map<String, dynamic> && data.containsKey('error')) {
-            final err = data['error'];
-            if (err is Map && err.containsKey('message')) {
-              return err['message'].toString();
-            }
-          }
-        } catch (_) {}
-      }
-      return "${error.response?.statusCode ?? 'Error'}";
-    }
-    return error.toString();
-  }
-
   // --- Static/Top-Level Functions for Compute ---
 
   static List<NutritionResult> _parseNutritionJsonInIsolate(String text) {

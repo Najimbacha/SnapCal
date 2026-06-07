@@ -88,4 +88,24 @@ class ConfigService {
     final url = _remoteConfig.getString('backend_proxy_url').trim();
     return url.isEmpty ? AppConstants.defaultBackendProxyUrl : url;
   }
+
+  String get latestVersion {
+    if (!_initialized) return '';
+    return _remoteConfig.getString('latest_version').trim();
+  }
+
+  String get updateUrl {
+    if (!_initialized) return '';
+    return _remoteConfig.getString('update_url').trim();
+  }
+
+  String get updatePromptTitle {
+    if (!_initialized) return '';
+    return _remoteConfig.getString('update_prompt_title').trim();
+  }
+
+  String get updatePromptMessage {
+    if (!_initialized) return '';
+    return _remoteConfig.getString('update_prompt_message').trim();
+  }
 }

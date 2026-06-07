@@ -104,6 +104,21 @@ class WaterRepository {
         .toList();
   }
 
+  /// Clear all logs for a specific date
+  Future<void> clearLogsForDate(String dateString) async {
+    if (_waterBox == null) return;
+    final keysToDelete = <dynamic>[];
+    for (final key in _waterBox!.keys) {
+      final log = _waterBox!.get(key);
+      if (log != null && log.dateString == dateString) {
+        keysToDelete.add(key);
+      }
+    }
+    for (final key in keysToDelete) {
+      await _waterBox!.delete(key);
+    }
+  }
+
   /// Clear all (for testing)
   Future<void> clearAll() async {
     await _waterBox?.clear();

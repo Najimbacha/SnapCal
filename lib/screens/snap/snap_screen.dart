@@ -15,7 +15,6 @@ import '../../providers/settings_provider.dart';
 import 'snap_controller.dart';
 import 'widgets/analyzing_overlay.dart';
 import 'widgets/barcode_scanner_view.dart';
-import 'widgets/food_frame_guide.dart';
 import 'widgets/result_modal.dart';
 import 'widgets/shutter_button.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -374,173 +373,209 @@ class _SnapScreenState extends State<SnapScreen>
 
   @override
   Widget build(BuildContext context) {
+    final topSafe = MediaQuery.of(context).padding.top;
+    final bottomSafe = MediaQuery.of(context).padding.bottom;
+    const previewH = 16.0;
+    const cornerRadius = 28.0;
+
     return ChangeNotifierProvider.value(
       value: _controller,
       child: Consumer<SnapController>(
         builder: (context, controller, _) {
+          final cameraContent = <Widget>[];
+
+          if (controller.isScanningBarcode) {
+            cameraContent.add(
+              BarcodeScannerView(
+                onBarcodeDetected:
+                    (code) => controller.handleBarcodeDetected(
+                      code,
+                      context: context,
+                      settingsProvider: context.read<SettingsProvider>(),
+                      connectivity: context.read<ConnectivityService>(),
+                      onShowPaywall: _showPaywall,
+                      onShowResult: _showResultModal,
+                      onShowManualInput: _showManualInputModal,
+                    ),
+                onCancel: () => controller.isScanningBarcode = false,
+              ),
+            );
+          } else if (controller.isInitialized &&
+              controller.cameraController != null) {
+            cameraContent.add(
+              GestureDetector(
+                onTapUp: (details) {
+                  HapticFeedback.selectionClick();
+                  final box = context.findRenderObject() as RenderBox;
+                  final size = box.size;
+                  final point = Offset(
+                    details.localPosition.dx / size.width,
+                    details.localPosition.dy / size.height,
+                  );
+                  _controller.setFocusPoint(point);
+                  setState(() => _focusPoint = details.localPosition);
+                  _focusAnimController?.reset();
+                  _focusAnimController?.forward();
+                },
+                child:
+                    (controller.cameraController?.value.isInitialized ?? false)
+                        ? CameraPreview(
+                          controller.cameraController!,
+                          key: ObjectKey(controller.cameraController),
+                        )
+                        : const _CameraShimmerSkeleton(),
+              ),
+            );
+          } else if (controller.errorMessage != null) {
+            cameraContent.add(
+              _StatePanel(
+                icon: LucideIcons.cameraOff,
+                title: AppLocalizations.of(context)!.error_camera,
+                body: controller.errorMessage!,
+                actionLabel: AppLocalizations.of(context)!.assistant_retry,
+                onAction: _controller.initializeCamera,
+              ),
+            );
+          } else {
+            cameraContent.add(const _CameraShimmerSkeleton());
+          }
+
           return Scaffold(
-            backgroundColor: Colors.black,
+            backgroundColor: const Color(0xFF000000),
             body: Stack(
               children: [
-                if (controller.isScanningBarcode)
-                  Positioned.fill(
-                    child: BarcodeScannerView(
-                      onBarcodeDetected:
-                          (code) => controller.handleBarcodeDetected(
-                            code,
-                            context: context,
-                            settingsProvider: context.read<SettingsProvider>(),
-                            connectivity: context.read<ConnectivityService>(),
-                            onShowPaywall: _showPaywall,
-                            onShowResult: _showResultModal,
-                            onShowManualInput: _showManualInputModal,
-                          ),
-                      onCancel: () => controller.isScanningBarcode = false,
-                    ),
-                  )
-                else if (controller.isInitialized &&
-                    controller.cameraController != null)
-                  Positioned.fill(
-                    child: GestureDetector(
-                      onTapUp: (details) {
-                        HapticFeedback.selectionClick();
-                        final box = context.findRenderObject() as RenderBox;
-                        final size = box.size;
-                        final point = Offset(
-                          details.localPosition.dx / size.width,
-                          details.localPosition.dy / size.height,
-                        );
-                        _controller.setFocusPoint(point);
-                        setState(() => _focusPoint = details.localPosition);
-                        _focusAnimController?.reset();
-                        _focusAnimController?.forward();
-                      },
-                      child:
-                          (controller.cameraController?.value.isInitialized ??
-                                  false)
-                              ? CameraPreview(
-                                controller.cameraController!,
-                                key: ObjectKey(controller.cameraController),
-                              )
-                              : const _CameraShimmerSkeleton(),
-                    ),
-                  )
-                else if (controller.errorMessage != null)
-                  Positioned.fill(
-                    child: _StatePanel(
-                      icon: LucideIcons.cameraOff,
-                      title: AppLocalizations.of(context)!.error_camera,
-                      body: controller.errorMessage!,
-                      actionLabel:
-                          AppLocalizations.of(context)!.assistant_retry,
-                      onAction: _controller.initializeCamera,
-                    ),
-                  )
-                else
-                  const Positioned.fill(child: _CameraShimmerSkeleton()),
-
-                if (controller.isInitialized &&
-                    !controller.isScanningBarcode &&
-                    !controller.isAnalyzing &&
-                    controller.errorMessage == null)
-                  const Positioned.fill(child: FoodFrameGuide()),
-
-                // ── Tap-to-focus ring ──
-                if (_focusPoint != null && _focusAnimController != null)
-                  AnimatedBuilder(
-                    animation: _focusAnimController!,
-                    builder: (context, _) {
-                      return Positioned(
-                        left: _focusPoint!.dx - 30,
-                        top: _focusPoint!.dy - 30,
-                        child: Opacity(
-                          opacity: _focusOpacity?.value ?? 0,
-                          child: Transform.scale(
-                            scale: _focusScale?.value ?? 1.0,
-                            child: Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFFFFD700),
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                          ),
+                // ── Rounded camera preview area ──
+                Positioned(
+                  top: topSafe + 56,
+                  left: previewH,
+                  right: previewH,
+                  bottom: 210 + bottomSafe,
+                  child: ClipRRect(
+                    borderRadius:
+                        BorderRadius.circular(cornerRadius),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(cornerRadius),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.10),
+                          width: 0.5,
                         ),
-                      );
-                    },
+                      ),
+                      child: Stack(
+                        children: [
+                          ...cameraContent,
+                          // Tap-to-focus ring
+                          if (_focusPoint != null &&
+                              _focusAnimController != null)
+                            AnimatedBuilder(
+                              animation: _focusAnimController!,
+                              builder: (context, _) {
+                                return Positioned(
+                                  left: _focusPoint!.dx - 30,
+                                  top: _focusPoint!.dy - 30,
+                                  child: Opacity(
+                                    opacity:
+                                        _focusOpacity?.value ?? 0,
+                                    child: Transform.scale(
+                                      scale:
+                                          _focusScale?.value ?? 1.0,
+                                      child: Container(
+                                        width: 60,
+                                        height: 60,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color:
+                                                const Color(0xFFFFD700),
+                                            width: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
+                ),
 
+                // ── Bottom gradient for readability ──
                 if (!controller.isScanningBarcode)
                   Positioned(
-                    top: 0,
                     left: 0,
                     right: 0,
                     bottom: 0,
+                    height: 200,
                     child: IgnorePointer(
-                      child: DecoratedBox(
+                      child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withValues(alpha: 0.35),
                               Colors.transparent,
-                              Colors.black.withValues(alpha: 0.50),
+                              Colors.black.withValues(alpha: 0.60),
                             ],
-                            stops: const [0, 0.35, 1],
                           ),
                         ),
                       ),
                     ),
                   ),
 
-                if (!controller.isScanningBarcode) ...[
-                  // Top bar
+                // ── Top bar ──
+                if (!controller.isScanningBarcode)
                   Positioned(
-                    top: MediaQuery.of(context).padding.top + 12,
+                    top: topSafe + 12,
                     left: 16,
                     right: 16,
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
                       children: [
-                        // Close
                         GestureDetector(
                           onTap: () => context.go('/'),
                           child: Container(
-                            width: 44,
-                            height: 44,
+                            width: 40,
+                            height: 40,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.25),
+                              color: Colors.black
+                                  .withValues(alpha: 0.30),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(LucideIcons.x, color: Colors.white, size: 22),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
-                        // Flash
-                        if (controller.isInitialized && controller.errorMessage == null)
+                        if (controller.isInitialized &&
+                            controller.errorMessage == null)
                           GestureDetector(
                             onTap: controller.toggleFlash,
                             child: Container(
-                              width: 44,
-                              height: 44,
+                              width: 40,
+                              height: 40,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.25),
+                                color: Colors.black
+                                    .withValues(alpha: 0.30),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 controller.flashMode == FlashMode.off
                                     ? LucideIcons.zapOff
                                     : LucideIcons.zap,
-                                color: controller.flashMode == FlashMode.off
+                                color: controller.flashMode ==
+                                        FlashMode.off
                                     ? Colors.white54
                                     : const Color(0xFFFFD700),
-                                size: 22,
+                                size: 20,
                               ),
                             ),
                           ),
@@ -548,76 +583,84 @@ class _SnapScreenState extends State<SnapScreen>
                     ),
                   ),
 
-                  // Bottom controls
+                // ── Bottom controls ──
+                if (!controller.isScanningBarcode)
                   Positioned(
                     left: 0,
                     right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: EdgeInsets.only(
-                        bottom: MediaQuery.paddingOf(context).bottom + 20,
-                        top: 12,
-                        left: 32,
-                        right: 32,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Gallery
-                          GestureDetector(
-                            onTap: () => controller.pickFromGallery(
-                              context: context,
-                              mealProvider: context.read<MealProvider>(),
-                              settingsProvider: context.read<SettingsProvider>(),
-                              connectivity: context.read<ConnectivityService>(),
-                              onShowPaywall: _showPaywall,
-                              onShowResult: _showResultModal,
-                              onShowManualInput: _showManualInputModal,
-                            ),
-                            child: Container(
-                              width: 56,
-                              height: 56,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(18),
+                    bottom: bottomSafe + 72,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 22),
+                        Row(
+                          children: [
+                            // Gallery
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () =>
+                                    controller.pickFromGallery(
+                                      context: context,
+                                      mealProvider:
+                                          context
+                                              .read<MealProvider>(),
+                                      settingsProvider:
+                                          context
+                                              .read<SettingsProvider>(),
+                                      connectivity:
+                                          context
+                                              .read<ConnectivityService>(),
+                                      onShowPaywall: _showPaywall,
+                                      onShowResult: _showResultModal,
+                                      onShowManualInput:
+                                          _showManualInputModal,
+                                    ),
+                                child: const _BottomIcon(
+                                  icon: LucideIcons.image,
+                                  label: 'Gallery',
+                                ),
                               ),
-                              child: const Icon(LucideIcons.image, color: Colors.white, size: 26),
                             ),
-                          ),
-                          // Shutter
-                          ShutterButton(
-                            onPressed: () => controller.captureAndAnalyze(
-                              context: context,
-                              mealProvider: context.read<MealProvider>(),
-                              settingsProvider: context.read<SettingsProvider>(),
-                              connectivity: context.read<ConnectivityService>(),
-                              onShowPaywall: _showPaywall,
-                              onShowResult: _showResultModal,
-                              onShowManualInput: _showManualInputModal,
+                            // Shutter
+                            ShutterButton(
+                              onPressed: () =>
+                                  controller.captureAndAnalyze(
+                                    context: context,
+                                    mealProvider:
+                                        context
+                                            .read<MealProvider>(),
+                                    settingsProvider:
+                                        context
+                                            .read<SettingsProvider>(),
+                                    connectivity:
+                                        context
+                                            .read<ConnectivityService>(),
+                                    onShowPaywall: _showPaywall,
+                                    onShowResult: _showResultModal,
+                                    onShowManualInput:
+                                        _showManualInputModal,
+                                  ),
+                              isLoading: controller.isCapturing,
                             ),
-                            isLoading: controller.isCapturing,
-                          ),
-                          // Barcode
-                          GestureDetector(
-                            onTap: () => controller.isScanningBarcode = true,
-                            child: Container(
-                              width: 56,
-                              height: 56,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(18),
+                            // Barcode
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () =>
+                                    controller.isScanningBarcode =
+                                        true,
+                                child: const _BottomIcon(
+                                  icon: LucideIcons.scanLine,
+                                  label: 'Barcode',
+                                ),
                               ),
-                              child: const Icon(LucideIcons.scan, color: Colors.white, size: 26),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                ],
+
+                // ── Analyzing overlay ──
                 if (controller.isAnalyzing)
                   Positioned.fill(
                     child: AnalyzingOverlay(
@@ -672,6 +715,41 @@ class _CameraShimmerSkeleton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _BottomIcon extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _BottomIcon({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.10),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: Colors.white, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xD9FFFFFF),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }
