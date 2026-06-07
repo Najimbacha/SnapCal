@@ -282,7 +282,7 @@ class _ResultModalState extends State<ResultModal> {
     final surface = isDark ? const Color(0xFF1A1A1E) : Colors.white;
     final ink = isDark ? Colors.white : _reviewInk;
     final muted = isDark ? Colors.white54 : _reviewMuted;
-    final previewHeight = (MediaQuery.sizeOf(context).height * 0.21).clamp(154.0, 182.0);
+    final previewHeight = (MediaQuery.sizeOf(context).height * 0.24).clamp(144.0, 208.0);
 
     return Scaffold(
       backgroundColor: bg,
@@ -529,216 +529,165 @@ class _ReviewSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Text(
-                'Meal Review',
-                style: AppTypography.titleLarge.copyWith(
-                  color: muted, fontSize: 17,
-                  fontWeight: FontWeight.w700, letterSpacing: -0.3,
-                ),
-              ),
+        const SizedBox(height: 4),
+        Container(
+          height: 24,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : const Color(0xFFF0F0EE),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : Colors.black.withValues(alpha: 0.05),
             ),
-            Container(
-              height: 26,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(AppSymbols.sparkles, size: 10,
+                  color: isDark ? Colors.white70 : const Color(0xFF29314A)),
+              const SizedBox(width: 4),
+              Text('AI Estimated',
+                  style: TextStyle(
+                      color: isDark ? Colors.white70 : const Color(0xFF29314A),
+                      fontSize: 10, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          '$calories',
+          style: TextStyle(
+            fontSize: 56,
+            fontWeight: FontWeight.w200,
+            color: ink,
+            height: 0.90,
+            letterSpacing: -3,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'Total Calories',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: muted,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _MacroCircle(label: 'Protein', value: protein,
+                color: AppColors.protein, locked: !isPro),
+            const SizedBox(width: 20),
+            _MacroCircle(label: 'Carbs', value: carbs,
+                color: AppColors.carbs, locked: !isPro),
+            const SizedBox(width: 20),
+            _MacroCircle(label: 'Fat', value: fat,
+                color: AppColors.fat, locked: !isPro),
+          ],
+        ),
+        if (!isPro) ...[
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () => PremiumConversionService().openPaywall(
+                context, PaywallEntryPoint.macroDetails,
+                featureName: 'scan_result_macros'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFFF7F7F7),
-                borderRadius: BorderRadius.circular(999),
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : const Color(0xFFF5F3EF),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isDark
-                      ? Colors.white.withValues(alpha: 0.10)
+                      ? Colors.white.withValues(alpha: 0.06)
                       : Colors.black.withValues(alpha: 0.05),
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(AppSymbols.sparkles, size: 12,
-                      color: isDark ? Colors.white70 : const Color(0xFF29314A)),
+                  Icon(AppSymbols.crown, size: 14,
+                      color: isDark ? Colors.white54 : const Color(0xFFA0884A)),
+                  const SizedBox(width: 6),
+                  Text('Unlock macro details',
+                      style: TextStyle(
+                          color: muted, fontSize: 12,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(width: 4),
-                  Text('AI detected',
-                      style: AppTypography.labelLarge.copyWith(
-                          color: isDark ? Colors.white70 : const Color(0xFF29314A),
-                          fontSize: 10, fontWeight: FontWeight.w900)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text('$calories',
-                style: AppTypography.displaySmall.copyWith(
-                    color: ink, fontSize: 40, height: 0.90,
-                    fontWeight: FontWeight.w900, letterSpacing: -1.5)),
-            const SizedBox(width: 6),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 3),
-              child: Text('kcal',
-                  style: AppTypography.titleLarge.copyWith(
-                      color: muted, fontSize: 18,
-                      fontWeight: FontWeight.w700, letterSpacing: -0.3)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Text('Estimated from photo',
-                style: AppTypography.bodySmall.copyWith(
-                    color: muted, fontSize: 11, fontWeight: FontWeight.w700)),
-            const SizedBox(width: 5),
-            Icon(AppSymbols.info, size: 14,
-                color: muted.withValues(alpha: 0.58)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _MacroTile(label: 'Protein', value: protein,
-                color: AppColors.protein, locked: !isPro)),
-            const SizedBox(width: 6),
-            Expanded(child: _MacroTile(label: 'Carbs', value: carbs,
-                color: AppColors.carbs, locked: !isPro)),
-            const SizedBox(width: 6),
-            Expanded(child: _MacroTile(label: 'Fat', value: fat,
-                color: AppColors.fat, locked: !isPro)),
-          ],
-        ),
-        if (isPro && (protein + carbs + fat) > 0) ...[
-          const SizedBox(height: 10),
-          _MacroProportionBar(protein: protein, carbs: carbs, fat: fat),
-        ],
-        if (!isPro) ...[
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () => PremiumConversionService().openPaywall(
-                context, PaywallEntryPoint.macroDetails,
-                featureName: 'scan_result_macros'),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 40),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFFFFF8E1).withValues(alpha: 0.6),
-                    const Color(0xFFFFF1CC).withValues(alpha: 0.3),
-                  ],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: const Color(0xFFFFD966).withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(AppSymbols.crown, size: 20,
-                      color: Color(0xFFCC8800)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Unlock Macro Tracking',
-                            style: AppTypography.titleSmall.copyWith(
-                                color: ink, fontSize: 13,
-                                fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 1),
-                        Text('See protein, carbs & fat in every scan',
-                            style: AppTypography.bodySmall.copyWith(
-                                color: muted, fontSize: 11,
-                                fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                  Icon(AppSymbols.chevronRight, size: 16, color: muted),
+                  Icon(AppSymbols.chevronRight, size: 12, color: muted),
                 ],
               ),
             ),
           ),
+          const SizedBox(height: 4),
+        ],
+        if (isPro && (protein + carbs + fat) > 0) ...[
+          const SizedBox(height: 12),
+          _MacroProportionBar(protein: protein, carbs: carbs, fat: fat),
         ],
       ],
     );
   }
 }
 
-class _MacroTile extends StatelessWidget {
+class _MacroCircle extends StatelessWidget {
   final String label;
   final int value;
   final Color color;
   final bool locked;
 
-  const _MacroTile({
-    required this.label, required this.value, required this.color, required this.locked,
+  const _MacroCircle({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.locked,
   });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = locked ? _reviewMuted : color;
-    final bgAlpha = locked ? 0.04 : 0.07;
-    final borderAlpha = locked ? 0.10 : 0.16;
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 44),
-      padding: const EdgeInsets.fromLTRB(8, 5, 6, 5),
-      decoration: BoxDecoration(
-        color: effectiveColor.withValues(alpha: bgAlpha),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: effectiveColor.withValues(alpha: borderAlpha)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 22, height: 22,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: effectiveColor.withValues(alpha: locked ? 0.06 : 0.11),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              locked ? AppSymbols.lock : AppSymbols.check,
-              size: 12, color: effectiveColor,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withValues(alpha: 0.10),
+            border: Border.all(
+              color: color.withValues(alpha: 0.25),
+              width: 1.5,
             ),
           ),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  locked ? label : '${value}g',
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
+          child: locked
+              ? Icon(AppSymbols.lock, size: 16, color: color.withValues(alpha: 0.5))
+              : Text('${value}g',
                   style: TextStyle(
-                    color: effectiveColor, fontSize: 13,
-                    fontWeight: FontWeight.w900, letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  locked ? 'Locked' : label,
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _reviewMuted.withValues(alpha: locked ? 0.6 : 1.0),
-                    fontSize: 9, fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  )),
+        ),
+        const SizedBox(height: 5),
+        Text(label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: _reviewMuted,
+            )),
         ],
-      ),
-    );
+      );
   }
 }
 
@@ -883,8 +832,6 @@ class _FoodReviewCardState extends State<_FoodReviewCard>
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _FoodIcon(name: widget.item.name),
-                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1029,83 +976,6 @@ class _FoodReviewCardState extends State<_FoodReviewCard>
   }
 }
 
-class _FoodIcon extends StatelessWidget {
-  final String name;
-  const _FoodIcon({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    final iconData = _foodIconFor(name);
-    final (accent, bgAccent) = _foodColorFor(name);
-    return Container(
-      width: 40, height: 40,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: bgAccent,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(iconData, size: 20, color: accent),
-    );
-  }
-
-  IconData _foodIconFor(String name) {
-    final value = name.toLowerCase();
-    if (value.contains('rice') || value.contains('pasta') || value.contains('noodle'))
-      return AppSymbols.rice;
-    if (value.contains('chicken') || value.contains('wing') || value.contains('turkey'))
-      return AppSymbols.chicken;
-    if (value.contains('beef') || value.contains('steak') || value.contains('burger') || value.contains('meat'))
-      return AppSymbols.beef;
-    if (value.contains('fish') || value.contains('salmon') || value.contains('tuna') || value.contains('shrimp'))
-      return AppSymbols.fish;
-    if (value.contains('egg'))
-      return AppSymbols.egg;
-    if (value.contains('salad') || value.contains('lettuce') || value.contains('spinach') || value.contains('veggie'))
-      return AppSymbols.salad;
-    if (value.contains('soup'))
-      return AppSymbols.soup;
-    if (value.contains('bread') || value.contains('toast') || value.contains('sandwich'))
-      return AppSymbols.bread;
-    if (value.contains('pizza'))
-      return AppSymbols.pizza;
-    if (value.contains('fruit') || value.contains('apple') || value.contains('banana') || value.contains('berry'))
-      return AppSymbols.fruit;
-    if (value.contains('water'))
-      return AppSymbols.water;
-    if (value.contains('coffee') || value.contains('tea') || value.contains('juice') || value.contains('soda') || value.contains('drink'))
-      return AppSymbols.drink;
-    if (value.contains('cake') || value.contains('cookie') || value.contains('dessert') || value.contains('ice cream'))
-      return AppSymbols.dessert;
-    if (value.contains('fry') || value.contains('chip'))
-      return AppSymbols.fries;
-    return AppSymbols.meal;
-  }
-
-  (Color, Color) _foodColorFor(String name) {
-    final value = name.toLowerCase();
-    if (value.contains('chicken') || value.contains('wing') || value.contains('turkey'))
-      return (const Color(0xFFD84B2A), const Color(0xFFD84B2A).withValues(alpha: 0.10));
-    if (value.contains('fish') || value.contains('salmon') || value.contains('tuna') || value.contains('shrimp'))
-      return (const Color(0xFF4F8CC9), const Color(0xFF4F8CC9).withValues(alpha: 0.10));
-    if (value.contains('salad') || value.contains('lettuce') || value.contains('spinach') || value.contains('veggie'))
-      return (const Color(0xFF7C9A6D), const Color(0xFF7C9A6D).withValues(alpha: 0.10));
-    if (value.contains('soup'))
-      return (const Color(0xFFD18B47), const Color(0xFFD18B47).withValues(alpha: 0.10));
-    if (value.contains('rice') || value.contains('pasta') || value.contains('noodle') || value.contains('bread') || value.contains('toast'))
-      return (const Color(0xFFE8B84B), const Color(0xFFE8B84B).withValues(alpha: 0.10));
-    if (value.contains('fruit') || value.contains('berry'))
-      return (const Color(0xFFE8644A), const Color(0xFFE8644A).withValues(alpha: 0.10));
-    if (value.contains('water'))
-      return (const Color(0xFF4A90D9), const Color(0xFF4A90D9).withValues(alpha: 0.10));
-    if (value.contains('drink') || value.contains('coffee') || value.contains('tea') || value.contains('juice'))
-      return (const Color(0xFFA855F7), const Color(0xFFA855F7).withValues(alpha: 0.10));
-    if (value.contains('dessert') || value.contains('cake') || value.contains('cookie'))
-      return (const Color(0xFFE87A9C), const Color(0xFFE87A9C).withValues(alpha: 0.10));
-    if (value.contains('pizza'))
-      return (const Color(0xFFE8B84B), const Color(0xFFE8B84B).withValues(alpha: 0.10));
-    return (AppColors.primary, AppColors.primary.withValues(alpha: 0.10));
-  }
-}
 
 class _MacroDot extends StatelessWidget {
   final String label;

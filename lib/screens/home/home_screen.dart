@@ -598,33 +598,63 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
           ),
           const SizedBox(height: 2),
-          _staggeredSlide(
-            _itemAnims[2],
-            _SecondaryDashboardGrid(
-              waterTotal: waterState.total,
-              waterGoal: waterState.goal,
-              steps: activityState.steps,
-              burnedCalories: activityState.burnedCalories,
-              caloriesEstimated: activityState.caloriesEstimated,
-              stepsUnit: 'steps',
-              activityLive: activityState.isTracking,
-              onWaterTap: () => showHydrationSheet(context),
-              onWaterAdd: () => _addWater(context.read<WaterProvider>()),
-              onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
-              onActivityTap: () => showActivityHealthConnectSheet(context),
+          if (isPro) ...[
+            _staggeredSlide(
+              _itemAnims[2],
+              _MinimalMacroSection(
+                macros: macros,
+                proteinGoal: proteinGoal,
+                carbGoal: carbGoal,
+                fatGoal: fatGoal,
+                isPro: isPro,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          _staggeredSlide(
-            _itemAnims[3],
-            _MinimalMacroSection(
-              macros: macros,
-              proteinGoal: proteinGoal,
-              carbGoal: carbGoal,
-              fatGoal: fatGoal,
-              isPro: isPro,
+            const SizedBox(height: 2),
+            _staggeredSlide(
+              _itemAnims[3],
+              _SecondaryDashboardGrid(
+                waterTotal: waterState.total,
+                waterGoal: waterState.goal,
+                steps: activityState.steps,
+                burnedCalories: activityState.burnedCalories,
+                caloriesEstimated: activityState.caloriesEstimated,
+                stepsUnit: 'steps',
+                activityLive: activityState.isTracking,
+                onWaterTap: () => showHydrationSheet(context),
+                onWaterAdd: () => _addWater(context.read<WaterProvider>()),
+                onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
+                onActivityTap: () => showActivityHealthConnectSheet(context),
+              ),
             ),
-          ),
+          ] else ...[
+            _staggeredSlide(
+              _itemAnims[2],
+              _SecondaryDashboardGrid(
+                waterTotal: waterState.total,
+                waterGoal: waterState.goal,
+                steps: activityState.steps,
+                burnedCalories: activityState.burnedCalories,
+                caloriesEstimated: activityState.caloriesEstimated,
+                stepsUnit: 'steps',
+                activityLive: activityState.isTracking,
+                onWaterTap: () => showHydrationSheet(context),
+                onWaterAdd: () => _addWater(context.read<WaterProvider>()),
+                onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
+                onActivityTap: () => showActivityHealthConnectSheet(context),
+              ),
+            ),
+            const SizedBox(height: 2),
+            _staggeredSlide(
+              _itemAnims[3],
+              _MinimalMacroSection(
+                macros: macros,
+                proteinGoal: proteinGoal,
+                carbGoal: carbGoal,
+                fatGoal: fatGoal,
+                isPro: isPro,
+              ),
+            ),
+          ],
           const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[4],
@@ -3156,12 +3186,12 @@ class _SecondaryDashboardGrid extends StatelessWidget {
             : '$burnedCalories active kcal';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+      padding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _MinimalSectionLabel(text: l10n.home_daily_wellness),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(

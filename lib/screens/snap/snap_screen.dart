@@ -397,7 +397,7 @@ class _SnapScreenState extends State<SnapScreen>
                       onShowResult: _showResultModal,
                       onShowManualInput: _showManualInputModal,
                     ),
-                onCancel: () => controller.isScanningBarcode = false,
+                onCancel: () => context.go('/'),
               ),
             );
           } else if (controller.isInitialized &&

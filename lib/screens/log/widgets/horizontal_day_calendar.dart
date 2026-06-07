@@ -178,7 +178,7 @@ class _DayCell extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: 50,
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 6),
           decoration: BoxDecoration(
             color: selected
                 ? colorScheme.primary.withValues(alpha: 0.12)
