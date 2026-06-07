@@ -1,10 +1,10 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/theme/app_typography.dart';
 import '../snap_controller.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -16,14 +16,27 @@ class AnalyzingOverlay extends StatefulWidget {
   State<AnalyzingOverlay> createState() => _AnalyzingOverlayState();
 }
 
-class _AnalyzingOverlayState extends State<AnalyzingOverlay> {
+class _AnalyzingOverlayState extends State<AnalyzingOverlay>
+    with TickerProviderStateMixin {
   int _messageIndex = 0;
   Timer? _messageTimer;
   List<String> _statusMessages = [];
+  late AnimationController _pulseController;
+  late AnimationController _scanController;
 
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _scanController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+
     _messageTimer = Timer.periodic(const Duration(milliseconds: 2200), (timer) {
       if (mounted) {
         if (_statusMessages.isEmpty) return;
@@ -52,6 +65,8 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay> {
   @override
   void dispose() {
     _messageTimer?.cancel();
+    _pulseController.dispose();
+    _scanController.dispose();
     super.dispose();
   }
 
@@ -74,8 +89,8 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.30),
-                    Colors.black.withValues(alpha: 0.50),
+                    Colors.black.withValues(alpha: 0.35),
+                    Colors.black.withValues(alpha: 0.55),
                     const Color(0xFF0A0A0A),
                   ],
                   stops: const [0, 0.35, 0.7],
@@ -109,156 +124,210 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay> {
             ),
           ),
 
-          // Result preview skeleton
-            Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
-              decoration: const BoxDecoration(
-                color: Color(0xFF0D0D0D),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title skeleton
-                  _buildShimmerBar(width: 120, height: 18),
-                  const SizedBox(height: 4),
-                  _buildShimmerBar(width: 160, height: 12),
-                  const SizedBox(height: 20),
-
-                  // Calorie number skeleton
-                  _buildShimmerBar(width: 100, height: 32),
-                  const SizedBox(height: 4),
-                  _buildShimmerBar(width: 80, height: 12),
-                  const SizedBox(height: 20),
-
-                  // Macro preview skeleton (3 columns)
-                  Row(
+          // Premium analyzing UI
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Animated scanning icon
+                SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      _macroShimmer(),
-                      const SizedBox(width: 8),
-                      _macroShimmer(),
-                      const SizedBox(width: 8),
-                      _macroShimmer(),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Food items skeleton (2 rows)
-                  _foodRowShimmer(),
-                  const SizedBox(height: 10),
-                  _foodRowShimmer(),
-                  const SizedBox(height: 20),
-
-                  // Button skeleton
-                  _buildShimmerBar(width: double.infinity, height: 50, radius: 12),
-                  const SizedBox(height: 14),
-
-                  // Status + manual
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 400),
-                        transitionBuilder: (child, animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, 0.15),
-                                end: Offset.zero,
-                              ).animate(CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              )),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: Text(
-                          _statusMessages.isNotEmpty ? _statusMessages[_messageIndex] : '',
-                          key: ValueKey<int>(_messageIndex),
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.35),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                      // Outer ring pulse
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            width: 1,
+                          ),
+                        ),
+                      ).animate(controller: _pulseController).scale(
+                        begin: const Offset(0.92, 0.92),
+                        end: const Offset(1.08, 1.08),
+                        curve: Curves.easeInOut,
+                      ),
+                      // Middle ring
+                      Container(
+                        width: 76,
+                        height: 76,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            width: 1,
                           ),
                         ),
                       ),
-                      if (widget.onManualEntry != null)
-                        GestureDetector(
-                          onTap: widget.onManualEntry,
-                          child: Text(
-                            AppLocalizations.of(context)!.scan_overlay_manual.toUpperCase(),
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.2,
-                            ),
+                      // Scanning arc
+                      AnimatedBuilder(
+                        animation: _scanController,
+                        builder: (context, child) {
+                          return Transform.rotate(
+                            angle: _scanController.value * 2 * pi,
+                            child: child,
+                          );
+                        },
+                        child: SizedBox(
+                          width: 76,
+                          height: 76,
+                          child: CustomPaint(
+                            painter: _ScanArcPainter(),
                           ),
                         ),
+                      ),
+                      // Inner icon
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.06),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          LucideIcons.brain,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ).animate(controller: _pulseController).scale(
+                        begin: const Offset(0.95, 0.95),
+                        end: const Offset(1.05, 1.05),
+                        curve: Curves.easeInOut,
+                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 28),
+
+                // Analyzing text
+                const Text(
+                  'AI Analyzing',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Identifying food & estimating nutrition',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Bottom status bar
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: MediaQuery.of(context).padding.bottom + 24,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Status message
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.15),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        )),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    _statusMessages.isNotEmpty ? _statusMessages[_messageIndex] : '',
+                    key: ValueKey<int>(_messageIndex),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.35),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Manual entry link
+                if (widget.onManualEntry != null)
+                  GestureDetector(
+                    onTap: widget.onManualEntry,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.10),
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context)!.scan_overlay_manual.toUpperCase(),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildShimmerBar({
-    required double width,
-    required double height,
-    double radius = 6,
-  }) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(radius),
-      ),
-    ).animate(onPlay: (c) => c.repeat()).shimmer(
-      duration: 1800.ms,
-      color: Colors.white.withValues(alpha: 0.07),
+class _ScanArcPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 1;
+
+    // Full subtle ring
+    final ringPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.10)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawCircle(center, radius, ringPaint);
+
+    // Scanning arc (120 degrees)
+    final arcPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      2 * pi / 3,
+      false,
+      arcPaint,
     );
   }
 
-  Widget _macroShimmer() {
-    return Expanded(
-      child: Column(
-        children: [
-          _buildShimmerBar(width: double.infinity, height: 8),
-          const SizedBox(height: 6),
-          _buildShimmerBar(width: 30, height: 10),
-        ],
-      ),
-    );
-  }
-
-  Widget _foodRowShimmer() {
-    return Row(
-      children: [
-        _buildShimmerBar(width: 16, height: 16, radius: 8),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildShimmerBar(width: 140, height: 14),
-              const SizedBox(height: 4),
-              _buildShimmerBar(width: 80, height: 10),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        _buildShimmerBar(width: 50, height: 14),
-      ],
-    );
-  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

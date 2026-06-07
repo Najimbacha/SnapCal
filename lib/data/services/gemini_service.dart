@@ -4,16 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/api_client.dart';
-import '../../core/resilience/timeout_policy.dart';
 import '../../core/services/config_service.dart';
-import '../../core/utils/resilience_utils.dart';
+import '../../core/utils/image_utils.dart';
 import '../models/meal.dart';
-import '../models/meal_plan.dart'; // MealPlan model
-import '../models/grocery_item.dart'; // GroceryItem model
-import '../models/user_settings.dart'; // UserSettings model
+import '../models/meal_plan.dart';
+import '../models/grocery_item.dart';
+import '../models/user_settings.dart';
 
 /// Generic Nutrition Result from AI, Barcode, or Manual Entry
 class NutritionResult {
@@ -241,81 +239,28 @@ User daily targets:
     Uint8List imageBytes, {
     String language = 'en',
   }) async {
-    try {
-      debugPrint("Attempting food analysis via private upload flow...");
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw GeminiException('Please sign in before scanning food.');
-      }
-
-      final proxyUrl = ConfigService().backendProxyUrl;
-      final scanId = const Uuid().v4();
-      final fileName = 'scan.jpg';
-      final storagePath = 'users/${user.uid}/scans/$scanId/$fileName';
-      final ref = FirebaseStorage.instance.ref(storagePath);
-      await ref
-          .putData(
-            imageBytes,
-            SettableMetadata(
-              contentType: 'image/jpeg',
-              customMetadata: {'scanId': scanId, 'source': 'snapcal'},
-            ),
-          )
-          .timeout(TimeoutPolicy.upload);
-
-      await _dio.post(
-        '$proxyUrl/api/food-scans',
-        options: Options(headers: {'Content-Type': 'application/json'}),
-        data: {
-          'scanId': scanId,
-          'fileName': fileName,
-          'contentType': 'image/jpeg',
-          'inputSource': 'camera',
-          'language': language,
-        },
-      );
-
-      final response = await ResilienceUtils.runWithRetryAndTimeout(
-        operation: () async {
-          return await _dio.post(
-            '$proxyUrl/api/food-scans/$scanId/process',
-            options: Options(headers: {'Content-Type': 'application/json'}),
-            data: const <String, dynamic>{},
-          );
-        },
-        timeoutDuration: const Duration(seconds: 20),
-        maxAttempts: 3,
-        retryIf: (e) {
-          if (e is DioException) {
-            final type = e.type;
-            if (type == DioExceptionType.connectionTimeout ||
-                type == DioExceptionType.sendTimeout ||
-                type == DioExceptionType.receiveTimeout ||
-                type == DioExceptionType.connectionError) {
-              return true;
-            }
-            final status = e.response?.statusCode;
-            return status != null && status >= 500;
-          }
-          return e is TimeoutException;
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final text =
-            response.data is String
-                ? response.data as String
-                : jsonEncode(response.data);
-        return await _parseResponse(text);
-      }
-      throw GeminiException(
-        'Backend returned invalid response (status: ${response.statusCode})',
-      );
-    } catch (e) {
-      final errorDetail = _extractDioError(e);
-      debugPrint("Proxy scan failed: $errorDetail");
-      throw GeminiException("AI Scan failed via proxy: $errorDetail");
+    if (FirebaseAuth.instance.currentUser == null) {
+      throw GeminiException('Please sign in before scanning food.');
     }
+    final bytes = await ImageUtils.compressImageBytesAsync(imageBytes);
+    if (bytes.length > AppConstants.maxImageUploadBytes) {
+      throw GeminiException('Image is too large to upload safely.');
+    }
+    final base64Image = await compute(base64Encode, bytes);
+    final proxyUrl = ConfigService().backendProxyUrl;
+
+    final response = await _dio.post(
+      '$proxyUrl/v1/scan',
+      options: Options(headers: {'Content-Type': 'application/json'}),
+      data: {'image': base64Image, 'language': language},
+    );
+    if (response.statusCode != 200) {
+      throw GeminiException('Scan failed (status: ${response.statusCode})');
+    }
+    final text = response.data is String
+        ? response.data as String
+        : jsonEncode(response.data);
+    return _parseResponse(text);
   }
 
   /// Shared JSON Parser (Runs in Background Isolate)

@@ -118,11 +118,16 @@ class SnapController extends ChangeNotifier {
     required Function() onShowManualInput,
   }) async {
     if (_isCapturing || _isAnalyzing) return;
+    _isCapturing = true;
+    _errorMessage = null;
+    notifyListeners();
     final op = ++_operationGeneration;
 
     final l10n = AppLocalizations.of(context)!;
     final hasInternet = await connectivity.refreshReachability(force: true);
     if (!hasInternet) {
+      _isCapturing = false;
+      notifyListeners();
       HapticFeedback.vibrate();
       _errorMessage = l10n.snap_offline_error;
       notifyListeners();
@@ -131,19 +136,20 @@ class SnapController extends ChangeNotifier {
     }
 
     if (!ScanGateService().canScan(settingsProvider.isPro)) {
+      _isCapturing = false;
+      notifyListeners();
       onShowPaywall();
       return;
     }
 
     if (CameraService().controller == null ||
         !CameraService().controller!.value.isInitialized) {
+      _isCapturing = false;
+      notifyListeners();
       return;
     }
 
     HapticFeedback.mediumImpact();
-    _isCapturing = true;
-    _errorMessage = null;
-    notifyListeners();
 
     try {
       final XFile imageFile = await CameraService().controller!
@@ -177,7 +183,7 @@ class SnapController extends ChangeNotifier {
             timeout: TimeoutPolicy.aiScan,
             retryPolicy: RetryPolicy.ai,
             operationKey: 'snap:cameraScan',
-            isActive: () => !_disposed && op == _operationGeneration,
+            isActive: () => !_disposed,
           );
           if (result.isFailure) throw GeminiException(result.failure!.message);
           _analysisResults = result.requireData;
@@ -220,7 +226,7 @@ class SnapController extends ChangeNotifier {
     required Function() onShowResult,
     required Function() onShowManualInput,
   }) async {
-    if (_isAnalyzing) return;
+    if (_isAnalyzing || _isCapturing) return;
     final op = ++_operationGeneration;
 
     final l10n = AppLocalizations.of(context)!;

@@ -162,10 +162,9 @@ class _SnapScreenState extends State<SnapScreen>
     _savedResultFingerprint = null;
     final results = _controller.analysisResults;
 
-    Navigator.push(
-      context,
+    Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
-        opaque: false,
+        opaque: true,
         barrierDismissible: false,
         barrierColor: Colors.black.withValues(alpha: 0.3),
         pageBuilder: (context, animation, secondaryAnimation) {
@@ -203,10 +202,9 @@ class _SnapScreenState extends State<SnapScreen>
     if (!mounted) return;
     _isSavingResult = false;
     _savedResultFingerprint = null;
-    Navigator.push(
-      context,
+    Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
-        opaque: false,
+        opaque: true,
         barrierDismissible: false,
         barrierColor: Colors.black.withValues(alpha: 0.3),
         pageBuilder: (context, animation, secondaryAnimation) {
@@ -511,16 +509,16 @@ class _SnapScreenState extends State<SnapScreen>
                       children: [
                         // Close
                         GestureDetector(
-                          onTap: () => context.pop(),
+                          onTap: () => context.go('/'),
                           child: Container(
-                            width: 36,
-                            height: 36,
+                            width: 44,
+                            height: 44,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.25),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(LucideIcons.x, color: Colors.white, size: 18),
+                            child: const Icon(LucideIcons.x, color: Colors.white, size: 22),
                           ),
                         ),
                         // Flash
@@ -528,8 +526,8 @@ class _SnapScreenState extends State<SnapScreen>
                           GestureDetector(
                             onTap: controller.toggleFlash,
                             child: Container(
-                              width: 36,
-                              height: 36,
+                              width: 44,
+                              height: 44,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.25),
@@ -542,7 +540,7 @@ class _SnapScreenState extends State<SnapScreen>
                                 color: controller.flashMode == FlashMode.off
                                     ? Colors.white54
                                     : const Color(0xFFFFD700),
-                                size: 18,
+                                size: 22,
                               ),
                             ),
                           ),
@@ -578,14 +576,14 @@ class _SnapScreenState extends State<SnapScreen>
                               onShowManualInput: _showManualInputModal,
                             ),
                             child: Container(
-                              width: 48,
-                              height: 48,
+                              width: 56,
+                              height: 56,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(16),
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(18),
                               ),
-                              child: const Icon(LucideIcons.image, color: Colors.white, size: 22),
+                              child: const Icon(LucideIcons.image, color: Colors.white, size: 26),
                             ),
                           ),
                           // Shutter
@@ -605,14 +603,14 @@ class _SnapScreenState extends State<SnapScreen>
                           GestureDetector(
                             onTap: () => controller.isScanningBarcode = true,
                             child: Container(
-                              width: 48,
-                              height: 48,
+                              width: 56,
+                              height: 56,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(16),
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(18),
                               ),
-                              child: const Icon(LucideIcons.scan, color: Colors.white, size: 22),
+                              child: const Icon(LucideIcons.scan, color: Colors.white, size: 26),
                             ),
                           ),
                         ],

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../data/models/user_settings.dart';
 import '../data/repositories/settings_repository.dart';
@@ -88,7 +89,23 @@ class SettingsProvider with ChangeNotifier {
   bool get isLoading => _uiState.isBlocking;
   bool get isRefreshing => _uiState.isRefreshing;
   AsyncUiState get uiState => _uiState;
-  bool get isPro => _settings.isPro;
+  bool? _debugProOverride;
+  bool get isPro {
+    if (kDebugMode && _debugProOverride != null) {
+      return _debugProOverride!;
+    }
+    return _settings.isPro;
+  }
+  // Debug helpers for testing Pro features
+  void toggleDebugPro() {
+    assert(() {
+      _debugProOverride = _debugProOverride == null ? true : !_debugProOverride!;
+      debugPrint('🔧 Debug Pro: ${_debugProOverride! ? "ENABLED" : "DISABLED"}');
+      notifyListeners();
+      return true;
+    }());
+  }
+
   int get currentStreak => _settings.currentStreak;
 
   int get dailyCalorieGoal => _settings.dailyCalorieGoal;

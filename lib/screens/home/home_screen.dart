@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 // ignore_for_file: unused_element
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -606,6 +607,7 @@ class _HomeScreenState extends State<HomeScreen>
               caloriesEstimated: activityState.caloriesEstimated,
               stepsUnit: 'steps',
               activityLive: activityState.isTracking,
+              onWaterTap: () => context.push('/water'),
               onWaterAdd: () => _addWater(context.read<WaterProvider>()),
               onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
               onActivityTap: () => showActivityHealthConnectSheet(context),
@@ -800,6 +802,38 @@ class _MinimalHomeTopBar extends StatelessWidget {
               ),
             ],
           ),
+          // Debug Pro toggle (visible only in debug mode)
+          if (kDebugMode)
+            GestureDetector(
+              onTap: () => context.read<SettingsProvider>().toggleDebugPro(),
+              child: Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color:
+                      isPro
+                          ? Colors.green.withValues(alpha: 0.15)
+                          : Colors.grey.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color:
+                        isPro
+                            ? Colors.green.withValues(alpha: 0.4)
+                            : Colors.grey.withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
+                ),
+                child: Text(
+                  isPro ? 'PRO' : 'free',
+                  style: TextStyle(
+                    color: isPro ? Colors.green : Colors.grey,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
           const Spacer(),
           // Streak Flame Badge (only if active)
           if (streak >= 0) ...[
@@ -1165,53 +1199,53 @@ class _MinimalMacroSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _MinimalSectionLabel(text: l10n.home_section_macros_today),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFD4A029), Color(0xFFE29200)],
-                    ),
-                    borderRadius: BorderRadius.circular(4),
+        children: [
+          Row(
+            children: [
+              _MinimalSectionLabel(text: l10n.home_section_macros_today),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFD4A029), Color(0xFFE29200)],
                   ),
-                  child: const Text(
-                    'PRO',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 7.5,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                      height: 1,
-                    ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'PRO',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 7.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                    height: 1,
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (isPro) ...[
+            _MinimalMacroRow(
+              label: l10n.result_protein,
+              value: macros.protein,
+              goal: proteinGoal,
             ),
-            const SizedBox(height: 14),
-            if (isPro) ...[
-              _MinimalMacroRow(
-                label: l10n.result_protein,
-                value: macros.protein,
-                goal: proteinGoal,
-              ),
-              const SizedBox(height: 12),
-              _MinimalMacroRow(
-                label: l10n.result_carbs,
-                value: macros.carbs,
-                goal: carbGoal,
-              ),
-              const SizedBox(height: 12),
-              _MinimalMacroRow(
-                label: l10n.result_fat,
-                value: macros.fat,
-                goal: fatGoal,
-              ),
-            ] else
-              const _MacroPreviewCard(),
+            const SizedBox(height: 12),
+            _MinimalMacroRow(
+              label: l10n.result_carbs,
+              value: macros.carbs,
+              goal: carbGoal,
+            ),
+            const SizedBox(height: 12),
+            _MinimalMacroRow(
+              label: l10n.result_fat,
+              value: macros.fat,
+              goal: fatGoal,
+            ),
+          ] else
+            const _MacroPreviewCard(),
           const SizedBox(height: 18),
           const _MinimalSectionDivider(),
         ],
@@ -1227,16 +1261,11 @@ class _MacroPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
-    final cardBg =
-        isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7);
+    final cardBg = isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7);
     final borderColor =
-        isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : const Color(0xFFE8E4DC);
-    final muted =
-        isDark ? Colors.white38 : const Color(0xFFB4AFA8);
-    final mutedText =
-        isDark ? Colors.white60 : const Color(0xFF78716C);
+        isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE8E4DC);
+    final muted = isDark ? Colors.white38 : const Color(0xFFB4AFA8);
+    final mutedText = isDark ? Colors.white60 : const Color(0xFF78716C);
 
     final items = [
       (l10n.result_protein, const Color(0xFF7C9A6D), 0.65),
@@ -1245,11 +1274,12 @@ class _MacroPreviewCard extends StatelessWidget {
     ];
 
     return GestureDetector(
-      onTap: () => PremiumConversionService().openPaywall(
-        context,
-        PaywallEntryPoint.macroDetails,
-        featureName: 'home_macros',
-      ),
+      onTap:
+          () => PremiumConversionService().openPaywall(
+            context,
+            PaywallEntryPoint.macroDetails,
+            featureName: 'home_macros',
+          ),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
@@ -1271,9 +1301,7 @@ class _MacroPreviewCard extends StatelessWidget {
             // Three macro rows
             ...items.map(
               (item) => Padding(
-                padding: EdgeInsets.only(
-                  bottom: item == items.last ? 0 : 12,
-                ),
+                padding: EdgeInsets.only(bottom: item == items.last ? 0 : 12),
                 child: Row(
                   children: [
                     SizedBox(
@@ -1295,7 +1323,9 @@ class _MacroPreviewCard extends StatelessWidget {
                         height: 4,
                         clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
-                          color: item.$2.withValues(alpha: isDark ? 0.10 : 0.15),
+                          color: item.$2.withValues(
+                            alpha: isDark ? 0.10 : 0.15,
+                          ),
                           borderRadius: BorderRadius.circular(2),
                         ),
                         child: FractionallySizedBox(
@@ -1303,7 +1333,9 @@ class _MacroPreviewCard extends StatelessWidget {
                           heightFactor: 1,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: item.$2.withValues(alpha: isDark ? 0.35 : 0.40),
+                              color: item.$2.withValues(
+                                alpha: isDark ? 0.35 : 0.40,
+                              ),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -3094,6 +3126,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
   final bool caloriesEstimated;
   final String stepsUnit;
   final bool activityLive;
+  final VoidCallback onWaterTap;
   final VoidCallback onWaterAdd;
   final VoidCallback onWaterRemove;
   final VoidCallback onActivityTap;
@@ -3106,6 +3139,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
     required this.caloriesEstimated,
     required this.stepsUnit,
     required this.activityLive,
+    required this.onWaterTap,
     required this.onWaterAdd,
     required this.onWaterRemove,
     required this.onActivityTap,
@@ -3133,6 +3167,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
                 child: _WaterFillCard(
                   total: waterTotal,
                   goal: waterGoal,
+                  onTap: onWaterTap,
                   onAdd: onWaterAdd,
                 ),
               ),
@@ -3159,11 +3194,13 @@ class _SecondaryDashboardGrid extends StatelessWidget {
 class _WaterFillCard extends StatefulWidget {
   final int total;
   final int goal;
+  final VoidCallback onTap;
   final VoidCallback onAdd;
 
   const _WaterFillCard({
     required this.total,
     required this.goal,
+    required this.onTap,
     required this.onAdd,
   });
 
@@ -3171,24 +3208,12 @@ class _WaterFillCard extends StatefulWidget {
   State<_WaterFillCard> createState() => _WaterFillCardState();
 }
 
-class _WaterFillCardState extends State<_WaterFillCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _rippleController;
+class _WaterFillCardState extends State<_WaterFillCard> {
   double _displayProgress = 0;
-  bool _showRipple = false;
 
   @override
   void initState() {
     super.initState();
-    _rippleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _rippleController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        setState(() => _showRipple = false);
-      }
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         setState(() {
@@ -3207,15 +3232,7 @@ class _WaterFillCardState extends State<_WaterFillCard>
   }
 
   void _animateFill(double target) {
-    _rippleController.forward(from: 0);
-    setState(() => _showRipple = true);
     setState(() => _displayProgress = target);
-  }
-
-  @override
-  void dispose() {
-    _rippleController.dispose();
-    super.dispose();
   }
 
   @override
@@ -3227,7 +3244,7 @@ class _WaterFillCardState extends State<_WaterFillCard>
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        widget.onAdd();
+        widget.onTap();
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -3235,137 +3252,72 @@ class _WaterFillCardState extends State<_WaterFillCard>
           color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : const Color(0xFFE8E4DC),
+            color:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : const Color(0xFFE8E4DC),
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon row — matches activity card
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    LucideIcons.droplets,
-                    size: 16,
-                    color: Color(0xFF3B82F6),
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Hydration',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ],
+            _WellnessCardHeader(
+              icon: LucideIcons.droplets,
+              color: blue,
+              title: 'Hydration',
+              isDark: isDark,
             ),
             const SizedBox(height: 12),
-
-            // Value row with compact water glass
+            Text(
+              widget.total == 0 ? '0 ml' : '${widget.total} ml',
+              style: AppTypography.titleMedium.copyWith(
+                color: isDark ? Colors.white : const Color(0xFF1C1917),
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 4),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.total == 0 ? '0 ml' : '${widget.total} ml',
-                        style: AppTypography.titleMedium.copyWith(
-                          color: isDark ? Colors.white : const Color(0xFF1C1917),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        widget.total == 0
-                            ? 'Tap to log'
-                            : 'Goal: ${widget.goal} ml',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  child: Text(
+                    widget.total == 0
+                        ? 'Tap to open'
+                        : 'Goal: ${widget.goal} ml',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 8),
-                // Compact water glass
-                SizedBox(
-                  width: 36,
-                  height: 42,
-                  child: Stack(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: blue.withValues(alpha: 0.25),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Stack(
-                            children: [
-                              TweenAnimationBuilder<double>(
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.easeOutCubic,
-                                tween: Tween<double>(begin: 0, end: progress),
-                                builder: (context, value, child) {
-                                  return Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: Container(
-                                      width: double.infinity,
-                                      height: value * 36,
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            blue.withValues(alpha: 0.5),
-                                            blue.withValues(alpha: 0.7),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              if (_showRipple)
-                                AnimatedBuilder(
-                                  animation: _rippleController,
-                                  builder: (context, child) {
-                                    return CustomPaint(
-                                      painter: _SplashRingPainter(
-                                        animation: _rippleController.value,
-                                        color: blue,
-                                      ),
-                                    );
-                                  },
-                                ),
-                            ],
-                          ),
+                const SizedBox(width: 6),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    widget.onAdd();
+                  },
+                  child: Container(
+                    height: 22,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: blue.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: blue.withValues(alpha: 0.16)),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '+250',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: blue,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -3400,35 +3352,6 @@ class _WaterFillCardState extends State<_WaterFillCard>
   }
 }
 
-class _SplashRingPainter extends CustomPainter {
-  final double animation;
-  final Color color;
-
-  const _SplashRingPainter({
-    required this.animation,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = size.shortestSide * 0.35 * (1 + animation * 0.5);
-    final alpha = ((1 - animation) * 120).round().clamp(0, 120);
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..color = color.withValues(alpha: alpha / 255.0)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5 * (1 - animation),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _SplashRingPainter oldDelegate) =>
-      oldDelegate.animation != animation;
-}
-
 class _MinimalWellnessCard extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -3459,37 +3382,20 @@ class _MinimalWellnessCard extends StatelessWidget {
           color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : const Color(0xFFE8E4DC),
+            color:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : const Color(0xFFE8E4DC),
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, size: 16, color: color),
-                ),
-                const Spacer(),
-                Text(
-                  title,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ],
+            _WellnessCardHeader(
+              icon: icon,
+              color: color,
+              title: title,
+              isDark: isDark,
             ),
             const SizedBox(height: 12),
             Text(
@@ -3533,6 +3439,48 @@ class _MinimalWellnessCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _WellnessCardHeader extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final bool isDark;
+
+  const _WellnessCardHeader({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const Spacer(),
+        Text(
+          title,
+          style: AppTypography.labelSmall.copyWith(
+            color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -3894,9 +3842,9 @@ class _ModernMetricPanel extends StatefulWidget {
     required this.secondaryMetric,
     required this.progress,
     required this.footerText,
-    this.liquidFill = false,
-    this.motionTrail = false,
-    this.motionActive = false,
+    required this.liquidFill,
+    required this.motionTrail,
+    required this.motionActive,
     required this.onTap,
   });
 

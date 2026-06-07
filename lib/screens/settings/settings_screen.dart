@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -105,6 +106,75 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
+          if (kDebugMode)
+            Selector<SettingsProvider, bool>(
+              selector: (_, s) => s.isPro,
+              builder: (context, isPro, _) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => context.read<SettingsProvider>().toggleDebugPro(),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isPro
+                              ? const Color(0xFFE8F5E9).withValues(alpha: 0.5)
+                              : const Color(0xFFFFEBEE).withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isPro
+                                ? const Color(0xFF4CAF50).withValues(alpha: 0.3)
+                                : const Color(0xFFEF9A9A).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isPro ? LucideIcons.shieldCheck : LucideIcons.bug,
+                              size: 20,
+                              color: isPro
+                                  ? const Color(0xFF2E7D32)
+                                  : const Color(0xFFC62828),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Debug: Pro ${isPro ? "ON" : "OFF"}',
+                                    style: TextStyle(
+                                      color: isPro
+                                          ? const Color(0xFF2E7D32)
+                                          : const Color(0xFFC62828),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Tap to toggle (debug only)',
+                                    style: TextStyle(
+                                      color: const Color(0xFFA8A29E),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(LucideIcons.chevronRight, size: 18, color: const Color(0xFFA8A29E)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           _SettingsSectionFrame(
             title: AppLocalizations.of(context)!.settings_core_config,
             accent: AppColors.primary,

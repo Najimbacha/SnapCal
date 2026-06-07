@@ -9,7 +9,7 @@ import 'package:snapcal/screens/snap/widgets/result_modal.dart';
 
 void main() {
   Future<void> setupTester(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
       tester.view.resetPhysicalSize();
@@ -45,6 +45,7 @@ void main() {
   testWidgets('single scan renders one food row with totals', (tester) async {
     await tester.pumpWidget(
       buildSubject(
+        isPro: true,
         result: NutritionResult(
           foodName: 'Rice',
           portion: '150.0g',
@@ -56,17 +57,18 @@ void main() {
       ),
     );
 
-    expect(find.text('RICE', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.text('Rice', skipOffstage: false), findsAtLeastNWidgets(1));
     expect(find.text('160', skipOffstage: false), findsAtLeastNWidgets(1));
     expect(find.text('35g', skipOffstage: false), findsOneWidget);
     expect(find.text('4g', skipOffstage: false), findsOneWidget);
     expect(find.text('1g', skipOffstage: false), findsOneWidget);
-    expect(find.text('150.0g', skipOffstage: false), findsOneWidget);
+    expect(find.text('100g ✓', skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('multi scan renders all foods and summed totals', (tester) async {
     await tester.pumpWidget(
       buildSubject(
+        isPro: true,
         results: [
           NutritionResult(
             foodName: 'Rice',
@@ -89,9 +91,9 @@ void main() {
       ),
     );
 
-    expect(find.text('FEAST', skipOffstage: false), findsOneWidget);
-    expect(find.text('RICE', skipOffstage: false), findsOneWidget);
-    expect(find.text('NUTS', skipOffstage: false), findsOneWidget);
+    expect(find.text('Meal Review', skipOffstage: false), findsOneWidget);
+    expect(find.text('Rice', skipOffstage: false), findsOneWidget);
+    expect(find.text('Nuts', skipOffstage: false), findsOneWidget);
     expect(find.text('340', skipOffstage: false), findsAtLeastNWidgets(1));
     expect(find.text('40g', skipOffstage: false), findsOneWidget);
     expect(find.text('10g', skipOffstage: false), findsOneWidget);
@@ -102,6 +104,7 @@ void main() {
     await setupTester(tester);
     await tester.pumpWidget(
       buildSubject(
+        isPro: true,
         result: NutritionResult(
           foodName: 'Rice',
           portion: '150.0g',
@@ -113,31 +116,24 @@ void main() {
       ),
     );
 
-    final rowFinder = find.text('RICE').last;
-    await tester.tap(rowFinder);
+    // Tap the food card to expand it and reveal portion chips
+    await tester.tap(find.text('Rice'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('150g'));
     await tester.pump(const Duration(seconds: 1));
 
-    await tester.enterText(find.byType(TextField).at(2), '300');
-    await tester.enterText(find.byType(TextField).at(3), '55');
-
-    // Close keyboard/unfocus to restore view bounds before tapping Done
-    tester.binding.focusManager.primaryFocus?.unfocus();
-    await tester.pump(const Duration(seconds: 1));
-
-    await tester.tap(find.text('Done'));
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.text('300'), findsAtLeastNWidgets(1));
-    expect(find.text('55g'), findsOneWidget);
-    expect(find.text('150.0g'), findsAtLeastNWidgets(1));
+    expect(find.text('208'), findsAtLeastNWidgets(1));
+    expect(find.text('46g'), findsOneWidget);
+    expect(find.text('150g ✓'), findsOneWidget);
   });
 
-  testWidgets('More food appends manual item and updates totals', (
-    tester,
-  ) async {
+  testWidgets('Add Item appends a placeholder row', (tester) async {
     await setupTester(tester);
     await tester.pumpWidget(
       buildSubject(
+        isPro: true,
         result: NutritionResult(
           foodName: 'Rice',
           portion: '150.0g',
@@ -150,32 +146,19 @@ void main() {
       ),
     );
 
-    final btnFinder = find.text('ADD NEW ITEM');
+    final btnFinder = find.text('Add Item');
     await tester.tap(btnFinder);
     await tester.pump(const Duration(seconds: 1));
 
-    await tester.enterText(find.byType(TextField).at(0), 'Dates');
-    await tester.enterText(find.byType(TextField).at(1), '50.0g');
-    await tester.enterText(find.byType(TextField).at(2), '140');
-    await tester.enterText(find.byType(TextField).at(3), '30');
-
-    // Close keyboard/unfocus to restore view bounds before tapping Done
-    tester.binding.focusManager.primaryFocus?.unfocus();
-    await tester.pump(const Duration(seconds: 1));
-
-    await tester.tap(find.text('Done'));
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.text('DATES'), findsOneWidget);
-    expect(find.text('300'), findsAtLeastNWidgets(1));
-    expect(find.text('65g'), findsOneWidget);
-    expect(find.text('50.0g'), findsAtLeastNWidgets(1));
+    expect(find.text('Food item'), findsOneWidget);
+    expect(find.text('160'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('save button calls multi save callback for multiple rows', (
     tester,
   ) async {
     List<NutritionResult>? saved;
+    await setupTester(tester);
     await tester.pumpWidget(
       buildSubject(
         results: [
@@ -200,7 +183,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Log this meal'));
+    await tester.tap(find.textContaining('Add To Log'));
     await tester.pump();
 
     expect(saved, isNotNull);
@@ -213,6 +196,7 @@ void main() {
     String? savedName;
     int? savedCalories;
 
+    await setupTester(tester);
     await tester.pumpWidget(
       buildSubject(
         result: NutritionResult(
@@ -230,7 +214,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Log this meal'));
+    await tester.tap(find.textContaining('Add To Log'));
     await tester.pump();
 
     expect(savedName, 'Rice');
@@ -240,6 +224,7 @@ void main() {
   testWidgets('rapid double tap only saves once', (tester) async {
     var saveCount = 0;
 
+    await setupTester(tester);
     await tester.pumpWidget(
       buildSubject(
         result: NutritionResult(
@@ -254,8 +239,8 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Log this meal'));
-    await tester.tap(find.text('Log this meal'), warnIfMissed: false);
+    await tester.tap(find.textContaining('Add To Log'));
+    await tester.tap(find.textContaining('Add To Log'), warnIfMissed: false);
     await tester.pump();
 
     expect(saveCount, 1);
@@ -264,6 +249,7 @@ void main() {
   testWidgets('save button closes modal route', (tester) async {
     var saved = false;
 
+    await setupTester(tester);
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -309,13 +295,13 @@ void main() {
 
     await tester.tap(find.text('Open result'));
     await tester.pumpAndSettle();
-    expect(find.text('Log this meal'), findsOneWidget);
+    expect(find.textContaining('Add To Log'), findsOneWidget);
 
-    await tester.tap(find.text('Log this meal'));
+    await tester.tap(find.textContaining('Add To Log'));
     await tester.pumpAndSettle();
 
     expect(saved, isTrue);
-    expect(find.text('Log this meal'), findsNothing);
+    expect(find.textContaining('Add To Log'), findsNothing);
   });
 }
 

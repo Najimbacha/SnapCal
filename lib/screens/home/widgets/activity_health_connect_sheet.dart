@@ -1,241 +1,132 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../data/models/activity_summary.dart';
+import '../../../core/theme/theme_colors.dart';
 import '../../../data/services/activity_service.dart';
 import '../../../providers/activity_provider.dart';
+import '../../../widgets/app_icon.dart';
 
 void showActivityHealthConnectSheet(BuildContext context) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) => const ActivityHealthConnectSheet(),
+    showDragHandle: false,
+    builder: (_) => const _SheetScaffold(),
   );
 }
 
-class ActivityHealthConnectSheet extends StatelessWidget {
-  const ActivityHealthConnectSheet({super.key});
+/// Root scaffold that provides the sheet structure with drag handle.
+class _SheetScaffold extends StatelessWidget {
+  const _SheetScaffold();
 
   @override
   Widget build(BuildContext context) {
     final activity = context.watch<ActivityProvider>();
-    final progress = (activity.steps / math.max(activity.stepGoal, 1)).clamp(
-      0.0,
-      1.0,
-    );
-    final workout =
-        activity.today.workouts.isEmpty ? null : activity.today.workouts.first;
-    final showConnectGuidance =
-        activity.trackingStatus != ActivityTrackingStatus.connected;
-
+    final isConnected = activity.trackingStatus == ActivityTrackingStatus.connected;
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          18,
-          4,
-          18,
-          16 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    LucideIcons.heartPulse,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Health Connect',
-                        style: AppTypography.titleLarge.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        activity.statusLabel(),
-                        style: AppTypography.bodySmall.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (showConnectGuidance) ...[
-              const SizedBox(height: 12),
-              Text(
-                'SnapCal reads your step and activity data from Health Connect only after you allow permission.',
-                style: AppTypography.bodySmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _StatusMessage(activity: activity),
-              const SizedBox(height: 14),
-            ] else
-              const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _MetricBlock(
-                    label: 'Today steps',
-                    value: '${activity.steps}',
-                    icon: LucideIcons.footprints,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _MetricBlock(
-                    label: 'Target steps',
-                    value: '${activity.stepGoal}',
-                    icon: LucideIcons.target,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 9,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${(progress * 100).round()}% of step target',
-              style: AppTypography.labelSmall.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _MetricBlock(
-              label: activity.caloriesLabel,
-              value: '${activity.burnedCalories} kcal',
-              icon: LucideIcons.flame,
-            ),
-            const SizedBox(height: 8),
-            _WorkoutBlock(workout: workout),
-            const SizedBox(height: 8),
-            _LastSyncedBlock(lastSyncedAt: activity.lastSyncedAt),
-            if (!activity.isConnected) ...[
-              const SizedBox(height: 14),
-              _ActionButtons(activity: activity),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusMessage extends StatelessWidget {
-  final ActivityProvider activity;
-
-  const _StatusMessage({required this.activity});
-
-  @override
-  Widget build(BuildContext context) {
-    final message = switch (activity.trackingStatus) {
-      ActivityTrackingStatus.loading => 'Checking Health Connect...',
-      ActivityTrackingStatus.connected =>
-        'Connected. Refresh to read the latest Health Connect data.',
-      ActivityTrackingStatus.emptyData =>
-        'Connected, but Health Connect has no step or activity data for today.',
-      ActivityTrackingStatus.notConnected =>
-        'Connect Health Connect to show steps, activity, and calories burned.',
-      ActivityTrackingStatus.permissionDenied =>
-        'Permission was denied. You can retry or manage permissions in Health Connect.',
-      ActivityTrackingStatus.healthConnectUnavailable =>
-        'Health Connect is not available or needs to be installed or updated.',
-      ActivityTrackingStatus.error =>
-        activity.errorMessage ?? 'Health Connect data could not be loaded.',
-    };
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
-      ),
-      child: Text(
-        message,
-        style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-}
-
-class _MetricBlock extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _MetricBlock({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
-      ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.primary, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w900,
+          _DragHandle(),
+          if (isConnected) const _ConnectedState() else const _DisconnectedState(),
+        ],
+      ),
+    );
+  }
+}
+
+class _DragHandle extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 4),
+      child: Center(
+        child: Container(
+          width: 40, height: 4,
+          decoration: BoxDecoration(
+            color: context.textMutedColor.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Disconnected State ───────────────────────────────────────
+
+class _DisconnectedState extends StatelessWidget {
+  const _DisconnectedState();
+
+  @override
+  Widget build(BuildContext context) {
+    final activity = context.watch<ActivityProvider>();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 72, height: 72,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.green.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(AppSymbols.heartPulse, size: 34, color: AppColors.green),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Health Connect',
+            style: AppTypography.titleLarge.copyWith(
+              color: context.textPrimaryColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 22,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Automatically sync your steps,\nworkouts, and calories.',
+            textAlign: TextAlign.center,
+            style: AppTypography.bodyMedium.copyWith(
+              color: context.textSecondaryColor,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 28),
+          _StatusBadge(activity: activity),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity, height: 50,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => activity.connect(),
+                borderRadius: BorderRadius.circular(999),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Connect',
+                      style: AppTypography.titleSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
@@ -244,78 +135,218 @@ class _MetricBlock extends StatelessWidget {
   }
 }
 
-class _WorkoutBlock extends StatelessWidget {
-  final WorkoutEntry? workout;
-
-  const _WorkoutBlock({required this.workout});
-
-  @override
-  Widget build(BuildContext context) {
-    final currentWorkout = workout;
-    final text =
-        currentWorkout == null
-            ? 'No workout data today'
-            : '${currentWorkout.type} • ${currentWorkout.duration.inMinutes} min • ${currentWorkout.calories} kcal';
-    return _MetricBlock(
-      label: 'Workout summary',
-      value: text,
-      icon: LucideIcons.dumbbell,
-    );
-  }
-}
-
-class _LastSyncedBlock extends StatelessWidget {
-  final DateTime? lastSyncedAt;
-
-  const _LastSyncedBlock({required this.lastSyncedAt});
-
-  @override
-  Widget build(BuildContext context) {
-    final value =
-        lastSyncedAt == null
-            ? 'Not synced yet'
-            : TimeOfDay.fromDateTime(lastSyncedAt!).format(context);
-    return _MetricBlock(
-      label: 'Last synced',
-      value: value,
-      icon: LucideIcons.clock,
-    );
-  }
-}
-
-class _ActionButtons extends StatelessWidget {
+class _StatusBadge extends StatelessWidget {
   final ActivityProvider activity;
-
-  const _ActionButtons({required this.activity});
+  const _StatusBadge({required this.activity});
 
   @override
   Widget build(BuildContext context) {
-    final unavailable =
-        activity.trackingStatus ==
-        ActivityTrackingStatus.healthConnectUnavailable;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        FilledButton.icon(
-          onPressed:
-              activity.isSyncing
-                  ? null
-                  : unavailable
-                  ? activity.openInstallOrUpdate
-                  : activity.startTracking,
-          icon:
-              activity.isSyncing
-                  ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                  : Icon(unavailable ? LucideIcons.download : LucideIcons.link),
-          label: Text(
-            unavailable ? 'Install or update Health Connect' : 'Connect',
-          ),
+    String label;
+    Color color;
+    switch (activity.trackingStatus) {
+      case ActivityTrackingStatus.connected:
+      case ActivityTrackingStatus.emptyData:
+        label = 'Connected';
+        color = AppColors.green;
+      case ActivityTrackingStatus.permissionDenied:
+        label = 'Permission denied';
+        color = AppColors.error;
+      case ActivityTrackingStatus.healthConnectUnavailable:
+        label = 'Not available';
+        color = context.textMutedColor;
+      case ActivityTrackingStatus.loading:
+        label = 'Checking...';
+        color = context.textMutedColor;
+      case ActivityTrackingStatus.notConnected:
+        label = 'Not Connected';
+        color = context.textMutedColor;
+      case ActivityTrackingStatus.error:
+        label = 'Error';
+        color = AppColors.error;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
         ),
-      ],
+      ),
     );
+  }
+}
+
+// ── Connected State ──────────────────────────────────────────
+
+class _ConnectedState extends StatelessWidget {
+  const _ConnectedState();
+
+  @override
+  Widget build(BuildContext context) {
+    final activity = context.watch<ActivityProvider>();
+    final steps = activity.steps;
+    final calories = activity.burnedCalories;
+    final stepProgress = steps / math.max(activity.stepGoal, 1);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Text(
+            'Activity',
+            style: AppTypography.titleLarge.copyWith(
+              color: context.textPrimaryColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 22,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 28),
+          RepaintBoundary(
+            child: _ActivityRing(progress: stepProgress, steps: steps),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Steps Today',
+            style: AppTypography.bodyMedium.copyWith(
+              color: context.textSecondaryColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            '$calories kcal burned',
+            style: AppTypography.bodyMedium.copyWith(
+              color: context.textSecondaryColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+          if (steps >= 200) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${(steps / 100).round()} min walk',
+              style: AppTypography.bodySmall.copyWith(
+                color: context.textMutedColor,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          _LastSyncBadge(lastSyncedAt: activity.lastSyncedAt),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActivityRing extends StatelessWidget {
+  final double progress;
+  final int steps;
+  const _ActivityRing({required this.progress, required this.steps});
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = progress.clamp(0.0, 1.0);
+    return SizedBox(
+      width: 180, height: 180,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(width: 160, height: 160,
+            child: CircularProgressIndicator(
+              value: 1, strokeWidth: 8, strokeCap: StrokeCap.round,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                context.textMutedColor.withValues(alpha: 0.12),
+              ),
+            ),
+          ),
+          SizedBox(width: 160, height: 160,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: clamped),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => CircularProgressIndicator(
+                value: value, strokeWidth: 8, strokeCap: StrokeCap.round,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.green),
+              ),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _formatNumber(steps),
+                style: AppTypography.displaySmall.copyWith(
+                  color: context.textPrimaryColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 38,
+                  letterSpacing: -1.2,
+                  height: 1.0,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'steps',
+                style: AppTypography.bodySmall.copyWith(
+                  color: context.textMutedColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatNumber(int n) {
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return '$n';
+  }
+}
+
+class _LastSyncBadge extends StatelessWidget {
+  final DateTime? lastSyncedAt;
+  const _LastSyncBadge({required this.lastSyncedAt});
+
+  @override
+  Widget build(BuildContext context) {
+    final activity = context.watch<ActivityProvider>();
+    final ago = activity.isSyncing ? 'Syncing...' : _ago(lastSyncedAt);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: context.textMutedColor.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'Last synced $ago',
+        style: TextStyle(
+          color: context.textMutedColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  String _ago(DateTime? dt) {
+    if (dt == null) return 'never';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    return '${diff.inHours}h ago';
   }
 }
