@@ -127,11 +127,7 @@ class ResultModal extends StatefulWidget {
 class _ResultModalState extends State<ResultModal> {
   late List<_ReviewFoodItem> _items;
   bool _isSaving = false;
-
-  int get _totalCalories => _items.fold(0, (sum, item) => sum + item.calories);
-  int get _totalProtein => _items.fold(0, (sum, item) => sum + item.protein);
-  int get _totalCarbs => _items.fold(0, (sum, item) => sum + item.carbs);
-  int get _totalFat => _items.fold(0, (sum, item) => sum + item.fat);
+  double _entryOpacity = 0.0;
 
   @override
   void initState() {
@@ -141,6 +137,22 @@ class _ResultModalState extends State<ResultModal> {
         (widget.result == null ? <NutritionResult>[] : [widget.result!]);
     _items = results.map(_ReviewFoodItem.fromNutritionResult).toList();
     if (_items.isEmpty) _items = [_ReviewFoodItem.empty()];
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _entryOpacity = 1.0);
+      }
+    });
+  }
+
+  int get _totalCalories => _items.fold(0, (sum, item) => sum + item.calories);
+  int get _totalProtein => _items.fold(0, (sum, item) => sum + item.protein);
+  int get _totalCarbs => _items.fold(0, (sum, item) => sum + item.carbs);
+  int get _totalFat => _items.fold(0, (sum, item) => sum + item.fat);
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   void _updateServing(int index, int servingIndex) {
@@ -310,6 +322,9 @@ class _ResultModalState extends State<ResultModal> {
                       ),
                     ),
                     Expanded(
+                      child: AnimatedOpacity(
+                      opacity: _entryOpacity,
+                      duration: const Duration(milliseconds: 400),
                       child: ListView(
                         physics: const BouncingScrollPhysics(),
                         padding: EdgeInsets.fromLTRB(20, 10, 20, bottom + 20),
@@ -324,15 +339,29 @@ class _ResultModalState extends State<ResultModal> {
                             ink: ink,
                             muted: muted,
                           ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Detected Foods',
-                            style: AppTypography.titleMedium.copyWith(
-                              color: ink, fontSize: 15,
-                              fontWeight: FontWeight.w900, letterSpacing: -0.2,
-                            ),
+                          const SizedBox(height: 8),
+                          Container(height: 1, color: _reviewLine.withValues(alpha: 0.4)),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Text(
+                                'Detected Foods',
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: ink, fontSize: 15,
+                                  fontWeight: FontWeight.w900, letterSpacing: -0.2,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${_items.length} item${_items.length == 1 ? '' : 's'}',
+                                style: TextStyle(
+                                  color: muted, fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 10),
                           ...List.generate(_items.length, (index) {
                             return _FoodReviewCard(
                               item: _items[index],
@@ -383,17 +412,34 @@ class _ResultModalState extends State<ResultModal> {
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
-                            height: 48,
-                            child: ElevatedButton(
+                            height: 54,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppColors.primary.withValues(alpha: 0.85),
+                                    AppColors.primary,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
                               onPressed: _isSaving ? null : _save,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
+                                backgroundColor: Colors.transparent,
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor:
-                                    AppColors.primary.withValues(alpha: 0.58),
-                                elevation: 1,
-                                shadowColor:
-                                    AppColors.primary.withValues(alpha: 0.12),
+                                disabledBackgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                elevation: 0,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(20)),
                               ),
@@ -438,10 +484,12 @@ class _ResultModalState extends State<ResultModal> {
                                         ),
                                       ],
                                     ),
-                            ),
+                             ),
+                           ),
                           ),
                         ],
                       ),
+                    ),
                     ),
                   ],
                 ),

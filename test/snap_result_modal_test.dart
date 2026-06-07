@@ -294,11 +294,13 @@ void main() {
     );
 
     await tester.tap(find.text('Open result'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
     expect(find.textContaining('Add To Log'), findsOneWidget);
 
     await tester.tap(find.textContaining('Add To Log'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(saved, isTrue);
     expect(find.textContaining('Add To Log'), findsNothing);
