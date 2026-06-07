@@ -29,7 +29,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
   late AnimationController _waveController;
   late AnimationController _fillBounceController;
   late Animation<double> _fillBounce;
-  late AnimationController _glowPulse;
+
   bool _isAdding = false;
 
   static const _presets = [250, 350, 500, 1000];
@@ -49,17 +49,14 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
       parent: _fillBounceController,
       curve: Curves.elasticOut,
     );
-    _glowPulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
+
   }
 
   @override
   void dispose() {
     _waveController.dispose();
     _fillBounceController.dispose();
-    _glowPulse.dispose();
+
     super.dispose();
   }
 
@@ -92,23 +89,26 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
               children: [
                 // ── Animated gradient background ──────────────────────
                 AnimatedBuilder(
-                  animation: _glowPulse,
-                  builder: (_, __) => Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          center: Alignment(-0.3 + _glowPulse.value * 0.6, 0.1),
-                          radius: 1.2,
-                          colors: [
-                            _surface,
-                            _deep,
-                            _deep,
-                          ],
-                          stops: const [0, 0.6, 1],
+                  animation: const AlwaysStoppedAnimation(0),
+                  builder: (_, __) {
+                    const gp = 0.5;
+                    return Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            center: Alignment(-0.3 + gp * 0.6, 0.1),
+                            radius: 1.2,
+                            colors: [
+                              _surface,
+                              _deep,
+                              _deep,
+                            ],
+                            stops: const [0, 0.6, 1],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
 
                 // ── Glass orb decorations ─────────────────────────────
@@ -245,11 +245,11 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
 
                       // ── Hero water card ─────────────────────────────
                       AnimatedBuilder(
-                        animation: Listenable.merge(
-                            [_waveController, _fillBounce, _glowPulse]),
+                        animation: Listenable.merge([_waveController, _fillBounce]),
                         builder: (_, __) {
                           final displayProgress =
                               (progress * _fillBounce.value).clamp(0.0, 1.0);
+                          const gp = 0.5;
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Container(
@@ -261,7 +261,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: _blue.withOpacity(0.15 + _glowPulse.value * 0.1),
+                                     color: _blue.withOpacity(0.15 + gp * 0.1),
                                     blurRadius: 40,
                                     spreadRadius: 2,
                                   ),
@@ -277,7 +277,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                       painter: _WavePainter(
                                         progress: displayProgress,
                                         wave: _waveController.value,
-                                        glowIntensity: _glowPulse.value,
+                                        glowIntensity: gp,
                                       ),
                                     ),
                                     // Content overlay
@@ -443,69 +443,71 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                         child: GestureDetector(
                           onTap: _isAdding ? null : () => _addWater(water),
                           child: AnimatedBuilder(
-                            animation: _glowPulse,
-                            builder: (_, __) => Container(
-                              height: 62,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(24),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _blue.withOpacity(0.9),
-                                    _blue,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _blue.withOpacity(
-                                        0.3 + _glowPulse.value * 0.2),
-                                    blurRadius: 24 + _glowPulse.value * 12,
-                                    offset: const Offset(0, 6),
+                            animation: const AlwaysStoppedAnimation(0),
+                            builder: (_, __) {
+                              const gp = 0.5;
+                              return Container(
+                                height: 62,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      _blue.withOpacity(0.9),
+                                      _blue,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
-                                ],
-                              ),
-                              child: Center(
-                                child: _isAdding
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.5,
-                                          color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _blue.withOpacity(0.3 + gp * 0.2),
+                                      blurRadius: 24 + gp * 12,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: _isAdding
+                                      ? const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              width: 28,
+                                              height: 28,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white
+                                                    .withOpacity(0.15),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                LucideIcons.plus,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              'Add $_selectedMl ml',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      )
-                                    : Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Container(
-                                            width: 28,
-                                            height: 28,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white
-                                                  .withOpacity(0.15),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              LucideIcons.plus,
-                                              color: Colors.white,
-                                              size: 16,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Text(
-                                            'Add $_selectedMl ml',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
