@@ -89,14 +89,14 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
               children: [
                 // ── Animated gradient background ──────────────────────
                 AnimatedBuilder(
-                  animation: const AlwaysStoppedAnimation(0),
+                  animation: _waveController,
                   builder: (_, __) {
-                    const gp = 0.5;
+                    final pulse = 0.5 + _waveController.value * 0.5;
                     return Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: RadialGradient(
-                            center: Alignment(-0.3 + gp * 0.6, 0.1),
+                            center: Alignment(-0.3 + pulse * 0.6, 0.1),
                             radius: 1.2,
                             colors: [
                               _surface,
@@ -249,7 +249,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                         builder: (_, __) {
                           final displayProgress =
                               (progress * _fillBounce.value).clamp(0.0, 1.0);
-                          const gp = 0.5;
+                          final pulse = 0.5 + _waveController.value * 0.5;
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Container(
@@ -261,7 +261,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                     color: _blue.withOpacity(0.15 + gp * 0.1),
+                                     color: _blue.withOpacity(0.15 + pulse * 0.15),
                                     blurRadius: 40,
                                     spreadRadius: 2,
                                   ),
@@ -273,11 +273,10 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                   children: [
                                     // Wave canvas
                                     CustomPaint(
-                                      size: const Size(double.infinity, 260),
                                       painter: _WavePainter(
                                         progress: displayProgress,
                                         wave: _waveController.value,
-                                        glowIntensity: gp,
+                                        glowIntensity: pulse,
                                       ),
                                     ),
                                     // Content overlay
@@ -443,9 +442,9 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                         child: GestureDetector(
                           onTap: _isAdding ? null : () => _addWater(water),
                           child: AnimatedBuilder(
-                            animation: const AlwaysStoppedAnimation(0),
+                            animation: _waveController,
                             builder: (_, __) {
-                              const gp = 0.5;
+                              final pulse = 0.5 + _waveController.value * 0.5;
                               return Container(
                                 height: 62,
                                 decoration: BoxDecoration(
@@ -460,8 +459,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: _blue.withOpacity(0.3 + gp * 0.2),
-                                      blurRadius: 24 + gp * 12,
+                                    color: _blue.withOpacity(0.3 + pulse * 0.2),
+                                    blurRadius: 24 + pulse * 12,
                                       offset: const Offset(0, 6),
                                     ),
                                   ],
@@ -652,12 +651,16 @@ class _WavePainter extends CustomPainter {
     canvas.drawPath(glowPath, glowPaint);
 
     // Floating particles
-    final dotPaint = Paint()..color = Colors.white.withOpacity(0.25);
-    for (int i = 0; i < 8; i++) {
-      final dx = (i * 47.0 + wave * 30) % size.width;
-      final dy = (fillH * (0.3 + i % 3 * 0.2)) % fillH;
-      final r = 1.5 + (i % 3) * 0.8;
-      canvas.drawCircle(Offset(dx, dy), r, dotPaint);
+    if (fillH > 1) {
+      final dotPaint = Paint()..color = Colors.white.withOpacity(0.25);
+      for (int i = 0; i < 8; i++) {
+        final dx = (i * 47.0 + wave * 30) % size.width;
+        final dy = fillH * (0.3 + (i % 3) * 0.2);
+        if (!dy.isNaN && !dx.isNaN) {
+          final r = 1.5 + (i % 3) * 0.8;
+          canvas.drawCircle(Offset(dx, dy.clamp(0, fillH)), r, dotPaint);
+        }
+      }
     }
   }
 
