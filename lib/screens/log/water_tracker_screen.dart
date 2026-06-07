@@ -70,9 +70,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
     setState(() => _isAdding = true);
     HapticFeedback.heavyImpact();
     _lastTotalMl = water.total;
-    await water.addWater(_selectedMl);
     _fillController.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 600));
+    await water.addWater(_selectedMl);
     if (mounted) setState(() => _isAdding = false);
   }
 
