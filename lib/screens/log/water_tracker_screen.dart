@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/water_provider.dart';
 
-// ── Premium 2026 palette ────────────────────────────────────────────────────
 const _deep = Color(0xFF0A1628);
 const _surface = Color(0xFF0F1F3A);
 const _cardBg = Color(0xFF152A4A);
@@ -26,10 +25,10 @@ class WaterTrackerScreen extends StatefulWidget {
 class _WaterTrackerScreenState extends State<WaterTrackerScreen>
     with TickerProviderStateMixin {
   int _selectedMl = 250;
+  int _lastTotalMl = 0;
   late AnimationController _waveController;
-  late AnimationController _fillBounceController;
-  late Animation<double> _fillBounce;
-
+  late AnimationController _fillController;
+  late Animation<double> _fillAnimation;
   bool _isAdding = false;
 
   static const _presets = [250, 350, 500, 1000];
@@ -41,34 +40,39 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
       vsync: this,
       duration: const Duration(seconds: 5),
     )..repeat();
-    _fillBounceController = AnimationController(
+    _fillController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
-      value: 1.0,
+      duration: const Duration(milliseconds: 600),
     );
-    _fillBounce = CurvedAnimation(
-      parent: _fillBounceController,
-      curve: Curves.elasticOut,
+    _fillAnimation = CurvedAnimation(
+      parent: _fillController,
+      curve: Curves.easeOutCubic,
     );
-
   }
 
   @override
   void dispose() {
     _waveController.dispose();
-    _fillBounceController.dispose();
-
+    _fillController.dispose();
     super.dispose();
   }
+
+  double _displayProgress(double targetProgress) {
+    if (!_fillController.isAnimating) return targetProgress;
+    final from = _lastTotalMl / math.max(_goal, 1);
+    return from + (targetProgress - from) * _fillAnimation.value;
+  }
+
+  int get _goal => 2000;
 
   Future<void> _addWater(WaterProvider water) async {
     if (_isAdding) return;
     setState(() => _isAdding = true);
     HapticFeedback.heavyImpact();
+    _lastTotalMl = water.total;
     await water.addWater(_selectedMl);
-    _fillBounceController.value = 0.7;
-    _fillBounceController.forward();
-    await Future.delayed(const Duration(milliseconds: 200));
+    _fillController.forward(from: 0);
+    await Future.delayed(const Duration(milliseconds: 600));
     if (mounted) setState(() => _isAdding = false);
   }
 
@@ -85,7 +89,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
           builder: (context, water, _) {
             final goal = math.max(water.goal, 1);
             final total = water.total;
-            final progress = (total / goal).clamp(0.0, 1.0);
+            final targetProgress = (total / goal).clamp(0.0, 1.0);
+            final displayProgress = _displayProgress(targetProgress);
 
             return Stack(
               children: [
@@ -247,11 +252,13 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
 
                       // ── Hero water card ─────────────────────────────
                       AnimatedBuilder(
-                        animation: Listenable.merge([_waveController, _fillBounce]),
+                        animation: Listenable.merge(
+                            [_waveController, _fillController]),
                         builder: (_, __) {
-                          final displayProgress =
-                              (progress * _fillBounce.value).clamp(0.0, 1.0);
                           final pulse = 0.5 + _waveController.value * 0.5;
+                          final dp = _fillController.isAnimating
+                              ? _displayProgress(targetProgress)
+                              : targetProgress;
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Container(
@@ -263,7 +270,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                     color: _blue.withOpacity(0.15 + pulse * 0.15),
+                                    color: _blue
+                                        .withOpacity(0.15 + pulse * 0.15),
                                     blurRadius: 40,
                                     spreadRadius: 2,
                                   ),
@@ -273,15 +281,13 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                 borderRadius: BorderRadius.circular(31),
                                 child: Stack(
                                   children: [
-                                    // Wave canvas
                                     CustomPaint(
                                       painter: _WavePainter(
-                                        progress: displayProgress,
+                                        progress: dp,
                                         wave: _waveController.value,
                                         glowIntensity: pulse,
                                       ),
                                     ),
-                                    // Content overlay
                                     Center(
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
@@ -292,12 +298,14 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                             style: TextStyle(
                                               fontSize: 72,
                                               fontWeight: FontWeight.w800,
-                                              color: Colors.white.withOpacity(0.95),
+                                              color: Colors.white
+                                                  .withOpacity(0.95),
                                               height: 0.95,
                                               letterSpacing: -2,
                                               shadows: [
                                                 Shadow(
-                                                  color: _blue.withOpacity(0.3),
+                                                  color:
+                                                      _blue.withOpacity(0.3),
                                                   blurRadius: 20,
                                                 ),
                                               ],
@@ -307,7 +315,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                             'of ${goal}ml',
                                             style: TextStyle(
                                               fontSize: 16,
-                                              color: Colors.white.withOpacity(0.45),
+                                              color: Colors.white
+                                                  .withOpacity(0.45),
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -316,8 +325,10 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 16, vertical: 7),
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.08),
-                                              borderRadius: BorderRadius.circular(20),
+                                              color: Colors.white
+                                                  .withOpacity(0.08),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
                                               border: Border.all(
                                                 color: Colors.white
                                                     .withOpacity(0.1),
@@ -331,10 +342,10 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                                     color: _cyan),
                                                 const SizedBox(width: 6),
                                                 Text(
-                                                  '${(progress * 100).round()}% of goal',
+                                                  '${(targetProgress * 100).round()}% of goal',
                                                   style: TextStyle(
-                                                    color:
-                                                        _textPrimary.withOpacity(0.7),
+                                                    color: _textPrimary
+                                                        .withOpacity(0.7),
                                                     fontSize: 13,
                                                     fontWeight: FontWeight.w600,
                                                   ),
@@ -368,10 +379,11 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                   HapticFeedback.selectionClick();
                                 },
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 250),
+                                  duration:
+                                      const Duration(milliseconds: 250),
                                   curve: Curves.easeOutCubic,
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 4),
                                   height: 80,
                                   decoration: BoxDecoration(
                                     gradient: isSel
@@ -423,7 +435,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                           fontSize: 11,
                                           color: isSel
                                               ? Colors.white.withOpacity(0.7)
-                                              : _textSecondary.withOpacity(0.6),
+                                              : _textSecondary
+                                                  .withOpacity(0.6),
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -446,7 +459,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                           child: AnimatedBuilder(
                             animation: _waveController,
                             builder: (_, __) {
-                              final pulse = 0.5 + _waveController.value * 0.5;
+                              final pulse =
+                                  0.5 + _waveController.value * 0.5;
                               return Container(
                                 height: 62,
                                 decoration: BoxDecoration(
@@ -461,8 +475,9 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                    color: _blue.withOpacity(0.3 + pulse * 0.2),
-                                    blurRadius: 24 + pulse * 12,
+                                      color: _blue.withOpacity(
+                                          0.3 + pulse * 0.2),
+                                      blurRadius: 24 + pulse * 12,
                                       offset: const Offset(0, 6),
                                     ),
                                   ],
@@ -569,7 +584,8 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24)),
         title: const Text('Reset water?',
             style: TextStyle(color: _textPrimary)),
         content: const Text('Clear all water logged today.',
@@ -595,7 +611,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Wave painter — dual sine, glow, droplets
+//  Wave painter
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _WavePainter extends CustomPainter {
@@ -613,7 +629,6 @@ class _WavePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final fillH = size.height * (1 - progress);
 
-    // Deep water body
     final waterPaint = Paint()
       ..shader = LinearGradient(
         colors: [
@@ -709,7 +724,9 @@ class _QuickAction extends StatelessWidget {
             Icon(
               icon,
               size: 14,
-              color: enabled ? _textSecondary : _textSecondary.withOpacity(0.3),
+              color: enabled
+                  ? _textSecondary
+                  : _textSecondary.withOpacity(0.3),
             ),
             const SizedBox(width: 5),
             Text(
@@ -717,7 +734,9 @@ class _QuickAction extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: enabled ? _textSecondary : _textSecondary.withOpacity(0.3),
+                color: enabled
+                    ? _textSecondary
+                    : _textSecondary.withOpacity(0.3),
               ),
             ),
           ],
