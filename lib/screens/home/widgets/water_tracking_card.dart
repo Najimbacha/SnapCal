@@ -10,7 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../providers/water_provider.dart';
 import '../../../widgets/ui_blocks.dart';
-import '../../log/widgets/hydration_sheet.dart';
+import 'package:go_router/go_router.dart';
 
 class WaterTrackingCard extends StatefulWidget {
   const WaterTrackingCard({super.key});
@@ -149,10 +149,7 @@ class _WaterTrackingCardState extends State<WaterTrackingCard>
           ),
           const SizedBox(height: 18),
           GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              HydrationSheet.show(context);
-            },
+            onTap: () => context.push('/water'),
             child: Container(
               width: double.infinity,
               height: 54,
