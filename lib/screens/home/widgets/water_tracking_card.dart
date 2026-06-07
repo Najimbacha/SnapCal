@@ -10,6 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../providers/water_provider.dart';
 import '../../../widgets/ui_blocks.dart';
+import '../../log/widgets/hydration_sheet.dart';
 
 class WaterTrackingCard extends StatefulWidget {
   const WaterTrackingCard({super.key});
@@ -147,18 +148,78 @@ class _WaterTrackingCardState extends State<WaterTrackingCard>
             ),
           ),
           const SizedBox(height: 18),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _WaterButton(label: '+250 ml', amount: 250),
-              _WaterButton(label: '+500 ml', amount: 500),
-              _WaterButton(
-                label: AppLocalizations.of(context)!.water_custom,
-                amount: 0,
-                isCustom: true,
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              HydrationSheet.show(context);
+            },
+            child: Container(
+              width: double.infinity,
+              height: 54,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF3B82F6).withOpacity(0.85),
+                    const Color(0xFF3B82F6),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF3B82F6).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(LucideIcons.droplets, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Log Water',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$amount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          'ml',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -217,66 +278,4 @@ class _WaterWaveBarPainter extends CustomPainter {
       oldDelegate.progress != progress;
 }
 
-class _WaterButton extends StatelessWidget {
-  final String label;
-  final int amount;
-  final bool isCustom;
 
-  const _WaterButton({
-    required this.label,
-    required this.amount,
-    this.isCustom = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChipButton(
-      icon: isCustom ? LucideIcons.plus : LucideIcons.droplets,
-      label: label,
-      onTap: () {
-        HapticFeedback.lightImpact();
-        if (isCustom) {
-          _showCustomWaterDialog(context);
-        } else {
-          context.read<WaterProvider>().addWater(amount);
-        }
-      },
-    );
-  }
-
-  void _showCustomWaterDialog(BuildContext context) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.water_add_water),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              hintText: AppLocalizations.of(context)!.water_enter_amount,
-              suffixText: 'ml',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(AppLocalizations.of(context)!.common_cancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                final value = int.tryParse(controller.text);
-                if (value != null && value > 0) {
-                  context.read<WaterProvider>().addWater(value);
-                  Navigator.pop(dialogContext);
-                }
-              },
-              child: Text(AppLocalizations.of(context)!.water_add),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
