@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/services/config_service.dart';
 import 'gemini_service.dart';
 
@@ -123,53 +122,45 @@ class AssistantService {
         medicalNotes: medicalNotes,
       );
 
+      final endpoint = '${ConfigService().backendProxyUrl}/api/ai/text';
       final response = await _dio.post(
-        AppConstants.groqApiUrl,
+        endpoint,
         options: Options(
-          headers: {
-            'Authorization': 'Bearer ${ConfigService().groqApiKey}',
-            'Content-Type': 'application/json',
-          },
+          headers: {'Content-Type': 'application/json'},
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 25),
         ),
         data: {
-          'model': ConfigService().groqCoachModel,
-          'messages': [
-            {'role': 'user', 'content': prompt},
-          ],
-          'temperature': 0.6,
-          'max_tokens': 700,
+          'prompt': prompt,
+          'maxOutputTokens': 700,
+          'timeoutMs': 25000,
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final text = data['choices']?[0]?['message']?['content'] as String?;
+      final text = response.data is Map ? response.data['text'] as String? : null;
 
-        if (text != null) {
-          debugPrint("Assistant Raw Response: $text");
-          String jsonString = _extractJson(text);
+      if (text != null) {
+        debugPrint("Assistant Raw Response: $text");
+        String jsonString = _extractJson(text);
+        jsonString = _sanitizeJsonString(jsonString);
 
-          // Sanitize: Only escape newlines that are inside JSON strings.
-          jsonString = _sanitizeJsonString(jsonString);
+        final dynamic decoded = jsonDecode(jsonString);
 
-          final dynamic decoded = jsonDecode(jsonString);
-
-          if (decoded is List) {
-            return decoded
-                .map(
-                  (e) => AssistantResponse.fromJson(e as Map<String, dynamic>),
-                )
-                .toList();
-          } else if (decoded is Map) {
-            return [
-              AssistantResponse.fromJson(decoded as Map<String, dynamic>),
-            ];
-          }
-          return [];
+        if (decoded is List) {
+          return decoded
+              .map(
+                (e) => AssistantResponse.fromJson(e as Map<String, dynamic>),
+              )
+              .toList();
+        } else if (decoded is Map) {
+          return [
+            AssistantResponse.fromJson(decoded as Map<String, dynamic>),
+          ];
         }
+        return [];
       }
 
-      throw GeminiException('Failed to get response from Groq');
+      throw GeminiException('Failed to get response from AI backend');
     } on DioException catch (e) {
       final responseData = e.response?.data;
       String? detail;
@@ -179,17 +170,12 @@ class AssistantService {
 
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         throw GeminiException(
-          'Unauthorized: Please check your Groq API Key in Firebase Remote Config.',
-        );
-      }
-      if (e.response?.statusCode == 404) {
-        throw GeminiException(
-          'Invalid Model: The Groq Model ID in Remote Config is incorrect.',
+          'Unauthorized: Please check your authentication.',
         );
       }
       if (e.response?.statusCode == 400) {
         throw GeminiException(
-          'Bad Request: ${detail ?? 'Check your Remote Config values.'}',
+          'Bad Request: ${detail ?? 'Invalid request parameters.'}',
         );
       }
       throw GeminiException('${detail ?? e.message}');
@@ -217,10 +203,6 @@ class AssistantService {
     String? medicalNotes,
   }) async {
     try {
-      final apiKey = ConfigService().geminiApiKey;
-      final modelId = ConfigService().geminiModelId;
-      if (apiKey.isEmpty) throw GeminiException('Gemini API Key missing');
-
       final base64Image = base64Encode(imageBytes);
 
       final languageName = AIService.languageNames[language] ?? 'English';
@@ -260,44 +242,33 @@ FORMAT:
 User Stats: $currentCalories / $targetCalories kcal.
 """;
 
-      debugPrint("🧠 AssistantService: Analyzing image with $modelId...");
+      debugPrint("🧠 AssistantService: Analyzing image via backend proxy...");
 
-      // Use v1beta for better compatibility with cutting-edge flash models
+      final endpoint = '${ConfigService().backendProxyUrl}/api/ai/image';
       final response = await _dio.post(
-        'https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$apiKey',
+        endpoint,
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 25),
+        ),
         data: {
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt},
-                {
-                  'inline_data': {
-                    'mime_type': 'image/jpeg',
-                    'data': base64Image,
-                  },
-                },
-              ],
-            },
-          ],
-          'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 1024},
+          'prompt': prompt,
+          'image': base64Image,
+          'language': language,
         },
       );
 
-      if (response.statusCode == 200) {
-        final text =
-            response.data['candidates']?[0]?['content']?[0]?['text'] ??
-            response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                as String?;
-        if (text != null) {
-          final jsonString = _extractJson(text);
-          final jsonResult = jsonDecode(jsonString) as List<dynamic>;
-          return jsonResult
-              .map((e) => AssistantResponse.fromJson(e as Map<String, dynamic>))
-              .toList();
-        }
+      final text = response.data is Map ? response.data['text'] as String? : null;
+      if (text != null) {
+        final jsonString = _extractJson(text);
+        final jsonResult = jsonDecode(jsonString) as List<dynamic>;
+        return jsonResult
+            .map((e) => AssistantResponse.fromJson(e as Map<String, dynamic>))
+            .toList();
       }
       throw GeminiException(
-        'Failed to analyze image (Status: ${response.statusCode})',
+        'Failed to analyze image (no response from backend)',
       );
     } on DioException catch (e) {
       final status = e.response?.statusCode;

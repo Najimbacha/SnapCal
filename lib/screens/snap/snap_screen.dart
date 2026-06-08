@@ -656,6 +656,39 @@ class _SnapScreenState extends State<SnapScreen>
                             ),
                           ],
                         ),
+                        const SizedBox(height: 16),
+                        // Manual search escape hatch (Case D)
+                        GestureDetector(
+                          onTap: _showManualInputModal,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(LucideIcons.type,
+                                    color: Colors.white70, size: 14),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Type Ingredient',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),

@@ -337,6 +337,43 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
+          _SettingsSectionFrame(
+            title: 'Follow Us',
+            accent: AppColors.primary,
+            children: [
+              _BrandCategoryRow(
+                iconWidget: const _InstagramIcon(size: 16),
+                accent: const Color(0xFFE1306C),
+                title: 'Instagram',
+                subtitle: '@snap_calories — Tips, recipes & community',
+                onTap: () => launchUrl(
+                  Uri.parse('https://www.instagram.com/snap_calories/'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+              _BrandCategoryRow(
+                iconWidget: const _FacebookIcon(size: 16),
+                accent: const Color(0xFF1877F2),
+                title: 'Facebook',
+                subtitle: '@Snapcalories — Follow our page',
+                onTap: () => launchUrl(
+                  Uri.parse('https://www.facebook.com/Snapcalories'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+              _BrandCategoryRow(
+                iconWidget: const _MailIcon(size: 16),
+                accent: AppColors.primary,
+                title: 'Email Us',
+                subtitle: 'iamnajimbacha@gmail.com',
+                onTap: () => launchUrl(
+                  Uri.parse('mailto:iamnajimbacha@gmail.com'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -922,12 +959,16 @@ class _SettingRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                value,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: _settingsSubtext(context),
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
+              Flexible(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: _settingsSubtext(context),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1664,6 +1705,236 @@ class _CategoryRow extends StatelessWidget {
                 child: Center(
                   child: Icon(icon, color: effectiveAccent, size: 16),
                 ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: _settingsText(context),
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: _settingsSubtext(context),
+                          fontWeight: FontWeight.w400,
+                          fontSize: 12,
+                          height: 1.3,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 14,
+                color: _settingsSubtext(context).withValues(alpha: 0.55),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Brand icon painters ──
+
+class _InstagramIcon extends StatelessWidget {
+  final double size;
+  const _InstagramIcon({this.size = 16});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _InstagramPainter(),
+    );
+  }
+}
+
+class _InstagramPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width;
+    final r = s * 0.22;
+    final stroke = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s * 0.10
+      ..strokeCap = StrokeCap.round;
+
+    // Outer rounded rect
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, s, s),
+      Radius.circular(r),
+    );
+    canvas.drawRRect(rect, stroke);
+
+    // Inner circle
+    canvas.drawCircle(
+      Offset(s / 2, s / 2),
+      s * 0.24,
+      stroke,
+    );
+
+    // Top-right dot
+    canvas.drawCircle(
+      Offset(s * 0.76, s * 0.24),
+      s * 0.06,
+      Paint()..color = Colors.white,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _FacebookIcon extends StatelessWidget {
+  final double size;
+  const _FacebookIcon({this.size = 16});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _FacebookPainter(),
+    );
+  }
+}
+
+class _FacebookPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width;
+
+    // "f" letterform
+    final path = Path();
+    // Vertical stem
+    path.moveTo(s * 0.54, s * 0.18);
+    path.lineTo(s * 0.54, s * 0.42);
+    path.lineTo(s * 0.68, s * 0.42);
+    path.lineTo(s * 0.65, s * 0.54);
+    path.lineTo(s * 0.54, s * 0.54);
+    path.lineTo(s * 0.54, s * 0.82);
+    path.lineTo(s * 0.40, s * 0.82);
+    path.lineTo(s * 0.40, s * 0.54);
+    path.lineTo(s * 0.32, s * 0.54);
+    path.lineTo(s * 0.32, s * 0.42);
+    path.lineTo(s * 0.40, s * 0.42);
+    path.lineTo(s * 0.40, s * 0.36);
+    path.lineTo(s * 0.40, s * 0.30);
+    path.lineTo(s * 0.54, s * 0.30);
+
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s * 0.10
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _MailIcon extends StatelessWidget {
+  final double size;
+  const _MailIcon({this.size = 16});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _MailPainter(),
+    );
+  }
+}
+
+class _MailPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width;
+    final stroke = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s * 0.10
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, s, s),
+      Radius.circular(s * 0.18),
+    );
+    canvas.drawRRect(rect, stroke);
+
+    // Envelope flap
+    final flap = Path();
+    flap.moveTo(0, 0);
+    flap.lineTo(s * 0.50, s * 0.48);
+    flap.lineTo(s, 0);
+    canvas.drawPath(flap, stroke);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _BrandCategoryRow extends StatelessWidget {
+  final Widget iconWidget;
+  final Color accent;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  const _BrandCategoryRow({
+    required this.iconWidget,
+    required this.accent,
+    required this.title,
+    this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: isDark ? 0.20 : 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(child: iconWidget),
               ),
               const SizedBox(width: 14),
               Expanded(

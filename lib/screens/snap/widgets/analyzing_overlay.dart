@@ -20,6 +20,8 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
     with TickerProviderStateMixin {
   int _messageIndex = 0;
   Timer? _messageTimer;
+  Timer? _timeoutHintTimer;
+  bool _showTimeoutHint = false;
   List<String> _statusMessages = [];
   late AnimationController _pulseController;
   late AnimationController _scanController;
@@ -45,6 +47,12 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
         });
       }
     });
+
+    _timeoutHintTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted) {
+        setState(() => _showTimeoutHint = true);
+      }
+    });
   }
 
   @override
@@ -65,6 +73,7 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
   @override
   void dispose() {
     _messageTimer?.cancel();
+    _timeoutHintTimer?.cancel();
     _pulseController.dispose();
     _scanController.dispose();
     super.dispose();
@@ -264,6 +273,25 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // Timeout hint (Case D)
+                AnimatedOpacity(
+                  opacity: _showTimeoutHint ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 600),
+                  child: _showTimeoutHint
+                      ? Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            "Can't identify? Try Manual Search.",
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
 
                 // Manual entry link
                 if (widget.onManualEntry != null)

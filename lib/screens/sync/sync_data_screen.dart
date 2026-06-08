@@ -48,7 +48,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
 
   bool _isLoading = false;
 
-  List<_Benefit> get _benefits => [
+  List<_Benefit> _buildBenefits(BuildContext context) => [
     _Benefit(
       icon: LucideIcons.smartphone,
       text: AppLocalizations.of(context)!.sync_benefit_devices,
@@ -66,6 +66,8 @@ class _SyncDataScreenState extends State<SyncDataScreen>
       text: AppLocalizations.of(context)!.sync_benefit_secure,
     ),
   ];
+
+  static const _benefitCount = 4;
 
   @override
   void initState() {
@@ -143,7 +145,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
 
     _benefitAnimations = [];
     _benefitSlides = [];
-    final benefitCount = _benefits.length;
+    final benefitCount = _benefitCount;
     for (int i = 0; i < benefitCount; i++) {
       final start = (0.35 + (i * 0.08)).clamp(0.0, 1.0);
       final end = (start + 0.15).clamp(0.0, 1.0);
@@ -423,7 +425,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: List.generate(_benefits.length, (index) {
+                    children: List.generate(_buildBenefits(context).length, (index) {
                       return AnimatedBuilder(
                         animation: _mainController,
                         builder: (context, child) {
@@ -447,7 +449,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Icon(
-                                        _benefits[index].icon,
+                                        _buildBenefits(context)[index].icon,
                                         color: colorScheme.primary,
                                         size: 18,
                                       ),
@@ -455,7 +457,7 @@ class _SyncDataScreenState extends State<SyncDataScreen>
                                     const SizedBox(width: 14),
                                     Expanded(
                                       child: Text(
-                                        _benefits[index].text,
+                                        _buildBenefits(context)[index].text,
                                         style: AppTypography.bodyMedium
                                             .copyWith(
                                               color: context.textPrimaryColor,

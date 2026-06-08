@@ -2295,16 +2295,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get result_portion_label => 'الحصة';
 
   @override
-  String get result_add_item => 'Add Item';
+  String get result_add_item => 'إضافة عنصر';
 
   @override
-  String get result_nutrition_details => 'Nutrition Details';
+  String get result_nutrition_details => 'تفاصيل التغذية';
 
   @override
-  String get result_unlock_nutrition => 'Unlock nutrition details';
+  String get result_unlock_nutrition => 'فتح تفاصيل التغذية';
 
   @override
-  String get result_add_to_log => 'Add to Log';
+  String get result_add_to_log => 'إضافة إلى السجل';
 
   @override
   String get paywall_cancel_anytime => 'يمكنك الإلغاء في أي وقت. بلا التزام.';
@@ -3065,7 +3065,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get log_metric_calories_intake => 'السعرات المتناولة';
 
   @override
-  String get log_macro_unlock_tracking => 'Unlock macro tracking';
+  String get log_macro_unlock_tracking => 'فتح تتبع المغذيات';
 
   @override
   String get log_metric_carbs => 'الكربوهيدرات';
@@ -3167,11 +3167,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get macro_locked_placeholder => 'مقفل';
 
   @override
-  String get macro_unlock_card_title => 'Unlock your macro breakdown';
+  String get macro_unlock_card_title => 'افتح تفصيل المغذيات لديك';
 
   @override
   String get macro_unlock_card_body =>
-      'See protein, carbs and fat progress for every meal.';
+      'شاهد تقدم البروتين والكربوهيدрат والدهون لكل وجبة.';
 
   @override
   String get common_unlock => 'فتح';
@@ -3396,104 +3396,98 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get onboarding_pace_title => 'Choose your pace';
+  String get onboarding_pace_title => 'اختر وتيرتك';
 
   @override
-  String get onboarding_pace_error_target_required =>
-      'Enter a target weight first';
+  String get onboarding_pace_error_target_required => 'أدخل وزن المستهدف أولاً';
 
   @override
-  String get onboarding_pace_error_pace_required => 'Select a pace to continue';
+  String get onboarding_pace_error_pace_required => 'اختر وتيرة للمتابعة';
 
   @override
-  String get onboarding_pace_gentle => 'Gentle';
+  String get onboarding_pace_gentle => 'هادئ';
 
   @override
-  String get onboarding_pace_gentle_desc =>
-      'Slower progress, easier to sustain';
+  String get onboarding_pace_gentle_desc => 'تقدم أبطأ، أسهل للحفاظ عليه';
 
   @override
-  String get onboarding_pace_balanced => 'Balanced';
+  String get onboarding_pace_balanced => 'متوازن';
 
   @override
-  String get onboarding_pace_balanced_desc =>
-      'Steady progress with moderate adjustment';
+  String get onboarding_pace_balanced_desc => 'تقدم ثابت مع تعديل معتدل';
 
   @override
-  String get onboarding_pace_faster => 'Faster';
+  String get onboarding_pace_faster => 'أسرع';
 
   @override
-  String get onboarding_pace_faster_desc =>
-      'Quick results, more adjustment needed';
+  String get onboarding_pace_faster_desc => 'نتائج سريعة، يحتاج تعديلاً أكثر';
 
   @override
-  String get onboarding_pace_target_weight => 'Target weight';
+  String get onboarding_pace_target_weight => 'الوزن المستهدف';
 
   @override
   String onboarding_pace_target_date(String date) {
-    return 'Estimated by $date';
+    return 'الموعد المتوقع: $date';
   }
 
   @override
   String onboarding_pace_weekly_rate(String rate, String unit) {
-    return '~$rate $unit/week';
+    return '~$rate $unit/أسبوع';
   }
 
   @override
-  String get onboarding_plan_title => 'Your plan is ready';
+  String get onboarding_plan_title => 'خطتك جاهزة';
 
   @override
-  String get onboarding_plan_explanation =>
-      'Personalized targets based on your inputs';
+  String get onboarding_plan_explanation => 'أهداف مخصصة بناءً على معلوماتك';
 
   @override
-  String get onboarding_plan_protein => 'Protein';
+  String get onboarding_plan_protein => 'بروتين';
 
   @override
-  String get onboarding_plan_carbs => 'Carbs';
+  String get onboarding_plan_carbs => 'كربوهيدرات';
 
   @override
-  String get onboarding_plan_fat => 'Fat';
+  String get onboarding_plan_fat => 'دهون';
 
   @override
   String onboarding_plan_grams(int grams) {
-    return '${grams}g';
+    return '$gramsغ';
   }
 
   @override
-  String get onboarding_plan_start => 'Start plan';
+  String get onboarding_plan_start => 'بدء الخطة';
 
   @override
-  String get onboarding_plan_adjust => 'Adjust';
+  String get onboarding_plan_adjust => 'تعديل';
 
   @override
   String get onboarding_plan_maintenance_estimate =>
-      'Maintain current weight with tracked nutrition';
+      'الحفاظ على الوزن الحالي مع التغذية المتعقبة';
 
   @override
   String onboarding_goal_summary_lose(String rate, String unit) {
-    return 'Lose $rate $unit/week';
+    return 'فقدان $rate $unit/أسبوع';
   }
 
   @override
-  String get onboarding_goal_summary_maintain => 'Maintain current weight';
+  String get onboarding_goal_summary_maintain => 'الحفاظ على الوزن الحالي';
 
   @override
   String onboarding_goal_summary_build(String rate, String unit) {
-    return 'Build $rate $unit/week';
+    return 'بناء $rate $unit/أسبوع';
   }
 
   @override
-  String get onboarding_goal_summary_track =>
-      'Track nutrition without a weight target';
+  String get onboarding_goal_summary_track => 'تتبع التغذية بدون هدف وزن';
 
   @override
   String get onboarding_safety_zero_loss =>
-      'Your current weight matches your target. We\'ll focus on maintaining with tracked nutrition.';
+      'وزنك الحالي يطابق وزنك المستهدف. سنركز على الحفاظ مع التغذية المتعقبة.';
 
   @override
   String get onboarding_safety_zero_gain =>
-      'Your current weight matches your target. We\'ll focus on maintaining with tracked nutrition.';
+      'وزنك الحالي يطابق وزنك المستهدف. سنركز على الحفاظ مع التغذية المتعقبة.';
 
   @override
   String onboarding_safety_adjusted_detail(
@@ -3501,108 +3495,109 @@ class AppLocalizationsAr extends AppLocalizations {
     String unit,
     String actualRate,
   ) {
-    return '$originalRate $unit was too aggressive. We adjusted to $actualRate $unit for safety.';
+    return '$originalRate $unit كان مبالغًا فيه. عدلناه إلى $actualRate $unit لأسباب أمنية.';
   }
 
   @override
   String onboarding_safety_updated_goal(String date) {
-    return 'Updated target by $date';
+    return 'تم تحديث المستهدف بحلول $date';
   }
 
   @override
   String get onboarding_safety_adjusted_fallback =>
-      'We adjusted your plan to keep it safe and realistic.';
+      'عدّلنا خطتك لتكون آمنة وواقعية.';
 
   @override
-  String get onboarding_adjusted_badge => 'Adjusted';
+  String get onboarding_adjusted_badge => 'تم التعديل';
 
   @override
-  String get onboarding_profile_title => 'Tell us about yourself';
+  String get onboarding_profile_title => 'أخبرنا عن نفسك';
 
   @override
-  String get onboarding_profile_weight => 'Weight';
+  String get onboarding_profile_weight => 'الوزن';
 
   @override
-  String get onboarding_profile_sex_label => 'Sex';
+  String get onboarding_profile_sex_label => 'الجنس';
 
   @override
-  String get onboarding_error_sex_required => 'Select your sex to continue';
+  String get onboarding_error_sex_required => 'اختر جنسك للمتابعة';
 
   @override
-  String get onboarding_error_adult_only => 'You must be at least 13 years old';
+  String get onboarding_error_adult_only =>
+      'يجب أن يكون عمرك 13 عامًا على الأقل';
 
   @override
-  String get onboarding_already_account => 'Already have an account?';
+  String get onboarding_already_account => 'لديك حساب بالفعل؟';
 
   @override
-  String get onboarding_scan_meal_title => 'Scan your meal';
+  String get onboarding_scan_meal_title => 'امسح وجبتك';
 
   @override
-  String get onboarding_scan_scanning => 'Analyzing your meal...';
+  String get onboarding_scan_scanning => 'جارٍ تحليل وجبتك...';
 
   @override
-  String get onboarding_scan_ai_label => 'AI';
+  String get onboarding_scan_ai_label => 'ذكاء اصطناعي';
 
   @override
-  String get onboarding_scan_kcal => 'kcal';
+  String get onboarding_scan_kcal => 'سعرة';
 
   @override
-  String get onboarding_goal_title => 'What\'s your goal?';
+  String get onboarding_goal_title => 'ما هدفك؟';
 
   @override
-  String get onboarding_goal_lose => 'Lose weight';
+  String get onboarding_goal_lose => 'فقدان الوزن';
 
   @override
-  String get onboarding_goal_lose_desc => 'Calorie deficit to shed body fat';
+  String get onboarding_goal_lose_desc => 'عجز سعرات لحرق الدهون';
 
   @override
-  String get onboarding_goal_maintain => 'Maintain';
+  String get onboarding_goal_maintain => 'الحفاظ';
 
   @override
-  String get onboarding_goal_maintain_desc => 'Keep your current weight stable';
+  String get onboarding_goal_maintain_desc => 'حافظ على وزنك الحالي مستقرًا';
 
   @override
-  String get onboarding_goal_build => 'Build muscle';
+  String get onboarding_goal_build => 'بناء العضلات';
 
   @override
-  String get onboarding_goal_build_desc => 'Calorie surplus for lean mass gain';
+  String get onboarding_goal_build_desc => 'فائض سعرات لزيادة الكتلة العضلية';
 
   @override
-  String get onboarding_goal_track => 'Track only';
+  String get onboarding_goal_track => 'تتبع فقط';
 
   @override
-  String get onboarding_goal_track_desc => 'Log meals without a weight target';
+  String get onboarding_goal_track_desc => 'تسجيل الوجبات بدون هدف وزن';
 
   @override
-  String get onboarding_activity_sitting => 'Sitting';
+  String get onboarding_activity_sitting => 'خامل';
 
   @override
-  String get onboarding_activity_sitting_desc => 'Desk job, little exercise';
+  String get onboarding_activity_sitting_desc => 'عمل مكتبي، تمارين قليلة';
 
   @override
-  String get onboarding_activity_light => 'Light';
+  String get onboarding_activity_light => 'خفيف';
 
   @override
-  String get onboarding_activity_light_desc => '1-3 days of exercise per week';
+  String get onboarding_activity_light_desc => '1-3 أيام تمارين أسبوعيًا';
 
   @override
-  String get onboarding_activity_very => 'Very active';
+  String get onboarding_activity_very => 'نشط جدًا';
 
   @override
-  String get onboarding_activity_very_desc => '6-7 days of exercise per week';
+  String get onboarding_activity_very_desc => '6-7 أيام تمارين أسبوعيًا';
 
   @override
-  String get onboarding_plan_kcal_day => 'kcal / day';
+  String get onboarding_plan_kcal_day => 'سعرات / يوم';
 
   @override
   String get onboarding_finish_error =>
-      'Could not create your plan. Please try again.';
+      'تعذر إنشاء خطتك. يرجى المحاولة مرة أخرى.';
 
   @override
   String get onboarding_error_target_lower =>
-      'Target must be lower than current weight';
+      'يجب أن يكون المستهدف أقل من الوزن الحالي';
 
   @override
   String get onboarding_error_target_higher =>
-      'Target must be higher than current weight';
+      'يجب أن يكون المستهدف أعلى من الوزن الحالي';
 }

@@ -91,6 +91,26 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     );
   }
 
+  String _friendlyError(Object e) {
+    final msg = e.toString();
+    if (msg.contains('network') || msg.contains('timeout') || msg.contains('SocketException')) {
+      return 'Connection error. Please check your internet and try again.';
+    }
+    if (msg.contains('wrong-password') || msg.contains('invalid-email') || msg.contains('user-not-found') || msg.contains('invalid-credential')) {
+      return 'Invalid email or password. Please try again.';
+    }
+    if (msg.contains('too-many-requests') || msg.contains('rate-limit')) {
+      return 'Too many attempts. Please wait a moment and try again.';
+    }
+    if (msg.contains('email-already-in-use')) {
+      return 'An account with this email already exists.';
+    }
+    if (msg.contains('weak-password')) {
+      return 'Password is too weak. Use at least 8 characters with a mix of letters and numbers.';
+    }
+    return 'Something went wrong. Please try again.';
+  }
+
   void _onAuthSuccess() {
     if (!mounted) return;
     HapticFeedback.heavyImpact();
@@ -111,7 +131,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         _showStyledSnackBar(auth.errorMessage!);
       }
     } catch (e) {
-      _showStyledSnackBar('$e');
+      _showStyledSnackBar(_friendlyError(e));
     } finally {
       if (mounted) setState(() => _googleLoading = false);
     }
@@ -125,7 +145,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       await auth.signInWithFacebook();
       if (auth.isAuthenticated) _onAuthSuccess();
     } catch (e) {
-      _showStyledSnackBar('$e');
+      _showStyledSnackBar(_friendlyError(e));
     } finally {
       if (mounted) setState(() => _facebookLoading = false);
     }
@@ -150,7 +170,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       }
       if (auth.isAuthenticated) _onAuthSuccess();
     } catch (e) {
-      _showStyledSnackBar('$e');
+      _showStyledSnackBar(_friendlyError(e));
     } finally {
       if (mounted) setState(() => _emailLoading = false);
     }
@@ -279,6 +299,15 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                             () =>
                                                 _showPassword = !_showPassword,
                                           ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Password is required';
+                                        }
+                                        if (value.length < 8) {
+                                          return 'Password must be at least 8 characters';
+                                        }
+                                        return null;
+                                      },
                                     ),
                                   ),
                                   const SizedBox(height: 24),
@@ -648,6 +677,7 @@ class _AuthTextField extends StatelessWidget {
   final bool? showPassword;
   final VoidCallback? onTogglePassword;
   final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
 
   const _AuthTextField({
     required this.controller,
@@ -656,6 +686,7 @@ class _AuthTextField extends StatelessWidget {
     this.showPassword,
     this.onTogglePassword,
     this.keyboardType,
+    this.validator,
   });
 
   @override
@@ -686,6 +717,7 @@ class _AuthTextField extends StatelessWidget {
         controller: controller,
         obscureText: isPassword && !(showPassword ?? false),
         keyboardType: keyboardType,
+        validator: validator,
         style: AppTypography.bodyLarge,
         decoration: InputDecoration(
           hintText: hint,

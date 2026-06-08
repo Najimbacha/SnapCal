@@ -1573,8 +1573,7 @@ class _PremiumBentoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Theme-aware design tokens
-    const goldColor = Color(0xFFD4AF37); // Classic metallic gold
+    // Theme-aware design tokens — warm minimal (matches home screen)
     final LinearGradient cardBg;
     final Color borderColor;
     final Color textColor;
@@ -1586,20 +1585,20 @@ class _PremiumBentoCard extends StatelessWidget {
     if (isDark) {
       cardBg = const LinearGradient(
         colors: [
-          Color(0xFF0B2114), // Deep Forest Green
-          Color(0xFF0F321E), // Rich Emerald Forest Green
+          Color(0xFF1A1A1E),
+          Color(0xFF1E1E22),
         ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
-      borderColor = goldColor.withValues(alpha: 0.3);
-      textColor = const Color(0xFFFAF8F5); // Warm cream text
-      subtitleColor = const Color(0xFFBDD2C6); // Soft sage/champagne text
-      iconBgColor = const Color(0xFF113620);
-      iconColor = goldColor;
+      borderColor = Colors.white.withValues(alpha: 0.06);
+      textColor = Colors.white;
+      subtitleColor = Colors.white38;
+      iconBgColor = _minimalGreen;
+      iconColor = const Color(0xFF6EE7A0);
       shadow = [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.25),
+          color: Colors.black.withValues(alpha: 0.2),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
@@ -1608,11 +1607,11 @@ class _PremiumBentoCard extends StatelessWidget {
       cardBg = const LinearGradient(
         colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
       );
-      borderColor = const Color(0xFFEFEBE4); // Soft champagne border
-      textColor = const Color(0xFF1A1A2E); // Deep charcoal text
-      subtitleColor = const Color(0xFF788C80); // Muted sage/olive
-      iconBgColor = const Color(0xFFFCF8EF); // Light champagne tint
-      iconColor = const Color(0xFFBA7517); // Rich gold/amber
+      borderColor = const Color(0xFFE8E4DC);
+      textColor = _minimalInk;
+      subtitleColor = _minimalMuted;
+      iconBgColor = _minimalGreen;
+      iconColor = const Color(0xFF16733A);
       shadow = [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.05),
@@ -1651,8 +1650,11 @@ class _PremiumBentoCard extends StatelessWidget {
                               : const LinearGradient(
                                 colors: [Color(0xFFE2EFE0), Color(0xFFCDE2CC)],
                               ))
-                          : const LinearGradient(
-                            colors: [Color(0xFFE5C060), Color(0xFFB88E2F)],
+                          : LinearGradient(
+                            colors: [
+                              _minimalGreenText.withValues(alpha: 0.8),
+                              _minimalGreenText,
+                            ],
                           ),
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
@@ -1661,7 +1663,7 @@ class _PremiumBentoCard extends StatelessWidget {
                               ? (isDark
                                   ? const Color(0xFF16472D)
                                   : const Color(0xFFCDE2CC))
-                              : goldColor)
+                              : _minimalGreenText)
                           .withValues(alpha: 0.2),
                       blurRadius: 4,
                       offset: const Offset(0, 1),
@@ -1712,8 +1714,8 @@ class _PremiumBentoCard extends StatelessWidget {
                     border: Border.all(
                       color:
                           isDark
-                              ? goldColor.withValues(alpha: 0.25)
-                              : const Color(0xFFFAF2E6),
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : const Color(0xFFE8E4DC),
                       width: 1,
                     ),
                   ),

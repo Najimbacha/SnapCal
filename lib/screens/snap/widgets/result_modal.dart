@@ -226,7 +226,9 @@ class _ResultModalState extends State<ResultModal> {
         );
       },
     );
-    controller.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) controller.dispose();
+    });
     if (newName != null && newName.isNotEmpty && mounted) {
       setState(() {
         _items[index] = _items[index].copyWith(name: newName);
@@ -282,7 +284,7 @@ class _ResultModalState extends State<ResultModal> {
     final surface = isDark ? const Color(0xFF1A1A1E) : Colors.white;
     final ink = isDark ? Colors.white : _reviewInk;
     final muted = isDark ? Colors.white54 : _reviewMuted;
-    final previewHeight = (MediaQuery.sizeOf(context).height * 0.24).clamp(144.0, 208.0);
+    final previewHeight = (MediaQuery.sizeOf(context).height * 0.25).clamp(150.0, 200.0);
 
     return Scaffold(
       backgroundColor: bg,
@@ -294,6 +296,7 @@ class _ResultModalState extends State<ResultModal> {
               imageBytes: widget.imageBytes,
               height: previewHeight,
               onBack: _retake,
+              totalCalories: _totalCalories,
             ),
           ),
           Positioned(
@@ -306,8 +309,8 @@ class _ResultModalState extends State<ResultModal> {
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.045),
-                      blurRadius: 20, offset: const Offset(0, -4),
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                      blurRadius: 24, offset: const Offset(0, -6),
                     ),
                   ],
                 ),
@@ -339,9 +342,9 @@ class _ResultModalState extends State<ResultModal> {
                             ink: ink,
                             muted: muted,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Container(height: 1, color: _reviewLine.withValues(alpha: 0.4)),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           Row(
                             children: [
                               Text(
@@ -352,11 +355,20 @@ class _ResultModalState extends State<ResultModal> {
                                 ),
                               ),
                               const Spacer(),
-                              Text(
-                                '${_items.length} item${_items.length == 1 ? '' : 's'}',
-                                style: TextStyle(
-                                  color: muted, fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.06)
+                                      : const Color(0xFFF0F0EE),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '${_items.length}',
+                                  style: TextStyle(
+                                    color: muted, fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ],
@@ -367,6 +379,8 @@ class _ResultModalState extends State<ResultModal> {
                               item: _items[index],
                               ink: ink,
                               muted: muted,
+                              surface: surface,
+                              isDark: isDark,
                               imageBytes: widget.imageBytes,
                               index: index,
                               onServingChanged:
@@ -382,18 +396,27 @@ class _ResultModalState extends State<ResultModal> {
                               alignment: Alignment.center,
                               child: Column(
                                 children: [
-                                  Icon(AppSymbols.meal, size: 32,
-                                      color: muted.withValues(alpha: 0.4)),
-                                  const SizedBox(height: 8),
+                                  Container(
+                                    width: 56, height: 56,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.05)
+                                          : const Color(0xFFF0F0EE),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(AppSymbols.meal, size: 24,
+                                        color: muted.withValues(alpha: 0.4)),
+                                  ),
+                                  const SizedBox(height: 12),
                                   Text('No items detected',
                                       style: AppTypography.bodyMedium.copyWith(
-                                          color: muted, fontSize: 13,
+                                          color: muted, fontSize: 14,
                                           fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: 4),
                                   Text('Add one below to log your meal',
                                       style: AppTypography.bodySmall.copyWith(
-                                          color: muted.withValues(alpha: 0.7),
-                                          fontSize: 11, fontWeight: FontWeight.w600)),
+                                          color: muted.withValues(alpha: 0.6),
+                                          fontSize: 12, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             ),
@@ -414,92 +437,132 @@ class _ResultModalState extends State<ResultModal> {
                       ),
                     ),
                     ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 12),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primary.withValues(alpha: 0.85),
-                                AppColors.primary,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                          onPressed: _isSaving ? null : _save,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20)),
-                          ),
-                          child: _isSaving
-                              ? const SizedBox(
-                                  width: 18, height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text('Add To Log',
-                                        style: AppTypography.titleSmall.copyWith(
-                                            color: Colors.white, fontSize: 14,
-                                            fontWeight: FontWeight.w900)),
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      height: 22,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 7),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(999),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text('$_totalCalories',
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w900)),
-                                          const SizedBox(width: 2),
-                                          Text('kcal',
-                                              style: TextStyle(
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.7),
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700)),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                          ),
-                        ),
-                       ),
-                      ),
+                    _SaveButton(
+                      isSaving: _isSaving,
+                      totalCalories: _totalCalories,
+                      itemCount: _items.length,
+                      onPressed: _save,
+                      bottomPadding: bottom,
+                    ),
                   ],
                 ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SaveButton extends StatelessWidget {
+  final bool isSaving;
+  final int totalCalories;
+  final int itemCount;
+  final VoidCallback onPressed;
+  final double bottomPadding;
+
+  const _SaveButton({
+    required this.isSaving,
+    required this.totalCalories,
+    required this.itemCount,
+    required this.onPressed,
+    required this.bottomPadding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, bottomPadding + 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A1E) : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : _reviewLine.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary.withValues(alpha: 0.85),
+                AppColors.primary,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: isSaving ? null : onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+            ),
+            child: isSaving
+                ? const SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_rounded, size: 18),
+                      const SizedBox(width: 6),
+                      Text('Add To Log',
+                          style: AppTypography.titleSmall.copyWith(
+                              color: Colors.white, fontSize: 14,
+                              fontWeight: FontWeight.w900)),
+                      const SizedBox(width: 8),
+                      Container(
+                        height: 22,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('$totalCalories',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900)),
+                            const SizedBox(width: 2),
+                            Text('kcal',
+                                style: TextStyle(
+                                    color: Colors.white
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
       ),
     );
   }
@@ -533,7 +596,7 @@ class _ReviewSummary extends StatelessWidget {
       children: [
         const SizedBox(height: 4),
         Container(
-          height: 24,
+          height: 26,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             color: isDark
@@ -549,21 +612,21 @@ class _ReviewSummary extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(AppSymbols.sparkles, size: 10,
+              Icon(AppSymbols.sparkles, size: 11,
                   color: isDark ? Colors.white70 : const Color(0xFF29314A)),
-              const SizedBox(width: 4),
+              const SizedBox(width: 5),
               Text('AI Estimated',
                   style: TextStyle(
                       color: isDark ? Colors.white70 : const Color(0xFF29314A),
-                      fontSize: 10, fontWeight: FontWeight.w700)),
+                      fontSize: 11, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Text(
           '$calories',
           style: TextStyle(
-            fontSize: 56,
+            fontSize: 52,
             fontWeight: FontWeight.w200,
             color: ink,
             height: 0.90,
@@ -574,13 +637,13 @@ class _ReviewSummary extends StatelessWidget {
         Text(
           'Total Calories',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
             color: muted,
-            letterSpacing: 0.5,
+            letterSpacing: 0.8,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -595,13 +658,13 @@ class _ReviewSummary extends StatelessWidget {
           ],
         ),
         if (!isPro) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           GestureDetector(
             onTap: () => PremiumConversionService().openPaywall(
                 context, PaywallEntryPoint.macroDetails,
                 featureName: 'scan_result_macros'),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: isDark
                     ? Colors.white.withValues(alpha: 0.04)
@@ -659,8 +722,8 @@ class _MacroCircle extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 56,
-          height: 56,
+          width: 52,
+          height: 52,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -669,6 +732,13 @@ class _MacroCircle extends StatelessWidget {
               color: color.withValues(alpha: 0.25),
               width: 1.5,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: locked
               ? Icon(AppSymbols.lock, size: 16, color: color.withValues(alpha: 0.5))
@@ -679,7 +749,7 @@ class _MacroCircle extends StatelessWidget {
                     color: color,
                   )),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 6),
         Text(label,
             style: TextStyle(
               fontSize: 11,
@@ -741,6 +811,8 @@ class _FoodReviewCard extends StatefulWidget {
   final _ReviewFoodItem item;
   final Color ink;
   final Color muted;
+  final Color surface;
+  final bool isDark;
   final Uint8List? imageBytes;
   final int index;
   final ValueChanged<int> onServingChanged;
@@ -749,6 +821,7 @@ class _FoodReviewCard extends StatefulWidget {
 
   const _FoodReviewCard({
     required this.item, required this.ink, required this.muted,
+    required this.surface, required this.isDark,
     required this.imageBytes, required this.index,
     required this.onServingChanged, required this.onRename, required this.onDelete,
   });
@@ -767,7 +840,7 @@ class _FoodReviewCardState extends State<_FoodReviewCard>
   void initState() {
     super.initState();
     _expandController = AnimationController(
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 280),
       vsync: this,
     );
     _expandAnimation = CurvedAnimation(
@@ -795,180 +868,170 @@ class _FoodReviewCardState extends State<_FoodReviewCard>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final portionLabels = widget.item.servingLabels;
-    final cardBg = isDark ? const Color(0xFF1A1A1E) : Colors.white;
     final borderColor = _expanded
         ? AppColors.primary.withValues(alpha: 0.3)
-        : isDark
+        : widget.isDark
             ? Colors.white.withValues(alpha: 0.08)
             : _reviewLine;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
+        color: widget.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: _expanded ? 1.5 : 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.0 : 0.04),
-            blurRadius: 8, offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: widget.isDark ? 0.0 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(13),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: _toggleExpand,
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: GestureDetector(
+        onTap: _toggleExpand,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.item.name,
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: widget.ink, fontSize: 14,
-                                fontWeight: FontWeight.w900, letterSpacing: -0.2,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Text(
-                                  '${widget.item.calories} kcal',
-                                  style: TextStyle(
-                                    color: AppColors.primary, fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '· ${widget.item.servingLabel}',
-                                  style: TextStyle(
-                                    color: widget.muted, fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(
-                        width: 28, height: 28,
-                        child: PopupMenuButton<String>(
-                          padding: EdgeInsets.zero,
-                          iconSize: 16,
-                          icon: Icon(AppSymbols.moreHorizontal,
-                              color: widget.muted, size: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          color: isDark ? const Color(0xFF2A2A2E) : Colors.white,
-                          elevation: 4,
-                          onSelected: (value) {
-                            if (value == 'rename') widget.onRename();
-                            if (value == 'delete') widget.onDelete();
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'rename', height: 38,
-                              child: Row(
-                                children: [
-                                  Icon(AppSymbols.edit, size: 14, color: widget.ink),
-                                  const SizedBox(width: 8),
-                                  Text('Rename', style: TextStyle(
-                                      color: widget.ink, fontSize: 13,
-                                      fontWeight: FontWeight.w700)),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'delete', height: 38,
-                              child: Row(
-                                children: [
-                                  Icon(AppSymbols.trash2, size: 14,
-                                      color: const Color(0xFFD84B2A)),
-                                  const SizedBox(width: 8),
-                                  Text('Remove', style: TextStyle(
-                                      color: const Color(0xFFD84B2A), fontSize: 13,
-                                      fontWeight: FontWeight.w700)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizeTransition(
-                    sizeFactor: _expandAnimation,
-                    axisAlignment: -1,
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 10),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  height: 30,
-                                  child: ListView.separated(
-                                    scrollDirection: Axis.horizontal,
-                                    physics: const BouncingScrollPhysics(),
-                                    itemCount: portionLabels.length,
-                                    separatorBuilder: (_, _) =>
-                                        const SizedBox(width: 4),
-                                    itemBuilder: (context, i) {
-                                      return _PortionChip(
-                                        label: portionLabels[i],
-                                        selected: widget.item.servingIndex == i,
-                                        onTap: () =>
-                                            widget.onServingChanged(i),
-                                      );
-                                    },
-                                  ),
+                        Text(
+                          widget.item.name,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: widget.ink, fontSize: 14,
+                            fontWeight: FontWeight.w900, letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '${widget.item.calories} kcal',
+                                style: const TextStyle(
+                                  color: AppColors.primary, fontSize: 11,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '· ${widget.item.servingLabel}',
+                              style: TextStyle(
+                                color: widget.muted, fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 28, height: 28,
+                    child: PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      iconSize: 16,
+                      icon: Icon(AppSymbols.moreHorizontal,
+                          color: widget.muted, size: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      color: widget.isDark ? const Color(0xFF2A2A2E) : Colors.white,
+                      elevation: 4,
+                      onSelected: (value) {
+                        if (value == 'rename') widget.onRename();
+                        if (value == 'delete') widget.onDelete();
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'rename', height: 38,
+                          child: Row(
+                            children: [
+                              Icon(AppSymbols.edit, size: 14, color: widget.ink),
+                              const SizedBox(width: 8),
+                              Text('Rename', style: TextStyle(
+                                  color: widget.ink, fontSize: 13,
+                                  fontWeight: FontWeight.w700)),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            _MacroDot(label: '${widget.item.calories} kcal',
-                                color: AppColors.primary),
-                            const SizedBox(width: 14),
-                            _MacroDot(label: '${widget.item.protein}g Protein',
-                                color: AppColors.protein),
-                            const SizedBox(width: 14),
-                            _MacroDot(label: '${widget.item.carbs}g Carbs',
-                                color: AppColors.carbs),
-                            const SizedBox(width: 14),
-                            _MacroDot(label: '${widget.item.fat}g Fat',
-                                color: AppColors.fat),
-                          ],
+                        PopupMenuItem(
+                          value: 'delete', height: 38,
+                          child: Row(
+                            children: [
+                              const Icon(AppSymbols.trash2, size: 14,
+                                  color: Color(0xFFD84B2A)),
+                              const SizedBox(width: 8),
+                              const Text('Remove', style: TextStyle(
+                                  color: Color(0xFFD84B2A), fontSize: 13,
+                                  fontWeight: FontWeight.w700)),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-            ),
+              SizeTransition(
+                sizeFactor: _expandAnimation,
+                axisAlignment: -1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 32,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: portionLabels.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 5),
+                        itemBuilder: (context, i) {
+                          return _PortionChip(
+                            label: portionLabels[i],
+                            selected: widget.item.servingIndex == i,
+                            onTap: () => widget.onServingChanged(i),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _MacroDot(label: '${widget.item.calories} kcal',
+                            color: AppColors.primary),
+                        const SizedBox(width: 14),
+                        _MacroDot(label: '${widget.item.protein}g Protein',
+                            color: AppColors.protein),
+                        const SizedBox(width: 14),
+                        _MacroDot(label: '${widget.item.carbs}g Carbs',
+                            color: AppColors.carbs),
+                        const SizedBox(width: 14),
+                        _MacroDot(label: '${widget.item.fat}g Fat',
+                            color: AppColors.fat),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1010,9 +1073,10 @@ class _PortionChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        height: 26,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.primary.withValues(alpha: 0.12)
@@ -1025,11 +1089,15 @@ class _PortionChip extends StatelessWidget {
           ),
         ),
         child: Center(
-          child: Text(
-            selected ? '$label ✓' : label,
-            style: TextStyle(
-              color: selected ? AppColors.primary : _reviewMuted,
-              fontSize: 11, fontWeight: FontWeight.w800,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 150),
+            child: Text(
+              selected ? '$label \u2713' : label,
+              key: ValueKey('$label-$selected'),
+              style: TextStyle(
+                color: selected ? AppColors.primary : _reviewMuted,
+                fontSize: 11, fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ),
@@ -1042,9 +1110,11 @@ class _PhotoPreview extends StatelessWidget {
   final Uint8List? imageBytes;
   final double height;
   final VoidCallback onBack;
+  final int totalCalories;
 
   const _PhotoPreview({
     required this.imageBytes, required this.height, required this.onBack,
+    this.totalCalories = 0,
   });
 
   @override
@@ -1063,6 +1133,50 @@ class _PhotoPreview extends StatelessWidget {
                 errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
+          // Gradient overlay for depth
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.55),
+                  ],
+                  stops: const [0.35, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // Calorie pill on image
+          if (totalCalories > 0)
+            Positioned(
+              bottom: 20, left: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  '$totalCalories kcal',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             top: MediaQuery.paddingOf(context).top + 10,
             left: 16, right: 16,
@@ -1071,16 +1185,16 @@ class _PhotoPreview extends StatelessWidget {
                 GestureDetector(
                   onTap: onBack,
                   child: Container(
-                    width: 34, height: 34,
+                    width: 36, height: 36,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.90),
+                      color: Colors.black.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: Colors.black.withValues(alpha: 0.06)),
+                          color: Colors.white.withValues(alpha: 0.15)),
                     ),
                     child: const Icon(
-                      AppSymbols.back, size: 16, color: _reviewInk,
+                      AppSymbols.back, size: 16, color: Colors.white,
                     ),
                   ),
                 ),
@@ -1090,18 +1204,18 @@ class _PhotoPreview extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.90),
+                      color: Colors.black.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                          color: Colors.black.withValues(alpha: 0.06)),
+                          color: Colors.white.withValues(alpha: 0.15)),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(AppSymbols.camera, size: 14, color: _reviewInk),
+                        Icon(AppSymbols.camera, size: 14, color: Colors.white),
                         SizedBox(width: 4),
                         Text('Retake', style: TextStyle(
-                            color: _reviewInk, fontSize: 12,
+                            color: Colors.white, fontSize: 12,
                             fontWeight: FontWeight.w900)),
                       ],
                     ),

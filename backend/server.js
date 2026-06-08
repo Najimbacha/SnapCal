@@ -11,7 +11,9 @@ const rateLimit = require('express-rate-limit');
 const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '1mb';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
-const REQUIRE_APP_CHECK = process.env.REQUIRE_APP_CHECK === 'true';
+const REQUIRE_APP_CHECK = process.env.NODE_ENV === 'production'
+  ? process.env.REQUIRE_APP_CHECK !== 'false'
+  : process.env.REQUIRE_APP_CHECK === 'true';
 const REVENUECAT_WEBHOOK_AUTH = process.env.REVENUECAT_WEBHOOK_AUTH || '';
 
 function initializeFirebaseAdmin() {
@@ -45,7 +47,20 @@ const db = admin.firestore();
 let authVerifierForTest = null;
 
 app.disable('x-powered-by');
-app.use(cors({ origin: true }));
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+}));
 app.use(morgan(process.env.NODE_ENV === 'test' ? 'combined' : 'dev'));
 app.use(express.json({ limit: MAX_JSON_BODY, type: 'application/json' }));
 app.use(express.urlencoded({ limit: MAX_JSON_BODY, extended: false }));
@@ -124,7 +139,8 @@ Return this exact structure:
       "carbs": number,
       "fat": number,
       "health_score": number,
-      "insights": ["string", "string"]
+      "insights": ["string", "string"],
+      "alternatives": ["string", "string"]
     }
   ]
 }
@@ -133,9 +149,17 @@ Rules:
 - Each distinct food item visible on the plate gets its own entry in the "items" array
 - health_score is based on nutritional density (10 = superfood, 1 = junk food)
 - insights should be short positive or cautionary highlights
+- alternatives must be 2-3 similar foods the item could plausibly be (e.g. "Oatmeal", "Porridge", "Cream of Wheat"). These help the user correct the AI if it guessed wrong. Keep them short (1-3 words each).
 - All nutritional values are for a typical single serving
 - protein, carbs, fat are in grams
-- If NOT food at all, return: {"items": [{"food_name": "${notFood.food_name}", "health_score": 0, "insights": ["${notFood.insights[0]}"], "calories": 0, "protein": 0, "carbs": 0, "fat": 0}]}`;
+- If NOT food at all, return: {"items": [{"food_name": "${notFood.food_name}", "health_score": 0, "insights": ["${notFood.insights[0]}"], "alternatives": [], "calories": 0, "protein": 0, "carbs": 0, "fat": 0}]}`;
+}
+
+function safeCompare(a, b) {
+  const bufA = Buffer.from(String(a || ''));
+  const bufB = Buffer.from(String(b || ''));
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 function safeError(res, status, message) {
@@ -299,6 +323,7 @@ function normalizeNutrition(rawText) {
     fat: clampInt(item.fat, 0, 500),
     health_score: clampInt(item.health_score ?? item.healthScore ?? 5, 0, 10),
     insights: Array.isArray(item.insights) ? item.insights.slice(0, 3).map((v) => String(v).slice(0, 40)) : [],
+    alternatives: Array.isArray(item.alternatives) ? item.alternatives.slice(0, 3).map((v) => String(v).slice(0, 40)) : [],
   }));
   if (cleaned.length === 0) throw new Error('empty-nutrition-result');
   return { items: cleaned };
@@ -414,7 +439,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_SCANNER_MODEL || 'gemini-2.5-flash'}:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_SCANNER_MODEL || 'gemini-2.5-flash'}:generateContent`,
       {
         contents: [{
           parts: [
@@ -424,7 +449,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
         }],
         generationConfig: { temperature: 0.4, maxOutputTokens: 512 },
       },
-      { headers: { 'Content-Type': 'application/json' }, timeout: 10000 },
+      { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }, timeout: 10000 },
     );
     const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (text) return text;
@@ -442,7 +467,7 @@ async function callAiText(prompt, options = {}) {
   if (geminiApiKey) {
     try {
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash'}:generateContent?key=${geminiApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash'}:generateContent`,
         {
           contents: [{ parts: [{ text: effectivePrompt }] }],
           generationConfig: {
@@ -451,7 +476,7 @@ async function callAiText(prompt, options = {}) {
             ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
           },
         },
-        { headers: { 'Content-Type': 'application/json' }, timeout: options.timeout || 25000 },
+        { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }, timeout: options.timeout || 25000 },
       );
       const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) return requireJson ? normalizeAiJsonText(text) : text;
@@ -678,7 +703,7 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
   if (!REVENUECAT_WEBHOOK_AUTH) {
     return safeError(res, 503, 'Webhook not configured.');
   }
-  if (req.header('Authorization') !== REVENUECAT_WEBHOOK_AUTH) {
+  if (!safeCompare(req.header('Authorization'), REVENUECAT_WEBHOOK_AUTH)) {
     return safeError(res, 401, 'Unauthorized webhook.');
   }
 
@@ -809,6 +834,21 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
     return safeError(res, 413, 'Image too large (max 10 MB).');
   }
 
+  const uid = req.user.uid;
+  const usageRef = usageDoc(uid);
+  const subRef = subscriptionDoc(uid);
+  const [usageSnap, subSnap] = await Promise.all([usageRef.get(), subRef.get()]);
+  const usage = usageSnap.exists ? usageSnap.data() : {};
+  const subscription = subSnap.exists ? subSnap.data() : {};
+  const monthKey = currentMonthKey();
+  const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
+  const expiresDate = subscription?.expiresAt?.toDate ? subscription.expiresAt.toDate() : null;
+  const isPremium = subscription?.isActive === true && (!expiresDate || expiresDate > new Date());
+
+  if (!isPremium && scansUsed >= FREE_MONTHLY_SCANS) {
+    return safeError(res, 402, 'Scan limit reached.');
+  }
+
   try {
     const raw = await callAiWithImage(image, cleanLanguage(language));
     const nutrition = normalizeNutrition(raw);
@@ -820,6 +860,14 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
     console.log(JSON.stringify({ event: 'scan.success', status: 200 }));
+
+    await usageRef.set({
+      monthKey,
+      scansUsed: scansUsed + 1,
+      premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
     return res.status(200).json({ items: nutrition.items, totals });
   } catch (error) {
     console.error(

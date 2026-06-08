@@ -23,6 +23,7 @@ class NutritionResult {
   final int fat;
   final int healthScore; // 1-10
   final List<String> insights;
+  final List<String> alternatives;
 
   NutritionResult({
     required this.foodName,
@@ -33,6 +34,7 @@ class NutritionResult {
     required this.fat,
     this.healthScore = 5,
     this.insights = const [],
+    this.alternatives = const [],
   });
 
   factory NutritionResult.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,8 @@ class NutritionResult {
       healthScore: healthScore == 0 ? 5 : healthScore.clamp(1, 10),
       insights:
           (json['insights'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      alternatives:
+          (json['alternatives'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 
@@ -109,58 +113,6 @@ class AIService {
       throw GeminiException('Backend returned an empty AI response');
     }
     return text;
-  }
-
-  /// Deprecated direct-provider implementation. Kept unreachable to document the
-  /// old flow while all runtime calls use the authenticated backend above.
-  // ignore: unused_element
-  Future<String> _generateTextDirectDeprecated(String prompt) async {
-    // ── Tier 1 & 2: Gemini ──────────────────────────────────────────────
-    final geminiKey = ConfigService().geminiApiKey;
-    if (geminiKey.isNotEmpty) {
-      final candidates = [
-        {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
-        {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
-      ];
-      for (var candidate in candidates) {
-        final modelId = candidate['id']!;
-        final apiVer = candidate['ver']!;
-        try {
-          final response = await _dio.post(
-            'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$geminiKey',
-            options: Options(
-              headers: {'Content-Type': 'application/json'},
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 15),
-            ),
-            data: {
-              'contents': [
-                {
-                  'parts': [
-                    {'text': prompt},
-                  ],
-                },
-              ],
-              'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
-            },
-          );
-          if (response.statusCode == 200) {
-            final text =
-                response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                    as String?;
-            if (text != null) return text;
-          }
-        } catch (e) {
-          debugPrint('❌ generateText Gemini ($modelId): $e');
-        }
-      }
-    }
-
-    // ── Tier 3: Groq (entire Gemini API down) ───────────────────────────
-    debugPrint(
-      '⚠️ Gemini unavailable — falling back to Groq for text generation',
-    );
-    return _generateTextWithGroq(prompt, maxTokens: 1024);
   }
 
   Future<String> generateMealInsight({
@@ -298,63 +250,6 @@ User daily targets:
       debugPrint('❌ MealPlanner backend failed: $e');
     }
 
-    // ── Tier 1 & 2: Gemini ──────────────────────────────────────────────
-    final geminiKey = ConfigService().geminiApiKey;
-    if (geminiKey.isNotEmpty) {
-      final candidates = [
-        {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
-        {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
-      ];
-      for (var candidate in candidates) {
-        final modelId = candidate['id']!;
-        final apiVer = candidate['ver']!;
-        try {
-          debugPrint('🍽️ MealPlanner: trying Gemini $modelId...');
-          final response = await _dio.post(
-            'https://generativelanguage.googleapis.com/$apiVer/models/$modelId:generateContent?key=$geminiKey',
-            options: Options(
-              headers: {'Content-Type': 'application/json'},
-              connectTimeout: const Duration(seconds: 15),
-              receiveTimeout: const Duration(seconds: 50),
-            ),
-            data: {
-              'contents': [
-                {
-                  'parts': [
-                    {'text': prompt},
-                  ],
-                },
-              ],
-              'generationConfig': {
-                'responseMimeType': 'application/json',
-                'maxOutputTokens': 8192,
-                'temperature': 0.7,
-              },
-            },
-          );
-          if (response.statusCode == 200) {
-            final text =
-                response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                    as String?;
-            if (text != null) {
-              return await compute(_parseMealPlanJsonInIsolate, text);
-            }
-          }
-        } catch (e) {
-          debugPrint('❌ MealPlanner Gemini ($modelId) failed: $e');
-        }
-      }
-    }
-
-    // ── Tier 3 & 4: Groq (entire Gemini API down) ───────────────────────
-    debugPrint('⚠️ Gemini down — falling back to Groq for meal plan');
-    try {
-      final groqText = await _generateTextWithGroq(prompt, maxTokens: 4096);
-      return await compute(_parseMealPlanJsonInIsolate, groqText);
-    } catch (e) {
-      debugPrint('❌ MealPlanner Groq also failed: $e');
-    }
-
     return null; // Provider will use static fallback plan
   }
 
@@ -410,65 +305,11 @@ Output ONLY valid JSON:
       debugPrint('❌ Regen day backend failed: $e');
     }
 
-    // ── Tier 1 & 2: Gemini ──────────────────────────────────────────────
-    final geminiKey = ConfigService().geminiApiKey;
-    if (geminiKey.isNotEmpty) {
-      final candidates = [
-        {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
-        {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
-      ];
-      for (var candidate in candidates) {
-        try {
-          final response = await _dio.post(
-            'https://generativelanguage.googleapis.com/${candidate['ver']}/models/${candidate['id']}:generateContent?key=$geminiKey',
-            options: Options(
-              headers: {'Content-Type': 'application/json'},
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 25),
-            ),
-            data: {
-              'contents': [
-                {
-                  'parts': [
-                    {'text': prompt},
-                  ],
-                },
-              ],
-              'generationConfig': {
-                'responseMimeType': 'application/json',
-                'maxOutputTokens': 2048,
-                'temperature': 0.7,
-              },
-            },
-          );
-          if (response.statusCode == 200) {
-            final text =
-                response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                    as String?;
-            if (text != null) {
-              return await compute(_parseMealPlanJsonInIsolate, text);
-            }
-          }
-        } catch (e) {
-          debugPrint('❌ Regen day Gemini (${candidate['id']}) failed: $e');
-        }
-      }
-    }
-
-    // ── Tier 3 & 4: Groq (entire Gemini API down) ───────────────────────
-    debugPrint('⚠️ Gemini down — falling back to Groq for day regen');
-    try {
-      final groqText = await _generateTextWithGroq(prompt, maxTokens: 1024);
-      return await compute(_parseMealPlanJsonInIsolate, groqText);
-    } catch (e) {
-      debugPrint('❌ Regen day Groq also failed: $e');
-    }
-
     return null;
   }
 
   /// Regenerate a single meal
-  /// Chain: Gemini 3.5-flash → Gemini 2.5-flash → Groq 70b → Groq 8b → null
+  /// Chain: Backend proxy → null
   Future<Meal?> regenerateSingleMeal(
     UserSettings settings,
     Meal oldMeal,
@@ -508,126 +349,7 @@ $intentInstruction$cravingInstruction
       debugPrint('❌ Swap Meal backend failed: $e');
     }
 
-    // ── Tier 1 & 2: Gemini ──────────────────────────────────────────────
-    final geminiKey = ConfigService().geminiApiKey;
-    if (geminiKey.isNotEmpty) {
-      final candidates = [
-        {'id': 'gemini-3.5-flash', 'ver': 'v1beta'},
-        {'id': 'gemini-2.5-flash', 'ver': 'v1beta'},
-      ];
-      for (final candidate in candidates) {
-        final candidateId = candidate['id']!;
-        final candidateVer = candidate['ver']!;
-        try {
-          debugPrint('🍽️ Single Meal Swap: trying Gemini $candidateId...');
-          final response = await _dio.post(
-            'https://generativelanguage.googleapis.com/$candidateVer/models/$candidateId:generateContent?key=$geminiKey',
-            options: Options(
-              headers: {'Content-Type': 'application/json'},
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 20),
-            ),
-            data: {
-              'contents': [
-                {
-                  'parts': [
-                    {'text': prompt},
-                  ],
-                },
-              ],
-              'generationConfig': {
-                'responseMimeType': 'application/json',
-                'maxOutputTokens': 2048,
-                'temperature': 0.7,
-              },
-            },
-          );
-          if (response.statusCode == 200) {
-            final text =
-                response.data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                    as String?;
-            if (text != null) {
-              return await compute(_parseSingleMealJsonInIsolate, text);
-            }
-          }
-        } catch (e) {
-          debugPrint('❌ Swap Meal Gemini ($candidateId) failed: $e');
-        }
-      }
-    }
-
-    // ── Tier 3 & 4: Groq ────────────────────────────────────────────────
-    debugPrint('⚠️ Gemini down — falling back to Groq for single meal swap');
-    try {
-      final groqText = await _generateTextWithGroq(prompt, maxTokens: 1024);
-      return await compute(_parseSingleMealJsonInIsolate, groqText);
-    } catch (e) {
-      debugPrint('❌ Swap Meal Groq failed: $e');
-    }
-
     return null;
-  }
-
-  /// Tier 3 & 4: Generate text via Groq when Gemini is unavailable.
-  /// Tries llama-3.3-70b-versatile first, then llama-3.1-8b-instant.
-  Future<String> _generateTextWithGroq(
-    String prompt, {
-    int maxTokens = 1024,
-  }) async {
-    return _generateTextViaBackend(prompt, maxOutputTokens: maxTokens);
-  }
-
-  // ignore: unused_element
-  Future<String> _generateTextWithGroqDirectDeprecated(
-    String prompt, {
-    int maxTokens = 1024,
-  }) async {
-    final apiKey = ConfigService().groqApiKey;
-    if (apiKey.isEmpty) throw GeminiException('Groq API key missing');
-
-    // 70b = better quality for structured JSON; 8b = faster, higher rate limits
-    final models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
-
-    Object? lastError;
-
-    for (final model in models) {
-      try {
-        debugPrint('🦙 Groq text fallback: trying $model...');
-        final response = await _dio.post(
-          AppConstants.groqApiUrl,
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json',
-            },
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 30),
-          ),
-          data: {
-            'model': model,
-            'messages': [
-              {'role': 'user', 'content': prompt},
-            ],
-            'max_tokens': maxTokens,
-            'temperature': 0.7,
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final content =
-              response.data['choices']?[0]?['message']?['content'] as String?;
-          if (content != null && content.isNotEmpty) {
-            debugPrint('✅ Groq $model succeeded');
-            return content;
-          }
-        }
-      } catch (e) {
-        lastError = e;
-        debugPrint('❌ Groq $model failed: $e');
-      }
-    }
-
-    throw lastError ?? GeminiException('All Groq text candidates failed');
   }
 
   String _buildMealPlanPrompt(
