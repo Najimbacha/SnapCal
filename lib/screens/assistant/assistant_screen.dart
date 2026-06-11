@@ -193,8 +193,13 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ),
         ],
       ),
-      body: Consumer<AssistantProvider>(
-        builder: (context, ap, _) {
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: Consumer<AssistantProvider>(
+                builder: (context, ap, _) {
           if (ap.history.isEmpty && ap.isLoading) {
             return Center(
               child: Column(
@@ -356,9 +361,13 @@ class _AssistantScreenState extends State<AssistantScreen> {
               );
             },
           );
-        },
+                },
+              ),
+            ),
+            _buildInputBar(d),
+          ],
+        ),
       ),
-      bottomNavigationBar: _buildInputBar(d),
     );
   }
 
@@ -532,7 +541,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   Widget _buildInputBar(bool d) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 10, 16, MediaQuery.of(context).padding.bottom + 10),
+      padding: EdgeInsets.fromLTRB(16, 10, 16, MediaQuery.of(context).viewInsets.bottom + 10),
       decoration: BoxDecoration(
         color: d ? const Color(0xFF09090B) : Colors.white,
         border: Border(
