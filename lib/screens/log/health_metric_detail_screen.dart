@@ -45,7 +45,7 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
     final bg = isDark ? _minimalDarkBg : _minimalBg;
     final accent = _metricAccentFor(context, widget.metric);
     final isLockedMacro =
-        !context.watch<SettingsProvider>().isPro &&
+        !context.select<SettingsProvider, bool>((s) => s.isPro) &&
         _isMacroMetric(widget.metric);
 
     final overlayStyle =

@@ -32,8 +32,7 @@ class PremiumPromptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
-    if (settings.isPro) return const SizedBox.shrink();
+    if (context.select<SettingsProvider, bool>((s) => s.isPro)) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

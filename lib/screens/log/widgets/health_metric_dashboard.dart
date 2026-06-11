@@ -175,7 +175,7 @@ class HealthMetricCard extends StatelessWidget {
     final textColor = Theme.of(context).colorScheme.onSurface;
     final accent = _metricAccentFor(context, data.type);
 
-    final isPro = context.watch<SettingsProvider>().isPro;
+    final isPro = context.select<SettingsProvider, bool>((s) => s.isPro);
     final isLocked =
         !isPro &&
         (data.type == LogMetricType.protein ||

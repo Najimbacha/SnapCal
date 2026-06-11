@@ -1891,63 +1891,60 @@ class _MinimalLockedMealRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Opacity(
-      opacity: 0.40,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color:
-                  isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : const Color(0xFFECEAE6),
-            ),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.032)
+                    : const Color(0xFFECEAE6).withValues(alpha: 0.40),
           ),
         ),
-        child: Row(
-          children: [
-            Icon(
-              LucideIcons.lock,
-              color: isDark ? Colors.white60 : const Color(0xFF78716C),
-              size: 14,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: isDark ? Colors.white : _minimalInk,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0,
-                    ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            LucideIcons.lock,
+            color: isDark ? Colors.white.withValues(alpha: 0.24) : const Color(0xFF78716C).withValues(alpha: 0.40),
+            size: 14,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: isDark ? Colors.white.withValues(alpha: 0.40) : _minimalInk.withValues(alpha: 0.40),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '· · · · ·',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: isDark ? Colors.white54 : _minimalMuted,
-                      fontSize: 11,
-                      letterSpacing: 1,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '· · · · ·',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: isDark ? Colors.white.withValues(alpha: 0.216) : _minimalMuted.withValues(alpha: 0.40),
+                    fontSize: 11,
+                    letterSpacing: 1,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Text(
-              '-',
-              style: AppTypography.bodyMedium.copyWith(
-                color: isDark ? Colors.white54 : const Color(0xFFC4BEB5),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
+          ),
+          Text(
+            '-',
+            style: AppTypography.bodyMedium.copyWith(
+              color: isDark ? Colors.white.withValues(alpha: 0.216) : const Color(0xFFC4BEB5).withValues(alpha: 0.40),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -313,6 +313,7 @@ class _FoodScanHeroCardState extends State<FoodScanHeroCard>
                                 Image.asset(
                                   widget.imagePath,
                                   fit: BoxFit.cover,
+                                  cacheWidth: 750,
                                   errorBuilder:
                                       (c, e, s) => Container(
                                         color:

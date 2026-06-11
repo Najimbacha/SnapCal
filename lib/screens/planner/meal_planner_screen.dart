@@ -1999,13 +1999,9 @@ class _SwapPreferencesSheetState extends State<_SwapPreferencesSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 2.9,
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
               children:
                   intents.map((intent) {
                     final selected = _selectedIntent == intent.$1;

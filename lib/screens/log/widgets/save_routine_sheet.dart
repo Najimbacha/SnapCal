@@ -79,7 +79,7 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    final isPro = context.watch<SettingsProvider>().isPro;
+    final isPro = context.select<SettingsProvider, bool>((s) => s.isPro);
     final templateProvider = context.watch<TemplateProvider>();
 
     final canAdd = templateProvider.canAddTemplate(isPro);

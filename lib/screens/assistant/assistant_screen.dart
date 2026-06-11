@@ -133,6 +133,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 width: 40,
                 height: 40,
                 fit: BoxFit.cover,
+                cacheWidth: 80,
+                cacheHeight: 80,
               ),
             ),
             const SizedBox(width: 10),
@@ -378,6 +380,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
         width: size,
         height: size,
         fit: BoxFit.cover,
+        cacheWidth: 80,
+        cacheHeight: 80,
       ),
     );
   }
@@ -390,41 +394,32 @@ class _AssistantScreenState extends State<AssistantScreen> {
       _GridItem(icon: '⚖️', label: 'Weight', query: 'Help me with my weight goal'),
     ];
 
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.6,
-      children: items.map((item) => GestureDetector(
-        onTap: () => _handleSuggestion(item.query),
-        child: Container(
-          decoration: BoxDecoration(
-            color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
-              width: 0.5,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(item.icon, style: const TextStyle(fontSize: 24)),
-              const SizedBox(height: 6),
-              Text(
-                item.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: d ? const Color(0xFFE4E4E7) : const Color(0xFF3C3C43),
-                ),
+    return Column(
+      children: [
+        Row(
+          children: items.take(2).toList().asMap().entries.map((e) {
+            final item = e.value;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: e.key == 0 ? 5 : 0, left: e.key == 1 ? 5 : 0),
+                child: _ActionGridTile(item: item, handleSuggestion: _handleSuggestion, d: d),
               ),
-            ],
-          ),
+            );
+          }).toList(),
         ),
-      )).toList(),
+        const SizedBox(height: 10),
+        Row(
+          children: items.skip(2).toList().asMap().entries.map((e) {
+            final item = e.value;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: e.key == 0 ? 5 : 0, left: e.key == 1 ? 5 : 0),
+                child: _ActionGridTile(item: item, handleSuggestion: _handleSuggestion, d: d),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
@@ -597,6 +592,46 @@ class _AssistantScreenState extends State<AssistantScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ActionGridTile extends StatelessWidget {
+  final _GridItem item;
+  final void Function(String) handleSuggestion;
+  final bool d;
+
+  const _ActionGridTile({required this.item, required this.handleSuggestion, required this.d});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => handleSuggestion(item.query),
+      child: Container(
+        decoration: BoxDecoration(
+          color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
+            width: 0.5,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          children: [
+            Text(item.icon, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 6),
+            Text(
+              item.label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: d ? const Color(0xFFE4E4E7) : const Color(0xFF3C3C43),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

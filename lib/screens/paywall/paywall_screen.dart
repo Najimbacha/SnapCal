@@ -1423,6 +1423,7 @@ class _FoodScanShowcaseState extends State<_FoodScanShowcase>
                       child: Image.asset(
                         slide.imagePath,
                         fit: BoxFit.cover,
+                        cacheWidth: 750,
                         alignment: const Alignment(0, -0.35),
                       ),
                     ),
