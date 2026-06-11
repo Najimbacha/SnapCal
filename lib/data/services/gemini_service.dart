@@ -201,18 +201,27 @@ User daily targets:
     final base64Image = await compute(base64Encode, bytes);
     final proxyUrl = ConfigService().backendProxyUrl;
 
-    final response = await _dio.post(
-      '$proxyUrl/v1/scan',
-      options: Options(headers: {'Content-Type': 'application/json'}),
-      data: {'image': base64Image, 'language': language},
-    );
-    if (response.statusCode != 200) {
-      throw GeminiException('Scan failed (status: ${response.statusCode})');
+    try {
+      final response = await _dio.post(
+        '$proxyUrl/v1/scan',
+        options: Options(headers: {'Content-Type': 'application/json'}),
+        data: {'image': base64Image, 'language': language},
+      );
+      if (response.statusCode != 200) {
+        final body = response.data is Map ? jsonEncode(response.data) : response.data.toString();
+        debugPrint('❌ Scan failed: status=${response.statusCode}, body=$body');
+        throw GeminiException('Scan failed (status: ${response.statusCode}): $body');
+      }
+      final text = response.data is String
+          ? response.data as String
+          : jsonEncode(response.data);
+      return _parseResponse(text);
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final body = e.response?.data is Map ? jsonEncode(e.response?.data) : e.response?.data.toString();
+      debugPrint('❌ Scan DioException: type=${e.type}, status=$status, body=$body');
+      rethrow;
     }
-    final text = response.data is String
-        ? response.data as String
-        : jsonEncode(response.data);
-    return _parseResponse(text);
   }
 
   /// Shared JSON Parser (Runs in Background Isolate)
