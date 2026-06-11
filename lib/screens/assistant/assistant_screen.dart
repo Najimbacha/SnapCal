@@ -121,25 +121,30 @@ class _AssistantScreenState extends State<AssistantScreen> {
         ),
         title: Row(
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFF472B6), Color(0xFFA855F7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
                 ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white),
+                child: const Center(
+                  child: Text('👩', style: TextStyle(fontSize: 20)),
+                ),
               ),
             ),
-            const SizedBox(width: 0),
+            const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AI Coach',
+                  'Fajar',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -159,7 +164,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Online',
+                      'AI Nutritionist',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -194,34 +199,39 @@ class _AssistantScreenState extends State<AssistantScreen> {
       ),
       body: Consumer<AssistantProvider>(
         builder: (context, ap, _) {
-          if (ap.history.isEmpty && ap.isLoading) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.auto_awesome_rounded, size: 24, color: Color(0xFF7C3AED)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Thinking...',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: d ? const Color(0xFF71717A) : const Color(0xFF8E8E93),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+                  if (ap.history.isEmpty && ap.isLoading) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              width: 48,
+                              height: 48,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Color(0xFFF472B6), Color(0xFFA855F7)],
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Text('👩', style: TextStyle(fontSize: 24)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Thinking...',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: d ? const Color(0xFF71717A) : const Color(0xFF8E8E93),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
           if (ap.history.isEmpty) {
             return Center(
@@ -230,32 +240,40 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.auto_awesome_rounded, size: 28, color: Color(0xFF7C3AED)),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFF472B6), Color(0xFFA855F7)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: Text('👩', style: TextStyle(fontSize: 40)),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Ask me anything',
+                      'Hi, I\'m Fajar!',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.w600,
                         color: d ? Colors.white : const Color(0xFF1C1C1E),
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Nutrition tips, meal ideas, or daily goals',
+                      'Your AI nutritionist. Ask me about meals, calories, or macros.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
+                        height: 1.5,
                         color: d ? const Color(0xFF71717A) : const Color(0xFF8E8E93),
                       ),
                     ),
@@ -281,17 +299,20 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (!user) ...[
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFF472B6), Color(0xFFA855F7)],
+                            ),
+                            shape: BoxShape.circle,
                           ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
+                          child: const Center(
+                            child: Text('👩', style: TextStyle(fontSize: 14)),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -349,7 +370,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   Widget _buildInputBar(bool d) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 8),
+      padding: EdgeInsets.fromLTRB(16, 10, 16, MediaQuery.of(context).padding.bottom + 10),
       decoration: BoxDecoration(
         color: d ? const Color(0xFF09090B) : Colors.white,
         border: Border(
@@ -368,10 +389,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
               decoration: BoxDecoration(
                 color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
-                  width: 0.5,
-                ),
               ),
               child: TextField(
                 controller: _ctrl,
