@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../../core/network/api_client.dart';
 import '../../core/services/config_service.dart';
 import 'gemini_service.dart';
 
@@ -71,15 +72,7 @@ class AssistantAction {
 
 /// Service for AI-powered nutrition coaching and recipe suggestions
 class AssistantService {
-  final Dio _dio;
-
-  AssistantService()
-    : _dio = Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 15),
-        ),
-      );
+  late final Dio _dio = ApiClient.dio;
 
   /// Get recommendations based on current macros and goals
   Future<List<AssistantResponse>> getRecommendations({
