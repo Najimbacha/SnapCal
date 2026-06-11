@@ -163,7 +163,8 @@ class AssistantService {
       final responseData = e.response?.data;
       String? detail;
       if (responseData is Map) {
-        detail = responseData['error']?['message'] ?? responseData['message'];
+        final err = responseData['error'];
+        detail = err is Map ? err['message'] : err?.toString();
       }
 
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
