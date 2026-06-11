@@ -16,6 +16,7 @@ class ApiClient {
         connectTimeout: const Duration(seconds: 10),
         sendTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 20),
+        extra: {'skipAppCheck': true},
       ),
     );
 

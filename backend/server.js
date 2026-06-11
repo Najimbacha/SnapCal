@@ -11,9 +11,7 @@ const rateLimit = require('express-rate-limit');
 const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '1mb';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
-const REQUIRE_APP_CHECK = process.env.NODE_ENV === 'production'
-  ? process.env.REQUIRE_APP_CHECK !== 'false'
-  : process.env.REQUIRE_APP_CHECK === 'true';
+const REQUIRE_APP_CHECK = process.env.REQUIRE_APP_CHECK === 'true';
 const REVENUECAT_WEBHOOK_AUTH = process.env.REVENUECAT_WEBHOOK_AUTH || '';
 
 function initializeFirebaseAdmin() {
