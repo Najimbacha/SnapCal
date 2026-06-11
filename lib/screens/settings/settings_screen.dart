@@ -337,42 +337,7 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          _SettingsSectionFrame(
-            title: 'Follow Us',
-            accent: AppColors.primary,
-            children: [
-              _BrandCategoryRow(
-                iconWidget: const _InstagramIcon(size: 16),
-                accent: const Color(0xFFE1306C),
-                title: 'Instagram',
-                subtitle: '@snap_calories — Tips, recipes & community',
-                onTap: () => launchUrl(
-                  Uri.parse('https://www.instagram.com/snap_calories/'),
-                  mode: LaunchMode.externalApplication,
-                ),
-              ),
-              _BrandCategoryRow(
-                iconWidget: const _FacebookIcon(size: 16),
-                accent: const Color(0xFF1877F2),
-                title: 'Facebook',
-                subtitle: '@Snapcalories — Follow our page',
-                onTap: () => launchUrl(
-                  Uri.parse('https://www.facebook.com/Snapcalories'),
-                  mode: LaunchMode.externalApplication,
-                ),
-              ),
-              _BrandCategoryRow(
-                iconWidget: const _MailIcon(size: 16),
-                accent: AppColors.primary,
-                title: 'Email Us',
-                subtitle: 'iamnajimbacha@gmail.com',
-                onTap: () => launchUrl(
-                  Uri.parse('mailto:iamnajimbacha@gmail.com'),
-                  mode: LaunchMode.externalApplication,
-                ),
-              ),
-            ],
-          ),
+          const _FollowUsSection(),
           const SizedBox(height: 24),
         ],
       ),
@@ -1246,6 +1211,174 @@ class _AuthSnapshot {
 
   @override
   int get hashCode => Object.hash(isAnonymous, displayName, email, photoURL);
+}
+
+class _FollowUsSection extends StatelessWidget {
+  const _FollowUsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'FOLLOW US',
+            style: AppTypography.labelSmall.copyWith(
+              color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
+              fontSize: 10,
+            ),
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : _settingsLine,
+              width: 0.8,
+            ),
+          ),
+          child: Column(
+            children: [
+              _FollowTile(
+                icon: Icons.camera_alt_rounded,
+                iconColor: const Color(0xFFE1306C),
+                title: 'Instagram',
+                subtitle: 'Tips, recipes & community',
+                onTap: () => launchUrl(
+                  Uri.parse('https://www.instagram.com/snap_calories/'),
+                  mode: LaunchMode.externalApplication,
+                ),
+                isDark: isDark,
+                isLast: false,
+              ),
+              _FollowTile(
+                icon: Icons.facebook_rounded,
+                iconColor: const Color(0xFF1877F2),
+                title: 'Facebook',
+                subtitle: 'Follow our page',
+                onTap: () => launchUrl(
+                  Uri.parse('https://www.facebook.com/Snapcalories'),
+                  mode: LaunchMode.externalApplication,
+                ),
+                isDark: isDark,
+                isLast: false,
+              ),
+              _FollowTile(
+                icon: Icons.mail_rounded,
+                iconColor: AppColors.primary,
+                title: 'Email Us',
+                subtitle: 'iamnajimbacha@gmail.com',
+                onTap: () => launchUrl(
+                  Uri.parse('mailto:iamnajimbacha@gmail.com'),
+                  mode: LaunchMode.externalApplication,
+                ),
+                isDark: isDark,
+                isLast: true,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FollowTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool isDark;
+  final bool isLast;
+
+  const _FollowTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    required this.isDark,
+    required this.isLast,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onTap();
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: isDark ? 0.20 : 0.10),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, size: 18, color: iconColor),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: _settingsText(context),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          subtitle,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: _settingsSubtext(context),
+                            fontWeight: FontWeight.w400,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    LucideIcons.chevronRight,
+                    size: 14,
+                    color: _settingsSubtext(context).withValues(alpha: 0.55),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (!isLast)
+          Divider(
+            height: 1,
+            thickness: 0.5,
+            color: isDark ? Colors.white.withValues(alpha: 0.06) : _settingsLine,
+            indent: 66,
+          ),
+      ],
+    );
+  }
 }
 
 class _SettingsSectionFrame extends StatelessWidget {

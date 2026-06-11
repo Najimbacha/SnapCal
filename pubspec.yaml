@@ -1,7 +1,7 @@
 name: snapcal
 description: "SnapCal: AI Calorie Counter - Snap a photo, track your calories."
 publish_to: 'none'
-version: 1.0.21+34
+version: 1.0.21+35
 
 environment:
   sdk: ^3.7.0-209.1.beta
