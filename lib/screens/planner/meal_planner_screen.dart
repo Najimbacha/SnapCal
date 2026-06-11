@@ -202,74 +202,33 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
   }
 
   Widget _buildGeneratingState() {
-    return Stack(
-      children: [
-        // Immersive blurred background
-        Positioned.fill(
-          child: Container(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Container(color: Colors.transparent),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 56, height: 56,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(context.primaryColor),
+              ),
             ),
-          ),
-        ),
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Pulse animation container
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 1500),
-                builder: (context, value, child) {
-                  return Container(
-                    padding: const EdgeInsets.all(36),
-                    decoration: BoxDecoration(
-                      color: context.primaryColor.withValues(
-                        alpha: 0.05 + (0.05 * math.sin(value * math.pi)),
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: context.primaryColor.withValues(
-                            alpha: 0.12 * math.sin(value * math.pi),
-                          ),
-                          blurRadius: 40,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: context.primaryColor.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        LucideIcons.wand2,
-                        color: context.primaryColor,
-                        size: 38,
-                      ),
-                    ),
-                  );
-                },
-                onEnd: () {},
+            const SizedBox(height: 28),
+            Text(
+              AppLocalizations.of(context)!.planner_creating,
+              style: AppTypography.titleMedium.copyWith(
+                color: context.textPrimaryColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
               ),
-              const SizedBox(height: 32),
-              Text(
-                AppLocalizations.of(context)!.planner_creating,
-                style: AppTypography.heading3.copyWith(
-                  color: context.textPrimaryColor,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _GeneratingMessages(color: context.textSecondaryColor),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            _GeneratingMessages(color: context.textSecondaryColor),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -1880,11 +1839,7 @@ class _GeneratingMessagesState extends State<_GeneratingMessages> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (mounted) {
-        setState(() {
-          _msgIdx = (_msgIdx + 1) % 4;
-        });
-      }
+      if (mounted) setState(() => _msgIdx = (_msgIdx + 1) % 4);
     });
   }
 
@@ -1905,14 +1860,12 @@ class _GeneratingMessagesState extends State<_GeneratingMessages> {
     ];
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 250),
+      transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
       child: Text(
         msgs[_msgIdx],
         key: ValueKey(msgs[_msgIdx]),
-        style: AppTypography.bodySmall.copyWith(
-          color: widget.color,
-          fontWeight: FontWeight.w700,
-        ),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: widget.color),
         textAlign: TextAlign.center,
       ),
     );
