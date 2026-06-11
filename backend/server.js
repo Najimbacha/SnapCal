@@ -10,7 +10,7 @@ const rateLimit = require('express-rate-limit');
 
 const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '10mb';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 999);
+const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
 const REQUIRE_APP_CHECK = process.env.REQUIRE_APP_CHECK === 'true';
 const REVENUECAT_WEBHOOK_AUTH = process.env.REVENUECAT_WEBHOOK_AUTH || '';
 
@@ -896,6 +896,28 @@ if (process.env.NODE_ENV !== 'production') {
     res.json({ routes: routeTable });
   });
 }
+
+// ── Debug endpoints (always available, auth-protected) ─────────
+app.post('/api/debug/grant-premium', authenticateToken, async (req, res) => {
+  await subscriptionDoc(req.user.uid).set({
+    entitlementId: 'pro',
+    isActive: true,
+    productId: 'debug_manual_grant',
+    source: 'debug',
+    lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  console.log(`Debug: granted premium to ${req.user.uid}`);
+  return res.json({ ok: true, uid: req.user.uid });
+});
+
+app.post('/api/debug/revoke-premium', authenticateToken, async (req, res) => {
+  await subscriptionDoc(req.user.uid).set({
+    isActive: false,
+    lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  console.log(`Debug: revoked premium from ${req.user.uid}`);
+  return res.json({ ok: true, uid: req.user.uid });
+});
 
 app.use((err, req, res, next) => {
   if (err?.type === 'entity.too.large') {

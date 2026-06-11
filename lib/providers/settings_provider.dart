@@ -7,6 +7,8 @@ import '../data/services/scan_gate_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/notification_service.dart';
 import '../data/services/calorie_onboarding_service.dart';
+import '../core/network/api_client.dart';
+import '../core/services/config_service.dart';
 import '../core/state/async_ui_state.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../core/services/app_lifecycle_service.dart';
@@ -101,9 +103,20 @@ class SettingsProvider with ChangeNotifier {
     assert(() {
       _debugProOverride = _debugProOverride == null ? true : !_debugProOverride!;
       debugPrint('🔧 Debug Pro: ${_debugProOverride! ? "ENABLED" : "DISABLED"}');
+      _syncDebugProToBackend(_debugProOverride!);
       notifyListeners();
       return true;
     }());
+  }
+
+  Future<void> _syncDebugProToBackend(bool enable) async {
+    try {
+      final path = enable ? '/api/debug/grant-premium' : '/api/debug/revoke-premium';
+      await ApiClient.dio.post('${ConfigService().backendProxyUrl}$path');
+      debugPrint('🔧 Debug Pro synced to backend: $enable');
+    } catch (e) {
+      debugPrint('⚠️ Debug Pro sync failed (backend may not have debug routes): $e');
+    }
   }
 
   int get currentStreak => _settings.currentStreak;
