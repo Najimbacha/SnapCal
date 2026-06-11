@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -7,21 +6,24 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/models/meal.dart';
 
-enum _MealCardAction { details, log, swap }
+Color _mealColor(String? type) {
+  switch (type?.toLowerCase()) {
+    case 'breakfast': return const Color(0xFFF59E0B);
+    case 'lunch': return const Color(0xFF10B981);
+    case 'dinner': return const Color(0xFF6366F1);
+    case 'snack': return const Color(0xFFEC4899);
+    default: return const Color(0xFF6366F1);
+  }
+}
 
-Color _getMealTypeColor(BuildContext context, String? type) {
-  if (type == null) return context.primaryColor;
-  switch (type.toLowerCase()) {
-    case 'breakfast':
-      return Colors.orangeAccent;
-    case 'lunch':
-      return Colors.teal;
-    case 'dinner':
-      return Colors.indigoAccent;
-    case 'snack':
-      return Colors.pinkAccent;
-    default:
-      return context.primaryColor;
+String _mealLabel(BuildContext context, String? type) {
+  final l = AppLocalizations.of(context)!;
+  switch (type?.toLowerCase()) {
+    case 'breakfast': return l.result_meal_breakfast;
+    case 'lunch': return l.result_meal_lunch;
+    case 'dinner': return l.result_meal_dinner;
+    case 'snack': return l.result_meal_snack;
+    default: return type ?? l.planner_meal;
   }
 }
 
@@ -32,14 +34,7 @@ class MealCard extends StatefulWidget {
   final VoidCallback? onLogMeal;
   final VoidCallback? onSwapMeal;
 
-  const MealCard({
-    super.key,
-    required this.meal,
-    this.isLocked = false,
-    this.isLogged = false,
-    this.onLogMeal,
-    this.onSwapMeal,
-  });
+  const MealCard({super.key, required this.meal, this.isLocked = false, this.isLogged = false, this.onLogMeal, this.onSwapMeal});
 
   @override
   State<MealCard> createState() => _MealCardState();
@@ -49,130 +44,116 @@ class _MealCardState extends State<MealCard> {
   bool _expanded = false;
 
   bool get _hasDetails {
-    final meal = widget.meal;
-    return meal.macros.protein > 0 ||
-        meal.macros.carbs > 0 ||
-        meal.macros.fat > 0 ||
-        (meal.ingredients != null && meal.ingredients!.isNotEmpty) ||
-        (meal.aiRationale != null && meal.aiRationale!.trim().isNotEmpty);
+    final m = widget.meal;
+    return m.macros.protein > 0 || m.macros.carbs > 0 || m.macros.fat > 0 || (m.ingredients?.isNotEmpty == true) || (m.aiRationale?.trim().isNotEmpty == true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final meal = widget.meal;
-    if (widget.isLocked) return _LockedMealRow(meal: meal);
-
-    final mealType = _getLocalizedMealType(context, meal.mealType);
-    final meta = [
-      mealType,
-      if (meal.prepTimeMins != null && meal.prepTimeMins! > 0)
-        '${meal.prepTimeMins} ${AppLocalizations.of(context)!.common_mins}',
-      if (widget.isLogged)
-        AppLocalizations.of(context)!.planner_logged.toLowerCase(),
-    ].join(' · ');
+    if (widget.isLocked) return _locked(context);
+    final m = widget.meal;
+    final color = _mealColor(m.mealType);
+    final label = _mealLabel(context, m.mealType);
+    var meta = label;
+    if (m.prepTimeMins != null && m.prepTimeMins! > 0) meta += ' \u00b7 ${m.prepTimeMins}min';
+    if (widget.isLogged) meta += ' \u00b7 ${AppLocalizations.of(context)!.planner_logged.toLowerCase()}';
 
     return Container(
-      key: ValueKey('planner-meal-${meal.id}'),
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
         color: context.cardSoftColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.cardBorderColor, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.015),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap:
-              _hasDetails ? () => setState(() => _expanded = !_expanded) : null,
+          borderRadius: BorderRadius.circular(14),
+          onTap: _hasDetails ? () => setState(() => _expanded = !_expanded) : null,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+            padding: const EdgeInsets.fromLTRB(0, 0, 12, 0),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    // Vertical accent category stripe
-                    Container(
-                      width: 4,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: _getMealTypeColor(context, meal.mealType),
-                        borderRadius: BorderRadius.circular(99),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
+                  child: Row(
+                    children: [
+                      Container(width: 3, height: 36, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(99))),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: context.textMutedColor)),
+                            const SizedBox(height: 2),
+                            Text(m.foodName, maxLines: 2, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: context.textPrimaryColor, height: 1.2)),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            meta,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.labelSmall.copyWith(
-                              color: context.textMutedColor,
-                              fontWeight: FontWeight.w700,
-                            ),
+                      const SizedBox(width: 8),
+                      Text('${m.calories}', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: context.textPrimaryColor)),
+                      const SizedBox(width: 2),
+                      Text('kcal', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: context.textMutedColor)),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: widget.isLogged ? null : widget.onLogMeal,
+                        child: Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                            color: widget.isLogged ? AppColors.success.withValues(alpha: 0.1) : context.primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            meal.foodName,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: context.textPrimaryColor,
-                              fontWeight: FontWeight.w800,
-                              height: 1.25,
-                            ),
-                          ),
-                        ],
+                          child: Icon(widget.isLogged ? Icons.check_rounded : Icons.add_rounded, size: 16, color: widget.isLogged ? AppColors.success : context.primaryColor),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      '${meal.calories} kcal',
-                      style: AppTypography.labelLarge.copyWith(
-                        color: context.textPrimaryColor,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    _LogButton(
-                      isLogged: widget.isLogged,
-                      onTap: widget.isLogged ? null : widget.onLogMeal,
-                    ),
-                    _MealOverflowMenu(
-                      hasDetails: _hasDetails,
-                      canLog: widget.onLogMeal != null && !widget.isLogged,
-                      canSwap: widget.onSwapMeal != null,
-                      onSelected: (action) {
-                        switch (action) {
-                          case _MealCardAction.details:
-                            setState(() => _expanded = !_expanded);
-                            break;
-                          case _MealCardAction.log:
-                            widget.onLogMeal?.call();
-                            break;
-                          case _MealCardAction.swap:
-                            widget.onSwapMeal?.call();
-                            break;
-                        }
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 if (_expanded && _hasDetails) ...[
-                  const SizedBox(height: 12),
-                  Divider(color: context.cardBorderColor, height: 1.2),
-                  const SizedBox(height: 12),
-                  _MealDetails(meal: meal),
+                  Divider(height: 1, color: context.cardBorderColor, indent: 12, endIndent: 12),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 0, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            _macro('P', m.macros.protein, const Color(0xFF3B82F6)),
+                            const SizedBox(width: 8),
+                            _macro('C', m.macros.carbs, const Color(0xFFF59E0B)),
+                            const SizedBox(width: 8),
+                            _macro('F', m.macros.fat, const Color(0xFFEC4899)),
+                            const Spacer(),
+                            if (widget.onSwapMeal != null)
+                              GestureDetector(
+                                onTap: widget.onSwapMeal,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(color: context.primaryColor.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.refresh_rounded, size: 12, color: context.primaryColor),
+                                      const SizedBox(width: 4),
+                                      Text('Swap', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.primaryColor)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (m.ingredients?.isNotEmpty == true) ...[
+                          const SizedBox(height: 10),
+                          Text(m.ingredients!.join(', '), style: TextStyle(fontSize: 12, color: context.textSecondaryColor, fontWeight: FontWeight.w500)),
+                        ],
+                        if (m.aiRationale?.trim().isNotEmpty == true) ...[
+                          const SizedBox(height: 8),
+                          Text(m.aiRationale!.trim(), style: TextStyle(fontSize: 12, color: context.textSecondaryColor, fontStyle: FontStyle.italic, fontWeight: FontWeight.w400)),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -181,264 +162,37 @@ class _MealCardState extends State<MealCard> {
       ),
     );
   }
-}
 
-class _LogButton extends StatelessWidget {
-  final bool isLogged;
-  final VoidCallback? onTap;
-
-  const _LogButton({required this.isLogged, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: AppLocalizations.of(context)!.snap_log_meal,
-      onPressed: onTap,
-      visualDensity: VisualDensity.compact,
-      style: IconButton.styleFrom(
-        fixedSize: const Size(36, 36),
-        backgroundColor:
-            isLogged
-                ? AppColors.success.withValues(alpha: 0.12)
-                : context.primaryColor.withValues(alpha: 0.10),
-        foregroundColor: isLogged ? AppColors.success : context.primaryColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      icon: Icon(isLogged ? LucideIcons.check : LucideIcons.plus, size: 17),
-    );
-  }
-}
-
-class _MealOverflowMenu extends StatelessWidget {
-  final bool hasDetails;
-  final bool canLog;
-  final bool canSwap;
-  final ValueChanged<_MealCardAction> onSelected;
-
-  const _MealOverflowMenu({
-    required this.hasDetails,
-    required this.canLog,
-    required this.canSwap,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!hasDetails && !canLog && !canSwap) return const SizedBox(width: 4);
-    final l10n = AppLocalizations.of(context)!;
-    return PopupMenuButton<_MealCardAction>(
-      tooltip: MaterialLocalizations.of(context).showMenuTooltip,
-      icon: const Icon(LucideIcons.moreVertical, size: 17),
-      onSelected: onSelected,
-      itemBuilder:
-          (context) => [
-            if (hasDetails)
-              PopupMenuItem(
-                value: _MealCardAction.details,
-                child: _MenuRow(
-                  icon: LucideIcons.list,
-                  label: l10n.planner_ingredients,
-                ),
-              ),
-            if (canLog)
-              PopupMenuItem(
-                value: _MealCardAction.log,
-                child: _MenuRow(
-                  icon: LucideIcons.plus,
-                  label: l10n.snap_log_meal,
-                ),
-              ),
-            if (canSwap)
-              PopupMenuItem(
-                value: _MealCardAction.swap,
-                child: _MenuRow(
-                  icon: LucideIcons.refreshCw,
-                  label: l10n.planner_swap_title,
-                ),
-              ),
-          ],
-    );
-  }
-}
-
-class _MealDetails extends StatelessWidget {
-  final Meal meal;
-
-  const _MealDetails({required this.meal});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _MacroBadge(
-              label: 'PRO',
-              value: meal.macros.protein,
-              color: Colors.blue,
-            ),
-            _MacroBadge(
-              label: 'CARB',
-              value: meal.macros.carbs,
-              color: Colors.orange,
-            ),
-            _MacroBadge(
-              label: 'FAT',
-              value: meal.macros.fat,
-              color: Colors.pink,
-            ),
-          ],
-        ),
-        if (meal.ingredients != null && meal.ingredients!.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(
-            meal.ingredients!.join(', '),
-            style: AppTypography.bodySmall.copyWith(
-              color: context.textSecondaryColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-        if (meal.aiRationale != null &&
-            meal.aiRationale!.trim().isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Text(
-            meal.aiRationale!.trim(),
-            style: AppTypography.bodySmall.copyWith(
-              color: context.textSecondaryColor,
-              fontWeight: FontWeight.w500,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _MacroBadge extends StatelessWidget {
-  final String label;
-  final int value;
-  final Color color;
-
-  const _MacroBadge({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _macro(String label, int value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: color,
-              fontWeight: FontWeight.w900,
-              fontSize: 10,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            '${value}g',
-            style: AppTypography.labelSmall.copyWith(
-              color: context.textPrimaryColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 10,
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+          const SizedBox(width: 3),
+          Text('${value}g', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: context.textPrimaryColor)),
         ],
       ),
     );
   }
-}
 
-class _LockedMealRow extends StatelessWidget {
-  final Meal meal;
-
-  const _LockedMealRow({required this.meal});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _locked(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: context.cardSoftColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.cardBorderColor, width: 1.2),
-      ),
+      decoration: BoxDecoration(color: context.cardSoftColor, borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
-          Icon(LucideIcons.lock, size: 16, color: context.textMutedColor),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              meal.foodName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.bodySmall.copyWith(
-                color: context.textSecondaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Text(
-            '${meal.calories} kcal',
-            style: AppTypography.labelSmall.copyWith(
-              color: context.textMutedColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          Icon(Icons.lock_rounded, size: 14, color: context.textMutedColor),
+          const SizedBox(width: 10),
+          Expanded(child: Text(widget.meal.foodName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: context.textSecondaryColor, fontWeight: FontWeight.w500))),
+          Text('${widget.meal.calories}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.textMutedColor)),
+          const SizedBox(width: 2),
+          Text('kcal', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: context.textMutedColor)),
         ],
       ),
     );
-  }
-}
-
-class _MenuRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _MenuRow({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 17),
-        const SizedBox(width: 10),
-        Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
-      ],
-    );
-  }
-}
-
-String _getLocalizedMealType(BuildContext context, String? type) {
-  final l10n = AppLocalizations.of(context)!;
-  if (type == null) return l10n.planner_meal;
-  switch (type.toLowerCase()) {
-    case 'breakfast':
-      return l10n.result_meal_breakfast;
-    case 'lunch':
-      return l10n.result_meal_lunch;
-    case 'dinner':
-      return l10n.result_meal_dinner;
-    case 'snack':
-      return l10n.result_meal_snack;
-    default:
-      return type;
   }
 }

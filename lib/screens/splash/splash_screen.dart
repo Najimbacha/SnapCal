@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_typography.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,24 +10,23 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _fadeIn;
-  late Animation<double> _pulse;
+  late Animation<double> _scale;
+  late Animation<double> _opacity;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-
-    _fadeIn = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.3, curve: Curves.easeOut)),
+      duration: const Duration(milliseconds: 1200),
     );
-
-    _pulse = Tween<double>(begin: 0.92, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    _scale = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Cubic(0.16, 1.0, 0.3, 1.0)),
     );
+    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.4, curve: Curves.easeOut)),
+    );
+    _controller.forward();
   }
 
   @override
@@ -40,68 +37,35 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final d = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: d ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
       body: Center(
         child: FadeTransition(
-          opacity: _fadeIn,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Logo mark
-              ScaleTransition(
-                scale: _pulse,
-                child: Container(
-                  width: 72,
-                  height: 72,
+          opacity: _opacity,
+          child: ScaleTransition(
+            scale: _scale,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                    color: const Color(0xFF5C5FE0),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   child: const Center(
-                    child: Text(
-                      'S',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1,
-                      ),
-                    ),
+                    child: Text('S', style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w600)),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              // App name
-              Text(
-                'SnapCal',
-                style: AppTypography.headlineSmall.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 26,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Subtle loading indicator
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppColors.primary.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
-            ],
+                const SizedBox(height: 24),
+                Text('SnapCal', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: d ? Colors.white : Colors.black)),
+                const SizedBox(height: 4),
+                Text('Calorie Tracker', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: d ? Colors.white38 : const Color(0xFF8E8E93))),
+              ],
+            ),
           ),
         ),
       ),
