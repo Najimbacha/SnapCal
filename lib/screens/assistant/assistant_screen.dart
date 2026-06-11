@@ -73,6 +73,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
     }
   }
 
+  void _handleSuggestion(String query) {
+    _ctrl.clear();
+    _focus.unfocus();
+    _fetch(query: query);
+  }
+
   void _submit() {
     final q = _ctrl.text.trim();
     if (q.isEmpty) return;
@@ -219,34 +225,47 @@ class _AssistantScreenState extends State<AssistantScreen> {
           }
 
           if (ap.history.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildAvatar(80),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Hi, I\'m Fajar!',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: d ? Colors.white : const Color(0xFF1C1C1E),
-                      ),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  const SizedBox(height: 40),
+                  _buildAvatar(80),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Fajar',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: d ? Colors.white : const Color(0xFF1C1C1E),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Your AI nutritionist. Ask me about meals, calories, or macros.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.5,
-                        color: d ? const Color(0xFF71717A) : const Color(0xFF8E8E93),
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'AI Nutrition Coach',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: d ? const Color(0xFF71717A) : const Color(0xFF8E8E93),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    'What can I help you with?',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: d ? const Color(0xFFA1A1AA) : const Color(0xFF6B7280),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildActionGrid(d),
+                  const SizedBox(height: 24),
+                  _buildDivider(d),
+                  const SizedBox(height: 20),
+                  _buildSuggestions(d),
+                  const SizedBox(height: 20),
+                ],
               ),
             );
           }
@@ -371,6 +390,132 @@ class _AssistantScreenState extends State<AssistantScreen> {
           child: Text('👩', style: TextStyle(fontSize: size * 0.5)),
         ),
       ),
+    );
+  }
+
+  Widget _buildActionGrid(bool d) {
+    final items = [
+      _GridItem(icon: '📷', label: 'Food', query: 'What should I eat today?'),
+      _GridItem(icon: '🔥', label: 'Calories', query: 'How many calories should I eat?'),
+      _GridItem(icon: '🥗', label: 'Plan', query: 'Create a meal plan for me'),
+      _GridItem(icon: '⚖️', label: 'Weight', query: 'Help me with my weight goal'),
+    ];
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.6,
+      children: items.map((item) => GestureDetector(
+        onTap: () => _handleSuggestion(item.query),
+        child: Container(
+          decoration: BoxDecoration(
+            color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
+              width: 0.5,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(item.icon, style: const TextStyle(fontSize: 24)),
+              const SizedBox(height: 6),
+              Text(
+                item.label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: d ? const Color(0xFFE4E4E7) : const Color(0xFF3C3C43),
+                ),
+              ),
+            ],
+          ),
+        ),
+      )).toList(),
+    );
+  }
+
+  Widget _buildDivider(bool d) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 0.5,
+            color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            'or ask a question',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: d ? const Color(0xFF52525B) : const Color(0xFFA1A1AA),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            height: 0.5,
+            color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuggestions(bool d) {
+    final suggestions = [
+      'How many calories should I eat?',
+      'Create a meal plan',
+      'Analyze my lunch photo',
+      'Suggest a high-protein breakfast',
+    ];
+
+    return Column(
+      children: suggestions.map((s) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: GestureDetector(
+          onTap: () => _handleSuggestion(s),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
+                width: 0.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 14,
+                  color: d ? const Color(0xFF52525B) : const Color(0xFFA1A1AA),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    s,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: d ? const Color(0xFFA1A1AA) : const Color(0xFF6B7280),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      )).toList(),
     );
   }
 
@@ -532,4 +677,12 @@ class _TypingTextState extends State<_TypingText> {
       ),
     );
   }
+}
+
+class _GridItem {
+  final String icon;
+  final String label;
+  final String query;
+
+  const _GridItem({required this.icon, required this.label, required this.query});
 }
