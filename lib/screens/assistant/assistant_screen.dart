@@ -97,6 +97,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
     return Scaffold(
       backgroundColor: d ? const Color(0xFF09090B) : Colors.white,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: d ? const Color(0xFF09090B) : Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -191,175 +192,164 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        top: false,
-        bottom: true,
-        child: Column(
-          children: [
-            Expanded(
-              child: Consumer<AssistantProvider>(
-                builder: (context, ap, _) {
-                  if (ap.history.isEmpty && ap.isLoading) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.auto_awesome_rounded, size: 24, color: Color(0xFF7C3AED)),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Thinking...',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: d ? const Color(0xFF71717A) : const Color(0xFF8E8E93),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  if (ap.history.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.auto_awesome_rounded, size: 28, color: Color(0xFF7C3AED)),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              'Ask me anything',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: d ? Colors.white : const Color(0xFF1C1C1E),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Nutrition tips, meal ideas, or daily goals',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: d ? const Color(0xFF71717A) : const Color(0xFF8E8E93),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    controller: _scroll,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    itemCount: ap.history.length,
-                    itemBuilder: (context, i) {
-                      final msg = ap.history[i];
-                      final user = _isUser(msg);
-                      final text = _parseContent(msg);
-                      if (text.isEmpty) return const SizedBox.shrink();
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          mainAxisAlignment: user ? MainAxisAlignment.end : MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (!user) ...[
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Center(
-                                  child: Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            Flexible(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: user
-                                      ? (d ? const Color(0xFF7C3AED) : const Color(0xFF5C5FE0))
-                                      : (d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7)),
-                                  borderRadius: BorderRadius.circular(16).copyWith(
-                                    bottomRight: user ? const Radius.circular(4) : null,
-                                    bottomLeft: !user ? const Radius.circular(4) : null,
-                                  ),
-                                ),
-                                child: Text(
-                                  text,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    height: 1.4,
-                                    color: user
-                                        ? Colors.white
-                                        : (d ? const Color(0xFFE4E4E7) : const Color(0xFF1C1C1E)),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (user) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.person_rounded,
-                                  size: 14,
-                                  color: d ? const Color(0xFFA1A1AA) : const Color(0xFF8E8E93),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
+      body: Consumer<AssistantProvider>(
+        builder: (context, ap, _) {
+          if (ap.history.isEmpty && ap.isLoading) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.auto_awesome_rounded, size: 24, color: Color(0xFF7C3AED)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Thinking...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: d ? const Color(0xFF71717A) : const Color(0xFF8E8E93),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            _buildInputBar(d),
-          ],
-        ),
+            );
+          }
+
+          if (ap.history.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.auto_awesome_rounded, size: 28, color: Color(0xFF7C3AED)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Ask me anything',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: d ? Colors.white : const Color(0xFF1C1C1E),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Nutrition tips, meal ideas, or daily goals',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: d ? const Color(0xFF71717A) : const Color(0xFF8E8E93),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            itemCount: ap.history.length,
+            itemBuilder: (context, i) {
+              final msg = ap.history[i];
+              final user = _isUser(msg);
+              final text = _parseContent(msg);
+              if (text.isEmpty) return const SizedBox.shrink();
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  mainAxisAlignment: user ? MainAxisAlignment.end : MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!user) ...[
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: user
+                              ? (d ? const Color(0xFF7C3AED) : const Color(0xFF5C5FE0))
+                              : (d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7)),
+                          borderRadius: BorderRadius.circular(16).copyWith(
+                            bottomRight: user ? const Radius.circular(4) : null,
+                            bottomLeft: !user ? const Radius.circular(4) : null,
+                          ),
+                        ),
+                        child: Text(
+                          text,
+                          style: TextStyle(
+                            fontSize: 15,
+                            height: 1.4,
+                            color: user
+                                ? Colors.white
+                                : (d ? const Color(0xFFE4E4E7) : const Color(0xFF1C1C1E)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (user) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.person_rounded,
+                          size: 14,
+                          color: d ? const Color(0xFFA1A1AA) : const Color(0xFF8E8E93),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          );
+        },
       ),
+      bottomNavigationBar: _buildInputBar(d),
     );
   }
 
   Widget _buildInputBar(bool d) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).viewInsets.bottom + 8),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 8),
       decoration: BoxDecoration(
         color: d ? const Color(0xFF09090B) : Colors.white,
         border: Border(
