@@ -1225,6 +1225,7 @@ class _MinimalMacroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
@@ -1258,28 +1259,70 @@ class _MinimalMacroSection extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           if (isPro) ...[
-            _MinimalMacroRow(
-              label: l10n.result_protein,
-              value: macros.protein,
-              goal: proteinGoal,
-            ),
-            const SizedBox(height: 12),
-            _MinimalMacroRow(
-              label: l10n.result_carbs,
-              value: macros.carbs,
-              goal: carbGoal,
-            ),
-            const SizedBox(height: 12),
-            _MinimalMacroRow(
-              label: l10n.result_fat,
-              value: macros.fat,
-              goal: fatGoal,
+            Row(
+              children: [
+                _MacroCard(label: l10n.result_protein, value: macros.protein, goal: proteinGoal, color: AppColors.protein, isDark: isDark),
+                const SizedBox(width: 8),
+                _MacroCard(label: l10n.result_carbs, value: macros.carbs, goal: carbGoal, color: AppColors.carbs, isDark: isDark),
+                const SizedBox(width: 8),
+                _MacroCard(label: l10n.result_fat, value: macros.fat, goal: fatGoal, color: AppColors.fat, isDark: isDark),
+              ],
             ),
           ] else
             const _MacroPreviewCard(),
           const SizedBox(height: 18),
           const _MinimalSectionDivider(),
         ],
+      ),
+    );
+  }
+}
+
+class _MacroCard extends StatelessWidget {
+  final String label;
+  final int value;
+  final int goal;
+  final Color color;
+  final bool isDark;
+
+  const _MacroCard({required this.label, required this.value, required this.goal, required this.color, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (value / math.max(goal, 1)).clamp(0.0, 1.0);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE8E4DC),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: isDark ? Colors.white38 : const Color(0xFF8E8E93))),
+            const SizedBox(height: 4),
+            Text('${value}g', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color, height: 1.1)),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: Container(
+                width: 40, height: 3,
+                color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE8E4DC),
+                child: FractionallySizedBox(
+                  widthFactor: pct,
+                  heightFactor: 1,
+                  child: Container(color: color),
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text('${goal}g', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: isDark ? Colors.white24 : const Color(0xFFC7C7CC))),
+          ],
+        ),
       ),
     );
   }
@@ -1573,185 +1616,47 @@ class _PremiumBentoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Theme-aware design tokens — warm minimal (matches home screen)
-    final LinearGradient cardBg;
-    final Color borderColor;
-    final Color textColor;
-    final Color subtitleColor;
-    final Color iconBgColor;
-    final Color iconColor;
-    final List<BoxShadow> shadow;
-
-    if (isDark) {
-      cardBg = const LinearGradient(
-        colors: [
-          Color(0xFF1A1A1E),
-          Color(0xFF1E1E22),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-      borderColor = Colors.white.withValues(alpha: 0.06);
-      textColor = Colors.white;
-      subtitleColor = Colors.white38;
-      iconBgColor = _minimalGreen;
-      iconColor = const Color(0xFF6EE7A0);
-      shadow = [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.2),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ];
-    } else {
-      cardBg = const LinearGradient(
-        colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
-      );
-      borderColor = const Color(0xFFE8E4DC);
-      textColor = _minimalInk;
-      subtitleColor = _minimalMuted;
-      iconBgColor = _minimalGreen;
-      iconColor = const Color(0xFF16733A);
-      shadow = [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          blurRadius: 16,
-          offset: const Offset(0, 6),
-        ),
-      ];
-    }
-
-    return AppScaleTap(
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 112,
+        height: 100,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          gradient: cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: borderColor, width: 1.2),
-          boxShadow: shadow,
+          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE8E4DC),
+          ),
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top right Pro indicator tag
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  gradient:
-                      isPro
-                          ? (isDark
-                              ? const LinearGradient(
-                                colors: [Color(0xFF16472D), Color(0xFF1C5C3B)],
-                              )
-                              : const LinearGradient(
-                                colors: [Color(0xFFE2EFE0), Color(0xFFCDE2CC)],
-                              ))
-                          : LinearGradient(
-                            colors: [
-                              _minimalGreenText.withValues(alpha: 0.8),
-                              _minimalGreenText,
-                            ],
-                          ),
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isPro
-                              ? (isDark
-                                  ? const Color(0xFF16472D)
-                                  : const Color(0xFFCDE2CC))
-                              : _minimalGreenText)
-                          .withValues(alpha: 0.2),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isPro ? LucideIcons.gem : LucideIcons.crown,
-                      color:
-                          isPro && !isDark
-                              ? const Color(0xFF1E4620)
-                              : Colors.white,
-                      size: 9,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'PRO',
-                      style: AppTypography.labelSmall.copyWith(
-                        color:
-                            isPro && !isDark
-                                ? const Color(0xFF1E4620)
-                                : Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Card Content
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Row(
               children: [
-                // Icon Badge Container
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: 24, height: 24,
                   decoration: BoxDecoration(
-                    color: iconBgColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color:
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : const Color(0xFFE8E4DC),
-                      width: 1,
-                    ),
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(7),
                   ),
-                  child: Center(child: Icon(icon, color: iconColor, size: 16)),
+                  child: Icon(icon, size: 13, color: AppColors.primary),
                 ),
-
-                // Titles
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: textColor,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                const Spacer(),
+                if (!isPro)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: subtitleColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                    child: Text('PRO', style: TextStyle(fontSize: 7, fontWeight: FontWeight.w800, color: AppColors.primary, letterSpacing: 0.5, height: 1)),
+                  ),
               ],
             ),
+            const Spacer(),
+            Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF1C1C1E))),
+            const SizedBox(height: 2),
+            Text(subtitle, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: isDark ? Colors.white38 : const Color(0xFF8E8E93))),
           ],
         ),
       ),
@@ -2171,44 +2076,12 @@ class _HomeSettingsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AppScaleTap(
+    final d = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color:
-              isPro
-                  ? const Color(
-                    0xFFFFD700,
-                  ).withValues(alpha: isDark ? 0.12 : 0.08)
-                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color:
-                isPro
-                    ? const Color(
-                      0xFFFFD700,
-                    ).withValues(alpha: isDark ? 0.30 : 0.22)
-                    : colorScheme.outlineVariant.withValues(
-                      alpha: isDark ? 0.18 : 0.12,
-                    ),
-            width: 0.8,
-          ),
-        ),
-        child: Center(
-          child: Icon(
-            LucideIcons.settings2,
-            size: 16,
-            color:
-                isPro
-                    ? const Color(0xFFE29200)
-                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-          ),
-        ),
+        width: 36, height: 36,
+        child: Center(child: Icon(Icons.settings_rounded, size: 20, color: d ? Colors.white38 : const Color(0xFF8E8E93))),
       ),
     );
   }
@@ -2220,29 +2093,15 @@ class _HomeCoachButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppScaleTap(
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 36, height: 36,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF5C5FE0).withValues(alpha: 0.25),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          gradient: const LinearGradient(colors: [Color(0xFF5C5FE0), Color(0xFF7C3AED)]),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: const Center(
-          child: Icon(LucideIcons.sparkles, size: 15, color: Colors.white),
-        ),
+        child: const Center(child: Icon(LucideIcons.sparkles, size: 16, color: Colors.white)),
       ),
     );
   }
@@ -2263,76 +2122,35 @@ class _HomeDashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final d = Theme.of(context).brightness == Brightness.dark;
 
     return SizedBox(
       height: 44,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Left: settings gear — immediately obvious navigation affordance
           _HomeSettingsButton(onTap: onSettingsTap, isPro: isPro),
-          const SizedBox(width: 12),
-
-          // Center: app wordmark + refresh spinner
+          const SizedBox(width: 4),
           Expanded(
             child: Row(
               children: [
-                Text(
-                  'SnapCal',
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 19,
-                    letterSpacing: -0.6,
-                    color: colorScheme.onSurface.withValues(alpha: 0.90),
+                Text('SnapCal', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: d ? Colors.white : const Color(0xFF1C1C1E), letterSpacing: -0.5)),
+                if (isRefreshing)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: d ? Colors.white38 : const Color(0xFFC7C7CC))),
                   ),
-                ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child:
-                      isRefreshing
-                          ? Padding(
-                            key: const ValueKey('refreshing'),
-                            padding: const EdgeInsets.only(left: 8),
-                            child: SizedBox(
-                              width: 11,
-                              height: 11,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                color:
-                                    isPro
-                                        ? const Color(0xFFE29200)
-                                        : colorScheme.primary,
-                              ),
-                            ),
-                          )
-                          : const SizedBox.shrink(key: ValueKey('idle')),
-                ),
               ],
             ),
           ),
-
-          // AI Coach Button
-          _HomeCoachButton(
-            onTap: () {
-              if (isPro) {
-                context.push('/assistant');
-              } else {
-                PremiumConversionService().openPaywall(
-                  context,
-                  PaywallEntryPoint.aiCoachLimit,
-                  featureName: 'ai_coach',
-                );
-              }
+          _HomeCoachButton(onTap: () {
+              if (isPro) { context.push('/assistant'); }
+              else { PremiumConversionService().openPaywall(context, PaywallEntryPoint.aiCoachLimit, featureName: 'ai_coach'); }
             },
           ),
-          const SizedBox(width: 8),
-
-          // Right: streak badge + upgrade/pro indicator
-          if (streak > 0) ...[
-            _HeaderStreakBadge(streak: streak, isPro: isPro),
-            const SizedBox(width: 8),
-          ],
+          const SizedBox(width: 4),
+          if (streak > 0) _HeaderStreakBadge(streak: streak, isPro: isPro),
+          const SizedBox(width: 4),
           _PremiumProBadge(isPro: isPro),
         ],
       ),
@@ -2347,83 +2165,32 @@ class _PremiumProBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
+    final d = Theme.of(context).brightness == Brightness.dark;
     if (isPro) {
-      // Solid gold badge — premium status indicator, not a button
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.35),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(color: const Color(0xFFFFD700).withValues(alpha: d ? 0.15 : 0.1), borderRadius: BorderRadius.circular(8)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(LucideIcons.gem, color: Colors.black, size: 11),
-            const SizedBox(width: 5),
-            Text(
-              l10n.home_pro_badge,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
-            ),
+            Icon(LucideIcons.gem, color: const Color(0xFFE29200), size: 11),
+            const SizedBox(width: 4),
+            Text(AppLocalizations.of(context)!.home_pro_badge, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFE29200))),
           ],
         ),
       );
     }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Premium gradient pill — matches app color system, high-contrast, premium
-    return AppScaleTap(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        context.push('/paywall');
-      },
+    return GestureDetector(
+      onTap: () { HapticFeedback.mediumImpact(); context.push('/paywall'); },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          gradient: AppColors.premiumGradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(
-                0xFF8B5CF6,
-              ).withValues(alpha: isDark ? 0.35 : 0.20),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: d ? 0.15 : 0.1), borderRadius: BorderRadius.circular(8)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(LucideIcons.sparkles, color: Colors.white, size: 11),
-            const SizedBox(width: 5),
-            Text(
-              l10n.home_go_pro,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
-            ),
+            Icon(LucideIcons.sparkles, color: AppColors.primary, size: 11),
+            const SizedBox(width: 4),
+            Text(AppLocalizations.of(context)!.home_go_pro, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
           ],
         ),
       ),
@@ -2439,48 +2206,20 @@ class _HeaderStreakBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final badgeColor = isPro ? const Color(0xFFFFD700) : AppColors.amber;
-
+    final d = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 7),
       decoration: BoxDecoration(
-        color: badgeColor.withValues(alpha: isDark ? 0.12 : 0.09),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: badgeColor.withValues(alpha: isDark ? 0.22 : 0.28),
-        ),
-        boxShadow:
-            isPro
-                ? [
-                  BoxShadow(
-                    color: badgeColor.withValues(alpha: isDark ? 0.08 : 0.03),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-                : null,
+        color: (d ? Colors.white : Colors.black).withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            LucideIcons.flame,
-            color: isPro ? const Color(0xFFE29200) : AppColors.amber,
-            size: 13,
-          ),
+          Icon(LucideIcons.flame, color: const Color(0xFFE29200), size: 13),
           const SizedBox(width: 4),
-          Text(
-            '$streak',
-            style: AppTypography.labelLarge.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.90),
-              fontWeight: FontWeight.w900,
-              fontSize: 11,
-              letterSpacing: 0,
-            ),
-          ),
+          Text('$streak', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: d ? Colors.white : const Color(0xFF1C1C1E))),
         ],
       ),
     );
@@ -3197,23 +2936,29 @@ class _SecondaryDashboardGrid extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _WaterFillCard(
-                  total: waterTotal,
-                  goal: waterGoal,
-                  onTap: onWaterTap,
-                  onAdd: onWaterAdd,
+                child: SizedBox(
+                  height: 100,
+                  child: _WaterFillCard(
+                    total: waterTotal,
+                    goal: waterGoal,
+                    onTap: onWaterTap,
+                    onAdd: onWaterAdd,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _MinimalWellnessCard(
-                  icon: LucideIcons.footprints,
-                  color: Theme.of(context).colorScheme.primary,
-                  title: l10n.home_metric_activity,
-                  value: steps == 0 ? '0 steps' : '$steps',
-                  subtitle: steps == 0 ? 'Start walking' : caloriesText,
-                  progress: stepsProgress,
-                  onTap: onActivityTap,
+                child: SizedBox(
+                  height: 100,
+                  child: _MinimalWellnessCard(
+                    icon: LucideIcons.footprints,
+                    color: Theme.of(context).colorScheme.primary,
+                    title: l10n.home_metric_activity,
+                    value: steps == 0 ? '0 steps' : '$steps',
+                    subtitle: steps == 0 ? 'Start walking' : caloriesText,
+                    progress: stepsProgress,
+                    onTap: onActivityTap,
+                  ),
                 ),
               ),
             ],
@@ -3280,10 +3025,10 @@ class _WaterFillCardState extends State<_WaterFillCard> {
         widget.onTap();
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color:
                 isDark
@@ -3300,16 +3045,16 @@ class _WaterFillCardState extends State<_WaterFillCard> {
               title: 'Hydration',
               isDark: isDark,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             Text(
               widget.total == 0 ? '0 ml' : '${widget.total} ml',
               style: AppTypography.titleMedium.copyWith(
                 color: isDark ? Colors.white : const Color(0xFF1C1917),
                 fontWeight: FontWeight.w700,
-                fontSize: 18,
+                fontSize: 13,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 1),
             Row(
               children: [
                 Expanded(
@@ -3334,8 +3079,8 @@ class _WaterFillCardState extends State<_WaterFillCard> {
                     widget.onAdd();
                   },
                   child: Container(
-                    height: 22,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    height: 18,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     decoration: BoxDecoration(
                       color: blue.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(999),
@@ -3355,7 +3100,7 @@ class _WaterFillCardState extends State<_WaterFillCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
 
             // Fill bar — matches activity card progress bar height
             ClipRRect(
@@ -3410,10 +3155,10 @@ class _MinimalWellnessCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color:
                 isDark
@@ -3430,27 +3175,27 @@ class _MinimalWellnessCard extends StatelessWidget {
               title: title,
               isDark: isDark,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             Text(
               value,
               style: AppTypography.titleMedium.copyWith(
                 color: isDark ? Colors.white : const Color(0xFF1C1917),
                 fontWeight: FontWeight.w700,
-                fontSize: 18,
+                fontSize: 13,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 1),
             Text(
               subtitle,
               style: AppTypography.labelSmall.copyWith(
                 color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                fontSize: 11,
+                fontSize: 9,
                 fontWeight: FontWeight.w500,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 4),
             Container(
               height: 3,
               clipBehavior: Clip.antiAlias,
@@ -3494,21 +3239,21 @@ class _WellnessCardHeader extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: 22,
+          height: 22,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
-          child: Icon(icon, size: 16, color: color),
+          child: Icon(icon, size: 12, color: color),
         ),
-        const Spacer(),
+        const SizedBox(width: 6),
         Text(
           title,
           style: AppTypography.labelSmall.copyWith(
             color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.3,
           ),
