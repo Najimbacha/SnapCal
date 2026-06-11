@@ -98,7 +98,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
     return Scaffold(
       backgroundColor: d ? const Color(0xFF09090B) : Colors.white,
-      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: d ? const Color(0xFF09090B) : Colors.white,
         surfaceTintColor: Colors.transparent,
