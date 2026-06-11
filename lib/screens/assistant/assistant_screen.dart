@@ -321,16 +321,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                       }
                                     },
                                   )
-                                : Text(
-                                    text,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      height: 1.5,
-                                      color: user
-                                          ? Colors.white
-                                          : (d ? const Color(0xFFE4E4E7) : const Color(0xFF1C1C1E)),
-                                    ),
-                                  ),
+                                : _buildRichText(text, user, d),
                           ),
                         ],
                       ),
@@ -379,6 +370,37 @@ class _AssistantScreenState extends State<AssistantScreen> {
         child: Center(
           child: Text('👩', style: TextStyle(fontSize: size * 0.5)),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRichText(String text, bool user, bool d) {
+    final color = user
+        ? Colors.white
+        : (d ? const Color(0xFFE4E4E7) : const Color(0xFF1C1C1E));
+
+    final spans = <InlineSpan>[];
+    final regex = RegExp(r'\*\*(.+?)\*\*');
+    int lastEnd = 0;
+
+    for (final match in regex.allMatches(text)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
+      }
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ));
+      lastEnd = match.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(fontSize: 15, height: 1.5, color: color),
+        children: spans,
       ),
     );
   }
