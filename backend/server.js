@@ -465,7 +465,7 @@ async function callAiText(prompt, options = {}) {
   if (geminiApiKey) {
     try {
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash'}:generateContent`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-2.0-flash'}:generateContent`,
         {
           contents: [{ parts: [{ text: effectivePrompt }] }],
           generationConfig: {
@@ -486,7 +486,7 @@ async function callAiText(prompt, options = {}) {
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey) throw new Error('ai-not-configured');
   const groqPayload = {
-    model: options.groqModel || process.env.GROQ_TEXT_MODEL || 'llama-3.1-8b-instant',
+    model: options.groqModel || process.env.GROQ_TEXT_MODEL || 'llama-3.3-70b-versatile',
     messages: [
       ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
       { role: 'user', content: effectivePrompt },

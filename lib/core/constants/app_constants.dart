@@ -15,8 +15,8 @@ class AppConstants {
   );
 
   // Model IDs
-  static const String defaultGeminiModel = 'gemini-2.5-flash';
-  static const String defaultGroqCoachModel = 'llama-3.1-8b-instant';
+  static const String defaultGeminiModel = 'gemini-2.0-flash';
+  static const String defaultGroqCoachModel = 'llama-3.3-70b-versatile';
   static const String defaultGroqScannerModel =
       'meta-llama/llama-4-scout-17b-16e-instruct';
 
