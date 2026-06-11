@@ -127,22 +127,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
         ),
         title: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
+            ClipOval(
+              child: Image.asset(
+                'assets/avatar/fajar.png',
                 width: 40,
                 height: 40,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFF472B6), Color(0xFFA855F7)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Text('👩', style: TextStyle(fontSize: 20)),
-                ),
+                fit: BoxFit.cover,
               ),
             ),
             const SizedBox(width: 10),
@@ -373,22 +363,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
   }
 
   Widget _buildAvatar(double size) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(size / 2),
-      child: Container(
+    return ClipOval(
+      child: Image.asset(
+        'assets/avatar/fajar.png',
         width: size,
         height: size,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF472B6), Color(0xFFA855F7)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: Text('👩', style: TextStyle(fontSize: size * 0.5)),
-        ),
+        fit: BoxFit.cover,
       ),
     );
   }
