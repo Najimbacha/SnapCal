@@ -143,7 +143,9 @@ class AssistantProvider with ChangeNotifier {
       }
 
       if (userQuery != null || imageBytes != null) {
-        _history.addAll(newRecs);
+        if (newRecs is List) {
+          _history.addAll(newRecs);
+        }
       } else {
         _history = (newRecs is List) ? List<dynamic>.from(newRecs) : [];
       }
@@ -155,8 +157,9 @@ class AssistantProvider with ChangeNotifier {
         await _repository.saveCalorieSnapshot(currentCalories);
       }
       return true;
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('⚠️ AssistantProvider: recommendation fallback: $e');
+      debugPrint('Stack: $stack');
       _error = e.toString();
       // Add a fallback response so the user sees something
       if (userQuery != null || imageBytes != null) {

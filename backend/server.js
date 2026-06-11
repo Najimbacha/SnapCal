@@ -45,6 +45,7 @@ const db = admin.firestore();
 let authVerifierForTest = null;
 
 app.disable('x-powered-by');
+app.set('trust proxy', true);
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((s) => s.trim())
