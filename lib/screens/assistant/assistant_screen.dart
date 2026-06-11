@@ -450,56 +450,63 @@ class _AssistantScreenState extends State<AssistantScreen> {
           top: BorderSide(color: Color(0xFF18181B), width: 0.5),
         ),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFF18181B),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF27272A), width: 0.5),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _ctrl,
-                onSubmitted: (_) => _submit(),
-                textInputAction: TextInputAction.send,
-                decoration: const InputDecoration(
-                  hintText: 'Message',
-                  hintStyle: TextStyle(
-                    color: Color(0xFF3F3F46),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _ctrl,
+              onSubmitted: (_) => _submit(),
+              textInputAction: TextInputAction.send,
+              maxLines: 4,
+              minLines: 1,
+              decoration: InputDecoration(
+                hintText: 'Type a message...',
+                hintStyle: const TextStyle(
+                  color: Color(0xFF3F3F46),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
                 ),
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFFFAFAFA),
+                filled: true,
+                fillColor: const Color(0xFF18181B),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF27272A), width: 0.5),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: _submit,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF7C3AED),
-                  shape: BoxShape.circle,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF27272A), width: 0.5),
                 ),
-                child: const Icon(
-                  Icons.arrow_upward_rounded,
-                  size: 16,
-                  color: Colors.white,
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 1),
                 ),
               ),
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFFFAFAFA),
+              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _submit,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: Color(0xFF7C3AED),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.send_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
