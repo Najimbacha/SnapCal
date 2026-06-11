@@ -143,11 +143,9 @@ class AssistantProvider with ChangeNotifier {
       }
 
       if (userQuery != null || imageBytes != null) {
-        // For queries/images, append to history
         _history.addAll(newRecs);
       } else {
-        // For fresh general recommendations, replace
-        _history = List<dynamic>.from(newRecs);
+        _history = (newRecs is List) ? List<dynamic>.from(newRecs) : [];
       }
 
       // Save to cache/history
@@ -160,6 +158,15 @@ class AssistantProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('⚠️ AssistantProvider: recommendation fallback: $e');
       _error = e.toString();
+      // Add a fallback response so the user sees something
+      if (userQuery != null || imageBytes != null) {
+        _history.add(AssistantResponse(
+          title: '',
+          content: 'Sorry, I had trouble processing that. Could you try asking again?',
+          type: 'coaching',
+        ));
+        await _repository.saveChatHistory(_history);
+      }
       return false;
     } finally {
       _isLoading = false;

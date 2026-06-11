@@ -132,7 +132,7 @@ class AssistantService {
         ),
         data: {
           'prompt': prompt,
-          'maxOutputTokens': 700,
+          'maxOutputTokens': 200,
           'timeoutMs': 25000,
         },
       );
@@ -141,21 +141,19 @@ class AssistantService {
 
       if (text != null) {
         debugPrint("Assistant Raw Response: $text");
-        String jsonString = _extractJson(text);
-        jsonString = _sanitizeJsonString(jsonString);
-
-        final dynamic decoded = jsonDecode(jsonString);
-
-        if (decoded is List) {
-          return decoded
-              .map(
-                (e) => AssistantResponse.fromJson(e as Map<String, dynamic>),
-              )
-              .toList();
-        } else if (decoded is Map) {
-          return [
-            AssistantResponse.fromJson(decoded as Map<String, dynamic>),
-          ];
+        try {
+          String jsonString = _extractJson(text);
+          jsonString = _sanitizeJsonString(jsonString);
+          final dynamic decoded = jsonDecode(jsonString);
+          if (decoded is List) {
+            return decoded.map((e) => AssistantResponse.fromJson(e as Map<String, dynamic>)).toList();
+          } else if (decoded is Map) {
+            return [AssistantResponse.fromJson(decoded as Map<String, dynamic>)];
+          }
+        } catch (_) {
+          // Response is not JSON — treat as plain text coaching
+          final clean = text.trim();
+          return [AssistantResponse(title: '', content: clean, type: 'coaching')];
         }
         return [];
       }
@@ -302,63 +300,19 @@ User Stats: $currentCalories / $targetCalories kcal.
   }) {
     final languageName = AIService.languageNames[language] ?? 'English';
     final remainingCalories = targetCalories - currentCalories;
-    final remainingProtein =
-        targetMacros['protein']! - currentMacros['protein']!;
-    final remainingCarbs = targetMacros['carbs']! - currentMacros['carbs']!;
-    final remainingFat = targetMacros['fat']! - currentMacros['fat']!;
+    final remainingProtein = targetMacros['protein']! - currentMacros['protein']!;
 
     return """
-You are the SnapCal AI Nutritionist / Coach. 
-Your goal is to provide practical nutrition coaching that is clear, structured, and useful.
-STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE.
+You are a direct, friendly nutrition coach. Respond in $languageName.
+Be concrete — use their actual numbers.
+No greetings. No markdown. No JSON. No recipes.
+Just 1-2 short sentences like texting a friend.
 
-USER COACH PROFILE:
-- Age: ${age ?? 'N/A'}
-- Gender: ${gender ?? 'N/A'}
-- Height: ${height ?? 'N/A'} cm
-- Current Weight: ${weight ?? 'N/A'} kg
-- Goal Weight: ${targetWeight ?? 'N/A'} kg
-- Goal Type: ${goalMode ?? 'N/A'}
-- Activity Level: ${activityLevel ?? 'N/A'}
-- Diet Preference: $dietaryRestriction
-- Food Dislikes: ${foodDislikes ?? 'None specified'}
-- Medical Notes: ${medicalNotes ?? 'None specified'}
+User: ${age ?? '?'}yo ${gender ?? '?'}, goal: ${goalMode ?? '?'}, diet: $dietaryRestriction
+Today: ${currentCalories}cal/${targetCalories}cal | P ${currentMacros['protein']}g/${targetMacros['protein']}g
+Ate: ${mealNames.isEmpty ? 'Nothing logged yet' : mealNames.join(', ')}
 
-COACHING LOGIC RULES:
-- If the user's protein intake is low compared to their target, suggest protein-rich foods (e.g., chicken breast, tofu, eggs, greek yogurt).
-- If the user's calories are too high or close to their limit, suggest lighter next meals or healthy snacks.
-- If the user's carbs are high, suggest balancing their next meal with lean protein and fiber.
-- If the user is near their target weight or calorie/macro goals, encourage consistency and highlight their progress.
-- If the user misses meals or logged very little food, suggest simple, quick-to-prepare balanced meals.
-
-STYLE RULES:
-1. NO INTRODUCTIONS. No "Hello", "Sure", or "I recommend".
-2. START directly with the answer.
-3. For recipe, cooking, or meal creation requests, return a beautiful, scannable mini recipe.
-4. For coaching questions, give a concise insight, why it matters, and one next action.
-5. Keep answers readable on mobile: 70-130 words for recipes, 40-80 words for coaching.
-
-CURRENT USER STATUS:
-- Calories: $currentCalories / $targetCalories (${remainingCalories > 0 ? "Rem: $remainingCalories" : "Over: ${remainingCalories.abs()}"} kcal)
-- Macros: P:${currentMacros['protein']} / ${targetMacros['protein']}g (Rem: $remainingProtein g), C:${currentMacros['carbs']} / ${targetMacros['carbs']}g (Rem: $remainingCarbs g), F:${currentMacros['fat']} / ${targetMacros['fat']}g (Rem: $remainingFat g)
-
-${userQuery != null ? "USER QUESTION: $userQuery" : "Provide one quick strategy."}
-
-RESPONSE REQUIREMENTS:
-- Return a JSON LIST [ ... ] with exactly ONE object.
-- 'type': 'recipe' for recipe/meal creation requests, otherwise 'coaching'.
-- 'title': short useful label, e.g. "Chicken Biryani" or "Macro Fix".
-- 'content': Markdown string using short headings and bullets.
-- For recipe type, include 'macros': {"calories": int, "protein": int, "carbs": int, "fat": int} as an approximate single-serving estimate.
-- Recipe content MUST use this exact structure:
-  ### Ingredients
-  - 4-7 clear items with quantities
-  ### Steps
-  1. 3-5 short numbered steps, each step one action
-  ### Coach note
-  One short line with serving size, cooking time, and nutrition tip.
-- Never return a recipe as one paragraph or one sentence.
-- Do not repeat the user question.
+${userQuery ?? "Give one quick coaching tip based on the numbers above."}
 """;
   }
 
