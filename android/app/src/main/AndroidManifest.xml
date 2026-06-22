@@ -58,6 +58,14 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- FCM default notification channel & icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="fcm_notifications_v1" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notification" />
+
         <!-- Home Screen Widget -->
         <receiver android:name="com.snapcal.snapcal.SnapCalWidgetProvider" android:exported="true">
             <intent-filter>

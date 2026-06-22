@@ -40,6 +40,8 @@ function initializeFirebaseAdmin() {
 
 initializeFirebaseAdmin();
 
+const { startScheduler } = require('./cron/scheduler');
+
 const app = express();
 const db = admin.firestore();
 let authVerifierForTest = null;
@@ -928,8 +930,40 @@ app.use((err, req, res, next) => {
   return safeError(res, 500, 'Internal server error.');
 });
 
+app.post('/api/notifications/food-reminder/register', authenticateToken, async (req, res) => {
+  const { fcmToken, enabled } = req.body || {};
+  const uid = req.user.uid;
+
+  if (typeof enabled !== 'boolean') {
+    return safeError(res, 400, 'Missing enabled flag.');
+  }
+
+  try {
+    await userDoc(uid).collection('settings').doc('app').set({
+      foodRemindersEnabled: enabled,
+      fcmToken: fcmToken || null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('Food reminder register failed:', err.message);
+    return safeError(res, 500, 'Could not register food reminder preference.');
+  }
+});
+
+app.post('/api/notifications/food-reminder/trigger', authenticateToken, async (req, res) => {
+  const { processReminders: trigger } = require('./services/food_reminder_service');
+  try {
+    const result = await trigger();
+    return res.status(200).json(result);
+  } catch (err) {
+    return safeError(res, 500, err.message);
+  }
+});
+
 if (require.main === module) {
   const port = process.env.PORT || 3000;
+  startScheduler();
   app.listen(port, () => {
     console.log(`SnapCal backend running on port ${port}`);
   });

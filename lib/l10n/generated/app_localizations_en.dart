@@ -1616,6 +1616,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_daily_motivation => 'Daily motivation';
 
   @override
+  String get settings_food_reminders => 'Food scan reminders';
+
+  @override
+  String get settings_food_reminders_subtitle =>
+      'Get reminded to scan your meals';
+
+  @override
   String get settings_language => 'Language';
 
   @override

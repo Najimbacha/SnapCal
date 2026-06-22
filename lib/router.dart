@@ -24,6 +24,7 @@ import 'screens/progress/progress_screen.dart'; // Import
 import 'widgets/hero_action_button.dart';
 import 'screens/achievements/achievements_screen.dart';
 import 'screens/insights/weekly_wrap_screen.dart';
+import 'screens/settings/fcm_debug_screen.dart';
 
 /// Global route observer for managing hardware lifecycle across screens
 final RouteObserver<ModalRoute<dynamic>> routeObserver =
@@ -72,6 +73,12 @@ GoRouter createRouter(AuthProvider auth, SettingsProvider settings) {
         pageBuilder:
             (context, state) =>
                 _sharedAxisPage(state, const SettingsScreen(showBack: true)),
+      ),
+      GoRoute(
+        path: '/settings/fcm-debug',
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const FcmDebugScreen()),
       ),
       GoRoute(
         path: '/paywall',

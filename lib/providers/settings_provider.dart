@@ -6,6 +6,7 @@ import '../data/repositories/settings_repository.dart';
 import '../data/services/scan_gate_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/notification_service.dart';
+import '../data/services/fcm_service.dart';
 import '../data/services/calorie_onboarding_service.dart';
 import '../core/network/api_client.dart';
 import '../core/services/config_service.dart';
@@ -151,6 +152,8 @@ class SettingsProvider with ChangeNotifier {
   bool get mealRemindersEnabled => _settings.mealRemindersEnabled;
   bool get goalAlertsEnabled => _settings.goalAlertsEnabled;
   bool get dailyMotivationEnabled => _settings.dailyMotivationEnabled;
+  bool get foodRemindersEnabled => _settings.foodRemindersEnabled;
+  String? get fcmToken => _settings.fcmToken;
   String get themeMode => _settings.themeMode;
   bool get onboardingComplete => _settings.onboardingComplete;
   String get breakfastTime => _settings.breakfastTime;
@@ -202,6 +205,14 @@ class SettingsProvider with ChangeNotifier {
       await _scheduleDailyMotivation();
     } else {
       await _notificationService.cancelDailyMotivation();
+    }
+
+    if (_settings.foodRemindersEnabled) {
+      final fcm = FcmService();
+      if (_settings.fcmToken != fcm.cachedToken) {
+        _settings = _settings.copyWith(fcmToken: fcm.cachedToken);
+        await _repository.saveSettings(_settings);
+      }
     }
   }
 
@@ -391,6 +402,33 @@ class SettingsProvider with ChangeNotifier {
     _settings = _settings.copyWith(goalAlertsEnabled: enabled);
     await _repository.saveSettings(_settings);
     notifyListeners();
+  }
+
+  /// Toggle food scan reminders
+  Future<void> toggleFoodReminders(bool enabled) async {
+    _settings = _settings.copyWith(foodRemindersEnabled: enabled);
+    final fcm = FcmService();
+    if (enabled) {
+      final token = fcm.cachedToken;
+      _settings = _settings.copyWith(fcmToken: token);
+      await fcm.subscribeToFoodReminders();
+    } else {
+      _settings = _settings.copyWith(fcmToken: null);
+      await fcm.unsubscribeFromFoodReminders();
+    }
+    await _repository.saveSettings(_settings);
+    await _syncNotifications();
+    notifyListeners();
+
+    // Sync FCM token & preference to backend
+    try {
+      await ApiClient.dio.post(
+        '${ConfigService().backendProxyUrl}/api/notifications/food-reminder/register',
+        data: {'fcmToken': fcm.cachedToken, 'enabled': enabled},
+      );
+    } catch (_) {
+      // Non-critical; settings will sync via Firestore eventually
+    }
   }
 
   /// Trigger calorie goal alert

@@ -3060,6 +3060,18 @@ abstract class AppLocalizations {
   /// **'Daily motivation'**
   String get settings_daily_motivation;
 
+  /// No description provided for @settings_food_reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Food scan reminders'**
+  String get settings_food_reminders;
+
+  /// No description provided for @settings_food_reminders_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get reminded to scan your meals'**
+  String get settings_food_reminders_subtitle;
+
   /// No description provided for @settings_language.
   ///
   /// In en, this message translates to:

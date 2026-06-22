@@ -644,6 +644,8 @@
   "settings_notifications": "Notifications",
   "settings_meal_reminders": "Meal reminders",
   "settings_daily_motivation": "Daily motivation",
+  "settings_food_reminders": "Food scan reminders",
+  "settings_food_reminders_subtitle": "Get reminded to scan your meals",
   "settings_language": "Language",
   "settings_account_title": "Account",
   "settings_subscription": "Subscription",

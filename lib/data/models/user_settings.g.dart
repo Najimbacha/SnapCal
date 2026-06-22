@@ -53,6 +53,9 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
       lastOpenedDate: fields[34] as String?,
       foodDislikes: fields[35] as String?,
       medicalNotes: fields[36] as String?,
+      foodRemindersEnabled: fields[37] as bool? ?? false,
+      lastFoodReminderDate: fields[38] as String?,
+      fcmToken: fields[39] as String?,
       languageCode: fields[32] as String?,
     );
   }
@@ -60,7 +63,7 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
   @override
   void write(BinaryWriter writer, UserSettings obj) {
     writer
-      ..writeByte(37)
+      ..writeByte(40)
       ..writeByte(0)
       ..write(obj.dailyCalorieGoal)
       ..writeByte(1)
@@ -134,7 +137,13 @@ class UserSettingsAdapter extends TypeAdapter<UserSettings> {
       ..writeByte(35)
       ..write(obj.foodDislikes)
       ..writeByte(36)
-      ..write(obj.medicalNotes);
+      ..write(obj.medicalNotes)
+      ..writeByte(37)
+      ..write(obj.foodRemindersEnabled)
+      ..writeByte(38)
+      ..write(obj.lastFoodReminderDate)
+      ..writeByte(39)
+      ..write(obj.fcmToken);
   }
 
   @override

@@ -2531,6 +2531,21 @@ class _PreferencesScreen extends StatelessWidget {
                               .toggleDailyMotivation,
                     ),
               ),
+              Selector<SettingsProvider, bool>(
+                selector: (_, s) => s.foodRemindersEnabled,
+                builder:
+                    (context, value, _) => _SwitchRow(
+                      icon: LucideIcons.camera,
+                      accent: AppColors.primary,
+                      title: l10n.settings_food_reminders,
+                      subtitle: l10n.settings_food_reminders_subtitle,
+                      value: value,
+                      onChanged:
+                          context
+                              .read<SettingsProvider>()
+                              .toggleFoodReminders,
+                    ),
+              ),
             ],
           ),
           Selector<SettingsProvider, bool>(

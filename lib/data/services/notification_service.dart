@@ -13,12 +13,19 @@ class NotificationService {
   factory NotificationService() => customInstance ?? _instance;
   NotificationService._internal();
 
+  /// Callback invoked when a food reminder notification is tapped.
+  static VoidCallback? onFoodReminderTapped;
+
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   static const int _dailyMotivationBaseId = 1000;
   static const int _dailyMotivationScheduleDays = 14;
   static const String _androidNotificationIcon = 'ic_stat_notification';
+  static const String _foodReminderPayload = 'food_reminder';
+  static const String foodReminderChannelId = 'food_scan_reminders_v1';
+  static const String foodReminderChannelName = 'Food Scan Reminders';
+  static const String foodReminderChannelDesc = 'Gentle reminders to scan your meals.';
   static const MethodChannel _timeZoneChannel = MethodChannel(
     'snapcal/timezone',
   );
@@ -54,7 +61,9 @@ class NotificationService {
       await _notificationsPlugin.initialize(
         settings: settings,
         onDidReceiveNotificationResponse: (details) {
-          // Handle notification tap
+          if (details.payload == _foodReminderPayload) {
+            onFoodReminderTapped?.call();
+          }
         },
       );
 
@@ -283,6 +292,39 @@ class NotificationService {
         ),
       ),
     );
+  }
+
+  /// Show a food scan reminder notification (for foreground display)
+  Future<void> showFoodReminderNotification({
+    required String title,
+    required String body,
+  }) async {
+    try {
+      await _notificationsPlugin.show(
+        id: DateTime.now().millisecondsSinceEpoch.remainder(1 << 31),
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            foodReminderChannelId,
+            foodReminderChannelName,
+            channelDescription: foodReminderChannelDesc,
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: _androidNotificationIcon,
+            color: const Color(0xFF10B981),
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: _foodReminderPayload,
+      );
+    } catch (e) {
+      debugPrint('⚠️ NotificationService: food reminder display failed: $e');
+    }
   }
 
   /// Cancel all notifications

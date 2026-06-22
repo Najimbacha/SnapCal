@@ -28,6 +28,7 @@ import '../../data/services/scan_gate_service.dart';
 import '../../data/services/premium_gate_service.dart';
 import '../../data/services/sync_queue_service.dart';
 import '../../data/services/upload_queue_service.dart';
+import '../../data/services/fcm_service.dart';
 import '../../data/services/widget_service.dart';
 import 'app_lifecycle_service.dart';
 import '../utils/async_guard.dart';
@@ -121,6 +122,7 @@ class AppInitializer {
 
     await Future.wait([
       _runOptionalBackgroundService('Scan gate init', ScanGateService().init),
+      _runOptionalBackgroundService('FCM init', FcmService().init),
       _runOptionalBackgroundService(
         'Premium gate init',
         PremiumGateService().init,

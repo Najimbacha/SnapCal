@@ -27,6 +27,8 @@ import 'providers/template_provider.dart';
 import 'providers/achievements_provider.dart';
 import 'providers/insights_provider.dart';
 import 'data/services/connectivity_service.dart';
+import 'data/services/fcm_service.dart';
+import 'data/services/notification_service.dart';
 import 'screens/splash/splash_screen.dart';
 
 void main() {
@@ -257,6 +259,15 @@ class _AppRouterWrapperState extends State<AppRouterWrapper> {
     final auth = context.read<AuthProvider>();
     final settings = context.read<SettingsProvider>();
     _router = createRouter(auth, settings);
+
+    // Handle food reminder notification taps -> navigate to Snap screen
+    final VoidCallback navigateToSnap = () {
+      try {
+        _router.go('/snap');
+      } catch (_) {}
+    };
+    FcmService().onFoodReminderTapped = navigateToSnap;
+    NotificationService.onFoodReminderTapped = navigateToSnap;
   }
 
   ThemeMode _getThemeMode(String mode) {

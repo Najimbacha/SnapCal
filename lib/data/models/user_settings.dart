@@ -118,6 +118,15 @@ class UserSettings extends HiveObject {
   @HiveField(36)
   final String? medicalNotes;
 
+  @HiveField(37)
+  final bool foodRemindersEnabled;
+
+  @HiveField(38)
+  final String? lastFoodReminderDate;
+
+  @HiveField(39)
+  final String? fcmToken;
+
   UserSettings({
     required this.dailyCalorieGoal,
     required this.dailyProteinGoal,
@@ -155,6 +164,9 @@ class UserSettings extends HiveObject {
     this.lastOpenedDate,
     this.foodDislikes,
     this.medicalNotes,
+    this.foodRemindersEnabled = false,
+    this.lastFoodReminderDate,
+    this.fcmToken,
     String? languageCode,
   }) : languageCode = languageCode ?? 'en';
 
@@ -196,6 +208,9 @@ class UserSettings extends HiveObject {
     String? lastOpenedDate,
     String? foodDislikes,
     String? medicalNotes,
+    bool? foodRemindersEnabled,
+    String? lastFoodReminderDate,
+    String? fcmToken,
   }) {
     return UserSettings(
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -238,6 +253,9 @@ class UserSettings extends HiveObject {
       lastOpenedDate: lastOpenedDate ?? this.lastOpenedDate,
       foodDislikes: foodDislikes ?? this.foodDislikes,
       medicalNotes: medicalNotes ?? this.medicalNotes,
+      foodRemindersEnabled: foodRemindersEnabled ?? this.foodRemindersEnabled,
+      lastFoodReminderDate: lastFoodReminderDate ?? this.lastFoodReminderDate,
+      fcmToken: fcmToken ?? this.fcmToken,
     );
   }
 
@@ -280,6 +298,9 @@ class UserSettings extends HiveObject {
       'lastOpenedDate': lastOpenedDate,
       'foodDislikes': foodDislikes,
       'medicalNotes': medicalNotes,
+      'foodRemindersEnabled': foodRemindersEnabled,
+      'lastFoodReminderDate': lastFoodReminderDate,
+      'fcmToken': fcmToken,
     };
   }
 
@@ -327,6 +348,9 @@ class UserSettings extends HiveObject {
       lastOpenedDate: json['lastOpenedDate'] as String?,
       foodDislikes: json['foodDislikes'] as String?,
       medicalNotes: json['medicalNotes'] as String?,
+      foodRemindersEnabled: json['foodRemindersEnabled'] as bool? ?? false,
+      lastFoodReminderDate: json['lastFoodReminderDate'] as String?,
+      fcmToken: json['fcmToken'] as String?,
     );
   }
 
@@ -370,6 +394,9 @@ class UserSettings extends HiveObject {
       lastOpenedDate: null,
       foodDislikes: null,
       medicalNotes: null,
+      foodRemindersEnabled: false,
+      lastFoodReminderDate: null,
+      fcmToken: null,
     );
   }
 }
