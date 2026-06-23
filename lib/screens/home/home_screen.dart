@@ -779,6 +779,17 @@ class _MinimalHomeTopBar extends ConsumerWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // App icon
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset('assets/icon/icon.png', fit: BoxFit.cover),
+              ),
+              const SizedBox(width: 10),
               Text(
                 'SnapCal',
                 style: AppTypography.titleMedium.copyWith(
@@ -811,136 +822,70 @@ class _MinimalHomeTopBar extends ConsumerWidget {
               ),
             ],
           ),
-          // Debug Pro toggle (visible only in debug mode)
-          if (kDebugMode)
-            GestureDetector(
-              onTap: () => ref.read(debugProOverrideProvider.notifier).toggle(),
-              child: Container(
-                margin: const EdgeInsets.only(left: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(
-                  color:
-                      isPro
-                          ? Colors.green.withValues(alpha: 0.15)
-                          : Colors.grey.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color:
-                        isPro
-                            ? Colors.green.withValues(alpha: 0.4)
-                            : Colors.grey.withValues(alpha: 0.3),
-                    width: 0.5,
-                  ),
-                ),
-                child: Text(
-                  isPro ? 'PRO' : 'free',
-                  style: TextStyle(
-                    color: isPro ? Colors.green : Colors.grey,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ),
           const Spacer(),
           // Streak Flame Badge (only if active)
           if (streak >= 0) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    LucideIcons.flame,
-                    color: isDark ? Colors.orange[300] : const Color(0xFFE65100),
-                    size: 13,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  LucideIcons.flame,
+                  color: Colors.orange,
+                  size: 14,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  '$streak',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$streak',
-                    style: TextStyle(
-                      color: isDark ? Colors.orange[300] : const Color(0xFFE65100),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 14),
           ],
           // Pro Badge / Go Pro
           AppScaleTap(
             onTap: isPro ? onSettingsTap : onProTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color:
-                    isPro
-                        ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                        : const Color(0xFF8B5CF6).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isPro ? LucideIcons.gem : LucideIcons.crown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isPro ? LucideIcons.gem : LucideIcons.crown,
+                  color: isPro ? const Color(0xFF10B981) : const Color(0xFF8B5CF6),
+                  size: 14,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  isPro
+                      ? AppLocalizations.of(context)!.home_pro_badge
+                      : AppLocalizations.of(context)!.home_go_pro,
+                  style: TextStyle(
                     color: isPro ? const Color(0xFF10B981) : const Color(0xFF8B5CF6),
-                    size: 12,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    isPro
-                        ? AppLocalizations.of(context)!.home_pro_badge
-                        : AppLocalizations.of(context)!.home_go_pro,
-                    style: TextStyle(
-                      color: isPro ? const Color(0xFF10B981) : const Color(0xFF8B5CF6),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 14),
           // Settings button
           GestureDetector(
             onTap: onSettingsTap,
-            child: Container(
-              width: 36,
-              height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.black.withValues(alpha: 0.04),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color:
-                      isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.04),
-                ),
-              ),
-              child: Icon(
-                LucideIcons.settings,
-                color: isDark ? Colors.white70 : Colors.black87,
-                size: 16,
-              ),
+            child: Icon(
+              LucideIcons.settings,
+              color: isDark ? Colors.white54 : const Color(0xFF8E8E93),
+              size: 20,
             ),
           ),
         ],
       ),
     );
   }
+
 }
 
 class _MinimalCalorieHero extends StatelessWidget {
@@ -3048,7 +2993,7 @@ class _WaterFillCardState extends State<_WaterFillCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
 
             // Fill bar — matches activity card progress bar height
             ClipRRect(
@@ -3071,6 +3016,7 @@ class _WaterFillCardState extends State<_WaterFillCard> {
                 ),
               ),
             ),
+            const Spacer(),
           ],
         ),
       ),
@@ -3114,41 +3060,41 @@ class _MinimalWellnessCard extends StatelessWidget {
                     : const Color(0xFFE8E4DC),
           ),
         ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _WellnessCardHeader(
-                icon: icon,
-                color: color,
-                title: title,
-                isDark: isDark,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _WellnessCardHeader(
+              icon: icon,
+              color: color,
+              title: title,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: AppTypography.titleLarge.copyWith(
+                color: isDark ? Colors.white : const Color(0xFF1C1917),
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                height: 1.1,
               ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: AppTypography.titleLarge.copyWith(
-                  color: isDark ? Colors.white : const Color(0xFF1C1917),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  height: 1.1,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: AppTypography.labelSmall.copyWith(
+                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: AppTypography.labelSmall.copyWith(
-                  color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Container(
-                height: 3,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Container(
+              height: 3,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
@@ -3165,6 +3111,7 @@ class _MinimalWellnessCard extends StatelessWidget {
                 ),
               ),
             ),
+            const Spacer(),
           ],
         ),
       ),
