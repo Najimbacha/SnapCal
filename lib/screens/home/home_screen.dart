@@ -789,7 +789,7 @@ class _MinimalHomeTopBar extends ConsumerWidget {
                 clipBehavior: Clip.antiAlias,
                 child: Image.asset('assets/icon/icon.png', fit: BoxFit.cover),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 6),
               Text(
                 'SnapCal',
                 style: AppTypography.titleMedium.copyWith(
@@ -2935,7 +2935,7 @@ class _WaterFillCardState extends State<_WaterFillCard> {
               title: 'Hydration',
               isDark: isDark,
             ),
-            const SizedBox(height: 4),
+            const Spacer(),
             Text(
               widget.total == 0 ? '0 ml' : '${widget.total} ml',
               style: AppTypography.titleLarge.copyWith(
@@ -2993,9 +2993,7 @@ class _WaterFillCardState extends State<_WaterFillCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-
-            // Fill bar — matches activity card progress bar height
+            const Spacer(),
             ClipRRect(
               borderRadius: BorderRadius.circular(2),
               child: Container(
@@ -3016,7 +3014,6 @@ class _WaterFillCardState extends State<_WaterFillCard> {
                 ),
               ),
             ),
-            const Spacer(),
           ],
         ),
       ),
@@ -3069,7 +3066,7 @@ class _MinimalWellnessCard extends StatelessWidget {
               title: title,
               isDark: isDark,
             ),
-            const SizedBox(height: 4),
+            const Spacer(),
             Text(
               value,
               style: AppTypography.titleLarge.copyWith(
@@ -3092,26 +3089,56 @@ class _MinimalWellnessCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
-            Container(
-              height: 3,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: FractionallySizedBox(
-                widthFactor: progress,
-                heightFactor: 1,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ),
             const Spacer(),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final trackWidth = constraints.maxWidth;
+                return SizedBox(
+                  height: 3,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: FractionallySizedBox(
+                          widthFactor: progress.clamp(0.0, 1.0),
+                          heightFactor: 1,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: (progress * trackWidth).clamp(0.0, trackWidth - 4),
+                        top: -2,
+                        child: Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.4),
+                                blurRadius: 3,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
