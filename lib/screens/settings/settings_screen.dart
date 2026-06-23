@@ -23,6 +23,7 @@ import '../../providers/metrics_provider.dart';
 import '../../providers/planner_provider.dart';
 import '../../data/models/user_settings.dart';
 import '../../widgets/auth_modal.dart';
+import '../home/widgets/activity_health_connect_sheet.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../data/services/report_pdf_service.dart';
 import '../../widgets/app_page_scaffold.dart';
@@ -251,10 +252,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           Consumer(
             builder: (context, ref, _) {
-              final activityAsync = ref.watch(activityProvider);
-              final activityVal = activityAsync.valueOrNull;
+              final activityVal = ref.watch(activityProvider).valueOrNull;
               final isConnected = activityVal?.healthConnected ?? false;
-              final activityNotifier = ref.read(activityProvider.notifier);
               final l10n = AppLocalizations.of(context)!;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,21 +262,12 @@ class SettingsScreen extends ConsumerWidget {
                     title: l10n.settings_step_tracking,
                     accent: AppColors.sky,
                     children: [
-                      _SwitchRow(
+                      _CategoryRow(
                         icon: LucideIcons.watch,
                         accent: AppColors.sky,
                         title: 'Health Connect',
-                        subtitle: isConnected ? 'Connected' : 'Tap to connect',
-                        value: isConnected,
-                        onChanged: (enabled) async {
-                          if (enabled) {
-                            await activityNotifier.authorize();
-                            ref.invalidate(activityProvider);
-                          } else {
-                            await activityNotifier.disconnect();
-                            ref.invalidate(activityProvider);
-                          }
-                        },
+                        subtitle: isConnected ? 'Connected' : 'Not Connected',
+                        onTap: () => showActivityHealthConnectSheet(context),
                       ),
                     ],
                   ),
@@ -2949,62 +2939,210 @@ class _AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return AppPageScaffold(
-      title: l10n.settings_about_title,
-      scrollable: true,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
-      backgroundColor: _settingsBg(context),
-      child: Column(
-        children: [
-          _SettingsSectionFrame(
-            title: l10n.settings_about_title, // "About"
-            accent: AppColors.primary,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        final version = info != null ? 'v${info.version}+${info.buildNumber}' : '';
+        return AppPageScaffold(
+          title: l10n.settings_about_title,
+          scrollable: true,
+          padding: EdgeInsets.zero,
+          backgroundColor: _settingsBg(context),
+          child: Column(
             children: [
-              _SettingRow(
-                icon: LucideIcons.shield,
-                accent: AppColors.primary,
-                title: l10n.settings_privacy,
-                value: l10n.settings_privacy_desc,
-                onTap:
-                    () => launchUrl(
-                      Uri.parse('https://gist.githubusercontent.com/Najimbacha/ab1c18844431efb2c5701e36f1ab0ff0/raw'),
-                      mode: LaunchMode.externalApplication,
+              SizedBox(
+                width: double.infinity,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isDark
+                          ? [const Color(0xFF1A1A2E), const Color(0xFF0D0D1A)]
+                          : [AppColors.primary.withValues(alpha: 0.06), AppColors.primary.withValues(alpha: 0.02)],
                     ),
-              ),
-              _SettingRow(
-                icon: LucideIcons.fileText,
-                accent: AppColors.primary,
-                title: l10n.settings_terms,
-                value: l10n.settings_terms_desc,
-                onTap:
-                    () => launchUrl(
-                      Uri.parse('https://snapcal.app/terms'),
-                      mode: LaunchMode.externalApplication,
-                    ),
-              ),
-              FutureBuilder<PackageInfo>(
-                future: PackageInfo.fromPlatform(),
-                builder: (context, snapshot) {
-                  final info = snapshot.data;
-                  final version = info != null ? 'v${info.version}+${info.buildNumber}' : '';
-                  return _SettingRow(
-                    icon: LucideIcons.sparkles,
-                    accent: AppColors.primary,
-                    title: l10n.settings_about_app,
-                    value: version,
-                    onTap:
-                        () => showAboutDialog(
-                          context: context,
-                          applicationName: info?.appName ?? 'SnapCal',
-                          applicationVersion: info != null ? '${info.version}+${info.buildNumber}' : '',
-                          applicationLegalese: l10n.settings_legalese,
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: isDark ? 0.3 : 0.15),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
-                  );
-                },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(22),
+                          child: Image.asset('assets/icon/icon.png', fit: BoxFit.cover),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'SnapCal',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : const Color(0xFF1C1917),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'AI-Powered Calorie Tracker',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          version,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _AboutLink(
+                      icon: LucideIcons.shield,
+                      title: l10n.settings_privacy,
+                      subtitle: l10n.settings_privacy_desc,
+                      onTap: () => launchUrl(
+                        Uri.parse('https://gist.githubusercontent.com/Najimbacha/ab1c18844431efb2c5701e36f1ab0ff0/raw'),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _AboutLink(
+                      icon: LucideIcons.fileText,
+                      title: l10n.settings_terms,
+                      subtitle: l10n.settings_terms_desc,
+                      onTap: () => launchUrl(
+                        Uri.parse('https://snapcal.app/terms'),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: Text(
+                        'Made with ❤️',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white24 : const Color(0xFFD6D3D1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+class _AboutLink extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _AboutLink({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1A1A1E) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 18, color: AppColors.primary),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF1C1917),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              LucideIcons.chevronRight,
+              size: 18,
+              color: isDark ? Colors.white24 : const Color(0xFFD6D3D1),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -322,7 +322,8 @@ class _LastSyncBadge extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activityAsync = ref.watch(activityProvider);
-    final ago = activityAsync.isLoading ? 'Syncing...' : _ago(null);
+    final lastSynced = activityAsync.valueOrNull?.lastSynced;
+    final ago = activityAsync.isLoading ? 'Syncing...' : _ago(lastSynced);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(

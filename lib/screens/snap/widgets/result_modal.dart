@@ -123,7 +123,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
   @override
   Widget build(BuildContext context) {
     final d = Theme.of(context).brightness == Brightness.dark;
-    final pro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+    final pro = ref.watch(effectiveIsProProvider);
     final b = MediaQuery.paddingOf(context).bottom;
     const h = 240.0;
 

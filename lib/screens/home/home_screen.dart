@@ -2922,50 +2922,17 @@ class _WaterFillCardState extends State<_WaterFillCard> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.total == 0
-                        ? 'Tap to open'
-                        : 'of ${widget.goal} ml',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    widget.onAdd();
-                  },
-                  child: Container(
-                    height: 18,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      color: blue.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: blue.withValues(alpha: 0.16)),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '+250',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: blue,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              widget.total == 0
+                  ? 'Tap to open'
+                  : 'of ${widget.goal} ml',
+              style: AppTypography.labelSmall.copyWith(
+                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const Spacer(),
             TweenAnimationBuilder<double>(
@@ -2981,7 +2948,7 @@ class _WaterFillCardState extends State<_WaterFillCard> {
                       Container(
                         height: 3,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
+                          color: blue.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(99),
                         ),
                       ),
@@ -2990,7 +2957,7 @@ class _WaterFillCardState extends State<_WaterFillCard> {
                         heightFactor: 1,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.7),
+                            color: blue.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(99),
                           ),
                         ),
@@ -3004,11 +2971,11 @@ class _WaterFillCardState extends State<_WaterFillCard> {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: AppColors.primary,
+                              color: blue,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.4),
+                                  color: blue.withValues(alpha: 0.4),
                                   blurRadius: 4,
                                 ),
                               ],

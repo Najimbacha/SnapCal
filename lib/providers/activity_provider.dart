@@ -10,9 +10,10 @@ class ActivitySummary {
   final double activeCalories;
   final List<Workout> workouts;
   final bool healthConnected;
-  const ActivitySummary({this.steps = 0, this.activeCalories = 0, this.workouts = const [], this.healthConnected = false});
-  ActivitySummary copyWith({int? steps, double? activeCalories, List<Workout>? workouts, bool? healthConnected}) =>
-      ActivitySummary(steps: steps ?? this.steps, activeCalories: activeCalories ?? this.activeCalories, workouts: workouts ?? this.workouts, healthConnected: healthConnected ?? this.healthConnected);
+  final DateTime? lastSynced;
+  const ActivitySummary({this.steps = 0, this.activeCalories = 0, this.workouts = const [], this.healthConnected = false, this.lastSynced});
+  ActivitySummary copyWith({int? steps, double? activeCalories, List<Workout>? workouts, bool? healthConnected, DateTime? lastSynced}) =>
+      ActivitySummary(steps: steps ?? this.steps, activeCalories: activeCalories ?? this.activeCalories, workouts: workouts ?? this.workouts, healthConnected: healthConnected ?? this.healthConnected, lastSynced: lastSynced ?? this.lastSynced);
   factory ActivitySummary.empty() => const ActivitySummary();
 }
 
@@ -36,7 +37,7 @@ class Activity extends _$Activity {
       if (!hasPermissions) return ActivitySummary.empty();
       final steps = await _health.getTodaySteps();
       final calories = await _health.getTodayActiveCaloriesBurned(fallbackSteps: steps);
-      return ActivitySummary(steps: steps, activeCalories: calories.calories.toDouble(), healthConnected: true);
+      return ActivitySummary(steps: steps, activeCalories: calories.calories.toDouble(), healthConnected: true, lastSynced: DateTime.now());
     } catch (_) {
       return ActivitySummary.empty();
     }
