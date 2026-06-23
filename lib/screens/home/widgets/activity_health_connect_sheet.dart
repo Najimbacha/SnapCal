@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/theme/theme_colors.dart';
 import '../../../providers/activity_provider.dart';
 import '../../../widgets/app_icon.dart';
 
@@ -13,12 +12,12 @@ void showActivityHealthConnectSheet(BuildContext context) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    showDragHandle: false,
+    useRootNavigator: true,
+    backgroundColor: Colors.transparent,
     builder: (_) => const _SheetScaffold(),
   );
 }
 
-/// Root scaffold that provides the sheet structure with drag handle.
 class _SheetScaffold extends ConsumerWidget {
   const _SheetScaffold();
 
@@ -26,30 +25,34 @@ class _SheetScaffold extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activityVal = ref.watch(activityProvider).valueOrNull;
     final isConnected = activityVal?.healthConnected ?? false;
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _DragHandle(),
-          if (isConnected) const _ConnectedState() else const _DisconnectedState(),
-        ],
-      ),
-    );
-  }
-}
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
-class _DragHandle extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 4),
-      child: Center(
-        child: Container(
-          width: 40, height: 4,
-          decoration: BoxDecoration(
-            color: context.textMutedColor.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(10),
-          ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: Container(
+        padding: EdgeInsets.only(bottom: 16 + bottomPadding),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C1B1F) : const Color(0xFFFEFCF7),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 4),
+              child: Center(
+                child: Container(
+                  width: 36, height: 4,
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ),
+            if (isConnected) const _ConnectedState() else const _DisconnectedState(),
+          ],
         ),
       ),
     );
@@ -65,12 +68,11 @@ class _DisconnectedState extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activityAsync = ref.watch(activityProvider);
     final activityVal = activityAsync.valueOrNull;
-    final healthConnected = activityVal?.healthConnected ?? false;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
       child: Column(
         children: [
-          const SizedBox(height: 12),
           Container(
             width: 72, height: 72,
             alignment: Alignment.center,
@@ -80,11 +82,11 @@ class _DisconnectedState extends ConsumerWidget {
             ),
             child: Icon(AppSymbols.heartPulse, size: 34, color: AppColors.green),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Text(
             'Health Connect',
             style: AppTypography.titleLarge.copyWith(
-              color: context.textPrimaryColor,
+              color: isDark ? Colors.white : const Color(0xFF1C1917),
               fontWeight: FontWeight.w700,
               fontSize: 22,
               letterSpacing: -0.3,
@@ -95,13 +97,13 @@ class _DisconnectedState extends ConsumerWidget {
             'Automatically sync your steps,\nworkouts, and calories.',
             textAlign: TextAlign.center,
             style: AppTypography.bodyMedium.copyWith(
-              color: context.textSecondaryColor,
+              color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
               height: 1.5,
               fontWeight: FontWeight.w500,
               fontSize: 15,
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           _StatusBadge(activityVal: activityVal, isLoading: activityAsync.isLoading),
           const SizedBox(height: 20),
           SizedBox(
@@ -146,6 +148,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     String label;
     Color color;
     if (activityVal?.healthConnected == true) {
@@ -153,10 +156,10 @@ class _StatusBadge extends StatelessWidget {
       color = AppColors.green;
     } else if (isLoading) {
       label = 'Checking...';
-      color = context.textMutedColor;
+      color = isDark ? Colors.white38 : const Color(0xFFB4AFA8);
     } else {
       label = 'Not Connected';
-      color = context.textMutedColor;
+      color = isDark ? Colors.white38 : const Color(0xFFB4AFA8);
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -188,22 +191,22 @@ class _ConnectedState extends ConsumerWidget {
     final steps = activityVal?.steps ?? 0;
     final calories = (activityVal?.activeCalories ?? 0).toInt();
     final stepProgress = steps / math.max(10000, 1);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
       child: Column(
         children: [
-          const SizedBox(height: 8),
           Text(
             'Activity',
             style: AppTypography.titleLarge.copyWith(
-              color: context.textPrimaryColor,
+              color: isDark ? Colors.white : const Color(0xFF1C1917),
               fontWeight: FontWeight.w700,
               fontSize: 22,
               letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           RepaintBoundary(
             child: _ActivityRing(progress: stepProgress, steps: steps),
           ),
@@ -211,7 +214,7 @@ class _ConnectedState extends ConsumerWidget {
           Text(
             'Steps Today',
             style: AppTypography.bodyMedium.copyWith(
-              color: context.textSecondaryColor,
+              color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
               fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
@@ -220,7 +223,7 @@ class _ConnectedState extends ConsumerWidget {
           Text(
             '$calories kcal burned',
             style: AppTypography.bodyMedium.copyWith(
-              color: context.textSecondaryColor,
+              color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
               fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
@@ -230,7 +233,7 @@ class _ConnectedState extends ConsumerWidget {
             Text(
               '${(steps / 100).round()} min walk',
               style: AppTypography.bodySmall.copyWith(
-                color: context.textMutedColor,
+                color: isDark ? Colors.white24 : const Color(0xFFD6D3D1),
                 fontWeight: FontWeight.w500,
                 fontSize: 13,
               ),
@@ -251,6 +254,7 @@ class _ActivityRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final clamped = progress.clamp(0.0, 1.0);
     return SizedBox(
       width: 180, height: 180,
@@ -261,7 +265,7 @@ class _ActivityRing extends StatelessWidget {
             child: CircularProgressIndicator(
               value: 1, strokeWidth: 8, strokeCap: StrokeCap.round,
               valueColor: AlwaysStoppedAnimation<Color>(
-                context.textMutedColor.withValues(alpha: 0.12),
+                (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -282,7 +286,7 @@ class _ActivityRing extends StatelessWidget {
               Text(
                 _formatNumber(steps),
                 style: AppTypography.displaySmall.copyWith(
-                  color: context.textPrimaryColor,
+                  color: isDark ? Colors.white : const Color(0xFF1C1917),
                   fontWeight: FontWeight.w800,
                   fontSize: 38,
                   letterSpacing: -1.2,
@@ -293,7 +297,7 @@ class _ActivityRing extends StatelessWidget {
               Text(
                 'steps',
                 style: AppTypography.bodySmall.copyWith(
-                  color: context.textMutedColor,
+                  color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),
@@ -316,18 +320,19 @@ class _LastSyncBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final activityAsync = ref.watch(activityProvider);
     final ago = activityAsync.isLoading ? 'Syncing...' : _ago(null);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: context.textMutedColor.withValues(alpha: 0.07),
+        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         'Last synced $ago',
         style: TextStyle(
-          color: context.textMutedColor,
+          color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),

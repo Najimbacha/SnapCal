@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -2966,7 +2967,7 @@ class _AboutScreen extends StatelessWidget {
                 value: l10n.settings_privacy_desc,
                 onTap:
                     () => launchUrl(
-                      Uri.parse('https://snapcal.app/privacy'),
+                      Uri.parse('https://gist.githubusercontent.com/Najimbacha/ab1c18844431efb2c5701e36f1ab0ff0/raw'),
                       mode: LaunchMode.externalApplication,
                     ),
               ),
@@ -2977,22 +2978,29 @@ class _AboutScreen extends StatelessWidget {
                 value: l10n.settings_terms_desc,
                 onTap:
                     () => launchUrl(
-                      Uri.parse('https://snapcal.app/terms'),
+                      Uri.parse('https://github.com/Najimbacha/SnapCal/blob/master/TERMS.md'),
                       mode: LaunchMode.externalApplication,
                     ),
               ),
-              _SettingRow(
-                icon: LucideIcons.sparkles,
-                accent: AppColors.primary,
-                title: l10n.settings_about_app,
-                value: 'v1.0.0',
-                onTap:
-                    () => showAboutDialog(
-                      context: context,
-                      applicationName: 'SnapCal',
-                      applicationVersion: '1.0.0',
-                      applicationLegalese: l10n.settings_legalese,
-                    ),
+              FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snapshot) {
+                  final info = snapshot.data;
+                  final version = info != null ? 'v${info.version}+${info.buildNumber}' : '';
+                  return _SettingRow(
+                    icon: LucideIcons.sparkles,
+                    accent: AppColors.primary,
+                    title: l10n.settings_about_app,
+                    value: version,
+                    onTap:
+                        () => showAboutDialog(
+                          context: context,
+                          applicationName: info?.appName ?? 'SnapCal',
+                          applicationVersion: info != null ? '${info.version}+${info.buildNumber}' : '',
+                          applicationLegalese: l10n.settings_legalese,
+                        ),
+                  );
+                },
               ),
             ],
           ),
