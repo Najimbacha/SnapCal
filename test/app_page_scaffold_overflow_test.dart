@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:snapcal/data/services/connectivity_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/widgets/app_page_scaffold.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:snapcal/providers/connectivity_provider.dart';
 
 void main() {
   testWidgets(
@@ -14,26 +15,31 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(
-        _app(
-          child: AppPageScaffold(
-            title: 'Compact',
-            scrollable: true,
-            bottomBar: const _BottomBar(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: List.generate(
-                14,
-                (index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    height: 56,
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+        ProviderScope(
+          overrides: [
+            connectivityProvider.overrideWith((ref) => Stream.value(<ConnectivityResult>[])),
+          ],
+          child: _app(
+            child: AppPageScaffold(
+              title: 'Compact',
+              scrollable: true,
+              bottomBar: const _BottomBar(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: List.generate(
+                  14,
+                  (index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Container(
+                      height: 56,
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text('Row $index'),
                     ),
-                    child: Text('Row $index'),
                   ),
                 ),
               ),
@@ -54,19 +60,24 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      _app(
-        textScaler: const TextScaler.linear(1.35),
-        child: AppPageScaffold(
-          title: 'Large Text',
-          scrollable: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: List.generate(
-              8,
-              (index) => const Padding(
-                padding: EdgeInsets.only(bottom: 16),
-                child: Text(
-                  'Long setting label that should wrap instead of causing a bottom overflow.',
+      ProviderScope(
+        overrides: [
+          connectivityProvider.overrideWith((ref) => Stream.value(<ConnectivityResult>[])),
+        ],
+        child: _app(
+          textScaler: const TextScaler.linear(1.35),
+          child: AppPageScaffold(
+            title: 'Large Text',
+            scrollable: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: List.generate(
+                8,
+                (index) => const Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    'Long setting label that should wrap instead of causing a bottom overflow.',
+                  ),
                 ),
               ),
             ),
@@ -85,21 +96,18 @@ Widget _app({required Widget child, TextScaler? textScaler}) {
     routes: [GoRoute(path: '/', builder: (context, state) => child)],
   );
 
-  return ChangeNotifierProvider(
-    create: (_) => ConnectivityService(),
-    child: MaterialApp.router(
-      routerConfig: router,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      builder: (context, appChild) {
-        return MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: textScaler ?? TextScaler.noScaling),
-          child: appChild!,
-        );
-      },
-    ),
+  return MaterialApp.router(
+    routerConfig: router,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    builder: (context, appChild) {
+      return MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: textScaler ?? TextScaler.noScaling),
+        child: appChild!,
+      );
+    },
   );
 }
 

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
-import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/screens/log/models/log_metric_models.dart';
 import 'package:snapcal/screens/log/widgets/health_metric_dashboard.dart';
 
@@ -84,14 +82,11 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: ChangeNotifierProvider<SettingsProvider>.value(
-              value: FakeSettingsProvider(isPro: true),
-              child: HealthMetricDashboard(
-                title: 'Key metrics',
-                actionLabel: 'Customize',
-                cards: cards,
-                onMetricTap: (type) => tappedType = type,
-              ),
+            child: HealthMetricDashboard(
+              title: 'Key metrics',
+              actionLabel: 'Customize',
+              cards: cards,
+              onMetricTap: (type) => tappedType = type,
             ),
           ),
         ),
@@ -102,18 +97,4 @@ void main() {
     await tester.tap(find.text(LogMetricType.water.id));
     expect(tappedType, LogMetricType.water);
   });
-}
-
-class FakeSettingsProvider extends ChangeNotifier implements SettingsProvider {
-  final bool _isPro;
-  FakeSettingsProvider({bool isPro = false}) : _isPro = isPro;
-
-  @override
-  bool get isPro => _isPro;
-
-  @override
-  String get languageCode => 'en';
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
-import 'package:snapcal/data/models/user_settings.dart';
-import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/data/services/gemini_service.dart';
+import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/screens/snap/widgets/result_modal.dart';
 
 void main() {
@@ -24,13 +23,15 @@ void main() {
     void Function(List<NutritionResult>)? onSaveAll,
     bool isPro = false,
   }) {
-    return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: ChangeNotifierProvider<SettingsProvider>.value(
-          value: FakeSettingsProvider(isPro: isPro),
-          child: ResultModal(
+    return ProviderScope(
+      overrides: [
+        effectiveIsProProvider.overrideWith((ref) => isPro),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ResultModal(
             result: result,
             results: results,
             onSave: onSave ?? (_, _, _, _, _, _) {},
@@ -116,7 +117,6 @@ void main() {
       ),
     );
 
-    // Tap the food card to expand it and reveal portion chips
     await tester.tap(find.text('Rice'));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
@@ -251,44 +251,45 @@ void main() {
 
     await setupTester(tester);
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Builder(
-          builder: (context) {
-            return Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () {
-                    showModalBottomSheet<void>(
-                      context: context,
-                      isScrollControlled: true,
-                      useRootNavigator: true,
-                      backgroundColor: Colors.transparent,
-                      builder:
-                          (context) =>
-                              ChangeNotifierProvider<SettingsProvider>.value(
-                                value: FakeSettingsProvider(),
-                                child: ResultModal(
-                                  result: NutritionResult(
-                                    foodName: 'Rice',
-                                    portion: '150.0g',
-                                    calories: 160,
-                                    protein: 4,
-                                    carbs: 35,
-                                    fat: 1,
-                                  ),
-                                  onSave: (_, _, _, _, _, _) => saved = true,
-                                  onCancel: () {},
-                                ),
+      ProviderScope(
+        overrides: [
+          effectiveIsProProvider.overrideWith((ref) => false),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () {
+                      showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        useRootNavigator: true,
+                        backgroundColor: Colors.transparent,
+                        builder:
+                            (context) => ResultModal(
+                              result: NutritionResult(
+                                foodName: 'Rice',
+                                portion: '150.0g',
+                                calories: 160,
+                                protein: 4,
+                                carbs: 35,
+                                fat: 1,
                               ),
-                    );
-                  },
-                  child: const Text('Open result'),
+                              onSave: (_, _, _, _, _, _) => saved = true,
+                              onCancel: () {},
+                            ),
+                      );
+                    },
+                    child: const Text('Open result'),
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -305,21 +306,4 @@ void main() {
     expect(saved, isTrue);
     expect(find.textContaining('Add To Log'), findsNothing);
   });
-}
-
-class FakeSettingsProvider extends ChangeNotifier implements SettingsProvider {
-  final bool _isPro;
-  FakeSettingsProvider({bool isPro = false}) : _isPro = isPro;
-
-  @override
-  bool get isPro => _isPro;
-
-  @override
-  String get languageCode => 'en';
-
-  @override
-  UserSettings get settings => UserSettings.defaults();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
