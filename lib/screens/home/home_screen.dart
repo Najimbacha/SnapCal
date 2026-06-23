@@ -847,33 +847,26 @@ class _MinimalHomeTopBar extends ConsumerWidget {
           // Streak Flame Badge (only if active)
           if (streak >= 0) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? Colors.orange.withValues(alpha: 0.12)
-                        : const Color(0xFFFFF3E0),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color:
-                      isDark
-                          ? Colors.orange.withValues(alpha: 0.25)
-                          : Colors.orange.withValues(alpha: 0.3),
-                  width: 1,
-                ),
+                color: Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(LucideIcons.flame, color: Colors.orange, size: 14),
+                  Icon(
+                    LucideIcons.flame,
+                    color: isDark ? Colors.orange[300] : const Color(0xFFE65100),
+                    size: 13,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '$streak',
                     style: TextStyle(
-                      color:
-                          isDark ? Colors.orange[300] : const Color(0xFFE65100),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.orange[300] : const Color(0xFFE65100),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -885,40 +878,20 @@ class _MinimalHomeTopBar extends ConsumerWidget {
           AppScaleTap(
             onTap: isPro ? onSettingsTap : onProTap,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                gradient:
+                color:
                     isPro
-                        ? const LinearGradient(
-                          colors: [
-                            Color(0xFF10B981),
-                            Color(0xFF059669),
-                          ], // Emerald
-                        )
-                        : const LinearGradient(
-                          colors: [
-                            Color(0xFF8B5CF6),
-                            Color(0xFFEC4899),
-                          ], // Gemini Gradient
-                        ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: (isPro
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFF8B5CF6))
-                        .withValues(alpha: 0.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                        ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                        : const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     isPro ? LucideIcons.gem : LucideIcons.crown,
-                    color: Colors.white,
+                    color: isPro ? const Color(0xFF10B981) : const Color(0xFF8B5CF6),
                     size: 12,
                   ),
                   const SizedBox(width: 4),
@@ -926,11 +899,10 @@ class _MinimalHomeTopBar extends ConsumerWidget {
                     isPro
                         ? AppLocalizations.of(context)!.home_pro_badge
                         : AppLocalizations.of(context)!.home_go_pro,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: isPro ? const Color(0xFF10B981) : const Color(0xFF8B5CF6),
                       fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -959,7 +931,7 @@ class _MinimalHomeTopBar extends ConsumerWidget {
                 ),
               ),
               child: Icon(
-                LucideIcons.settings2,
+                LucideIcons.settings,
                 color: isDark ? Colors.white70 : Colors.black87,
                 size: 16,
               ),
@@ -1081,7 +1053,7 @@ class _MinimalCalorieHero extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 10),
         const _MinimalSectionDivider(),
       ],
     );
@@ -2902,17 +2874,18 @@ class _SecondaryDashboardGrid extends StatelessWidget {
             : '$burnedCalories active kcal';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
+      padding: const EdgeInsets.fromLTRB(22, 6, 22, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _MinimalSectionLabel(text: l10n.home_daily_wellness),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 100,
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 110,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
                   child: _WaterFillCard(
                     total: waterTotal,
                     goal: waterGoal,
@@ -2920,11 +2893,8 @@ class _SecondaryDashboardGrid extends StatelessWidget {
                     onAdd: onWaterAdd,
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SizedBox(
-                  height: 100,
+                const SizedBox(width: 12),
+                Expanded(
                   child: _MinimalWellnessCard(
                     icon: LucideIcons.footprints,
                     color: Theme.of(context).colorScheme.primary,
@@ -2935,8 +2905,8 @@ class _SecondaryDashboardGrid extends StatelessWidget {
                     onTap: onActivityTap,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -3023,23 +2993,26 @@ class _WaterFillCardState extends State<_WaterFillCard> {
             const SizedBox(height: 4),
             Text(
               widget.total == 0 ? '0 ml' : '${widget.total} ml',
-              style: AppTypography.titleMedium.copyWith(
+              style: AppTypography.titleLarge.copyWith(
                 color: isDark ? Colors.white : const Color(0xFF1C1917),
                 fontWeight: FontWeight.w700,
-                fontSize: 13,
+                fontSize: 16,
+                height: 1.1,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 1),
+            const SizedBox(height: 2),
             Row(
               children: [
                 Expanded(
                   child: Text(
                     widget.total == 0
                         ? 'Tap to open'
-                        : 'Goal: ${widget.goal} ml',
+                        : 'of ${widget.goal} ml',
                     style: AppTypography.labelSmall.copyWith(
                       color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -3141,38 +3114,41 @@ class _MinimalWellnessCard extends StatelessWidget {
                     : const Color(0xFFE8E4DC),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _WellnessCardHeader(
-              icon: icon,
-              color: color,
-              title: title,
-              isDark: isDark,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: AppTypography.titleMedium.copyWith(
-                color: isDark ? Colors.white : const Color(0xFF1C1917),
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _WellnessCardHeader(
+                icon: icon,
+                color: color,
+                title: title,
+                isDark: isDark,
               ),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              subtitle,
-              style: AppTypography.labelSmall.copyWith(
-                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: AppTypography.titleLarge.copyWith(
+                  color: isDark ? Colors.white : const Color(0xFF1C1917),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  height: 1.1,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Container(
-              height: 3,
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: AppTypography.labelSmall.copyWith(
+                  color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Container(
+                height: 3,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),

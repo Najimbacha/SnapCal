@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'core/theme/app_theme.dart';
 import 'router.dart';
@@ -19,6 +20,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   debugPrint('🏗️ MAIN: Starting App...');
   await AppInitializer.preInit();
+  GoogleFonts.dmSans();
+  await GoogleFonts.pendingFonts();
   runApp(const ProviderScope(child: SnapCalApp()));
 }
 

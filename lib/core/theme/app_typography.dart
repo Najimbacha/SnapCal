@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// SnapCal Typography - Expressive Material 3
 class AppTypography {
   AppTypography._();
 
-  static const TextStyle _font = TextStyle();
+  static final TextStyle _font = GoogleFonts.dmSans();
 
   // Display - For large calorie numbers
   static TextStyle get displayLarge => _font.copyWith(
