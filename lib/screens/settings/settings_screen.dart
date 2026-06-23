@@ -2978,7 +2978,7 @@ class _AboutScreen extends StatelessWidget {
                 value: l10n.settings_terms_desc,
                 onTap:
                     () => launchUrl(
-                      Uri.parse('https://github.com/Najimbacha/SnapCal/blob/master/TERMS.md'),
+                      Uri.parse('https://snapcal.app/terms'),
                       mode: LaunchMode.externalApplication,
                     ),
               ),
