@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/water_provider.dart';
@@ -17,13 +18,13 @@ void showHydrationSheet(BuildContext context) {
   );
 }
 
-class _HydrationSheet extends StatefulWidget {
+class _HydrationSheet extends ConsumerStatefulWidget {
   const _HydrationSheet();
   @override
-  State<_HydrationSheet> createState() => _HydrationSheetState();
+  ConsumerState<_HydrationSheet> createState() => _HydrationSheetState();
 }
 
-class _HydrationSheetState extends State<_HydrationSheet> with TickerProviderStateMixin {
+class _HydrationSheetState extends ConsumerState<_HydrationSheet> with TickerProviderStateMixin {
   late AnimationController _waveCtrl;
   late AnimationController _riseCtrl;
   late Animation<double> _riseAnim;
@@ -45,8 +46,8 @@ class _HydrationSheetState extends State<_HydrationSheet> with TickerProviderSta
     _waveCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
     _riseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
     _riseAnim = CurvedAnimation(parent: _riseCtrl, curve: Curves.easeOutCubic);
-    final water = context.read<WaterProvider>();
-    _fromMl = water.todaysWaterMl;
+    final waterState = ref.read(waterProvider).valueOrNull;
+    _fromMl = waterState?.todayTotal ?? 0;
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) => _updateTimeAgo());
   }
 
@@ -66,11 +67,12 @@ class _HydrationSheetState extends State<_HydrationSheet> with TickerProviderSta
     setState(() => _timeAgo = diff.inMinutes < 1 ? 'Just now' : diff.inMinutes < 60 ? '${diff.inMinutes}min ago' : '${diff.inMinutes ~/ 60}h ago');
   }
 
-  Future<void> _addWater(WaterProvider water) async {
+  Future<void> _addWater() async {
     if (_isAdding) return;
     HapticFeedback.mediumImpact();
-    setState(() { _isAdding = true; _fromMl = water.todaysWaterMl; });
-    await water.addWater(_selectedMl);
+    final state = ref.read(waterProvider).valueOrNull;
+    setState(() { _isAdding = true; _fromMl = state?.todayTotal ?? 0; });
+    await ref.read(waterProvider.notifier).addWater(_selectedMl);
     if (!mounted) return;
     _lastDrinkTime = DateTime.now();
     _updateTimeAgo();
@@ -82,18 +84,21 @@ class _HydrationSheetState extends State<_HydrationSheet> with TickerProviderSta
     _lastAddMl = _selectedMl;
     _undoTimer = Timer(const Duration(seconds: 6), () { if (mounted) setState(() => _lastAddMl = null); });
     if (mounted) setState(() {});
-    if (water.todaysWaterMl >= water.goal) HapticFeedback.heavyImpact();
+    final newState = ref.read(waterProvider).valueOrNull;
+    if (newState != null && newState.todayTotal >= newState.goal) HapticFeedback.heavyImpact();
   }
 
-  Future<void> _undoAdd(WaterProvider water) async {
+  Future<void> _undoAdd() async {
     if (_lastAddMl == null || _isAdding) return;
     _undoTimer?.cancel();
     _lastAddMl = null;
     HapticFeedback.lightImpact();
-    setState(() { _isAdding = true; _fromMl = water.todaysWaterMl; });
-    await water.removeWater(0);
+    final state = ref.read(waterProvider).valueOrNull;
+    setState(() { _isAdding = true; _fromMl = state?.todayTotal ?? 0; });
+    await ref.read(waterProvider.notifier).removeWater(0);
     if (!mounted) return;
-    if (water.todaysWaterMl <= 0) { _lastDrinkTime = null; _timeAgo = ''; }
+    final newState = ref.read(waterProvider).valueOrNull;
+    if (newState != null && newState.todayTotal <= 0) { _lastDrinkTime = null; _timeAgo = ''; }
     _riseCtrl.forward(from: 0);
     await Future.delayed(const Duration(milliseconds: 700));
     if (!mounted) return;
@@ -105,10 +110,11 @@ class _HydrationSheetState extends State<_HydrationSheet> with TickerProviderSta
     final b = MediaQuery.of(context).viewInsets.bottom;
     final d = Theme.of(context).brightness == Brightness.dark;
 
-    return Consumer<WaterProvider>(
-      builder: (context, water, _) {
-        final actual = water.todaysWaterMl;
-        final goal = water.goal;
+    return Consumer(
+      builder: (ctx, ref, _) {
+        final waterState = ref.watch(waterProvider).valueOrNull ?? const WaterState(todayTotal: 0);
+        final actual = waterState.todayTotal;
+        final goal = waterState.goal;
         final display = _riseCtrl.isAnimating ? _fromMl + (actual - _fromMl) * _riseAnim.value : actual.toDouble();
         final p = (display / goal.clamp(1, goal)).clamp(0.0, 1.0);
 
@@ -140,7 +146,7 @@ class _HydrationSheetState extends State<_HydrationSheet> with TickerProviderSta
                           child: Container(
                             width: 32, height: 32,
                             decoration: BoxDecoration(color: (d ? Colors.white : Colors.black).withValues(alpha: 0.06), borderRadius: BorderRadius.circular(8)),
-                            child: Icon(Icons.close_rounded, size: 16, color: d ? Colors.white54 : const Color(0xFF8E8E93)),
+                            child: Icon(LucideIcons.x, size: 16, color: d ? Colors.white54 : const Color(0xFF8E8E93)),
                           ),
                         ),
                         const Spacer(),
@@ -170,25 +176,42 @@ class _HydrationSheetState extends State<_HydrationSheet> with TickerProviderSta
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          children: _presets.map((ml) => Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: (d ? Colors.white : Colors.black).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: (d ? Colors.white : Colors.black).withValues(alpha: 0.12), width: 0.5),
+                          ),
+                          child: Row(
+                            children: _presets.map((ml) => Expanded(
                               child: GestureDetector(
                                 onTap: () { setState(() => _selectedMl = ml); HapticFeedback.selectionClick(); },
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  height: 44,
+                                  duration: const Duration(milliseconds: 150),
+                                  margin: const EdgeInsets.all(2),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
                                   decoration: BoxDecoration(
-                                    color: _selectedMl == ml ? AppColors.primary : (d ? Colors.white.withValues(alpha: 0.06) : Colors.white),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: _selectedMl == ml ? Colors.transparent : (d ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFC7C7CC).withValues(alpha: 0.3))),
+                                    color: _selectedMl == ml ? (d ? const Color(0xFF2C2C2E) : Colors.white) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: _selectedMl == ml ? [
+                                      BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1)),
+                                    ] : null,
                                   ),
-                                  child: Center(child: Text('$ml ml', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _selectedMl == ml ? Colors.white : (d ? Colors.white54 : const Color(0xFF1C1C1E))))),
+                                  child: Center(
+                                    child: Text('$ml ml',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: _selectedMl == ml
+                                            ? (d ? Colors.white : const Color(0xFF1C1C1E))
+                                            : (d ? Colors.white38 : const Color(0xFF8E8E93)),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          )).toList(),
+                            )).toList(),
+                          ),
                         ),
                         const SizedBox(height: 10),
                         SizedBox(
@@ -198,8 +221,8 @@ class _HydrationSheetState extends State<_HydrationSheet> with TickerProviderSta
                               color: AppColors.primary,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: ElevatedButton(
-                              onPressed: _isAdding ? null : () => _addWater(water),
+                              child: ElevatedButton(
+                              onPressed: _isAdding ? null : () => _addWater(),
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white, shadowColor: Colors.transparent, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                               child: _isAdding ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('Add $_selectedMl ml', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                             ),
@@ -208,14 +231,14 @@ class _HydrationSheetState extends State<_HydrationSheet> with TickerProviderSta
                         if (_lastAddMl != null) ...[
                           const SizedBox(height: 6),
                           GestureDetector(
-                            onTap: () => _undoAdd(water),
+                            onTap: () => _undoAdd(),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.undo_rounded, size: 12, color: AppColors.primary),
+                                  Icon(LucideIcons.undo2, size: 12, color: AppColors.primary),
                                   const SizedBox(width: 4),
                                   Text('Undo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
                                 ],
@@ -284,3 +307,5 @@ class _WaterWavePainter extends CustomPainter {
   @override
   bool shouldRepaint(_WaterWavePainter old) => old.progress != progress || old.wavePhase != wavePhase;
 }
+
+

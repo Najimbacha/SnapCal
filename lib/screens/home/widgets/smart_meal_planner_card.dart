@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../data/models/meal_slot.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../widgets/ui_blocks.dart';
@@ -67,7 +68,7 @@ class SmartMealPlannerCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.calendar_today_rounded, color: p, size: 15),
+                          Icon(LucideIcons.calendarDays, color: p, size: 15),
                           const SizedBox(width: 8),
                           Text("Smart Meal Planner", style: TextStyle(color: titleC, fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: -0.2)),
                           const SizedBox(width: 8),
@@ -87,7 +88,7 @@ class SmartMealPlannerCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.refresh_rounded, color: p, size: 20),
+                  icon: Icon(LucideIcons.refreshCw, color: p, size: 20),
                   onPressed: onRefreshTap,
                   style: IconButton.styleFrom(backgroundColor: refreshBg, padding: const EdgeInsets.all(8)),
                 ),
@@ -150,7 +151,7 @@ class SmartMealPlannerCard extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 16),
+                            Icon(LucideIcons.checkCircle2, color: Colors.white, size: 16),
                             const SizedBox(width: 6),
                             const Text("Log this meal", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                           ],
@@ -211,7 +212,7 @@ class SmartMealPlannerCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.lock_rounded, color: p, size: 15),
+                    Icon(LucideIcons.lock, color: p, size: 15),
                     const SizedBox(width: 8),
                     Text("Unlock Full Meal Plans", style: TextStyle(color: isDark ? const Color(0xFFFAFAFA) : const Color(0xFF0F172A), fontWeight: FontWeight.w800, fontSize: 14)),
                   ],
@@ -252,7 +253,7 @@ class SmartMealPlannerCard extends StatelessWidget {
       bg = isDark ? const Color(0xFF0F0F18) : const Color(0xFFF8FAFC);
       border = BorderSide(color: isDark ? const Color(0xFF1A1A24) : const Color(0xFFE2E8F0));
       iconDeco = BoxDecoration(color: isDark ? const Color(0xFF1A1A24) : const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10));
-      icon = Icons.check_rounded;
+      icon = LucideIcons.check;
       iconC = p;
       nameC = isDark ? const Color(0xFFFAFAFA) : const Color(0xFF0F172A);
       metaC = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF475569);
@@ -265,7 +266,7 @@ class SmartMealPlannerCard extends StatelessWidget {
         gradient: LinearGradient(colors: [p, p.withValues(alpha: 0.7)]),
         borderRadius: BorderRadius.circular(10),
       );
-      icon = Icons.restaurant_rounded;
+      icon = LucideIcons.utensils;
       iconC = Colors.white;
       nameC = p;
       metaC = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF475569);
@@ -276,7 +277,7 @@ class SmartMealPlannerCard extends StatelessWidget {
       bg = isDark ? const Color(0xFF0A0A0F) : const Color(0xFFF9FAFB);
       border = BorderSide(color: isDark ? const Color(0xFF1A1A22) : const Color(0xFFE2E8F0));
       iconDeco = BoxDecoration(color: isDark ? const Color(0xFF1A1A22) : const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10));
-      icon = Icons.nightlight_round;
+      icon = LucideIcons.moon;
       iconC = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF64748B);
       nameC = isDark ? const Color(0xFFD4D4D8) : const Color(0xFF334155);
       metaC = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF64748B);
@@ -342,7 +343,7 @@ class _SwapButtonState extends State<_SwapButton> with SingleTickerProviderState
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            RotationTransition(turns: _ctrl, child: Icon(Icons.refresh_rounded, color: widget.primary, size: 16)),
+            RotationTransition(turns: _ctrl, child: Icon(LucideIcons.refreshCw, color: widget.primary, size: 16)),
             const SizedBox(width: 4),
             Text("Swap", style: TextStyle(color: widget.primary, fontWeight: FontWeight.w600, fontSize: 13)),
           ],
@@ -373,7 +374,7 @@ class MacroInsightCard extends StatelessWidget {
           Container(
             width: 36, height: 36,
             decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: p.withValues(alpha: 0.2))),
-            child: Center(child: Icon(Icons.lightbulb_rounded, color: p, size: 20)),
+            child: Center(child: Icon(LucideIcons.lightbulb, color: p, size: 20)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -391,3 +392,6 @@ class MacroInsightCard extends StatelessWidget {
     );
   }
 }
+
+
+

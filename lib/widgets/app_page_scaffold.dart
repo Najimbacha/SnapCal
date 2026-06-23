@@ -4,14 +4,15 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_typography.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/responsive_utils.dart';
-import '../data/services/connectivity_service.dart';
+import '../providers/connectivity_provider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'ui_blocks.dart';
 
-class AppPageScaffold extends StatelessWidget {
+class AppPageScaffold extends ConsumerWidget {
   final String title;
   final String? subtitle;
   final Widget child;
@@ -52,7 +53,7 @@ class AppPageScaffold extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final pageBackground = backgroundColor ?? colorScheme.surface;
     final hPadding = Responsive.hPadding(context);
@@ -72,9 +73,7 @@ class AppPageScaffold extends StatelessWidget {
             )
             : Padding(padding: resolvedPadding, child: child);
 
-    final isOnline = context.select<ConnectivityService, bool>(
-      (s) => s.isOnline,
-    );
+    final isOnline = ref.watch(connectivityProvider).valueOrNull?.isNotEmpty ?? false;
 
     final statusBarTopInset =
         extendBehindStatusBar ? MediaQuery.of(context).padding.top : 0.0;

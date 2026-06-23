@@ -4,13 +4,13 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_provider.dart';
 import '../l10n/generated/app_localizations.dart';
 
 enum PremiumPromptStyle { inline, glass, bento, mini }
 
-class PremiumPromptCard extends StatelessWidget {
+class PremiumPromptCard extends ConsumerWidget {
   final String title;
   final String subtitle;
   final String buttonText;
@@ -31,8 +31,8 @@ class PremiumPromptCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (context.select<SettingsProvider, bool>((s) => s.isPro)) return const SizedBox.shrink();
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(settingsProvider).valueOrNull?.isPro == true) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -99,7 +99,7 @@ class PremiumPromptCard extends StatelessWidget {
               if (onDismiss != null)
                 IconButton(
                   onPressed: onDismiss,
-                  icon: const Icon(LucideIcons.x, size: 18),
+                  icon: Icon(LucideIcons.x, size: 18),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   color: (isDark ? Colors.white : Colors.black).withValues(
@@ -393,3 +393,4 @@ class _CtaButton extends StatelessWidget {
     );
   }
 }
+

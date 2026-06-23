@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/widgets/app_icon.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
@@ -9,6 +9,7 @@ import '../../core/theme/theme_colors.dart';
 import '../../data/services/calorie_onboarding_service.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/metrics_provider.dart';
+import '../../providers/auth_notifier_provider.dart';
 import 'onboarding_draft.dart';
 import 'onboarding_components.dart';
 import 'onboarding_pace_calculator.dart';
@@ -19,14 +20,14 @@ import 'pace_step.dart';
 import 'activity_step.dart';
 import 'plan_result_step.dart';
 
-class OnboardingFlowScreen extends StatefulWidget {
+class OnboardingFlowScreen extends ConsumerStatefulWidget {
   const OnboardingFlowScreen({super.key});
 
   @override
-  State<OnboardingFlowScreen> createState() => _OnboardingFlowScreenState();
+  ConsumerState<OnboardingFlowScreen> createState() => _OnboardingFlowScreenState();
 }
 
-class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
+class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   int _stepIndex = 0;
   late OnboardingDraft _draft;
   bool _isCompleting = false;
@@ -124,7 +125,7 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
       return;
     }
 
-    final languageCode = context.read<SettingsProvider>().languageCode;
+    final languageCode = ref.read(settingsProvider).valueOrNull?.languageCode ?? 'en';
 
     final needsPace =
         _draft.goalType == GoalType.loseWeight ||
@@ -182,8 +183,8 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
     setState(() => _isCompleting = true);
     HapticFeedback.heavyImpact();
 
-    final settings = context.read<SettingsProvider>();
-    final metrics = context.read<MetricsProvider>();
+    final settings = ref.read(settingsProvider.notifier);
+    final metrics = ref.read(bodyMetricsProvider.notifier);
 
     final needsPace =
         _draft.goalType == GoalType.loseWeight ||

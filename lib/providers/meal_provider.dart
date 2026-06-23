@@ -1,53 +1,47 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/meal.dart';
 import '../data/repositories/meal_repository.dart';
 import '../core/services/app_lifecycle_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/gemini_service.dart';
-import '../data/services/pro_feature_service.dart';
-import '../core/state/async_ui_state.dart';
+import 'repository_providers.dart';
 import 'settings_provider.dart';
-import 'planner_provider.dart';
 
-/// Provider for managing meal state
-class MealProvider with ChangeNotifier {
-  final MealRepository _repository;
+part 'meal_provider.g.dart';
+
+/// Stream provider for today's meals
+@Riverpod(keepAlive: true)
+Stream<List<Meal>> todaysMeals(TodaysMealsRef ref) async* {
+  final repo = await ref.watch(mealRepositoryProvider.future);
+  yield repo.getTodaysMeals();
+  yield* repo.todaysMealsStream;
+}
+
+/// Current selected date for browsing
+@Riverpod(keepAlive: true)
+class SelectedDate extends _$SelectedDate {
+  @override
+  String build() => app_date.DateUtils.getTodayString();
+
+  void select(String date) => state = date;
+  void goToPreviousDay() => state = app_date.DateUtils.getPreviousDay(state);
+  void goToNextDay() => state = app_date.DateUtils.getNextDay(state);
+  void goToToday() => state = app_date.DateUtils.getTodayString();
+}
+
+@Riverpod(keepAlive: true)
+class MealLog extends _$MealLog {
   final Uuid _uuid = const Uuid();
-
-  List<Meal> _todaysMeals = [];
-  List<Meal> _selectedDateMeals = [];
-  String _selectedDate = app_date.DateUtils.getTodayString();
-  AsyncUiState _uiState = const AsyncUiState.success();
-  bool _isMutating = false;
-  StreamSubscription<List<Meal>>? _mealsSubscription;
-  PlannerProvider? _plannerProvider;
+  final Map<String, List<NutritionResult>> _analysisCache = {};
   int _lastMemoryPressureCount = 0;
 
-  // Cache for AI analysis results to avoid redundant scans
-  final Map<String, List<NutritionResult>> _analysisCache = {};
-
-  MealProvider(this._repository) {
-    _todaysMeals = _repository.getTodaysMeals();
-    _mealsSubscription = _repository.todaysMealsStream.listen((meals) {
-      _todaysMeals = meals;
-      _memoizedTodaysCalories = null;
-      _memoizedTodaysMacros = null;
-
-      if (_selectedDate == app_date.DateUtils.getTodayString()) {
-        _selectedDateMeals = _todaysMeals;
-      }
-      notifyListeners();
-    });
-    AppLifecycleService().addListener(_handleLifecycleEvent);
-  }
-
   @override
-  void dispose() {
-    _mealsSubscription?.cancel();
-    AppLifecycleService().removeListener(_handleLifecycleEvent);
-    super.dispose();
+  FutureOr<void> build() {
+    AppLifecycleService().addListener(_handleLifecycleEvent);
+    ref.onDispose(() => AppLifecycleService().removeListener(_handleLifecycleEvent));
   }
 
   void _handleLifecycleEvent() {
@@ -57,376 +51,32 @@ class MealProvider with ChangeNotifier {
     _analysisCache.clear();
   }
 
-  // Getters
-  List<Meal> get todaysMeals => _todaysMeals;
-  List<Meal> get selectedDateMeals => _selectedDateMeals;
-  String get selectedDate => _selectedDate;
-  bool get isLoading => _uiState.isBlocking;
-  bool get isRefreshing => _uiState.isRefreshing;
-  bool get isMutating => _isMutating;
-  AsyncUiState get uiState => _uiState;
+  String generateMealId() => _uuid.v4();
 
-  /// Check if we have a cached analysis for this image
-  List<NutritionResult>? getCachedAnalysis(Uint8List bytes) {
-    final key = _generateImageKey(bytes);
-    return _analysisCache[key];
+  Future<void> addMeal(Meal meal, {bool rebalancePlanner = true, String? mealDate}) async {
+    final repo = await ref.read(mealRepositoryProvider.future);
+    await repo.addMeal(meal);
+
+    // Fire-and-forget streak update via settings
+    unawaited(ref.read(settingsProvider.notifier).updateStreakOnMealLog(mealDate: mealDate));
   }
 
-  /// Store analysis results in cache
-  void cacheAnalysis(Uint8List bytes, List<NutritionResult> results) {
-    final key = _generateImageKey(bytes);
-    // Keep cache small: only last 5 items
-    if (_analysisCache.length > 5) {
+  Future<void> updateMeal(Meal meal) async {
+    final repo = await ref.read(mealRepositoryProvider.future);
+    await repo.updateMeal(meal);
+  }
+
+  Future<void> deleteMeal(String mealId) async {
+    final repo = await ref.read(mealRepositoryProvider.future);
+    await repo.deleteMeal(mealId);
+  }
+
+  void cacheAnalysis(String imageKey, List<NutritionResult> results) {
+    if (_analysisCache.length >= 5) {
       _analysisCache.remove(_analysisCache.keys.first);
     }
-    _analysisCache[key] = results;
+    _analysisCache[imageKey] = results;
   }
 
-  String _generateImageKey(Uint8List bytes) {
-    // Simple key: length + first 100 bytes sample
-    if (bytes.length < 100) return bytes.length.toString();
-    return '${bytes.length}_${bytes.sublist(0, 100).join("")}';
-  }
-
-  int? _memoizedTodaysCalories;
-  Macros? _memoizedTodaysMacros;
-
-  /// Get today's total calories
-  int get todaysTotalCalories {
-    if (_memoizedTodaysCalories != null) return _memoizedTodaysCalories!;
-    _memoizedTodaysCalories = _todaysMeals.fold<int>(
-      0,
-      (sum, meal) => sum + meal.calories,
-    );
-    return _memoizedTodaysCalories!;
-  }
-
-  /// Get today's total macros
-  Macros get todaysTotalMacros {
-    if (_memoizedTodaysMacros != null) return _memoizedTodaysMacros!;
-
-    int protein = 0;
-    int carbs = 0;
-    int fat = 0;
-
-    for (final meal in _todaysMeals) {
-      protein += meal.macros.protein;
-      carbs += meal.macros.carbs;
-      fat += meal.macros.fat;
-    }
-
-    _memoizedTodaysMacros = Macros(protein: protein, carbs: carbs, fat: fat);
-    return _memoizedTodaysMacros!;
-  }
-
-  /// Get selected date's total calories
-  int get selectedDateTotalCalories {
-    return _selectedDateMeals.fold<int>(0, (sum, meal) => sum + meal.calories);
-  }
-
-  /// Read meals for date without changing the selected log date.
-  List<Meal> getMealsForDate(String dateString) {
-    return _repository.getMealsByDate(dateString);
-  }
-
-  void attachPlanner(PlannerProvider plannerProvider) {
-    _plannerProvider = plannerProvider;
-  }
-
-  bool canViewDate(String dateString, {required bool isPro}) {
-    if (isPro) return true;
-    final date = DateTime.tryParse(dateString);
-    if (date == null) return false;
-    final today = DateTime.now();
-    final todayOnly = DateTime(today.year, today.month, today.day);
-    final start = todayOnly.subtract(
-      const Duration(days: ProFeatureService.freeHistoryDays - 1),
-    );
-    final normalized = DateTime(date.year, date.month, date.day);
-    return !normalized.isBefore(start) && !normalized.isAfter(todayOnly);
-  }
-
-  List<Meal> getMealsForVisibleHistory({required bool isPro}) {
-    if (isPro) return _repository.getAllMeals();
-    return _repository
-        .getAllMeals()
-        .where((meal) => canViewDate(meal.dateString, isPro: false))
-        .toList();
-  }
-
-  List<Meal> getReportMeals({required bool isPro}) {
-    return isPro ? getWeeklyMeals() : getWeeklyMeals().take(3).toList();
-  }
-
-  /// Get today's meal count
-  int get todaysMealCount => _todaysMeals.length;
-
-  /// Get recent meals for home screen
-  List<Meal> get recentMeals => _todaysMeals.take(3).toList();
-
-  /// Load today's meals
-  Future<void> _loadTodaysMeals({bool notify = true}) async {
-    if (notify) {
-      _uiState =
-          _todaysMeals.isEmpty
-              ? const AsyncUiState.loading()
-              : const AsyncUiState.refreshing();
-      notifyListeners();
-    }
-
-    _todaysMeals = _repository.getTodaysMeals();
-    _memoizedTodaysCalories = null;
-    _memoizedTodaysMacros = null;
-
-    if (notify) {
-      _uiState =
-          _todaysMeals.isEmpty
-              ? const AsyncUiState.empty()
-              : const AsyncUiState.success();
-      notifyListeners();
-    }
-  }
-
-  /// Load meals for selected date
-  Future<void> loadMealsForDate(String dateString, {bool notify = true}) async {
-    _selectedDate = dateString;
-    if (notify) {
-      _uiState =
-          _selectedDateMeals.isEmpty
-              ? const AsyncUiState.loading()
-              : const AsyncUiState.refreshing();
-      notifyListeners();
-    }
-
-    _selectedDateMeals = _repository.getMealsByDate(dateString);
-
-    if (notify) {
-      _uiState =
-          _selectedDateMeals.isEmpty
-              ? const AsyncUiState.empty()
-              : const AsyncUiState.success();
-      notifyListeners();
-    }
-  }
-
-  /// Add a new meal
-  Future<void> addMeal({
-    required String foodName,
-    required int calories,
-    required int protein,
-    required int carbs,
-    required int fat,
-    String? portion,
-    String? imageUri,
-    String? dateString,
-    SettingsProvider? settings,
-    double? scanConfidence,
-    String? scanSource,
-    String? aiRationale,
-    int? originalCalories,
-  }) async {
-    if (_isMutating) return;
-    _isMutating = true;
-    notifyListeners();
-
-    try {
-      final prevCal = todaysTotalCalories;
-      final prevPro = todaysTotalMacros.protein;
-
-      final now = DateTime.now();
-      final meal = Meal(
-        id: _uuid.v4(),
-        timestamp: now.millisecondsSinceEpoch,
-        dateString: dateString ?? app_date.DateUtils.getDateString(now),
-        imageUri: imageUri,
-        foodName: foodName,
-        calories: calories,
-        macros: Macros(protein: protein, carbs: carbs, fat: fat),
-        synced: false,
-        portion: portion,
-        scanConfidence: scanConfidence,
-        scanSource: scanSource,
-        aiRationale: aiRationale,
-        originalCalories: originalCalories,
-        userCorrected: false,
-      );
-
-      await _repository.addMeal(meal);
-
-      // Refresh internal state without extra notifications
-      await _loadTodaysMeals(notify: false);
-
-      // Update streak and Trigger goal alerts if settings provided
-      if (settings != null) {
-        await settings.updateStreakOnMealLog(mealDate: meal.dateString);
-
-        final newCal = todaysTotalCalories;
-        final newPro = todaysTotalMacros.protein;
-
-        if (prevCal < settings.dailyCalorieGoal &&
-            newCal >= settings.dailyCalorieGoal) {
-          settings.triggerCalorieGoalAlert(settings.dailyCalorieGoal);
-        }
-
-        if (prevPro < settings.dailyProteinGoal &&
-            newPro >= settings.dailyProteinGoal) {
-          settings.triggerProteinGoalAlert(settings.dailyProteinGoal);
-        }
-      }
-
-      // Refresh selected date reference
-      if (_selectedDate == app_date.DateUtils.getTodayString()) {
-        _selectedDateMeals = _todaysMeals;
-      } else {
-        await loadMealsForDate(_selectedDate, notify: false);
-      }
-
-      await _plannerProvider?.rebalanceAfterMealLog(
-        loggedMeal: meal,
-        loggedMealsForDate: _repository.getMealsByDate(meal.dateString),
-      );
-    } finally {
-      _isMutating = false;
-      _uiState =
-          _selectedDateMeals.isEmpty
-              ? const AsyncUiState.empty()
-              : const AsyncUiState.success();
-      notifyListeners();
-    }
-  }
-
-  /// Update an existing meal
-  Future<void> updateMeal(Meal meal) async {
-    await _repository.updateMeal(meal);
-    await _loadTodaysMeals();
-    await loadMealsForDate(_selectedDate);
-  }
-
-  /// Delete a meal
-  Future<void> deleteMeal(String id, {SettingsProvider? settings}) async {
-    final meal = _repository.getMealById(id);
-    if (meal == null) return;
-
-    final date = meal.dateString;
-    await _repository.deleteMeal(id);
-
-    // If it was the last meal for that date, adjust streak
-    if (settings != null) {
-      final remaining = _repository.getMealsByDate(date);
-      await settings.adjustStreakOnDeletion(
-        dateOfDeletedMeal: date,
-        wasLastMealOfDay: remaining.isEmpty,
-      );
-    }
-
-    await _loadTodaysMeals();
-    await loadMealsForDate(_selectedDate);
-  }
-
-  /// Get calorie trend for the last 7 days
-  List<double> getWeeklyCalorieTrend() {
-    final List<double> trend = [];
-    final today = DateTime.now();
-    for (int i = 6; i >= 0; i--) {
-      final date = today.subtract(Duration(days: i));
-      final dateString = app_date.DateUtils.getDateString(date);
-      final meals = _repository.getMealsByDate(dateString);
-      final total = meals.fold<int>(0, (sum, meal) => sum + meal.calories);
-      trend.add(total.toDouble());
-    }
-    return trend;
-  }
-
-  /// Get macro summary for the last 7 days
-  Macros getWeeklyMacroSummary() {
-    int protein = 0;
-    int carbs = 0;
-    int fat = 0;
-    final today = DateTime.now();
-    for (int i = 6; i >= 0; i--) {
-      final date = today.subtract(Duration(days: i));
-      final dateString = app_date.DateUtils.getDateString(date);
-      final meals = _repository.getMealsByDate(dateString);
-      for (final meal in meals) {
-        protein += meal.macros.protein;
-        carbs += meal.macros.carbs;
-        fat += meal.macros.fat;
-      }
-    }
-    return Macros(protein: protein, carbs: carbs, fat: fat);
-  }
-
-  /// Get all meals for the last 7 days
-  List<Meal> getWeeklyMeals() {
-    final List<Meal> allWeeklyMeals = [];
-    final today = DateTime.now();
-    for (int i = 6; i >= 0; i--) {
-      final date = today.subtract(Duration(days: i));
-      final dateString = app_date.DateUtils.getDateString(date);
-      allWeeklyMeals.addAll(_repository.getMealsByDate(dateString));
-    }
-    // Sort by timestamp descending
-    allWeeklyMeals.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    return allWeeklyMeals;
-  }
-
-  /// Get weekly average calories
-  int getWeeklyAverageCalories() {
-    final trend = getWeeklyCalorieTrend();
-    if (trend.isEmpty) return 0;
-    final total = trend.reduce((a, b) => a + b);
-    return (total / trend.length).round();
-  }
-
-  /// Get goal consistency percentage (last 7 days)
-  String getGoalConsistency(int dailyGoal) {
-    int successCount = 0;
-    final today = DateTime.now();
-    for (int i = 6; i >= 0; i--) {
-      final date = today.subtract(Duration(days: i));
-      final dateString = app_date.DateUtils.getDateString(date);
-      final meals = _repository.getMealsByDate(dateString);
-      final totalCals = meals.fold<int>(0, (sum, meal) => sum + meal.calories);
-
-      // Considered successful if logged something and not grossly over goal (>110%)
-      // Or if exactly 0, maybe they didn't track, so not a "success".
-      if (totalCals > 0 && totalCals <= (dailyGoal * 1.1)) {
-        successCount++;
-      }
-    }
-    return '${((successCount / 7) * 100).round()}%';
-  }
-
-  /// Refresh all data
-  Future<void> refresh() async {
-    await _loadTodaysMeals();
-    await loadMealsForDate(_selectedDate);
-  }
-
-  /// Navigate to previous day
-  void goToPreviousDay() {
-    loadMealsForDate(app_date.DateUtils.getPreviousDay(_selectedDate));
-  }
-
-  /// Navigate to next day
-  void goToNextDay() {
-    loadMealsForDate(app_date.DateUtils.getNextDay(_selectedDate));
-  }
-
-  /// Go to today
-  void goToToday() {
-    loadMealsForDate(app_date.DateUtils.getTodayString());
-  }
-
-  /// Clear all meal data (logout)
-  Future<void> clear() async {
-    await _repository.clearAll();
-    _todaysMeals = [];
-    _selectedDateMeals = [];
-    _memoizedTodaysCalories = null;
-    _memoizedTodaysMacros = null;
-    _selectedDate = app_date.DateUtils.getTodayString();
-    _uiState = const AsyncUiState.empty();
-    notifyListeners();
-  }
+  List<NutritionResult>? getCachedAnalysis(String imageKey) => _analysisCache[imageKey];
 }

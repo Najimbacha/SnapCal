@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -104,7 +105,7 @@ class _MealCardState extends State<MealCard> {
                             color: widget.isLogged ? AppColors.success.withValues(alpha: 0.1) : context.primaryColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(widget.isLogged ? Icons.check_rounded : Icons.add_rounded, size: 16, color: widget.isLogged ? AppColors.success : context.primaryColor),
+                          child: Icon(widget.isLogged ? LucideIcons.check : Icons.add_rounded, size: 16, color: widget.isLogged ? AppColors.success : context.primaryColor),
                         ),
                       ),
                     ],
@@ -134,7 +135,7 @@ class _MealCardState extends State<MealCard> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.refresh_rounded, size: 12, color: context.primaryColor),
+                                      Icon(LucideIcons.refreshCw, size: 12, color: context.primaryColor),
                                       const SizedBox(width: 4),
                                       Text('Swap', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.primaryColor)),
                                     ],
@@ -185,7 +186,7 @@ class _MealCardState extends State<MealCard> {
       decoration: BoxDecoration(color: context.cardSoftColor, borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
-          Icon(Icons.lock_rounded, size: 14, color: context.textMutedColor),
+          Icon(LucideIcons.lock, size: 14, color: context.textMutedColor),
           const SizedBox(width: 10),
           Expanded(child: Text(widget.meal.foodName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: context.textSecondaryColor, fontWeight: FontWeight.w500))),
           Text('${widget.meal.calories}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.textMutedColor)),
@@ -196,3 +197,5 @@ class _MealCardState extends State<MealCard> {
     );
   }
 }
+
+

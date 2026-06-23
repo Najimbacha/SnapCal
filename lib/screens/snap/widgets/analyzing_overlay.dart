@@ -3,14 +3,15 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../snap_controller.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 class AnalyzingOverlay extends StatefulWidget {
+  final SnapController controller;
   final VoidCallback? onManualEntry;
-  const AnalyzingOverlay({super.key, this.onManualEntry});
+  const AnalyzingOverlay({super.key, required this.controller, this.onManualEntry});
 
   @override
   State<AnalyzingOverlay> createState() => _AnalyzingOverlayState();
@@ -81,8 +82,7 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<SnapController>();
-    final imageBytes = controller.capturedImageBytes;
+    final imageBytes = widget.controller.capturedImageBytes;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -124,7 +124,7 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                     ),
                     child: IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(LucideIcons.x, color: Colors.white, size: 18),
+                      icon: Icon(LucideIcons.x, color: Colors.white, size: 18),
                       padding: EdgeInsets.zero,
                     ),
                   ),
@@ -359,3 +359,4 @@ class _ScanArcPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+

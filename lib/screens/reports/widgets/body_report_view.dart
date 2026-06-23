@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -19,15 +19,17 @@ class BodyReportView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<MetricsProvider>(
-      builder: (context, metricsProvider, _) {
-        if (metricsProvider.isLoading) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final metricsAsync = ref.watch(bodyMetricsProvider);
+        final metricsProvider = metricsAsync.valueOrNull ?? [];
+        if (metricsAsync.isLoading) {
           return const Padding(
             padding: EdgeInsets.only(top: 16),
             child: AppSectionSkeleton(rows: 3),
           );
         }
-        final metrics = metricsProvider.metrics;
+        final metrics = metricsProvider;
         if (metrics.isEmpty) {
           return Center(
             child: AppEmptyState(
@@ -46,8 +48,8 @@ class BodyReportView extends StatelessWidget {
           );
         }
 
-        final current = metricsProvider.currentWeight;
-        final start = metricsProvider.startWeight;
+        final current = ref.read(bodyMetricsProvider.notifier).currentWeight;
+        final start = ref.read(bodyMetricsProvider.notifier).startingWeight;
         final change = current != null && start != null ? current - start : 0;
 
         return SingleChildScrollView(

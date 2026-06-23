@@ -193,7 +193,7 @@ class _RetryButtonState extends State<RetryButton> {
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-              : const Icon(LucideIcons.refreshCw, size: 16),
+              : Icon(LucideIcons.refreshCw, size: 16),
       label: Text(widget.label),
     );
   }
@@ -296,3 +296,4 @@ void showFriendlyFallbackSnack(
       ),
     );
 }
+

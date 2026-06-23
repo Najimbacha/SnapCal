@@ -16,11 +16,7 @@ import '../../data/models/grocery_item.dart';
 import '../../data/models/meal_plan.dart';
 import '../../data/models/meal_template.dart';
 import '../../data/models/achievement.dart';
-import '../../data/repositories/meal_repository.dart';
 import '../../data/repositories/settings_repository.dart';
-import '../../data/repositories/water_repository.dart';
-import '../../data/repositories/assistant_repository.dart';
-
 import '../../data/services/gemini_service.dart';
 import '../../data/services/barcode_service.dart';
 import '../../data/services/subscription_service.dart';
@@ -41,12 +37,7 @@ class AppInitializer {
     await _initFirebase();
   }
 
-  static Future<void> init({
-    required MealRepository mealRepository,
-    required SettingsRepository settingsRepository,
-    required WaterRepository waterRepository,
-    required AssistantRepository assistantRepository,
-  }) async {
+  static Future<void> init() async {
     final startTime = DateTime.now();
     debugPrint('🚀 AppInitializer: Starting initialization...');
 
@@ -54,7 +45,6 @@ class AppInitializer {
       debugPrint('🚀 AppInitializer: Setting System UI...');
       AppLifecycleService().init();
       _configureLifecycleRecovery();
-      // 1. Critical System UI (Edge-to-Edge Support for Android 15+)
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setSystemUIOverlayStyle(
         const SystemUiOverlayStyle(
@@ -66,41 +56,13 @@ class AppInitializer {
       );
 
       debugPrint('🚀 AppInitializer: Initializing Firebase...');
-      // 2. Critical: Initialize Firebase FIRST
       await _initFirebase();
 
       debugPrint('🚀 AppInitializer: Initializing Hive...');
-      // 3. Initialize Hive
       await _initHive();
 
-      debugPrint('🚀 AppInitializer: Initializing critical repositories...');
-      // 4. Only local repositories needed by the first screen block startup.
-      await Future.wait([
-        mealRepository.init().then(
-          (_) => debugPrint('✅ AppInitializer: MealRepo ready'),
-        ),
-        settingsRepository.init().then(
-          (_) => debugPrint('✅ AppInitializer: SettingsRepo ready'),
-        ),
-        waterRepository.init().then(
-          (_) => debugPrint('✅ AppInitializer: WaterRepo ready'),
-        ),
-        assistantRepository.init().then(
-          (_) => debugPrint('✅ AppInitializer: AssistantRepo ready'),
-        ),
-      ]).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          debugPrint('⚠️ AppInitializer: Initialization timed out after 30s');
-          throw TimeoutException(
-            'Core data services are taking too long to respond.',
-          );
-        },
-      );
-
       debugPrint('🚀 AppInitializer: Starting background services...');
-      // 5. Background Initialization
-      unawaited(_initBackgroundServices(settingsRepository));
+      unawaited(_initBackgroundServices());
 
       final duration = DateTime.now().difference(startTime).inMilliseconds;
       debugPrint('✅ AppInitializer: Critical core ready in ${duration}ms');
@@ -112,9 +74,7 @@ class AppInitializer {
     }
   }
 
-  static Future<void> _initBackgroundServices(
-    SettingsRepository settingsRepository,
-  ) async {
+  static Future<void> _initBackgroundServices() async {
     await _runOptionalBackgroundService(
       'Remote config init',
       () => ConfigService().init().timeout(const Duration(seconds: 10)),
@@ -136,8 +96,11 @@ class AppInitializer {
         await NotificationService().init();
       }),
       _runOptionalBackgroundService(
-        'Subscription init',
-        () => SubscriptionService.init(settingsRepository),
+        'Subscription init', () async {
+          final repo = SettingsRepository();
+          await repo.init();
+          await SubscriptionService.init(repo);
+        },
       ),
       _runOptionalBackgroundService('Widget init', WidgetService.init),
       _runOptionalBackgroundService(

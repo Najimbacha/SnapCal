@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
@@ -10,14 +10,17 @@ import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_state_provider.dart';
+import '../../providers/auth_notifier_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/assistant_provider.dart';
-import '../../providers/planner_provider.dart';
 import '../../providers/metrics_provider.dart';
+import '../../providers/planner_provider.dart';
+import '../../data/models/user_settings.dart';
 import '../../widgets/auth_modal.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../data/services/report_pdf_service.dart';
@@ -53,16 +56,16 @@ Color _settingsSubtext(BuildContext context) {
       : _settingsMuted;
 }
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   final bool? showBack;
   const SettingsScreen({super.key, this.showBack});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
       title: l10n.settings_title,
-      isPremium: context.select<SettingsProvider, bool>((p) => p.isPro),
+      isPremium: ref.watch(settingsProvider).valueOrNull?.isPro ?? false,
       showHeader: true,
       forceShowBackButton: showBack,
       scrollable: true,
@@ -71,19 +74,22 @@ class SettingsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Selector<AuthProvider, _AuthSnapshot>(
-            selector:
-                (_, auth) => _AuthSnapshot(
-                  isAnonymous: auth.isAnonymous,
-                  displayName: auth.user?.displayName,
-                  email: auth.user?.email,
-                  photoURL: auth.user?.photoURL,
+          Consumer(
+            builder: (context, ref, _) {
+              final auth = ref.watch(authStateProvider).valueOrNull;
+              return _ProfileCard(
+                auth: _AuthSnapshot(
+                  isAnonymous: auth?.isAnonymous ?? true,
+                  displayName: auth?.displayName,
+                  email: auth?.email,
+                  photoURL: auth?.photoURL,
                 ),
-            builder: (context, auth, _) => _ProfileCard(auth: auth),
+              );
+            },
           ),
-          Selector<SettingsProvider, bool>(
-            selector: (_, s) => s.isPro,
-            builder: (context, isPro, _) {
+          Consumer(
+            builder: (context, ref, _) {
+              final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
               if (isPro) return const SizedBox(height: 24);
               final l10n = AppLocalizations.of(context)!;
               return Column(
@@ -107,35 +113,37 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           if (kDebugMode)
-            Selector<SettingsProvider, bool>(
-              selector: (_, s) => s.isPro,
-              builder: (context, isPro, _) {
+            Consumer(
+              builder: (context, ref, _) {
+                final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+                final debugOverride = ref.watch(debugProOverrideProvider);
+                final effectivePro = ref.watch(effectiveIsProProvider);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(14),
-                      onTap: () => context.read<SettingsProvider>().toggleDebugPro(),
+                      onTap: () => ref.read(debugProOverrideProvider.notifier).toggle(),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
-                          color: isPro
-                              ? const Color(0xFFE8F5E9).withValues(alpha: 0.5)
-                              : const Color(0xFFFFEBEE).withValues(alpha: 0.3),
+                            color: effectivePro
+                                ? const Color(0xFFE8F5E9).withValues(alpha: 0.5)
+                                : const Color(0xFFFFEBEE).withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isPro
-                                ? const Color(0xFF4CAF50).withValues(alpha: 0.3)
-                                : const Color(0xFFEF9A9A).withValues(alpha: 0.3),
-                          ),
+                            border: Border.all(
+                              color: effectivePro
+                                  ? const Color(0xFF4CAF50).withValues(alpha: 0.3)
+                                  : const Color(0xFFEF9A9A).withValues(alpha: 0.3),
+                            ),
                         ),
                         child: Row(
                           children: [
                             Icon(
-                              isPro ? LucideIcons.shieldCheck : LucideIcons.bug,
+                              effectivePro ? LucideIcons.shieldCheck : LucideIcons.bug,
                               size: 20,
-                              color: isPro
+                              color: effectivePro
                                   ? const Color(0xFF2E7D32)
                                   : const Color(0xFFC62828),
                             ),
@@ -145,9 +153,9 @@ class SettingsScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Debug: Pro ${isPro ? "ON" : "OFF"}',
+                                    'Debug: Pro ${effectivePro ? "ON" : "OFF"}',
                                     style: TextStyle(
-                                      color: isPro
+                                      color: effectivePro
                                           ? const Color(0xFF2E7D32)
                                           : const Color(0xFFC62828),
                                       fontSize: 14,
@@ -240,8 +248,12 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          Consumer<ActivityProvider>(
-            builder: (context, activity, _) {
+          Consumer(
+            builder: (context, ref, _) {
+              final activityAsync = ref.watch(activityProvider);
+              final activityVal = activityAsync.valueOrNull;
+              final isConnected = activityVal?.healthConnected ?? false;
+              final activityNotifier = ref.read(activityProvider.notifier);
               final l10n = AppLocalizations.of(context)!;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,29 +264,19 @@ class SettingsScreen extends StatelessWidget {
                     children: [
                       _SwitchRow(
                         icon: LucideIcons.watch,
-                        accent:
-                            activity.isConnected
-                                ? AppColors.success
-                                : AppColors.sky,
+                        accent: AppColors.sky,
                         title: 'Health Connect',
-                        subtitle:
-                            activity.isSyncing
-                                ? l10n.settings_syncing_activity
-                                : _getLocalStatus(
-                                  context,
-                                  activity.statusLabel(),
-                                ),
-                        value: activity.isConnected,
-                        onChanged:
-                            activity.isSyncing
-                                ? (_) {}
-                                : (enabled) {
-                                  if (enabled) {
-                                    activity.startTracking();
-                                  } else {
-                                    activity.disconnect();
-                                  }
-                                },
+                        subtitle: isConnected ? 'Connected' : 'Tap to connect',
+                        value: isConnected,
+                        onChanged: (enabled) async {
+                          if (enabled) {
+                            await activityNotifier.authorize();
+                            ref.invalidate(activityProvider);
+                          } else {
+                            await activityNotifier.disconnect();
+                            ref.invalidate(activityProvider);
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -435,7 +437,7 @@ void _showNumberDialog(
   );
 }
 
-void _showNameDialog(BuildContext context, String currentName) {
+void _showNameDialog(BuildContext context, WidgetRef ref, String currentName) {
   final controller = TextEditingController(text: currentName);
 
   showDialog(
@@ -501,7 +503,7 @@ void _showNameDialog(BuildContext context, String currentName) {
                 final name = controller.text.trim();
                 if (name.isEmpty) return;
                 Navigator.pop(dialogContext);
-                context.read<AuthProvider>().updateDisplayName(name);
+                ref.read(authNotifierProvider.notifier).updateDisplayName(name);
               },
               style: FilledButton.styleFrom(
                 shape: RoundedRectangleBorder(
@@ -517,8 +519,8 @@ void _showNameDialog(BuildContext context, String currentName) {
   );
 }
 
-void _showGenderSelector(BuildContext context, SettingsProvider settings) {
-  final currentWeightKg = context.read<MetricsProvider>().currentWeight;
+void _showGenderSelector(BuildContext context, WidgetRef ref, UserSettings settings) {
+  final currentWeightKg = ref.read(bodyMetricsProvider.notifier).currentWeight;
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
@@ -528,7 +530,7 @@ void _showGenderSelector(BuildContext context, SettingsProvider settings) {
           options: const ['male', 'female', 'other'],
           currentValue: settings.gender ?? 'male',
           onSelect:
-              (value) => settings.updateBodyProfile(
+              (value) => ref.read(settingsProvider.notifier).updateBodyProfile(
                 gender: value,
                 currentWeightKg: currentWeightKg,
               ),
@@ -536,7 +538,7 @@ void _showGenderSelector(BuildContext context, SettingsProvider settings) {
   );
 }
 
-void _showUnitSelector(BuildContext context, SettingsProvider settings) {
+void _showUnitSelector(BuildContext context, UserSettings settings, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
@@ -546,15 +548,16 @@ void _showUnitSelector(BuildContext context, SettingsProvider settings) {
           children: [
             _SelectionSheet(
               title: AppLocalizations.of(context)!.settings_weight_unit,
-              options: const ['kg', 'lb'],
-              currentValue: settings.weightUnit,
-              onSelect: (value) => settings.updateUnits(weightUnit: value),
+              options: ['kg', 'lb'],
+              currentValue: settings.weightUnit ?? 'kg',
+              onSelect: (value) => ref.read(settingsProvider.notifier).updateUnits(weightUnit: value),
             ),
+            const SizedBox(height: 12),
             _SelectionSheet(
               title: AppLocalizations.of(context)!.settings_height_unit,
-              options: const ['cm', 'in'],
-              currentValue: settings.heightUnit,
-              onSelect: (value) => settings.updateUnits(heightUnit: value),
+              options: ['cm', 'ft'],
+              currentValue: settings.heightUnit ?? 'cm',
+              onSelect: (value) => ref.read(settingsProvider.notifier).updateUnits(heightUnit: value),
             ),
           ],
         ),
@@ -563,7 +566,8 @@ void _showUnitSelector(BuildContext context, SettingsProvider settings) {
 
 Future<void> _selectTime(
   BuildContext context,
-  SettingsProvider settings,
+  UserSettings settings,
+  WidgetRef ref,
   String type,
 ) async {
   final current =
@@ -598,11 +602,11 @@ Future<void> _selectTime(
     final timeStr =
         '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     if (type == 'breakfast') {
-      await settings.updateReminderTimes(breakfast: timeStr);
+      await ref.read(settingsProvider.notifier).updateReminderTimes(breakfast: timeStr);
     } else if (type == 'lunch') {
-      await settings.updateReminderTimes(lunch: timeStr);
+      await ref.read(settingsProvider.notifier).updateReminderTimes(lunch: timeStr);
     } else {
-      await settings.updateReminderTimes(dinner: timeStr);
+      await ref.read(settingsProvider.notifier).updateReminderTimes(dinner: timeStr);
     }
   }
 }
@@ -644,7 +648,7 @@ class _SelectionSheet extends StatelessWidget {
               ),
               trailing:
                   opt == currentValue
-                      ? const Icon(LucideIcons.check, color: _settingsGreenText)
+                      ? Icon(LucideIcons.check, color: _settingsGreenText)
                       : null,
               onTap: () {
                 onSelect(opt);
@@ -671,7 +675,7 @@ String _getLanguageName(String code) {
   }
 }
 
-void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
+void _showLanguageSelector(BuildContext context, UserSettings settings, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
@@ -727,7 +731,7 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
                   code: 'en',
                   selected: settings.languageCode == 'en',
                   onTap: () {
-                    settings.setLanguage('en');
+                    ref.read(settingsProvider.notifier).setLanguage('en');
                     Navigator.pop(context);
                   },
                 ),
@@ -738,7 +742,7 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
                   code: 'ar',
                   selected: settings.languageCode == 'ar',
                   onTap: () {
-                    settings.setLanguage('ar');
+                    ref.read(settingsProvider.notifier).setLanguage('ar');
                     Navigator.pop(context);
                   },
                 ),
@@ -749,7 +753,7 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
                   code: 'es',
                   selected: settings.languageCode == 'es',
                   onTap: () {
-                    settings.setLanguage('es');
+                    ref.read(settingsProvider.notifier).setLanguage('es');
                     Navigator.pop(context);
                   },
                 ),
@@ -760,7 +764,7 @@ void _showLanguageSelector(BuildContext context, SettingsProvider settings) {
                   code: 'fr',
                   selected: settings.languageCode == 'fr',
                   onTap: () {
-                    settings.setLanguage('fr');
+                    ref.read(settingsProvider.notifier).setLanguage('fr');
                     Navigator.pop(context);
                   },
                 ),
@@ -858,7 +862,7 @@ class _LanguageTile extends StatelessWidget {
               ),
             ),
             if (selected)
-              const Icon(LucideIcons.checkCircle2, color: _settingsGreenText),
+              Icon(LucideIcons.checkCircle2, color: _settingsGreenText),
           ],
         ),
       ),
@@ -1030,14 +1034,14 @@ class _SwitchRow extends StatelessWidget {
   }
 }
 
-class _ThemeRow extends StatelessWidget {
+class _ThemeRow extends ConsumerWidget {
   final String currentMode;
 
   const _ThemeRow({required this.currentMode});
 
   @override
-  Widget build(BuildContext context) {
-    final settings = context.read<SettingsProvider>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settingsNotifier = ref.read(settingsProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final options = [
@@ -1119,7 +1123,7 @@ class _ThemeRow extends StatelessWidget {
                         child: GestureDetector(
                           onTap: () {
                             HapticFeedback.selectionClick();
-                            settings.setThemeMode(opt.$1);
+                            settingsNotifier.setThemeMode(opt.$1);
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -1248,7 +1252,7 @@ class _FollowUsSection extends StatelessWidget {
           child: Column(
             children: [
               _FollowTile(
-                icon: Icons.camera_alt_rounded,
+                icon: LucideIcons.camera,
                 iconColor: const Color(0xFFE1306C),
                 title: 'Instagram',
                 subtitle: 'Tips, recipes & community',
@@ -1260,7 +1264,7 @@ class _FollowUsSection extends StatelessWidget {
                 isLast: false,
               ),
               _FollowTile(
-                icon: Icons.facebook_rounded,
+                icon: LucideIcons.facebook,
                 iconColor: const Color(0xFF1877F2),
                 title: 'Facebook',
                 subtitle: 'Follow our page',
@@ -1272,7 +1276,7 @@ class _FollowUsSection extends StatelessWidget {
                 isLast: false,
               ),
               _FollowTile(
-                icon: Icons.mail_rounded,
+                icon: LucideIcons.mail,
                 iconColor: AppColors.primary,
                 title: 'Email Us',
                 subtitle: 'iamnajimbacha@gmail.com',
@@ -1474,14 +1478,14 @@ class _SettingsSurface extends StatelessWidget {
   }
 }
 
-class _ProfileCard extends StatelessWidget {
+class _ProfileCard extends ConsumerWidget {
   final _AuthSnapshot auth;
   const _ProfileCard({required this.auth});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isGuest = auth.isAnonymous;
-    final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
+    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
 
     if (isGuest) {
       return _GuestCard(isPro: isPro);
@@ -2116,11 +2120,11 @@ class _BrandCategoryRow extends StatelessWidget {
   }
 }
 
-class _BodyProfileScreen extends StatelessWidget {
+class _BodyProfileScreen extends ConsumerWidget {
   const _BodyProfileScreen();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
       title: l10n.settings_body_profile_title,
@@ -2136,54 +2140,50 @@ class _BodyProfileScreen extends StatelessWidget {
             title: l10n.onboarding_basic_intro_eyebrow, // "PERSONAL DETAILS"
             accent: AppColors.primary,
             children: [
-              Selector<AuthProvider, String?>(
-                selector: (_, auth) => auth.user?.displayName,
-                builder:
-                    (context, name, _) => _SettingRow(
-                      icon: LucideIcons.user,
-                      accent: AppColors.primary,
-                      title: l10n.settings_display_name_label,
-                      value: name ?? l10n.settings_set_name,
-                      onTap: () => _showNameDialog(context, name ?? ''),
-                    ),
+              _SettingRow(
+                icon: LucideIcons.user,
+                accent: AppColors.primary,
+                title: l10n.settings_display_name_label,
+                value: ref.watch(authStateProvider).valueOrNull?.displayName ?? l10n.settings_set_name,
+                onTap: () => _showNameDialog(context, ref, ref.watch(authStateProvider).valueOrNull?.displayName ?? ''),
               ),
-              Consumer<SettingsProvider>(
-                builder:
-                    (context, settings, _) => Column(
-                      children: [
-                        _SettingRow(
-                          icon: LucideIcons.calendar,
-                          accent: AppColors.primary,
-                          title: l10n.settings_age,
-                          value: settings.age?.toString() ?? '--',
-                          onTap:
-                              () => _showNumberDialog(
-                                context,
-                                title: l10n.settings_age,
-                                currentValue: settings.age ?? 25,
-                                unit: 'yrs',
-                                onSave:
-                                    (value) => settings.updateBodyProfile(
-                                      age: value,
-                                      currentWeightKg:
-                                          context
-                                              .read<MetricsProvider>()
-                                              .currentWeight,
-                                    ),
-                              ),
-                        ),
-                        _SettingRow(
-                          icon: LucideIcons.userCircle,
-                          accent: AppColors.primary,
-                          title: l10n.settings_gender,
-                          value:
-                              settings.gender != null
-                                  ? _getLocalGender(context, settings.gender!)
-                                  : '--',
-                          onTap: () => _showGenderSelector(context, settings),
-                        ),
-                      ],
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final settings = ref.watch(settingsProvider).valueOrNull;
+                  return Column(
+                    children: [
+                      _SettingRow(
+                        icon: LucideIcons.calendar,
+                        accent: AppColors.primary,
+                        title: l10n.settings_age,
+                        value: settings?.age?.toString() ?? '--',
+                        onTap:
+                            () => _showNumberDialog(
+                              context,
+                              title: l10n.settings_age,
+                              currentValue: settings?.age ?? 25,
+                              unit: 'yrs',
+                              onSave:
+                                  (value) => ref.read(settingsProvider.notifier).updateBodyProfile(
+                                    age: value,
+                                    currentWeightKg:
+                                        ref.read(bodyMetricsProvider.notifier).currentWeight,
+                                  ),
+                            ),
+                      ),
+                      _SettingRow(
+                        icon: LucideIcons.userCircle,
+                        accent: AppColors.primary,
+                        title: l10n.settings_gender,
+                        value:
+                            settings?.gender != null
+                                ? _getLocalGender(context, settings!.gender!)
+                                : '--',
+                        onTap: () => _showGenderSelector(context, ref, settings ?? UserSettings.defaults()),
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -2192,15 +2192,13 @@ class _BodyProfileScreen extends StatelessWidget {
             title: l10n.home_body_stats, // "Body Stats"
             accent: AppColors.primary,
             children: [
-              Selector<MetricsProvider, (double?, String)>(
-                selector:
-                    (_, m) => (
-                      m.currentWeight,
-                      context.read<SettingsProvider>().weightUnit,
-                    ),
-                builder: (context, data, _) {
-                  double? displayWeight = data.$1;
-                  if (displayWeight != null && data.$2 == 'lb') {
+              Consumer(
+                builder: (context, ref, _) {
+                  final weightUnit = ref.watch(settingsProvider).valueOrNull?.weightUnit ?? 'kg';
+                  final metrics = ref.watch(bodyMetricsProvider).valueOrNull ?? [];
+                  final currentWeight = metrics.isEmpty ? null : metrics.first.weight;
+                  double? displayWeight = currentWeight;
+                  if (displayWeight != null && weightUnit == 'lb') {
                     displayWeight = displayWeight * 2.20462;
                   }
                   return _SettingRow(
@@ -2209,7 +2207,7 @@ class _BodyProfileScreen extends StatelessWidget {
                     title: l10n.settings_current_weight,
                     value:
                         displayWeight != null
-                            ? '${displayWeight.toStringAsFixed(1)} ${_getLocalUnit(context, data.$2)}'
+                            ? '${displayWeight.toStringAsFixed(1)} ${_getLocalUnit(context, weightUnit)}'
                             : l10n.settings_set_weight,
                     onTap:
                         () => showModalBottomSheet(
@@ -2221,11 +2219,12 @@ class _BodyProfileScreen extends StatelessWidget {
                   );
                 },
               ),
-              Selector<SettingsProvider, (double?, String)>(
-                selector: (_, s) => (s.targetWeight, s.weightUnit),
-                builder: (context, data, _) {
-                  double? displayTarget = data.$1;
-                  if (displayTarget != null && data.$2 == 'lb') {
+              Consumer(
+                builder: (context, ref, _) {
+                  final targetWeight = ref.watch(settingsProvider).valueOrNull?.targetWeight;
+                  final weightUnit = ref.watch(settingsProvider).valueOrNull?.weightUnit ?? 'kg';
+                  double? displayTarget = targetWeight;
+                  if (displayTarget != null && weightUnit == 'lb') {
                     displayTarget = displayTarget * 2.20462;
                   }
                   return _SettingRow(
@@ -2234,7 +2233,7 @@ class _BodyProfileScreen extends StatelessWidget {
                     title: l10n.settings_target_weight,
                     value:
                         displayTarget != null
-                            ? '${displayTarget.toStringAsFixed(1)} ${_getLocalUnit(context, data.$2)}'
+                            ? '${displayTarget.toStringAsFixed(1)} ${_getLocalUnit(context, weightUnit)}'
                             : l10n.settings_set_target,
                     onTap:
                         () => _showNumberDialog(
@@ -2242,30 +2241,26 @@ class _BodyProfileScreen extends StatelessWidget {
                           title: l10n.settings_target_weight,
                           currentValue:
                               displayTarget?.round() ??
-                              (data.$2 == 'lb' ? 154 : 70),
-                          unit: data.$2,
+                              (weightUnit == 'lb' ? 154 : 70),
+                          unit: weightUnit,
                           onSave: (value) {
                             double kg = value.toDouble();
-                            if (data.$2 == 'lb') kg = value / 2.20462;
-                            return context
-                                .read<SettingsProvider>()
-                                .updateBodyProfile(
-                                  targetWeight: kg,
-                                  currentWeightKg:
-                                      context
-                                          .read<MetricsProvider>()
-                                          .currentWeight,
-                                );
+                            if (weightUnit == 'lb') kg = value / 2.20462;
+                            return ref.read(settingsProvider.notifier).updateBodyProfile(
+                              targetWeight: kg,
+                              currentWeightKg: ref.read(bodyMetricsProvider.notifier).currentWeight,
+                            );
                           },
                         ),
                   );
                 },
               ),
-              Selector<SettingsProvider, (double?, String)>(
-                selector: (_, s) => (s.height, s.heightUnit),
-                builder: (context, data, _) {
-                  double? displayHeight = data.$1;
-                  if (displayHeight != null && data.$2 == 'in') {
+              Consumer(
+                builder: (context, ref, _) {
+                  final height = ref.watch(settingsProvider).valueOrNull?.height;
+                  final heightUnit = ref.watch(settingsProvider).valueOrNull?.heightUnit ?? 'cm';
+                  double? displayHeight = height;
+                  if (displayHeight != null && heightUnit == 'in') {
                     displayHeight = displayHeight / 2.54;
                   }
                   return _SettingRow(
@@ -2274,7 +2269,7 @@ class _BodyProfileScreen extends StatelessWidget {
                     title: l10n.settings_height,
                     value:
                         displayHeight != null
-                            ? '${displayHeight.round()} ${_getLocalUnit(context, data.$2)}'
+                            ? '${displayHeight.round()} ${_getLocalUnit(context, heightUnit)}'
                             : l10n.settings_set_height,
                     onTap:
                         () => _showNumberDialog(
@@ -2282,20 +2277,15 @@ class _BodyProfileScreen extends StatelessWidget {
                           title: l10n.settings_height,
                           currentValue:
                               displayHeight?.round() ??
-                              (data.$2 == 'in' ? 67 : 170),
-                          unit: data.$2,
+                              (heightUnit == 'in' ? 67 : 170),
+                          unit: heightUnit,
                           onSave: (value) {
                             double cm = value.toDouble();
-                            if (data.$2 == 'in') cm = value * 2.54;
-                            return context
-                                .read<SettingsProvider>()
-                                .updateBodyProfile(
-                                  height: cm,
-                                  currentWeightKg:
-                                      context
-                                          .read<MetricsProvider>()
-                                          .currentWeight,
-                                );
+                            if (heightUnit == 'in') cm = value * 2.54;
+                            return ref.read(settingsProvider.notifier).updateBodyProfile(
+                              height: cm,
+                              currentWeightKg: ref.read(bodyMetricsProvider.notifier).currentWeight,
+                            );
                           },
                         ),
                   );
@@ -2308,16 +2298,18 @@ class _BodyProfileScreen extends StatelessWidget {
             title: l10n.settings_units, // "Units"
             accent: AppColors.primary,
             children: [
-              Consumer<SettingsProvider>(
-                builder:
-                    (context, settings, _) => _SettingRow(
-                      icon: LucideIcons.settings,
-                      accent: AppColors.primary,
-                      title: l10n.settings_units,
-                      value:
-                          '${_getLocalUnit(context, settings.weightUnit).toUpperCase()} / ${_getLocalUnit(context, settings.heightUnit).toUpperCase()}',
-                      onTap: () => _showUnitSelector(context, settings),
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final settings = ref.watch(settingsProvider).valueOrNull;
+                  return _SettingRow(
+                    icon: LucideIcons.settings,
+                    accent: AppColors.primary,
+                    title: l10n.settings_units,
+                    value:
+                        '${_getLocalUnit(context, settings?.weightUnit ?? 'kg').toUpperCase()} / ${_getLocalUnit(context, settings?.heightUnit ?? 'cm').toUpperCase()}',
+                    onTap: () => _showUnitSelector(context, settings ?? UserSettings.defaults(), ref),
+                  );
+                },
               ),
             ],
           ),
@@ -2327,13 +2319,13 @@ class _BodyProfileScreen extends StatelessWidget {
   }
 }
 
-class _NutritionGoalsScreen extends StatelessWidget {
+class _NutritionGoalsScreen extends ConsumerWidget {
   const _NutritionGoalsScreen();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final isPro = context.select<SettingsProvider, bool>((s) => s.isPro);
+    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
     return AppPageScaffold(
       title: l10n.settings_nutrition_goals_title,
       scrollable: true,
@@ -2357,116 +2349,112 @@ class _NutritionGoalsScreen extends StatelessWidget {
             title: l10n.settings_nutrition_goals, // "Nutrition Goals"
             accent: AppColors.primary,
             children: [
-              Selector<SettingsProvider, int>(
-                selector: (_, s) => s.dailyCalorieGoal,
-                builder:
-                    (context, value, _) => _SettingRow(
-                      icon: LucideIcons.flame,
-                      accent: AppColors.primary,
-                      title: l10n.settings_daily_calories,
-                      value: '$value ${l10n.settings_kcal_unit}',
-                      onTap:
-                          () => _showNumberDialog(
-                            context,
-                            title: l10n.settings_daily_calories,
-                            currentValue: value,
-                            unit: 'kcal',
-                            onSave:
-                                context
-                                    .read<SettingsProvider>()
-                                    .updateCalorieGoal,
-                          ),
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final value = ref.watch(settingsProvider).valueOrNull?.dailyCalorieGoal ?? 2000;
+                  return _SettingRow(
+                    icon: LucideIcons.flame,
+                    accent: AppColors.primary,
+                    title: l10n.settings_daily_calories,
+                    value: '$value ${l10n.settings_kcal_unit}',
+                    onTap:
+                        () => _showNumberDialog(
+                          context,
+                          title: l10n.settings_daily_calories,
+                          currentValue: value,
+                          unit: 'kcal',
+                          onSave:
+                              ref.read(settingsProvider.notifier).updateCalorieGoal,
+                        ),
+                  );
+                },
               ),
-              Selector<SettingsProvider, int>(
-                selector: (_, s) => s.dailyProteinGoal,
-                builder:
-                    (context, value, _) => _SettingRow(
-                      icon: LucideIcons.beef,
-                      accent: AppColors.primary,
-                      title: l10n.settings_protein,
-                      value:
-                          isPro
-                              ? '$value${l10n.settings_grams_unit}'
-                              : l10n.macro_locked_placeholder,
-                      onTap:
-                          isPro
-                              ? () => _showNumberDialog(
-                                context,
-                                title: l10n.settings_protein,
-                                currentValue: value,
-                                unit: 'g',
-                                onSave:
-                                    context
-                                        .read<SettingsProvider>()
-                                        .updateProteinGoal,
-                              )
-                              : () => PremiumConversionService().openPaywall(
-                                context,
-                                PaywallEntryPoint.macroDetails,
-                                featureName: 'settings_protein_goal',
-                              ),
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final value = ref.watch(settingsProvider).valueOrNull?.dailyProteinGoal ?? 50;
+                  return _SettingRow(
+                    icon: LucideIcons.beef,
+                    accent: AppColors.primary,
+                    title: l10n.settings_protein,
+                    value:
+                        isPro
+                            ? '$value${l10n.settings_grams_unit}'
+                            : l10n.macro_locked_placeholder,
+                    onTap:
+                        isPro
+                            ? () => _showNumberDialog(
+                              context,
+                              title: l10n.settings_protein,
+                              currentValue: value,
+                              unit: 'g',
+                              onSave:
+                                  ref.read(settingsProvider.notifier).updateProteinGoal,
+                            )
+                            : () => PremiumConversionService().openPaywall(
+                              context,
+                              PaywallEntryPoint.macroDetails,
+                              featureName: 'settings_protein_goal',
+                            ),
+                  );
+                },
               ),
-              Selector<SettingsProvider, int>(
-                selector: (_, s) => s.dailyCarbGoal,
-                builder:
-                    (context, value, _) => _SettingRow(
-                      icon: LucideIcons.wheat,
-                      accent: AppColors.primary,
-                      title: l10n.settings_carbs,
-                      value:
-                          isPro
-                              ? '$value${l10n.settings_grams_unit}'
-                              : l10n.macro_locked_placeholder,
-                      onTap:
-                          isPro
-                              ? () => _showNumberDialog(
-                                context,
-                                title: l10n.settings_carbs,
-                                currentValue: value,
-                                unit: 'g',
-                                onSave:
-                                    context
-                                        .read<SettingsProvider>()
-                                        .updateCarbGoal,
-                              )
-                              : () => PremiumConversionService().openPaywall(
-                                context,
-                                PaywallEntryPoint.macroDetails,
-                                featureName: 'settings_carb_goal',
-                              ),
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final value = ref.watch(settingsProvider).valueOrNull?.dailyCarbGoal ?? 250;
+                  return _SettingRow(
+                    icon: LucideIcons.wheat,
+                    accent: AppColors.primary,
+                    title: l10n.settings_carbs,
+                    value:
+                        isPro
+                            ? '$value${l10n.settings_grams_unit}'
+                            : l10n.macro_locked_placeholder,
+                    onTap:
+                        isPro
+                            ? () => _showNumberDialog(
+                              context,
+                              title: l10n.settings_carbs,
+                              currentValue: value,
+                              unit: 'g',
+                              onSave:
+                                  ref.read(settingsProvider.notifier).updateCarbGoal,
+                            )
+                            : () => PremiumConversionService().openPaywall(
+                              context,
+                              PaywallEntryPoint.macroDetails,
+                              featureName: 'settings_carb_goal',
+                            ),
+                  );
+                },
               ),
-              Selector<SettingsProvider, int>(
-                selector: (_, s) => s.dailyFatGoal,
-                builder:
-                    (context, value, _) => _SettingRow(
-                      icon: LucideIcons.droplets,
-                      accent: AppColors.primary,
-                      title: l10n.settings_fat,
-                      value:
-                          isPro
-                              ? '$value${l10n.settings_grams_unit}'
-                              : l10n.macro_locked_placeholder,
-                      onTap:
-                          isPro
-                              ? () => _showNumberDialog(
-                                context,
-                                title: l10n.settings_fat,
-                                currentValue: value,
-                                unit: 'g',
-                                onSave:
-                                    context
-                                        .read<SettingsProvider>()
-                                        .updateFatGoal,
-                              )
-                              : () => PremiumConversionService().openPaywall(
-                                context,
-                                PaywallEntryPoint.macroDetails,
-                                featureName: 'settings_fat_goal',
-                              ),
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final value = ref.watch(settingsProvider).valueOrNull?.dailyFatGoal ?? 65;
+                  return _SettingRow(
+                    icon: LucideIcons.droplets,
+                    accent: AppColors.primary,
+                    title: l10n.settings_fat,
+                    value:
+                        isPro
+                            ? '$value${l10n.settings_grams_unit}'
+                            : l10n.macro_locked_placeholder,
+                    onTap:
+                        isPro
+                            ? () => _showNumberDialog(
+                              context,
+                              title: l10n.settings_fat,
+                              currentValue: value,
+                              unit: 'g',
+                              onSave:
+                                  ref.read(settingsProvider.notifier).updateFatGoal,
+                            )
+                            : () => PremiumConversionService().openPaywall(
+                              context,
+                              PaywallEntryPoint.macroDetails,
+                              featureName: 'settings_fat_goal',
+                            ),
+                  );
+                },
               ),
             ],
           ),
@@ -2476,11 +2464,11 @@ class _NutritionGoalsScreen extends StatelessWidget {
   }
 }
 
-class _PreferencesScreen extends StatelessWidget {
+class _PreferencesScreen extends ConsumerWidget {
   const _PreferencesScreen();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
       title: l10n.settings_preferences_title,
@@ -2493,64 +2481,64 @@ class _PreferencesScreen extends StatelessWidget {
             title: l10n.settings_notifications, // "Notifications"
             accent: AppColors.primary,
             children: [
-              Selector<SettingsProvider, bool>(
-                selector: (_, s) => s.notificationsEnabled,
-                builder:
-                    (context, value, _) => _SwitchRow(
-                      icon: LucideIcons.bell,
-                      accent: AppColors.primary,
-                      title: l10n.settings_notifications,
-                      value: value,
-                      onChanged:
-                          context.read<SettingsProvider>().toggleNotifications,
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final value = ref.watch(settingsProvider).valueOrNull?.notificationsEnabled ?? true;
+                  return _SwitchRow(
+                    icon: LucideIcons.bell,
+                    accent: AppColors.primary,
+                    title: l10n.settings_notifications,
+                    value: value,
+                    onChanged:
+                        ref.read(settingsProvider.notifier).toggleNotifications,
+                  );
+                },
               ),
-              Selector<SettingsProvider, bool>(
-                selector: (_, s) => s.mealRemindersEnabled,
-                builder:
-                    (context, value, _) => _SwitchRow(
-                      icon: LucideIcons.clock3,
-                      accent: AppColors.primary,
-                      title: l10n.settings_meal_reminders,
-                      value: value,
-                      onChanged:
-                          context.read<SettingsProvider>().toggleMealReminders,
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final value = ref.watch(settingsProvider).valueOrNull?.mealRemindersEnabled ?? true;
+                  return _SwitchRow(
+                    icon: LucideIcons.clock3,
+                    accent: AppColors.primary,
+                    title: l10n.settings_meal_reminders,
+                    value: value,
+                    onChanged:
+                        ref.read(settingsProvider.notifier).toggleMealReminders,
+                  );
+                },
               ),
-              Selector<SettingsProvider, bool>(
-                selector: (_, s) => s.dailyMotivationEnabled,
-                builder:
-                    (context, value, _) => _SwitchRow(
-                      icon: LucideIcons.sparkles,
-                      accent: AppColors.primary,
-                      title: l10n.settings_daily_motivation,
-                      value: value,
-                      onChanged:
-                          context
-                              .read<SettingsProvider>()
-                              .toggleDailyMotivation,
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final value = ref.watch(settingsProvider).valueOrNull?.dailyMotivationEnabled ?? false;
+                  return _SwitchRow(
+                    icon: LucideIcons.sparkles,
+                    accent: AppColors.primary,
+                    title: l10n.settings_daily_motivation,
+                    value: value,
+                    onChanged:
+                        ref.read(settingsProvider.notifier).toggleDailyMotivation,
+                  );
+                },
               ),
-              Selector<SettingsProvider, bool>(
-                selector: (_, s) => s.foodRemindersEnabled,
-                builder:
-                    (context, value, _) => _SwitchRow(
-                      icon: LucideIcons.camera,
-                      accent: AppColors.primary,
-                      title: l10n.settings_food_reminders,
-                      subtitle: l10n.settings_food_reminders_subtitle,
-                      value: value,
-                      onChanged:
-                          context
-                              .read<SettingsProvider>()
-                              .toggleFoodReminders,
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final value = ref.watch(settingsProvider).valueOrNull?.foodRemindersEnabled ?? false;
+                  return _SwitchRow(
+                    icon: LucideIcons.camera,
+                    accent: AppColors.primary,
+                    title: l10n.settings_food_reminders,
+                    subtitle: l10n.settings_food_reminders_subtitle,
+                    value: value,
+                    onChanged:
+                        ref.read(settingsProvider.notifier).toggleFoodReminders,
+                  );
+                },
               ),
             ],
           ),
-          Selector<SettingsProvider, bool>(
-            selector: (_, s) => s.mealRemindersEnabled,
-            builder: (context, enabled, _) {
+          Consumer(
+            builder: (context, ref, _) {
+              final enabled = ref.watch(settingsProvider).valueOrNull?.mealRemindersEnabled ?? true;
               if (!enabled) return const SizedBox.shrink();
               return Column(
                 children: [
@@ -2559,48 +2547,36 @@ class _PreferencesScreen extends StatelessWidget {
                     title: l10n.settings_meal_reminders, // "Meal Reminders"
                     accent: AppColors.primary,
                     children: [
-                      Consumer<SettingsProvider>(
-                        builder:
-                            (context, settings, _) => Column(
-                              children: [
-                                _SettingRow(
-                                  icon: LucideIcons.egg,
-                                  accent: AppColors.primary,
-                                  title: l10n.settings_breakfast_time,
-                                  value: settings.breakfastTime,
-                                  onTap:
-                                      () => _selectTime(
-                                        context,
-                                        settings,
-                                        'breakfast',
-                                      ),
-                                ),
-                                _SettingRow(
-                                  icon: LucideIcons.utensils,
-                                  accent: AppColors.primary,
-                                  title: l10n.settings_lunch_time,
-                                  value: settings.lunchTime,
-                                  onTap:
-                                      () => _selectTime(
-                                        context,
-                                        settings,
-                                        'lunch',
-                                      ),
-                                ),
-                                _SettingRow(
-                                  icon: LucideIcons.moon,
-                                  accent: AppColors.primary,
-                                  title: l10n.settings_dinner_time,
-                                  value: settings.dinnerTime,
-                                  onTap:
-                                      () => _selectTime(
-                                        context,
-                                        settings,
-                                        'dinner',
-                                      ),
-                                ),
-                              ],
-                            ),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final settings = ref.watch(settingsProvider).valueOrNull;
+                          if (settings == null) return const SizedBox.shrink();
+                          return Column(
+                            children: [
+                              _SettingRow(
+                                icon: LucideIcons.egg,
+                                accent: AppColors.primary,
+                                title: l10n.settings_breakfast_time,
+                                value: settings.breakfastTime,
+                                onTap: () => _selectTime(context, settings, ref, 'breakfast'),
+                              ),
+                              _SettingRow(
+                                icon: LucideIcons.utensils,
+                                accent: AppColors.primary,
+                                title: l10n.settings_lunch_time,
+                                value: settings.lunchTime,
+                                onTap: () => _selectTime(context, settings, ref, 'lunch'),
+                              ),
+                              _SettingRow(
+                                icon: LucideIcons.moon,
+                                accent: AppColors.primary,
+                                title: l10n.settings_dinner_time,
+                                value: settings.dinnerTime,
+                                onTap: () => _selectTime(context, settings, ref, 'dinner'),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -2613,20 +2589,22 @@ class _PreferencesScreen extends StatelessWidget {
             title: l10n.settings_appearance, // "App Appearance"
             accent: AppColors.primary,
             children: [
-              Consumer<SettingsProvider>(
-                builder:
-                    (context, settings, _) => Column(
-                      children: [
-                        _ThemeRow(currentMode: settings.themeMode),
-                        _SettingRow(
-                          icon: LucideIcons.languages,
-                          accent: AppColors.primary,
-                          title: l10n.settings_language,
-                          value: _getLanguageName(settings.languageCode),
-                          onTap: () => _showLanguageSelector(context, settings),
-                        ),
-                      ],
-                    ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final settings = ref.watch(settingsProvider).valueOrNull;
+                  return Column(
+                    children: [
+                      _ThemeRow(currentMode: settings?.themeMode ?? 'system'),
+                      _SettingRow(
+                        icon: LucideIcons.languages,
+                        accent: AppColors.primary,
+                        title: l10n.settings_language,
+                        value: _getLanguageName(settings?.languageCode ?? 'en'),
+                        onTap: () => _showLanguageSelector(context, settings ?? UserSettings.defaults(), ref),
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -2636,11 +2614,11 @@ class _PreferencesScreen extends StatelessWidget {
   }
 }
 
-class _AccountScreen extends StatelessWidget {
+class _AccountScreen extends ConsumerWidget {
   const _AccountScreen();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
       title: l10n.settings_account_title,
@@ -2653,64 +2631,53 @@ class _AccountScreen extends StatelessWidget {
             title: l10n.settings_account, // "Account"
             accent: AppColors.primary,
             children: [
-              Selector<SettingsProvider, bool>(
-                selector: (_, s) => s.isPro,
-                builder:
-                    (context, isPro, _) => _SettingRow(
-                      icon: LucideIcons.crown,
-                      accent: AppColors.warning,
-                      title: l10n.settings_subscription,
-                      value:
-                          isPro
-                              ? l10n.settings_pro_active
-                              : l10n.settings_manage_plan,
-                      onTap:
-                          () => PremiumConversionService().openPaywall(
-                            context,
-                            PaywallEntryPoint.settings,
-                            featureName: 'subscription',
-                          ),
-                    ),
-              ),
-              Selector<AuthProvider, bool>(
-                selector: (_, auth) => auth.isAnonymous,
-                builder:
-                    (context, isAnonymous, _) => _SettingRow(
-                      icon:
-                          isAnonymous
-                              ? LucideIcons.userPlus
-                              : LucideIcons.logOut,
-                      accent: isAnonymous ? AppColors.primary : AppColors.error,
-                      title:
-                          isAnonymous
-                              ? l10n.settings_create_account
-                              : l10n.common_sign_out,
-                      value:
-                          isAnonymous
-                              ? l10n.settings_sync_data_desc
-                              : l10n.settings_sign_out_desc,
-                      onTap: () => _handleSignOut(context),
-                    ),
-              ),
-              Selector<AuthProvider, bool>(
-                selector: (_, auth) => !auth.isAnonymous,
-                builder: (context, canDelete, _) {
-                  if (!canDelete) return const SizedBox.shrink();
+              Consumer(
+                builder: (context, ref, _) {
+                  final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
                   return _SettingRow(
-                    icon: LucideIcons.trash2,
-                    accent: AppColors.error,
-                    title: l10n.common_delete_account,
-                    value: l10n.common_delete_account_confirm,
-                    onTap: () => _showDeleteConfirmation(context),
+                    icon: LucideIcons.crown,
+                    accent: AppColors.warning,
+                    title: l10n.settings_subscription,
+                    value:
+                        isPro
+                            ? l10n.settings_pro_active
+                            : l10n.settings_manage_plan,
+                    onTap:
+                        () => PremiumConversionService().openPaywall(
+                          context,
+                          PaywallEntryPoint.settings,
+                          featureName: 'subscription',
+                        ),
                   );
                 },
               ),
+              _SettingRow(
+                icon: ref.watch(isAnonymousProvider) ? LucideIcons.userPlus : LucideIcons.logOut,
+                accent: ref.watch(isAnonymousProvider) ? AppColors.primary : AppColors.error,
+                title:
+                    ref.watch(isAnonymousProvider)
+                        ? l10n.settings_create_account
+                        : l10n.common_sign_out,
+                value:
+                    ref.watch(isAnonymousProvider)
+                        ? l10n.settings_sync_data_desc
+                        : l10n.settings_sign_out_desc,
+                onTap: () => _handleSignOut(context, ref),
+              ),
+              if (!ref.watch(isAnonymousProvider))
+                _SettingRow(
+                  icon: LucideIcons.trash2,
+                  accent: AppColors.error,
+                  title: l10n.common_delete_account,
+                  value: l10n.common_delete_account_confirm,
+                  onTap: () => _showDeleteConfirmation(context, ref),
+                ),
               _SettingRow(
                 icon: LucideIcons.refreshCw,
                 accent: AppColors.primary,
                 title: l10n.paywall_restore,
                 value: l10n.premium_restore_success,
-                onTap: () => _handleRestore(context),
+                onTap: () => _handleRestore(context, ref),
               ),
             ],
           ),
@@ -2719,10 +2686,9 @@ class _AccountScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _handleRestore(BuildContext context) async {
+  Future<void> _handleRestore(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context)!;
-    final settingsProvider = context.read<SettingsProvider>();
     final subService = SubscriptionService();
 
     HapticFeedback.mediumImpact();
@@ -2731,7 +2697,7 @@ class _AccountScreen extends StatelessWidget {
     if (!context.mounted) return;
     switch (result.status) {
       case SubscriptionStatus.active:
-        settingsProvider.refresh();
+        ref.invalidate(settingsProvider);
         _showSubscriptionSnackBar(
           messenger,
           l10n.premium_restore_success,
@@ -2805,9 +2771,9 @@ class _AccountScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _handleSignOut(BuildContext context) async {
-    final auth = context.read<AuthProvider>();
-    if (auth.isAnonymous) {
+  Future<void> _handleSignOut(BuildContext context, WidgetRef ref) async {
+    final isAnonymousUser = ref.read(isAnonymousProvider);
+    if (isAnonymousUser) {
       AuthModal.show(context);
       return;
     }
@@ -2836,27 +2802,20 @@ class _AccountScreen extends StatelessWidget {
 
     if (confirmed != true) return;
 
-    await auth.signOut();
+    await ref.read(authNotifierProvider.notifier).signOut();
     if (context.mounted) {
-      final settings = context.read<SettingsProvider>();
-      final meal = context.read<MealProvider>();
-      final water = context.read<WaterProvider>();
-      final metrics = context.read<MetricsProvider>();
-      final assistant = context.read<AssistantProvider>();
-      final planner = context.read<PlannerProvider>();
-
-      await settings.clear();
-      await meal.clear();
-      await water.clear();
-      await metrics.clear();
-      await assistant.clear();
-      await planner.clear();
+      ref.invalidate(settingsProvider);
+      ref.invalidate(mealLogProvider);
+      ref.invalidate(waterProvider);
+      ref.invalidate(bodyMetricsProvider);
+      ref.invalidate(assistantProvider);
+      ref.invalidate(plannerProvider);
 
       if (context.mounted) context.go('/auth');
     }
   }
 
-  Future<void> _showDeleteConfirmation(BuildContext context) async {
+  Future<void> _showDeleteConfirmation(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -2883,23 +2842,15 @@ class _AccountScreen extends StatelessWidget {
 
     if (confirmed == true && context.mounted) {
       try {
-        final auth = context.read<AuthProvider>();
-        await auth.deleteAccount();
+        await ref.read(authNotifierProvider.notifier).deleteAccount();
 
         if (context.mounted) {
-          final settings = context.read<SettingsProvider>();
-          final meal = context.read<MealProvider>();
-          final water = context.read<WaterProvider>();
-          final metrics = context.read<MetricsProvider>();
-          final assistant = context.read<AssistantProvider>();
-          final planner = context.read<PlannerProvider>();
-
-          await settings.clear();
-          await meal.clear();
-          await water.clear();
-          await metrics.clear();
-          await assistant.clear();
-          await planner.clear();
+          ref.invalidate(settingsProvider);
+          ref.invalidate(mealLogProvider);
+          ref.invalidate(waterProvider);
+          ref.invalidate(bodyMetricsProvider);
+          ref.invalidate(assistantProvider);
+          ref.invalidate(plannerProvider);
 
           if (context.mounted) context.go('/auth');
         }
@@ -2917,11 +2868,11 @@ class _AccountScreen extends StatelessWidget {
   }
 }
 
-class _DataSyncScreen extends StatelessWidget {
+class _DataSyncScreen extends ConsumerWidget {
   const _DataSyncScreen();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     return AppPageScaffold(
       title: l10n.settings_data_sync_title,
@@ -2940,11 +2891,10 @@ class _DataSyncScreen extends StatelessWidget {
                 title: l10n.settings_export_data,
                 value: l10n.settings_export_desc,
                 onTap: () async {
-                  final mealProvider = context.read<MealProvider>();
-                  final settingsProvider = context.read<SettingsProvider>();
-                  final authProvider = context.read<AuthProvider>();
+                  final settingsVal = ref.read(settingsProvider).valueOrNull;
+                  final authUser = ref.read(authStateProvider).valueOrNull;
 
-                  if (!settingsProvider.isPro) {
+                  if (!(settingsVal?.isPro ?? false)) {
                     PremiumConversionService().openPaywall(
                       context,
                       PaywallEntryPoint.reportInsight,
@@ -2954,17 +2904,16 @@ class _DataSyncScreen extends StatelessWidget {
                   }
 
                   final userName =
-                      authProvider.user?.displayName ??
-                      authProvider.user?.email?.split('@').first ??
+                      authUser?.displayName ??
+                      authUser?.email?.split('@').first ??
                       'Valued User';
 
+                  final repo = await ref.read(mealRepositoryProvider.future);
                   await ReportPdfService.generateAndShareReport(
                     userName: userName,
-                    meals: mealProvider.getReportMeals(
-                      isPro: settingsProvider.isPro,
-                    ),
-                    settings: settingsProvider,
-                    streak: settingsProvider.currentStreak,
+                    meals: repo.getAllMeals(),
+                    settings: settingsVal ?? UserSettings.defaults(),
+                    streak: settingsVal?.currentStreak ?? 0,
                   );
                 },
               ),
@@ -3060,12 +3009,14 @@ class _WeightProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Consumer2<MetricsProvider, SettingsProvider>(
-      builder: (context, metrics, settings, _) {
-        final unit = settings.weightUnit;
-        final startWeightKg = settings.startingWeight;
-        final currentWeightKg = metrics.currentWeight ?? startWeightKg;
-        final targetWeightKg = settings.targetWeight;
+    return Consumer(
+      builder: (context, ref, child) {
+        final metrics = ref.watch(bodyMetricsProvider);
+        final settings = ref.watch(settingsProvider).valueOrNull;
+        final unit = settings?.weightUnit ?? 'kg';
+        final startWeightKg = settings?.startingWeight;
+        final currentWeightKg = ref.read(bodyMetricsProvider.notifier).currentWeight ?? startWeightKg;
+        final targetWeightKg = settings?.targetWeight;
 
         if (startWeightKg == null ||
             targetWeightKg == null ||
@@ -3261,11 +3212,12 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SettingsProvider>(
-      builder: (context, settings, _) {
-        final pGrams = settings.dailyProteinGoal;
-        final cGrams = settings.dailyCarbGoal;
-        final fGrams = settings.dailyFatGoal;
+    return Consumer(
+      builder: (context, ref, _) {
+        final settings = ref.watch(settingsProvider).valueOrNull;
+        final pGrams = settings?.dailyProteinGoal ?? 50;
+        final cGrams = settings?.dailyCarbGoal ?? 250;
+        final fGrams = settings?.dailyFatGoal ?? 65;
 
         final pKcal = pGrams * 4.0;
         final cKcal = cGrams * 4.0;
@@ -3665,3 +3617,7 @@ String _getLocalOption(BuildContext context, String option) {
   }
   return option;
 }
+
+
+
+

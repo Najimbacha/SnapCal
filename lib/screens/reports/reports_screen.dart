@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_typography.dart';
@@ -11,20 +11,21 @@ import '../../widgets/app_page_scaffold.dart';
 import 'widgets/body_report_view.dart';
 import 'widgets/nutrition_report_view.dart';
 import '../../data/services/report_pdf_service.dart';
-import '../../providers/meal_provider.dart';
+import '../../data/models/user_settings.dart';
 import '../../providers/settings_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_state_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../widgets/premium_prompt_modal.dart';
 import '../../data/services/premium_conversion_service.dart';
 
-class ReportsScreen extends StatefulWidget {
+class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
 
   @override
-  State<ReportsScreen> createState() => _ReportsScreenState();
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen>
+class _ReportsScreenState extends ConsumerState<ReportsScreen>
     with SingleTickerProviderStateMixin {
   String _timeRange = 'Weekly';
   late final AnimationController _animController;
@@ -53,18 +54,17 @@ class _ReportsScreenState extends State<ReportsScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 2000), () {
         if (mounted) {
-          final hasReportData =
-              context.read<MealProvider>().getWeeklyMeals().isNotEmpty;
           final l10n = AppLocalizations.of(context)!;
           PremiumPromptModal.show(
             context,
+            ref,
             title: l10n.report_prompt_title,
             subtitle: l10n.report_prompt_subtitle,
             buttonText: l10n.report_prompt_btn,
             icon: LucideIcons.fileBarChart,
             entryPoint: PaywallEntryPoint.reportInsight,
             featureName: 'weekly_report',
-            hasCompletedValueAction: hasReportData,
+            hasCompletedValueAction: false,
           );
         }
       });
@@ -80,8 +80,9 @@ class _ReportsScreenState extends State<ReportsScreen>
   Future<void> _exportPdfReport() async {
     if (_isExporting) return;
 
-    final settingsProvider = context.read<SettingsProvider>();
-    if (!settingsProvider.isPro) {
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final isPro = settingsVal?.isPro ?? false;
+    if (!isPro) {
       PremiumConversionService().openPaywall(
         context,
         PaywallEntryPoint.reportInsight,
@@ -94,19 +95,21 @@ class _ReportsScreenState extends State<ReportsScreen>
     HapticFeedback.mediumImpact();
 
     try {
-      final mealProvider = context.read<MealProvider>();
-      final authProvider = context.read<AuthProvider>();
+      final authState = ref.watch(authStateProvider).valueOrNull;
 
       final userName =
-          authProvider.user?.displayName ??
-          authProvider.user?.email?.split('@').first ??
+          authState?.displayName ??
+          authState?.email?.split('@').first ??
           AppLocalizations.of(context)!.report_guest_user;
+
+      final repo = await ref.read(mealRepositoryProvider.future);
+      final allMeals = repo.getAllMeals();
 
       await ReportPdfService.generateAndShareReport(
         userName: userName,
-        meals: mealProvider.getReportMeals(isPro: settingsProvider.isPro),
-        settings: settingsProvider,
-        streak: settingsProvider.currentStreak,
+        meals: allMeals,
+        settings: settingsVal ?? UserSettings.defaults(),
+        streak: settingsVal?.currentStreak ?? 0,
       );
     } catch (e) {
       if (mounted) {

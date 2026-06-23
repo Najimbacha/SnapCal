@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:snapcal/widgets/app_icon.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_colors.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_state_provider.dart';
 import 'welcome_scan_demo.dart';
 
-class WelcomeStep extends StatefulWidget {
+class WelcomeStep extends ConsumerStatefulWidget {
   final VoidCallback onGetStarted;
 
   const WelcomeStep({super.key, required this.onGetStarted});
 
   @override
-  State<WelcomeStep> createState() => _WelcomeStepState();
+  ConsumerState<WelcomeStep> createState() => _WelcomeStepState();
 }
 
-class _WelcomeStepState extends State<WelcomeStep>
+class _WelcomeStepState extends ConsumerState<WelcomeStep>
     with SingleTickerProviderStateMixin {
   bool _scanComplete = false;
   late AnimationController _textCtrl;
@@ -119,9 +119,9 @@ class _WelcomeStepState extends State<WelcomeStep>
                   ),
                 ),
                 const SizedBox(height: 12),
-                Consumer<AuthProvider>(
-                  builder: (context, auth, _) {
-                    if (!auth.isAnonymous) return const SizedBox.shrink();
+                Consumer(
+                  builder: (context, ref, _) {
+                    if (!ref.watch(isAnonymousProvider)) return const SizedBox.shrink();
                     return _AuthLinkButton(
                       text: l10n.onboarding_already_account,
                       onTap: () => context.push('/auth'),

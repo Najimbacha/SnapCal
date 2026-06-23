@@ -1,140 +1,95 @@
 import 'package:flutter/foundation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/meal_template.dart';
 import '../data/models/meal.dart';
 import '../data/repositories/template_repository.dart';
+import '../core/utils/date_utils.dart' as app_date;
 import 'meal_provider.dart';
 import 'settings_provider.dart';
-import '../core/utils/date_utils.dart' as app_date;
 
-/// Provider for managing meal templates ("My Routines")
-class TemplateProvider with ChangeNotifier {
-  final TemplateRepository _repository = TemplateRepository();
+part 'template_provider.g.dart';
+
+@Riverpod(keepAlive: true)
+class Templates extends _$Templates {
   final Uuid _uuid = const Uuid();
+  final TemplateRepository _repo = TemplateRepository();
 
-  List<MealTemplate> _templates = [];
-
-  List<MealTemplate> get templates =>
-      [..._templates]..sort((a, b) => b.usageCount.compareTo(a.usageCount));
-
-  bool get hasTemplates => _templates.isNotEmpty;
-
-  Future<void> init() async {
-    await _repository.init();
-    _templates = _repository.getAll();
-    notifyListeners();
+  @override
+  Future<List<MealTemplate>> build() async {
+    await _repo.init();
+    return _repo.getAll();
   }
 
-  /// Save a new template from a list of meals
   Future<void> saveTemplate({
     required String name,
     required String emoji,
     required List<Meal> meals,
   }) async {
-    final template = MealTemplate(
-      id: _uuid.v4(),
-      name: name,
-      emoji: emoji,
-      items:
-          meals
-              .map(
-                (m) => TemplateItem(
-                  foodName: m.foodName,
-                  calories: m.calories,
-                  protein: m.macros.protein,
-                  carbs: m.macros.carbs,
-                  fat: m.macros.fat,
-                  servingSize: m.portion,
-                ),
-              )
-              .toList(),
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-    );
-
-    await _repository.save(template);
-    _templates = _repository.getAll();
-    notifyListeners();
+    final items = meals.map((m) => TemplateItem(
+      foodName: m.foodName, calories: m.calories,
+      protein: m.macros.protein, carbs: m.macros.carbs,
+      fat: m.macros.fat, servingSize: m.portion,
+    )).toList();
+    await saveTemplateFromItems(name: name, emoji: emoji, items: items);
   }
 
-  /// Save a template from manually created items
   Future<void> saveTemplateFromItems({
     required String name,
     required String emoji,
     required List<TemplateItem> items,
   }) async {
     final template = MealTemplate(
-      id: _uuid.v4(),
-      name: name,
-      emoji: emoji,
-      items: items,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
+      id: _uuid.v4(), name: name, emoji: emoji,
+      items: items, createdAt: DateTime.now().millisecondsSinceEpoch,
     );
-
-    await _repository.save(template);
-    _templates = _repository.getAll();
-    notifyListeners();
+    await _repo.save(template);
+    state = AsyncData(await _repo.getAll());
   }
 
-  /// Log all items from a template as meals
-  Future<void> logFromTemplate(
-    MealTemplate template,
-    MealProvider mealProvider,
-    SettingsProvider settings,
-  ) async {
+  Future<void> logFromTemplate(MealTemplate template) async {
+    final mealLog = ref.read(mealLogProvider.notifier);
     for (final item in template.items) {
-      await mealProvider.addMeal(
+      await mealLog.addMeal(Meal(
+        id: _uuid.v4(),
         foodName: item.foodName,
         calories: item.calories,
-        protein: item.protein,
-        carbs: item.carbs,
-        fat: item.fat,
+        macros: Macros(protein: item.protein, carbs: item.carbs, fat: item.fat),
         portion: item.servingSize,
         dateString: app_date.DateUtils.getTodayString(),
-        settings: settings,
-      );
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      ));
     }
-
-    // Increment usage count
     template.usageCount++;
-    await _repository.save(template);
-    _templates = _repository.getAll();
-    notifyListeners();
+    await _repo.save(template);
+    state = AsyncData(await _repo.getAll());
   }
 
-  /// Delete a template
   Future<void> deleteTemplate(String id) async {
-    await _repository.delete(id);
-    _templates = _repository.getAll();
-    notifyListeners();
+    await _repo.delete(id);
+    state = AsyncData(await _repo.getAll());
   }
 
-  /// Update template name/emoji
   Future<void> updateTemplate(String id, {String? name, String? emoji}) async {
-    final template = _templates.firstWhere((t) => t.id == id);
-
+    final current = state.valueOrNull ?? [];
+    final template = current.firstWhere((t) => t.id == id);
     final updated = MealTemplate(
-      id: template.id,
-      name: name ?? template.name,
-      emoji: emoji ?? template.emoji,
-      items: template.items,
-      createdAt: template.createdAt,
-      usageCount: template.usageCount,
+      id: template.id, name: name ?? template.name,
+      emoji: emoji ?? template.emoji, items: template.items,
+      createdAt: template.createdAt, usageCount: template.usageCount,
     );
-    await _repository.save(updated);
-    _templates = _repository.getAll();
-    notifyListeners();
+    await _repo.save(updated);
+    state = AsyncData(await _repo.getAll());
   }
 
-  /// Check if user can add more templates (free tier limit)
   bool canAddTemplate(bool isPro) {
+    final count = state.valueOrNull?.length ?? 0;
     if (isPro) return true;
-    return _templates.length < 3;
+    return count < 3;
   }
 
-  /// Clear all templates (logout)
   Future<void> clear() async {
-    await _repository.clear();
-    _templates = [];
-    notifyListeners();
+    await _repo.clear();
+    state = const AsyncData([]);
   }
 }

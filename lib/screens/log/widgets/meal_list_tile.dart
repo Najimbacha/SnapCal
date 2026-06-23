@@ -42,7 +42,7 @@ class MealListTile extends StatelessWidget {
         ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        child: const Icon(LucideIcons.trash2, color: AppColors.error, size: 22),
+        child: Icon(LucideIcons.trash2, color: AppColors.error, size: 22),
       ),
       child: GestureDetector(
         onTap: onTap,
@@ -239,3 +239,4 @@ class _EliteMacroPill extends StatelessWidget {
     );
   }
 }
+

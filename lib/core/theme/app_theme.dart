@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 
@@ -41,7 +42,7 @@ class AppTheme {
           TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
         },
       ),
-      textTheme: TextTheme(
+      textTheme: GoogleFonts.dmSansTextTheme(TextTheme(
         displayLarge: AppTypography.displayLarge,
         displayMedium: AppTypography.displayMedium,
         headlineLarge: AppTypography.headlineLarge,
@@ -56,7 +57,7 @@ class AppTheme {
         labelLarge: AppTypography.labelLarge,
         labelMedium: AppTypography.labelMedium,
         labelSmall: AppTypography.labelSmall,
-      ),
+      )),
 
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -164,7 +165,7 @@ class AppTheme {
         },
       ),
 
-      textTheme: TextTheme(
+      textTheme: GoogleFonts.dmSansTextTheme(TextTheme(
         displayLarge: AppTypography.displayLarge,
         displayMedium: AppTypography.displayMedium,
         headlineLarge: AppTypography.headlineLarge,
@@ -179,7 +180,7 @@ class AppTheme {
         labelLarge: AppTypography.labelLarge,
         labelMedium: AppTypography.labelMedium,
         labelSmall: AppTypography.labelSmall,
-      ),
+      )),
 
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,

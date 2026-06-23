@@ -1,12 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
-import '../../../data/services/activity_service.dart';
 import '../../../providers/activity_provider.dart';
 import '../../../widgets/app_icon.dart';
 
@@ -20,13 +19,13 @@ void showActivityHealthConnectSheet(BuildContext context) {
 }
 
 /// Root scaffold that provides the sheet structure with drag handle.
-class _SheetScaffold extends StatelessWidget {
+class _SheetScaffold extends ConsumerWidget {
   const _SheetScaffold();
 
   @override
-  Widget build(BuildContext context) {
-    final activity = context.watch<ActivityProvider>();
-    final isConnected = activity.trackingStatus == ActivityTrackingStatus.connected;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activityVal = ref.watch(activityProvider).valueOrNull;
+    final isConnected = activityVal?.healthConnected ?? false;
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -59,12 +58,14 @@ class _DragHandle extends StatelessWidget {
 
 // ── Disconnected State ───────────────────────────────────────
 
-class _DisconnectedState extends StatelessWidget {
+class _DisconnectedState extends ConsumerWidget {
   const _DisconnectedState();
 
   @override
-  Widget build(BuildContext context) {
-    final activity = context.watch<ActivityProvider>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activityAsync = ref.watch(activityProvider);
+    final activityVal = activityAsync.valueOrNull;
+    final healthConnected = activityVal?.healthConnected ?? false;
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
       child: Column(
@@ -101,14 +102,17 @@ class _DisconnectedState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          _StatusBadge(activity: activity),
+          _StatusBadge(activityVal: activityVal, isLoading: activityAsync.isLoading),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity, height: 50,
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () => activity.connect(),
+                onTap: () async {
+                  await ref.read(activityProvider.notifier).authorize();
+                  ref.invalidate(activityProvider);
+                },
                 borderRadius: BorderRadius.circular(999),
                 child: Ink(
                   decoration: BoxDecoration(
@@ -136,33 +140,23 @@ class _DisconnectedState extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  final ActivityProvider activity;
-  const _StatusBadge({required this.activity});
+  final ActivitySummary? activityVal;
+  final bool isLoading;
+  const _StatusBadge({required this.activityVal, required this.isLoading});
 
   @override
   Widget build(BuildContext context) {
     String label;
     Color color;
-    switch (activity.trackingStatus) {
-      case ActivityTrackingStatus.connected:
-      case ActivityTrackingStatus.emptyData:
-        label = 'Connected';
-        color = AppColors.green;
-      case ActivityTrackingStatus.permissionDenied:
-        label = 'Permission denied';
-        color = AppColors.error;
-      case ActivityTrackingStatus.healthConnectUnavailable:
-        label = 'Not available';
-        color = context.textMutedColor;
-      case ActivityTrackingStatus.loading:
-        label = 'Checking...';
-        color = context.textMutedColor;
-      case ActivityTrackingStatus.notConnected:
-        label = 'Not Connected';
-        color = context.textMutedColor;
-      case ActivityTrackingStatus.error:
-        label = 'Error';
-        color = AppColors.error;
+    if (activityVal?.healthConnected == true) {
+      label = 'Connected';
+      color = AppColors.green;
+    } else if (isLoading) {
+      label = 'Checking...';
+      color = context.textMutedColor;
+    } else {
+      label = 'Not Connected';
+      color = context.textMutedColor;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -185,15 +179,15 @@ class _StatusBadge extends StatelessWidget {
 
 // ── Connected State ──────────────────────────────────────────
 
-class _ConnectedState extends StatelessWidget {
+class _ConnectedState extends ConsumerWidget {
   const _ConnectedState();
 
   @override
-  Widget build(BuildContext context) {
-    final activity = context.watch<ActivityProvider>();
-    final steps = activity.steps;
-    final calories = activity.burnedCalories;
-    final stepProgress = steps / math.max(activity.stepGoal, 1);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activityVal = ref.watch(activityProvider).valueOrNull;
+    final steps = activityVal?.steps ?? 0;
+    final calories = (activityVal?.activeCalories ?? 0).toInt();
+    final stepProgress = steps / math.max(10000, 1);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
@@ -243,7 +237,7 @@ class _ConnectedState extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 24),
-          _LastSyncBadge(lastSyncedAt: activity.lastSyncedAt),
+          const _LastSyncBadge(),
         ],
       ),
     );
@@ -317,14 +311,13 @@ class _ActivityRing extends StatelessWidget {
   }
 }
 
-class _LastSyncBadge extends StatelessWidget {
-  final DateTime? lastSyncedAt;
-  const _LastSyncBadge({required this.lastSyncedAt});
+class _LastSyncBadge extends ConsumerWidget {
+  const _LastSyncBadge();
 
   @override
-  Widget build(BuildContext context) {
-    final activity = context.watch<ActivityProvider>();
-    final ago = activity.isSyncing ? 'Syncing...' : _ago(lastSyncedAt);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activityAsync = ref.watch(activityProvider);
+    final ago = activityAsync.isLoading ? 'Syncing...' : _ago(null);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(

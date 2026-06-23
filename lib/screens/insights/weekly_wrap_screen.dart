@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -21,14 +21,14 @@ import 'package:snapcal/widgets/premium_prompt_card.dart';
 import 'widgets/insight_card.dart';
 import 'widgets/week_chart.dart';
 
-class WeeklyWrapScreen extends StatefulWidget {
+class WeeklyWrapScreen extends ConsumerStatefulWidget {
   const WeeklyWrapScreen({super.key});
 
   @override
-  State<WeeklyWrapScreen> createState() => _WeeklyWrapScreenState();
+  ConsumerState<WeeklyWrapScreen> createState() => _WeeklyWrapScreenState();
 }
 
-class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
+class _WeeklyWrapScreenState extends ConsumerState<WeeklyWrapScreen> {
   final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
@@ -36,14 +36,10 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final settings = context.read<SettingsProvider>();
-        if (settings.isPro) {
-          context.read<InsightsProvider>().generateWeeklyReport(
-            meals: context.read<MealProvider>(),
-            settings: settings,
-            activity: context.read<ActivityProvider>(),
-            waterRepo: context.read<WaterRepository>(),
-            languageCode: settings.languageCode,
+        final settings = ref.read(settingsProvider).valueOrNull;
+        if (settings?.isPro == true) {
+          ref.read(insightsProvider.notifier).generateWeeklyReport(
+            languageCode: settings?.languageCode ?? 'en',
           );
         }
       }
@@ -77,12 +73,12 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final insightsProvider = context.watch<InsightsProvider>();
-    final settings = context.watch<SettingsProvider>();
+    final insightsAsync = ref.watch(insightsProvider);
+    final settings = ref.watch(settingsProvider).valueOrNull;
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (!settings.isPro) {
+    if (settings?.isPro != true) {
       return AppPageScaffold(
         title: l10n.feature_insights_title,
         subtitle: l10n.feature_insights_desc,
@@ -105,7 +101,7 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
       );
     }
 
-    if (insightsProvider.isGenerating) {
+    if (insightsAsync.isLoading || insightsAsync.isRefreshing) {
       return Scaffold(
         body: Center(
           child: Column(
@@ -123,7 +119,7 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
       );
     }
 
-    final report = insightsProvider.currentReport;
+    final report = insightsAsync.valueOrNull;
     if (report == null) {
       return AppPageScaffold(
         title: l10n.feature_insights_title,
@@ -139,15 +135,11 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: () {
-                  insightsProvider.generateWeeklyReport(
-                    meals: context.read<MealProvider>(),
-                    settings: settings,
-                    activity: context.read<ActivityProvider>(),
-                    waterRepo: context.read<WaterRepository>(),
-                    languageCode: settings.languageCode,
+                  ref.read(insightsProvider.notifier).generateWeeklyReport(
+                    languageCode: settings?.languageCode ?? 'en',
                   );
                 },
-                icon: const Icon(LucideIcons.refreshCw, size: 16),
+                icon: Icon(LucideIcons.refreshCw, size: 16),
                 label: Text(l10n.common_try_again),
               ),
             ],
@@ -244,7 +236,7 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
           const SizedBox(height: 32),
 
           ElevatedButton.icon(
-            icon: const Icon(LucideIcons.share2, size: 18),
+            icon: Icon(LucideIcons.share2, size: 18),
             label: Text(l10n.feature_insights_share),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -262,3 +254,4 @@ class _WeeklyWrapScreenState extends State<WeeklyWrapScreen> {
     );
   }
 }
+

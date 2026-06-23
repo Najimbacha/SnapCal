@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -34,7 +35,7 @@ class _Item {
   _Item copy({String? name, int? serving}) => _Item(name: name ?? this.name, kcal: kcal, protein: protein, carbs: carbs, fat: fat, serving: serving ?? this.serving);
 }
 
-class ResultModal extends StatefulWidget {
+class ResultModal extends ConsumerStatefulWidget {
   final Uint8List? imageBytes;
   final NutritionResult? result;
   final List<NutritionResult>? results;
@@ -53,10 +54,10 @@ class ResultModal extends StatefulWidget {
   });
 
   @override
-  State<ResultModal> createState() => _ResultModalState();
+  ConsumerState<ResultModal> createState() => _ResultModalState();
 }
 
-class _ResultModalState extends State<ResultModal> {
+class _ResultModalState extends ConsumerState<ResultModal> {
   late List<_Item> _items;
   bool _saving = false;
 
@@ -122,7 +123,7 @@ class _ResultModalState extends State<ResultModal> {
   @override
   Widget build(BuildContext context) {
     final d = Theme.of(context).brightness == Brightness.dark;
-    final pro = context.select<SettingsProvider, bool>((s) => s.isPro);
+    final pro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
     final b = MediaQuery.paddingOf(context).bottom;
     const h = 240.0;
 
@@ -181,7 +182,7 @@ class _ResultModalState extends State<ResultModal> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.local_fire_department_rounded, size: 11, color: const Color(0xFFFFD60A)),
+                                    Icon(LucideIcons.flame, size: 11, color: const Color(0xFFFFD60A)),
                                     const SizedBox(width: 3),
                                     Text('$_kcal kcal', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFFFD60A))),
                                   ],
@@ -214,7 +215,7 @@ class _ResultModalState extends State<ResultModal> {
                 child: Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3), shape: BoxShape.circle),
-                  child: const Icon(Icons.chevron_left_rounded, size: 24, color: Colors.white),
+                  child: Icon(LucideIcons.chevronLeft, size: 24, color: Colors.white),
                 ),
               ),
             ),
@@ -232,7 +233,7 @@ class _ResultModalState extends State<ResultModal> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
+                        Icon(LucideIcons.camera, size: 14, color: Colors.white),
                         SizedBox(width: 4),
                         Text('Retake', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
                       ],
@@ -342,7 +343,7 @@ class _ResultModalState extends State<ResultModal> {
             const SizedBox(height: 4),
             pro
                 ? Text('${value}g', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: color, height: 1.1))
-                : Icon(Icons.lock_rounded, size: 14, color: color.withValues(alpha: 0.4)),
+                : Icon(LucideIcons.lock, size: 14, color: color.withValues(alpha: 0.4)),
           ],
         ),
       ),
@@ -366,13 +367,13 @@ class _ResultModalState extends State<ResultModal> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(7),
               ),
-              child: Icon(Icons.workspace_premium_rounded, size: 15, color: AppColors.primary),
+              child: Icon(LucideIcons.gem, size: 15, color: AppColors.primary),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text('Go Pro for full macronutrient breakdown', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: d ? Colors.white : const Color(0xFF1C1C1E))),
             ),
-            Icon(Icons.chevron_right_rounded, size: 18, color: d ? Colors.white24 : const Color(0xFFC7C7CC)),
+            Icon(LucideIcons.chevronRight, size: 18, color: d ? Colors.white24 : const Color(0xFFC7C7CC)),
           ],
         ),
       ),
@@ -478,7 +479,7 @@ class _FoodCardState extends State<_FoodCard> with SingleTickerProviderStateMixi
                             ],
                           ),
                         ),
-                        Icon(_open ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 20, color: d ? Colors.white24 : const Color(0xFFC7C7CC)),
+                        Icon(_open ? LucideIcons.chevronUp : Icons.keyboard_arrow_down_rounded, size: 20, color: d ? Colors.white24 : const Color(0xFFC7C7CC)),
                       ],
                     ),
                     SizeTransition(
@@ -512,12 +513,12 @@ class _FoodCardState extends State<_FoodCard> with SingleTickerProviderStateMixi
                               const Spacer(),
                               GestureDetector(
                                 onTap: widget.onRename,
-                                child: Icon(Icons.edit_rounded, size: 15, color: d ? Colors.white24 : const Color(0xFFC7C7CC)),
+                                child: Icon(LucideIcons.pencil, size: 15, color: d ? Colors.white24 : const Color(0xFFC7C7CC)),
                               ),
                               const SizedBox(width: 14),
                               GestureDetector(
                                 onTap: widget.onDelete,
-                                child: Icon(Icons.delete_rounded, size: 15, color: const Color(0xFFFF3B30)),
+                                child: Icon(LucideIcons.trash2, size: 15, color: const Color(0xFFFF3B30)),
                               ),
                             ],
                           ),
@@ -577,3 +578,6 @@ class _ServingChip extends StatelessWidget {
     );
   }
 }
+
+
+

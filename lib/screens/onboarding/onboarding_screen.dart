@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
@@ -16,14 +16,14 @@ import '../../providers/settings_provider.dart';
 
 /// SnapCal Premium Onboarding
 /// Re-implemented with full M3 Expressive branding & Google Gemini aesthetics.
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen>
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     with TickerProviderStateMixin {
   static const int _totalSteps = 6;
 
@@ -270,7 +270,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _generateRecommendation(OnboardingProfileInput profile) async {
-    final languageCode = context.read<SettingsProvider>().languageCode;
+    final languageCode = ref.watch(settingsProvider).valueOrNull?.languageCode ?? 'en';
     // 1. Calculate local results immediately for instant UI feedback
     final localResult = _service.computeBasePlan(
       profile,
@@ -306,8 +306,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     setState(() => _isCompleting = true);
     HapticFeedback.heavyImpact();
 
-    final settings = context.read<SettingsProvider>();
-    final metrics = context.read<MetricsProvider>();
+    final settings = ref.read(settingsProvider.notifier);
+    final metrics = ref.read(bodyMetricsProvider.notifier);
 
     try {
       // We must await both completeOnboarding and logWeight. Awaiting completeOnboarding

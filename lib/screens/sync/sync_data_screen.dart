@@ -1,12 +1,13 @@
 import 'dart:math' as math;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_notifier_provider.dart';
 import '../../widgets/auth_modal.dart';
 import '../../widgets/ui_blocks.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -18,17 +19,17 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 /// Features direct Google, Facebook, and Email auth buttons.
 /// ============================================================================
 
-class SyncDataScreen extends StatefulWidget {
+class SyncDataScreen extends ConsumerStatefulWidget {
   final VoidCallback? onSkip;
   final VoidCallback? onAuthSuccess;
 
   const SyncDataScreen({super.key, this.onSkip, this.onAuthSuccess});
 
   @override
-  State<SyncDataScreen> createState() => _SyncDataScreenState();
+  ConsumerState<SyncDataScreen> createState() => _SyncDataScreenState();
 }
 
-class _SyncDataScreenState extends State<SyncDataScreen>
+class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
     with TickerProviderStateMixin {
   late AnimationController _mainController;
   late AnimationController _pulseController;
@@ -198,18 +199,16 @@ class _SyncDataScreenState extends State<SyncDataScreen>
     HapticFeedback.mediumImpact();
 
     try {
-      await context.read<AuthProvider>().signInWithGoogle();
+      await ref.read(authNotifierProvider.notifier).signInWithGoogle();
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
-        final auth = context.read<AuthProvider>();
-        if (auth.isAuthenticated) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
           widget.onAuthSuccess?.call();
-        } else if (auth.status == AuthStatus.error) {
+        } else if (ref.read(authNotifierProvider).hasError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                auth.errorMessage ?? l10n.auth_google_sign_in_failed,
-              ),
+              content: Text(l10n.auth_google_sign_in_failed),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -226,18 +225,16 @@ class _SyncDataScreenState extends State<SyncDataScreen>
     HapticFeedback.mediumImpact();
 
     try {
-      await context.read<AuthProvider>().signInWithFacebook();
+      await ref.read(authNotifierProvider.notifier).signInWithFacebook();
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
-        final auth = context.read<AuthProvider>();
-        if (auth.isAuthenticated) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
           widget.onAuthSuccess?.call();
-        } else if (auth.status == AuthStatus.error) {
+        } else if (ref.read(authNotifierProvider).hasError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                auth.errorMessage ?? l10n.auth_facebook_sign_in_failed,
-              ),
+              content: Text(l10n.auth_facebook_sign_in_failed),
               backgroundColor: Colors.redAccent,
             ),
           );

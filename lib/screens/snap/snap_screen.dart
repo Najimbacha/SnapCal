@@ -2,11 +2,13 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_typography.dart';
+import '../../data/models/meal.dart';
+import '../../data/models/user_settings.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/gemini_service.dart';
 import '../../data/services/premium_conversion_service.dart';
@@ -23,16 +25,16 @@ import '../../router.dart';
 
 enum SnapInitialMode { food, barcode }
 
-class SnapScreen extends StatefulWidget {
+class SnapScreen extends ConsumerStatefulWidget {
   final SnapInitialMode initialMode;
 
   const SnapScreen({super.key, this.initialMode = SnapInitialMode.food});
 
   @override
-  State<SnapScreen> createState() => _SnapScreenState();
+  ConsumerState<SnapScreen> createState() => _SnapScreenState();
 }
 
-class _SnapScreenState extends State<SnapScreen>
+class _SnapScreenState extends ConsumerState<SnapScreen>
     with WidgetsBindingObserver, RouteAware, TickerProviderStateMixin {
   late final SnapController _controller;
   bool _hasInitializedOnce = false;
@@ -48,7 +50,7 @@ class _SnapScreenState extends State<SnapScreen>
   @override
   void initState() {
     super.initState();
-    _controller = SnapController();
+    _controller = SnapController()..onStateChanged = () => setState(() {});
     WidgetsBinding.instance.addObserver(this);
 
     _focusAnimController = AnimationController(
@@ -121,6 +123,7 @@ class _SnapScreenState extends State<SnapScreen>
     routeObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     _focusAnimController?.dispose();
+    _controller.onStateChanged = null;
     _controller.dispose();
     CameraService().stop(); // Stop camera when leaving the screen
     super.dispose();
@@ -253,30 +256,34 @@ class _SnapScreenState extends State<SnapScreen>
     );
     if (!_beginResultSave(fingerprint)) return;
 
-    final mealProvider = context.read<MealProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
+    final mealNotifier = ref.read(mealLogProvider.notifier);
     final router = GoRouter.of(context);
+    final now = DateTime.now();
+    final dateString =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     try {
       HapticFeedback.heavyImpact();
       router.go('/');
 
-      await mealProvider.addMeal(
-        foodName:
-            name.isEmpty
-                ? AppLocalizations.of(context)!.log_unknown_food
-                : name,
-        calories: calories,
-        protein: protein,
-        carbs: carbs,
-        fat: fat,
-        portion: portion,
-        settings: settingsProvider,
-        scanConfidence: 0.82,
-        scanSource: 'ai_scan',
-        aiRationale:
-            'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
-        originalCalories: calories,
+      await mealNotifier.addMeal(
+        Meal(
+          id: mealNotifier.generateMealId(),
+          timestamp: now.millisecondsSinceEpoch,
+          dateString: dateString,
+          foodName:
+              name.isEmpty
+                  ? AppLocalizations.of(context)!.log_unknown_food
+                  : name,
+          calories: calories,
+          macros: Macros(protein: protein, carbs: carbs, fat: fat),
+          portion: portion,
+          scanConfidence: 0.82,
+          scanSource: 'ai_scan',
+          aiRationale:
+              'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
+          originalCalories: calories,
+        ),
       );
 
       _controller.reset();
@@ -289,31 +296,35 @@ class _SnapScreenState extends State<SnapScreen>
     final fingerprint = _multiSaveFingerprint(selectedItems);
     if (!_beginResultSave(fingerprint)) return;
 
-    final mealProvider = context.read<MealProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
+    final mealNotifier = ref.read(mealLogProvider.notifier);
     final router = GoRouter.of(context);
+    final now = DateTime.now();
+    final dateString =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     try {
       HapticFeedback.heavyImpact();
       router.go('/');
 
       for (final item in selectedItems) {
-        await mealProvider.addMeal(
-          foodName:
-              item.foodName.isEmpty
-                  ? AppLocalizations.of(context)!.log_unknown_food
-                  : item.foodName,
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          portion: item.portion,
-          settings: settingsProvider,
-          scanConfidence: 0.82,
-          scanSource: 'ai_scan',
-          aiRationale:
-              'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
-          originalCalories: item.calories,
+        await mealNotifier.addMeal(
+          Meal(
+            id: mealNotifier.generateMealId(),
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+            dateString: dateString,
+            foodName:
+                item.foodName.isEmpty
+                    ? AppLocalizations.of(context)!.log_unknown_food
+                    : item.foodName,
+            calories: item.calories,
+            macros: Macros(protein: item.protein, carbs: item.carbs, fat: item.fat),
+            portion: item.portion,
+            scanConfidence: 0.82,
+            scanSource: 'ai_scan',
+            aiRationale:
+                'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
+            originalCalories: item.calories,
+          ),
         );
       }
 
@@ -378,21 +389,17 @@ class _SnapScreenState extends State<SnapScreen>
     const previewH = 16.0;
     const cornerRadius = 28.0;
 
-    return ChangeNotifierProvider.value(
-      value: _controller,
-      child: Consumer<SnapController>(
-        builder: (context, controller, _) {
-          final cameraContent = <Widget>[];
+    final cameraContent = <Widget>[];
 
-          if (controller.isScanningBarcode) {
+          if (_controller.isScanningBarcode) {
             cameraContent.add(
-              BarcodeScannerView(
+                  BarcodeScannerView(
                 onBarcodeDetected:
-                    (code) => controller.handleBarcodeDetected(
+                    (code) => _controller.handleBarcodeDetected(
                       code,
                       context: context,
-                      settingsProvider: context.read<SettingsProvider>(),
-                      connectivity: context.read<ConnectivityService>(),
+                      settingsProvider: ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
+                      connectivity: ConnectivityService(),
                       onShowPaywall: _showPaywall,
                       onShowResult: _showResultModal,
                       onShowManualInput: _showManualInputModal,
@@ -400,8 +407,8 @@ class _SnapScreenState extends State<SnapScreen>
                 onCancel: () => context.go('/'),
               ),
             );
-          } else if (controller.isInitialized &&
-              controller.cameraController != null) {
+          } else if (_controller.isInitialized &&
+              _controller.cameraController != null) {
             cameraContent.add(
               GestureDetector(
                 onTapUp: (details) {
@@ -418,20 +425,20 @@ class _SnapScreenState extends State<SnapScreen>
                   _focusAnimController?.forward();
                 },
                 child:
-                    (controller.cameraController?.value.isInitialized ?? false)
+                    (_controller.cameraController?.value.isInitialized ?? false)
                         ? CameraPreview(
-                          controller.cameraController!,
-                          key: ObjectKey(controller.cameraController),
+                          _controller.cameraController!,
+                          key: ObjectKey(_controller.cameraController),
                         )
                         : const _CameraShimmerSkeleton(),
               ),
             );
-          } else if (controller.errorMessage != null) {
+          } else if (_controller.errorMessage != null) {
             cameraContent.add(
               _StatePanel(
                 icon: LucideIcons.cameraOff,
                 title: AppLocalizations.of(context)!.error_camera,
-                body: controller.errorMessage!,
+                body: _controller.errorMessage!,
                 actionLabel: AppLocalizations.of(context)!.assistant_retry,
                 onAction: _controller.initializeCamera,
               ),
@@ -504,7 +511,7 @@ class _SnapScreenState extends State<SnapScreen>
                 ),
 
                 // ── Bottom gradient for readability ──
-                if (!controller.isScanningBarcode)
+                if (!_controller.isScanningBarcode)
                   Positioned(
                     left: 0,
                     right: 0,
@@ -527,7 +534,7 @@ class _SnapScreenState extends State<SnapScreen>
                   ),
 
                 // ── Top bar ──
-                if (!controller.isScanningBarcode)
+                if (!_controller.isScanningBarcode)
                   Positioned(
                     top: topSafe + 12,
                     left: 16,
@@ -548,16 +555,16 @@ class _SnapScreenState extends State<SnapScreen>
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
-                              Icons.close_rounded,
+                              LucideIcons.x,
                               color: Colors.white,
                               size: 20,
                             ),
                           ),
                         ),
-                        if (controller.isInitialized &&
-                            controller.errorMessage == null)
+                        if (_controller.isInitialized &&
+                            _controller.errorMessage == null)
                           GestureDetector(
-                            onTap: controller.toggleFlash,
+                            onTap: _controller.toggleFlash,
                             child: Container(
                               width: 40,
                               height: 40,
@@ -568,10 +575,10 @@ class _SnapScreenState extends State<SnapScreen>
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
-                                controller.flashMode == FlashMode.off
+                                _controller.flashMode == FlashMode.off
                                     ? LucideIcons.zapOff
                                     : LucideIcons.zap,
-                                color: controller.flashMode ==
+                                color: _controller.flashMode ==
                                         FlashMode.off
                                     ? Colors.white54
                                     : const Color(0xFFFFD700),
@@ -584,7 +591,7 @@ class _SnapScreenState extends State<SnapScreen>
                   ),
 
                 // ── Bottom controls ──
-                if (!controller.isScanningBarcode)
+                if (!_controller.isScanningBarcode)
                   Positioned(
                     left: 0,
                     right: 0,
@@ -599,17 +606,14 @@ class _SnapScreenState extends State<SnapScreen>
                             Expanded(
                               child: GestureDetector(
                                 onTap: () =>
-                                    controller.pickFromGallery(
+                                    _controller.pickFromGallery(
                                       context: context,
                                       mealProvider:
-                                          context
-                                              .read<MealProvider>(),
+                                          ref.read(mealLogProvider.notifier),
                                       settingsProvider:
-                                          context
-                                              .read<SettingsProvider>(),
+                                          ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
                                       connectivity:
-                                          context
-                                              .read<ConnectivityService>(),
+                                          ConnectivityService(),
                                       onShowPaywall: _showPaywall,
                                       onShowResult: _showResultModal,
                                       onShowManualInput:
@@ -624,29 +628,26 @@ class _SnapScreenState extends State<SnapScreen>
                             // Shutter
                             ShutterButton(
                               onPressed: () =>
-                                  controller.captureAndAnalyze(
+                                  _controller.captureAndAnalyze(
                                     context: context,
                                     mealProvider:
-                                        context
-                                            .read<MealProvider>(),
+                                        ref.read(mealLogProvider.notifier),
                                     settingsProvider:
-                                        context
-                                            .read<SettingsProvider>(),
+                                        ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
                                     connectivity:
-                                        context
-                                            .read<ConnectivityService>(),
+                                        ConnectivityService(),
                                     onShowPaywall: _showPaywall,
                                     onShowResult: _showResultModal,
                                     onShowManualInput:
                                         _showManualInputModal,
                                   ),
-                              isLoading: controller.isCapturing,
+                              isLoading: _controller.isCapturing,
                             ),
                             // Barcode
                             Expanded(
                               child: GestureDetector(
                                 onTap: () =>
-                                    controller.isScanningBarcode =
+                                    _controller.isScanningBarcode =
                                         true,
                                 child: const _BottomIcon(
                                   icon: LucideIcons.scanLine,
@@ -694,18 +695,16 @@ class _SnapScreenState extends State<SnapScreen>
                   ),
 
                 // ── Analyzing overlay ──
-                if (controller.isAnalyzing)
+                if (_controller.isAnalyzing)
                   Positioned.fill(
                     child: AnalyzingOverlay(
+                      controller: _controller,
                       onManualEntry: _showManualInputModal,
                     ),
                   ),
               ],
             ),
           );
-        },
-      ),
-    );
   }
 
 }
@@ -844,3 +843,4 @@ class _StatePanel extends StatelessWidget {
     );
   }
 }
+

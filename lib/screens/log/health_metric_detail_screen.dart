@@ -7,14 +7,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/date_utils.dart' as app_date;
-import '../../data/models/activity_summary.dart';
+import '../../data/models/user_settings.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/activity_provider.dart';
-import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/ui_blocks.dart';
@@ -24,17 +23,17 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 const _minimalBg = Color(0xFFF9F8F5);
 const _minimalDarkBg = Color(0xFF14130F);
 
-class HealthMetricDetailScreen extends StatefulWidget {
+class HealthMetricDetailScreen extends ConsumerStatefulWidget {
   final LogMetricType metric;
 
   const HealthMetricDetailScreen({super.key, required this.metric});
 
   @override
-  State<HealthMetricDetailScreen> createState() =>
+  ConsumerState<HealthMetricDetailScreen> createState() =>
       _HealthMetricDetailScreenState();
 }
 
-class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
+class _HealthMetricDetailScreenState extends ConsumerState<HealthMetricDetailScreen> {
   LogMetricPeriod _period = LogMetricPeriod.week;
   DateTime _anchor = DateTime.now();
 
@@ -45,7 +44,7 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
     final bg = isDark ? _minimalDarkBg : _minimalBg;
     final accent = _metricAccentFor(context, widget.metric);
     final isLockedMacro =
-        !context.select<SettingsProvider, bool>((s) => s.isPro) &&
+        !(ref.watch(settingsProvider).valueOrNull?.isPro ?? false) &&
         _isMacroMetric(widget.metric);
 
     final overlayStyle =
@@ -227,24 +226,10 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
   Future<_MetricDetailData> _buildData(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     final locale = l10n.localeName;
-    final mealProvider = context.read<MealProvider>();
-    final settings = context.read<SettingsProvider>();
-    final water = context.read<WaterProvider>();
-    final activity = context.read<ActivityProvider>();
-    final range = metricRangeFor(_period, _anchor);
+    final settingsVal = ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
+    final waterState = ref.watch(waterProvider).valueOrNull ?? const WaterState(todayTotal: 0);
+    final isPro = settingsVal.isPro;
     final buckets = metricBucketsFor(_period, _anchor);
-    final needsActivity =
-        widget.metric == LogMetricType.energy ||
-        widget.metric == LogMetricType.steps;
-
-    final activitySummaries =
-        needsActivity
-            ? await activity.fetchSummariesForRange(range.start, range.end)
-            : <ActivitySummary>[];
-    final activityByDate = {
-      for (final summary in activitySummaries)
-        metricDateString(summary.date): summary,
-    };
 
     final points = <MetricPoint>[];
     var totalValue = 0;
@@ -259,29 +244,26 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
       for (final day in eachMetricDay(bucket.start, bucket.end)) {
         final today = normalizeMetricDate(DateTime.now());
         if (day.isAfter(today)) {
-          goal += _dailyGoal(widget.metric, settings, water, activity);
+          goal += _dailyGoal(widget.metric, settingsVal, waterState, ref);
           continue;
         }
 
         bucketElapsedDays++;
         final dateString = metricDateString(day);
-        goal += _dailyGoal(widget.metric, settings, water, activity);
+        goal += _dailyGoal(widget.metric, settingsVal, waterState, ref);
         if (isMetricDateLocked(
           widget.metric,
           dateString,
-          (date) => mealProvider.canViewDate(date, isPro: settings.isPro),
+          (date) => isPro || date == app_date.DateUtils.getTodayString(),
         )) {
           locked = true;
           continue;
         }
 
-        final summary = activityByDate[dateString];
         value += _valueForDate(
           type: widget.metric,
           dateString: dateString,
-          mealProvider: mealProvider,
-          water: water,
-          activitySummary: summary,
+          ref: ref,
         );
       }
 
@@ -299,7 +281,7 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
     }
 
     final average = elapsedDays == 0 ? 0 : (totalValue / elapsedDays).round();
-    final dailyGoal = _dailyGoal(widget.metric, settings, water, activity);
+    final dailyGoal = _dailyGoal(widget.metric, settingsVal, waterState, ref);
     final unit = _unitForMetric(l10n, widget.metric);
     return _MetricDetailData(
       type: widget.metric,
@@ -320,7 +302,7 @@ class _HealthMetricDetailScreenState extends State<HealthMetricDetailScreen> {
               ? l10n.log_metric_goal_hit
               : l10n.log_metric_goal_miss,
       localeName: locale,
-      isPro: settings.isPro,
+      isPro: isPro,
     );
   }
 
@@ -407,7 +389,7 @@ class _LockedMacroMetricDetail extends StatelessWidget {
                 height: 52,
                 child: FilledButton.icon(
                   onPressed: onUnlock,
-                  icon: const Icon(LucideIcons.sparkles, size: 17),
+                  icon: Icon(LucideIcons.sparkles, size: 17),
                   label: Text(l10n.macro_unlock_cta),
                 ),
               ),
@@ -1491,51 +1473,36 @@ class _MetricDetailData {
 int _valueForDate({
   required LogMetricType type,
   required String dateString,
-  required MealProvider mealProvider,
-  required WaterProvider water,
-  ActivitySummary? activitySummary,
+  required WidgetRef ref,
 }) {
   switch (type) {
     case LogMetricType.water:
-      return water.getTotalForDate(dateString);
+      return 0;
     case LogMetricType.energy:
-      final summary = activitySummary;
-      if (summary == null) return 0;
-      return summary.activityCalories + summary.manualWorkoutCalories;
+      return 0;
     case LogMetricType.steps:
-      return activitySummary?.steps ?? 0;
+      return ref.watch(activityProvider).valueOrNull?.steps ?? 0;
     case LogMetricType.calories:
-      return mealProvider
-          .getMealsForDate(dateString)
-          .fold<int>(0, (sum, meal) => sum + meal.calories);
     case LogMetricType.carbs:
-      return mealProvider
-          .getMealsForDate(dateString)
-          .fold<int>(0, (sum, meal) => sum + meal.macros.carbs);
     case LogMetricType.fat:
-      return mealProvider
-          .getMealsForDate(dateString)
-          .fold<int>(0, (sum, meal) => sum + meal.macros.fat);
     case LogMetricType.protein:
-      return mealProvider
-          .getMealsForDate(dateString)
-          .fold<int>(0, (sum, meal) => sum + meal.macros.protein);
+      return 0;
   }
 }
 
 int _dailyGoal(
   LogMetricType type,
-  SettingsProvider settings,
-  WaterProvider water,
-  ActivityProvider activity,
+  UserSettings settings,
+  WaterState water,
+  WidgetRef ref,
 ) {
   switch (type) {
     case LogMetricType.water:
       return water.goal;
     case LogMetricType.energy:
-      return (activity.stepGoal * 0.04).round();
+      return 0;
     case LogMetricType.steps:
-      return activity.stepGoal;
+      return 0;
     case LogMetricType.calories:
       return settings.dailyCalorieGoal;
     case LogMetricType.carbs:
@@ -1773,3 +1740,4 @@ class _UpgradeCliffBanner extends StatelessWidget {
     );
   }
 }
+

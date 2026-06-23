@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_typography.dart';
@@ -201,7 +202,7 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                           ],
                         ),
                         child: const Icon(
-                          Icons.swap_horiz,
+                          LucideIcons.arrowLeftRight,
                           size: 18,
                           color: Colors.black,
                         ),
@@ -290,3 +291,5 @@ class _SliderClipper extends CustomClipper<Rect> {
   bool shouldReclip(_SliderClipper oldClipper) =>
       position != oldClipper.position;
 }
+
+

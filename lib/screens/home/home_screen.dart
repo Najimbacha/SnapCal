@@ -6,8 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -27,15 +27,19 @@ import '../../widgets/scan_choice_sheet.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/recent_meal_tile.dart';
 import '../../widgets/premium_prompt_modal.dart';
+import '../../providers/auth_state_provider.dart';
+import '../../providers/auth_notifier_provider.dart';
+import '../../data/models/user_settings.dart';
+import '../../data/services/activity_service.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
+class _HomeScreenState extends ConsumerState<HomeScreen>
     with SingleTickerProviderStateMixin {
   static const int _animatedItemCount = 8;
   static bool _hasPlayedInitialAnimation = false;
@@ -459,15 +463,16 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
-          final mealProvider = context.read<MealProvider>();
-          final hasAiMeal =
-              mealProvider.todaysMeals.any((m) => m.scanSource == 'ai_scan') ||
-              mealProvider.recentMeals.any((m) => m.scanSource == 'ai_scan');
+          final todaysMealsAsync = ref.read(todaysMealsProvider);
+          final hasAiMeal = (todaysMealsAsync.valueOrNull ?? []).any(
+            (m) => m.scanSource == 'ai_scan',
+          );
 
           if (hasAiMeal) {
             final l10n = AppLocalizations.of(context)!;
             PremiumPromptModal.show(
               context,
+              ref,
               title: l10n.aha_prompt_title,
               subtitle: l10n.aha_prompt_subtitle,
               buttonText: l10n.aha_prompt_btn,
@@ -490,74 +495,47 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final mealState = context
-        .select<MealProvider, ({bool loading, bool refreshing})>(
-          (provider) => (
-            loading: provider.isLoading,
-            refreshing: provider.isRefreshing,
-          ),
-        );
-    final totalCalories = context.select<MealProvider, int>(
-      (provider) => provider.todaysTotalCalories,
-    );
-    final mealCount = context.select<MealProvider, int>(
-      (provider) => provider.todaysMealCount,
-    );
-    final macros = context.select<MealProvider, Macros>(
-      (provider) => provider.todaysTotalMacros,
-    );
-    final recentMeals = context.select<MealProvider, List<Meal>>(
-      (provider) => provider.recentMeals,
+    final todaysMealsAsync = ref.watch(todaysMealsProvider);
+    final todaysMeals = todaysMealsAsync.valueOrNull ?? [];
+    final totalCalories =
+        todaysMeals.fold<int>(0, (sum, m) => sum + m.calories);
+    final mealCount = todaysMeals.length;
+    final macros = Macros(
+      protein: todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.protein),
+      carbs: todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.carbs),
+      fat: todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.fat),
     );
 
-    final calorieGoal = context.select<SettingsProvider, int>(
-      (p) => math.max(p.dailyCalorieGoal, 1),
-    );
-    final proteinGoal = context.select<SettingsProvider, int>(
-      (p) => p.dailyProteinGoal,
-    );
-    final carbGoal = context.select<SettingsProvider, int>(
-      (p) => p.dailyCarbGoal,
-    );
-    final fatGoal = context.select<SettingsProvider, int>(
-      (p) => p.dailyFatGoal,
-    );
-    final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
-    final streak = context.select<SettingsProvider, int>(
-      (p) => p.currentStreak,
-    );
-    final activityState = context.select<
-      ActivityProvider,
-      ({
-        int steps,
-        int burnedCalories,
-        bool caloriesEstimated,
-        bool isTracking,
-        String status,
-      })
-    >(
-      (p) => (
-        steps: p.isTracking ? p.steps : 0,
-        burnedCalories: p.isTracking ? p.burnedCalories : 0,
-        caloriesEstimated: p.caloriesAreEstimated,
-        isTracking: p.isTracking,
-        status: p.status,
-      ),
-    );
+    final settings = ref.watch(settingsProvider).valueOrNull;
+    final calorieGoal = math.max(settings?.dailyCalorieGoal ?? 2000, 1);
+    final proteinGoal = settings?.dailyProteinGoal ?? 50;
+    final carbGoal = settings?.dailyCarbGoal ?? 250;
+    final fatGoal = settings?.dailyFatGoal ?? 65;
+    final isPro = ref.watch(effectiveIsProProvider);
+    final streak = settings?.currentStreak ?? 0;
 
-    final waterState = context.select<WaterProvider, ({int total, int goal})>(
-      (p) => (total: p.total, goal: p.goal),
-    );
+    final activitySummary =
+        ref.watch(activityProvider).valueOrNull;
+    final activitySteps = activitySummary?.steps ?? 0;
+    final activeCalories = activitySummary?.activeCalories.round() ?? 0;
+    final healthConnected = activitySummary?.healthConnected ?? false;
+
+    final waterState = ref.watch(waterProvider).valueOrNull;
+    final waterTotal = waterState?.todayTotal ?? 0;
+    final waterGoal = waterState?.goal ?? 2500;
+
+    final isLoading = todaysMealsAsync.isLoading || todaysMealsAsync.isRefreshing;
+    final isRefreshing = todaysMealsAsync.isRefreshing;
 
     final adjustedGoal =
-        isPro ? calorieGoal + activityState.burnedCalories : calorieGoal;
+        isPro ? calorieGoal + activeCalories : calorieGoal;
     final remaining = adjustedGoal - totalCalories;
     final calorieProgress = (totalCalories / math.max(adjustedGoal, 1)).clamp(
       0.0,
       1.4,
     );
     final showFirstLoadSkeleton =
-        mealState.loading && totalCalories == 0 && recentMeals.isEmpty;
+        isLoading && totalCalories == 0 && todaysMeals.isEmpty;
     return AppPageScaffold(
       title: '',
       padding: EdgeInsets.zero,
@@ -578,7 +556,7 @@ class _HomeScreenState extends State<HomeScreen>
             _itemAnims[0],
             _MinimalHomeTopBar(
               isPro: isPro,
-              isRefreshing: mealState.refreshing,
+              isRefreshing: isRefreshing,
               streak: streak,
               onSettingsTap: () => context.push('/settings'),
               onProTap: () => context.push('/paywall'),
@@ -613,16 +591,16 @@ class _HomeScreenState extends State<HomeScreen>
             _staggeredSlide(
               _itemAnims[3],
               _SecondaryDashboardGrid(
-                waterTotal: waterState.total,
-                waterGoal: waterState.goal,
-                steps: activityState.steps,
-                burnedCalories: activityState.burnedCalories,
-                caloriesEstimated: activityState.caloriesEstimated,
+                waterTotal: waterTotal,
+                waterGoal: waterGoal,
+                steps: activitySteps,
+                burnedCalories: activeCalories,
+                caloriesEstimated: !healthConnected,
                 stepsUnit: 'steps',
-                activityLive: activityState.isTracking,
+                activityLive: healthConnected,
                 onWaterTap: () => showHydrationSheet(context),
-                onWaterAdd: () => _addWater(context.read<WaterProvider>()),
-                onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
+                onWaterAdd: () => _addWater(ref),
+                onWaterRemove: () => _removeWater(ref),
                 onActivityTap: () => showActivityHealthConnectSheet(context),
               ),
             ),
@@ -630,16 +608,16 @@ class _HomeScreenState extends State<HomeScreen>
             _staggeredSlide(
               _itemAnims[2],
               _SecondaryDashboardGrid(
-                waterTotal: waterState.total,
-                waterGoal: waterState.goal,
-                steps: activityState.steps,
-                burnedCalories: activityState.burnedCalories,
-                caloriesEstimated: activityState.caloriesEstimated,
+                waterTotal: waterTotal,
+                waterGoal: waterGoal,
+                steps: activitySteps,
+                burnedCalories: activeCalories,
+                caloriesEstimated: !healthConnected,
                 stepsUnit: 'steps',
-                activityLive: activityState.isTracking,
+                activityLive: healthConnected,
                 onWaterTap: () => showHydrationSheet(context),
-                onWaterAdd: () => _addWater(context.read<WaterProvider>()),
-                onWaterRemove: () => _removeWater(context.read<WaterProvider>()),
+                onWaterAdd: () => _addWater(ref),
+                onWaterRemove: () => _removeWater(ref),
                 onActivityTap: () => showActivityHealthConnectSheet(context),
               ),
             ),
@@ -688,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen>
           _staggeredSlide(
             _itemAnims[5],
             _MinimalMealsSection(
-              meals: recentMeals,
+              meals: todaysMeals,
               isPro: isPro,
               onViewAll: () => context.go('/log'),
               onScan:
@@ -726,14 +704,14 @@ class _HomeScreenState extends State<HomeScreen>
     return score.clamp(0, 100);
   }
 
-  void _addWater(WaterProvider water) {
+  void _addWater(WidgetRef ref) {
     HapticFeedback.lightImpact();
-    water.addWater(250);
+    ref.read(waterProvider.notifier).addWater(250);
   }
 
-  void _removeWater(WaterProvider water) {
+  void _removeWater(WidgetRef ref) {
     HapticFeedback.lightImpact();
-    water.removeWater(250);
+    ref.read(waterProvider.notifier).removeWater(250);
   }
 }
 
@@ -773,7 +751,7 @@ const _minimalLine = Color(0xFFE8E4DC);
 const _minimalGreen = Color(0xFF1A3D2B);
 const _minimalGreenText = Color(0xFF16733A);
 
-class _MinimalHomeTopBar extends StatelessWidget {
+class _MinimalHomeTopBar extends ConsumerWidget {
   final bool isPro;
   final bool isRefreshing;
   final int streak;
@@ -789,7 +767,7 @@ class _MinimalHomeTopBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? Colors.white : _minimalInk;
 
@@ -836,7 +814,7 @@ class _MinimalHomeTopBar extends StatelessWidget {
           // Debug Pro toggle (visible only in debug mode)
           if (kDebugMode)
             GestureDetector(
-              onTap: () => context.read<SettingsProvider>().toggleDebugPro(),
+              onTap: () => ref.read(debugProOverrideProvider.notifier).toggle(),
               child: Container(
                 margin: const EdgeInsets.only(left: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -1228,7 +1206,7 @@ class _MinimalMacroSection extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1257,20 +1235,20 @@ class _MinimalMacroSection extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           if (isPro) ...[
             Row(
               children: [
                 _MacroCard(label: l10n.result_protein, value: macros.protein, goal: proteinGoal, color: AppColors.protein, isDark: isDark),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _MacroCard(label: l10n.result_carbs, value: macros.carbs, goal: carbGoal, color: AppColors.carbs, isDark: isDark),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _MacroCard(label: l10n.result_fat, value: macros.fat, goal: fatGoal, color: AppColors.fat, isDark: isDark),
               ],
             ),
           ] else
             const _MacroPreviewCard(),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           const _MinimalSectionDivider(),
         ],
       ),
@@ -1292,10 +1270,10 @@ class _MacroCard extends StatelessWidget {
     final pct = (value / math.max(goal, 1)).clamp(0.0, 1.0);
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE8E4DC),
           ),
@@ -1303,14 +1281,14 @@ class _MacroCard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: isDark ? Colors.white38 : const Color(0xFF8E8E93))),
-            const SizedBox(height: 4),
-            Text('${value}g', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color, height: 1.1)),
-            const SizedBox(height: 6),
+            Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: isDark ? Colors.white38 : const Color(0xFF8E8E93))),
+            const SizedBox(height: 3),
+            Text('${value}g', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color, height: 1.1)),
+            const SizedBox(height: 5),
             ClipRRect(
               borderRadius: BorderRadius.circular(2),
               child: Container(
-                width: 40, height: 3,
+                width: 36, height: 3,
                 color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE8E4DC),
                 child: FractionallySizedBox(
                   widthFactor: pct,
@@ -1320,7 +1298,7 @@ class _MacroCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text('${goal}g', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: isDark ? Colors.white24 : const Color(0xFFC7C7CC))),
+            Text('${goal}g', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w500, color: isDark ? Colors.white24 : const Color(0xFFC7C7CC))),
           ],
         ),
       ),

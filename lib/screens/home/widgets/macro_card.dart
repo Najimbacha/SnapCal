@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
@@ -50,7 +51,7 @@ class MacroCard extends StatelessWidget {
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon ?? Icons.circle, color: color, size: 18),
+                child: Icon(icon ?? LucideIcons.circle, color: color, size: 18),
               ),
               const Spacer(),
               Text(
@@ -112,3 +113,5 @@ class MacroCard extends StatelessWidget {
     );
   }
 }
+
+

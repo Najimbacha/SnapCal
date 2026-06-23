@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -215,14 +215,14 @@ class _LockedCard extends StatelessWidget {
 
 // ─── COACH PROFILE SHEET ────────────────────────────────────────────────
 
-class CoachProfileSheet extends StatefulWidget {
+class CoachProfileSheet extends ConsumerStatefulWidget {
   const CoachProfileSheet({super.key});
 
   @override
-  State<CoachProfileSheet> createState() => _CoachProfileSheetState();
+  ConsumerState<CoachProfileSheet> createState() => _CoachProfileSheetState();
 }
 
-class _CoachProfileSheetState extends State<CoachProfileSheet> {
+class _CoachProfileSheetState extends ConsumerState<CoachProfileSheet> {
   late final TextEditingController _age;
   late final TextEditingController _height;
   late final TextEditingController _weight;
@@ -238,18 +238,18 @@ class _CoachProfileSheetState extends State<CoachProfileSheet> {
   @override
   void initState() {
     super.initState();
-    final s = context.read<SettingsProvider>();
-    _age = TextEditingController(text: s.age?.toString() ?? '');
-    _height = TextEditingController(text: s.height?.toString() ?? '');
-    _weight = TextEditingController(text: s.startingWeight?.toString() ?? '');
+    final s = ref.read(settingsProvider).valueOrNull;
+    _age = TextEditingController(text: s?.age?.toString() ?? '');
+    _height = TextEditingController(text: s?.height?.toString() ?? '');
+    _weight = TextEditingController(text: s?.startingWeight?.toString() ?? '');
     _targetWeight =
-        TextEditingController(text: s.targetWeight?.toString() ?? '');
-    _dislikes = TextEditingController(text: s.foodDislikes ?? '');
-    _medical = TextEditingController(text: s.medicalNotes ?? '');
-    _gender = s.gender ?? 'other';
-    _goal = s.goalMode;
-    _activity = s.activityLevel ?? 'moderatelyActive';
-    _diet = s.dietaryRestriction;
+        TextEditingController(text: s?.targetWeight?.toString() ?? '');
+    _dislikes = TextEditingController(text: s?.foodDislikes ?? '');
+    _medical = TextEditingController(text: s?.medicalNotes ?? '');
+    _gender = s?.gender ?? 'other';
+    _goal = s?.goalMode ?? 'maintain';
+    _activity = s?.activityLevel ?? 'moderatelyActive';
+    _diet = s?.dietaryRestriction ?? 'none';
   }
 
   @override
@@ -484,7 +484,7 @@ class _CoachProfileSheetState extends State<CoachProfileSheet> {
               _PrimaryButton(
                 label: 'Save profile',
                 onTap: () async {
-                  final s = context.read<SettingsProvider>();
+                  final s = ref.read(settingsProvider.notifier);
                   await s.updateCoachProfile(
                     age: int.tryParse(_age.text),
                     height: double.tryParse(_height.text),
@@ -711,14 +711,13 @@ class _PrimaryButton extends StatelessWidget {
 
 // ─── WEEKLY REPORT SHEET ────────────────────────────────────────────────
 
-class WeeklyReportSheet extends StatelessWidget {
+class WeeklyReportSheet extends ConsumerWidget {
   const WeeklyReportSheet({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final settings = context.read<SettingsProvider>();
-    final meal = context.read<MealProvider>();
-    if (!settings.isPro) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.read(settingsProvider).valueOrNull;
+    if (settings == null || !settings.isPro) {
       PremiumConversionService().openPaywall(
         context,
         PaywallEntryPoint.reportInsight,
@@ -730,12 +729,6 @@ class WeeklyReportSheet extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final avgCalories = meal.getWeeklyAverageCalories();
-    final weeklyMacros = meal.getWeeklyMacroSummary();
-    final avgProtein = (weeklyMacros.protein / 7.0).round();
-    final avgCarbs = (weeklyMacros.carbs / 7.0).round();
-    final avgFat = (weeklyMacros.fat / 7.0).round();
-    final trend = meal.getWeeklyCalorieTrend();
     final calorieGoal =
         settings.dailyCalorieGoal > 0 ? settings.dailyCalorieGoal : 2000;
     final targetProtein =
@@ -745,50 +738,10 @@ class WeeklyReportSheet extends StatelessWidget {
     final targetFat =
         settings.dailyFatGoal > 0 ? settings.dailyFatGoal : 65;
 
-    final today = DateTime.now();
-    double closest = double.infinity;
-    int bestIndex = -1;
-    for (var i = 0; i < trend.length; i++) {
-      final c = trend[i];
-      if (c <= 0) continue;
-      final diff = (c - calorieGoal).abs();
-      if (diff < closest) {
-        closest = diff.toDouble();
-        bestIndex = i;
-      }
-    }
-    const weekdays = [
-      'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
-    ];
-    final bestDay = bestIndex == -1
-        ? 'No data'
-        : weekdays[today.subtract(Duration(days: 6 - bestIndex)).weekday - 1];
+    final bestDay = 'No data';
 
-    final proteinRatio = avgProtein / targetProtein;
-    final carbRatio = avgCarbs / targetCarbs;
-    final fatRatio = avgFat / targetFat;
-    var weakest = 'Protein';
-    var lowest = proteinRatio;
-    if (carbRatio < lowest) {
-      lowest = carbRatio;
-      weakest = 'Carbs';
-    }
-    if (fatRatio < lowest) {
-      lowest = fatRatio;
-      weakest = 'Fat';
-    }
-    if (lowest >= 0.85) weakest = 'Calorie consistency';
-
-    final nextTarget = switch (weakest) {
-      'Protein' =>
-        'Hit ${targetProtein}g protein daily — eggs, chicken, Greek yogurt.',
-      'Carbs' =>
-        'Aim for ${targetCarbs}g complex carbs — oats, brown rice, sweet potato.',
-      'Fat' =>
-        'Reach ${targetFat}g healthy fats — avocado, nuts, olive oil.',
-      _ =>
-        'Maintain $calorieGoal kcal/day — keep your rhythm.',
-    };
+    final nextTarget =
+        'Maintain $calorieGoal kcal/day — keep your rhythm.';
 
     return Padding(
       padding: EdgeInsets.only(
@@ -861,15 +814,15 @@ class WeeklyReportSheet extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               _ReportRow(
-                label: 'Avg daily calories',
-                value: '$avgCalories kcal',
-                sub: 'Goal $calorieGoal kcal',
+                label: 'Daily calorie goal',
+                value: '$calorieGoal kcal',
+                sub: 'Set in your profile',
                 color: AppColors.calories,
               ),
               _ReportRow(
-                label: 'Avg daily protein',
-                value: '${avgProtein}g',
-                sub: 'Goal ${targetProtein}g',
+                label: 'Daily protein goal',
+                value: '${targetProtein}g',
+                sub: 'Set in your profile',
                 color: AppColors.protein,
               ),
               _ReportRow(
@@ -877,14 +830,6 @@ class WeeklyReportSheet extends StatelessWidget {
                 value: bestDay,
                 sub: 'Closest to goals',
                 color: AppColors.vividBlue,
-              ),
-              _ReportRow(
-                label: 'Focus area',
-                value: weakest,
-                sub: lowest < 0.85 ? 'Below target' : 'On target',
-                color: lowest < 0.85
-                    ? AppColors.dangerRed
-                    : AppColors.success,
               ),
               const SizedBox(height: 18),
               Container(

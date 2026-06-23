@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 import 'package:snapcal/core/theme/app_colors.dart';
@@ -15,6 +15,7 @@ import 'package:snapcal/core/theme/theme_colors.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
 import 'package:snapcal/data/services/premium_conversion_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import 'package:snapcal/data/models/user_settings.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/widgets/ui_blocks.dart';
 
@@ -25,7 +26,7 @@ const _minimalLine = Color(0xFFE8E4DC);
 const _minimalGreen = Color(0xFF1A3D2B);
 const _minimalGreenText = Color(0xFF16733A);
 
-class PaywallScreen extends StatefulWidget {
+class PaywallScreen extends ConsumerStatefulWidget {
   final bool limitReached;
   final PaywallEntryPoint entryPoint;
   final String? featureName;
@@ -38,10 +39,10 @@ class PaywallScreen extends StatefulWidget {
   });
 
   @override
-  State<PaywallScreen> createState() => _PaywallScreenState();
+  ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
 }
 
-class _PaywallScreenState extends State<PaywallScreen> {
+class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   bool _isLoading = false;
   Package? _selectedPackage;
   List<Package> _packages = [];
@@ -101,7 +102,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
       _purchaseNotice = null;
     });
 
-    final settingsProvider = context.read<SettingsProvider>();
     final messenger = ScaffoldMessenger.of(context);
     final subService = SubscriptionService();
     final l10n = AppLocalizations.of(context)!;
@@ -111,7 +111,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     _handleSubscriptionResult(
       result,
       messenger: messenger,
-      settingsProvider: settingsProvider,
+      settings: ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
       successMessage: l10n.premium_welcome,
       isRestore: false,
     );
@@ -122,7 +122,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
     if (_isLoading) return;
     HapticFeedback.mediumImpact();
     setState(() => _isLoading = true);
-    final settingsProvider = context.read<SettingsProvider>();
     final messenger = ScaffoldMessenger.of(context);
     final subService = SubscriptionService();
     final l10n = AppLocalizations.of(context)!;
@@ -132,7 +131,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     _handleSubscriptionResult(
       result,
       messenger: messenger,
-      settingsProvider: settingsProvider,
+      settings: ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
       successMessage: l10n.premium_restore_success,
       isRestore: true,
     );
@@ -142,13 +141,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
   void _handleSubscriptionResult(
     SubscriptionResult result, {
     required ScaffoldMessengerState messenger,
-    required SettingsProvider settingsProvider,
+    required UserSettings settings,
     required String successMessage,
     required bool isRestore,
   }) {
     switch (result.status) {
       case SubscriptionStatus.active:
-        settingsProvider.refresh();
+        ref.invalidate(settingsProvider);
         if (mounted && context.canPop()) {
           context.pop();
         }
@@ -1080,7 +1079,7 @@ class _PurchaseNoticeBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(LucideIcons.clock, size: 16, color: AppColors.warning),
+          Icon(LucideIcons.clock, size: 16, color: AppColors.warning),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1998,3 +1997,4 @@ class _GlassCalorieLabel extends StatelessWidget {
     );
   }
 }
+

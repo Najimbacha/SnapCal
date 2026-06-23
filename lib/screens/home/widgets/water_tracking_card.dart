@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -12,14 +12,14 @@ import '../../../providers/water_provider.dart';
 import '../../../widgets/ui_blocks.dart';
 import 'package:go_router/go_router.dart';
 
-class WaterTrackingCard extends StatefulWidget {
+class WaterTrackingCard extends ConsumerStatefulWidget {
   const WaterTrackingCard({super.key});
 
   @override
-  State<WaterTrackingCard> createState() => _WaterTrackingCardState();
+  ConsumerState<WaterTrackingCard> createState() => _WaterTrackingCardState();
 }
 
-class _WaterTrackingCardState extends State<WaterTrackingCard>
+class _WaterTrackingCardState extends ConsumerState<WaterTrackingCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _waveController;
 
@@ -40,7 +40,7 @@ class _WaterTrackingCardState extends State<WaterTrackingCard>
 
   @override
   Widget build(BuildContext context) {
-    final amount = context.select<WaterProvider, int>((p) => p.todaysWaterMl);
+    final amount = ref.watch(waterProvider).valueOrNull?.todayTotal ?? 0;
     const goal = 2000;
     final progress = (amount / goal).clamp(0.0, 1.0);
 
@@ -174,7 +174,7 @@ class _WaterTrackingCardState extends State<WaterTrackingCard>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(LucideIcons.droplets, color: Colors.white, size: 20),
+                  Icon(LucideIcons.droplets, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
                   const Text(
                     'Log Water',
@@ -274,5 +274,8 @@ class _WaterWaveBarPainter extends CustomPainter {
       oldDelegate.animationValue != animationValue ||
       oldDelegate.progress != progress;
 }
+
+
+
 
 

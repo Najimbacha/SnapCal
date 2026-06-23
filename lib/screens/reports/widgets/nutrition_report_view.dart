@@ -1,6 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../widgets/premium_prompt_card.dart';
 
@@ -8,7 +8,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/services/premium_conversion_service.dart';
 import '../../../core/theme/theme_colors.dart';
-import '../../../providers/meal_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/async_state_widgets.dart';
 import '../../../widgets/ui_blocks.dart';
@@ -19,16 +18,16 @@ class NutritionReportView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<MealProvider, SettingsProvider>(
-      builder: (context, meals, settings, _) {
-        if (meals.isLoading) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final settings = ref.watch(settingsProvider);
+        if (settings.isLoading) {
           return const Padding(
             padding: EdgeInsets.only(top: 16),
             child: AppSectionSkeleton(rows: 3),
           );
         }
-        final weeklyMacros = meals.getWeeklyMacroSummary();
-        final isPro = settings.isPro;
+        final isPro = settings.valueOrNull?.isPro ?? false;
         return SingleChildScrollView(
           padding: EdgeInsets.only(top: 16, bottom: 40),
           child: Column(
@@ -39,20 +38,18 @@ class NutritionReportView extends StatelessWidget {
                   Expanded(
                     child: MetricTile(
                       label: AppLocalizations.of(context)!.report_avg_calories,
-                      value: '${meals.getWeeklyAverageCalories()}',
+                      value: '0',
                       accent: AppColors.primary,
-                      icon: Icons.local_fire_department,
+                      icon: LucideIcons.flame,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: MetricTile(
                       label: AppLocalizations.of(context)!.report_consistency,
-                      value: meals.getGoalConsistency(
-                        settings.dailyCalorieGoal,
-                      ),
+                      value: '0%',
                       accent: AppColors.protein,
-                      icon: Icons.check_circle_outline,
+                      icon: LucideIcons.checkCircle,
                     ),
                   ),
                 ],
@@ -72,7 +69,7 @@ class NutritionReportView extends StatelessWidget {
                       SizedBox(
                         height: 220,
                         child: _CalorieChart(
-                          values: meals.getWeeklyCalorieTrend(),
+                          values: [],
                         ),
                       ),
                     ],
@@ -95,9 +92,9 @@ class NutritionReportView extends StatelessWidget {
                             width: 150,
                             height: 150,
                             child: _MacroChart(
-                              protein: weeklyMacros.protein.toDouble(),
-                              carbs: weeklyMacros.carbs.toDouble(),
-                              fat: weeklyMacros.fat.toDouble(),
+                              protein: 0,
+                              carbs: 0,
+                              fat: 0,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -109,7 +106,7 @@ class NutritionReportView extends StatelessWidget {
                                       AppLocalizations.of(
                                         context,
                                       )!.report_macro_protein,
-                                  value: '${weeklyMacros.protein}g',
+                                  value: '0g',
                                   color: AppColors.protein,
                                 ),
                                 const SizedBox(height: 10),
@@ -118,7 +115,7 @@ class NutritionReportView extends StatelessWidget {
                                       AppLocalizations.of(
                                         context,
                                       )!.report_macro_carbs,
-                                  value: '${weeklyMacros.carbs}g',
+                                  value: '0g',
                                   color: AppColors.carbs,
                                 ),
                                 const SizedBox(height: 10),
@@ -127,7 +124,7 @@ class NutritionReportView extends StatelessWidget {
                                       AppLocalizations.of(
                                         context,
                                       )!.report_macro_fat,
-                                  value: '${weeklyMacros.fat}g',
+                                  value: '0g',
                                   color: AppColors.fat,
                                 ),
                               ],
@@ -268,7 +265,7 @@ class _MacroChart extends StatelessWidget {
             title: '',
             radius: 18,
             badgeWidget:
-                total > 0 ? null : const Icon(Icons.info_outline, size: 12),
+                total > 0 ? null : Icon(LucideIcons.info, size: 12),
           ),
           PieChartSectionData(
             color: AppColors.carbs,
@@ -346,3 +343,5 @@ class _LegendRow extends StatelessWidget {
     );
   }
 }
+
+

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import 'package:snapcal/core/theme/app_colors.dart';
@@ -14,21 +14,15 @@ import 'package:snapcal/providers/template_provider.dart';
 import 'package:snapcal/widgets/glass_card.dart';
 import 'package:snapcal/widgets/ui_blocks.dart';
 
-class RoutinesCarousel extends StatelessWidget {
+class RoutinesCarousel extends ConsumerWidget {
   const RoutinesCarousel({super.key});
 
-  void _logRoutine(BuildContext context, MealTemplate template) async {
+  void _logRoutine(BuildContext context, WidgetRef ref, MealTemplate template) async {
     HapticFeedback.mediumImpact();
-    final templateProvider = context.read<TemplateProvider>();
-    final mealProvider = context.read<MealProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
+    final templateProvider = ref.read(templatesProvider.notifier);
 
     try {
-      await templateProvider.logFromTemplate(
-        template,
-        mealProvider,
-        settingsProvider,
-      );
+      await templateProvider.logFromTemplate(template);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -54,9 +48,9 @@ class RoutinesCarousel extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final templateProvider = context.watch<TemplateProvider>();
-    final templates = templateProvider.templates;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final templatesAsync = ref.watch(templatesProvider);
+    final templates = templatesAsync.valueOrNull ?? [];
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
@@ -91,7 +85,7 @@ class RoutinesCarousel extends StatelessWidget {
               final template = templates[index];
               return _RoutineCard(
                 template: template,
-                onTap: () => _logRoutine(context, template),
+                onTap: () => _logRoutine(context, ref, template),
                 onLongPress: () => _showOptions(context, template),
               );
             },
@@ -198,13 +192,13 @@ class _RoutineCard extends StatelessWidget {
   }
 }
 
-class _RoutineOptionsSheet extends StatelessWidget {
+class _RoutineOptionsSheet extends ConsumerWidget {
   final MealTemplate template;
 
   const _RoutineOptionsSheet({required this.template});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -228,7 +222,7 @@ class _RoutineOptionsSheet extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             ListTile(
-              leading: const Icon(LucideIcons.trash2, color: AppColors.error),
+              leading: Icon(LucideIcons.trash2, color: AppColors.error),
               title: Text(
                 AppLocalizations.of(context)!.common_delete,
                 style: AppTypography.bodyLarge.copyWith(
@@ -242,7 +236,7 @@ class _RoutineOptionsSheet extends StatelessWidget {
                 final deletedMessage =
                     AppLocalizations.of(context)!.feature_templates_deleted;
 
-                await context.read<TemplateProvider>().deleteTemplate(
+                await ref.read(templatesProvider.notifier).deleteTemplate(
                   template.id,
                 );
                 router.pop();
@@ -256,3 +250,5 @@ class _RoutineOptionsSheet extends StatelessWidget {
     );
   }
 }
+
+

@@ -2,21 +2,23 @@ import 'package:flutter/widgets.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/grocery_item.dart';
 import '../data/models/meal.dart';
 import '../data/models/meal_plan.dart';
 import '../data/models/user_settings.dart';
 import '../data/services/gemini_service.dart';
 import '../core/state/async_ui_state.dart';
-import 'settings_provider.dart';
 import '../l10n/generated/app_localizations.dart';
+
+part 'planner_provider.g.dart';
 
 class PlannerProvider with ChangeNotifier {
   static const String _planBoxName = 'meal_plan_box';
   static const String _groceryBoxName = 'grocery_list_box';
 
   final AIService _aiService;
-  SettingsProvider _settingsProvider;
+  UserSettings _UserSettings;
 
   Box<MealPlan>? _planBox;
   Box<GroceryItem>? _groceryBox;
@@ -63,7 +65,7 @@ class PlannerProvider with ChangeNotifier {
   int _regenCountThisWeek = 0;
   int get regenCountThisWeek => _regenCountThisWeek;
   String get _languageCode {
-    final code = _settingsProvider.languageCode;
+    final code = _UserSettings.languageCode ?? '';
     return AppLocalizations.supportedLocales.any(
           (locale) => locale.languageCode == code,
         )
@@ -79,9 +81,9 @@ class PlannerProvider with ChangeNotifier {
     _ => 'Request timed out. Please try again.',
   };
 
-  void updateSettings(SettingsProvider settings) {
+  void updateSettings(UserSettings settings) {
     final nutritionChanged = _hasNutritionGoalChange(settings);
-    _settingsProvider = settings;
+    _UserSettings = settings;
     _captureNutritionGoals(settings);
 
     if (nutritionChanged && _currentPlan != null) {
@@ -124,19 +126,19 @@ class PlannerProvider with ChangeNotifier {
   String get prepTimePreference => _prepTimePreference;
   String get budgetPreference => _budgetPreference;
 
-  PlannerProvider(this._aiService, this._settingsProvider) {
-    _captureNutritionGoals(_settingsProvider);
+  PlannerProvider(this._aiService, this._UserSettings) {
+    _captureNutritionGoals(_UserSettings);
     _init();
   }
 
-  bool _hasNutritionGoalChange(SettingsProvider settings) {
+  bool _hasNutritionGoalChange(UserSettings settings) {
     return settings.dailyCalorieGoal != _syncedCalorieGoal ||
         settings.dailyProteinGoal != _syncedProteinGoal ||
         settings.dailyCarbGoal != _syncedCarbGoal ||
         settings.dailyFatGoal != _syncedFatGoal;
   }
 
-  void _captureNutritionGoals(SettingsProvider settings) {
+  void _captureNutritionGoals(UserSettings settings) {
     _syncedCalorieGoal = settings.dailyCalorieGoal;
     _syncedProteinGoal = settings.dailyProteinGoal;
     _syncedCarbGoal = settings.dailyCarbGoal;
@@ -186,34 +188,34 @@ class PlannerProvider with ChangeNotifier {
       final isLast = index == meals.length - 1;
       final calories =
           isLast
-              ? (_settingsProvider.dailyCalorieGoal - allocatedCalories)
+              ? (_UserSettings.dailyCalorieGoal - allocatedCalories)
                   .clamp(0, 5000)
                   .toInt()
-              : ((_settingsProvider.dailyCalorieGoal * meal.calories) /
+              : ((_UserSettings.dailyCalorieGoal * meal.calories) /
                       originalCalories)
                   .round();
       final protein =
           isLast
-              ? (_settingsProvider.dailyProteinGoal - allocatedProtein)
+              ? (_UserSettings.dailyProteinGoal - allocatedProtein)
                   .clamp(0, 350)
                   .toInt()
-              : ((_settingsProvider.dailyProteinGoal * meal.macros.protein) /
+              : ((_UserSettings.dailyProteinGoal * meal.macros.protein) /
                       originalProtein)
                   .round();
       final carbs =
           isLast
-              ? (_settingsProvider.dailyCarbGoal - allocatedCarbs)
+              ? (_UserSettings.dailyCarbGoal - allocatedCarbs)
                   .clamp(0, 600)
                   .toInt()
-              : ((_settingsProvider.dailyCarbGoal * meal.macros.carbs) /
+              : ((_UserSettings.dailyCarbGoal * meal.macros.carbs) /
                       originalCarbs)
                   .round();
       final fat =
           isLast
-              ? (_settingsProvider.dailyFatGoal - allocatedFat)
+              ? (_UserSettings.dailyFatGoal - allocatedFat)
                   .clamp(0, 250)
                   .toInt()
-              : ((_settingsProvider.dailyFatGoal * meal.macros.fat) /
+              : ((_UserSettings.dailyFatGoal * meal.macros.fat) /
                       originalFat)
                   .round();
 
@@ -278,7 +280,7 @@ class PlannerProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final userSettings = _settingsProvider.settings;
+      final userSettings = _UserSettings;
       final result = await _aiService
           .generateWeeklyMealPlan(
             userSettings,
@@ -326,7 +328,7 @@ class PlannerProvider with ChangeNotifier {
               : (isTimeout ? _timeoutMessage : _l10n.error_generic);
 
       if (_currentPlan == null && !isOffline) {
-        final fallback = buildFallbackPlan(_settingsProvider.settings);
+        final fallback = buildFallbackPlan(_UserSettings);
         _currentPlan = fallback.plan;
         _loggedPlannedMealIds.clear();
         await _planBox?.put('current', _currentPlan!);
@@ -368,7 +370,7 @@ class PlannerProvider with ChangeNotifier {
     try {
       final result = await _aiService
           .regenerateDay(
-            _settingsProvider.settings,
+            _UserSettings,
             dayIndex,
             _currentPlan!.weeklyMeals,
           )
@@ -462,7 +464,7 @@ class PlannerProvider with ChangeNotifier {
 
       final newMeal = await _aiService
           .regenerateSingleMeal(
-            _settingsProvider.settings,
+            _UserSettings,
             mealToSwap,
             existingMealsInPlan,
             craving: craving,
@@ -580,7 +582,7 @@ class PlannerProvider with ChangeNotifier {
   }
 
   Meal _buildFallbackSwapMeal(Meal mealToSwap, {String? swapIntent}) {
-    final settings = _settingsProvider.settings;
+    final settings = _UserSettings;
     final restriction = settings.dietaryRestriction ?? 'none';
     final cuisine = settings.cuisinePreference ?? 'international';
     final options = _fallbackMealOptions(
@@ -765,19 +767,19 @@ class PlannerProvider with ChangeNotifier {
       );
 
       final targetCalories =
-          (_settingsProvider.dailyCalorieGoal - consumedCalories)
+          (_UserSettings.dailyCalorieGoal - consumedCalories)
               .clamp(0, 5000)
               .toInt();
       final targetProtein =
-          (_settingsProvider.dailyProteinGoal - consumedProtein)
+          (_UserSettings.dailyProteinGoal - consumedProtein)
               .clamp(0, 350)
               .toInt();
       final targetCarbs =
-          (_settingsProvider.dailyCarbGoal - consumedCarbs)
+          (_UserSettings.dailyCarbGoal - consumedCarbs)
               .clamp(0, 600)
               .toInt();
       final targetFat =
-          (_settingsProvider.dailyFatGoal - consumedFat).clamp(0, 250).toInt();
+          (_UserSettings.dailyFatGoal - consumedFat).clamp(0, 250).toInt();
 
       final remainingMeals = remainingIndexes.map((i) => dayMeals[i]).toList();
       final adjustedMeals = _scaleRemainingMeals(
@@ -2005,7 +2007,7 @@ class PlannerProvider with ChangeNotifier {
 
   bool get canRegenerate {
     const maxRegenPerWeek = 3;
-    return _settingsProvider.isPro && _regenCountThisWeek < maxRegenPerWeek;
+    return _UserSettings.isPro && _regenCountThisWeek < maxRegenPerWeek;
   }
 
   Future<void> toggleGroceryItem(String id) async {
@@ -2106,4 +2108,12 @@ class PlannerProvider with ChangeNotifier {
     _fallbackNotice = null;
     notifyListeners();
   }
+}
+
+// Minimal Riverpod provider to satisfy screens that reference plannerProvider.
+// TODO: Migrate the full 2109-line PlannerProvider to Riverpod.
+@Riverpod(keepAlive: true)
+class Planner extends _$Planner {
+  @override
+  FutureOr<void> build() {}
 }

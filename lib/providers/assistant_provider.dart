@@ -1,198 +1,33 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../core/state/async_ui_state.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/repositories/assistant_repository.dart';
-import '../data/services/assistant_service.dart';
+import '../data/services/gemini_service.dart';
+import 'repository_providers.dart';
 
-class AssistantProvider with ChangeNotifier {
-  final AssistantRepository _repository;
-  final AssistantService _service = AssistantService();
+part 'assistant_provider.g.dart';
 
-  AssistantProvider(this._repository) {
-    _loadHistory();
+@Riverpod(keepAlive: true)
+class Assistant extends _$Assistant {
+  AssistantRepository? _repo;
+  final AIService _aiService = AIService();
+
+  @override
+  FutureOr<void> build() {}
+
+  Future<String> fetchRecommendations(String query, {int? currentCalories}) async {
+    _repo ??= await ref.read(assistantRepositoryProvider.future);
+    if (currentCalories != null) {
+      await _repo!.saveCalorieSnapshot(currentCalories);
+    }
+    final result = await _aiService.generateText(query);
+    return result;
   }
 
-  void _loadHistory() {
-    final history = _repository.getChatHistory();
-    if (history != null) {
-      _history = history;
-      notifyListeners();
-    }
-  }
-
-  AssistantService get service => _service;
-
-  List<dynamic> _history = [];
-  bool _isLoading = false;
-  AsyncUiState _uiState = const AsyncUiState.idle();
-  String? _error;
-
-  List<dynamic> get history => _history;
-  bool get isLoading => _isLoading && _history.isEmpty;
-  bool get isRefreshing => _isLoading && _history.isNotEmpty;
-  AsyncUiState get uiState => _uiState;
-  String? get error => _error;
-
-  /// Fetch recommendations based on user stats (with caching)
-  Future<bool> fetchRecommendations({
-    required int currentCalories,
-    required int targetCalories,
-    required Map<String, int> currentMacros,
-    required Map<String, int> targetMacros,
-    List<String> mealNames = const [],
-    String dietaryRestriction = 'none',
-    String? userQuery,
-    Uint8List? imageBytes, // New: Image support
-    bool clearPrevious = false,
-    bool forceFetch = false,
-    String language = 'en',
-    int? age,
-    String? gender,
-    double? height,
-    double? weight,
-    double? targetWeight,
-    String? goalMode,
-    String? activityLevel,
-    String? foodDislikes,
-    String? medicalNotes,
-  }) async {
-    if (_isLoading) return false;
-
-    if (clearPrevious) {
-      _history = [];
-      _error = null;
-      notifyListeners();
-    }
-
-    // Add user query to history immediately if it exists
-    if (userQuery != null) {
-      _history.add({
-        'type': 'user',
-        'content': userQuery,
-        'hasImage': imageBytes != null,
-      });
-      notifyListeners();
-      await _repository.saveChatHistory(_history);
-    }
-
-    // Check Cache for "Initial" requests (only if no specific query and NOT forcing fetch)
-    if (userQuery == null && imageBytes == null && !forceFetch) {
-      final cached = _repository.getCachedRecommendations();
-      final lastCals = _repository.getLastCalorieSnapshot();
-      final calDiff = (currentCalories - lastCals).abs();
-
-      if (cached != null && calDiff < 50 && _history.isEmpty) {
-        _history = List<dynamic>.from(cached);
-        notifyListeners();
-        return true;
-      }
-    }
-
-    _isLoading = true;
-    _uiState =
-        _history.isEmpty
-            ? const AsyncUiState.loading()
-            : const AsyncUiState.refreshing();
-    _error = null;
-    notifyListeners();
-
-    try {
-      final List<AssistantResponse> newRecs;
-
-      if (imageBytes != null) {
-        // New: Handle Image Analysis
-        newRecs = await _service
-            .analyzeImage(
-              imageBytes: imageBytes,
-              userQuery: userQuery,
-              currentCalories: currentCalories,
-              targetCalories: targetCalories,
-              language: language,
-              age: age,
-              gender: gender,
-              height: height,
-              weight: weight,
-              targetWeight: targetWeight,
-              goalMode: goalMode,
-              activityLevel: activityLevel,
-              foodDislikes: foodDislikes,
-              medicalNotes: medicalNotes,
-            )
-            .timeout(const Duration(seconds: 18));
-      } else {
-        newRecs = await _service
-            .getRecommendations(
-              currentCalories: currentCalories,
-              targetCalories: targetCalories,
-              currentMacros: currentMacros,
-              targetMacros: targetMacros,
-              mealNames: mealNames,
-              dietaryRestriction: dietaryRestriction,
-              userQuery: userQuery,
-              language: language,
-              age: age,
-              gender: gender,
-              height: height,
-              weight: weight,
-              targetWeight: targetWeight,
-              goalMode: goalMode,
-              activityLevel: activityLevel,
-              foodDislikes: foodDislikes,
-              medicalNotes: medicalNotes,
-            )
-            .timeout(const Duration(seconds: 15));
-      }
-
-      if (userQuery != null || imageBytes != null) {
-        if (newRecs is List) {
-          _history.addAll(newRecs);
-        }
-      } else {
-        _history = (newRecs is List) ? List<dynamic>.from(newRecs) : [];
-      }
-
-      // Save to cache/history
-      await _repository.saveChatHistory(_history);
-      if (userQuery == null && imageBytes == null) {
-        await _repository.saveRecommendations(newRecs);
-        await _repository.saveCalorieSnapshot(currentCalories);
-      }
-      return true;
-    } catch (e, stack) {
-      debugPrint('⚠️ AssistantProvider: recommendation fallback: $e');
-      debugPrint('Stack: $stack');
-      _error = e.toString();
-      // Add a fallback response so the user sees something
-      if (userQuery != null || imageBytes != null) {
-        _history.add(AssistantResponse(
-          title: '',
-          content: 'Sorry, I had trouble processing that. Could you try asking again?',
-          type: 'coaching',
-        ));
-        await _repository.saveChatHistory(_history);
-      }
-      return false;
-    } finally {
-      _isLoading = false;
-      _uiState =
-          _history.isEmpty
-              ? (_error == null
-                  ? const AsyncUiState.empty()
-                  : AsyncUiState.error(_error))
-              : const AsyncUiState.success();
-      notifyListeners();
-    }
-  }
-
-  void clearError() {
-    _error = null;
-    notifyListeners();
-  }
-
-  /// Clear all assistant data (logout)
-  Future<void> clear() async {
-    await _repository.clearCache();
-    _history = [];
-    _error = null;
-    notifyListeners();
+  Future<String> analyzeImage(String base64Image, String prompt) async {
+    final bytes = Uri.tryParse(base64Image)?.data?.contentAsBytes();
+    if (bytes == null) return 'Error: Invalid image data';
+    final result = await _aiService.analyzeFood(bytes);
+    return result.toString();
   }
 }

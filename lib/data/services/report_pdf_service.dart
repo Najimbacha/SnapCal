@@ -5,14 +5,14 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/meal.dart';
-import '../../providers/settings_provider.dart';
+import '../models/user_settings.dart';
 import '../../l10n/generated/app_localizations.dart';
 
 class ReportPdfService {
   static Future<void> generateAndShareReport({
     required String userName,
     required List<Meal> meals,
-    required SettingsProvider settings,
+    required UserSettings settings,
     required int streak,
   }) async {
     final pdf = pw.Document();
@@ -29,7 +29,7 @@ class ReportPdfService {
 
     final now = DateTime.now();
     final weeklyMeals = meals; // Already filtered by provider
-    final l10n = lookupAppLocalizations(Locale(settings.languageCode));
+    final l10n = lookupAppLocalizations(Locale(settings.languageCode ?? 'en'));
 
     // Calculate totals
     int totalCals = 0;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -12,7 +12,7 @@ import 'ai_orb.dart';
 import 'metric_progress_strip.dart';
 
 /// A clean welcome state — greeting, today's insight, and a row of quick prompts.
-class AssistantWelcomeState extends StatelessWidget {
+class AssistantWelcomeState extends ConsumerWidget {
   final ValueChanged<String> onQuickPrompt;
   final ValueChanged<String> onSuggestion;
 
@@ -59,25 +59,25 @@ class AssistantWelcomeState extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
-    final meal = context.watch<MealProvider>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final todaysMeals = ref.watch(todaysMealsProvider).valueOrNull ?? [];
 
     final hour = DateTime.now().hour;
     final greeting = _greetingForHour(hour);
 
-    final meals = meal.todaysMeals.length;
-    final calories = meal.todaysTotalCalories;
+    final meals = todaysMeals.length;
+    final calories = todaysMeals.fold<int>(0, (sum, m) => sum + m.calories);
     final targetCalories =
-        settings.dailyCalorieGoal > 0 ? settings.dailyCalorieGoal : 2000;
-    final protein = meal.todaysTotalMacros.protein;
+        settings.valueOrNull?.dailyCalorieGoal ?? 2000;
+    final protein = todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.protein);
     final targetProtein =
-        settings.dailyProteinGoal > 0 ? settings.dailyProteinGoal : 120;
-    final carbs = meal.todaysTotalMacros.carbs;
+        settings.valueOrNull?.dailyProteinGoal ?? 120;
+    final carbs = todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.carbs);
     final targetCarbs =
-        settings.dailyCarbGoal > 0 ? settings.dailyCarbGoal : 220;
-    final fat = meal.todaysTotalMacros.fat;
-    final targetFat = settings.dailyFatGoal > 0 ? settings.dailyFatGoal : 65;
+        settings.valueOrNull?.dailyCarbGoal ?? 220;
+    final fat = todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.fat);
+    final targetFat = settings.valueOrNull?.dailyFatGoal ?? 65;
 
     final insight = _coachInsight(
       context: context,
@@ -86,7 +86,7 @@ class AssistantWelcomeState extends StatelessWidget {
       protein: protein,
       targetProtein: targetProtein,
       mealCount: meals,
-      languageCode: settings.languageCode,
+      languageCode: settings.valueOrNull?.languageCode ?? 'en',
     );
 
     return SingleChildScrollView(

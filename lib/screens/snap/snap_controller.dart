@@ -9,15 +9,16 @@ import '../../core/resilience/retry_policy.dart';
 import '../../core/resilience/safe_async.dart';
 import '../../core/resilience/timeout_policy.dart';
 import '../../core/utils/image_utils.dart';
-import '../../providers/meal_provider.dart';
-import '../../providers/settings_provider.dart';
+import '../../data/models/user_settings.dart';
 import '../../data/services/connectivity_service.dart';
+import '../../providers/meal_provider.dart';
 import '../../data/services/scan_gate_service.dart';
 
 import '../../data/services/camera_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
-class SnapController extends ChangeNotifier {
+class SnapController {
+  VoidCallback? onStateChanged;
   bool _isCapturing = false;
   bool _isAnalyzing = false;
   bool _isScanningBarcode = false;
@@ -32,9 +33,7 @@ class SnapController extends ChangeNotifier {
   int _operationGeneration = 0;
   bool _disposed = false;
 
-  SnapController() {
-    CameraService().addListener(notifyListeners);
-  }
+  SnapController();
 
   CameraController? get cameraController => CameraService().controller;
   bool get isInitialized => CameraService().isInitialized;
@@ -58,7 +57,7 @@ class SnapController extends ChangeNotifier {
       initializeCamera();
     }
 
-    notifyListeners();
+    onStateChanged?.call();
   }
 
   Future<void> toggleFlash() async {
@@ -74,7 +73,7 @@ class SnapController extends ChangeNotifier {
     try {
       await CameraService().controller?.setFlashMode(_flashMode);
     } catch (_) {}
-    notifyListeners();
+    onStateChanged?.call();
   }
 
   Future<void> setFocusPoint(Offset point) async {
@@ -97,21 +96,19 @@ class SnapController extends ChangeNotifier {
     if (CameraService().error != null) {
       _errorMessage = CameraService().error;
     }
-    notifyListeners();
+    onStateChanged?.call();
   }
 
-  @override
   void dispose() {
     _disposed = true;
     _operationGeneration++;
-    CameraService().removeListener(notifyListeners);
-    super.dispose();
+    onStateChanged = null;
   }
 
   Future<void> captureAndAnalyze({
     required BuildContext context,
-    required MealProvider mealProvider,
-    required SettingsProvider settingsProvider,
+    required MealLog mealProvider,
+    required UserSettings settingsProvider,
     required ConnectivityService connectivity,
     required Function() onShowPaywall,
     required Function() onShowResult,
@@ -120,24 +117,24 @@ class SnapController extends ChangeNotifier {
     if (_isCapturing || _isAnalyzing) return;
     _isCapturing = true;
     _errorMessage = null;
-    notifyListeners();
+    onStateChanged?.call();
     final op = ++_operationGeneration;
 
     final l10n = AppLocalizations.of(context)!;
     final hasInternet = await connectivity.refreshReachability(force: true);
     if (!hasInternet) {
       _isCapturing = false;
-      notifyListeners();
+      onStateChanged?.call();
       HapticFeedback.vibrate();
       _errorMessage = l10n.snap_offline_error;
-      notifyListeners();
+      onStateChanged?.call();
       onShowManualInput();
       return;
     }
 
     if (!ScanGateService().canScan(settingsProvider.isPro)) {
       _isCapturing = false;
-      notifyListeners();
+      onStateChanged?.call();
       onShowPaywall();
       return;
     }
@@ -145,7 +142,7 @@ class SnapController extends ChangeNotifier {
     if (CameraService().controller == null ||
         !CameraService().controller!.value.isInitialized) {
       _isCapturing = false;
-      notifyListeners();
+      onStateChanged?.call();
       return;
     }
 
@@ -166,10 +163,11 @@ class SnapController extends ChangeNotifier {
       if (_disposed || op != _operationGeneration) return;
       _isCapturing = false;
       _isAnalyzing = true;
-      notifyListeners();
+      onStateChanged?.call();
 
       try {
-        final cached = mealProvider.getCachedAnalysis(_capturedImageBytes!);
+        final imageKey = _capturedImageBytes!.hashCode.toString();
+        final cached = mealProvider.getCachedAnalysis(imageKey);
         if (cached != null) {
           _analysisResults = cached;
         } else {
@@ -178,7 +176,7 @@ class SnapController extends ChangeNotifier {
             operation:
                 () => _geminiService.analyzeFood(
                   _capturedImageBytes!,
-                  language: settingsProvider.languageCode,
+                  language: settingsProvider.languageCode ?? 'en',
                 ),
             timeout: TimeoutPolicy.aiScan,
             retryPolicy: RetryPolicy.ai,
@@ -190,20 +188,20 @@ class SnapController extends ChangeNotifier {
           if (_analysisResults!.isEmpty) {
             throw GeminiException('No food detected.');
           }
-          mealProvider.cacheAnalysis(_capturedImageBytes!, _analysisResults!);
+          mealProvider.cacheAnalysis(imageKey, _analysisResults!);
         }
 
         if (_disposed || op != _operationGeneration) return;
         await _recordFreeScanIfNeeded(settingsProvider);
         _isAnalyzing = false;
-        notifyListeners();
+        onStateChanged?.call();
         onShowResult();
       } on GeminiException catch (_) {
         _isAnalyzing = false;
         if (!context.mounted) return;
         _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
         _capturedImageBytes = null;
-        notifyListeners();
+        onStateChanged?.call();
         onShowManualInput();
       }
     } catch (e) {
@@ -212,15 +210,15 @@ class SnapController extends ChangeNotifier {
       if (!context.mounted) return;
       _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
       _capturedImageBytes = null;
-      notifyListeners();
+      onStateChanged?.call();
       onShowManualInput();
     }
   }
 
   Future<void> pickFromGallery({
     required BuildContext context,
-    required MealProvider mealProvider,
-    required SettingsProvider settingsProvider,
+    required MealLog mealProvider,
+    required UserSettings settingsProvider,
     required ConnectivityService connectivity,
     required Function() onShowPaywall,
     required Function() onShowResult,
@@ -234,7 +232,7 @@ class SnapController extends ChangeNotifier {
     if (!hasInternet) {
       HapticFeedback.vibrate();
       _errorMessage = l10n.snap_offline_error;
-      notifyListeners();
+      onStateChanged?.call();
       onShowManualInput();
       return;
     }
@@ -267,7 +265,7 @@ class SnapController extends ChangeNotifier {
       if (_disposed || op != _operationGeneration) return;
       _isAnalyzing = true;
       _errorMessage = null;
-      notifyListeners();
+      onStateChanged?.call();
 
       try {
         final result = await SafeAsync.run<List<NutritionResult>>(
@@ -275,7 +273,7 @@ class SnapController extends ChangeNotifier {
           operation:
               () => _geminiService.analyzeFood(
                 _capturedImageBytes!,
-                language: settingsProvider.languageCode,
+                language: settingsProvider.languageCode ?? 'en',
               ),
           timeout: TimeoutPolicy.aiScan,
           retryPolicy: RetryPolicy.ai,
@@ -289,14 +287,14 @@ class SnapController extends ChangeNotifier {
         }
         await _recordFreeScanIfNeeded(settingsProvider);
         _isAnalyzing = false;
-        notifyListeners();
+        onStateChanged?.call();
         onShowResult();
       } on GeminiException catch (_) {
         _isAnalyzing = false;
         if (!context.mounted) return;
         _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
         _capturedImageBytes = null;
-        notifyListeners();
+        onStateChanged?.call();
         onShowManualInput();
       }
     } catch (e) {
@@ -304,7 +302,7 @@ class SnapController extends ChangeNotifier {
       if (!context.mounted) return;
       _errorMessage = AppLocalizations.of(context)!.error_scan_failed;
       _capturedImageBytes = null;
-      notifyListeners();
+      onStateChanged?.call();
       onShowManualInput();
     }
   }
@@ -312,7 +310,7 @@ class SnapController extends ChangeNotifier {
   Future<void> handleBarcodeDetected(
     String code, {
     required BuildContext context,
-    required SettingsProvider settingsProvider,
+    required UserSettings settingsProvider,
     required ConnectivityService connectivity,
     required Function() onShowPaywall,
     required Function() onShowResult,
@@ -327,7 +325,7 @@ class SnapController extends ChangeNotifier {
       isScanningBarcode = false;
       HapticFeedback.vibrate();
       _errorMessage = l10n.snap_offline_error;
-      notifyListeners();
+      onStateChanged?.call();
       onShowManualInput();
       return;
     }
@@ -336,7 +334,7 @@ class SnapController extends ChangeNotifier {
     isScanningBarcode = false;
     _isAnalyzing = true;
     _errorMessage = null;
-    notifyListeners();
+    onStateChanged?.call();
 
     try {
       final lookup = await SafeAsync.run<NutritionResult?>(
@@ -353,26 +351,26 @@ class SnapController extends ChangeNotifier {
         _analysisResults = [result];
         // Barcode scans are free and do not increment the daily scan limit
         _isAnalyzing = false;
-        notifyListeners();
+        onStateChanged?.call();
         onShowResult();
       } else {
         _isAnalyzing = false;
         if (!context.mounted) return;
         _errorMessage = l10n.error_barcode_not_found;
-        notifyListeners();
+        onStateChanged?.call();
         onShowManualInput();
       }
     } catch (e) {
       _isAnalyzing = false;
       if (!context.mounted) return;
       _errorMessage = l10n.error_scan_failed;
-      notifyListeners();
+      onStateChanged?.call();
       onShowManualInput();
     }
   }
 
   Future<void> _recordFreeScanIfNeeded(
-    SettingsProvider settingsProvider,
+    UserSettings settingsProvider,
   ) async {
     if (!settingsProvider.isPro) {
       await ScanGateService().incrementScanCount();
@@ -385,11 +383,11 @@ class SnapController extends ChangeNotifier {
     _errorMessage = null;
     _isAnalyzing = false;
     _isCapturing = false;
-    notifyListeners();
+    onStateChanged?.call();
   }
 
   void clearError() {
     _errorMessage = null;
-    notifyListeners();
+    onStateChanged?.call();
   }
 }

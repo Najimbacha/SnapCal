@@ -83,7 +83,7 @@ class ProgressCard extends StatelessWidget {
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: onCompare,
-              icon: const Icon(LucideIcons.slidersHorizontal, size: 16),
+              icon: Icon(LucideIcons.slidersHorizontal, size: 16),
               label: Text(
                 AppLocalizations.of(context)!.progress_compare_previous,
               ),
@@ -141,3 +141,4 @@ class _PhotoThumbnail extends StatelessWidget {
     );
   }
 }
+

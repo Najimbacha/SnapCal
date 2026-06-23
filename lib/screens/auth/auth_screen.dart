@@ -1,13 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_notifier_provider.dart';
+import '../../providers/auth_state_provider.dart';
 import '../../widgets/ui_blocks.dart';
 import '../../l10n/generated/app_localizations.dart';
 
@@ -18,14 +20,14 @@ const _minimalLine = Color(0xFFE8E4DC);
 const _minimalGreen = Color(0xFF1A3D2B);
 const _minimalGreenText = Color(0xFF16733A);
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
+class _AuthScreenState extends ConsumerState<AuthScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -122,13 +124,14 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     debugPrint('🔑 AuthScreen: Google button tapped');
     HapticFeedback.mediumImpact();
     setState(() => _googleLoading = true);
-    final auth = context.read<AuthProvider>();
+    final authNotifier = ref.read(authNotifierProvider.notifier);
     try {
-      await auth.signInWithGoogle();
-      if (auth.isAuthenticated && !auth.isAnonymous) {
+      await authNotifier.signInWithGoogle();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.isAnonymous) {
         _onAuthSuccess();
-      } else if (auth.errorMessage != null && auth.errorMessage!.isNotEmpty) {
-        _showStyledSnackBar(auth.errorMessage!);
+      } else if (ref.read(authNotifierProvider).hasError) {
+        _showStyledSnackBar('Sign in failed. Please try again.');
       }
     } catch (e) {
       _showStyledSnackBar(_friendlyError(e));
@@ -140,10 +143,11 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   Future<void> _handleFacebook() async {
     HapticFeedback.mediumImpact();
     setState(() => _facebookLoading = true);
-    final auth = context.read<AuthProvider>();
+    final authNotifier = ref.read(authNotifierProvider.notifier);
     try {
-      await auth.signInWithFacebook();
-      if (auth.isAuthenticated) _onAuthSuccess();
+      await authNotifier.signInWithFacebook();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) _onAuthSuccess();
     } catch (e) {
       _showStyledSnackBar(_friendlyError(e));
     } finally {
@@ -155,20 +159,21 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     if (!_formKey.currentState!.validate()) return;
     HapticFeedback.lightImpact();
     setState(() => _emailLoading = true);
-    final auth = context.read<AuthProvider>();
+    final authNotifier = ref.read(authNotifierProvider.notifier);
     try {
       if (_isSignUp) {
-        await auth.registerWithEmail(
+        await authNotifier.registerWithEmail(
           _emailController.text.trim(),
           _passwordController.text,
         );
       } else {
-        await auth.signInWithEmail(
+        await authNotifier.signInWithEmail(
           _emailController.text.trim(),
           _passwordController.text,
         );
       }
-      if (auth.isAuthenticated) _onAuthSuccess();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) _onAuthSuccess();
     } catch (e) {
       _showStyledSnackBar(_friendlyError(e));
     } finally {
@@ -181,9 +186,11 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     _ensureAnims(10);
 
     // Failsafe Redirection for logged-in users
-    final auth = context.watch<AuthProvider>();
-    if (auth.isAuthenticated &&
-        !auth.isAnonymous &&
+    final authState = ref.watch(authStateProvider).valueOrNull;
+    final isAuthenticated = authState != null;
+    final isAnonymous = authState?.isAnonymous ?? true;
+    if (isAuthenticated &&
+        !isAnonymous &&
         !_googleLoading &&
         !_facebookLoading &&
         !_emailLoading) {

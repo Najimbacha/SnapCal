@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:ui';
-import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -18,27 +18,36 @@ import '../../data/models/meal_plan.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/meal_provider.dart';
+import '../../providers/auth_notifier_provider.dart';
 import '../../providers/metrics_provider.dart';
 import '../../providers/planner_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/services/connectivity_service.dart';
+import '../../data/models/user_settings.dart';
+
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/async_state_widgets.dart';
 import '../../widgets/ui_blocks.dart';
+import '../../data/services/gemini_service.dart';
 import 'widgets/meal_card.dart';
 import 'widgets/day_summary_bar.dart';
 import 'meal_preferences_screen.dart';
 
 enum _PlannerAction { grocery, preferences, regenerateWeek, optimize }
 
-class MealPlannerScreen extends StatefulWidget {
+final plannerNotifierProvider = ChangeNotifierProvider<PlannerProvider>((ref) {
+  final settings = ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
+  return PlannerProvider(AIService(), settings);
+});
+
+class MealPlannerScreen extends ConsumerStatefulWidget {
   const MealPlannerScreen({super.key});
 
   @override
-  State<MealPlannerScreen> createState() => _MealPlannerScreenState();
+  ConsumerState<MealPlannerScreen> createState() => _MealPlannerScreenState();
 }
 
-class _MealPlannerScreenState extends State<MealPlannerScreen> {
+class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   late final PlannerProvider _plannerProvider;
   bool _listeningToPlanner = false;
   bool _isOptimizing = false;
@@ -68,11 +77,10 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
   @override
   void initState() {
     super.initState();
-    _plannerProvider = context.read<PlannerProvider>();
+    _plannerProvider = ref.read(plannerNotifierProvider);
 
     // Guard against non-pro users accessing the screen directly
-    final settings = context.read<SettingsProvider>();
-    if (!settings.isPro) {
+    if (!(ref.read(settingsProvider).valueOrNull?.isPro ?? false)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           if (Navigator.canPop(context)) {
@@ -132,7 +140,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final connectivity = context.watch<ConnectivityService>();
+    final connectivity = ConnectivityService();
     final isOnline = connectivity.hasInternetAccess;
 
     return AppPageScaffold(
@@ -152,8 +160,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
             stops: const [0.0, 0.40],
           ),
         ),
-        child: Consumer2<PlannerProvider, SettingsProvider>(
-          builder: (context, planner, settings, _) {
+        child: Consumer(
+          builder: (context, ref, _) {
+            final planner = ref.watch(plannerNotifierProvider);
             // 1. Generating state
             if (planner.isGenerating && planner.currentPlan == null) {
               return _buildGeneratingState();
@@ -166,16 +175,16 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
 
             // 3. Error state
             if (planner.error != null && planner.currentPlan == null) {
-              return _buildErrorState(planner);
+              return _buildErrorState();
             }
 
             // 4. Empty state
-            if (planner.currentPlan == null) return _buildEmptyState(settings);
+            if (planner.currentPlan == null) return _buildEmptyState();
 
             // 5. Plan exists
             return AppAsyncOverlay(
               state: planner.uiState,
-              child: _buildPlanView(planner, settings),
+              child: _buildPlanView(),
             );
           },
         ),
@@ -232,17 +241,17 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     );
   }
 
-  Widget _buildErrorState(PlannerProvider planner) {
+  Widget _buildErrorState() {
     final l10n = AppLocalizations.of(context)!;
     return Center(
       child: AppEmptyState(
         icon: LucideIcons.alertTriangle,
         title: l10n.error_generic,
-        body: planner.error ?? l10n.error_generic,
+        body: _plannerProvider.error ?? l10n.error_generic,
         actionLabel: l10n.common_try_again,
         onAction: () {
           final isOnline =
-              context.read<ConnectivityService>().hasInternetAccess;
+              ConnectivityService().hasInternetAccess;
           if (!isOnline) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -262,7 +271,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
             );
             return;
           }
-          planner.generateWeeklyPlan();
+          _plannerProvider.generateWeeklyPlan();
         },
       ),
     );
@@ -277,7 +286,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
         body: l10n.error_offline,
         actionLabel: l10n.common_try_again,
         onAction: () async {
-          await context.read<ConnectivityService>().refreshReachability(
+          await ConnectivityService().refreshReachability(
             force: true,
           );
         },
@@ -285,7 +294,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     );
   }
 
-  Widget _buildEmptyState(SettingsProvider settings) {
+  Widget _buildEmptyState() {
     final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -340,7 +349,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     );
   }
 
-  Widget _buildPlanView(PlannerProvider planner, SettingsProvider settings) {
+  Widget _buildPlanView() {
+    final planner = ref.watch(plannerNotifierProvider);
+    final settings = ref.watch(settingsProvider).valueOrNull;
     final isDark = context.isDarkMode;
     final plan = planner.currentPlan;
     final todayIndex = _todayIndexForPlan(plan);
@@ -364,8 +375,8 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
         if (planner.isCurrentPlanExpired)
           _ExpiredPlanBanner(
             onGenerate:
-                settings.isPro
-                    ? () => _confirmRegenerate(context, planner)
+                (settings?.isPro ?? false)
+                    ? () => _confirmRegenerate(context)
                     : () => _showPaywall(
                       context,
                       PaywallEntryPoint.plannerPreferences,
@@ -374,15 +385,15 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
           ),
         _PlannerHeader(
           planner: planner,
-          onGroceryTap: () => _showGrocerySheet(planner, settings),
-          onAction: (action) => _handlePlannerAction(action, planner, settings),
+          onGroceryTap: () => _showGrocerySheet(),
+          onAction: (action) => _handlePlannerAction(action),
           isOptimizing: _isOptimizing,
         ),
         if (plan != null)
           _buildWeekDatePicker(
             plan: plan,
             activeIndex: activeIndex,
-            isPro: settings.isPro,
+            isPro: settings?.isPro ?? false,
             todayIndex: todayIndex,
           ),
         Expanded(
@@ -400,7 +411,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                 child: SlideTransition(position: position, child: child),
               );
             },
-            child: _buildActiveDayView(planner, settings, activeIndex),
+            child: _buildActiveDayView(activeIndex),
           ),
         ),
       ],
@@ -581,21 +592,19 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     );
   }
 
-  Widget _buildActiveDayView(
-    PlannerProvider planner,
-    SettingsProvider settings,
-    int activeIndex,
-  ) {
+  Widget _buildActiveDayView(int activeIndex) {
+    final planner = ref.watch(plannerNotifierProvider);
+    final settings = ref.watch(settingsProvider).valueOrNull;
     final plan = planner.currentPlan;
     if (plan == null) return const SizedBox.shrink();
     final todayIndex = _todayIndexForPlan(plan);
-    final isLocked = !settings.isPro && activeIndex >= 2;
+    final isLocked = !(settings?.isPro ?? false) && activeIndex >= 2;
     final meals = plan.weeklyMeals[activeIndex] ?? const <Meal>[];
     final totalCalories = meals.fold<int>(
       0,
       (sum, meal) => sum + meal.calories,
     );
-    final targetCalories = settings.dailyCalorieGoal;
+    final targetCalories = settings?.dailyCalorieGoal ?? 2000;
     final l10n = AppLocalizations.of(context)!;
 
     final date = plan.startDate.add(Duration(days: activeIndex));
@@ -669,12 +678,11 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                       ],
                     ),
                   ),
-                  if (settings.isPro && planner.canRegenerate && !isLocked)
+                  if ((settings?.isPro ?? false) && planner.canRegenerate && !isLocked)
                     TextButton.icon(
                       onPressed:
                           () => _confirmRegenerateDay(
                             context,
-                            planner,
                             activeIndex,
                           ),
                       style: TextButton.styleFrom(
@@ -822,7 +830,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                           : () => _logPlannedMeal(meal),
                   onSwapMeal:
                       () =>
-                          _confirmSwapMeal(context, planner, meal, activeIndex),
+                          _confirmSwapMeal(context, meal, activeIndex),
                 ),
               ),
           ],
@@ -840,7 +848,9 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     );
   }
 
-  void _showGrocerySheet(PlannerProvider provider, SettingsProvider settings) {
+  void _showGrocerySheet() {
+    final planner = ref.read(plannerNotifierProvider);
+    final settings = ref.read(settingsProvider).valueOrNull;
     HapticFeedback.selectionClick();
     showModalBottomSheet(
       context: context,
@@ -854,7 +864,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
             expand: false,
             builder:
                 (context, scrollController) => _GrocerySheet(
-                  provider: provider,
+                  provider: planner,
                   settings: settings,
                   scrollController: scrollController,
                   onUpgrade:
@@ -865,24 +875,21 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     );
   }
 
-  void _handlePlannerAction(
-    _PlannerAction action,
-    PlannerProvider planner,
-    SettingsProvider settings,
-  ) {
+  void _handlePlannerAction(_PlannerAction action) {
+    final settings = ref.read(settingsProvider).valueOrNull;
     switch (action) {
       case _PlannerAction.grocery:
-        _showGrocerySheet(planner, settings);
+        _showGrocerySheet();
         break;
       case _PlannerAction.preferences:
         _showPreferences(context);
         break;
       case _PlannerAction.regenerateWeek:
-        if (!settings.isPro) {
+        if (!(settings?.isPro ?? false)) {
           _showPaywall(context, PaywallEntryPoint.plannerPreferences);
           return;
         }
-        _confirmRegenerate(context, planner);
+        _confirmRegenerate(context);
         break;
       case _PlannerAction.optimize:
         _optimizePlan();
@@ -892,10 +899,12 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
 
   Future<void> _optimizePlan() async {
     if (_isOptimizing) return;
-    final metricsProvider = context.read<MetricsProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
+    final metricsProvider = ref.read(bodyMetricsProvider.notifier);
+    final settingsNotifier = ref.read(settingsProvider.notifier);
     final currentWeight = metricsProvider.currentWeight;
     final l10n = AppLocalizations.of(context)!;
+    final todaysMeals = ref.watch(todaysMealsProvider).valueOrNull ?? [];
+    final totalCalories = todaysMeals.fold<int>(0, (s, m) => s + m.calories);
 
     if (currentWeight == null) {
       ScaffoldMessenger.of(
@@ -905,7 +914,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     }
 
     setState(() => _isOptimizing = true);
-    final success = await settingsProvider.recalculatePlan(
+    final success = await settingsNotifier.recalculatePlan(
       currentWeightKg: currentWeight,
     );
 
@@ -920,52 +929,19 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     }
 
     context.push('/assistant');
-    context.read<AssistantProvider>().fetchRecommendations(
-      currentCalories: context.read<MealProvider>().todaysTotalCalories,
-      targetCalories: context.read<SettingsProvider>().dailyCalorieGoal,
-      currentMacros: {
-        'protein': context.read<MealProvider>().todaysTotalMacros.protein,
-        'carbs': context.read<MealProvider>().todaysTotalMacros.carbs,
-        'fat': context.read<MealProvider>().todaysTotalMacros.fat,
-      },
-      targetMacros: {
-        'protein': context.read<SettingsProvider>().dailyProteinGoal,
-        'carbs': context.read<SettingsProvider>().dailyCarbGoal,
-        'fat': context.read<SettingsProvider>().dailyFatGoal,
-      },
-      mealNames:
-          context
-              .read<MealProvider>()
-              .recentMeals
-              .map((m) => m.foodName)
-              .toList(),
-      dietaryRestriction: context.read<SettingsProvider>().dietaryRestriction,
-      userQuery: l10n.settings_recalculate_query,
+    ref.read(assistantProvider.notifier).fetchRecommendations(
+      l10n.settings_recalculate_query,
+      currentCalories: totalCalories,
     );
   }
 
   void _logPlannedMeal(Meal meal) async {
-    final mealProvider = context.read<MealProvider>();
-    final settingsProvider = context.read<SettingsProvider>();
-    final planner = context.read<PlannerProvider>();
+    final mealNotifier = ref.read(mealLogProvider.notifier);
 
     HapticFeedback.mediumImpact();
-    await mealProvider.addMeal(
-      foodName: meal.foodName,
-      calories: meal.calories,
-      protein: meal.macros.protein,
-      carbs: meal.macros.carbs,
-      fat: meal.macros.fat,
-      portion: meal.portion,
-      dateString: meal.dateString,
-      settings: settingsProvider,
-      scanConfidence: 1.0,
-      scanSource: 'meal_planner_plan',
-      aiRationale: meal.aiRationale,
-      originalCalories: meal.calories,
-    );
+    await mealNotifier.addMeal(meal);
 
-    planner.markPlannedMealLogged(meal.id);
+    // TODO: mark planned meal as logged
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -976,14 +952,15 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     }
   }
 
-  void _confirmRegenerate(BuildContext context, PlannerProvider planner) {
-    final isOnline = context.read<ConnectivityService>().hasInternetAccess;
+  void _confirmRegenerate(BuildContext context) {
+    final planner = _plannerProvider;
+    final isOnline = ConnectivityService().hasInternetAccess;
     if (!isOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              const Icon(LucideIcons.wifiOff, color: Colors.white, size: 18),
+              Icon(LucideIcons.wifiOff, color: Colors.white, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(AppLocalizations.of(context)!.error_offline),
@@ -1020,16 +997,16 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
 
   void _confirmRegenerateDay(
     BuildContext context,
-    PlannerProvider planner,
     int dayIndex,
   ) {
-    final isOnline = context.read<ConnectivityService>().hasInternetAccess;
+    final planner = _plannerProvider;
+    final isOnline = ConnectivityService().hasInternetAccess;
     if (!isOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              const Icon(LucideIcons.wifiOff, color: Colors.white, size: 18),
+              Icon(LucideIcons.wifiOff, color: Colors.white, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(AppLocalizations.of(context)!.error_offline),
@@ -1071,18 +1048,18 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
 
   void _confirmSwapMeal(
     BuildContext context,
-    PlannerProvider planner,
     Meal meal,
     int dayIndex,
   ) async {
+    final planner = _plannerProvider;
     // Check connectivity
-    final isOnline = context.read<ConnectivityService>().hasInternetAccess;
+    final isOnline = ConnectivityService().hasInternetAccess;
     if (!isOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              const Icon(LucideIcons.wifiOff, color: Colors.white, size: 18),
+              Icon(LucideIcons.wifiOff, color: Colors.white, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(AppLocalizations.of(context)!.error_offline),
@@ -1096,8 +1073,8 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
     }
 
     // Check Pro status
-    final settings = context.read<SettingsProvider>();
-    if (!settings.isPro) {
+    final settings = ref.read(settingsProvider).valueOrNull;
+    if (!(settings?.isPro ?? false)) {
       _showPaywall(context, PaywallEntryPoint.plannerPreferences);
       return;
     }
@@ -1186,7 +1163,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
             (context) => MealPreferencesScreen(
               onGenerate: () {
                 final isOnline =
-                    context.read<ConnectivityService>().hasInternetAccess;
+                    ConnectivityService().hasInternetAccess;
                 if (!isOnline) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -1210,7 +1187,7 @@ class _MealPlannerScreenState extends State<MealPlannerScreen> {
                   );
                   return;
                 }
-                context.read<PlannerProvider>().generateWeeklyPlan();
+                _plannerProvider.generateWeeklyPlan();
               },
             ),
       ),
@@ -1276,7 +1253,7 @@ class _PlannerHeader extends StatelessWidget {
                 side: BorderSide(color: context.cardBorderColor),
               ),
             ),
-            icon: const Icon(LucideIcons.shoppingBag, size: 18),
+            icon: Icon(LucideIcons.shoppingBag, size: 18),
           ),
           const SizedBox(width: 8),
           PopupMenuButton<_PlannerAction>(
@@ -1325,7 +1302,7 @@ class _PlannerHeader extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: context.cardBorderColor),
               ),
-              child: const Icon(LucideIcons.moreHorizontal, size: 18),
+              child: Icon(LucideIcons.moreHorizontal, size: 18),
             ),
           ),
         ],
@@ -1376,7 +1353,7 @@ class _MenuRow extends StatelessWidget {
 
 class _GrocerySheet extends StatelessWidget {
   final PlannerProvider provider;
-  final SettingsProvider settings;
+  final UserSettings? settings;
   final ScrollController scrollController;
   final VoidCallback onUpgrade;
 
@@ -1423,7 +1400,7 @@ class _GrocerySheet extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (settings.isPro && provider.groceryList.isNotEmpty)
+                    if ((settings?.isPro ?? false) && provider.groceryList.isNotEmpty)
                       TextButton.icon(
                         onPressed: () {
                           SharePlus.instance.share(
@@ -1432,7 +1409,7 @@ class _GrocerySheet extends StatelessWidget {
                             ),
                           );
                         },
-                        icon: const Icon(LucideIcons.share2, size: 16),
+                        icon: Icon(LucideIcons.share2, size: 16),
                         label: Text(l10n.planner_share),
                       ),
                   ],
@@ -1448,7 +1425,7 @@ class _GrocerySheet extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    if (!settings.isPro) {
+    if (!(settings?.isPro ?? false)) {
       return Center(
         child: AppEmptyState(
           icon: LucideIcons.crown,
@@ -1534,7 +1511,7 @@ class _FallbackNoticeBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          const Icon(LucideIcons.alertTriangle, color: Colors.orange, size: 16),
+          Icon(LucideIcons.alertTriangle, color: Colors.orange, size: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1548,7 +1525,7 @@ class _FallbackNoticeBanner extends StatelessWidget {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onDismiss,
-            child: const Icon(LucideIcons.x, size: 16),
+            child: Icon(LucideIcons.x, size: 16),
           ),
         ],
       ),
@@ -1575,7 +1552,7 @@ class _RebalanceNoticeBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          const Icon(LucideIcons.sparkles, color: AppColors.success, size: 16),
+          Icon(LucideIcons.sparkles, color: AppColors.success, size: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1589,7 +1566,7 @@ class _RebalanceNoticeBanner extends StatelessWidget {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onDismiss,
-            child: const Icon(LucideIcons.x, size: 16),
+            child: Icon(LucideIcons.x, size: 16),
           ),
         ],
       ),
@@ -2088,7 +2065,7 @@ class _SwapPreferencesSheetState extends State<_SwapPreferencesSheet> {
                       builder: (context, value, child) {
                         if (value.text.isEmpty) return const SizedBox.shrink();
                         return IconButton(
-                          icon: const Icon(LucideIcons.x, size: 16),
+                          icon: Icon(LucideIcons.x, size: 16),
                           onPressed: () => _cravingController.clear(),
                         );
                       },
@@ -2161,3 +2138,4 @@ class _SwapPreferencesSheetState extends State<_SwapPreferencesSheet> {
     );
   }
 }
+

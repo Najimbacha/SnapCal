@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
+import '../../data/models/body_metric.dart';
 import '../../providers/metrics_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
@@ -17,14 +18,14 @@ import '../../data/services/premium_conversion_service.dart';
 import '../../data/services/transformation_video_service.dart';
 import 'package:share_plus/share_plus.dart';
 
-class ProgressScreen extends StatefulWidget {
+class ProgressScreen extends ConsumerStatefulWidget {
   const ProgressScreen({super.key});
 
   @override
-  State<ProgressScreen> createState() => _ProgressScreenState();
+  ConsumerState<ProgressScreen> createState() => _ProgressScreenState();
 }
 
-class _ProgressScreenState extends State<ProgressScreen>
+class _ProgressScreenState extends ConsumerState<ProgressScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animController;
   final List<Animation<double>> _itemAnims = [];
@@ -70,9 +71,9 @@ class _ProgressScreenState extends State<ProgressScreen>
 
   bool _isGenerating = false;
 
-  Future<void> _generateJourney(List<dynamic> photos) async {
-    final settings = context.read<SettingsProvider>();
-    if (!settings.isPro) {
+  Future<void> _generateJourney(List<BodyMetric> photos) async {
+    final settings = ref.read(settingsProvider).valueOrNull;
+    if (settings == null || !settings.isPro) {
       PremiumConversionService().openPaywall(
         context,
         PaywallEntryPoint.progressPhotoLimit,
@@ -126,11 +127,11 @@ class _ProgressScreenState extends State<ProgressScreen>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Consumer<MetricsProvider>(
-      builder: (context, provider, _) {
-        final photos = provider.metricsWithPhotos;
-        final trend = provider.recentTrend;
-        final canAdd = provider.canAddPhoto;
+    final metrics = ref.watch(bodyMetricsProvider).valueOrNull ?? <BodyMetric>[];
+    final photos = metrics.where((m) => m.photoFrontPath != null).toList();
+    final trend = metrics.take(7).toList();
+    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+    final canAdd = isPro || photos.length < 3;
 
         final l10n = AppLocalizations.of(context)!;
 
@@ -216,8 +217,6 @@ class _ProgressScreenState extends State<ProgressScreen>
             ],
           ),
         );
-      },
-    );
   }
 
   Widget _buildEmpty(BuildContext context, bool canAdd) {
@@ -234,7 +233,7 @@ class _ProgressScreenState extends State<ProgressScreen>
     );
   }
 
-  Widget _buildList(BuildContext context, List<dynamic> photos) {
+  Widget _buildList(BuildContext context, List<BodyMetric> photos) {
     return ListView.builder(
       padding: const EdgeInsets.only(top: 8, bottom: 40),
       physics: const BouncingScrollPhysics(),

@@ -93,7 +93,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
                   color: Colors.black.withValues(alpha: 0.25),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(LucideIcons.x, color: Colors.white, size: 18),
+                child: Icon(LucideIcons.x, color: Colors.white, size: 18),
               ),
             ),
           ),
@@ -182,3 +182,4 @@ class _BarcodeBracketPainter extends CustomPainter {
   bool shouldRepaint(covariant _BarcodeBracketPainter oldDelegate) =>
       oldDelegate.color != color;
 }
+

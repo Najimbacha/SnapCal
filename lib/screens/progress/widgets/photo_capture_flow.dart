@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/resilience/timeout_policy.dart';
@@ -12,14 +12,14 @@ import '../../../core/theme/theme_colors.dart';
 import '../../../providers/metrics_provider.dart';
 import '../../../widgets/app_page_scaffold.dart';
 
-class PhotoCaptureFlow extends StatefulWidget {
+class PhotoCaptureFlow extends ConsumerStatefulWidget {
   const PhotoCaptureFlow({super.key});
 
   @override
-  State<PhotoCaptureFlow> createState() => _PhotoCaptureFlowState();
+  ConsumerState<PhotoCaptureFlow> createState() => _PhotoCaptureFlowState();
 }
 
-class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
+class _PhotoCaptureFlowState extends ConsumerState<PhotoCaptureFlow> {
   final ImagePicker _picker = ImagePicker();
   String? _frontPath;
   String? _sidePath;
@@ -67,14 +67,14 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
 
     setState(() => _isSaving = true);
 
-    final metricsProvider = context.read<MetricsProvider>();
+    final metricsProvider = ref.read(bodyMetricsProvider.notifier);
     try {
       if (_frontPath != null && await File(_frontPath!).exists()) {
-        await metricsProvider.logProgressPhoto(_frontPath!, isFront: true);
+        await metricsProvider.logProgressPhoto(_frontPath!);
       }
 
       if (_sidePath != null && await File(_sidePath!).exists()) {
-        await metricsProvider.logProgressPhoto(_sidePath!, isFront: false);
+        await metricsProvider.logProgressPhoto(_sidePath!);
       }
 
       if (mounted) Navigator.pop(context);
@@ -139,7 +139,7 @@ class _PhotoCaptureFlowState extends State<PhotoCaptureFlow> {
                           strokeWidth: 2,
                         ),
                       )
-                      : const Icon(LucideIcons.check),
+                      : Icon(LucideIcons.check),
               label: Text(
                 _isSaving
                     ? AppLocalizations.of(context)!.progress_saving
@@ -234,7 +234,7 @@ class _CaptureSlot extends StatelessWidget {
                             right: 8,
                             child: IconButton.filled(
                               onPressed: onClear,
-                              icon: const Icon(LucideIcons.x, size: 16),
+                              icon: Icon(LucideIcons.x, size: 16),
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.black.withValues(
                                   alpha: 0.6,
@@ -253,3 +253,4 @@ class _CaptureSlot extends StatelessWidget {
     );
   }
 }
+

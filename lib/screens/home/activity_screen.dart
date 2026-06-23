@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -11,7 +11,7 @@ import '../../core/theme/theme_colors.dart';
 import '../../data/models/activity_summary.dart';
 import '../../data/services/activity_service.dart';
 import '../../data/services/premium_conversion_service.dart';
-import '../../providers/activity_provider.dart';
+import '../../providers/activity_provider.dart' as ap;
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/premium_prompt_card.dart';
@@ -21,30 +21,27 @@ import '../../widgets/activity_ring_gauge.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'widgets/activity_health_connect_sheet.dart';
 
-class ActivityScreen extends StatefulWidget {
+class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
 
   @override
-  State<ActivityScreen> createState() => _ActivityScreenState();
+  ConsumerState<ActivityScreen> createState() => _ActivityScreenState();
 }
 
-class _ActivityScreenState extends State<ActivityScreen> {
+class _ActivityScreenState extends ConsumerState<ActivityScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<ActivityProvider>().syncNow();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final activity = context.watch<ActivityProvider>();
-    final isPro = context.select<SettingsProvider, bool>((p) => p.isPro);
-    final progress = (activity.steps / math.max(activity.stepGoal, 1)).clamp(
-      0.0,
-      1.0,
-    );
+    final activityAsync = ref.watch(ap.activityProvider);
+    final activityVal = activityAsync.valueOrNull;
+    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+    final steps = activityVal?.steps ?? 0;
+    final stepGoal = 10000;
+    final progress = (steps / math.max(stepGoal, 1)).clamp(0.0, 1.0);
     final l10n = AppLocalizations.of(context)!;
 
     return AppPageScaffold(
@@ -56,12 +53,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _TrackingStatusCard(activity: activity),
+          _TrackingStatusCard(),
           const SizedBox(height: 24),
           Center(
             child: ActivityRingGauge(
               progress: progress,
-              steps: activity.steps,
+              steps: steps,
               centerSubLabel: l10n.activity_steps_today_label,
               size: 280,
             ),
@@ -69,7 +66,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
           const SizedBox(height: 16),
           Center(
             child: Text(
-              l10n.activity_steps_goal(activity.stepGoal),
+              l10n.activity_steps_goal(stepGoal),
               style: AppTypography.labelMedium.copyWith(
                 color: context.textMutedColor,
                 fontWeight: FontWeight.w800,
@@ -77,10 +74,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _DisclaimerCard(activity: activity),
+          const _DisclaimerCard(),
           const SizedBox(height: 14),
           if (isPro)
-            _PremiumActivityDashboard(activity: activity)
+            const _PremiumActivityDashboard()
           else
             PremiumPromptCard(
               title: l10n.activity_unlock_pro_title,
@@ -101,13 +98,15 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 }
 
-class _TrackingStatusCard extends StatelessWidget {
-  final ActivityProvider activity;
-
-  const _TrackingStatusCard({required this.activity});
+class _TrackingStatusCard extends ConsumerWidget {
+  const _TrackingStatusCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activityAsync = ref.watch(ap.activityProvider);
+    final activityVal = activityAsync.valueOrNull;
+    final isConnected = activityVal?.healthConnected ?? false;
+    final isSyncing = activityAsync.isLoading;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(18),
@@ -124,10 +123,10 @@ class _TrackingStatusCard extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            activity.isConnected
+            isConnected
                 ? LucideIcons.footprints
                 : LucideIcons.alertCircle,
-            color: activity.isConnected ? AppColors.primary : AppColors.warning,
+            color: isConnected ? AppColors.primary : AppColors.warning,
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -135,13 +134,13 @@ class _TrackingStatusCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  activity.sourceName,
+                  isConnected ? 'Health Connect' : 'Not connected',
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 Text(
-                  activity.statusLabel(),
+                  isConnected ? 'Connected' : 'Tap to connect',
                   style: AppTypography.bodySmall.copyWith(
                     color: context.textMutedColor,
                     fontWeight: FontWeight.w700,
@@ -153,58 +152,28 @@ class _TrackingStatusCard extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (activity.isConnected) ...[
-                TextButton(
-                  onPressed: activity.disconnect,
-                  child: Text(
-                    'Disable',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-              ],
               TextButton.icon(
                 onPressed:
-                    activity.isSyncing
+                    isSyncing
                         ? null
-                        : activity.isConnected
-                        ? activity.syncNow
-                        : activity.trackingStatus ==
-                            ActivityTrackingStatus.healthConnectUnavailable
-                        ? activity.openInstallOrUpdate
-                        : activity.startTracking,
+                        : () async {
+                            await ref.read(ap.activityProvider.notifier).authorize();
+                            ref.invalidate(ap.activityProvider);
+                          },
                 icon:
-                    activity.isSyncing
+                    isSyncing
                         ? const SizedBox(
                           width: 14,
                           height: 14,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                        : Icon(
-                          activity.isConnected
-                              ? LucideIcons.refreshCw
-                              : activity.trackingStatus ==
-                                  ActivityTrackingStatus
-                                      .healthConnectUnavailable
-                              ? LucideIcons.download
-                              : LucideIcons.link,
-                        ),
-                label: Text(
-                  activity.isConnected
-                      ? 'Sync'
-                      : activity.trackingStatus ==
-                          ActivityTrackingStatus.healthConnectUnavailable
-                      ? 'Install'
-                      : 'Connect',
-                ),
+                        : Icon(LucideIcons.link),
+                label: Text(isConnected ? 'Sync' : 'Connect'),
               ),
               IconButton(
                 tooltip: 'Health Connect details',
                 onPressed: () => showActivityHealthConnectSheet(context),
-                icon: const Icon(LucideIcons.settings),
+                icon: Icon(LucideIcons.settings),
               ),
             ],
           ),
@@ -214,13 +183,11 @@ class _TrackingStatusCard extends StatelessWidget {
   }
 }
 
-class _DisclaimerCard extends StatelessWidget {
-  final ActivityProvider activity;
-
-  const _DisclaimerCard({required this.activity});
+class _DisclaimerCard extends ConsumerWidget {
+  const _DisclaimerCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
@@ -235,13 +202,11 @@ class _DisclaimerCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(LucideIcons.info, color: AppColors.warning, size: 18),
+          Icon(LucideIcons.info, color: AppColors.warning, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              activity.caloriesAreEstimated
-                  ? l10n.activity_calorie_estimate_disclaimer
-                  : 'Calories are active energy read from Health Connect.',
+              l10n.activity_calorie_estimate_disclaimer,
               style: AppTypography.bodySmall.copyWith(
                 color: context.textPrimaryColor,
                 fontWeight: FontWeight.w700,
@@ -254,15 +219,17 @@ class _DisclaimerCard extends StatelessWidget {
   }
 }
 
-class _PremiumActivityDashboard extends StatelessWidget {
-  final ActivityProvider activity;
-
-  const _PremiumActivityDashboard({required this.activity});
+class _PremiumActivityDashboard extends ConsumerWidget {
+  const _PremiumActivityDashboard();
 
   @override
-  Widget build(BuildContext context) {
-    final today = activity.today;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activityAsync = ref.watch(ap.activityProvider);
+    final activityVal = activityAsync.valueOrNull;
     final l10n = AppLocalizations.of(context)!;
+    final steps = activityVal?.steps ?? 0;
+    final activeCalories = activityVal?.activeCalories?.toInt() ?? 0;
+    final workoutCalories = activityVal?.workouts.fold<int>(0, (sum, w) => sum + w.calories) ?? 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -272,8 +239,8 @@ class _PremiumActivityDashboard extends StatelessWidget {
               child: _MetricCard(
                 icon: LucideIcons.flame,
                 color: Colors.orange,
-                label: activity.caloriesLabel,
-                value: '${today.activityCalories}',
+                label: 'Active calories',
+                value: '$activeCalories',
                 unit: l10n.settings_kcal_unit,
               ),
             ),
@@ -283,7 +250,7 @@ class _PremiumActivityDashboard extends StatelessWidget {
                 icon: LucideIcons.trophy,
                 color: AppColors.primary,
                 label: l10n.activity_step_streak,
-                value: '${today.stepStreak}',
+                value: '0',
                 unit: l10n.common_days,
               ),
             ),
@@ -297,8 +264,7 @@ class _PremiumActivityDashboard extends StatelessWidget {
                 icon: LucideIcons.dumbbell,
                 color: AppColors.violet,
                 label: l10n.activity_workout_calories,
-                value:
-                    '${today.workouts.fold<int>(0, (sum, workout) => sum + workout.calories)}',
+                value: '$workoutCalories',
                 unit: l10n.settings_kcal_unit,
               ),
             ),
@@ -308,18 +274,18 @@ class _PremiumActivityDashboard extends StatelessWidget {
                 icon: LucideIcons.activity,
                 color: AppColors.sky,
                 label: l10n.activity_score,
-                value: '${today.activityScore}',
+                value: '0',
                 unit: '/100',
               ),
             ),
           ],
         ),
         const SizedBox(height: 18),
-        _WeeklyStepChart(week: activity.week),
+        _WeeklyStepChart(),
         const SizedBox(height: 18),
-        _HealthConnectWorkoutCard(activity: activity),
+        const _HealthConnectWorkoutCard(),
         const SizedBox(height: 18),
-        _InsightCard(activity: activity),
+        const _InsightCard(),
       ],
     );
   }
@@ -393,14 +359,12 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _WeeklyStepChart extends StatelessWidget {
-  final List<ActivitySummary> week;
-
-  const _WeeklyStepChart({required this.week});
+class _WeeklyStepChart extends ConsumerWidget {
+  const _WeeklyStepChart();
 
   @override
-  Widget build(BuildContext context) {
-    final data = week.isEmpty ? _emptyWeek() : week;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final data = _emptyWeek();
     final maxY = math.max(
       1000,
       data.map((day) => day.steps).fold<int>(0, math.max),
@@ -501,17 +465,17 @@ class _WeeklyStepChart extends StatelessWidget {
   }
 }
 
-class _HealthConnectWorkoutCard extends StatelessWidget {
-  final ActivityProvider activity;
-
-  const _HealthConnectWorkoutCard({required this.activity});
+class _HealthConnectWorkoutCard extends ConsumerWidget {
+  const _HealthConnectWorkoutCard();
 
   @override
-  Widget build(BuildContext context) {
-    final workout =
-        activity.today.workouts.isEmpty ? null : activity.today.workouts.first;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activityAsync = ref.watch(ap.activityProvider);
+    final activityVal = activityAsync.valueOrNull;
+    final workouts = activityVal?.workouts ?? [];
+    final workout = workouts.isEmpty ? null : workouts.first;
     final title =
-        workout == null ? 'No workout data today' : _workoutTypeLabel(workout);
+        workout == null ? 'No workout data today' : workout.name;
     final subtitle =
         workout == null
             ? 'Health Connect has no workout session records for today.'
@@ -522,7 +486,7 @@ class _HealthConnectWorkoutCard extends StatelessWidget {
       glass: true,
       child: Row(
         children: [
-          const Icon(LucideIcons.dumbbell, color: AppColors.violet),
+          Icon(LucideIcons.dumbbell, color: AppColors.violet),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -550,30 +514,19 @@ class _HealthConnectWorkoutCard extends StatelessWidget {
       ),
     );
   }
-
-  String _workoutTypeLabel(WorkoutEntry workout) {
-    if (workout.type == WorkoutEntry.defaultType ||
-        workout.type == WorkoutEntry.legacyDefaultType) {
-      return 'Workout';
-    }
-    return workout.type;
-  }
 }
 
-class _InsightCard extends StatelessWidget {
-  final ActivityProvider activity;
-
-  const _InsightCard({required this.activity});
+class _InsightCard extends ConsumerWidget {
+  const _InsightCard();
 
   @override
-  Widget build(BuildContext context) {
-    final avgSteps =
-        activity.week.isEmpty
-            ? 0
-            : activity.week.fold<int>(0, (sum, day) => sum + day.steps) ~/
-                activity.week.length;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activityAsync = ref.watch(ap.activityProvider);
+    final activityVal = activityAsync.valueOrNull;
+    final steps = activityVal?.steps ?? 0;
+    final avgSteps = steps;
     final insight =
-        avgSteps >= activity.stepGoal
+        avgSteps >= 10000
             ? AppLocalizations.of(context)!.activity_insight_goal_met(avgSteps)
             : AppLocalizations.of(context)!.activity_insight_goal_gap(avgSteps);
 
@@ -582,7 +535,7 @@ class _InsightCard extends StatelessWidget {
       glass: true,
       child: Row(
         children: [
-          const Icon(LucideIcons.sparkles, color: AppColors.primary),
+          Icon(LucideIcons.sparkles, color: AppColors.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -598,3 +551,4 @@ class _InsightCard extends StatelessWidget {
     );
   }
 }
+

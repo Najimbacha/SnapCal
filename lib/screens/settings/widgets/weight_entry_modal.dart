@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../data/models/body_metric.dart';
 import '../../../providers/metrics_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/ui_blocks.dart';
@@ -27,26 +28,26 @@ Color _settingsText(BuildContext context) {
       : _settingsInk;
 }
 
-class WeightEntryModal extends StatefulWidget {
+class WeightEntryModal extends ConsumerStatefulWidget {
   const WeightEntryModal({super.key});
 
   @override
-  State<WeightEntryModal> createState() => _WeightEntryModalState();
+  ConsumerState<WeightEntryModal> createState() => _WeightEntryModalState();
 }
 
-class _WeightEntryModalState extends State<WeightEntryModal> {
+class _WeightEntryModalState extends ConsumerState<WeightEntryModal> {
   late final TextEditingController _weightController;
   late final TextEditingController _bodyFatController;
 
   @override
   void initState() {
     super.initState();
-    final provider = context.read<MetricsProvider>();
-    final settings = context.read<SettingsProvider>();
-    final lastMetric = provider.metrics.isEmpty ? null : provider.metrics.first;
+    final metricsList = ref.read(bodyMetricsProvider).valueOrNull ?? <BodyMetric>[];
+    final settings = ref.read(settingsProvider).valueOrNull;
+    final lastMetric = metricsList.isEmpty ? null : metricsList.first;
 
-    double? weightValue = provider.currentWeight;
-    if (weightValue != null && settings.weightUnit == 'lb') {
+    double? weightValue = ref.read(bodyMetricsProvider.notifier).currentWeight;
+    if (weightValue != null && settings?.weightUnit == 'lb') {
       weightValue = weightValue * 2.20462;
     }
 
@@ -69,20 +70,20 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
     final rawWeight = double.tryParse(_weightController.text);
     if (rawWeight == null || rawWeight <= 0) return;
 
-    final settings = context.read<SettingsProvider>();
+    final settings = ref.read(settingsProvider).valueOrNull;
     double weightInKg = rawWeight;
-    if (settings.weightUnit == 'lb') {
+    if (settings?.weightUnit == 'lb') {
       weightInKg = rawWeight / 2.20462;
     }
 
-    final bodyFat = double.tryParse(_bodyFatController.text);
-    context.read<MetricsProvider>().logWeight(weightInKg, bodyFat: bodyFat);
+    ref.read(bodyMetricsProvider.notifier).logWeight(weightInKg);
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
+    final settings = ref.watch(settingsProvider).valueOrNull;
+    final weightUnit = settings?.weightUnit ?? 'kg';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
@@ -140,7 +141,7 @@ class _WeightEntryModalState extends State<WeightEntryModal> {
                       ),
                       decoration: InputDecoration(
                         hintText: AppLocalizations.of(context)!.weight_hint,
-                        suffixText: settings.weightUnit,
+                        suffixText: weightUnit,
                       ),
                     ),
                     const SizedBox(height: 12),

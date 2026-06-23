@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'premium_prompt_card.dart';
 import '../data/services/premium_conversion_service.dart';
 import '../providers/settings_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class PremiumPromptModal {
   static Future<void> show(
-    BuildContext context, {
+    BuildContext context,
+    WidgetRef ref, {
     required String title,
     required String subtitle,
     required String buttonText,
@@ -15,12 +16,12 @@ class PremiumPromptModal {
     String? featureName,
     bool hasCompletedValueAction = true,
   }) async {
-    final settings = context.read<SettingsProvider>();
+    final settings = ref.read(settingsProvider).valueOrNull;
     final conversion = PremiumConversionService();
     final canShow = await conversion.maybeShowAhaPrompt(
       context,
       entryPoint: entryPoint,
-      isPro: settings.isPro,
+      isPro: settings?.isPro ?? false,
       hasCompletedValueAction: hasCompletedValueAction,
       featureName: featureName,
     );

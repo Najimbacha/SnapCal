@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../providers/settings_provider.dart';
-import '../../providers/planner_provider.dart';
 import '../../widgets/ui_blocks.dart';
 
-class MealPreferencesScreen extends StatefulWidget {
+class MealPreferencesScreen extends ConsumerStatefulWidget {
   final VoidCallback onGenerate;
 
   const MealPreferencesScreen({super.key, required this.onGenerate});
 
   @override
-  State<MealPreferencesScreen> createState() => _MealPreferencesScreenState();
+  ConsumerState<MealPreferencesScreen> createState() => _MealPreferencesScreenState();
 }
 
-class _MealPreferencesScreenState extends State<MealPreferencesScreen> {
+class _MealPreferencesScreenState extends ConsumerState<MealPreferencesScreen> {
   late int _mealsPerDay;
   late String _restriction;
   late String _cuisine;
@@ -29,18 +28,16 @@ class _MealPreferencesScreenState extends State<MealPreferencesScreen> {
   @override
   void initState() {
     super.initState();
-    final sp = context.read<SettingsProvider>();
-    _mealsPerDay = sp.mealsPerDay;
-    _restriction = sp.dietaryRestriction;
-    _cuisine = sp.cuisinePreference;
-    final planner = context.read<PlannerProvider>();
-    _prepTime = planner.prepTimePreference;
-    _budget = planner.budgetPreference;
+    final s = ref.read(settingsProvider).valueOrNull;
+    _mealsPerDay = s?.mealsPerDay ?? 3;
+    _restriction = s?.dietaryRestriction ?? 'none';
+    _cuisine = s?.cuisinePreference ?? 'international';
+    _prepTime = 'balanced';
+    _budget = 'standard';
   }
 
   @override
   Widget build(BuildContext context) {
-    final sp = context.watch<SettingsProvider>();
     return Scaffold(
       backgroundColor: context.backgroundColor,
       appBar: AppBar(
@@ -259,19 +256,20 @@ class _MealPreferencesScreenState extends State<MealPreferencesScreen> {
                 children: [
                   FilledButton.icon(
                     onPressed: () {
-                      sp.updatePlannerPreferences(
+                      ref.read(settingsProvider.notifier).updatePlannerPreferences(
                         mealsPerDay: _mealsPerDay,
                         dietaryRestriction: _restriction,
                         cuisinePreference: _cuisine,
                       );
-                      context.read<PlannerProvider>().setPlanningPreferences(
-                        prepTimePreference: _prepTime,
-                        budgetPreference: _budget,
+                      ref.read(settingsProvider.notifier).updatePlannerPreferences(
+                        mealsPerDay: _mealsPerDay,
+                        dietaryRestriction: _restriction,
+                        cuisinePreference: _cuisine,
                       );
                       Navigator.pop(context);
                       widget.onGenerate();
                     },
-                    icon: const Icon(LucideIcons.sparkles, size: 18),
+                    icon: Icon(LucideIcons.sparkles, size: 18),
                     label: Text(
                       AppLocalizations.of(context)!.planner_generate_plan,
                     ),
@@ -596,3 +594,4 @@ class _ChipButton extends StatelessWidget {
     );
   }
 }
+

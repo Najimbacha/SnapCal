@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/water_provider.dart';
 
@@ -15,14 +15,14 @@ const _blueGlow = Color(0xFF60A5FA);
 const _textPrimary = Color(0xFFF1F5F9);
 const _textSecondary = Color(0xFF94A3B8);
 
-class WaterTrackerScreen extends StatefulWidget {
+class WaterTrackerScreen extends ConsumerStatefulWidget {
   const WaterTrackerScreen({super.key});
 
   @override
-  State<WaterTrackerScreen> createState() => _WaterTrackerScreenState();
+  ConsumerState<WaterTrackerScreen> createState() => _WaterTrackerScreenState();
 }
 
-class _WaterTrackerScreenState extends State<WaterTrackerScreen>
+class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
     with TickerProviderStateMixin {
   int _selectedMl = 250;
   late AnimationController _waveController;
@@ -58,17 +58,17 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
     super.dispose();
   }
 
-  Future<void> _addWater(WaterProvider water) async {
+  Future<void> _addWater(Water water) async {
     if (_isFilling) return;
     setState(() => _isFilling = true);
     HapticFeedback.heavyImpact();
 
-    _fromMl = _targetMl = water.total;
+    _fromMl = _targetMl = water.state.valueOrNull?.todayTotal ?? 0;
     setState(() {});
 
-    await water.addWater(_selectedMl);
+    await ref.read(waterProvider.notifier).addWater(_selectedMl);
 
-    _targetMl = water.total;
+    _targetMl = water.state.valueOrNull?.todayTotal ?? 0;
     _riseController.forward(from: 0);
     await Future.delayed(const Duration(milliseconds: 800));
     if (mounted) setState(() => _isFilling = false);
@@ -83,10 +83,12 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
       ),
       child: Scaffold(
         backgroundColor: _deep,
-        body: Consumer<WaterProvider>(
-          builder: (context, water, _) {
-            final goal = math.max(water.goal, 1);
-            final total = water.total;
+        body: Consumer(
+          builder: (context, ref, _) {
+            final waterNotifier = ref.watch(waterProvider.notifier);
+            final waterState = ref.watch(waterProvider).valueOrNull;
+            final goal = math.max(waterState?.goal ?? 1, 1);
+            final total = waterState?.todayTotal ?? 0;
             final targetProgress = (total / goal).clamp(0.0, 1.0);
 
             // Keep _displayedMl synced with real total when not animating
@@ -185,7 +187,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                                     color: Colors.white.withOpacity(0.08),
                                   ),
                                 ),
-                                child: const Icon(LucideIcons.chevronLeft,
+                                child: Icon(LucideIcons.chevronLeft,
                                     color: _textPrimary, size: 20),
                               ),
                             ),
@@ -442,7 +444,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                             const EdgeInsets.symmetric(horizontal: 20),
                         child: GestureDetector(
                           onTap:
-                              _isFilling ? null : () => _addWater(water),
+                              _isFilling ? null : () => _addWater(waterNotifier),
                           child: AnimatedBuilder(
                             animation: _waveController,
                             builder: (_, __) {
@@ -526,7 +528,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                               icon: LucideIcons.rotateCw,
                               label: 'Reset',
                               enabled: total > 0,
-                              onTap: () => _showResetDialog(water),
+                              onTap: () => _showResetDialog(waterNotifier),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -550,7 +552,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
                               enabled: total > 0,
                               onTap: () {
                                 HapticFeedback.lightImpact();
-                                water.removeWater(_selectedMl);
+                                waterNotifier.removeWater(_selectedMl);
                               },
                             ),
                           ],
@@ -567,7 +569,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen>
     );
   }
 
-  void _showResetDialog(WaterProvider water) {
+  void _showResetDialog(Water water) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -719,3 +721,4 @@ class _QuickAction extends StatelessWidget {
     );
   }
 }
+

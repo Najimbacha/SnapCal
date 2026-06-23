@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import 'package:snapcal/core/theme/app_colors.dart';
@@ -9,16 +10,16 @@ import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/providers/template_provider.dart';
 import 'package:snapcal/widgets/glass_card.dart';
 
-class SaveRoutineSheet extends StatefulWidget {
+class SaveRoutineSheet extends ConsumerStatefulWidget {
   final List<Meal> meals;
 
   const SaveRoutineSheet({super.key, required this.meals});
 
   @override
-  State<SaveRoutineSheet> createState() => _SaveRoutineSheetState();
+  ConsumerState<SaveRoutineSheet> createState() => _SaveRoutineSheetState();
 }
 
-class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
+class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
   late final TextEditingController _nameController;
   String _selectedEmoji = '🍽️';
   bool _isSaving = false;
@@ -57,7 +58,7 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
     setState(() => _isSaving = true);
 
     try {
-      await context.read<TemplateProvider>().saveTemplate(
+      await ref.read(templatesProvider.notifier).saveTemplate(
         name: name,
         emoji: _selectedEmoji,
         meals: widget.meals,
@@ -79,10 +80,10 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    final isPro = context.select<SettingsProvider, bool>((s) => s.isPro);
-    final templateProvider = context.watch<TemplateProvider>();
+    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+    final templateNotifier = ref.watch(templatesProvider.notifier);
 
-    final canAdd = templateProvider.canAddTemplate(isPro);
+    final canAdd = templateNotifier.canAddTemplate(isPro);
 
     return GlassCard(
       child: Padding(
@@ -134,7 +135,7 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.star, color: AppColors.error),
+                    Icon(LucideIcons.star, color: AppColors.error),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -237,3 +238,6 @@ class _SaveRoutineSheetState extends State<SaveRoutineSheet> {
     );
   }
 }
+
+
+

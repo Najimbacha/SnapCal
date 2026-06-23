@@ -131,7 +131,7 @@ class _EditMealModalState extends State<EditMealModal> {
                 IconButton(
                   onPressed:
                       widget.onCancel ?? () => Navigator.pop(context),
-                  icon: const Icon(LucideIcons.x),
+                  icon: Icon(LucideIcons.x),
                   color: isDark ? Colors.white54 : const Color(0xFFA8A29E),
                   iconSize: 20,
                   constraints: const BoxConstraints(),
@@ -392,3 +392,4 @@ Widget _macroField(String label, TextEditingController controller, Color color, 
     ),
   );
 }
+

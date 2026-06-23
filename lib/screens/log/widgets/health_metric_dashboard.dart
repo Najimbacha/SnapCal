@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -171,123 +171,110 @@ class HealthMetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = Theme.of(context).colorScheme.onSurface;
-    final accent = _metricAccentFor(context, data.type);
+    return Consumer(
+      builder: (context, ref, _) {
+        final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final textColor = Theme.of(context).colorScheme.onSurface;
+        final accent = _metricAccentFor(context, data.type);
+        final isLocked =
+            !isPro &&
+            (data.type == LogMetricType.protein ||
+                data.type == LogMetricType.carbs ||
+                data.type == LogMetricType.fat);
 
-    final isPro = context.select<SettingsProvider, bool>((s) => s.isPro);
-    final isLocked =
-        !isPro &&
-        (data.type == LogMetricType.protein ||
-            data.type == LogMetricType.carbs ||
-            data.type == LogMetricType.fat);
+        final cardColor =
+            isDark
+                ? Colors.white.withValues(alpha: 0.045)
+                : const Color(0xFFFFFFFF);
 
-    final cardColor =
-        isDark
-            ? Colors.white.withValues(alpha: 0.045)
-            : const Color(0xFFFFFFFF);
+        final todayValue = data.values.isNotEmpty ? data.values.last : 0;
+        final hasData = todayValue > 0;
 
-    // Progress fraction (capped at 1.0)
-    final todayValue = data.values.isNotEmpty ? data.values.last : 0;
-    final hasData = todayValue > 0;
-
-    if (isLocked) {
-      return AppScaleTap(
-        onTap: () {
-          PremiumConversionService().openPaywall(
-            context,
-            PaywallEntryPoint.macroDetails,
-            featureName: 'macro_metrics',
-          );
-        },
-        child: Container(
-          height: 132,
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color:
-                  isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : const Color(0xFFEFEBE4),
-              width: 1.0,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    data.title,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: isDark ? Colors.white60 : const Color(0xFF78716C),
-                      fontWeight: FontWeight.w500,
-                      fontSize: 10,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Center(
-                child: Column(
-                  children: [
-                    Icon(LucideIcons.lock, size: 16, color: isDark ? Colors.white30 : const Color(0xFFA8A29E)),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppLocalizations.of(context)!.common_unlock.toUpperCase(),
-                      style: AppTypography.labelSmall.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 9,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+        if (isLocked) {
+          return AppScaleTap(
+            onTap: () {
+              PremiumConversionService().openPaywall(
+                context,
+                PaywallEntryPoint.macroDetails,
+                featureName: 'macro_metrics',
+              );
+            },
+            child: Container(
+              height: 132,
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : const Color(0xFFEFEBE4),
+                  width: 1.0,
                 ),
               ),
-              const Spacer(),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return AppScaleTap(
-      onTap: () {
-        if (isLocked) {
-          PremiumConversionService().openPaywall(
-            context,
-            PaywallEntryPoint.macroDetails,
-            featureName: 'macro_metrics',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        data.title,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: isDark ? Colors.white60 : const Color(0xFF78716C),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 10,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(LucideIcons.lock, size: 16, color: isDark ? Colors.white30 : const Color(0xFFA8A29E)),
+                        const SizedBox(height: 4),
+                        Text(
+                          AppLocalizations.of(context)!.common_unlock.toUpperCase(),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 9,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ),
           );
-        } else {
-          onTap();
         }
-      },
-      child: Container(
-        height: 132,
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : const Color(0xFFEFEBE4),
-            width: 1.0,
-          ),
-        ),
-        child: Stack(
-          children: [
-            Column(
+
+        return AppScaleTap(
+          onTap: onTap,
+          child: Container(
+            height: 132,
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : const Color(0xFFEFEBE4),
+                width: 1.0,
+              ),
+            ),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -301,21 +288,19 @@ class HealthMetricCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (!isLocked)
-                      Container(
-                        width: 24,
-                        height: 24,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Icon(data.icon, color: accent, size: 13),
+                    Container(
+                      width: 24,
+                      height: 24,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
                       ),
+                      child: Icon(data.icon, color: accent, size: 13),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Value
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
@@ -344,7 +329,6 @@ class HealthMetricCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                // Mini chart
                 Expanded(
                   child: HealthMetricMiniChart(
                     values: data.values,
@@ -356,7 +340,6 @@ class HealthMetricCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                // Status
                 Text(
                   data.status,
                   style: AppTypography.labelSmall.copyWith(
@@ -371,36 +354,9 @@ class HealthMetricCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (isLocked)
-              Positioned(
-                top: 0, left: 0, right: 0, bottom: 0,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(13),
-                  child: Container(
-                    color: (isDark ? Colors.black : Colors.white).withValues(alpha: 0.55),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(LucideIcons.lock, size: 14, color: isDark ? Colors.white38 : const Color(0xFFA8A29E)),
-                          const SizedBox(height: 6),
-                          Text(
-                            data.title,
-                            style: AppTypography.labelSmall.copyWith(
-                              color: isDark ? Colors.white38 : const Color(0xFFA8A29E),
-                              fontWeight: FontWeight.w500,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

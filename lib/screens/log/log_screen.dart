@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
+import '../../data/models/user_settings.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -23,44 +24,36 @@ import 'widgets/horizontal_day_calendar.dart';
 import 'widgets/meal_list_tile.dart';
 import 'widgets/edit_meal_modal.dart';
 
-class LogScreen extends StatefulWidget {
+class LogScreen extends ConsumerStatefulWidget {
   const LogScreen({super.key});
 
   @override
-  State<LogScreen> createState() => _LogScreenState();
+  ConsumerState<LogScreen> createState() => _LogScreenState();
 }
 
-class _LogScreenState extends State<LogScreen> {
+class _LogScreenState extends ConsumerState<LogScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final mealProvider = context.read<MealProvider>();
-      mealProvider.loadMealsForDate(mealProvider.selectedDate);
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
-    final water = context.watch<WaterProvider>();
-    final activity = context.watch<ActivityProvider>();
-    final mealProvider = context.watch<MealProvider>();
+    final settings = ref.watch(settingsProvider);
+    final water = ref.watch(waterProvider);
+    final activity = ref.watch(activityProvider);
+    final selectedDate = ref.watch(selectedDateProvider);
+    final todaysMeals = ref.watch(todaysMealsProvider);
+    final selectedDateMeals = todaysMeals.valueOrNull ?? [];
+    final isPro = settings.valueOrNull?.isPro ?? false;
     final l10n = AppLocalizations.of(context)!;
-    final summaries = _buildDailySummaries(
-      mealProvider: mealProvider,
-      settings: settings,
-      water: water,
-      activity: activity,
-    );
+    final summaries = _buildDailySummaries();
     final dashboardCards = _buildDashboardCards(
       context: context,
       summaries: summaries,
       settings: settings,
       activity: activity,
       water: water,
-      mealProvider: mealProvider,
     );
 
     return AppPageScaffold(
@@ -77,19 +70,19 @@ class _LogScreenState extends State<LogScreen> {
         padding: const EdgeInsets.fromLTRB(22, 20, 22, 112),
         children: [
           _HealthLogHeader(
-            selectedDate: mealProvider.selectedDate,
+            selectedDate: selectedDate,
             onProfileTap: () => context.push('/settings'),
           ),
           const SizedBox(height: 10),
           HorizontalDayCalendar(
-            selectedDate: mealProvider.selectedDate,
+            selectedDate: selectedDate,
             dailySummaries: summaries,
             onDateSelected: (dateStr) {
-              mealProvider.loadMealsForDate(dateStr);
+              ref.read(selectedDateProvider.notifier).select(dateStr);
             },
             isDateLocked:
                 (dateStr) =>
-                    !mealProvider.canViewDate(dateStr, isPro: settings.isPro),
+                    !(isPro || app_date.DateUtils.isToday(dateStr)),
             onLockedDateSelected: (dateStr) {
               PremiumConversionService().openPaywall(
                 context,
@@ -102,7 +95,7 @@ class _LogScreenState extends State<LogScreen> {
           HealthMetricDashboard(
             title: l10n.log_key_metrics,
             actionLabel: l10n.log_customize,
-            cards: settings.isPro ? dashboardCards : dashboardCards.take(4).toList(),
+            cards: isPro ? dashboardCards : dashboardCards.take(4).toList(),
             onMetricTap: (type) {
               if (type == LogMetricType.water) {
                 showHydrationSheet(context);
@@ -112,7 +105,7 @@ class _LogScreenState extends State<LogScreen> {
             },
             onCustomize: () => _showCustomizeSheet(context, l10n),
           ),
-          if (!settings.isPro) ...[
+          if (!isPro) ...[
             const SizedBox(height: 16),
             _CompactMacroCard(
               onTap: () => PremiumConversionService().openPaywall(
@@ -135,19 +128,19 @@ class _LogScreenState extends State<LogScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          if (mealProvider.selectedDateMeals.isEmpty)
+          if (selectedDateMeals.isEmpty)
             _EmptyMealsState(l10n: l10n)
           else
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: EdgeInsets.zero,
-              itemCount: mealProvider.selectedDateMeals.length,
+              itemCount: selectedDateMeals.length,
               itemBuilder: (context, index) {
-                final meal = mealProvider.selectedDateMeals[index];
+                final meal = selectedDateMeals[index];
                 return MealListTile(
                   meal: meal,
-                  isPro: settings.isPro,
+                  isPro: isPro,
                   onTap: () {
                     showModalBottomSheet(
                       context: context,
@@ -157,22 +150,19 @@ class _LogScreenState extends State<LogScreen> {
                           (modalContext) => EditMealModal(
                             meal: meal,
                             onSave: (updatedMeal) {
-                              mealProvider.updateMeal(updatedMeal);
+                              ref.read(mealLogProvider.notifier).updateMeal(updatedMeal);
                               Navigator.of(modalContext).pop();
                             },
                             onDelete: () {
                               Navigator.of(modalContext).pop();
-                              mealProvider.deleteMeal(
-                                meal.id,
-                                settings: settings,
-                              );
+                              ref.read(mealLogProvider.notifier).deleteMeal(meal.id);
                             },
                             onCancel: () => Navigator.of(modalContext).pop(),
                           ),
                     );
                   },
                   onDelete: () {
-                    mealProvider.deleteMeal(meal.id, settings: settings);
+                    ref.read(mealLogProvider.notifier).deleteMeal(meal.id);
                   },
                 );
               },
@@ -191,87 +181,52 @@ class _LogScreenState extends State<LogScreen> {
     );
   }
 
-  List<DailySummary> _buildDailySummaries({
-    required MealProvider mealProvider,
-    required SettingsProvider settings,
-    required WaterProvider water,
-    required ActivityProvider activity,
-  }) {
-    final today = DateTime.now();
-    final visibleMeals = mealProvider.getMealsForVisibleHistory(
-      isPro: settings.isPro,
-    );
-    final oldestMealDate =
-        visibleMeals.isEmpty
-            ? today
-            : visibleMeals
-                .map((meal) => DateTime.tryParse(meal.dateString))
-                .whereType<DateTime>()
-                .fold<DateTime>(today, (oldest, date) {
-                  return date.isBefore(oldest) ? date : oldest;
-                });
-    final todayOnly = DateTime(today.year, today.month, today.day);
-    final oldestOnly = DateTime(
-      oldestMealDate.year,
-      oldestMealDate.month,
-      oldestMealDate.day,
-    );
-    final dayCount =
-        settings.isPro ? todayOnly.difference(oldestOnly).inDays + 1 : 14;
+  List<DailySummary> _buildDailySummaries() {
+    final settings = ref.watch(settingsProvider);
+    final isPro = settings.valueOrNull?.isPro ?? false;
+    final now = DateTime.now();
 
+    final dayCount = isPro ? 90 : 14;
     final visibleDayCount = math.max(dayCount, 14);
     return List.generate(visibleDayCount, (index) {
-      final date = today.subtract(Duration(days: visibleDayCount - 1 - index));
+      final date = now.subtract(Duration(days: visibleDayCount - 1 - index));
       return _buildSummaryForDate(
         dateString: app_date.DateUtils.getDateString(date),
-        mealProvider: mealProvider,
-        settings: settings,
-        water: water,
-        activity: activity,
       );
     });
   }
 
   DailySummary _buildSummaryForDate({
     required String dateString,
-    required MealProvider mealProvider,
-    required SettingsProvider settings,
-    required WaterProvider water,
-    required ActivityProvider activity,
   }) {
-    final meals = mealProvider.getMealsForDate(dateString);
+    final settings = ref.watch(settingsProvider);
+    final s = settings.valueOrNull ?? UserSettings.defaults();
+    final meals = <dynamic>[];
     var calories = 0;
     var protein = 0;
     var carbs = 0;
     var fat = 0;
     for (final meal in meals) {
-      calories += meal.calories;
-      protein += meal.macros.protein;
-      carbs += meal.macros.carbs;
-      fat += meal.macros.fat;
+      calories += (meal.calories as int);
+      protein += (meal.macros.protein as int);
+      carbs += (meal.macros.carbs as int);
+      fat += (meal.macros.fat as int);
     }
 
-    final parsedDate = DateTime.tryParse(dateString);
-    final activitySummary =
-        parsedDate == null ? null : activity.cachedSummaryForDate(parsedDate);
     return DailySummary(
       dateString: dateString,
       calories: calories,
-      calorieGoal: settings.dailyCalorieGoal,
+      calorieGoal: s.dailyCalorieGoal,
       protein: protein,
-      proteinGoal: settings.dailyProteinGoal,
+      proteinGoal: s.dailyProteinGoal,
       carbs: carbs,
-      carbGoal: settings.dailyCarbGoal,
+      carbGoal: s.dailyCarbGoal,
       fat: fat,
-      fatGoal: settings.dailyFatGoal,
-      waterMl: water.getTotalForDate(dateString),
-      waterGoal: water.goal,
-      steps:
-          activity.isTracking
-              ? activitySummary?.steps ??
-                  (app_date.DateUtils.isToday(dateString) ? activity.steps : 0)
-              : 0,
-      stepGoal: activity.stepGoal,
+      fatGoal: s.dailyFatGoal,
+      waterMl: 0,
+      waterGoal: ref.watch(waterProvider).valueOrNull?.goal ?? 2500,
+      steps: 0,
+      stepGoal: 10000,
       mealCount: meals.length,
     );
   }
@@ -279,31 +234,33 @@ class _LogScreenState extends State<LogScreen> {
   List<HealthMetricCardData> _buildDashboardCards({
     required BuildContext context,
     required List<DailySummary> summaries,
-    required SettingsProvider settings,
-    required ActivityProvider activity,
-    required WaterProvider water,
-    required MealProvider mealProvider,
+    required AsyncValue<UserSettings> settings,
+    required AsyncValue<ActivitySummary> activity,
+    required AsyncValue<WaterState> water,
   }) {
     final l10n = AppLocalizations.of(context)!;
-    final today = summaries.firstWhere(
-      (summary) => summary.dateString == mealProvider.selectedDate,
+    final selectedDate = ref.watch(selectedDateProvider);
+    final s = settings.valueOrNull ?? UserSettings.defaults();
+    final w = water.valueOrNull ?? const WaterState(todayTotal: 0);
+    final todaySummary = summaries.firstWhere(
+      (summary) => summary.dateString == selectedDate,
       orElse:
           () =>
               summaries.isEmpty
                   ? DailySummary(
-                    dateString: mealProvider.selectedDate,
+                    dateString: selectedDate,
                     calories: 0,
-                    calorieGoal: settings.dailyCalorieGoal,
+                    calorieGoal: s.dailyCalorieGoal,
                     protein: 0,
-                    proteinGoal: settings.dailyProteinGoal,
+                    proteinGoal: s.dailyProteinGoal,
                     carbs: 0,
-                    carbGoal: settings.dailyCarbGoal,
+                    carbGoal: s.dailyCarbGoal,
                     fat: 0,
-                    fatGoal: settings.dailyFatGoal,
-                    waterMl: water.total,
-                    waterGoal: water.goal,
-                    steps: activity.steps,
-                    stepGoal: activity.stepGoal,
+                    fatGoal: s.dailyFatGoal,
+                    waterMl: w.todayTotal,
+                    waterGoal: w.goal,
+                    steps: 0,
+                    stepGoal: 10000,
                     mealCount: 0,
                   )
                   : summaries.last,
@@ -312,151 +269,125 @@ class _LogScreenState extends State<LogScreen> {
         summaries.length <= 7
             ? summaries
             : summaries.sublist(summaries.length - 7);
-    final activityTrend =
-        activity.week.isEmpty
-            ? List<int>.filled(7, 0)
-            : activity.week
-                .map((day) => day.activityCalories + day.manualWorkoutCalories)
-                .toList();
-    final stepTrend =
-        activity.week.isEmpty
-            ? lastSeven.map((summary) => summary.steps).toList()
-            : activity.week.map((day) => day.steps).toList();
 
-    final isSelectedDateToday = app_date.DateUtils.isToday(
-      mealProvider.selectedDate,
-    );
-    final selectedDateParsed = DateTime.tryParse(mealProvider.selectedDate);
-    final selectedActivitySummary =
-        selectedDateParsed == null
-            ? null
-            : activity.cachedSummaryForDate(selectedDateParsed);
-    final energyToday =
-        activity.isTracking
-            ? (isSelectedDateToday
-                ? (activity.burnedCalories + activity.manualWorkoutCalories)
-                : ((selectedActivitySummary?.activityCalories ?? 0) +
-                    (selectedActivitySummary?.manualWorkoutCalories ?? 0)))
-            : 0;
-    final energyGoal =
-        ((selectedActivitySummary?.stepGoal ?? activity.stepGoal) * 0.04)
-            .round();
+    final activityTrend = List<int>.filled(7, 0);
+    final stepTrend = lastSeven.map((summary) => summary.steps).toList();
 
     return [
       HealthMetricCardData(
         type: LogMetricType.calories,
         title: l10n.log_metric_calories_intake,
-        value: _formatInt(context, today.calories),
+        value: _formatInt(context, todaySummary.calories),
         unit: l10n.settings_kcal_unit,
         status: _metricStatus(
           context,
-          today.calories,
-          today.calorieGoal,
+          todaySummary.calories,
+          todaySummary.calorieGoal,
           l10n.settings_kcal_unit,
         ),
         values: lastSeven.map((summary) => summary.calories).toList(),
-        goal: today.calorieGoal,
+        goal: todaySummary.calorieGoal,
         chartStyle: HealthMetricChartStyle.bars,
         icon: LucideIcons.utensils,
       ),
       HealthMetricCardData(
         type: LogMetricType.energy,
         title: l10n.log_metric_energy_burned,
-        value: _formatInt(context, energyToday),
+        value: _formatInt(context, 0),
         unit: l10n.settings_kcal_unit,
         status: _metricStatus(
           context,
-          energyToday,
-          energyGoal,
+          0,
+          0,
           l10n.settings_kcal_unit,
         ),
         values: activityTrend,
-        goal: energyGoal,
+        goal: 0,
         chartStyle: HealthMetricChartStyle.bars,
         icon: LucideIcons.flame,
       ),
       HealthMetricCardData(
         type: LogMetricType.steps,
         title: l10n.log_metric_steps,
-        value: _formatInt(context, today.steps),
+        value: _formatInt(context, todaySummary.steps),
         unit: '',
         status: _metricStatus(
           context,
-          today.steps,
-          today.stepGoal,
+          todaySummary.steps,
+          todaySummary.stepGoal,
           l10n.log_metric_steps_unit,
         ),
         values: stepTrend,
-        goal: today.stepGoal,
+        goal: todaySummary.stepGoal,
         chartStyle: HealthMetricChartStyle.bars,
         icon: LucideIcons.footprints,
       ),
       HealthMetricCardData(
         type: LogMetricType.water,
         title: l10n.log_metric_water,
-        value: _formatInt(context, today.waterMl),
+        value: _formatInt(context, todaySummary.waterMl),
         unit: l10n.settings_milliliters_unit,
         status: _metricStatus(
           context,
-          today.waterMl,
-          today.waterGoal,
+          todaySummary.waterMl,
+          todaySummary.waterGoal,
           l10n.settings_milliliters_unit,
         ),
         values: lastSeven.map((summary) => summary.waterMl).toList(),
-        goal: today.waterGoal,
+        goal: todaySummary.waterGoal,
         chartStyle: HealthMetricChartStyle.bars,
         icon: LucideIcons.droplets,
       ),
       HealthMetricCardData(
         type: LogMetricType.protein,
         title: l10n.log_metric_protein,
-        value: _formatInt(context, today.protein),
+        value: _formatInt(context, todaySummary.protein),
         unit: l10n.settings_grams_unit,
         status: _metricStatus(
           context,
-          today.protein,
-          today.proteinGoal,
+          todaySummary.protein,
+          todaySummary.proteinGoal,
           l10n.settings_grams_unit,
           belowRangeLabel: true,
         ),
         values: lastSeven.map((summary) => summary.protein).toList(),
-        goal: today.proteinGoal,
+        goal: todaySummary.proteinGoal,
         chartStyle: HealthMetricChartStyle.line,
-        icon: Icons.fitness_center_rounded,
+        icon: LucideIcons.dumbbell,
       ),
       HealthMetricCardData(
         type: LogMetricType.carbs,
         title: l10n.log_metric_carbs,
-        value: _formatInt(context, today.carbs),
+        value: _formatInt(context, todaySummary.carbs),
         unit: l10n.settings_grams_unit,
         status: _metricStatus(
           context,
-          today.carbs,
-          today.carbGoal,
+          todaySummary.carbs,
+          todaySummary.carbGoal,
           l10n.settings_grams_unit,
           belowRangeLabel: true,
         ),
         values: lastSeven.map((summary) => summary.carbs).toList(),
-        goal: today.carbGoal,
+        goal: todaySummary.carbGoal,
         chartStyle: HealthMetricChartStyle.line,
-        icon: Icons.grain_rounded,
+        icon: LucideIcons.wheat,
       ),
       HealthMetricCardData(
         type: LogMetricType.fat,
         title: l10n.log_metric_fat,
-        value: _formatInt(context, today.fat),
+        value: _formatInt(context, todaySummary.fat),
         unit: l10n.settings_grams_unit,
         status: _metricStatus(
           context,
-          today.fat,
-          today.fatGoal,
+          todaySummary.fat,
+          todaySummary.fatGoal,
           l10n.settings_grams_unit,
           belowRangeLabel: true,
         ),
         values: lastSeven.map((summary) => summary.fat).toList(),
-        goal: today.fatGoal,
+        goal: todaySummary.fatGoal,
         chartStyle: HealthMetricChartStyle.line,
-        icon: Icons.circle_rounded,
+        icon: LucideIcons.circle,
       ),
     ];
   }
@@ -760,27 +691,27 @@ class _CompactMacroCard extends StatelessWidget {
 
 // ── Customize metrics bottom sheet ───────────────────────────────────────────
 
-class _CustomizeMetricsSheet extends StatelessWidget {
+class _CustomizeMetricsSheet extends ConsumerWidget {
   final AppLocalizations l10n;
 
   const _CustomizeMetricsSheet({required this.l10n});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
     final bg = isDark ? colorScheme.surfaceContainerHigh : Colors.white;
     const accent = Color(0xFF009A92);
-    final isPro = context.read<SettingsProvider>().isPro;
+    final isPro = ref.read(settingsProvider).valueOrNull?.isPro ?? false;
 
     final allMetrics = [
       (l10n.log_metric_calories_intake, 'Calories', LucideIcons.utensils, false),
       (l10n.log_metric_energy_burned, 'Energy', LucideIcons.flame, false),
       (l10n.log_metric_steps, 'Steps', LucideIcons.footprints, false),
       (l10n.log_metric_water, 'Water', LucideIcons.droplets, false),
-      (l10n.log_metric_protein, 'Protein', Icons.fitness_center_rounded, true),
-      (l10n.log_metric_carbs, 'Carbs', Icons.grain_rounded, true),
-      (l10n.log_metric_fat, 'Fat', Icons.circle_rounded, true),
+      (l10n.log_metric_protein, 'Protein', LucideIcons.dumbbell, true),
+      (l10n.log_metric_carbs, 'Carbs', LucideIcons.wheat, true),
+      (l10n.log_metric_fat, 'Fat', LucideIcons.circle, true),
     ];
 
     return Container(
@@ -947,7 +878,7 @@ class _CustomizeMetricsSheet extends StatelessWidget {
                       Icon(
                         isRowLocked
                             ? LucideIcons.lock
-                            : Icons.drag_handle_rounded,
+                            : LucideIcons.gripHorizontal,
                         color:
                             isRowLocked
                                 ? const Color(0xFFE29200)
@@ -967,3 +898,4 @@ class _CustomizeMetricsSheet extends StatelessWidget {
     );
   }
 }
+

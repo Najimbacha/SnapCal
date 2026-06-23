@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -10,18 +10,19 @@ import 'package:snapcal/providers/achievements_provider.dart';
 import 'package:snapcal/widgets/app_page_scaffold.dart';
 import 'widgets/badge_card.dart';
 
-class AchievementsScreen extends StatelessWidget {
+class AchievementsScreen extends ConsumerWidget {
   const AchievementsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final achievementsProvider = context.watch<AchievementsProvider>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final achievementsAsync = ref.watch(achievementsProvider);
+    final achievementsNotifier = ref.read(achievementsProvider.notifier);
     final l10n = AppLocalizations.of(context)!;
 
     return AppPageScaffold(
       title: l10n.feature_achievements_title,
       subtitle: l10n.feature_achievements_unlocked(
-        achievementsProvider.totalUnlocked.toString(),
+        achievementsNotifier.totalUnlocked.toString(),
       ),
       scrollable: true,
       child: Column(
@@ -30,7 +31,7 @@ class AchievementsScreen extends StatelessWidget {
           _CategorySection(
             title: l10n.achievement_category_consistency,
             icon: LucideIcons.calendarClock,
-            achievements: achievementsProvider.byCategory(
+            achievements: achievementsNotifier.byCategory(
               AchievementCategory.consistency,
             ),
           ),
@@ -38,7 +39,7 @@ class AchievementsScreen extends StatelessWidget {
           _CategorySection(
             title: l10n.achievement_category_precision,
             icon: LucideIcons.target,
-            achievements: achievementsProvider.byCategory(
+            achievements: achievementsNotifier.byCategory(
               AchievementCategory.precision,
             ),
           ),
@@ -46,7 +47,7 @@ class AchievementsScreen extends StatelessWidget {
           _CategorySection(
             title: l10n.achievement_category_hydration,
             icon: LucideIcons.droplets,
-            achievements: achievementsProvider.byCategory(
+            achievements: achievementsNotifier.byCategory(
               AchievementCategory.hydration,
             ),
           ),
@@ -54,7 +55,7 @@ class AchievementsScreen extends StatelessWidget {
           _CategorySection(
             title: l10n.achievement_category_logging,
             icon: LucideIcons.camera,
-            achievements: achievementsProvider.byCategory(
+            achievements: achievementsNotifier.byCategory(
               AchievementCategory.logging,
             ),
           ),
@@ -62,7 +63,7 @@ class AchievementsScreen extends StatelessWidget {
           _CategorySection(
             title: l10n.achievement_category_progress,
             icon: LucideIcons.trendingUp,
-            achievements: achievementsProvider.byCategory(
+            achievements: achievementsNotifier.byCategory(
               AchievementCategory.progress,
             ),
           ),

@@ -61,7 +61,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
         title: const Text('FCM Debug'),
         actions: [
           IconButton(
-            icon: const Icon(LucideIcons.refreshCw, size: 20),
+            icon: Icon(LucideIcons.refreshCw, size: 20),
             onPressed: _refresh,
             tooltip: 'Refresh',
           ),
@@ -351,3 +351,4 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
     );
   }
 }
+
