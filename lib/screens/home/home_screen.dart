@@ -2877,37 +2877,11 @@ class _WaterFillCard extends StatefulWidget {
 }
 
 class _WaterFillCardState extends State<_WaterFillCard> {
-  double _displayProgress = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {
-          _displayProgress = (widget.total / widget.goal).clamp(0.0, 1.0);
-        });
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant _WaterFillCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.total != oldWidget.total) {
-      _animateFill((widget.total / widget.goal).clamp(0.0, 1.0));
-    }
-  }
-
-  void _animateFill(double target) {
-    setState(() => _displayProgress = target);
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final blue = const Color(0xFF3B82F6);
-    final progress = _displayProgress;
+    final progress = (widget.total / widget.goal).clamp(0.0, 1.0);
 
     return GestureDetector(
       onTap: () {
@@ -2994,25 +2968,58 @@ class _WaterFillCardState extends State<_WaterFillCard> {
               ],
             ),
             const Spacer(),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  color: blue.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                child: FractionallySizedBox(
-                  widthFactor: progress,
-                  heightFactor: 1,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: blue.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) {
+                return SizedBox(
+                  height: 3,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: value.clamp(0.0, 1.0),
+                        heightFactor: 1,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: value.clamp(0.0, 1.0),
+                        heightFactor: 1,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.4),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ],
         ),
@@ -3090,9 +3097,11 @@ class _MinimalWellnessCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             const Spacer(),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final trackWidth = constraints.maxWidth;
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) {
                 return SizedBox(
                   height: 3,
                   child: Stack(
@@ -3101,36 +3110,38 @@ class _MinimalWellnessCard extends StatelessWidget {
                       Container(
                         height: 3,
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(2),
+                          color: AppColors.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(99),
                         ),
-                        child: FractionallySizedBox(
-                          widthFactor: progress.clamp(0.0, 1.0),
-                          heightFactor: 1,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: value.clamp(0.0, 1.0),
+                        heightFactor: 1,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(99),
                           ),
                         ),
                       ),
-                      Positioned(
-                        left: (progress * trackWidth).clamp(0.0, trackWidth - 4),
-                        top: -2,
-                        child: Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: color.withValues(alpha: 0.4),
-                                blurRadius: 3,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
+                      FractionallySizedBox(
+                        widthFactor: value.clamp(0.0, 1.0),
+                        heightFactor: 1,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.4),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
