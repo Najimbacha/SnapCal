@@ -409,13 +409,11 @@ function clampInt(value, min, max) {
 async function callAiWithImage(base64Data, language, customPrompt = null) {
   const systemPrompt = customPrompt || getSystemPrompt(language);
   const groqApiKey = process.env.GROQ_API_KEY;
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const geminiApiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
   const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 5;
-  const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 8000;
+  const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 4000;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    let groqError = null;
-
     if (groqApiKey) {
       try {
         const response = await axios.post(
@@ -433,7 +431,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
           },
           {
             headers: { Authorization: `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
-            timeout: 12000,
+            timeout: 20000,
           },
         );
         const content = response.data?.choices?.[0]?.message?.content;
@@ -441,62 +439,49 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
       } catch (err) {
         const errData = err.response?.data || {};
         const errMsg = typeof errData === 'object' ? errData.error?.message : String(errData);
-        groqError = errData;
         console.error(`Groq scan failed (attempt ${attempt}/${maxRetries}):`, errData);
         const retryMatch = errMsg && String(errMsg).match(/try again in (\d+(?:\.\d+)?)s/);
         if (retryMatch) {
-          const suggestedMs = Math.ceil(parseFloat(retryMatch[1]) * 1000) + 500;
-          if (suggestedMs > baseDelay * attempt) {
-            console.error(`Groq rate limited, waiting ${suggestedMs}ms as suggested...`);
-            await new Promise(r => setTimeout(r, suggestedMs));
-          }
+          const suggestedMs = Math.ceil(parseFloat(retryMatch[1]) * 1000) + 1000;
+          console.error(`Groq rate limited, waiting ${suggestedMs}ms...`);
+          await new Promise(r => setTimeout(r, suggestedMs));
+          continue;
         }
       }
     }
 
-    if (!geminiApiKey) {
-      if (attempt < maxRetries) {
-        const delay = baseDelay * attempt;
-        console.error(`Both AI providers unavailable, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
+    if (geminiApiKeys.length > 0) {
+      const geminiKey = geminiApiKeys[(attempt - 1) % geminiApiKeys.length];
+      try {
+        const response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_SCANNER_MODEL || 'gemini-2.0-flash'}:generateContent`,
+          {
+            contents: [{
+              parts: [
+                { text: systemPrompt },
+                { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
+              ],
+            }],
+            generationConfig: { temperature: 0.4, maxOutputTokens: 512 },
+          },
+          { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey }, timeout: 15000 },
+        );
+        const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+        throw new Error('empty-gemini-response');
+      } catch (err) {
+        console.error(`Gemini scan failed (attempt ${attempt}/${maxRetries}, key ${(attempt - 1) % geminiApiKeys.length + 1}/${geminiApiKeys.length}):`, {
+          status: err.response?.status,
+          data: err.response?.data,
+          message: err.message,
+        });
       }
-      throw new Error('ai-not-configured');
     }
 
-    try {
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_SCANNER_MODEL || 'gemini-2.0-flash'}:generateContent`,
-        {
-          contents: [{
-            parts: [
-              { text: systemPrompt },
-              { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
-            ],
-          }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 512 },
-        },
-        { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }, timeout: 10000 },
-      );
-      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) return text;
-      throw new Error('empty-gemini-response');
-    } catch (err) {
-      const geminiStatus = err.response?.status;
-      const geminiData = err.response?.data;
-      const geminiMsg = err.message;
-      console.error(`Gemini scan failed (attempt ${attempt}/${maxRetries}):`, {
-        status: geminiStatus,
-        data: geminiData,
-        message: geminiMsg,
-        groqError: groqError,
-      });
-
-      if (attempt < maxRetries) {
-        const delay = baseDelay * attempt;
-        console.error(`Retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`);
-        await new Promise(r => setTimeout(r, delay));
-      }
+    if (attempt < maxRetries) {
+      const delay = baseDelay * attempt;
+      console.error(`All providers failed, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`);
+      await new Promise(r => setTimeout(r, delay));
     }
   }
 
