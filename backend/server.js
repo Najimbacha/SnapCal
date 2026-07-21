@@ -47,7 +47,7 @@ const db = admin.firestore();
 let authVerifierForTest = null;
 
 app.disable('x-powered-by');
-app.set('trust proxy', true);
+app.set('trust proxy', Number(process.env.TRUST_PROXY_COUNT) || 1);
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((s) => s.trim())
@@ -333,7 +333,10 @@ function normalizeNutrition(rawText) {
 function extractJson(text) {
   const cleaned = String(text || '').replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
   const start = cleaned.indexOf('{');
-  if (start < 0) throw new Error('json-not-found');
+  if (start < 0) {
+    const preview = cleaned.length > 500 ? cleaned.slice(0, 500) + '...' : cleaned;
+    throw new Error(`json-not-found: ${preview}`);
+  }
 
   let depth = 0;
   let inString = false;
@@ -360,7 +363,8 @@ function extractJson(text) {
     }
   }
 
-  throw new Error('json-not-found');
+  const preview = cleaned.length > 500 ? cleaned.slice(0, 500) + '...' : cleaned;
+  throw new Error(`json-not-found: ${preview}`);
 }
 
 function repairAiJson(jsonText) {
