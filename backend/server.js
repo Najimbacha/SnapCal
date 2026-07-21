@@ -412,18 +412,18 @@ function clampInt(value, min, max) {
 
 async function callAiWithImage(base64Data, language, customPrompt = null) {
   const systemPrompt = customPrompt || getSystemPrompt(language);
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  const providerKey = process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY;
   const geminiApiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
   const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 3;
   const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 2000;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    if (deepseekKey) {
+    if (providerKey) {
       try {
         const response = await axios.post(
-          'https://api.deepseek.com/chat/completions',
+          'https://openrouter.ai/api/v1/chat/completions',
           {
-            model: process.env.DEEPSEEK_SCANNER_MODEL || 'deepseek-vl2',
+            model: process.env.SCANNER_MODEL || 'qwen-vl-plus',
             messages: [{
               role: 'user',
               content: [
@@ -435,14 +435,14 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
             max_tokens: 1024,
           },
           {
-            headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
+            headers: { Authorization: `Bearer ${providerKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
             timeout: 20000,
           },
         );
         const content = response.data?.choices?.[0]?.message?.content;
         if (content) return stripThink(content);
       } catch (err) {
-        console.error(`DeepSeek scan failed (attempt ${attempt}/${maxRetries}):`, err.response?.data || err.message);
+        console.error(`Primary AI scan failed (attempt ${attempt}/${maxRetries}):`, err.response?.data || err.message);
       }
     }
 
@@ -509,13 +509,13 @@ async function callAiText(prompt, options = {}) {
     }
   }
 
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  if (!deepseekKey) throw new Error('ai-not-configured');
+  const providerKey = process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY;
+  if (!providerKey) throw new Error('ai-not-configured');
   try {
     const response = await axios.post(
-      'https://api.deepseek.com/chat/completions',
+      'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: options.deepseekModel || process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat',
+        model: options.textModel || process.env.TEXT_MODEL || 'qwen-plus',
         messages: [
           ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
           { role: 'user', content: effectivePrompt },
@@ -524,13 +524,13 @@ async function callAiText(prompt, options = {}) {
         temperature: requireJson ? 0.2 : (options.temperature ?? 0.7),
         ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
       },
-      { headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' }, timeout: options.timeout || 25000 },
+      { headers: { Authorization: `Bearer ${providerKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' }, timeout: options.timeout || 25000 },
     );
     const content = response.data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error('empty-deepseek-response');
+    if (!content) throw new Error('empty-provider-response');
     return requireJson ? normalizeAiJsonText(content) : content;
   } catch (err) {
-    console.error('DeepSeek text failed:', err.response?.data || err.message);
+    console.error('Text AI failed:', err.response?.data || err.message);
     throw err;
   }
 }
