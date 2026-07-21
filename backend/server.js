@@ -423,7 +423,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
         const response = await axios.post(
           'https://openrouter.ai/api/v1/chat/completions',
           {
-            model: process.env.SCANNER_MODEL || 'qwen/qwen3.6-flash',
+            model: process.env.SCANNER_MODEL || 'qwen/qwen3-vl-8b-instruct',
             messages: [{
               role: 'user',
               content: [
