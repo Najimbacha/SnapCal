@@ -421,7 +421,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
         const response = await axios.post(
           'https://api.groq.com/openai/v1/chat/completions',
           {
-            model: process.env.GROQ_SCANNER_MODEL || 'qwen/qwen3.6-27b',
+            model: process.env.GROQ_SCANNER_MODEL || 'llama-3.2-11b-vision-preview',
             messages: [{
               role: 'user',
               content: [
