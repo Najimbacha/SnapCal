@@ -456,7 +456,15 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
     if (text) return text;
     throw new Error('empty-gemini-response');
   } catch (err) {
-    console.error('Gemini scan failed:', err.response?.data || err.message, 'Groq:', groqError);
+    const geminiStatus = err.response?.status;
+    const geminiData = err.response?.data;
+    const geminiMsg = err.message;
+    console.error('Gemini scan failed:', {
+      status: geminiStatus,
+      data: geminiData,
+      message: geminiMsg,
+      groqError: groqError,
+    });
     throw new Error('ai-scan-failed');
   }
 }
@@ -489,7 +497,7 @@ async function callAiText(prompt, options = {}) {
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey) throw new Error('ai-not-configured');
   const groqPayload = {
-    model: options.groqModel || process.env.GROQ_TEXT_MODEL || 'qwen/qwen3.6-27b',
+    model: options.groqModel || process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b',
     messages: [
       ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
       { role: 'user', content: effectivePrompt },
