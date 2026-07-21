@@ -367,6 +367,10 @@ function extractJson(text) {
   throw new Error(`json-not-found: ${preview}`);
 }
 
+function stripThink(text) {
+  return String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<think>[\s\S]*/gi, '').trim();
+}
+
 function repairAiJson(jsonText) {
   return String(jsonText || '')
     .replace(/```(?:json)?/gi, '')
@@ -435,7 +439,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
           },
         );
         const content = response.data?.choices?.[0]?.message?.content;
-        if (content) return content;
+        if (content) return stripThink(content);
       } catch (err) {
         const errData = err.response?.data || {};
         const errMsg = typeof errData === 'object' ? errData.error?.message : String(errData);
@@ -467,7 +471,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
           { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey }, timeout: 15000 },
         );
         const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text;
+        if (text) return stripThink(text);
         throw new Error('empty-gemini-response');
       } catch (err) {
         console.error(`Gemini scan failed (attempt ${attempt}/${maxRetries}, key ${(attempt - 1) % geminiApiKeys.length + 1}/${geminiApiKeys.length}):`, {
