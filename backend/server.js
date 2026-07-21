@@ -410,8 +410,8 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
   const systemPrompt = customPrompt || getSystemPrompt(language);
   const groqApiKey = process.env.GROQ_API_KEY;
   const geminiApiKey = process.env.GEMINI_API_KEY;
-  const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 3;
-  const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 2000;
+  const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 5;
+  const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 8000;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     let groqError = null;
@@ -421,7 +421,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
         const response = await axios.post(
           'https://api.groq.com/openai/v1/chat/completions',
           {
-            model: process.env.GROQ_SCANNER_MODEL || 'llama-3.2-11b-vision-preview',
+            model: process.env.GROQ_SCANNER_MODEL || 'qwen/qwen3.6-27b',
             messages: [{
               role: 'user',
               content: [
