@@ -412,18 +412,18 @@ function clampInt(value, min, max) {
 
 async function callAiWithImage(base64Data, language, customPrompt = null) {
   const systemPrompt = customPrompt || getSystemPrompt(language);
-  const groqApiKey = process.env.GROQ_API_KEY;
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
   const geminiApiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
-  const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 5;
-  const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 4000;
+  const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 3;
+  const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 2000;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    if (groqApiKey) {
+    if (deepseekKey) {
       try {
         const response = await axios.post(
-          'https://api.groq.com/openai/v1/chat/completions',
+          'https://api.deepseek.com/chat/completions',
           {
-            model: process.env.GROQ_SCANNER_MODEL || 'qwen/qwen3.6-27b',
+            model: process.env.DEEPSEEK_SCANNER_MODEL || 'deepseek-vl2',
             messages: [{
               role: 'user',
               content: [
@@ -432,25 +432,17 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
               ],
             }],
             temperature: 0.4,
+            max_tokens: 1024,
           },
           {
-            headers: { Authorization: `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
+            headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
             timeout: 20000,
           },
         );
         const content = response.data?.choices?.[0]?.message?.content;
         if (content) return stripThink(content);
       } catch (err) {
-        const errData = err.response?.data || {};
-        const errMsg = typeof errData === 'object' ? errData.error?.message : String(errData);
-        console.error(`Groq scan failed (attempt ${attempt}/${maxRetries}):`, errData);
-        const retryMatch = errMsg && String(errMsg).match(/try again in (\d+(?:\.\d+)?)s/);
-        if (retryMatch) {
-          const suggestedMs = Math.ceil(parseFloat(retryMatch[1]) * 1000) + 1000;
-          console.error(`Groq rate limited, waiting ${suggestedMs}ms...`);
-          await new Promise(r => setTimeout(r, suggestedMs));
-          continue;
-        }
+        console.error(`DeepSeek scan failed (attempt ${attempt}/${maxRetries}):`, err.response?.data || err.message);
       }
     }
 
@@ -517,38 +509,30 @@ async function callAiText(prompt, options = {}) {
     }
   }
 
-  const groqApiKey = process.env.GROQ_API_KEY;
-  if (!groqApiKey) throw new Error('ai-not-configured');
-  const groqPayload = {
-    model: options.groqModel || process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b',
-    messages: [
-      ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
-      { role: 'user', content: effectivePrompt },
-    ],
-    max_tokens: options.maxOutputTokens || 2048,
-    temperature: requireJson ? 0.2 : (options.temperature ?? 0.7),
-    ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
-  };
-  let response;
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  if (!deepseekKey) throw new Error('ai-not-configured');
   try {
-    response = await axios.post(
-      'https://api.groq.com/openai/v1/chat/completions',
-      groqPayload,
-      { headers: { Authorization: `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }, timeout: options.timeout || 25000 },
+    const response = await axios.post(
+      'https://api.deepseek.com/chat/completions',
+      {
+        model: options.deepseekModel || process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat',
+        messages: [
+          ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
+          { role: 'user', content: effectivePrompt },
+        ],
+        max_tokens: options.maxOutputTokens || 2048,
+        temperature: requireJson ? 0.2 : (options.temperature ?? 0.7),
+        ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
+      },
+      { headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' }, timeout: options.timeout || 25000 },
     );
+    const content = response.data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error('empty-deepseek-response');
+    return requireJson ? normalizeAiJsonText(content) : content;
   } catch (err) {
-    if (!requireJson || err.response?.status !== 400) throw err;
-    const retryPayload = { ...groqPayload };
-    delete retryPayload.response_format;
-    response = await axios.post(
-      'https://api.groq.com/openai/v1/chat/completions',
-      retryPayload,
-      { headers: { Authorization: `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }, timeout: options.timeout || 25000 },
-    );
+    console.error('DeepSeek text failed:', err.response?.data || err.message);
+    throw err;
   }
-  const content = response.data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('empty-groq-response');
-  return requireJson ? normalizeAiJsonText(content) : content;
 }
 
 async function writeAuditLog({ actorUid, action, targetUid, result, metadata = {} }) {
