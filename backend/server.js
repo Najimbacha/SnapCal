@@ -439,8 +439,18 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
         const content = response.data?.choices?.[0]?.message?.content;
         if (content) return content;
       } catch (err) {
-        groqError = err.response?.data || err.message;
-        console.error(`Groq scan failed (attempt ${attempt}/${maxRetries}):`, groqError);
+        const errData = err.response?.data || {};
+        const errMsg = typeof errData === 'object' ? errData.error?.message : String(errData);
+        groqError = errData;
+        console.error(`Groq scan failed (attempt ${attempt}/${maxRetries}):`, errData);
+        const retryMatch = errMsg && String(errMsg).match(/try again in (\d+(?:\.\d+)?)s/);
+        if (retryMatch) {
+          const suggestedMs = Math.ceil(parseFloat(retryMatch[1]) * 1000) + 500;
+          if (suggestedMs > baseDelay * attempt) {
+            console.error(`Groq rate limited, waiting ${suggestedMs}ms as suggested...`);
+            await new Promise(r => setTimeout(r, suggestedMs));
+          }
+        }
       }
     }
 
