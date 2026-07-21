@@ -876,6 +876,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
     console.log(JSON.stringify({ event: 'scan.success', status: 200 }));
+    console.error('Scan items:', JSON.stringify(nutrition.items.map(i => ({ food_name: i.food_name, calories: i.calories }))));
 
     await usageRef.set({
       monthKey,
