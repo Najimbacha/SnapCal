@@ -25,7 +25,7 @@ class AppConstants {
 
   // Backend Proxy Configuration
   static const String defaultBackendProxyUrl =
-      'https://snapcal-backend-production.up.railway.app';
+      'https://snapcal-mxh9.onrender.com';
   static const String backendScanFoodPath = '/api/scan-food';
 
   // System Prompt for Gemini

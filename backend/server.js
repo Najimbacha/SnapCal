@@ -412,7 +412,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null) {
       const response = await axios.post(
         'https://api.groq.com/openai/v1/chat/completions',
         {
-          model: process.env.GROQ_SCANNER_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
+          model: process.env.GROQ_SCANNER_MODEL || 'qwen/qwen3.6-27b',
           messages: [{
             role: 'user',
             content: [
@@ -489,7 +489,7 @@ async function callAiText(prompt, options = {}) {
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey) throw new Error('ai-not-configured');
   const groqPayload = {
-    model: options.groqModel || process.env.GROQ_TEXT_MODEL || 'llama-3.3-70b-versatile',
+    model: options.groqModel || process.env.GROQ_TEXT_MODEL || 'qwen/qwen3.6-27b',
     messages: [
       ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
       { role: 'user', content: effectivePrompt },

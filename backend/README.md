@@ -4,34 +4,37 @@ A secure, high-performance Node.js proxy server for the **SnapCal** calorie trac
 
 ---
 
-## ⚡ Deployment to Railway (Step-by-Step)
+## ⚡ Deployment to Render (Step-by-Step)
 
-Because your code is already synced with GitHub, deploying this backend to [Railway](https://railway.app) is extremely easy and takes less than 3 minutes.
+Because your code is already synced with GitHub, deploying this backend to [Render](https://render.com) is extremely easy and takes less than 3 minutes.
 
-### Step 1: Create a Railway Account
-1. Go to [Railway.app](https://railway.app).
+### Step 1: Create a Render Account
+1. Go to [Render.com](https://render.com).
 2. Sign up using your **GitHub account**.
 
-### Step 2: Create a New Project from GitHub
-1. Click **New Project** in the upper right.
-2. Select **Deploy from GitHub repo**.
-3. Choose your repository: `Najimbacha/SnapCal`.
-4. Under **Settings / Source Directory**, type `backend` (this tells Railway to only deploy the Node.js server inside the `backend` folder, instead of trying to run the Flutter code).
-5. Click **Deploy**.
+### Step 2: Create a New Web Service from GitHub
+1. Click **New +** in the upper right and select **Web Service**.
+2. Connect your GitHub repository: `Najimbacha/SnapCal`.
+3. Give Render a moment to detect that this is a Node.js project.
+4. Set the following:
+   - **Name**: `snapcal-backend` (or any name you like)
+   - **Root Directory**: `backend` (this tells Render to only deploy the Node.js server inside the `backend` folder, instead of trying to run the Flutter code)
+   - **Build Command**: `npm install`
+   - **Start Command**: `node index.js`
+5. Choose the **Free** plan (or any plan you prefer).
+6. Click **Create Web Service**.
 
 ### Step 3: Add Your API Keys (Environment Variables)
-1. Click on the deployed service in your Railway dashboard.
-2. Go to the **Variables** tab.
-3. Click **New Variable** and add the following:
-   * `GROQ_API_KEY` = *[Your actual Groq API Key]*
-   * `GEMINI_API_KEY` = *[Your actual Google Gemini API Key]*
-4. Railway will automatically restart the server with the keys applied.
+1. Once the service is created, go to the **Environment** tab in your Render dashboard.
+2. Click **Add Environment Variable** and add the following:
+   - `GROQ_API_KEY` = *[Your actual Groq API Key]*
+   - `GEMINI_API_KEY` = *[Your actual Google Gemini API Key]*
+3. Render will automatically restart the server with the keys applied.
 
-### Step 4: Generate a Public Domain
-1. In your Railway service, go to the **Settings** tab.
-2. Under the **Public Networking** / **Domains** section, click **Generate Domain**.
-3. Railway will generate a public URL for your proxy (e.g., `https://backend-production-xxxx.up.railway.app`).
-4. **Copy this URL** — you will use it in your Flutter app configuration.
+### Step 4: Generate a Public URL
+1. Your service will be assigned a public URL automatically (e.g., `https://snapcal-mxh9.onrender.com`).
+2. If you want a custom URL, go to the **Settings** tab and configure a custom domain.
+3. **Copy this URL** — you will use it in your Flutter app configuration (`app_constants.dart`).
 
 ---
 
@@ -39,7 +42,7 @@ Because your code is already synced with GitHub, deploying this backend to [Rail
 
 ### Check Service Health
 Open your web browser and visit:
-`https://[your-railway-domain].up.railway.app/health`
+`https://[your-render-domain].onrender.com/health`
 
 You should see a JSON response confirming the server status:
 ```json
@@ -50,8 +53,8 @@ You should see a JSON response confirming the server status:
 ```
 
 ### View Live Execution Logs
-1. Open the Railway project dashboard.
-2. Click on your deployed service.
+1. Open the Render dashboard.
+2. Click on your deployed web service.
 3. Go to the **Logs** tab.
 4. You will see real-time console prints (e.g., `Proxy: Attempting scan with Groq...`, `Proxy: Gemini fallback scan succeeded.`) for every scan request.
 
