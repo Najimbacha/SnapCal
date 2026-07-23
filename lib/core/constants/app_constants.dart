@@ -18,7 +18,7 @@ class AppConstants {
   static const String defaultGeminiModel = 'gemini-2.0-flash';
   static const String defaultGroqCoachModel = 'llama-3.3-70b-versatile';
   static const String defaultGroqScannerModel =
-      'qwen/qwen3.6-27b'; // Note: for direct Groq API, not OpenRouter
+      'llama-3.2-90b-vision-preview';
 
   static const String groqApiUrl =
       'https://api.groq.com/openai/v1/chat/completions';
