@@ -319,11 +319,14 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             calories: item.calories,
             macros: Macros(protein: item.protein, carbs: item.carbs, fat: item.fat),
             portion: item.portion,
-            scanConfidence: 0.82,
+            scanConfidence: item.confidence ?? 0.82,
             scanSource: 'ai_scan',
             aiRationale:
                 'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
             originalCalories: item.calories,
+            weightG: item.weightG,
+            nutritionMatchId: item.nutritionMatchId,
+            nutritionPer100g: item.nutritionPer100g,
           ),
         );
       }

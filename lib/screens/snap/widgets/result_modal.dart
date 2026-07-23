@@ -4,36 +4,117 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../data/services/gemini_service.dart';
 import '../../../data/services/premium_conversion_service.dart';
 import '../../../providers/settings_provider.dart';
 
-const _s = <double>[0.7, 1.0, 1.3, 1.6];
+const _presetWeights = <int>[50, 100, 150, 200, 250, 300, 400, 500];
 
-List<String> _portions(String name) {
-  final v = name.toLowerCase();
-  if (v.contains('sauce') || v.contains('ketchup') || v.contains('mayo') || v.contains('dressing')) return const ['Light', 'Normal', 'Extra'];
-  if (v.contains('rice') || v.contains('fries') || v.contains('pasta') || v.contains('nuts') || v.contains('salad')) return const ['50g', '100g', '150g', '200g'];
-  if (v.contains('slider')) return const ['1', '2', '3', '4'];
-  if (v.contains('burger') || v.contains('chicken') || v.contains('wing') || v.contains('piece')) return const ['1', '2', '3', '4'];
-  return const ['Small', 'Regular', 'Large'];
+int _snapWeight(int g) {
+  if (g <= 0) return 10;
+  if (g <= 10) return g;
+  if (g <= 50) return ((g + 2) ~/ 5) * 5;
+  if (g <= 100) return ((g + 4) ~/ 5) * 5;
+  if (g <= 300) return ((g + 9) ~/ 10) * 10;
+  if (g <= 1000) return ((g + 24) ~/ 25) * 25;
+  return ((g + 49) ~/ 50) * 50;
+}
+
+int _stepFor(int g) {
+  if (g <= 30) return 5;
+  if (g <= 100) return 10;
+  if (g <= 300) return 25;
+  if (g <= 1000) return 50;
+  return 100;
+}
+
+String _confidenceLabel(double c) {
+  if (c >= 0.85) return '';
+  if (c >= 0.60) return '';
+  if (c >= 0.40) return 'Estimated';
+  return 'Low';
+}
+
+Color _confidenceColor(double c) {
+  if (c >= 0.85) return const Color(0xFF34C759);
+  if (c >= 0.60) return AppColors.primary;
+  if (c >= 0.40) return const Color(0xFFFF9500);
+  return const Color(0xFFFF3B30);
 }
 
 class _Item {
-  const _Item({required this.name, required this.kcal, required this.protein, required this.carbs, required this.fat, this.serving = 1});
-  final String name;
-  final int kcal, protein, carbs, fat, serving;
-  int get calories => (kcal * _s[serving]).round();
-  int get p => (protein * _s[serving]).round();
-  int get c => (carbs * _s[serving]).round();
-  int get f => (fat * _s[serving]).round();
-  List<String> get portionLabels => _portions(name);
-  String get portionLabel => portionLabels[serving.clamp(0, portionLabels.length - 1)];
-  factory _Item.from(NutritionResult r) => _Item(name: r.foodName, kcal: r.calories, protein: r.protein, carbs: r.carbs, fat: r.fat);
-  static final _Item empty = _Item(name: 'Food item', kcal: 0, protein: 0, carbs: 0, fat: 0);
-  _Item copy({String? name, int? serving}) => _Item(name: name ?? this.name, kcal: kcal, protein: protein, carbs: carbs, fat: fat, serving: serving ?? this.serving);
+  _Item({
+    required this.name,
+    required this.weightG,
+    this.confidence,
+    this.matched = true,
+    this.per100g,
+  });
+
+  String name;
+  double weightG;
+  double? confidence;
+  bool matched;
+  Map<String, dynamic>? per100g;
+
+  int get calories => _calc('calories');
+  int get protein => _calc('protein');
+  int get carbs => _calc('carbs');
+  int get fat => _calc('fat');
+
+  int _calc(String field) {
+    if (per100g == null || !matched) return 0;
+    final val = per100g![field];
+    if (val == null) return 0;
+    return ((val is num ? val.toDouble() : 0) * weightG / 100).round();
+  }
+
+  factory _Item.from(NutritionResult r) {
+    final hasNutrition = r.nutritionPer100g != null && r.matched;
+    var weight = 150.0;
+    Map<String, dynamic>? per100g;
+
+    if (hasNutrition) {
+      weight = (r.weightG ?? 150).toDouble();
+      per100g = r.nutritionPer100g;
+    } else if (r.calories > 0) {
+      final portionMatch = RegExp(r'(\d+)').firstMatch(r.portion);
+      weight = (portionMatch != null ? double.tryParse(portionMatch.group(1)!) : r.weightG) ?? 150;
+      if (weight > 0) {
+        final factor = 100 / weight;
+        per100g = {
+          'calories': (r.calories * factor).round(),
+          'protein': (r.protein * factor).round(),
+          'carbs': (r.carbs * factor).round(),
+          'fat': (r.fat * factor).round(),
+        };
+      }
+    } else {
+      weight = (r.weightG ?? 150).toDouble();
+    }
+
+    return _Item(
+      name: r.foodName,
+      weightG: weight,
+      confidence: r.confidence,
+      matched: hasNutrition || r.calories > 0,
+      per100g: per100g,
+    );
+  }
+
+  static final _Item empty = _Item(name: 'Food item', weightG: 100);
+
+  _Item copy({String? name, double? weightG, double? confidence, bool? matched}) =>
+      _Item(
+        name: name ?? this.name,
+        weightG: weightG ?? this.weightG,
+        confidence: confidence ?? this.confidence,
+        matched: matched ?? this.matched,
+        per100g: per100g,
+      );
 }
+
+void _haptic() => HapticFeedback.selectionClick();
 
 class ResultModal extends ConsumerStatefulWidget {
   final Uint8List? imageBytes;
@@ -70,13 +151,33 @@ class _ResultModalState extends ConsumerState<ResultModal> {
   }
 
   int get _kcal => _items.fold(0, (s, i) => s + i.calories);
-  int get _p => _items.fold(0, (s, i) => s + i.p);
-  int get _c => _items.fold(0, (s, i) => s + i.c);
-  int get _f => _items.fold(0, (s, i) => s + i.f);
+  int get _p => _items.fold(0, (s, i) => s + i.protein);
+  int get _c => _items.fold(0, (s, i) => s + i.carbs);
+  int get _f => _items.fold(0, (s, i) => s + i.fat);
 
-  void _serve(int i, int v) => setState(() => _items[i] = _items[i].copy(serving: v));
-  void _add() => setState(() => _items.add(_Item.empty));
-  void _del(int i) { HapticFeedback.lightImpact(); setState(() => _items.removeAt(i)); }
+  void _adjWt(int i, int delta) {
+    setState(() {
+      final cur = _items[i].weightG;
+      final next = _snapWeight((cur + delta).round().clamp(5, 2000));
+      _items[i] = _items[i].copy(weightG: next.toDouble());
+    });
+    _haptic();
+  }
+
+  void _setWt(int i, double g) {
+    setState(() => _items[i] = _items[i].copy(weightG: _snapWeight(g.round()).toDouble()));
+    _haptic();
+  }
+
+  void _add() {
+    setState(() => _items.add(_Item.empty));
+    _haptic();
+  }
+
+  void _del(int i) {
+    HapticFeedback.lightImpact();
+    setState(() => _items.removeAt(i));
+  }
 
   Future<void> _rename(int i) async {
     final c = TextEditingController(text: _items[i].name);
@@ -111,14 +212,37 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     HapticFeedback.mediumImpact();
     if (_items.length == 1 || widget.onSaveAll == null) {
       final i = _items.first;
-      widget.onSave(i.name, i.calories, i.p, i.c, i.f, i.portionLabel);
+      widget.onSave(i.name, i.calories, i.protein, i.carbs, i.fat, '${i.weightG.round()}g');
     } else {
-      widget.onSaveAll!(_items.map((i) => NutritionResult(foodName: i.name, portion: i.portionLabel, calories: i.calories, protein: i.p, carbs: i.c, fat: i.f)).toList());
+      widget.onSaveAll!(_items.map((i) => NutritionResult(
+        foodName: i.name,
+        portion: '${i.weightG.round()}g',
+        calories: i.calories,
+        protein: i.protein,
+        carbs: i.carbs,
+        fat: i.fat,
+        weightG: i.weightG,
+        matched: i.matched,
+        nutritionPer100g: i.per100g,
+        nutritionActual: i.matched && i.per100g != null
+            ? {'calories': i.calories, 'protein': i.protein, 'carbs': i.carbs, 'fat': i.fat}
+            : null,
+      )).toList());
     }
     Navigator.of(context).pop();
   }
 
   void _retake() { Navigator.of(context).pop(); widget.onCancel(); }
+
+  Color _accentFor(_Item i) {
+    if (!i.matched || i.per100g == null) return AppColors.primary;
+    final p = i.protein;
+    final c = i.carbs;
+    final f = i.fat;
+    if (p >= c && p >= f) return AppColors.protein;
+    if (c >= p && c >= f) return AppColors.carbs;
+    return AppColors.fat;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +380,9 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                   ..._items.asMap().entries.map((e) => _FoodCard(
                     key: ValueKey('food-${e.key}'),
                     item: e.value, index: e.key, isDark: d,
-                    onServing: (v) => _serve(e.key, v),
+                    accent: _accentFor(e.value),
+                    onWeightDelta: (delta) => _adjWt(e.key, delta),
+                    onWeightSet: (g) => _setWt(e.key, g),
                     onRename: () => _rename(e.key),
                     onDelete: () => _del(e.key),
                   )),
@@ -394,10 +520,22 @@ class _FoodCard extends StatefulWidget {
   final _Item item;
   final int index;
   final bool isDark;
-  final void Function(int) onServing;
+  final Color accent;
+  final void Function(int delta) onWeightDelta;
+  final void Function(double g) onWeightSet;
   final VoidCallback onRename, onDelete;
 
-  const _FoodCard({super.key, required this.item, required this.index, required this.isDark, required this.onServing, required this.onRename, required this.onDelete});
+  const _FoodCard({
+    super.key,
+    required this.item,
+    required this.index,
+    required this.isDark,
+    required this.accent,
+    required this.onWeightDelta,
+    required this.onWeightSet,
+    required this.onRename,
+    required this.onDelete,
+  });
 
   @override
   State<_FoodCard> createState() => _FoodCardState();
@@ -415,20 +553,27 @@ class _FoodCardState extends State<_FoodCard> with SingleTickerProviderStateMixi
 
   void _toggle() { setState(() { _open = !_open; if (_open) { _ctrl.forward(); } else { _ctrl.reverse(); } }); }
 
-  Color get _accent {
-    final p = widget.item.p;
-    final c = widget.item.c;
-    final f = widget.item.f;
-    if (p >= c && p >= f) return AppColors.protein;
-    if (c >= p && c >= f) return AppColors.carbs;
-    return AppColors.fat;
-  }
-
   @override
   Widget build(BuildContext context) {
     final d = widget.isDark;
-    final labels = widget.item.portionLabels;
-    final accent = _accent;
+    final accent = widget.accent;
+    final item = widget.item;
+    final step = _stepFor(item.weightG.round());
+    final unsupported = !item.matched || item.per100g == null;
+    final confLabel = item.confidence != null ? _confidenceLabel(item.confidence!) : null;
+    final confColor = item.confidence != null ? _confidenceColor(item.confidence!) : null;
+
+    List<int> presets;
+    final base = item.weightG.round();
+    if (base <= 30) {
+      presets = <int>[10, 15, 20, 25, 30];
+    } else if (base <= 100) {
+      presets = <int>[25, 50, 75, 100, 125, 150];
+    } else if (base <= 300) {
+      presets = <int>[100, 150, 200, 250, 300];
+    } else {
+      presets = _presetWeights.where((p) => p >= base * 0.4 && p <= base * 2.5).take(5).toList();
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
@@ -466,14 +611,37 @@ class _FoodCardState extends State<_FoodCard> with SingleTickerProviderStateMixi
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(widget.item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: d ? Colors.white : const Color(0xFF1C1C1E))),
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: d ? Colors.white : const Color(0xFF1C1C1E))),
+                                  ),
+                                  if (confLabel != null && confLabel.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: confColor!.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(confLabel, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: confColor)),
+                                    ),
+                                  ],
+                                ],
+                              ),
                               const SizedBox(height: 2),
                               Row(
                                 children: [
-                                  Text('${widget.item.calories} kcal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: accent)),
-                                  const SizedBox(width: 6),
-                                  Text('\u00b7 ${widget.item.portionLabel}', style: TextStyle(fontSize: 12, color: d ? Colors.white38 : const Color(0xFF8E8E93))),
+                                  if (unsupported)
+                                    Text('Nutrition unavailable',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: d ? Colors.white38 : const Color(0xFF8E8E93)))
+                                  else ...[
+                                    Text('${item.calories} kcal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: accent)),
+                                    const SizedBox(width: 6),
+                                    Text('\u00b7 ${item.weightG.round()}g',
+                                      style: TextStyle(fontSize: 12, color: d ? Colors.white38 : const Color(0xFF8E8E93))),
+                                  ],
                                 ],
                               ),
                             ],
@@ -489,39 +657,100 @@ class _FoodCardState extends State<_FoodCard> with SingleTickerProviderStateMixi
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 12),
-                          SizedBox(
-                            height: 30,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: labels.length,
-                              separatorBuilder: (_, _) => const SizedBox(width: 6),
-                              itemBuilder: (context, i) => _ServingChip(
-                                label: labels[i], selected: widget.item.serving == i,
-                                onTap: () => widget.onServing(i), isDark: d,
+                          if (!unsupported) ...[
+                            Row(
+                              children: [
+                                _WtButton(icon: LucideIcons.minus, onTap: () => widget.onWeightDelta(-step)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    children: [
+                                      Text('${item.weightG.round()} g',
+                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: d ? Colors.white : const Color(0xFF1C1C1E))),
+                                      SliderTheme(
+                                        data: SliderTheme.of(context).copyWith(
+                                          trackHeight: 3,
+                                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                                        ),
+                                        child: Slider(
+                                          value: item.weightG.clamp(5, 2000),
+                                          min: 5,
+                                          max: 2000,
+                                          divisions: 199,
+                                          activeColor: accent,
+                                          inactiveColor: (d ? Colors.white : Colors.black).withValues(alpha: 0.1),
+                                          onChanged: (v) => widget.onWeightSet(v),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _WtButton(icon: LucideIcons.plus, onTap: () => widget.onWeightDelta(step)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 28,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                itemCount: presets.length,
+                                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                                itemBuilder: (context, i) => _WtChip(
+                                  label: '${presets[i].round()}g',
+                                  selected: item.weightG.round() == presets[i].round(),
+                                                  onTap: () => widget.onWeightSet(presets[i].toDouble()),
+                                  isDark: d,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              _dot('${widget.item.p}g P', AppColors.protein, d),
-                              const SizedBox(width: 14),
-                              _dot('${widget.item.c}g C', AppColors.carbs, d),
-                              const SizedBox(width: 14),
-                              _dot('${widget.item.f}g F', AppColors.fat, d),
-                              const Spacer(),
-                              GestureDetector(
-                                onTap: widget.onRename,
-                                child: Icon(LucideIcons.pencil, size: 15, color: d ? Colors.white24 : const Color(0xFFC7C7CC)),
-                              ),
-                              const SizedBox(width: 14),
-                              GestureDetector(
-                                onTap: widget.onDelete,
-                                child: Icon(LucideIcons.trash2, size: 15, color: const Color(0xFFFF3B30)),
-                              ),
-                            ],
-                          ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                _dot('${item.protein}g P', AppColors.protein, d),
+                                const SizedBox(width: 14),
+                                _dot('${item.carbs}g C', AppColors.carbs, d),
+                                const SizedBox(width: 14),
+                                _dot('${item.fat}g F', AppColors.fat, d),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: widget.onRename,
+                                  child: Icon(LucideIcons.pencil, size: 15, color: d ? Colors.white24 : const Color(0xFFC7C7CC)),
+                                ),
+                                const SizedBox(width: 14),
+                                GestureDetector(
+                                  onTap: widget.onDelete,
+                                  child: Icon(LucideIcons.trash2, size: 15, color: const Color(0xFFFF3B30)),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF9500).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text('Not in database',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFFFF9500))),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: widget.onRename,
+                                  child: Text('Assign food', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.primary)),
+                                ),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: widget.onDelete,
+                                  child: Icon(LucideIcons.trash2, size: 15, color: const Color(0xFFFF3B30)),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -547,13 +776,35 @@ class _FoodCardState extends State<_FoodCard> with SingleTickerProviderStateMixi
   }
 }
 
-class _ServingChip extends StatelessWidget {
+class _WtButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _WtButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final d = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32, height: 32,
+        decoration: BoxDecoration(
+          color: (d ? Colors.white : Colors.black).withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: d ? Colors.white54 : const Color(0xFF8E8E93)),
+      ),
+    );
+  }
+}
+
+class _WtChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final bool isDark;
 
-  const _ServingChip({required this.label, required this.selected, required this.onTap, required this.isDark});
+  const _WtChip({required this.label, required this.selected, required this.onTap, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -561,8 +812,8 @@ class _ServingChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: selected ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -571,13 +822,10 @@ class _ServingChip extends StatelessWidget {
         child: Center(
           child: Text(
             selected ? '$label \u2713' : label,
-            style: TextStyle(color: selected ? AppColors.primary : (isDark ? Colors.white38 : const Color(0xFF8E8E93)), fontSize: 12, fontWeight: FontWeight.w500),
+            style: TextStyle(color: selected ? AppColors.primary : (isDark ? Colors.white38 : const Color(0xFF8E8E93)), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
       ),
     );
   }
 }
-
-
-

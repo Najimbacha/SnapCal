@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/api_client.dart';
+import '../../core/resilience/timeout_policy.dart';
 import '../../core/services/config_service.dart';
 import '../../core/utils/image_utils.dart';
 import '../models/meal.dart';
@@ -25,6 +26,14 @@ class NutritionResult {
   final List<String> insights;
   final List<String> alternatives;
 
+  // v2 fields (nullable for backward compat)
+  final double? weightG;
+  final double? confidence;
+  final String? nutritionMatchId;
+  final bool matched;
+  final Map<String, dynamic>? nutritionPer100g;
+  final Map<String, dynamic>? nutritionActual;
+
   NutritionResult({
     required this.foodName,
     required this.portion,
@@ -35,22 +44,63 @@ class NutritionResult {
     this.healthScore = 5,
     this.insights = const [],
     this.alternatives = const [],
+    this.weightG,
+    this.confidence,
+    this.nutritionMatchId,
+    this.matched = true,
+    this.nutritionPer100g,
+    this.nutritionActual,
   });
 
   factory NutritionResult.fromJson(Map<String, dynamic> json) {
     final healthScore = _safeInt(json['health_score']);
+
+    // Extract v2 nested nutrition if present
+    final Map<String, dynamic>? nutrition =
+        json['nutrition'] is Map ? Map<String, dynamic>.from(json['nutrition']) : null;
+    final Map<String, dynamic>? per100g =
+        nutrition?['per100g'] is Map ? Map<String, dynamic>.from(nutrition!['per100g']) : null;
+    final Map<String, dynamic>? actual =
+        nutrition?['actual'] is Map ? Map<String, dynamic>.from(nutrition!['actual']) : null;
+
+    // Use v2 nutrition.actual values if available and top-level values are null
+    final int calories;
+    final int protein;
+    final int carbs;
+    final int fat;
+
+    if (actual != null) {
+      calories = _safeInt(actual['calories']).clamp(0, 5000);
+      protein = _safeInt(actual['protein']).clamp(0, 500);
+      carbs = _safeInt(actual['carbs']).clamp(0, 800);
+      fat = _safeInt(actual['fat']).clamp(0, 500);
+    } else {
+      calories = _safeInt(json['calories']).clamp(0, 5000);
+      protein = _safeInt(json['protein']).clamp(0, 500);
+      carbs = _safeInt(json['carbs']).clamp(0, 800);
+      fat = _safeInt(json['fat']).clamp(0, 500);
+    }
+
+    final bool matched = json['matched'] == true || (json['matched'] != false && (actual != null || (json['calories'] != null && _safeInt(json['calories']) > 0)));
+
     return NutritionResult(
       foodName: _safeText(json['food_name'], 'Unknown Food'),
       portion: _safeText(json['portion'], 'Standard portion'),
-      calories: _safeInt(json['calories']).clamp(0, 5000),
-      protein: _safeInt(json['protein']).clamp(0, 500),
-      carbs: _safeInt(json['carbs']).clamp(0, 800),
-      fat: _safeInt(json['fat']).clamp(0, 500),
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
       healthScore: healthScore == 0 ? 5 : healthScore.clamp(1, 10),
       insights:
           (json['insights'] as List?)?.map((e) => e.toString()).toList() ?? [],
       alternatives:
           (json['alternatives'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      weightG: (json['weight_g'] as num?)?.toDouble(),
+      confidence: (json['confidence'] as num?)?.toDouble(),
+      nutritionMatchId: json['nutrition_match_id']?.toString(),
+      matched: matched,
+      nutritionPer100g: per100g,
+      nutritionActual: actual,
     );
   }
 
@@ -204,7 +254,10 @@ User daily targets:
     try {
       final response = await _dio.post(
         '$proxyUrl/v1/scan',
-        options: Options(headers: {'Content-Type': 'application/json'}),
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+          receiveTimeout: TimeoutPolicy.aiScan,
+        ),
         data: {'image': base64Image, 'language': language},
       );
       if (response.statusCode != 200) {
@@ -446,7 +499,7 @@ Keys 0-6 = Day 1 to Day 7. Each day must have exactly ${settings.mealsPerDay} me
     }
     final jsonResult = Map<String, dynamic>.from(decoded);
 
-    // New format: {"items": [...]}
+    // v2 response from enrichScanResults: {"items": [...]}
     if (jsonResult.containsKey('items') && jsonResult['items'] is List) {
       final parsed =
           (jsonResult['items'] as List)
@@ -456,6 +509,34 @@ Keys 0-6 = Day 1 to Day 7. Each day must have exactly ${settings.mealsPerDay} me
                     NutritionResult.fromJson(Map<String, dynamic>.from(item)),
               )
               .toList();
+      if (parsed.isEmpty) {
+        throw const FormatException('Nutrition response contained no items.');
+      }
+      return parsed;
+    }
+
+    // v2 food detection raw: {"foods": [...]}
+    if (jsonResult.containsKey('foods') && jsonResult['foods'] is List) {
+      final foods = jsonResult['foods'] as List;
+      // This is the raw AI detection response (before enrichment).
+      // The backend should have enriched this already, but handle defensively.
+      final parsed = foods.whereType<Map>().map((food) {
+        final name = food['name']?.toString() ?? 'Unknown Food';
+        final weight = (food['estimated_weight_g'] ?? food['weight_g'] ?? 0);
+        return NutritionResult(
+          foodName: name,
+          portion: weight > 0 ? '${weight}g' : 'Unknown',
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          weightG: (weight as num?)?.toDouble(),
+          confidence: (food['confidence'] as num?)?.toDouble(),
+          matched: false,
+          nutritionPer100g: null,
+          nutritionActual: null,
+        );
+      }).toList();
       if (parsed.isEmpty) {
         throw const FormatException('Nutrition response contained no items.');
       }

@@ -7,7 +7,8 @@
     "start": "node server.js",
     "test": "node --test test/*.test.js",
     "set-admin": "node scripts/set-admin-claim.js",
-    "migrate:dry-run": "node scripts/migrate-user-settings.js --dry-run"
+    "migrate:dry-run": "node scripts/migrate-user-settings.js --dry-run",
+    "build:nutrition-db": "node scripts/build_nutrition_db.js"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -42,6 +42,10 @@ initializeFirebaseAdmin();
 
 const { startScheduler } = require('./cron/scheduler');
 
+const SCAN_PIPELINE = (process.env.SCAN_PIPELINE || 'v1').toLowerCase();
+const nutritionProvider = require('./services/nutrition_provider');
+const unmatchedFoodLogger = require('./services/unmatched_food_logger');
+
 const app = express();
 const db = admin.firestore();
 let authVerifierForTest = null;
@@ -154,6 +158,45 @@ Rules:
 - All nutritional values are for a typical single serving
 - protein, carbs, fat are in grams
 - If NOT food at all, return: {"items": [{"food_name": "${notFood.food_name}", "health_score": 0, "insights": ["${notFood.insights[0]}"], "alternatives": [], "calories": 0, "protein": 0, "carbs": 0, "fat": 0}]}`;
+}
+
+function getV2SystemPrompt(languageCode) {
+  const languageName = getLanguageName(languageCode);
+
+  return `Analyze this food photo as a food detector.
+
+STRICT LANGUAGE RULE:
+- YOU MUST RESPOND ENTIRELY IN THE ${languageName} LANGUAGE.
+- The "name" field MUST be in ${languageName}.
+- Use native, common culinary terms for ${languageName}.
+
+Your ONLY task is to:
+1. Identify each distinct food item on the plate
+2. Estimate its weight in grams
+3. Assign a confidence score (0.0 to 1.0)
+
+Do NOT calculate any nutritional values (calories, protein, carbs, fat).
+Do NOT provide health scores, insights, or alternatives.
+
+Output ONLY a raw JSON object with no markdown formatting, no code blocks, no explanatory text.
+
+Return this exact structure:
+{
+  "foods": [
+    {
+      "name": "string",
+      "estimated_weight_g": number,
+      "confidence": number
+    }
+  ]
+}
+
+Rules:
+- Each distinct food item visible on the plate gets its own entry in the "foods" array
+- estimated_weight_g is your best estimate of the weight of that item in grams for the portion visible
+- confidence is a score from 0.0 (not confident) to 1.0 (very confident)
+- Do NOT include any nutritional information
+- If NOT food at all, return: {"foods": []}`;
 }
 
 function safeCompare(a, b) {
@@ -330,6 +373,87 @@ function normalizeNutrition(rawText) {
   return { items: cleaned };
 }
 
+function calculateNutrition(per100g, weightGrams) {
+  const factor = weightGrams / 100;
+  return {
+    calories: Math.round(per100g.calories * factor),
+    protein: Math.round((per100g.protein * factor) * 10) / 10,
+    carbs: Math.round((per100g.carbs * factor) * 10) / 10,
+    fat: Math.round((per100g.fat * factor) * 10) / 10,
+  };
+}
+
+function enrichScanResults(foods) {
+  if (!Array.isArray(foods) || foods.length === 0) {
+    throw new Error('empty-food-detection');
+  }
+
+  const items = foods.map((food) => {
+    const name = String(food.name || food.food_name || 'Unknown Food').slice(0, 120);
+    const weightG = Math.round(Math.max(0, Number(food.estimated_weight_g || food.weight_g || 0)));
+    const confidence = Math.min(1, Math.max(0, Number(food.confidence || 0)));
+
+    const matched = nutritionProvider.lookup(name);
+    const nutritionMatchId = matched ? matched.id : null;
+
+    const item = {
+      food_name: name,
+      portion: weightG > 0 ? `${weightG}g` : 'Unknown',
+      weight_g: weightG,
+      confidence: Math.round(confidence * 100) / 100,
+      nutrition_match_id: nutritionMatchId,
+      matched: !!matched,
+    };
+
+    if (matched) {
+      const actual = calculateNutrition(matched.per100g, weightG || 100);
+      item.calories = actual.calories;
+      item.protein = actual.protein;
+      item.carbs = actual.carbs;
+      item.fat = actual.fat;
+      item.health_score = 5;
+      item.insights = [];
+      item.alternatives = [];
+      item.nutrition = {
+        per100g: { calories: matched.per100g.calories, protein: matched.per100g.protein, carbs: matched.per100g.carbs, fat: matched.per100g.fat },
+        actual: actual,
+      };
+    } else {
+      unmatchedFoodLogger.logUnmatched(name, { confidence, weight_g: weightG });
+      item.calories = null;
+      item.protein = null;
+      item.carbs = null;
+      item.fat = null;
+      item.health_score = 5;
+      item.insights = ['Nutrition unavailable'];
+      item.alternatives = [];
+      item.nutrition = null;
+    }
+
+    return item;
+  });
+
+  const totals = items.reduce(
+    (acc, item) => {
+      if (item.nutrition && item.nutrition.actual) {
+        acc.calories += item.nutrition.actual.calories;
+        acc.protein += item.nutrition.actual.protein;
+        acc.carbs += item.nutrition.actual.carbs;
+        acc.fat += item.nutrition.actual.fat;
+      }
+      return acc;
+    },
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  );
+
+  totals.calories = Math.round(totals.calories);
+  totals.protein = Math.round(totals.protein * 10) / 10;
+  totals.carbs = Math.round(totals.carbs * 10) / 10;
+  totals.fat = Math.round(totals.fat * 10) / 10;
+
+  return { items, totals };
+}
+
 function extractJson(text) {
   const cleaned = String(text || '').replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
   const start = cleaned.indexOf('{');
@@ -410,8 +534,8 @@ function clampInt(value, min, max) {
   return Math.max(min, Math.min(max, Math.round(parsed)));
 }
 
-async function callAiWithImage(base64Data, language, customPrompt = null) {
-  const systemPrompt = customPrompt || getSystemPrompt(language);
+async function callAiWithImage(base64Data, language, customPrompt = null, useV2 = false) {
+  const systemPrompt = customPrompt || (useV2 ? getV2SystemPrompt(language) : getSystemPrompt(language));
   const providerKey = process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY;
   const geminiApiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
   const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 3;
@@ -823,10 +947,12 @@ app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, requ
   return res.status(200).json({ ok: true });
 });
 
-// ── V1 Scan Endpoint ───────────────────────────────────────────
+// ── Scan Endpoint (v1 + v2) ────────────────────────────────────
 // Accepts base64 image, validates auth, calls AI, returns nutrition.
+// SCAN_PIPELINE env var controls which pipeline is used:
+//   v1 = AI generates nutrition directly (legacy)
+//   v2 = AI detects foods only, backend calculates nutrition from DB
 // No image is stored anywhere — processed in memory only.
-// 30-second timeout enforced by the AI provider call.
 app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req, res) => {
   const { image, language = 'en' } = req.body || {};
   const hasAuth = !!req.headers.authorization;
@@ -836,6 +962,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
       event: 'scan.request',
       method: 'POST',
       path: '/v1/scan',
+      pipeline: SCAN_PIPELINE,
       authPresent: hasAuth,
       imagePresent: hasImage,
       imageSize: hasImage ? Buffer.byteLength(image, 'utf8') : 0,
@@ -866,6 +993,32 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
   }
 
   try {
+    const pipeline = (req.query.pipeline || SCAN_PIPELINE).toLowerCase();
+
+    if (pipeline === 'v2') {
+      const raw = await callAiWithImage(image, cleanLanguage(language), null, true);
+      const detection = JSON.parse(extractJson(raw));
+      const foods = Array.isArray(detection?.foods) ? detection.foods : [];
+      if (foods.length === 0) {
+        return res.status(200).json({ items: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } });
+      }
+      const result = enrichScanResults(foods);
+
+      console.log(JSON.stringify({ event: 'scan.success.v2', pipeline: 'v2', status: 200 }));
+      const matchedCount = result.items.filter(i => i.matched).length;
+      console.error(`Scan v2: ${result.items.length} foods (${matchedCount} matched, ${result.items.length - matchedCount} unmatched)`);
+
+      await usageRef.set({
+        monthKey,
+        scansUsed: scansUsed + 1,
+        premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      return res.status(200).json({ items: result.items, totals: result.totals });
+    }
+
+    // v1 pipeline (default)
     const raw = await callAiWithImage(image, cleanLanguage(language));
     const nutrition = normalizeNutrition(raw);
     const totals = nutrition.items.reduce((acc, item) => ({
@@ -875,7 +1028,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
       fat: acc.fat + item.fat,
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-    console.log(JSON.stringify({ event: 'scan.success', status: 200 }));
+    console.log(JSON.stringify({ event: 'scan.success', pipeline: 'v1', status: 200 }));
     console.error('Scan items:', JSON.stringify(nutrition.items.map(i => ({ food_name: i.food_name, calories: i.calories }))));
 
     await usageRef.set({
@@ -991,6 +1144,9 @@ module.exports = {
   extractJson,
   normalizeAiJsonText,
   isSafeId,
+  calculateNutrition,
+  enrichScanResults,
+  getV2SystemPrompt,
   setAuthVerifierForTest(verifier) {
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('Test auth verifier is only available in NODE_ENV=test.');

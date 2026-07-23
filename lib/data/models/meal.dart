@@ -94,6 +94,15 @@ class Meal extends HiveObject {
   @HiveField(16)
   final bool userCorrected;
 
+  @HiveField(17)
+  final double? weightG;
+
+  @HiveField(18)
+  final String? nutritionMatchId;
+
+  @HiveField(19)
+  final Map<String, dynamic>? nutritionPer100g;
+
   Meal({
     required this.id,
     required this.timestamp,
@@ -112,6 +121,9 @@ class Meal extends HiveObject {
     this.aiRationale,
     this.originalCalories,
     this.userCorrected = false,
+    this.weightG,
+    this.nutritionMatchId,
+    this.nutritionPer100g,
   });
 
   Meal copyWith({
@@ -132,6 +144,9 @@ class Meal extends HiveObject {
     String? aiRationale,
     int? originalCalories,
     bool? userCorrected,
+    double? weightG,
+    String? nutritionMatchId,
+    Map<String, dynamic>? nutritionPer100g,
   }) {
     return Meal(
       id: id ?? this.id,
@@ -151,6 +166,9 @@ class Meal extends HiveObject {
       aiRationale: aiRationale ?? this.aiRationale,
       originalCalories: originalCalories ?? this.originalCalories,
       userCorrected: userCorrected ?? this.userCorrected,
+      weightG: weightG ?? this.weightG,
+      nutritionMatchId: nutritionMatchId ?? this.nutritionMatchId,
+      nutritionPer100g: nutritionPer100g ?? this.nutritionPer100g,
     );
   }
 
@@ -173,6 +191,9 @@ class Meal extends HiveObject {
       'aiRationale': aiRationale,
       'originalCalories': originalCalories,
       'userCorrected': userCorrected,
+      'weightG': weightG,
+      'nutritionMatchId': nutritionMatchId,
+      'nutritionPer100g': nutritionPer100g,
     };
   }
 
@@ -195,6 +216,9 @@ class Meal extends HiveObject {
       aiRationale: json['aiRationale'] as String?,
       originalCalories: json['originalCalories'] as int?,
       userCorrected: json['userCorrected'] as bool? ?? false,
+      weightG: (json['weightG'] as num?)?.toDouble(),
+      nutritionMatchId: json['nutritionMatchId'] as String?,
+      nutritionPer100g: json['nutritionPer100g'] as Map<String, dynamic>?,
     );
   }
 

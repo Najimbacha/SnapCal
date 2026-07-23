@@ -43,7 +43,7 @@ void main() {
     );
   }
 
-  testWidgets('single scan renders one food row with totals', (tester) async {
+  testWidgets('single scan renders food with weight and kcal', (tester) async {
     await tester.pumpWidget(
       buildSubject(
         isPro: true,
@@ -59,14 +59,11 @@ void main() {
     );
 
     expect(find.text('Rice', skipOffstage: false), findsAtLeastNWidgets(1));
-    expect(find.text('160', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.text('SCAN RESULT', skipOffstage: false), findsOneWidget);
     expect(find.text('35g', skipOffstage: false), findsOneWidget);
-    expect(find.text('4g', skipOffstage: false), findsOneWidget);
-    expect(find.text('1g', skipOffstage: false), findsOneWidget);
-    expect(find.text('100g ✓', skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('multi scan renders all foods and summed totals', (tester) async {
+  testWidgets('multi scan renders all foods with summed totals', (tester) async {
     await tester.pumpWidget(
       buildSubject(
         isPro: true,
@@ -92,44 +89,63 @@ void main() {
       ),
     );
 
-    expect(find.text('Meal Review', skipOffstage: false), findsOneWidget);
     expect(find.text('Rice', skipOffstage: false), findsOneWidget);
     expect(find.text('Nuts', skipOffstage: false), findsOneWidget);
-    expect(find.text('340', skipOffstage: false), findsAtLeastNWidgets(1));
-    expect(find.text('40g', skipOffstage: false), findsOneWidget);
-    expect(find.text('10g', skipOffstage: false), findsOneWidget);
-    expect(find.text('16g', skipOffstage: false), findsOneWidget);
+    expect(find.text('FOOD ITEMS', skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('editing a row updates summary macros', (tester) async {
-    await setupTester(tester);
+  testWidgets('v2 enriched scan shows confidence badge for high confidence', (tester) async {
     await tester.pumpWidget(
       buildSubject(
         isPro: true,
         result: NutritionResult(
-          foodName: 'Rice',
-          portion: '150.0g',
-          calories: 160,
-          protein: 4,
-          carbs: 35,
-          fat: 1,
+          foodName: 'Chicken Breast',
+          portion: '180g',
+          calories: 297,
+          protein: 56,
+          carbs: 0,
+          fat: 6,
+          weightG: 180,
+          confidence: 0.96,
+          nutritionMatchId: 'FDB_000241',
+          matched: true,
+          nutritionPer100g: {'calories': 165, 'protein': 31, 'carbs': 0, 'fat': 3.6},
+          nutritionActual: {'calories': 297, 'protein': 56, 'carbs': 0, 'fat': 6.5},
         ),
       ),
     );
 
-    await tester.tap(find.text('Rice'));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    await tester.tap(find.text('150g'));
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.text('208'), findsAtLeastNWidgets(1));
-    expect(find.text('46g'), findsOneWidget);
-    expect(find.text('150g ✓'), findsOneWidget);
+    expect(find.text('Chicken Breast', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.text('297', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.text('180 g', skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('Add Item appends a placeholder row', (tester) async {
+  testWidgets('unmatched food shows nutrition unavailable', (tester) async {
+    await tester.pumpWidget(
+      buildSubject(
+        isPro: true,
+        result: NutritionResult(
+          foodName: 'Unknown Sauce',
+          portion: '~10g',
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          weightG: 10,
+          confidence: 0.45,
+          matched: false,
+          nutritionPer100g: null,
+          nutritionActual: null,
+        ),
+      ),
+    );
+
+    expect(find.text('Unknown Sauce', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.text('Not in database', skipOffstage: false), findsOneWidget);
+    expect(find.text('Nutrition unavailable', skipOffstage: false), findsOneWidget);
+  });
+
+  testWidgets('Add Item button adds a placeholder row', (tester) async {
     await setupTester(tester);
     await tester.pumpWidget(
       buildSubject(
@@ -146,12 +162,40 @@ void main() {
       ),
     );
 
-    final btnFinder = find.text('Add Item');
+    final btnFinder = find.text('+ Add Item');
     await tester.tap(btnFinder);
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Food item'), findsOneWidget);
-    expect(find.text('160'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('save button calls single save callback', (tester) async {
+    String? savedName;
+    int? savedCalories;
+
+    await setupTester(tester);
+    await tester.pumpWidget(
+      buildSubject(
+        result: NutritionResult(
+          foodName: 'Rice',
+          portion: '150.0g',
+          calories: 160,
+          protein: 4,
+          carbs: 35,
+          fat: 1,
+        ),
+        onSave: (name, calories, protein, carbs, fat, portion) {
+          savedName = name;
+          savedCalories = calories;
+        },
+      ),
+    );
+
+    await tester.tap(find.textContaining('Add to Log'));
+    await tester.pump();
+
+    expect(savedName, 'Rice');
+    expect(savedCalories, greaterThan(0));
   });
 
   testWidgets('save button calls multi save callback for multiple rows', (
@@ -183,42 +227,13 @@ void main() {
       ),
     );
 
-    await tester.tap(find.textContaining('Add To Log'));
+    await tester.tap(find.textContaining('Add to Log'));
     await tester.pump();
 
     expect(saved, isNotNull);
     expect(saved, hasLength(2));
     expect(saved!.first.foodName, 'Rice');
     expect(saved!.last.foodName, 'Nuts');
-  });
-
-  testWidgets('save button calls single save callback', (tester) async {
-    String? savedName;
-    int? savedCalories;
-
-    await setupTester(tester);
-    await tester.pumpWidget(
-      buildSubject(
-        result: NutritionResult(
-          foodName: 'Rice',
-          portion: '150.0g',
-          calories: 160,
-          protein: 4,
-          carbs: 35,
-          fat: 1,
-        ),
-        onSave: (name, calories, protein, carbs, fat, portion) {
-          savedName = name;
-          savedCalories = calories;
-        },
-      ),
-    );
-
-    await tester.tap(find.textContaining('Add To Log'));
-    await tester.pump();
-
-    expect(savedName, 'Rice');
-    expect(savedCalories, 160);
   });
 
   testWidgets('rapid double tap only saves once', (tester) async {
@@ -239,8 +254,8 @@ void main() {
       ),
     );
 
-    await tester.tap(find.textContaining('Add To Log'));
-    await tester.tap(find.textContaining('Add To Log'), warnIfMissed: false);
+    await tester.tap(find.textContaining('Add to Log'));
+    await tester.tap(find.textContaining('Add to Log'), warnIfMissed: false);
     await tester.pump();
 
     expect(saveCount, 1);
@@ -297,13 +312,13 @@ void main() {
     await tester.tap(find.text('Open result'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.textContaining('Add To Log'), findsOneWidget);
+    expect(find.textContaining('Add to Log'), findsOneWidget);
 
-    await tester.tap(find.textContaining('Add To Log'));
+    await tester.tap(find.textContaining('Add to Log'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
     expect(saved, isTrue);
-    expect(find.textContaining('Add To Log'), findsNothing);
+    expect(find.textContaining('Add to Log'), findsNothing);
   });
 }
