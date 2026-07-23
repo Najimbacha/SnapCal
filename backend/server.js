@@ -570,6 +570,35 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
       }
     }
 
+    const groqKey = process.env.GROQ_API_KEY;
+    if (groqKey) {
+      try {
+        const response = await axios.post(
+          'https://api.groq.com/openai/v1/chat/completions',
+          {
+            model: process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-preview',
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'text', text: systemPrompt },
+                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } },
+              ],
+            }],
+            temperature: 0.4,
+            max_tokens: 1024,
+          },
+          {
+            headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+            timeout: 20000,
+          },
+        );
+        const content = response.data?.choices?.[0]?.message?.content;
+        if (content) return stripThink(content);
+      } catch (err) {
+        console.error(`Groq vision scan failed (attempt ${attempt}/${maxRetries}):`, err.response?.data || err.message);
+      }
+    }
+
     if (geminiApiKeys.length > 0) {
       const geminiKey = geminiApiKeys[(attempt - 1) % geminiApiKeys.length];
       try {
