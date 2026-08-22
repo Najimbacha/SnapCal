@@ -542,6 +542,40 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 2000;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    if (deepseekKey) {
+      try {
+        const response = await axios.post(
+          'https://api.deepseek.com/chat/completions',
+          {
+            model: process.env.DEEPSEEK_SCANNER_MODEL || 'deepseek-v4-flash-vision-exp',
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'text', text: systemPrompt },
+                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } },
+              ],
+            }],
+            temperature: 0.4,
+            max_tokens: 1024,
+          },
+          {
+            headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
+            timeout: 20000,
+          },
+        );
+        const content = response.data?.choices?.[0]?.message?.content;
+        if (content) return stripThink(content);
+        throw new Error('empty-deepseek-response');
+      } catch (err) {
+        console.error(`DeepSeek vision scan failed (attempt ${attempt}/${maxRetries}):`, err.response?.data || err.message);
+        if (process.env.DEEPSEEK_STRICT === 'true') {
+          const detail = err.response?.data ? JSON.stringify(err.response.data).slice(0, 500) : err.message;
+          throw new Error(`deepseek-strict-failed: ${detail}`);
+        }
+      }
+    }
+
     if (providerKey) {
       try {
         const response = await axios.post(
