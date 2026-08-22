@@ -171,7 +171,7 @@ STRICT LANGUAGE RULE:
 - Use native, common culinary terms for ${languageName}.
 
 Your ONLY task is to:
-1. Identify each distinct food item on the plate
+1. Identify each distinct serving or dish in the photo
 2. Estimate its weight in grams
 3. Assign a confidence score (0.0 to 1.0)
 
@@ -192,7 +192,8 @@ Return this exact structure:
 }
 
 Rules:
-- Each distinct food item visible on the plate gets its own entry in the "foods" array
+- Treat an assembled/composite dish as ONE single item (e.g. burger, cheeseburger, sandwich, sub, taco, wrap, pizza, hot dog, burrito). Do NOT list its components (bun, patty, lettuce, toppings, sauce) separately.
+- Only create more than one entry when the photo clearly shows separate, side-by-side servings (e.g. a burger NEXT TO fries = two items; a burger by itself = one item).
 - estimated_weight_g is your best estimate of the weight of that item in grams for the portion visible
 - confidence is a score from 0.0 (not confident) to 1.0 (very confident)
 - Do NOT include any nutritional information
