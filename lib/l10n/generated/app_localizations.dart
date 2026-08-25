@@ -264,6 +264,36 @@ abstract class AppLocalizations {
   /// **'Goal: {goal}ml'**
   String home_water_goal(int goal);
 
+  /// No description provided for @home_start_walking.
+  ///
+  /// In en, this message translates to:
+  /// **'Start walking'**
+  String get home_start_walking;
+
+  /// No description provided for @home_estimated_kcal.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} estimated kcal'**
+  String home_estimated_kcal(int count);
+
+  /// No description provided for @home_active_kcal.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} active kcal'**
+  String home_active_kcal(int count);
+
+  /// No description provided for @water_tap_to_open.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to open'**
+  String get water_tap_to_open;
+
+  /// No description provided for @water_goal_progress.
+  ///
+  /// In en, this message translates to:
+  /// **'of {goal} ml'**
+  String water_goal_progress(int goal);
+
   /// No description provided for @home_recent_meals.
   ///
   /// In en, this message translates to:
@@ -857,6 +887,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Camera unavailable'**
   String get error_camera;
+
+  /// No description provided for @error_image_unsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This image format is not supported'**
+  String get error_image_unsupported;
 
   /// No description provided for @error_generic.
   ///
@@ -1613,6 +1649,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'About'**
   String get settings_about;
+
+  /// No description provided for @about_email_us.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Us'**
+  String get about_email_us;
+
+  /// No description provided for @about_instagram_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tips, recipes & community'**
+  String get about_instagram_desc;
+
+  /// No description provided for @about_facebook_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow our page'**
+  String get about_facebook_desc;
 
   /// No description provided for @settings_about_sub.
   ///
@@ -5094,6 +5148,18 @@ abstract class AppLocalizations {
   /// **'Tracking off'**
   String get settings_status_off;
 
+  /// No description provided for @settings_status_connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get settings_status_connected;
+
+  /// No description provided for @settings_status_not_connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get settings_status_not_connected;
+
   /// No description provided for @settings_gender_male.
   ///
   /// In en, this message translates to:
@@ -6627,6 +6693,276 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Target must be higher than current weight'**
   String get onboarding_error_target_higher;
+
+  /// SnapCal UI string: result_set_weight
+  ///
+  /// In en, this message translates to:
+  /// **'Set weight'**
+  String get result_set_weight;
+
+  /// SnapCal UI string: result_cancel
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get result_cancel;
+
+  /// SnapCal UI string: result_save
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get result_save;
+
+  /// SnapCal UI string: result_tap_to_adjust
+  ///
+  /// In en, this message translates to:
+  /// **'Tap an item to adjust its portion'**
+  String get result_tap_to_adjust;
+
+  /// SnapCal UI string: result_retake
+  ///
+  /// In en, this message translates to:
+  /// **'Retake'**
+  String get result_retake;
+
+  /// SnapCal UI string: result_scans_left
+  ///
+  /// In en, this message translates to:
+  /// **'{remaining} of {total} scans left today'**
+  String result_scans_left(int remaining, int total);
+
+  /// SnapCal UI string: result_added
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get result_added;
+
+  /// SnapCal UI string: result_save_log
+  ///
+  /// In en, this message translates to:
+  /// **'Save log'**
+  String get result_save_log;
+
+  /// SnapCal UI string: result_unlock_title
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock deeper insights'**
+  String get result_unlock_title;
+
+  /// SnapCal UI string: result_unlock_subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Health score, AI coaching and meal insights'**
+  String get result_unlock_subtitle;
+
+  /// SnapCal UI string: result_no_items_detected
+  ///
+  /// In en, this message translates to:
+  /// **'No items detected — add one below or retake the photo'**
+  String get result_no_items_detected;
+
+  /// SnapCal UI string: result_confidence_estimated
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated'**
+  String get result_confidence_estimated;
+
+  /// SnapCal UI string: result_confidence_low
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get result_confidence_low;
+
+  /// SnapCal UI string: result_health_excellent
+  ///
+  /// In en, this message translates to:
+  /// **'Excellent'**
+  String get result_health_excellent;
+
+  /// SnapCal UI string: result_health_good
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get result_health_good;
+
+  /// SnapCal UI string: result_health_okay
+  ///
+  /// In en, this message translates to:
+  /// **'Okay'**
+  String get result_health_okay;
+
+  /// SnapCal UI string: result_health_poor
+  ///
+  /// In en, this message translates to:
+  /// **'Poor'**
+  String get result_health_poor;
+
+  /// SnapCal UI string: result_health_bad
+  ///
+  /// In en, this message translates to:
+  /// **'Bad'**
+  String get result_health_bad;
+
+  /// SnapCal UI string: result_no_items
+  ///
+  /// In en, this message translates to:
+  /// **'No items'**
+  String get result_no_items;
+
+  /// SnapCal UI string: result_foods_detected
+  ///
+  /// In en, this message translates to:
+  /// **'{count} foods detected'**
+  String result_foods_detected(int count);
+
+  /// SnapCal UI string: result_food_item
+  ///
+  /// In en, this message translates to:
+  /// **'Food item'**
+  String get result_food_item;
+
+  /// SnapCal UI string: result_removed
+  ///
+  /// In en, this message translates to:
+  /// **'Removed {name}'**
+  String result_removed(String name);
+
+  /// SnapCal UI string: result_undo
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get result_undo;
+
+  /// SnapCal UI string: result_rename
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get result_rename;
+
+  /// SnapCal UI string: result_food_name
+  ///
+  /// In en, this message translates to:
+  /// **'Food name'**
+  String get result_food_name;
+
+  /// SnapCal UI string: result_discard_title
+  ///
+  /// In en, this message translates to:
+  /// **'Discard scan?'**
+  String get result_discard_title;
+
+  /// SnapCal UI string: result_discard_body
+  ///
+  /// In en, this message translates to:
+  /// **'Your scanned items haven’t been logged yet.'**
+  String get result_discard_body;
+
+  /// SnapCal UI string: result_keep_editing
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get result_keep_editing;
+
+  /// SnapCal UI string: result_discard
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get result_discard;
+
+  /// SnapCal UI string: result_not_matched
+  ///
+  /// In en, this message translates to:
+  /// **'Not matched · tap to fix'**
+  String get result_not_matched;
+
+  /// SnapCal UI string: result_not_in_database
+  ///
+  /// In en, this message translates to:
+  /// **'Not in database'**
+  String get result_not_in_database;
+
+  /// SnapCal UI string: result_assign_food
+  ///
+  /// In en, this message translates to:
+  /// **'Assign food'**
+  String get result_assign_food;
+
+  /// SnapCal UI string: macro_no_meals_yet
+  ///
+  /// In en, this message translates to:
+  /// **'No meals logged yet'**
+  String get macro_no_meals_yet;
+
+  /// SnapCal UI string: macro_targets_cta
+  ///
+  /// In en, this message translates to:
+  /// **'Daily targets and goal tracking'**
+  String get macro_targets_cta;
+
+  /// SnapCal UI string: macro_pro_label
+  ///
+  /// In en, this message translates to:
+  /// **'Pro'**
+  String get macro_pro_label;
+
+  /// SnapCal UI string: result_add_to_log_kcal
+  ///
+  /// In en, this message translates to:
+  /// **'Add to log · {calories} kcal'**
+  String result_add_to_log_kcal(String calories);
+
+  /// SnapCal UI string: planner_teaser_locked_summary
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more meals · {kcal} kcal planned'**
+  String planner_teaser_locked_summary(int count, String kcal);
+
+  /// SnapCal UI string: planner_teaser_title
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock full meal plans'**
+  String get planner_teaser_title;
+
+  /// SnapCal UI string: planner_teaser_subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Get your complete daily schedule, personalised to your goals'**
+  String get planner_teaser_subtitle;
+
+  /// SnapCal UI string: planner_teaser_cta
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with SnapCal Pro'**
+  String get planner_teaser_cta;
+
+  /// SnapCal UI string: paywall_disclosure_trial_year
+  ///
+  /// In en, this message translates to:
+  /// **'Free for {days} days, then {price} per year. Cancel anytime before then.'**
+  String paywall_disclosure_trial_year(int days, String price);
+
+  /// SnapCal UI string: paywall_disclosure_trial_month
+  ///
+  /// In en, this message translates to:
+  /// **'Free for {days} days, then {price} per month. Cancel anytime before then.'**
+  String paywall_disclosure_trial_month(int days, String price);
+
+  /// SnapCal UI string: paywall_disclosure_year
+  ///
+  /// In en, this message translates to:
+  /// **'{price} per year. Renews automatically until you cancel.'**
+  String paywall_disclosure_year(String price);
+
+  /// SnapCal UI string: paywall_disclosure_month
+  ///
+  /// In en, this message translates to:
+  /// **'{price} per month. Renews automatically until you cancel.'**
+  String paywall_disclosure_month(String price);
+
+  /// SnapCal UI string: paywall_disclosure_lifetime
+  ///
+  /// In en, this message translates to:
+  /// **'{price}, one-time payment. No subscription.'**
+  String paywall_disclosure_lifetime(String price);
 }
 
 class _AppLocalizationsDelegate

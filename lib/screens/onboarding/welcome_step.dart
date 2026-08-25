@@ -121,7 +121,9 @@ class _WelcomeStepState extends ConsumerState<WelcomeStep>
                 const SizedBox(height: 12),
                 Consumer(
                   builder: (context, ref, _) {
-                    if (!ref.watch(isAnonymousProvider)) return const SizedBox.shrink();
+                    if (!ref.watch(isAnonymousProvider)) {
+                      return const SizedBox.shrink();
+                    }
                     return _AuthLinkButton(
                       text: l10n.onboarding_already_account,
                       onTap: () => context.push('/auth'),

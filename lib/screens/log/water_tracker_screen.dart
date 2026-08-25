@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,9 +11,9 @@ import '../../providers/water_provider.dart';
 const _deep = Color(0xFF0A1628);
 const _surface = Color(0xFF0F1F3A);
 const _cardBg = Color(0xFF152A4A);
-const _blue = Color(0xFF3B82F6);
+const _blue = AppColors.sky;
 const _cyan = Color(0xFF06D6A0);
-const _blueGlow = Color(0xFF60A5FA);
+const _blueGlow = AppColors.skyLight;
 const _textPrimary = Color(0xFFF1F5F9);
 const _textSecondary = Color(0xFF94A3B8);
 
@@ -58,17 +60,17 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
     super.dispose();
   }
 
-  Future<void> _addWater(Water water) async {
+  Future<void> _addWater() async {
     if (_isFilling) return;
     setState(() => _isFilling = true);
     HapticFeedback.heavyImpact();
 
-    _fromMl = _targetMl = water.state.valueOrNull?.todayTotal ?? 0;
+    _fromMl = _targetMl = ref.read(waterProvider).valueOrNull?.todayTotal ?? 0;
     setState(() {});
 
     await ref.read(waterProvider.notifier).addWater(_selectedMl);
 
-    _targetMl = water.state.valueOrNull?.todayTotal ?? 0;
+    _targetMl = ref.read(waterProvider).valueOrNull?.todayTotal ?? 0;
     _riseController.forward(from: 0);
     await Future.delayed(const Duration(milliseconds: 800));
     if (mounted) setState(() => _isFilling = false);
@@ -97,16 +99,17 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
               _fromMl = total;
             }
 
-            final displayMl = _riseController.isAnimating
-                ? _fromMl + (_targetMl - _fromMl) * _riseAnimation.value
-                : total.toDouble();
+            final displayMl =
+                _riseController.isAnimating
+                    ? _fromMl + (_targetMl - _fromMl) * _riseAnimation.value
+                    : total.toDouble();
             final displayProgress = (displayMl / goal).clamp(0.0, 1.0);
 
             return Stack(
               children: [
                 AnimatedBuilder(
                   animation: _waveController,
-                  builder: (_, __) {
+                  builder: (_, _) {
                     final pulse = 0.5 + _waveController.value * 0.5;
                     return Positioned.fill(
                       child: DecoratedBox(
@@ -114,11 +117,7 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                           gradient: RadialGradient(
                             center: Alignment(-0.3 + pulse * 0.6, 0.1),
                             radius: 1.2,
-                            colors: [
-                              _surface,
-                              _deep,
-                              _deep,
-                            ],
+                            colors: [_surface, _deep, _deep],
                             stops: const [0, 0.6, 1],
                           ),
                         ),
@@ -137,8 +136,8 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          _blue.withOpacity(0.15),
-                          _blue.withOpacity(0),
+                          _blue.withValues(alpha: 0.15),
+                          _blue.withValues(alpha: 0),
                         ],
                       ),
                     ),
@@ -154,8 +153,8 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          _cyan.withOpacity(0.08),
-                          _cyan.withOpacity(0),
+                          _cyan.withValues(alpha: 0.08),
+                          _cyan.withValues(alpha: 0),
                         ],
                       ),
                     ),
@@ -181,25 +180,30 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.06),
+                                  color: Colors.white.withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.08),
+                                    color: Colors.white.withValues(alpha: 0.08),
                                   ),
                                 ),
-                                child: Icon(LucideIcons.chevronLeft,
-                                    color: _textPrimary, size: 20),
+                                child: Icon(
+                                  LucideIcons.chevronLeft,
+                                  color: _textPrimary,
+                                  size: 20,
+                                ),
                               ),
                             ),
                             const Spacer(),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 7),
+                                horizontal: 14,
+                                vertical: 7,
+                              ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.06),
+                                color: Colors.white.withValues(alpha: 0.06),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.08),
+                                  color: Colors.white.withValues(alpha: 0.08),
                                 ),
                               ),
                               child: Row(
@@ -213,18 +217,21 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                                       color: _cyan,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: _cyan.withOpacity(0.5),
+                                          color: _cyan.withValues(alpha: 0.5),
                                           blurRadius: 4,
                                         ),
                                       ],
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text('Today',
-                                      style: TextStyle(
-                                          color: _textSecondary,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500)),
+                                  Text(
+                                    'Today',
+                                    style: TextStyle(
+                                      color: _textSecondary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -236,12 +243,15 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                         padding: EdgeInsets.fromLTRB(24, 12, 24, 0),
                         child: Row(
                           children: [
-                            Text('Hydration',
-                                style: TextStyle(
-                                    color: _textPrimary,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.5)),
+                            Text(
+                              'Hydration',
+                              style: TextStyle(
+                                color: _textPrimary,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
                             Spacer(),
                           ],
                         ),
@@ -250,27 +260,30 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                       const SizedBox(height: 24),
 
                       AnimatedBuilder(
-                        animation: Listenable.merge(
-                            [_waveController, _riseController]),
-                        builder: (_, __) {
+                        animation: Listenable.merge([
+                          _waveController,
+                          _riseController,
+                        ]),
+                        builder: (_, _) {
                           final pulse = 0.5 + _waveController.value * 0.5;
-                          final dp = _riseController.isAnimating
-                              ? displayProgress
-                              : targetProgress;
+                          final dp =
+                              _riseController.isAnimating
+                                  ? displayProgress
+                                  : targetProgress;
                           return Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20),
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Container(
                               height: 260,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(32),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.06),
+                                  color: Colors.white.withValues(alpha: 0.06),
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: _blue.withOpacity(
-                                        0.15 + pulse * 0.15),
+                                    color: _blue.withValues(
+                                      alpha: 0.15 + pulse * 0.15,
+                                    ),
                                     blurRadius: 40,
                                     spreadRadius: 2,
                                   ),
@@ -292,54 +305,72 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           const SizedBox(height: 8),
-                                          Text('${total.ceil()}',
-                                              style: TextStyle(
-                                                  fontSize: 72,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: Colors.white
-                                                      .withOpacity(0.95),
-                                                  height: 0.95,
-                                                  letterSpacing: -2,
-                                                  shadows: [
-                                                    Shadow(
-                                                        color: _blue
-                                                            .withOpacity(0.3),
-                                                        blurRadius: 20)
-                                                  ])),
-                                          Text('of ${goal}ml',
-                                              style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: Colors.white
-                                                      .withOpacity(0.45),
-                                                  fontWeight: FontWeight.w500)),
+                                          Text(
+                                            '${total.ceil()}',
+                                            style: TextStyle(
+                                              fontSize: 72,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.95,
+                                              ),
+                                              height: 0.95,
+                                              letterSpacing: -2,
+                                              shadows: [
+                                                Shadow(
+                                                  color: _blue.withValues(
+                                                    alpha: 0.3,
+                                                  ),
+                                                  blurRadius: 20,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Text(
+                                            'of ${goal}ml',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.45,
+                                              ),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
                                           const SizedBox(height: 14),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                                horizontal: 16, vertical: 7),
+                                              horizontal: 16,
+                                              vertical: 7,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: Colors.white
-                                                  .withOpacity(0.08),
+                                              color: Colors.white.withValues(
+                                                alpha: 0.08,
+                                              ),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(
-                                                  color: Colors.white
-                                                      .withOpacity(0.1)),
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.1,
+                                                ),
+                                              ),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(LucideIcons.trophy,
-                                                    size: 14,
-                                                    color: _cyan),
+                                                Icon(
+                                                  LucideIcons.trophy,
+                                                  size: 14,
+                                                  color: _cyan,
+                                                ),
                                                 const SizedBox(width: 6),
                                                 Text(
-                                                    '${(targetProgress * 100).round()}% of goal',
-                                                    style: TextStyle(
-                                                        color: _textPrimary
-                                                            .withOpacity(0.7),
-                                                        fontSize: 13,
-                                                        fontWeight:
-                                                            FontWeight.w600)),
+                                                  '${(targetProgress * 100).round()}% of goal',
+                                                  style: TextStyle(
+                                                    color: _textPrimary
+                                                        .withValues(alpha: 0.7),
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ),
@@ -357,107 +388,128 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                       const SizedBox(height: 28),
 
                       Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
-                          children: _presets.map((ml) {
-                            final isSel = _selectedMl == ml;
-                            return Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() => _selectedMl = ml);
-                                  HapticFeedback.selectionClick();
-                                },
-                                child: AnimatedContainer(
-                                  duration:
-                                      const Duration(milliseconds: 250),
-                                  curve: Curves.easeOutCubic,
-                                  margin: const EdgeInsets.symmetric(
-                                      horizontal: 4),
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    gradient: isSel
-                                        ? LinearGradient(
-                                            colors: [
-                                              _blue.withOpacity(0.3),
-                                              _blue.withOpacity(0.15),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          )
-                                        : null,
-                                    color: isSel
-                                        ? null
-                                        : Colors.white.withOpacity(0.04),
-                                    borderRadius:
-                                        BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: isSel
-                                          ? _blue.withOpacity(0.5)
-                                          : Colors.white.withOpacity(0.06),
-                                      width: isSel ? 1.5 : 1,
-                                    ),
-                                    boxShadow: isSel
-                                        ? [
-                                            BoxShadow(
-                                              color:
-                                                  _blue.withOpacity(0.2),
-                                              blurRadius: 16,
-                                              spreadRadius: 1,
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    children: [
-                                      Text('$ml',
-                                          style: TextStyle(
+                          children:
+                              _presets.map((ml) {
+                                final isSel = _selectedMl == ml;
+                                return Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() => _selectedMl = ml);
+                                      HapticFeedback.selectionClick();
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 250,
+                                      ),
+                                      curve: Curves.easeOutCubic,
+                                      margin: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        gradient:
+                                            isSel
+                                                ? LinearGradient(
+                                                  colors: [
+                                                    _blue.withValues(
+                                                      alpha: 0.3,
+                                                    ),
+                                                    _blue.withValues(
+                                                      alpha: 0.15,
+                                                    ),
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                )
+                                                : null,
+                                        color:
+                                            isSel
+                                                ? null
+                                                : Colors.white.withValues(
+                                                  alpha: 0.04,
+                                                ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color:
+                                              isSel
+                                                  ? _blue.withValues(alpha: 0.5)
+                                                  : Colors.white.withValues(
+                                                    alpha: 0.06,
+                                                  ),
+                                          width: isSel ? 1.5 : 1,
+                                        ),
+                                        boxShadow:
+                                            isSel
+                                                ? [
+                                                  BoxShadow(
+                                                    color: _blue.withValues(
+                                                      alpha: 0.2,
+                                                    ),
+                                                    blurRadius: 16,
+                                                    spreadRadius: 1,
+                                                  ),
+                                                ]
+                                                : null,
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            '$ml',
+                                            style: TextStyle(
                                               fontSize: 20,
                                               fontWeight: FontWeight.w800,
-                                              color: isSel
-                                                  ? Colors.white
-                                                  : _textSecondary)),
-                                      Text('ml',
-                                          style: TextStyle(
+                                              color:
+                                                  isSel
+                                                      ? Colors.white
+                                                      : _textSecondary,
+                                            ),
+                                          ),
+                                          Text(
+                                            'ml',
+                                            style: TextStyle(
                                               fontSize: 11,
-                                              color: isSel
-                                                  ? Colors.white
-                                                      .withOpacity(0.7)
-                                                  : _textSecondary
-                                                      .withOpacity(0.6),
-                                              fontWeight: FontWeight.w600)),
-                                    ],
+                                              color:
+                                                  isSel
+                                                      ? Colors.white.withValues(
+                                                        alpha: 0.7,
+                                                      )
+                                                      : _textSecondary
+                                                          .withValues(
+                                                            alpha: 0.6,
+                                                          ),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                                );
+                              }).toList(),
                         ),
                       ),
 
                       const SizedBox(height: 24),
 
                       Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: GestureDetector(
-                          onTap:
-                              _isFilling ? null : () => _addWater(waterNotifier),
+                          onTap: _isFilling ? null : () => _addWater(),
                           child: AnimatedBuilder(
                             animation: _waveController,
-                            builder: (_, __) {
-                              final pulse =
-                                  0.5 + _waveController.value * 0.5;
+                            builder: (_, _) {
+                              final pulse = 0.5 + _waveController.value * 0.5;
                               return Container(
                                 height: 62,
                                 decoration: BoxDecoration(
-                                  borderRadius:
-                                      BorderRadius.circular(24),
+                                  borderRadius: BorderRadius.circular(24),
                                   gradient: LinearGradient(
                                     colors: [
-                                      _blue.withOpacity(0.9),
+                                      _blue.withValues(alpha: 0.9),
                                       _blue,
                                     ],
                                     begin: Alignment.topLeft,
@@ -465,51 +517,54 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: _blue.withOpacity(
-                                          0.3 + pulse * 0.2),
+                                      color: _blue.withValues(
+                                        alpha: 0.3 + pulse * 0.2,
+                                      ),
                                       blurRadius: 24 + pulse * 12,
                                       offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
                                 child: Center(
-                                  child: _isFilling
-                                      ? const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child:
-                                              CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Container(
-                                              width: 28,
-                                              height: 28,
-                                              decoration: BoxDecoration(
-                                                color: Colors.white
-                                                    .withOpacity(0.15),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(
-                                                LucideIcons.plus,
-                                                color: Colors.white,
-                                                size: 16,
-                                              ),
+                                  child:
+                                      _isFilling
+                                          ? const SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              color: Colors.white,
                                             ),
-                                            const SizedBox(width: 10),
-                                            Text('Add $_selectedMl ml',
+                                          )
+                                          : Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Container(
+                                                width: 28,
+                                                height: 28,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.15),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  LucideIcons.plus,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                'Add $_selectedMl ml',
                                                 style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 18,
-                                                    fontWeight:
-                                                        FontWeight.w700)),
-                                          ],
-                                        ),
+                                                  color: Colors.white,
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                 ),
                               );
                             },
@@ -520,8 +575,7 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                       const SizedBox(height: 14),
 
                       Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
                             _QuickAction(
@@ -538,8 +592,7 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                                     : '${goal - total} ml remaining',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: _textSecondary
-                                      .withOpacity(0.6),
+                                  color: _textSecondary.withValues(alpha: 0.6),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -572,30 +625,40 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
   void _showResetDialog(Water water) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: _cardBg,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24)),
-        title: const Text('Reset water?',
-            style: TextStyle(color: _textPrimary)),
-        content: const Text('Clear all water logged today.',
-            style: TextStyle(color: _textSecondary)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel',
-                style: TextStyle(color: _textSecondary)),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: _cardBg,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: const Text(
+              'Reset water?',
+              style: TextStyle(color: _textPrimary),
+            ),
+            content: const Text(
+              'Clear all water logged today.',
+              style: TextStyle(color: _textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: _textSecondary),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  water.resetToday();
+                  Navigator.pop(ctx);
+                },
+                child: const Text(
+                  'Reset',
+                  style: TextStyle(color: Color(0xFFEF4444)),
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              water.resetToday();
-              Navigator.pop(ctx);
-            },
-            child: const Text('Reset',
-                style: TextStyle(color: Color(0xFFEF4444))),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -615,17 +678,20 @@ class _WavePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final fillH = size.height * (1 - progress);
 
-    final waterPaint = Paint()
-      ..shader = LinearGradient(
-        colors: [
-          _blue.withOpacity(0.2),
-          _blue.withOpacity(0.4),
-          _blue.withOpacity(0.7),
-          _blue,
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(0, fillH, size.width, size.height - fillH));
+    final waterPaint =
+        Paint()
+          ..shader = LinearGradient(
+            colors: [
+              _blue.withValues(alpha: 0.2),
+              _blue.withValues(alpha: 0.4),
+              _blue.withValues(alpha: 0.7),
+              _blue,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomCenter,
+          ).createShader(
+            Rect.fromLTWH(0, fillH, size.width, size.height - fillH),
+          );
 
     final path = Path();
     path.moveTo(0, size.height);
@@ -638,22 +704,26 @@ class _WavePainter extends CustomPainter {
     path.close();
     canvas.drawPath(path, waterPaint);
 
-    final glowPaint = Paint()
-      ..color = _blueGlow.withOpacity(0.3 + glowIntensity * 0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    final glowPaint =
+        Paint()
+          ..color = _blueGlow.withValues(alpha: 0.3 + glowIntensity * 0.2)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
     final glowPath = Path();
     for (double x = 0; x <= size.width; x += 1) {
       final s1 = math.sin((x / size.width * 3 * math.pi) + wave * 2) * 8;
       final s2 = math.sin((x / size.width * 5 * math.pi) + wave * 3) * 4;
-      if (x == 0) glowPath.moveTo(x, fillH + s1 + s2);
-      else glowPath.lineTo(x, fillH + s1 + s2);
+      if (x == 0) {
+        glowPath.moveTo(x, fillH + s1 + s2);
+      } else {
+        glowPath.lineTo(x, fillH + s1 + s2);
+      }
     }
     canvas.drawPath(glowPath, glowPaint);
 
     if (fillH > 1) {
-      final dotPaint = Paint()..color = Colors.white.withOpacity(0.25);
+      final dotPaint = Paint()..color = Colors.white.withValues(alpha: 0.25);
       for (int i = 0; i < 8; i++) {
         final dx = (i * 47.0 + wave * 30) % size.width;
         final dy = fillH * (0.3 + (i % 3) * 0.2);
@@ -690,35 +760,40 @@ class _QuickAction extends StatelessWidget {
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(enabled ? 0.06 : 0.03),
+          color: Colors.white.withValues(alpha: enabled ? 0.06 : 0.03),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: Colors.white.withOpacity(enabled ? 0.08 : 0.04),
+            color: Colors.white.withValues(alpha: enabled ? 0.08 : 0.04),
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 14,
-                color: enabled
-                    ? _textSecondary
-                    : _textSecondary.withOpacity(0.3)),
+            Icon(
+              icon,
+              size: 14,
+              color:
+                  enabled
+                      ? _textSecondary
+                      : _textSecondary.withValues(alpha: 0.3),
+            ),
             const SizedBox(width: 5),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: enabled
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color:
+                    enabled
                         ? _textSecondary
-                        : _textSecondary.withOpacity(0.3))),
+                        : _textSecondary.withValues(alpha: 0.3),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
-

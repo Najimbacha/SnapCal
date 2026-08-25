@@ -32,7 +32,9 @@ class PremiumPromptCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(settingsProvider).valueOrNull?.isPro == true) return const SizedBox.shrink();
+    if (ref.watch(settingsProvider).valueOrNull?.isPro == true) {
+      return const SizedBox.shrink();
+    }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -188,7 +190,7 @@ class PremiumPromptCard extends ConsumerWidget {
                       style: AppTypography.bodySmall.copyWith(
                         color: (isDark ? Colors.white : Colors.black)
                             .withValues(alpha: isDark ? 0.50 : 0.45),
-                        fontSize: 11.5,
+                        fontSize: 12,
                         height: 1.3,
                         fontWeight: FontWeight.w400,
                       ),
@@ -393,4 +395,3 @@ class _CtaButton extends StatelessWidget {
     );
   }
 }
-

@@ -6,6 +6,7 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/utils/pref_scoping.dart';
 import 'analytics_service.dart';
 import 'app_prompt_session_coordinator.dart';
 
@@ -96,6 +97,37 @@ class AppReviewService {
     _requestInFlight = false;
   }
 
+  /// Removes every user-scoped counter. Invoked by SessionCleanupService on
+  /// sign-out so usage history does not leak across accounts.
+  Future<void> resetSessionState() async {
+    final prefs = await _safePrefs();
+    if (prefs == null) return;
+    final bases = [
+      _firstUseDateKey,
+      _distinctUsageDaysKey,
+      _successfulLogCountKey,
+      _lastReviewAttemptDateKey,
+      _lastReviewAttemptedVersionKey,
+      _automaticTriggerUsedVersionKey,
+      _currentVersionFirstSeenDateKey,
+    ];
+    final keys =
+        prefs
+            .getKeys()
+            .where(
+              (k) => bases.any(
+                (base) =>
+                    k == base ||
+                    prefKeyBelongsTo(k, base) ||
+                    k.startsWith('${_currentVersionFirstSeenDateKey}_'),
+              ),
+            )
+            .toList();
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
+  }
+
   Future<void> recordUsageDay() async {
     final prefs = await _safePrefs();
     if (prefs == null) return;
@@ -103,14 +135,15 @@ class AppReviewService {
     final today = _dateKey(_clock());
     await prefs.setString(
       _firstUseDateKey,
-      prefs.getString(_firstUseDateKey) ?? today,
+      prefs.getString(scopedPrefKey(_firstUseDateKey)) ?? today,
     );
 
-    final days = prefs.getStringList(_distinctUsageDaysKey) ?? <String>[];
+    final days =
+        prefs.getStringList(scopedPrefKey(_distinctUsageDaysKey)) ?? <String>[];
     if (!days.contains(today)) {
       days.add(today);
       days.sort();
-      await prefs.setStringList(_distinctUsageDaysKey, days);
+      await prefs.setStringList(scopedPrefKey(_distinctUsageDaysKey), days);
     }
   }
 
@@ -120,7 +153,7 @@ class AppReviewService {
 
     await recordUsageDay();
     final current = prefs.getInt(_successfulLogCountKey) ?? 0;
-    await prefs.setInt(_successfulLogCountKey, current + 1);
+    await prefs.setInt(scopedPrefKey(_successfulLogCountKey), current + 1);
   }
 
   Future<void> requestReviewIfEligible() async {
@@ -140,8 +173,14 @@ class AppReviewService {
       if (!_hasMeaningfulUse(prefs)) return;
       if (!_hasEnoughSuccessfulActions(prefs)) return;
       if (!_hasCooledDown(prefs)) return;
-      if (prefs.getString(_lastReviewAttemptedVersionKey) == version) return;
-      if (prefs.getString(_automaticTriggerUsedVersionKey) == version) return;
+      if (prefs.getString(scopedPrefKey(_lastReviewAttemptedVersionKey)) ==
+          version) {
+        return;
+      }
+      if (prefs.getString(scopedPrefKey(_automaticTriggerUsedVersionKey)) ==
+          version) {
+        return;
+      }
 
       final isAvailable = await _reviewClient.isAvailable();
       if (!isAvailable) return;
@@ -170,10 +209,10 @@ class AppReviewService {
 
   bool _hasMeaningfulUse(SharedPreferences prefs) {
     final distinctDays =
-        prefs.getStringList(_distinctUsageDaysKey) ?? <String>[];
+        prefs.getStringList(scopedPrefKey(_distinctUsageDaysKey)) ?? <String>[];
     if (distinctDays.length >= minimumDistinctUsageDays) return true;
 
-    final firstUseDate = prefs.getString(_firstUseDateKey);
+    final firstUseDate = prefs.getString(scopedPrefKey(_firstUseDateKey));
     if (firstUseDate == null) return false;
 
     final firstUse = DateTime.tryParse(firstUseDate);
@@ -188,7 +227,9 @@ class AppReviewService {
   }
 
   bool _hasCooledDown(SharedPreferences prefs) {
-    final lastAttemptDate = prefs.getString(_lastReviewAttemptDateKey);
+    final lastAttemptDate = prefs.getString(
+      scopedPrefKey(_lastReviewAttemptDateKey),
+    );
     if (lastAttemptDate == null) return true;
 
     final lastAttempt = DateTime.tryParse(lastAttemptDate);
@@ -201,7 +242,7 @@ class AppReviewService {
     SharedPreferences prefs,
     String version,
   ) async {
-    final key = '${_currentVersionFirstSeenDateKey}_$version';
+    final key = scopedPrefKey('${_currentVersionFirstSeenDateKey}_$version');
     final firstSeenDate = prefs.getString(key);
     if (firstSeenDate == null) {
       await prefs.setString(key, _dateKey(_clock()));
@@ -218,9 +259,18 @@ class AppReviewService {
   }
 
   Future<void> _recordAttempt(SharedPreferences prefs, String version) async {
-    await prefs.setString(_lastReviewAttemptDateKey, _dateKey(_clock()));
-    await prefs.setString(_lastReviewAttemptedVersionKey, version);
-    await prefs.setString(_automaticTriggerUsedVersionKey, version);
+    await prefs.setString(
+      scopedPrefKey(_lastReviewAttemptDateKey),
+      _dateKey(_clock()),
+    );
+    await prefs.setString(
+      scopedPrefKey(_lastReviewAttemptedVersionKey),
+      version,
+    );
+    await prefs.setString(
+      scopedPrefKey(_automaticTriggerUsedVersionKey),
+      version,
+    );
   }
 
   Future<SharedPreferences?> _safePrefs() async {

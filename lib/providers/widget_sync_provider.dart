@@ -16,15 +16,18 @@ class WidgetSync extends _$WidgetSync {
 
   @override
   FutureOr<void> build() {
-    ref.listen(todaysMealsProvider, (_, __) => _scheduleSync());
-    ref.listen(settingsProvider, (_, __) => _scheduleSync());
+    ref.listen(todaysMealsProvider, (_, _) => _scheduleSync());
+    ref.listen(settingsProvider, (_, _) => _scheduleSync());
     _scheduleSync();
   }
 
   void _scheduleSync() {
     if (_debounceTimer?.isActive ?? false) return;
     final now = DateTime.now();
-    final diff = _lastSyncTime == null ? const Duration(days: 1) : now.difference(_lastSyncTime!);
+    final diff =
+        _lastSyncTime == null
+            ? const Duration(days: 1)
+            : now.difference(_lastSyncTime!);
     if (diff >= const Duration(seconds: 10)) {
       _performSync();
     } else {
@@ -40,8 +43,13 @@ class WidgetSync extends _$WidgetSync {
     final activity = ref.read(activityProvider).valueOrNull;
     if (settings == null) return;
 
-    final eaten = ref.read(todaysMealsProvider).valueOrNull?.fold<int>(0, (s, m) => s + m.calories) ?? 0;
-    final burned = activity?.activeCalories?.toInt() ?? 0;
+    final eaten =
+        ref
+            .read(todaysMealsProvider)
+            .valueOrNull
+            ?.fold<int>(0, (s, m) => s + m.calories) ??
+        0;
+    final burned = activity?.activeCalories.toInt() ?? 0;
     final goal = settings.dailyCalorieGoal;
     final lang = settings.languageCode ?? 'en';
     final isPro = settings.isPro;
@@ -60,7 +68,9 @@ class WidgetSync extends _$WidgetSync {
   }
 
   String _getStatus(double remaining, double progress, String lang) {
-    final supported = AppLocalizations.supportedLocales.any((l) => l.languageCode == lang);
+    final supported = AppLocalizations.supportedLocales.any(
+      (l) => l.languageCode == lang,
+    );
     final l10n = lookupAppLocalizations(Locale(supported ? lang : 'en'));
     if (remaining < 0) return l10n.widget_status_over_goal;
     if (progress > 0.8) return l10n.widget_status_almost_there;

@@ -7,6 +7,8 @@ part 'phone_auth_provider.g.dart';
 class VerificationId extends _$VerificationId {
   @override
   String? build() => null;
+
+  void set(String? id) => state = id;
 }
 
 @Riverpod(keepAlive: true)
@@ -24,7 +26,7 @@ class PhoneAuth extends _$PhoneAuth {
       },
       verificationFailed: (e) => state = AsyncError(e, StackTrace.current),
       codeSent: (verificationId, _) {
-        ref.read(verificationIdProvider.notifier).state = verificationId;
+        ref.read(verificationIdProvider.notifier).set(verificationId);
         state = const AsyncData(null);
       },
       codeAutoRetrievalTimeout: (_) {},
@@ -39,7 +41,8 @@ class PhoneAuth extends _$PhoneAuth {
       verificationId: verificationId,
       smsCode: otp,
     );
-    state = await AsyncValue.guard(() =>
-      FirebaseAuth.instance.signInWithCredential(credential).then((_) {}));
+    state = await AsyncValue.guard(
+      () => FirebaseAuth.instance.signInWithCredential(credential).then((_) {}),
+    );
   }
 }

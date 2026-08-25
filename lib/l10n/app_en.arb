@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "en",
   "appTitle": "SnapCal",
   "@appTitle": {
@@ -31,6 +31,32 @@
   "home_water_title": "Water Intake",
   "home_water_goal": "Goal: {goal}ml",
   "@home_water_goal": {
+    "placeholders": {
+      "goal": {
+        "type": "int"
+      }
+    }
+  },
+  "home_start_walking": "Start walking",
+  "home_estimated_kcal": "{count} estimated kcal",
+  "@home_estimated_kcal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "home_active_kcal": "{count} active kcal",
+  "@home_active_kcal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "water_tap_to_open": "Tap to open",
+  "water_goal_progress": "of {goal} ml",
+  "@water_goal_progress": {
     "placeholders": {
       "goal": {
         "type": "int"
@@ -174,6 +200,7 @@
   "planner_msg_ready": "Almost ready...",
   "error_offline": "Offline: AI analysis unavailable",
   "error_camera": "Camera unavailable",
+  "error_image_unsupported": "This image format is not supported",
   "error_generic": "Something went wrong",
   "sync_title": "Cloud Sync",
   "sync_subtitle": "Keep your health data safe across all your devices with an account.",
@@ -334,6 +361,9 @@
   "settings_data_sync": "Data & Sync",
   "settings_data_sync_sub": "Export and cloud backup options",
   "settings_about": "About",
+  "about_email_us": "Email Us",
+  "about_instagram_desc": "Tips, recipes & community",
+  "about_facebook_desc": "Follow our page",
   "settings_about_sub": "Terms, privacy, and app info",
   "report_title": "Reports",
   "report_subtitle": "Track your long-term success",
@@ -1140,6 +1170,8 @@
   "settings_status_unsupported": "Unsupported device",
   "settings_status_error": "Tracking error",
   "settings_status_off": "Tracking off",
+  "settings_status_connected": "Connected",
+  "settings_status_not_connected": "Not connected",
   "settings_gender_male": "Male",
   "settings_gender_female": "Female",
   "settings_gender_other": "Other",
@@ -1528,5 +1560,247 @@
   "onboarding_plan_kcal_day": "kcal / day",
   "onboarding_finish_error": "Could not create your plan. Please try again.",
   "onboarding_error_target_lower": "Target must be lower than current weight",
-  "onboarding_error_target_higher": "Target must be higher than current weight"
+  "onboarding_error_target_higher": "Target must be higher than current weight",
+  "result_set_weight": "Set weight",
+  "@result_set_weight": {
+    "description": "SnapCal UI string: result_set_weight"
+  },
+  "result_cancel": "Cancel",
+  "@result_cancel": {
+    "description": "SnapCal UI string: result_cancel"
+  },
+  "result_save": "Save",
+  "@result_save": {
+    "description": "SnapCal UI string: result_save"
+  },
+  "result_tap_to_adjust": "Tap an item to adjust its portion",
+  "@result_tap_to_adjust": {
+    "description": "SnapCal UI string: result_tap_to_adjust"
+  },
+  "result_retake": "Retake",
+  "@result_retake": {
+    "description": "SnapCal UI string: result_retake"
+  },
+  "result_scans_left": "{remaining} of {total} scans left today",
+  "@result_scans_left": {
+    "description": "SnapCal UI string: result_scans_left",
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "result_added": "Added",
+  "@result_added": {
+    "description": "SnapCal UI string: result_added"
+  },
+  "result_save_log": "Save log",
+  "@result_save_log": {
+    "description": "SnapCal UI string: result_save_log"
+  },
+  "result_unlock_title": "Unlock deeper insights",
+  "@result_unlock_title": {
+    "description": "SnapCal UI string: result_unlock_title"
+  },
+  "result_unlock_subtitle": "Health score, AI coaching and meal insights",
+  "@result_unlock_subtitle": {
+    "description": "SnapCal UI string: result_unlock_subtitle"
+  },
+  "result_no_items_detected": "No items detected — add one below or retake the photo",
+  "@result_no_items_detected": {
+    "description": "SnapCal UI string: result_no_items_detected"
+  },
+  "result_confidence_estimated": "Estimated",
+  "@result_confidence_estimated": {
+    "description": "SnapCal UI string: result_confidence_estimated"
+  },
+  "result_confidence_low": "Low",
+  "@result_confidence_low": {
+    "description": "SnapCal UI string: result_confidence_low"
+  },
+  "result_health_excellent": "Excellent",
+  "@result_health_excellent": {
+    "description": "SnapCal UI string: result_health_excellent"
+  },
+  "result_health_good": "Good",
+  "@result_health_good": {
+    "description": "SnapCal UI string: result_health_good"
+  },
+  "result_health_okay": "Okay",
+  "@result_health_okay": {
+    "description": "SnapCal UI string: result_health_okay"
+  },
+  "result_health_poor": "Poor",
+  "@result_health_poor": {
+    "description": "SnapCal UI string: result_health_poor"
+  },
+  "result_health_bad": "Bad",
+  "@result_health_bad": {
+    "description": "SnapCal UI string: result_health_bad"
+  },
+  "result_no_items": "No items",
+  "@result_no_items": {
+    "description": "SnapCal UI string: result_no_items"
+  },
+  "result_foods_detected": "{count} foods detected",
+  "@result_foods_detected": {
+    "description": "SnapCal UI string: result_foods_detected",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "result_food_item": "Food item",
+  "@result_food_item": {
+    "description": "SnapCal UI string: result_food_item"
+  },
+  "result_removed": "Removed {name}",
+  "@result_removed": {
+    "description": "SnapCal UI string: result_removed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "result_undo": "Undo",
+  "@result_undo": {
+    "description": "SnapCal UI string: result_undo"
+  },
+  "result_rename": "Rename",
+  "@result_rename": {
+    "description": "SnapCal UI string: result_rename"
+  },
+  "result_food_name": "Food name",
+  "@result_food_name": {
+    "description": "SnapCal UI string: result_food_name"
+  },
+  "result_discard_title": "Discard scan?",
+  "@result_discard_title": {
+    "description": "SnapCal UI string: result_discard_title"
+  },
+  "result_discard_body": "Your scanned items haven’t been logged yet.",
+  "@result_discard_body": {
+    "description": "SnapCal UI string: result_discard_body"
+  },
+  "result_keep_editing": "Keep editing",
+  "@result_keep_editing": {
+    "description": "SnapCal UI string: result_keep_editing"
+  },
+  "result_discard": "Discard",
+  "@result_discard": {
+    "description": "SnapCal UI string: result_discard"
+  },
+  "result_not_matched": "Not matched · tap to fix",
+  "@result_not_matched": {
+    "description": "SnapCal UI string: result_not_matched"
+  },
+  "result_not_in_database": "Not in database",
+  "@result_not_in_database": {
+    "description": "SnapCal UI string: result_not_in_database"
+  },
+  "result_assign_food": "Assign food",
+  "@result_assign_food": {
+    "description": "SnapCal UI string: result_assign_food"
+  },
+  "macro_no_meals_yet": "No meals logged yet",
+  "@macro_no_meals_yet": {
+    "description": "SnapCal UI string: macro_no_meals_yet"
+  },
+  "macro_targets_cta": "Daily targets and goal tracking",
+  "@macro_targets_cta": {
+    "description": "SnapCal UI string: macro_targets_cta"
+  },
+  "macro_pro_label": "Pro",
+  "@macro_pro_label": {
+    "description": "SnapCal UI string: macro_pro_label"
+  },
+  "result_add_to_log_kcal": "Add to log · {calories} kcal",
+  "@result_add_to_log_kcal": {
+    "description": "SnapCal UI string: result_add_to_log_kcal",
+    "placeholders": {
+      "calories": {
+        "type": "String"
+      }
+    }
+  },
+  "planner_teaser_locked_summary": "+{count} more meals · {kcal} kcal planned",
+  "@planner_teaser_locked_summary": {
+    "description": "SnapCal UI string: planner_teaser_locked_summary",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "kcal": {
+        "type": "String"
+      }
+    }
+  },
+  "planner_teaser_title": "Unlock full meal plans",
+  "@planner_teaser_title": {
+    "description": "SnapCal UI string: planner_teaser_title"
+  },
+  "planner_teaser_subtitle": "Get your complete daily schedule, personalised to your goals",
+  "@planner_teaser_subtitle": {
+    "description": "SnapCal UI string: planner_teaser_subtitle"
+  },
+  "planner_teaser_cta": "Unlock with SnapCal Pro",
+  "@planner_teaser_cta": {
+    "description": "SnapCal UI string: planner_teaser_cta"
+  },
+  "paywall_disclosure_trial_year": "Free for {days} days, then {price} per year. Cancel anytime before then.",
+  "@paywall_disclosure_trial_year": {
+    "description": "SnapCal UI string: paywall_disclosure_trial_year",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_disclosure_trial_month": "Free for {days} days, then {price} per month. Cancel anytime before then.",
+  "@paywall_disclosure_trial_month": {
+    "description": "SnapCal UI string: paywall_disclosure_trial_month",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_disclosure_year": "{price} per year. Renews automatically until you cancel.",
+  "@paywall_disclosure_year": {
+    "description": "SnapCal UI string: paywall_disclosure_year",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_disclosure_month": "{price} per month. Renews automatically until you cancel.",
+  "@paywall_disclosure_month": {
+    "description": "SnapCal UI string: paywall_disclosure_month",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_disclosure_lifetime": "{price}, one-time payment. No subscription.",
+  "@paywall_disclosure_lifetime": {
+    "description": "SnapCal UI string: paywall_disclosure_lifetime",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  }
 }

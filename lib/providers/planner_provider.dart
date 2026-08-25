@@ -10,6 +10,9 @@ import '../data/models/user_settings.dart';
 import '../data/services/gemini_service.dart';
 import '../core/state/async_ui_state.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../planner/planner_conversion.dart';
+import '../planner/planner_math.dart';
+import '../planner/planner_models.dart';
 
 part 'planner_provider.g.dart';
 
@@ -18,7 +21,7 @@ class PlannerProvider with ChangeNotifier {
   static const String _groceryBoxName = 'grocery_list_box';
 
   final AIService _aiService;
-  UserSettings _UserSettings;
+  UserSettings _userSettings;
 
   Box<MealPlan>? _planBox;
   Box<GroceryItem>? _groceryBox;
@@ -65,7 +68,7 @@ class PlannerProvider with ChangeNotifier {
   int _regenCountThisWeek = 0;
   int get regenCountThisWeek => _regenCountThisWeek;
   String get _languageCode {
-    final code = _UserSettings.languageCode ?? '';
+    final code = _userSettings.languageCode ?? '';
     return AppLocalizations.supportedLocales.any(
           (locale) => locale.languageCode == code,
         )
@@ -83,7 +86,7 @@ class PlannerProvider with ChangeNotifier {
 
   void updateSettings(UserSettings settings) {
     final nutritionChanged = _hasNutritionGoalChange(settings);
-    _UserSettings = settings;
+    _userSettings = settings;
     _captureNutritionGoals(settings);
 
     if (nutritionChanged && _currentPlan != null) {
@@ -126,8 +129,8 @@ class PlannerProvider with ChangeNotifier {
   String get prepTimePreference => _prepTimePreference;
   String get budgetPreference => _budgetPreference;
 
-  PlannerProvider(this._aiService, this._UserSettings) {
-    _captureNutritionGoals(_UserSettings);
+  PlannerProvider(this._aiService, this._userSettings) {
+    _captureNutritionGoals(_userSettings);
     _init();
   }
 
@@ -163,72 +166,40 @@ class PlannerProvider with ChangeNotifier {
   }
 
   List<Meal> _scalePlannedMealsToDailyTargets(List<Meal> meals) {
+    return _fitMealsToTarget(
+      meals,
+      DayTarget(
+        calories: _userSettings.dailyCalorieGoal,
+        protein: _userSettings.dailyProteinGoal,
+        carbs: _userSettings.dailyCarbGoal,
+        fat: _userSettings.dailyFatGoal,
+      ),
+    );
+  }
+
+  /// Fit a day's meals to its target by *moving grams*, never by rewriting the
+  /// numbers attached to an unchanged plate. Each Meal becomes a PlannedMeal
+  /// with a per-100g table and a portion; [fitDay] adjusts grams and the
+  /// calories/macros follow by multiplication — which is what keeps macros and
+  /// calories reconciling instead of each macro being rescaled on its own ratio.
+  List<Meal> _fitMealsToTarget(
+    List<Meal> meals,
+    DayTarget target, {
+    int kcalTolerance = 100,
+    int macroTolerance = 15,
+  }) {
     if (meals.isEmpty) return meals;
-
-    final originalCalories = meals
-        .fold<int>(0, (sum, meal) => sum + meal.calories)
-        .clamp(1, 99999);
-    final originalProtein = meals
-        .fold<int>(0, (sum, meal) => sum + meal.macros.protein)
-        .clamp(1, 99999);
-    final originalCarbs = meals
-        .fold<int>(0, (sum, meal) => sum + meal.macros.carbs)
-        .clamp(1, 99999);
-    final originalFat = meals
-        .fold<int>(0, (sum, meal) => sum + meal.macros.fat)
-        .clamp(1, 99999);
-
-    var allocatedCalories = 0;
-    var allocatedProtein = 0;
-    var allocatedCarbs = 0;
-    var allocatedFat = 0;
-
-    return List.generate(meals.length, (index) {
-      final meal = meals[index];
-      final isLast = index == meals.length - 1;
-      final calories =
-          isLast
-              ? (_UserSettings.dailyCalorieGoal - allocatedCalories)
-                  .clamp(0, 5000)
-                  .toInt()
-              : ((_UserSettings.dailyCalorieGoal * meal.calories) /
-                      originalCalories)
-                  .round();
-      final protein =
-          isLast
-              ? (_UserSettings.dailyProteinGoal - allocatedProtein)
-                  .clamp(0, 350)
-                  .toInt()
-              : ((_UserSettings.dailyProteinGoal * meal.macros.protein) /
-                      originalProtein)
-                  .round();
-      final carbs =
-          isLast
-              ? (_UserSettings.dailyCarbGoal - allocatedCarbs)
-                  .clamp(0, 600)
-                  .toInt()
-              : ((_UserSettings.dailyCarbGoal * meal.macros.carbs) /
-                      originalCarbs)
-                  .round();
-      final fat =
-          isLast
-              ? (_UserSettings.dailyFatGoal - allocatedFat)
-                  .clamp(0, 250)
-                  .toInt()
-              : ((_UserSettings.dailyFatGoal * meal.macros.fat) /
-                      originalFat)
-                  .round();
-
-      allocatedCalories += calories;
-      allocatedProtein += protein;
-      allocatedCarbs += carbs;
-      allocatedFat += fat;
-
-      return meal.copyWith(
-        calories: calories,
-        macros: Macros(protein: protein, carbs: carbs, fat: fat),
-      );
-    });
+    final planned = meals.map(plannedMealFromMeal).toList();
+    final fitted = fitDay(
+      planned,
+      target,
+      kcalTolerance: kcalTolerance,
+      macroTolerance: macroTolerance,
+    );
+    return [
+      for (var i = 0; i < meals.length; i++)
+        mealFromPlanned(fitted[i], meals[i]),
+    ];
   }
 
   Future<void> _init() async {
@@ -280,7 +251,7 @@ class PlannerProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final userSettings = _UserSettings;
+      final userSettings = _userSettings;
       final result = await _aiService
           .generateWeeklyMealPlan(
             userSettings,
@@ -328,7 +299,7 @@ class PlannerProvider with ChangeNotifier {
               : (isTimeout ? _timeoutMessage : _l10n.error_generic);
 
       if (_currentPlan == null && !isOffline) {
-        final fallback = buildFallbackPlan(_UserSettings);
+        final fallback = buildFallbackPlan(_userSettings);
         _currentPlan = fallback.plan;
         _loggedPlannedMealIds.clear();
         await _planBox?.put('current', _currentPlan!);
@@ -369,11 +340,7 @@ class PlannerProvider with ChangeNotifier {
 
     try {
       final result = await _aiService
-          .regenerateDay(
-            _UserSettings,
-            dayIndex,
-            _currentPlan!.weeklyMeals,
-          )
+          .regenerateDay(_userSettings, dayIndex, _currentPlan!.weeklyMeals)
           .timeout(const Duration(seconds: 30));
 
       if (result != null && result.plan.weeklyMeals.containsKey(dayIndex)) {
@@ -464,7 +431,7 @@ class PlannerProvider with ChangeNotifier {
 
       final newMeal = await _aiService
           .regenerateSingleMeal(
-            _UserSettings,
+            _userSettings,
             mealToSwap,
             existingMealsInPlan,
             craving: craving,
@@ -582,7 +549,7 @@ class PlannerProvider with ChangeNotifier {
   }
 
   Meal _buildFallbackSwapMeal(Meal mealToSwap, {String? swapIntent}) {
-    final settings = _UserSettings;
+    final settings = _userSettings;
     final restriction = settings.dietaryRestriction ?? 'none';
     final cuisine = settings.cuisinePreference ?? 'international';
     final options = _fallbackMealOptions(
@@ -767,19 +734,17 @@ class PlannerProvider with ChangeNotifier {
       );
 
       final targetCalories =
-          (_UserSettings.dailyCalorieGoal - consumedCalories)
+          (_userSettings.dailyCalorieGoal - consumedCalories)
               .clamp(0, 5000)
               .toInt();
       final targetProtein =
-          (_UserSettings.dailyProteinGoal - consumedProtein)
+          (_userSettings.dailyProteinGoal - consumedProtein)
               .clamp(0, 350)
               .toInt();
       final targetCarbs =
-          (_UserSettings.dailyCarbGoal - consumedCarbs)
-              .clamp(0, 600)
-              .toInt();
+          (_userSettings.dailyCarbGoal - consumedCarbs).clamp(0, 600).toInt();
       final targetFat =
-          (_UserSettings.dailyFatGoal - consumedFat).clamp(0, 250).toInt();
+          (_userSettings.dailyFatGoal - consumedFat).clamp(0, 250).toInt();
 
       final remainingMeals = remainingIndexes.map((i) => dayMeals[i]).toList();
       final adjustedMeals = _scaleRemainingMeals(
@@ -818,58 +783,27 @@ class PlannerProvider with ChangeNotifier {
     required int targetCarbs,
     required int targetFat,
   }) {
-    final originalCalories = meals
-        .fold<int>(0, (sum, meal) => sum + meal.calories)
-        .clamp(1, 99999);
-    final originalProtein = meals
-        .fold<int>(0, (sum, meal) => sum + meal.macros.protein)
-        .clamp(1, 99999);
-    final originalCarbs = meals
-        .fold<int>(0, (sum, meal) => sum + meal.macros.carbs)
-        .clamp(1, 99999);
-    final originalFat = meals
-        .fold<int>(0, (sum, meal) => sum + meal.macros.fat)
-        .clamp(1, 99999);
+    if (meals.isEmpty) return meals;
 
-    var allocatedCalories = 0;
-    var allocatedProtein = 0;
-    var allocatedCarbs = 0;
-    var allocatedFat = 0;
+    final fitted = _fitMealsToTarget(
+      meals,
+      DayTarget(
+        calories: targetCalories,
+        protein: targetProtein,
+        carbs: targetCarbs,
+        fat: targetFat,
+      ),
+    );
 
-    return List.generate(meals.length, (index) {
-      final meal = meals[index];
-      final isLast = index == meals.length - 1;
-      final calories =
-          isLast
-              ? (targetCalories - allocatedCalories).clamp(0, 5000).toInt()
-              : ((targetCalories * meal.calories) / originalCalories).round();
-      final protein =
-          isLast
-              ? (targetProtein - allocatedProtein).clamp(0, 350).toInt()
-              : ((targetProtein * meal.macros.protein) / originalProtein)
-                  .round();
-      final carbs =
-          isLast
-              ? (targetCarbs - allocatedCarbs).clamp(0, 600).toInt()
-              : ((targetCarbs * meal.macros.carbs) / originalCarbs).round();
-      final fat =
-          isLast
-              ? (targetFat - allocatedFat).clamp(0, 250).toInt()
-              : ((targetFat * meal.macros.fat) / originalFat).round();
-
-      allocatedCalories += calories;
-      allocatedProtein += protein;
-      allocatedCarbs += carbs;
-      allocatedFat += fat;
-
-      return meal.copyWith(
-        calories: calories,
-        macros: Macros(protein: protein, carbs: carbs, fat: fat),
-        portion: calories == 0 ? 'Skip or keep very light' : meal.portion,
-        aiRationale: _rebalanceRationale(calories, protein),
-        scanSource: 'meal_planner_rebalanced',
-      );
-    });
+    return [
+      for (final meal in fitted)
+        meal.copyWith(
+          portion:
+              meal.calories == 0 ? 'Skip or keep very light' : meal.portion,
+          aiRationale: _rebalanceRationale(meal.calories, meal.macros.protein),
+          scanSource: 'meal_planner_rebalanced',
+        ),
+    ];
   }
 
   String _rebalanceRationale(int calories, int protein) {
@@ -960,110 +894,24 @@ class PlannerProvider with ChangeNotifier {
   }
 
   List<GroceryItem> _buildGroceriesFromMeals(List<Meal> meals) {
-    final itemsByName = <String, GroceryItem>{};
-    for (final meal in meals) {
-      for (final ingredient in meal.ingredients ?? const <String>[]) {
-        final parsed = _parseIngredient(ingredient);
-        final name = parsed.$1.trim();
-        if (name.isEmpty) continue;
-        final normalized = name.toLowerCase();
-        itemsByName.putIfAbsent(
-          normalized,
-          () => GroceryItem(
-            name: name,
-            amount: parsed.$2,
-            category: _localizedCategory(_guessCategory(name)),
-          ),
-        );
-      }
-    }
-    return itemsByName.values.toList();
+    if (meals.isEmpty) return const [];
+    // Resolve each meal to a per-100g table + gram portion, then sum the same
+    // food across the horizon. This replaces "first amount wins": the same food
+    // appearing five times contributes its total grams to one line.
+    final planned = meals.map(plannedMealFromMeal).toList();
+    final aggregated = aggregateGroceries(planned);
+    return [
+      for (final food in aggregated)
+        GroceryItem(
+          name: food.name,
+          amount: '${food.grams.round()} g',
+          category: _localizedCategory(food.category),
+        ),
+    ];
   }
 
-  // Simple category guessing helper
-  String _guessCategory(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('oil') ||
-        n.contains('butter') ||
-        n.contains('margarine') ||
-        n.contains('dressing')) {
-      return 'Oils';
-    }
-    if (n.contains('egg') ||
-        n.contains('yogurt') ||
-        n.contains('milk') ||
-        n.contains('cheese') ||
-        n.contains('cream') ||
-        n.contains('feta')) {
-      return 'Dairy';
-    }
-    if (n.contains('chicken') ||
-        n.contains('beef') ||
-        n.contains('turkey') ||
-        n.contains('pork') ||
-        n.contains('lamb') ||
-        n.contains('steak') ||
-        n.contains('kebab') ||
-        n.contains('shawarma') ||
-        n.contains('meat')) {
-      return 'Protein';
-    }
-    if (n.contains('salmon') ||
-        n.contains('tuna') ||
-        n.contains('fish') ||
-        n.contains('shrimp') ||
-        n.contains('seafood')) {
-      return 'Seafood';
-    }
-    if (n.contains('lentil') ||
-        n.contains('chickpea') ||
-        n.contains('bean') ||
-        n.contains('tofu') ||
-        n.contains('tempeh') ||
-        n.contains('hummus')) {
-      return 'Protein';
-    }
-    if (n.contains('rice') ||
-        n.contains('oat') ||
-        n.contains('quinoa') ||
-        n.contains('bread') ||
-        n.contains('toast') ||
-        n.contains('pasta') ||
-        n.contains('couscous') ||
-        n.contains('flour') ||
-        n.contains('tortilla') ||
-        n.contains('wrap')) {
-      return 'Grains';
-    }
-    if (n.contains('apple') ||
-        n.contains('banana') ||
-        n.contains('berry') ||
-        n.contains('berries') ||
-        n.contains('orange') ||
-        n.contains('lemon') ||
-        n.contains('fruit') ||
-        n.contains('avocado')) {
-      return 'Produce';
-    }
-    if (n.contains('spinach') ||
-        n.contains('greens') ||
-        n.contains('lettuce') ||
-        n.contains('tomato') ||
-        n.contains('cucumber') ||
-        n.contains('carrot') ||
-        n.contains('broccoli') ||
-        n.contains('onion') ||
-        n.contains('garlic') ||
-        n.contains('pepper') ||
-        n.contains('herb') ||
-        n.contains('salad') ||
-        n.contains('vegetable') ||
-        n.contains('veggie')) {
-      return 'Produce';
-    }
-    return 'Other';
-  }
-
+  // Simple category guessing helper (delegates to the pure, testable one).
+  String _guessCategory(String name) => guessGroceryCategory(name);
   String _localizedCategory(String category) {
     final map = switch (_languageCode) {
       'ar' => {
@@ -1182,33 +1030,9 @@ class PlannerProvider with ChangeNotifier {
     );
   }
 
-  List<double> _mealSplits(int mealsPerDay) {
-    switch (mealsPerDay) {
-      case 2:
-        return const [0.44, 0.56];
-      case 4:
-        return const [0.25, 0.12, 0.35, 0.28];
-      case 5:
-        return const [0.22, 0.10, 0.30, 0.10, 0.28];
-      case 3:
-      default:
-        return const [0.28, 0.38, 0.34];
-    }
-  }
+  List<double> _mealSplits(int mealsPerDay) => mealSplits(mealsPerDay);
 
-  List<String> _mealTypes(int mealsPerDay) {
-    switch (mealsPerDay) {
-      case 2:
-        return const ['Breakfast', 'Dinner'];
-      case 4:
-        return const ['Breakfast', 'Snack', 'Lunch', 'Dinner'];
-      case 5:
-        return const ['Breakfast', 'Snack', 'Lunch', 'Snack', 'Dinner'];
-      case 3:
-      default:
-        return const ['Breakfast', 'Lunch', 'Dinner'];
-    }
-  }
+  List<String> _mealTypes(int mealsPerDay) => mealTypes(mealsPerDay);
 
   List<(String, List<String>, String, int)> _fallbackMealOptions(
     String restriction,
@@ -2007,7 +1831,7 @@ class PlannerProvider with ChangeNotifier {
 
   bool get canRegenerate {
     const maxRegenPerWeek = 3;
-    return _UserSettings.isPro && _regenCountThisWeek < maxRegenPerWeek;
+    return _userSettings.isPro && _regenCountThisWeek < maxRegenPerWeek;
   }
 
   Future<void> toggleGroceryItem(String id) async {

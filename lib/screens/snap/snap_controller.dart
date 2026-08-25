@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../data/services/gemini_service.dart';
 import '../../data/services/barcode_service.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/resilience/app_failure.dart';
 import '../../core/resilience/retry_policy.dart';
 import '../../core/resilience/safe_async.dart';
 import '../../core/resilience/timeout_policy.dart';
@@ -72,7 +73,9 @@ class SnapController {
 
     try {
       await CameraService().controller?.setFlashMode(_flashMode);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Flash toggle unavailable: $e');
+    }
     onStateChanged?.call();
   }
 
@@ -82,7 +85,9 @@ class SnapController {
       if (ctrl == null || !ctrl.value.isInitialized) return;
       await ctrl.setFocusPoint(point);
       await ctrl.setExposurePoint(point);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Focus/exposure not supported here: $e');
+    }
   }
 
   Future<void> initializeCamera() async {
@@ -109,6 +114,7 @@ class SnapController {
     required BuildContext context,
     required MealLog mealProvider,
     required UserSettings settingsProvider,
+    required bool isPro,
     required ConnectivityService connectivity,
     required Function() onShowPaywall,
     required Function() onShowResult,
@@ -132,7 +138,7 @@ class SnapController {
       return;
     }
 
-    if (!ScanGateService().canScan(settingsProvider.isPro)) {
+    if (!ScanGateService().canScan(isPro)) {
       _isCapturing = false;
       onStateChanged?.call();
       onShowPaywall();
@@ -157,6 +163,9 @@ class SnapController {
         TimeoutPolicy.gallery,
       );
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
+      if (_capturedImageBytes == null) {
+        throw const UnsupportedImageException();
+      }
       if (_capturedImageBytes!.length > AppConstants.maxImageUploadBytes) {
         throw GeminiException('Image is too large to upload safely.');
       }
@@ -183,7 +192,21 @@ class SnapController {
             operationKey: 'snap:cameraScan',
             isActive: () => !_disposed,
           );
-          if (result.isFailure) throw GeminiException(result.failure!.message);
+          if (result.isFailure) {
+            final failure = result.failure!;
+            // Free-tier monthly limit hit (HTTP 402): this is the moment of
+            // highest intent — show the paywall, not a generic error.
+            if (failure.type == AppFailureType.quotaExceeded) {
+              _isAnalyzing = false;
+              if (!context.mounted) return;
+              _errorMessage = null;
+              _capturedImageBytes = null;
+              onStateChanged?.call();
+              onShowPaywall();
+              return;
+            }
+            throw GeminiException(failure.message);
+          }
           _analysisResults = result.requireData;
           if (_analysisResults!.isEmpty) {
             throw GeminiException('No food detected.');
@@ -192,7 +215,7 @@ class SnapController {
         }
 
         if (_disposed || op != _operationGeneration) return;
-        await _recordFreeScanIfNeeded(settingsProvider);
+        await _recordFreeScanIfNeeded(isPro);
         _isAnalyzing = false;
         onStateChanged?.call();
         onShowResult();
@@ -204,6 +227,14 @@ class SnapController {
         onStateChanged?.call();
         onShowManualInput();
       }
+    } on UnsupportedImageException {
+      _isCapturing = false;
+      _isAnalyzing = false;
+      if (!context.mounted) return;
+      _errorMessage = AppLocalizations.of(context)!.error_image_unsupported;
+      _capturedImageBytes = null;
+      onStateChanged?.call();
+      onShowManualInput();
     } catch (e) {
       _isCapturing = false;
       _isAnalyzing = false;
@@ -219,6 +250,7 @@ class SnapController {
     required BuildContext context,
     required MealLog mealProvider,
     required UserSettings settingsProvider,
+    required bool isPro,
     required ConnectivityService connectivity,
     required Function() onShowPaywall,
     required Function() onShowResult,
@@ -237,7 +269,7 @@ class SnapController {
       return;
     }
 
-    if (!ScanGateService().canScan(settingsProvider.isPro)) {
+    if (!ScanGateService().canScan(isPro)) {
       onShowPaywall();
       return;
     }
@@ -259,6 +291,9 @@ class SnapController {
       );
 
       _capturedImageBytes = await ImageUtils.compressImageBytesAsync(bytes);
+      if (_capturedImageBytes == null) {
+        throw const UnsupportedImageException();
+      }
       if (_capturedImageBytes!.length > AppConstants.maxImageUploadBytes) {
         throw GeminiException('Image is too large to upload safely.');
       }
@@ -280,12 +315,24 @@ class SnapController {
           operationKey: 'snap:galleryScan',
           isActive: () => !_disposed && op == _operationGeneration,
         );
-        if (result.isFailure) throw GeminiException(result.failure!.message);
+        if (result.isFailure) {
+          final failure = result.failure!;
+          if (failure.type == AppFailureType.quotaExceeded) {
+            _isAnalyzing = false;
+            if (!context.mounted) return;
+            _errorMessage = null;
+            _capturedImageBytes = null;
+            onStateChanged?.call();
+            onShowPaywall();
+            return;
+          }
+          throw GeminiException(failure.message);
+        }
         _analysisResults = result.requireData;
         if (_analysisResults!.isEmpty) {
           throw GeminiException('No food detected.');
         }
-        await _recordFreeScanIfNeeded(settingsProvider);
+        await _recordFreeScanIfNeeded(isPro);
         _isAnalyzing = false;
         onStateChanged?.call();
         onShowResult();
@@ -297,6 +344,13 @@ class SnapController {
         onStateChanged?.call();
         onShowManualInput();
       }
+    } on UnsupportedImageException {
+      _isAnalyzing = false;
+      if (!context.mounted) return;
+      _errorMessage = AppLocalizations.of(context)!.error_image_unsupported;
+      _capturedImageBytes = null;
+      onStateChanged?.call();
+      onShowManualInput();
     } catch (e) {
       _isAnalyzing = false;
       if (!context.mounted) return;
@@ -369,10 +423,8 @@ class SnapController {
     }
   }
 
-  Future<void> _recordFreeScanIfNeeded(
-    UserSettings settingsProvider,
-  ) async {
-    if (!settingsProvider.isPro) {
+  Future<void> _recordFreeScanIfNeeded(bool isPro) async {
+    if (!isPro) {
       await ScanGateService().incrementScanCount();
     }
   }

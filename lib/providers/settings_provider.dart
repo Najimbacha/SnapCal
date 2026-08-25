@@ -54,7 +54,9 @@ class Settings extends _$Settings {
     ref.onDispose(() => _settingsSubscription?.cancel());
 
     AppLifecycleService().addListener(_onLifecycleChanged);
-    ref.onDispose(() => AppLifecycleService().removeListener(_onLifecycleChanged));
+    ref.onDispose(
+      () => AppLifecycleService().removeListener(_onLifecycleChanged),
+    );
 
     updateLastOpenedDate();
     _syncNotifications(settings);
@@ -81,6 +83,13 @@ class Settings extends _$Settings {
   UserSettings? get _data => state.valueOrNull;
 
   // ── Internal helpers ──
+
+  /// Pro status including the debug override (debug builds only).
+  bool _effectiveIsPro(UserSettings s) {
+    if (s.isPro) return true;
+    if (kDebugMode) return ref.read(debugProOverrideProvider);
+    return false;
+  }
 
   Future<void> _updateSettings(UserSettings updated) async {
     state = AsyncData(updated);
@@ -157,7 +166,8 @@ class Settings extends _$Settings {
     final time = _getDailyMotivationTime(s);
     final l10n = _localizationsFor(s.languageCode ?? 'en');
     final today = app_date.DateUtils.getTodayString();
-    final hasEngagedToday = s.lastOpenedDate == today || s.lastLoggedDate == today;
+    final hasEngagedToday =
+        s.lastOpenedDate == today || s.lastLoggedDate == today;
     await _notificationService.scheduleDailyMotivation(
       messages: _getDailyMotivationMessages(s.languageCode ?? 'en'),
       channelName: l10n.notif_daily_motivation_channel,
@@ -173,48 +183,93 @@ class Settings extends _$Settings {
     if (parts.length != 2) return const MapEntry(8, 30);
     final breakfastHour = int.tryParse(parts[0]);
     final breakfastMinute = int.tryParse(parts[1]);
-    if (breakfastHour == null || breakfastMinute == null || breakfastHour < 0 || breakfastHour > 23 || breakfastMinute < 0 || breakfastMinute > 59) {
+    if (breakfastHour == null ||
+        breakfastMinute == null ||
+        breakfastHour < 0 ||
+        breakfastHour > 23 ||
+        breakfastMinute < 0 ||
+        breakfastMinute > 59) {
       return const MapEntry(8, 30);
     }
     const earliestMinuteOfDay = 8 * 60;
     const latestMinuteOfDay = 20 * 60;
-    final preferred = (breakfastHour * 60 + breakfastMinute - 30).clamp(earliestMinuteOfDay, latestMinuteOfDay);
+    final preferred = (breakfastHour * 60 + breakfastMinute - 30).clamp(
+      earliestMinuteOfDay,
+      latestMinuteOfDay,
+    );
     return MapEntry(preferred ~/ 60, preferred % 60);
   }
 
   List<MotivationNotificationCopy> _getDailyMotivationMessages(String lang) {
     final l10n = _localizationsFor(lang);
     return [
-      MotivationNotificationCopy(title: l10n.notif_motivation_1_title, body: l10n.notif_motivation_1_body),
-      MotivationNotificationCopy(title: l10n.notif_motivation_2_title, body: l10n.notif_motivation_2_body),
-      MotivationNotificationCopy(title: l10n.notif_motivation_3_title, body: l10n.notif_motivation_3_body),
-      MotivationNotificationCopy(title: l10n.notif_motivation_4_title, body: l10n.notif_motivation_4_body),
-      MotivationNotificationCopy(title: l10n.notif_motivation_5_title, body: l10n.notif_motivation_5_body),
-      MotivationNotificationCopy(title: l10n.notif_motivation_6_title, body: l10n.notif_motivation_6_body),
-      MotivationNotificationCopy(title: l10n.notif_motivation_7_title, body: l10n.notif_motivation_7_body),
-      MotivationNotificationCopy(title: l10n.notif_motivation_8_title, body: l10n.notif_motivation_8_body),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_1_title,
+        body: l10n.notif_motivation_1_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_2_title,
+        body: l10n.notif_motivation_2_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_3_title,
+        body: l10n.notif_motivation_3_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_4_title,
+        body: l10n.notif_motivation_4_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_5_title,
+        body: l10n.notif_motivation_5_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_6_title,
+        body: l10n.notif_motivation_6_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_7_title,
+        body: l10n.notif_motivation_7_body,
+      ),
+      MotivationNotificationCopy(
+        title: l10n.notif_motivation_8_title,
+        body: l10n.notif_motivation_8_body,
+      ),
     ];
   }
 
   String _getNotifString(String lang, String key) {
     final l10n = _localizationsFor(lang);
     switch (key) {
-      case 'breakfast_title': return l10n.notif_breakfast_title;
-      case 'breakfast_body': return l10n.notif_breakfast_body;
-      case 'lunch_title': return l10n.notif_lunch_title;
-      case 'lunch_body': return l10n.notif_lunch_body;
-      case 'dinner_title': return l10n.notif_dinner_title;
-      case 'dinner_body': return l10n.notif_dinner_body;
-      case 'goal_calories_title': return l10n.notif_goal_calories_title;
-      case 'goal_calories_body': return l10n.notif_goal_calories_body('{goal}');
-      case 'goal_protein_title': return l10n.notif_goal_protein_title;
-      case 'goal_protein_body': return l10n.notif_goal_protein_body('{goal}');
-      default: return '';
+      case 'breakfast_title':
+        return l10n.notif_breakfast_title;
+      case 'breakfast_body':
+        return l10n.notif_breakfast_body;
+      case 'lunch_title':
+        return l10n.notif_lunch_title;
+      case 'lunch_body':
+        return l10n.notif_lunch_body;
+      case 'dinner_title':
+        return l10n.notif_dinner_title;
+      case 'dinner_body':
+        return l10n.notif_dinner_body;
+      case 'goal_calories_title':
+        return l10n.notif_goal_calories_title;
+      case 'goal_calories_body':
+        return l10n.notif_goal_calories_body('{goal}');
+      case 'goal_protein_title':
+        return l10n.notif_goal_protein_title;
+      case 'goal_protein_body':
+        return l10n.notif_goal_protein_body('{goal}');
+      default:
+        return '';
     }
   }
 
   String _supportedLanguage(String lang) {
-    return AppLocalizations.supportedLocales.any((l) => l.languageCode == lang) ? lang : 'en';
+    return AppLocalizations.supportedLocales.any((l) => l.languageCode == lang)
+        ? lang
+        : 'en';
   }
 
   AppLocalizations _localizationsFor(String lang) {
@@ -267,7 +322,9 @@ class Settings extends _$Settings {
         '${ConfigService().backendProxyUrl}/api/notifications/food-reminder/register',
         data: {'fcmToken': fcm.cachedToken, 'enabled': enabled},
       );
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('❌ Settings: Reminder registration failed: $e');
+    }
   }
 
   Future<void> triggerCalorieGoalAlert(int goal) async {
@@ -275,9 +332,17 @@ class Settings extends _$Settings {
     if (s == null || !s.notificationsEnabled || !s.goalAlertsEnabled) return;
     final lang = s.languageCode ?? 'en';
     final title = _getNotifString(lang, 'goal_calories_title');
-    final body = _getNotifString(lang, 'goal_calories_body').replaceAll('{goal}', goal.toString());
+    final body = _getNotifString(
+      lang,
+      'goal_calories_body',
+    ).replaceAll('{goal}', goal.toString());
     final l10n = _localizationsFor(lang);
-    await _notificationService.showGoalAlert(title: title, body: body, channelName: l10n.notif_goal_alerts_channel, channelDescription: l10n.notif_goal_alerts_channel_description);
+    await _notificationService.showGoalAlert(
+      title: title,
+      body: body,
+      channelName: l10n.notif_goal_alerts_channel,
+      channelDescription: l10n.notif_goal_alerts_channel_description,
+    );
   }
 
   Future<void> triggerProteinGoalAlert(int goal) async {
@@ -285,26 +350,46 @@ class Settings extends _$Settings {
     if (s == null || !s.notificationsEnabled || !s.goalAlertsEnabled) return;
     final lang = s.languageCode ?? 'en';
     final title = _getNotifString(lang, 'goal_protein_title');
-    final body = _getNotifString(lang, 'goal_protein_body').replaceAll('{goal}', goal.toString());
+    final body = _getNotifString(
+      lang,
+      'goal_protein_body',
+    ).replaceAll('{goal}', goal.toString());
     final l10n = _localizationsFor(lang);
-    await _notificationService.showGoalAlert(title: title, body: body, channelName: l10n.notif_goal_alerts_channel, channelDescription: l10n.notif_goal_alerts_channel_description);
+    await _notificationService.showGoalAlert(
+      title: title,
+      body: body,
+      channelName: l10n.notif_goal_alerts_channel,
+      channelDescription: l10n.notif_goal_alerts_channel_description,
+    );
   }
 
-  Future<void> updateReminderTimes({String? breakfast, String? lunch, String? dinner}) async {
+  Future<void> updateReminderTimes({
+    String? breakfast,
+    String? lunch,
+    String? dinner,
+  }) async {
     final current = _data ?? UserSettings.defaults();
-    await _updateSettings(current.copyWith(breakfastTime: breakfast, lunchTime: lunch, dinnerTime: dinner));
+    await _updateSettings(
+      current.copyWith(
+        breakfastTime: breakfast,
+        lunchTime: lunch,
+        dinnerTime: dinner,
+      ),
+    );
   }
 
   bool canAddMeal(int currentMealCount) {
     final s = _data;
-    if (s == null || s.isPro) return true;
+    if (s == null) return true;
+    if (_effectiveIsPro(s)) return true;
     return ScanGateService().canScan(false);
   }
 
   int getRemainingFreeMeals(int currentMealCount) {
     final s = _data;
-    if (s == null || s.isPro) return -1;
-    final count = ScanGateService().getTodayScanCount();
+    if (s == null) return -1;
+    if (_effectiveIsPro(s)) return -1;
+    final count = ScanGateService().getPeriodScanCount();
     return (3 - count).clamp(0, 3);
   }
 
@@ -328,32 +413,81 @@ class Settings extends _$Settings {
     await _updateSettings(current.copyWith(dailyFatGoal: goal));
   }
 
-  Future<void> updateBodyProfile({double? height, double? targetWeight, int? age, String? gender, String? activityLevel, double? currentWeightKg, bool recalculateNutrition = true}) async {
+  Future<void> updateBodyProfile({
+    double? height,
+    double? targetWeight,
+    int? age,
+    String? gender,
+    String? activityLevel,
+    double? currentWeightKg,
+    bool recalculateNutrition = true,
+  }) async {
     final current = _data ?? UserSettings.defaults();
-    final updated = current.copyWith(height: height, targetWeight: targetWeight, age: age, gender: gender, activityLevel: activityLevel);
+    final updated = current.copyWith(
+      height: height,
+      targetWeight: targetWeight,
+      age: age,
+      gender: gender,
+      activityLevel: activityLevel,
+    );
     await _updateSettings(updated);
     if (recalculateNutrition) {
       await _recalculatePlanIfProfileComplete(currentWeightKg);
     }
   }
 
-  Future<void> updateCoachProfile({double? height, double? targetWeight, int? age, String? gender, String? activityLevel, String? dietaryRestriction, String? foodDislikes, String? medicalNotes, double? startingWeight, String? goalMode, bool recalculateNutrition = true}) async {
+  Future<void> updateCoachProfile({
+    double? height,
+    double? targetWeight,
+    int? age,
+    String? gender,
+    String? activityLevel,
+    String? dietaryRestriction,
+    String? foodDislikes,
+    String? medicalNotes,
+    double? startingWeight,
+    String? goalMode,
+    bool recalculateNutrition = true,
+  }) async {
     final current = _data ?? UserSettings.defaults();
-    final updated = current.copyWith(height: height, targetWeight: targetWeight, age: age, gender: gender, activityLevel: activityLevel, dietaryRestriction: dietaryRestriction, foodDislikes: foodDislikes, medicalNotes: medicalNotes, startingWeight: startingWeight, goalMode: goalMode);
+    final updated = current.copyWith(
+      height: height,
+      targetWeight: targetWeight,
+      age: age,
+      gender: gender,
+      activityLevel: activityLevel,
+      dietaryRestriction: dietaryRestriction,
+      foodDislikes: foodDislikes,
+      medicalNotes: medicalNotes,
+      startingWeight: startingWeight,
+      goalMode: goalMode,
+    );
     await _updateSettings(updated);
     if (recalculateNutrition) {
       await _recalculatePlanIfProfileComplete(startingWeight);
     }
   }
 
-  Future<void> updatePlannerPreferences({int? mealsPerDay, String? dietaryRestriction, String? cuisinePreference}) async {
+  Future<void> updatePlannerPreferences({
+    int? mealsPerDay,
+    String? dietaryRestriction,
+    String? cuisinePreference,
+  }) async {
     final current = _data ?? UserSettings.defaults();
-    await _updateSettings(current.copyWith(mealsPerDay: mealsPerDay, dietaryRestriction: dietaryRestriction, cuisinePreference: cuisinePreference));
+    await _updateSettings(
+      current.copyWith(
+        mealsPerDay: mealsPerDay,
+        dietaryRestriction: dietaryRestriction,
+        cuisinePreference: cuisinePreference,
+      ),
+    );
   }
 
   Future<void> updateUnits({String? weightUnit, String? heightUnit}) async {
     final current = _data ?? UserSettings.defaults();
-    await _updateSettings(current.copyWith(weightUnit: weightUnit, heightUnit: heightUnit));
+    await _updateSettings(
+      current.copyWith(weightUnit: weightUnit, heightUnit: heightUnit),
+    );
   }
 
   Future<String> exportUserData() async {
@@ -362,18 +496,31 @@ class Settings extends _$Settings {
     return '${l10n.settings_export_data}: ${s.dailyCalorieGoal} kcal';
   }
 
-  Future<void> completeOnboarding({required OnboardingProfileInput profile, required OnboardingRecommendation recommendation}) async {
+  Future<void> completeOnboarding({
+    required OnboardingProfileInput profile,
+    required OnboardingRecommendation recommendation,
+  }) async {
     final current = _data ?? UserSettings.defaults();
     final updated = current.copyWith(
-      dailyCalorieGoal: recommendation.dailyCalories, dailyProteinGoal: recommendation.proteinGrams,
-      dailyCarbGoal: recommendation.carbGrams, dailyFatGoal: recommendation.fatGrams,
-      age: profile.age, gender: profile.gender, activityLevel: profile.activityLevel,
-      goalTimelineMonths: profile.timelineMonths, startingWeight: profile.currentWeightKg,
-      height: profile.heightCm, targetWeight: profile.goalWeightKg,
-      weightUnit: profile.weightUnit, heightUnit: profile.heightUnit,
-      goalMode: recommendation.goalMode, weeklyRateKg: recommendation.weeklyRateKg,
-      recommendationInsight: recommendation.insight, recommendationTip: recommendation.tip,
-      recommendationSafetyNote: recommendation.safetyNote, onboardingComplete: true,
+      dailyCalorieGoal: recommendation.dailyCalories,
+      dailyProteinGoal: recommendation.proteinGrams,
+      dailyCarbGoal: recommendation.carbGrams,
+      dailyFatGoal: recommendation.fatGrams,
+      age: profile.age,
+      gender: profile.gender,
+      activityLevel: profile.activityLevel,
+      goalTimelineMonths: profile.timelineMonths,
+      startingWeight: profile.currentWeightKg,
+      height: profile.heightCm,
+      targetWeight: profile.goalWeightKg,
+      weightUnit: profile.weightUnit,
+      heightUnit: profile.heightUnit,
+      goalMode: recommendation.goalMode,
+      weeklyRateKg: recommendation.weeklyRateKg,
+      recommendationInsight: recommendation.insight,
+      recommendationTip: recommendation.tip,
+      recommendationSafetyNote: recommendation.safetyNote,
+      onboardingComplete: true,
     );
     await _updateSettings(updated);
   }
@@ -391,7 +538,9 @@ class Settings extends _$Settings {
     final lastLogged = s.lastLoggedDate;
 
     if (lastLogged == null) {
-      await _updateSettings(s.copyWith(currentStreak: 1, lastLoggedDate: logDate));
+      await _updateSettings(
+        s.copyWith(currentStreak: 1, lastLoggedDate: logDate),
+      );
     } else if (lastLogged == logDate) {
       return;
     } else {
@@ -399,12 +548,21 @@ class Settings extends _$Settings {
         final lastDate = DateTime.parse(lastLogged);
         final currentDate = DateTime.parse(logDate);
         if (currentDate.isBefore(lastDate)) return;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('⚠️ Settings: Streak date parse failed: $e');
+      }
       final dayBeforeLog = app_date.DateUtils.getPreviousDay(logDate);
       if (lastLogged == dayBeforeLog) {
-        await _updateSettings(s.copyWith(currentStreak: s.currentStreak + 1, lastLoggedDate: logDate));
+        await _updateSettings(
+          s.copyWith(
+            currentStreak: s.currentStreak + 1,
+            lastLoggedDate: logDate,
+          ),
+        );
       } else {
-        await _updateSettings(s.copyWith(currentStreak: 1, lastLoggedDate: logDate));
+        await _updateSettings(
+          s.copyWith(currentStreak: 1, lastLoggedDate: logDate),
+        );
       }
     }
   }
@@ -418,37 +576,65 @@ class Settings extends _$Settings {
     }
   }
 
-  Future<void> adjustStreakOnDeletion({required String dateOfDeletedMeal, required bool wasLastMealOfDay}) async {
+  Future<void> adjustStreakOnDeletion({
+    required String dateOfDeletedMeal,
+    required bool wasLastMealOfDay,
+  }) async {
     if (!wasLastMealOfDay) return;
     final s = _data;
     if (s == null) return;
     if (s.lastLoggedDate == dateOfDeletedMeal) {
       final newStreak = (s.currentStreak - 1).clamp(0, 9999);
       final previousDay = app_date.DateUtils.getPreviousDay(dateOfDeletedMeal);
-      await _updateSettings(s.copyWith(currentStreak: newStreak, lastLoggedDate: newStreak == 0 ? null : previousDay));
+      await _updateSettings(
+        s.copyWith(
+          currentStreak: newStreak,
+          lastLoggedDate: newStreak == 0 ? null : previousDay,
+        ),
+      );
     }
   }
 
   Future<bool> recalculatePlan({required double currentWeightKg}) async {
     final s = _data;
     if (s == null) return false;
-    if (s.age == null || s.gender == null || s.height == null || s.targetWeight == null) return false;
+    if (s.age == null ||
+        s.gender == null ||
+        s.height == null ||
+        s.targetWeight == null) {
+      return false;
+    }
     try {
       final service = CalorieOnboardingService();
       final input = OnboardingProfileInput(
-        age: s.age!, gender: s.gender!, heightCm: s.height!,
-        currentWeightKg: currentWeightKg, goalWeightKg: s.targetWeight!,
-        timelineMonths: s.goalTimelineMonths ?? 6, activityLevel: s.activityLevel ?? 'active',
-        weightUnit: s.weightUnit ?? 'kg', heightUnit: s.heightUnit ?? 'cm',
+        age: s.age!,
+        gender: s.gender!,
+        heightCm: s.height!,
+        currentWeightKg: currentWeightKg,
+        goalWeightKg: s.targetWeight!,
+        timelineMonths: s.goalTimelineMonths ?? 6,
+        activityLevel: s.activityLevel ?? 'active',
+        weightUnit: s.weightUnit ?? 'kg',
+        heightUnit: s.heightUnit ?? 'cm',
       );
-      final recommendation = await service.buildRecommendation(input, languageCode: s.languageCode ?? 'en');
-      await _updateSettings(s.copyWith(
-        dailyCalorieGoal: recommendation.dailyCalories, dailyProteinGoal: recommendation.proteinGrams,
-        dailyCarbGoal: recommendation.carbGrams, dailyFatGoal: recommendation.fatGrams,
-        startingWeight: currentWeightKg, goalMode: recommendation.goalMode,
-        weeklyRateKg: recommendation.weeklyRateKg, recommendationInsight: recommendation.insight,
-        recommendationTip: recommendation.tip, recommendationSafetyNote: recommendation.safetyNote,
-      ));
+      final recommendation = await service.buildRecommendation(
+        input,
+        languageCode: s.languageCode ?? 'en',
+      );
+      await _updateSettings(
+        s.copyWith(
+          dailyCalorieGoal: recommendation.dailyCalories,
+          dailyProteinGoal: recommendation.proteinGrams,
+          dailyCarbGoal: recommendation.carbGrams,
+          dailyFatGoal: recommendation.fatGrams,
+          startingWeight: currentWeightKg,
+          goalMode: recommendation.goalMode,
+          weeklyRateKg: recommendation.weeklyRateKg,
+          recommendationInsight: recommendation.insight,
+          recommendationTip: recommendation.tip,
+          recommendationSafetyNote: recommendation.safetyNote,
+        ),
+      );
       return true;
     } catch (e) {
       debugPrint('❌ Settings: Recalculation failed: $e');
@@ -456,7 +642,9 @@ class Settings extends _$Settings {
     }
   }
 
-  Future<bool> _recalculatePlanIfProfileComplete(double? preferredCurrentWeightKg) async {
+  Future<bool> _recalculatePlanIfProfileComplete(
+    double? preferredCurrentWeightKg,
+  ) async {
     final s = _data;
     if (s == null) return false;
     final currentWeightKg = preferredCurrentWeightKg ?? s.startingWeight;

@@ -94,6 +94,27 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get home_start_walking => 'Start walking';
+
+  @override
+  String home_estimated_kcal(int count) {
+    return '$count estimated kcal';
+  }
+
+  @override
+  String home_active_kcal(int count) {
+    return '$count active kcal';
+  }
+
+  @override
+  String get water_tap_to_open => 'Tap to open';
+
+  @override
+  String water_goal_progress(int goal) {
+    return 'of $goal ml';
+  }
+
+  @override
   String get home_recent_meals => 'Recent Meals';
 
   @override
@@ -405,6 +426,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get error_camera => 'Camera unavailable';
+
+  @override
+  String get error_image_unsupported => 'This image format is not supported';
 
   @override
   String get error_generic => 'Something went wrong';
@@ -812,6 +836,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_about => 'About';
+
+  @override
+  String get about_email_us => 'Email Us';
+
+  @override
+  String get about_instagram_desc => 'Tips, recipes & community';
+
+  @override
+  String get about_facebook_desc => 'Follow our page';
 
   @override
   String get settings_about_sub => 'Terms, privacy, and app info';
@@ -2748,6 +2781,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_status_off => 'Tracking off';
 
   @override
+  String get settings_status_connected => 'Connected';
+
+  @override
+  String get settings_status_not_connected => 'Not connected';
+
+  @override
   String get settings_gender_male => 'Male';
 
   @override
@@ -3612,4 +3651,163 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get onboarding_error_target_higher =>
       'Target must be higher than current weight';
+
+  @override
+  String get result_set_weight => 'Set weight';
+
+  @override
+  String get result_cancel => 'Cancel';
+
+  @override
+  String get result_save => 'Save';
+
+  @override
+  String get result_tap_to_adjust => 'Tap an item to adjust its portion';
+
+  @override
+  String get result_retake => 'Retake';
+
+  @override
+  String result_scans_left(int remaining, int total) {
+    return '$remaining of $total scans left today';
+  }
+
+  @override
+  String get result_added => 'Added';
+
+  @override
+  String get result_save_log => 'Save log';
+
+  @override
+  String get result_unlock_title => 'Unlock deeper insights';
+
+  @override
+  String get result_unlock_subtitle =>
+      'Health score, AI coaching and meal insights';
+
+  @override
+  String get result_no_items_detected =>
+      'No items detected — add one below or retake the photo';
+
+  @override
+  String get result_confidence_estimated => 'Estimated';
+
+  @override
+  String get result_confidence_low => 'Low';
+
+  @override
+  String get result_health_excellent => 'Excellent';
+
+  @override
+  String get result_health_good => 'Good';
+
+  @override
+  String get result_health_okay => 'Okay';
+
+  @override
+  String get result_health_poor => 'Poor';
+
+  @override
+  String get result_health_bad => 'Bad';
+
+  @override
+  String get result_no_items => 'No items';
+
+  @override
+  String result_foods_detected(int count) {
+    return '$count foods detected';
+  }
+
+  @override
+  String get result_food_item => 'Food item';
+
+  @override
+  String result_removed(String name) {
+    return 'Removed $name';
+  }
+
+  @override
+  String get result_undo => 'Undo';
+
+  @override
+  String get result_rename => 'Rename';
+
+  @override
+  String get result_food_name => 'Food name';
+
+  @override
+  String get result_discard_title => 'Discard scan?';
+
+  @override
+  String get result_discard_body =>
+      'Your scanned items haven’t been logged yet.';
+
+  @override
+  String get result_keep_editing => 'Keep editing';
+
+  @override
+  String get result_discard => 'Discard';
+
+  @override
+  String get result_not_matched => 'Not matched · tap to fix';
+
+  @override
+  String get result_not_in_database => 'Not in database';
+
+  @override
+  String get result_assign_food => 'Assign food';
+
+  @override
+  String get macro_no_meals_yet => 'No meals logged yet';
+
+  @override
+  String get macro_targets_cta => 'Daily targets and goal tracking';
+
+  @override
+  String get macro_pro_label => 'Pro';
+
+  @override
+  String result_add_to_log_kcal(String calories) {
+    return 'Add to log · $calories kcal';
+  }
+
+  @override
+  String planner_teaser_locked_summary(int count, String kcal) {
+    return '+$count more meals · $kcal kcal planned';
+  }
+
+  @override
+  String get planner_teaser_title => 'Unlock full meal plans';
+
+  @override
+  String get planner_teaser_subtitle =>
+      'Get your complete daily schedule, personalised to your goals';
+
+  @override
+  String get planner_teaser_cta => 'Unlock with SnapCal Pro';
+
+  @override
+  String paywall_disclosure_trial_year(int days, String price) {
+    return 'Free for $days days, then $price per year. Cancel anytime before then.';
+  }
+
+  @override
+  String paywall_disclosure_trial_month(int days, String price) {
+    return 'Free for $days days, then $price per month. Cancel anytime before then.';
+  }
+
+  @override
+  String paywall_disclosure_year(String price) {
+    return '$price per year. Renews automatically until you cancel.';
+  }
+
+  @override
+  String paywall_disclosure_month(String price) {
+    return '$price per month. Renews automatically until you cancel.';
+  }
+
+  @override
+  String paywall_disclosure_lifetime(String price) {
+    return '$price, one-time payment. No subscription.';
+  }
 }

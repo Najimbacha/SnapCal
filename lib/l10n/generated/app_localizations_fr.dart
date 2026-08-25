@@ -94,6 +94,27 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get home_start_walking => 'Commencez à marcher';
+
+  @override
+  String home_estimated_kcal(int count) {
+    return '$count kcal estimées';
+  }
+
+  @override
+  String home_active_kcal(int count) {
+    return '$count kcal actives';
+  }
+
+  @override
+  String get water_tap_to_open => 'Appuyez pour ouvrir';
+
+  @override
+  String water_goal_progress(int goal) {
+    return 'sur $goal ml';
+  }
+
+  @override
   String get home_recent_meals => 'Repas récents';
 
   @override
@@ -409,6 +430,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get error_camera => 'Caméra indisponible';
+
+  @override
+  String get error_image_unsupported =>
+      'Ce format d\'image n\'est pas pris en charge';
 
   @override
   String get error_generic => 'Un problème est survenu';
@@ -822,6 +847,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settings_about => 'À propos';
+
+  @override
+  String get about_email_us => 'Écrivez-nous';
+
+  @override
+  String get about_instagram_desc => 'Astuces, recettes et communauté';
+
+  @override
+  String get about_facebook_desc => 'Suivez notre page';
 
   @override
   String get settings_about_sub => 'Conditions, confidentialité et infos';
@@ -1630,11 +1664,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settings_daily_motivation => 'Motivation quotidienne';
 
   @override
-  String get settings_food_reminders => 'Food scan reminders';
+  String get settings_food_reminders => 'Rappels de scan des aliments';
 
   @override
   String get settings_food_reminders_subtitle =>
-      'Get reminded to scan your meals';
+      'Recevez des rappels pour scanner vos repas';
 
   @override
   String get settings_language => 'Langue';
@@ -2796,6 +2830,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settings_status_off => 'Suivi désactivé';
 
   @override
+  String get settings_status_connected => 'Connecté';
+
+  @override
+  String get settings_status_not_connected => 'Non connecté';
+
+  @override
   String get settings_gender_male => 'Homme';
 
   @override
@@ -3681,4 +3721,164 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get onboarding_error_target_higher =>
       'L\'objectif doit être supérieur au poids actuel';
+
+  @override
+  String get result_set_weight => 'Définir le poids';
+
+  @override
+  String get result_cancel => 'Annuler';
+
+  @override
+  String get result_save => 'Enregistrer';
+
+  @override
+  String get result_tap_to_adjust =>
+      'Touchez un aliment pour ajuster la portion';
+
+  @override
+  String get result_retake => 'Reprendre';
+
+  @override
+  String result_scans_left(int remaining, int total) {
+    return 'Il vous reste $remaining scans sur $total aujourd’hui';
+  }
+
+  @override
+  String get result_added => 'Ajouté';
+
+  @override
+  String get result_save_log => 'Enregistrer';
+
+  @override
+  String get result_unlock_title => 'Débloquez des analyses plus poussées';
+
+  @override
+  String get result_unlock_subtitle =>
+      'Score santé, coaching IA et analyses de repas';
+
+  @override
+  String get result_no_items_detected =>
+      'Aucun aliment détecté — ajoutez-en un ci-dessous ou reprenez la photo';
+
+  @override
+  String get result_confidence_estimated => 'Estimé';
+
+  @override
+  String get result_confidence_low => 'Faible';
+
+  @override
+  String get result_health_excellent => 'Excellent';
+
+  @override
+  String get result_health_good => 'Bon';
+
+  @override
+  String get result_health_okay => 'Correct';
+
+  @override
+  String get result_health_poor => 'Médiocre';
+
+  @override
+  String get result_health_bad => 'Mauvais';
+
+  @override
+  String get result_no_items => 'Aucun aliment';
+
+  @override
+  String result_foods_detected(int count) {
+    return '$count aliments détectés';
+  }
+
+  @override
+  String get result_food_item => 'Aliment';
+
+  @override
+  String result_removed(String name) {
+    return '$name supprimé';
+  }
+
+  @override
+  String get result_undo => 'Annuler';
+
+  @override
+  String get result_rename => 'Renommer';
+
+  @override
+  String get result_food_name => 'Nom de l’aliment';
+
+  @override
+  String get result_discard_title => 'Abandonner le scan ?';
+
+  @override
+  String get result_discard_body =>
+      'Vos aliments scannés n’ont pas encore été enregistrés.';
+
+  @override
+  String get result_keep_editing => 'Continuer';
+
+  @override
+  String get result_discard => 'Abandonner';
+
+  @override
+  String get result_not_matched => 'Non reconnu · touchez pour corriger';
+
+  @override
+  String get result_not_in_database => 'Absent de la base de données';
+
+  @override
+  String get result_assign_food => 'Associer un aliment';
+
+  @override
+  String get macro_no_meals_yet => 'Aucun repas enregistré';
+
+  @override
+  String get macro_targets_cta => 'Objectifs quotidiens et suivi';
+
+  @override
+  String get macro_pro_label => 'Pro';
+
+  @override
+  String result_add_to_log_kcal(String calories) {
+    return 'Ajouter au journal · $calories kcal';
+  }
+
+  @override
+  String planner_teaser_locked_summary(int count, String kcal) {
+    return '+$count repas de plus · $kcal kcal planifiées';
+  }
+
+  @override
+  String get planner_teaser_title => 'Débloquez les plans complets';
+
+  @override
+  String get planner_teaser_subtitle =>
+      'Obtenez votre programme quotidien complet, adapté à vos objectifs';
+
+  @override
+  String get planner_teaser_cta => 'Débloquer avec SnapCal Pro';
+
+  @override
+  String paywall_disclosure_trial_year(int days, String price) {
+    return 'Gratuit pendant $days jours, puis $price par an. Annulez avant pour éviter les frais.';
+  }
+
+  @override
+  String paywall_disclosure_trial_month(int days, String price) {
+    return 'Gratuit pendant $days jours, puis $price par mois. Annulez avant pour éviter les frais.';
+  }
+
+  @override
+  String paywall_disclosure_year(String price) {
+    return '$price par an. Renouvellement automatique jusqu’à annulation.';
+  }
+
+  @override
+  String paywall_disclosure_month(String price) {
+    return '$price par mois. Renouvellement automatique jusqu’à annulation.';
+  }
+
+  @override
+  String paywall_disclosure_lifetime(String price) {
+    return '$price, paiement unique. Sans abonnement.';
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/utils/pref_scoping.dart';
 import 'analytics_service.dart';
 import 'app_prompt_session_coordinator.dart';
 import 'subscription_service.dart';
@@ -73,6 +74,16 @@ class PromotionalPaywallService {
       'promo_paywall_total_display_count';
   static const String _lastDismissedAtKey = 'promo_paywall_last_dismissed_at';
 
+  /// All base keys, used for scoped reads/writes and session cleanup.
+  static List<String> get _allKeys => [
+    _appOpenCountKey,
+    _distinctUsageDaysKey,
+    _successfulMealLogCountKey,
+    _lastShownAtKey,
+    _totalDisplayCountKey,
+    _lastDismissedAtKey,
+  ];
+
   SharedPreferences? _prefs;
   final PromotionalPaywallSubscriptionGateway _subscriptionGateway;
   final AnalyticsService _analytics;
@@ -92,6 +103,22 @@ class PromotionalPaywallService {
     _initialized = false;
   }
 
+  /// Removes every user-scoped counter. Invoked by SessionCleanupService on
+  /// sign-out so eligibility (opens, meal logs, cooldowns) never leaks across
+  /// accounts.
+  Future<void> resetSessionState() async {
+    final prefs = await _safePrefs();
+    if (prefs == null) return;
+    final keys =
+        prefs
+            .getKeys()
+            .where((k) => _allKeys.any((base) => prefKeyBelongsTo(k, base)))
+            .toList();
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
+  }
+
   bool get promotionalPaywallShownThisSession =>
       _session.promotionalPaywallShown;
 
@@ -99,8 +126,8 @@ class PromotionalPaywallService {
     final prefs = await _safePrefs();
     if (prefs == null) return;
 
-    final current = prefs.getInt(_appOpenCountKey) ?? 0;
-    await prefs.setInt(_appOpenCountKey, current + 1);
+    final current = prefs.getInt(scopedPrefKey(_appOpenCountKey)) ?? 0;
+    await prefs.setInt(scopedPrefKey(_appOpenCountKey), current + 1);
     await _recordUsageDay(prefs);
   }
 
@@ -109,8 +136,9 @@ class PromotionalPaywallService {
     if (prefs == null) return;
 
     await _recordUsageDay(prefs);
-    final current = prefs.getInt(_successfulMealLogCountKey) ?? 0;
-    await prefs.setInt(_successfulMealLogCountKey, current + 1);
+    final current =
+        prefs.getInt(scopedPrefKey(_successfulMealLogCountKey)) ?? 0;
+    await prefs.setInt(scopedPrefKey(_successfulMealLogCountKey), current + 1);
   }
 
   Future<bool> canShowPromotionalPaywall({
@@ -125,18 +153,25 @@ class PromotionalPaywallService {
     if (!_session.canShowPromotionalPaywall) return false;
     if (_session.promotionalPaywallShown) return false;
 
-    if ((prefs.getInt(_appOpenCountKey) ?? 0) < minimumAppOpens) return false;
-    final days = prefs.getStringList(_distinctUsageDaysKey) ?? <String>[];
+    if ((prefs.getInt(scopedPrefKey(_appOpenCountKey)) ?? 0) <
+        minimumAppOpens) {
+      return false;
+    }
+    final days =
+        prefs.getStringList(scopedPrefKey(_distinctUsageDaysKey)) ?? <String>[];
     if (days.length < minimumDistinctUsageDays) return false;
-    if ((prefs.getInt(_successfulMealLogCountKey) ?? 0) <
+    if ((prefs.getInt(scopedPrefKey(_successfulMealLogCountKey)) ?? 0) <
         minimumSuccessfulMealLogs) {
       return false;
     }
-    if ((prefs.getInt(_totalDisplayCountKey) ?? 0) >= maximumTotalDisplays) {
+    if ((prefs.getInt(scopedPrefKey(_totalDisplayCountKey)) ?? 0) >=
+        maximumTotalDisplays) {
       return false;
     }
 
-    final lastShown = _readDate(prefs.getString(_lastShownAtKey));
+    final lastShown = _readDate(
+      prefs.getString(scopedPrefKey(_lastShownAtKey)),
+    );
     if (lastShown != null &&
         _clock().difference(lastShown) < promotionalCooldown) {
       return false;
@@ -158,9 +193,12 @@ class PromotionalPaywallService {
     if (prefs == null) return;
 
     _session.markPromotionalPaywallShown();
-    final count = prefs.getInt(_totalDisplayCountKey) ?? 0;
-    await prefs.setInt(_totalDisplayCountKey, count + 1);
-    await prefs.setString(_lastShownAtKey, _clock().toIso8601String());
+    final count = prefs.getInt(scopedPrefKey(_totalDisplayCountKey)) ?? 0;
+    await prefs.setInt(scopedPrefKey(_totalDisplayCountKey), count + 1);
+    await prefs.setString(
+      scopedPrefKey(_lastShownAtKey),
+      _clock().toIso8601String(),
+    );
     _analytics.logEvent('promo_paywall_shown');
   }
 
@@ -168,17 +206,21 @@ class PromotionalPaywallService {
     final prefs = await _safePrefs();
     if (prefs == null) return;
 
-    await prefs.setString(_lastDismissedAtKey, _clock().toIso8601String());
+    await prefs.setString(
+      scopedPrefKey(_lastDismissedAtKey),
+      _clock().toIso8601String(),
+    );
     _analytics.logEvent('promo_paywall_dismissed');
   }
 
   Future<void> _recordUsageDay(SharedPreferences prefs) async {
     final today = _dateKey(_clock());
-    final days = prefs.getStringList(_distinctUsageDaysKey) ?? <String>[];
+    final days =
+        prefs.getStringList(scopedPrefKey(_distinctUsageDaysKey)) ?? <String>[];
     if (!days.contains(today)) {
       days.add(today);
       days.sort();
-      await prefs.setStringList(_distinctUsageDaysKey, days);
+      await prefs.setStringList(scopedPrefKey(_distinctUsageDaysKey), days);
     }
   }
 

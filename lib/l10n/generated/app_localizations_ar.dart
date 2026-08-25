@@ -94,6 +94,27 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get home_start_walking => 'ابدأ المشي';
+
+  @override
+  String home_estimated_kcal(int count) {
+    return '$count سعرة تقديرية';
+  }
+
+  @override
+  String home_active_kcal(int count) {
+    return '$count سعرة نشطة';
+  }
+
+  @override
+  String get water_tap_to_open => 'انقر للفتح';
+
+  @override
+  String water_goal_progress(int goal) {
+    return 'من $goal مل';
+  }
+
+  @override
   String get home_recent_meals => 'الوجبات الأخيرة';
 
   @override
@@ -415,6 +436,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get error_camera => 'الكاميرا غير متاحة';
+
+  @override
+  String get error_image_unsupported => 'تنسيق الصورة هذا غير مدعوم';
 
   @override
   String get error_generic => 'حدث خطأ ما';
@@ -812,6 +836,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settings_about => 'حول التطبيق';
+
+  @override
+  String get about_email_us => 'راسلنا';
+
+  @override
+  String get about_instagram_desc => 'نصائح ووصفات ومجتمع';
+
+  @override
+  String get about_facebook_desc => 'تابع صفحتنا';
 
   @override
   String get settings_about_sub => 'الشروط، الخصوصية، ومعلومات التطبيق';
@@ -1625,11 +1658,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_daily_motivation => 'تحفيز يومي';
 
   @override
-  String get settings_food_reminders => 'Food scan reminders';
+  String get settings_food_reminders => 'تذكيرات مسح الطعام';
 
   @override
-  String get settings_food_reminders_subtitle =>
-      'Get reminded to scan your meals';
+  String get settings_food_reminders_subtitle => 'احصل على تذكيرات لمسح وجباتك';
 
   @override
   String get settings_language => 'اللغة';
@@ -2755,6 +2787,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_status_off => 'التتبع متوقف';
 
   @override
+  String get settings_status_connected => 'متصل';
+
+  @override
+  String get settings_status_not_connected => 'غير متصل';
+
+  @override
   String get settings_gender_male => 'ذكر';
 
   @override
@@ -3607,4 +3645,161 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get onboarding_error_target_higher =>
       'يجب أن يكون المستهدف أعلى من الوزن الحالي';
+
+  @override
+  String get result_set_weight => 'تحديد الوزن';
+
+  @override
+  String get result_cancel => 'إلغاء';
+
+  @override
+  String get result_save => 'حفظ';
+
+  @override
+  String get result_tap_to_adjust => 'اضغط على عنصر لتعديل الحصة';
+
+  @override
+  String get result_retake => 'إعادة التقاط';
+
+  @override
+  String result_scans_left(int remaining, int total) {
+    return '$remaining من $total عمليات مسح متبقية اليوم';
+  }
+
+  @override
+  String get result_added => 'تمت الإضافة';
+
+  @override
+  String get result_save_log => 'حفظ السجل';
+
+  @override
+  String get result_unlock_title => 'افتح رؤى أعمق';
+
+  @override
+  String get result_unlock_subtitle => 'درجة الصحة والتوجيه الذكي ورؤى الوجبات';
+
+  @override
+  String get result_no_items_detected =>
+      'لم يتم اكتشاف أي عناصر — أضف واحداً أدناه أو أعد التقاط الصورة';
+
+  @override
+  String get result_confidence_estimated => 'تقديري';
+
+  @override
+  String get result_confidence_low => 'منخفض';
+
+  @override
+  String get result_health_excellent => 'ممتاز';
+
+  @override
+  String get result_health_good => 'جيد';
+
+  @override
+  String get result_health_okay => 'مقبول';
+
+  @override
+  String get result_health_poor => 'ضعيف';
+
+  @override
+  String get result_health_bad => 'سيئ';
+
+  @override
+  String get result_no_items => 'لا توجد عناصر';
+
+  @override
+  String result_foods_detected(int count) {
+    return 'تم اكتشاف $count أطعمة';
+  }
+
+  @override
+  String get result_food_item => 'عنصر غذائي';
+
+  @override
+  String result_removed(String name) {
+    return 'تم حذف $name';
+  }
+
+  @override
+  String get result_undo => 'تراجع';
+
+  @override
+  String get result_rename => 'إعادة تسمية';
+
+  @override
+  String get result_food_name => 'اسم الطعام';
+
+  @override
+  String get result_discard_title => 'تجاهل المسح؟';
+
+  @override
+  String get result_discard_body => 'لم يتم تسجيل العناصر الممسوحة بعد.';
+
+  @override
+  String get result_keep_editing => 'متابعة التعديل';
+
+  @override
+  String get result_discard => 'تجاهل';
+
+  @override
+  String get result_not_matched => 'غير مطابق · اضغط للتصحيح';
+
+  @override
+  String get result_not_in_database => 'غير موجود في قاعدة البيانات';
+
+  @override
+  String get result_assign_food => 'تعيين طعام';
+
+  @override
+  String get macro_no_meals_yet => 'لم تسجل أي وجبات بعد';
+
+  @override
+  String get macro_targets_cta => 'الأهداف اليومية وتتبع التقدم';
+
+  @override
+  String get macro_pro_label => 'برو';
+
+  @override
+  String result_add_to_log_kcal(String calories) {
+    return 'إضافة إلى السجل · $calories سعرة';
+  }
+
+  @override
+  String planner_teaser_locked_summary(int count, String kcal) {
+    return '+$count وجبات إضافية · $kcal سعرة مخططة';
+  }
+
+  @override
+  String get planner_teaser_title => 'افتح خطط الوجبات الكاملة';
+
+  @override
+  String get planner_teaser_subtitle =>
+      'احصل على جدولك اليومي الكامل المخصص لأهدافك';
+
+  @override
+  String get planner_teaser_cta => 'افتح مع سناب كال برو';
+
+  @override
+  String paywall_disclosure_trial_year(int days, String price) {
+    return 'مجاناً لمدة $days أيام، ثم $price سنوياً. يمكنك الإلغاء قبل ذلك.';
+  }
+
+  @override
+  String paywall_disclosure_trial_month(int days, String price) {
+    return 'مجاناً لمدة $days أيام، ثم $price شهرياً. يمكنك الإلغاء قبل ذلك.';
+  }
+
+  @override
+  String paywall_disclosure_year(String price) {
+    return '$price سنوياً. يتجدد تلقائياً حتى تقوم بالإلغاء.';
+  }
+
+  @override
+  String paywall_disclosure_month(String price) {
+    return '$price شهرياً. يتجدد تلقائياً حتى تقوم بالإلغاء.';
+  }
+
+  @override
+  String paywall_disclosure_lifetime(String price) {
+    return '$price، دفعة واحدة. بدون اشتراك.';
+  }
 }
