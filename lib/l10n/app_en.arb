@@ -318,6 +318,27 @@
   "water_add": "Add",
   "water_remove": "Remove",
   "water_hydration": "Hydration",
+  "water_add_amount": "Add {count} ml",
+  "@water_add_amount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "water_remaining": "{count} ml remaining",
+  "@water_remaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "water_goal_complete": "Daily goal reached",
+  "water_reset": "Reset",
+  "water_undo": "Undo",
+  "water_reset_title": "Reset water?",
+  "water_reset_body": "Clear all water logged today.",
   "water_tracker": "Hydration Tracker",
   "water_reached": "{amount} of {goal} ml reached",
   "@water_reached": {

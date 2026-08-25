@@ -1494,6 +1494,48 @@ abstract class AppLocalizations {
   /// **'Hydration'**
   String get water_hydration;
 
+  /// No description provided for @water_add_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {count} ml'**
+  String water_add_amount(int count);
+
+  /// No description provided for @water_remaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} ml remaining'**
+  String water_remaining(int count);
+
+  /// No description provided for @water_goal_complete.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily goal reached'**
+  String get water_goal_complete;
+
+  /// No description provided for @water_reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get water_reset;
+
+  /// No description provided for @water_undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get water_undo;
+
+  /// No description provided for @water_reset_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset water?'**
+  String get water_reset_title;
+
+  /// No description provided for @water_reset_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all water logged today.'**
+  String get water_reset_body;
+
   /// No description provided for @water_tracker.
   ///
   /// In en, this message translates to:

@@ -235,6 +235,13 @@
   "water_add": "إضافة",
   "water_remove": "إزالة",
   "water_hydration": "الترطيب",
+  "water_add_amount": "أضف {count} مل",
+  "water_remaining": "بقي {count} مل",
+  "water_goal_complete": "تم تحقيق الهدف اليومي",
+  "water_reset": "إعادة تعيين",
+  "water_undo": "تراجع",
+  "water_reset_title": "إعادة تعيين الماء؟",
+  "water_reset_body": "حذف كل الماء المسجل اليوم.",
   "@appTitle": {
     "description": "اسم التطبيق"
   },

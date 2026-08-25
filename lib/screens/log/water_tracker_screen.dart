@@ -1,21 +1,22 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../core/theme/app_colors.dart';
-import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers/water_provider.dart';
 
-const _deep = Color(0xFF0A1628);
-const _surface = Color(0xFF0F1F3A);
-const _cardBg = Color(0xFF152A4A);
+const _bg = Color(0xFFF9F8F5);
+const _card = Color(0xFFFEFCF7);
+const _line = Color(0xFFE8E4DC);
+const _ink = Color(0xFF1C1917);
+const _muted = Color(0xFFA8A29E);
 const _blue = AppColors.sky;
-const _cyan = Color(0xFF06D6A0);
-const _blueGlow = AppColors.skyLight;
-const _textPrimary = Color(0xFFF1F5F9);
-const _textSecondary = Color(0xFF94A3B8);
+const _blueLight = AppColors.skyLight;
 
 class WaterTrackerScreen extends ConsumerStatefulWidget {
   const WaterTrackerScreen({super.key});
@@ -25,11 +26,12 @@ class WaterTrackerScreen extends ConsumerStatefulWidget {
 }
 
 class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   int _selectedMl = 250;
-  late AnimationController _waveController;
-  late AnimationController _riseController;
-  late Animation<double> _riseAnimation;
+  int _lastAddedMl = 0;
+  late final AnimationController _waveController;
+  late final AnimationController _riseController;
+  late final CurvedAnimation _riseCurve;
   int _fromMl = 0;
   int _targetMl = 0;
   bool _isFilling = false;
@@ -47,7 +49,7 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _riseAnimation = CurvedAnimation(
+    _riseCurve = CurvedAnimation(
       parent: _riseController,
       curve: Curves.easeOutCubic,
     );
@@ -57,6 +59,7 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
   void dispose() {
     _waveController.dispose();
     _riseController.dispose();
+    _riseCurve.dispose();
     super.dispose();
   }
 
@@ -65,596 +68,286 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
     setState(() => _isFilling = true);
     HapticFeedback.heavyImpact();
 
-    _fromMl = _targetMl = ref.read(waterProvider).valueOrNull?.todayTotal ?? 0;
-    setState(() {});
+    final before = ref.read(waterProvider).valueOrNull?.todayTotal ?? 0;
+    _fromMl = _targetMl = before;
 
     await ref.read(waterProvider.notifier).addWater(_selectedMl);
 
-    _targetMl = ref.read(waterProvider).valueOrNull?.todayTotal ?? 0;
+    _lastAddedMl = _selectedMl;
+    _targetMl = ref.read(waterProvider).valueOrNull?.todayTotal ?? before;
     _riseController.forward(from: 0);
     await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) setState(() => _isFilling = false);
+    if (mounted) {
+      setState(() => _isFilling = false);
+    }
+  }
+
+  void _undo() {
+    final total = ref.read(waterProvider).valueOrNull?.todayTotal ?? 0;
+    final amount = math.min(_lastAddedMl, total);
+    if (amount <= 0) return;
+    HapticFeedback.lightImpact();
+    ref.read(waterProvider.notifier).removeWater(amount);
+    _lastAddedMl = 0;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
+      value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: _deep,
+        systemNavigationBarColor: _bg,
       ),
       child: Scaffold(
-        backgroundColor: _deep,
-        body: Consumer(
-          builder: (context, ref, _) {
-            final waterNotifier = ref.watch(waterProvider.notifier);
-            final waterState = ref.watch(waterProvider).valueOrNull;
-            final goal = math.max(waterState?.goal ?? 1, 1);
-            final total = waterState?.todayTotal ?? 0;
-            final targetProgress = (total / goal).clamp(0.0, 1.0);
+        backgroundColor: _bg,
+        body: SafeArea(
+          child: Consumer(
+            builder: (context, ref, _) {
+              final waterState = ref.watch(waterProvider).valueOrNull;
+              final goal = math.max(waterState?.goal ?? 1, 1);
+              final total = waterState?.todayTotal ?? 0;
+              final reached = total >= goal;
+              final canUndo = total > 0 && _lastAddedMl > 0 && !_isFilling;
 
-            // Keep _displayedMl synced with real total when not animating
-            if (!_riseController.isAnimating && _targetMl != total) {
-              _targetMl = total;
-              _fromMl = total;
-            }
+              if (!_riseController.isAnimating && _targetMl != total) {
+                _targetMl = total;
+                _fromMl = total;
+              }
 
-            final displayMl =
-                _riseController.isAnimating
-                    ? _fromMl + (_targetMl - _fromMl) * _riseAnimation.value
-                    : total.toDouble();
-            final displayProgress = (displayMl / goal).clamp(0.0, 1.0);
-
-            return Stack(
-              children: [
-                AnimatedBuilder(
-                  animation: _waveController,
-                  builder: (_, _) {
-                    final pulse = 0.5 + _waveController.value * 0.5;
-                    return Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            center: Alignment(-0.3 + pulse * 0.6, 0.1),
-                            radius: 1.2,
-                            colors: [_surface, _deep, _deep],
-                            stops: const [0, 0.6, 1],
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Row(
+                      children: [
+                        _BackChip(
+                          onTap: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/log');
+                            }
+                          },
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
                           ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                Positioned(
-                  top: -80,
-                  right: -60,
-                  child: Container(
-                    width: 220,
-                    height: 220,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          _blue.withValues(alpha: 0.15),
-                          _blue.withValues(alpha: 0),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -40,
-                  left: -40,
-                  child: Container(
-                    width: 160,
-                    height: 160,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          _cyan.withValues(alpha: 0.08),
-                          _cyan.withValues(alpha: 0),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                SafeArea(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              onPressed: () {
-                                if (context.canPop()) {
-                                  context.pop();
-                                } else {
-                                  context.go('/log');
-                                }
-                              },
-                              icon: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.06),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.08),
-                                  ),
-                                ),
-                                child: Icon(
-                                  LucideIcons.chevronLeft,
-                                  color: _textPrimary,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.08),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: _cyan,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _cyan.withValues(alpha: 0.5),
-                                          blurRadius: 4,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Today',
-                                    style: TextStyle(
-                                      color: _textSecondary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(24, 12, 24, 0),
-                        child: Row(
-                          children: [
-                            Text(
-                              'Hydration',
-                              style: TextStyle(
-                                color: _textPrimary,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            Spacer(),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      AnimatedBuilder(
-                        animation: Listenable.merge([
-                          _waveController,
-                          _riseController,
-                        ]),
-                        builder: (_, _) {
-                          final pulse = 0.5 + _waveController.value * 0.5;
-                          final dp =
-                              _riseController.isAnimating
-                                  ? displayProgress
-                                  : targetProgress;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Container(
-                              height: 260,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(32),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.06),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _blue.withValues(
-                                      alpha: 0.15 + pulse * 0.15,
-                                    ),
-                                    blurRadius: 40,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(31),
-                                child: Stack(
-                                  children: [
-                                    CustomPaint(
-                                      painter: _WavePainter(
-                                        progress: dp,
-                                        wave: _waveController.value,
-                                        glowIntensity: pulse,
-                                      ),
-                                    ),
-                                    Center(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            '${total.ceil()}',
-                                            style: TextStyle(
-                                              fontSize: 72,
-                                              fontWeight: FontWeight.w800,
-                                              color: Colors.white.withValues(
-                                                alpha: 0.95,
-                                              ),
-                                              height: 0.95,
-                                              letterSpacing: -2,
-                                              shadows: [
-                                                Shadow(
-                                                  color: _blue.withValues(
-                                                    alpha: 0.3,
-                                                  ),
-                                                  blurRadius: 20,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Text(
-                                            'of ${goal}ml',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.white.withValues(
-                                                alpha: 0.45,
-                                              ),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 14),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 7,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.08,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.1,
-                                                ),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  LucideIcons.trophy,
-                                                  size: 14,
-                                                  color: _cyan,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  '${(targetProgress * 100).round()}% of goal',
-                                                  style: TextStyle(
-                                                    color: _textPrimary
-                                                        .withValues(alpha: 0.7),
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children:
-                              _presets.map((ml) {
-                                final isSel = _selectedMl == ml;
-                                return Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() => _selectedMl = ml);
-                                      HapticFeedback.selectionClick();
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(
-                                        milliseconds: 250,
-                                      ),
-                                      curve: Curves.easeOutCubic,
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      height: 80,
-                                      decoration: BoxDecoration(
-                                        gradient:
-                                            isSel
-                                                ? LinearGradient(
-                                                  colors: [
-                                                    _blue.withValues(
-                                                      alpha: 0.3,
-                                                    ),
-                                                    _blue.withValues(
-                                                      alpha: 0.15,
-                                                    ),
-                                                  ],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                )
-                                                : null,
-                                        color:
-                                            isSel
-                                                ? null
-                                                : Colors.white.withValues(
-                                                  alpha: 0.04,
-                                                ),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color:
-                                              isSel
-                                                  ? _blue.withValues(alpha: 0.5)
-                                                  : Colors.white.withValues(
-                                                    alpha: 0.06,
-                                                  ),
-                                          width: isSel ? 1.5 : 1,
-                                        ),
-                                        boxShadow:
-                                            isSel
-                                                ? [
-                                                  BoxShadow(
-                                                    color: _blue.withValues(
-                                                      alpha: 0.2,
-                                                    ),
-                                                    blurRadius: 16,
-                                                    spreadRadius: 1,
-                                                  ),
-                                                ]
-                                                : null,
-                                      ),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            '$ml',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w800,
-                                              color:
-                                                  isSel
-                                                      ? Colors.white
-                                                      : _textSecondary,
-                                            ),
-                                          ),
-                                          Text(
-                                            'ml',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color:
-                                                  isSel
-                                                      ? Colors.white.withValues(
-                                                        alpha: 0.7,
-                                                      )
-                                                      : _textSecondary
-                                                          .withValues(
-                                                            alpha: 0.6,
-                                                          ),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: GestureDetector(
-                          onTap: _isFilling ? null : () => _addWater(),
-                          child: AnimatedBuilder(
-                            animation: _waveController,
-                            builder: (_, _) {
-                              final pulse = 0.5 + _waveController.value * 0.5;
-                              return Container(
-                                height: 62,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(24),
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      _blue.withValues(alpha: 0.9),
-                                      _blue,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _blue.withValues(
-                                        alpha: 0.3 + pulse * 0.2,
-                                      ),
-                                      blurRadius: 24 + pulse * 12,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child:
-                                      _isFilling
-                                          ? const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.5,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                          : Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Container(
-                                                width: 28,
-                                                height: 28,
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.15),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(
-                                                  LucideIcons.plus,
-                                                  color: Colors.white,
-                                                  size: 16,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Text(
-                                                'Add $_selectedMl ml',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                ),
-                              );
-                            },
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _line),
                           ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            _QuickAction(
-                              icon: LucideIcons.rotateCw,
-                              label: 'Reset',
-                              enabled: total > 0,
-                              onTap: () => _showResetDialog(waterNotifier),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                total >= goal
-                                    ? '🎉 Goal crushed!'
-                                    : '${goal - total} ml remaining',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: _textSecondary.withValues(alpha: 0.6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _blue,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                l10n.common_today,
+                                style: const TextStyle(
+                                  color: _muted,
                                   fontSize: 13,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            _QuickAction(
-                              icon: LucideIcons.undo2,
-                              label: 'Undo',
-                              enabled: total > 0,
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Text(
+                      l10n.water_hydration,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _WaveTank(
+                      wave: _waveController,
+                      rise: _riseCurve,
+                      fromMl: _fromMl,
+                      targetMl: _targetMl,
+                      total: total,
+                      goal: goal,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < _presets.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 12),
+                          Expanded(
+                            child: _PresetChip(
+                              ml: _presets[i],
+                              selected: _selectedMl == _presets[i],
                               onTap: () {
-                                HapticFeedback.lightImpact();
-                                waterNotifier.removeWater(_selectedMl);
+                                setState(() => _selectedMl = _presets[i]);
+                                HapticFeedback.selectionClick();
                               },
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: SizedBox(
+                      height: 56,
+                      child: FilledButton(
+                        onPressed: _isFilling ? null : _addWater,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _blue,
+                          disabledBackgroundColor: _blue.withValues(alpha: 0.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child:
+                            _isFilling
+                                ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : Text(
+                                  l10n.water_add_amount(_selectedMl),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.1,
+                                  ),
+                                ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        _QuickAction(
+                          label: l10n.water_reset,
+                          enabled: total > 0 && !_isFilling,
+                          onTap:
+                              () => _showResetDialog(
+                                ref.read(waterProvider.notifier),
+                              ),
+                        ),
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (reached) ...[
+                                const Icon(
+                                  LucideIcons.trophy,
+                                  size: 14,
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  reached
+                                      ? l10n.water_goal_complete
+                                      : l10n.water_remaining(goal - total),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color:
+                                        reached
+                                            ? AppColors.primary
+                                            : _muted.withValues(alpha: 0.8),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _QuickAction(
+                          label: l10n.water_undo,
+                          enabled: canUndo,
+                          onTap: _undo,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
   void _showResetDialog(Water water) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: _cardBg,
+            backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
             ),
-            title: const Text(
-              'Reset water?',
-              style: TextStyle(color: _textPrimary),
+            title: Text(
+              l10n.water_reset_title,
+              style: const TextStyle(color: _ink, fontSize: 18),
             ),
-            content: const Text(
-              'Clear all water logged today.',
-              style: TextStyle(color: _textSecondary),
+            content: Text(
+              l10n.water_reset_body,
+              style: const TextStyle(color: _muted, fontSize: 14, height: 1.4),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(color: _textSecondary),
+                child: Text(
+                  l10n.common_cancel,
+                  style: const TextStyle(color: _muted),
                 ),
               ),
               TextButton(
                 onPressed: () {
                   water.resetToday();
+                  _lastAddedMl = 0;
                   Navigator.pop(ctx);
                 },
-                child: const Text(
-                  'Reset',
-                  style: TextStyle(color: Color(0xFFEF4444)),
+                child: Text(
+                  l10n.water_reset,
+                  style: const TextStyle(color: AppColors.error),
                 ),
               ),
             ],
@@ -663,16 +356,203 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
   }
 }
 
+class _BackChip extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _BackChip({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _line),
+          ),
+          child: const Icon(LucideIcons.chevronLeft, color: _ink, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _PresetChip extends StatelessWidget {
+  final int ml;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PresetChip({
+    required this.ml,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        height: 64,
+        decoration: BoxDecoration(
+          color: selected ? _blue.withValues(alpha: 0.10) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? _blue.withValues(alpha: 0.45) : _line,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$ml',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: selected ? _blue : _ink,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              'ml',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: _muted.withValues(alpha: selected ? 1 : 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  final String label;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  const _QuickAction({required this.label, required this.enabled, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _line.withValues(alpha: enabled ? 1 : 0.5)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: enabled ? _ink : _muted.withValues(alpha: 0.45),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WaveTank extends StatelessWidget {
+  final AnimationController wave;
+  final CurvedAnimation rise;
+  final int fromMl;
+  final int targetMl;
+  final int total;
+  final int goal;
+
+  const _WaveTank({
+    required this.wave,
+    required this.rise,
+    required this.fromMl,
+    required this.targetMl,
+    required this.total,
+    required this.goal,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([wave, rise]),
+      builder: (context, _) {
+        final displayMl =
+            rise.isAnimating
+                ? fromMl + (targetMl - fromMl) * rise.value
+                : total.toDouble();
+        final progress = (displayMl / math.max(goal, 1)).clamp(0.0, 1.0);
+
+        return Container(
+          height: 300,
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _line),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(23),
+            child: Stack(
+              children: [
+                CustomPaint(
+                  painter: _WavePainter(progress: progress, phase: wave.value),
+                  size: Size.infinite,
+                ),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        displayMl.round().toString(),
+                        style: const TextStyle(
+                          fontSize: 64,
+                          fontWeight: FontWeight.w800,
+                          color: _ink,
+                          height: 1,
+                          letterSpacing: -2,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        AppLocalizations.of(context)!.water_goal_progress(goal),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _ink.withValues(alpha: 0.45),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _WavePainter extends CustomPainter {
   final double progress;
-  final double wave;
-  final double glowIntensity;
+  final double phase;
 
-  _WavePainter({
-    required this.progress,
-    required this.wave,
-    required this.glowIntensity,
-  });
+  _WavePainter({required this.progress, required this.phase});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -682,12 +562,11 @@ class _WavePainter extends CustomPainter {
         Paint()
           ..shader = LinearGradient(
             colors: [
-              _blue.withValues(alpha: 0.2),
-              _blue.withValues(alpha: 0.4),
-              _blue.withValues(alpha: 0.7),
-              _blue,
+              _blue.withValues(alpha: 0.16),
+              _blue.withValues(alpha: 0.38),
+              _blue.withValues(alpha: 0.72),
             ],
-            begin: Alignment.topLeft,
+            begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ).createShader(
             Rect.fromLTWH(0, fillH, size.width, size.height - fillH),
@@ -696,40 +575,40 @@ class _WavePainter extends CustomPainter {
     final path = Path();
     path.moveTo(0, size.height);
     for (double x = 0; x <= size.width; x += 1) {
-      final s1 = math.sin((x / size.width * 3 * math.pi) + wave * 2) * 8;
-      final s2 = math.sin((x / size.width * 5 * math.pi) + wave * 3) * 4;
+      final s1 = math.sin((x / size.width * 3 * math.pi) + phase * 2) * 8;
+      final s2 = math.sin((x / size.width * 5 * math.pi) + phase * 3) * 4;
       path.lineTo(x, fillH + s1 + s2);
     }
     path.lineTo(size.width, size.height);
     path.close();
     canvas.drawPath(path, waterPaint);
 
-    final glowPaint =
+    final crestPaint =
         Paint()
-          ..color = _blueGlow.withValues(alpha: 0.3 + glowIntensity * 0.2)
+          ..color = _blueLight.withValues(alpha: 0.55)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    final glowPath = Path();
+          ..strokeWidth = 2
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    final crest = Path();
     for (double x = 0; x <= size.width; x += 1) {
-      final s1 = math.sin((x / size.width * 3 * math.pi) + wave * 2) * 8;
-      final s2 = math.sin((x / size.width * 5 * math.pi) + wave * 3) * 4;
+      final s1 = math.sin((x / size.width * 3 * math.pi) + phase * 2) * 8;
+      final s2 = math.sin((x / size.width * 5 * math.pi) + phase * 3) * 4;
       if (x == 0) {
-        glowPath.moveTo(x, fillH + s1 + s2);
+        crest.moveTo(x, fillH + s1 + s2);
       } else {
-        glowPath.lineTo(x, fillH + s1 + s2);
+        crest.lineTo(x, fillH + s1 + s2);
       }
     }
-    canvas.drawPath(glowPath, glowPaint);
+    canvas.drawPath(crest, crestPaint);
 
     if (fillH > 1) {
-      final dotPaint = Paint()..color = Colors.white.withValues(alpha: 0.25);
+      final bubblePaint = Paint()..color = _blueLight.withValues(alpha: 0.28);
       for (int i = 0; i < 8; i++) {
-        final dx = (i * 47.0 + wave * 30) % size.width;
+        final dx = (i * 47.0 + phase * 30) % size.width;
         final dy = fillH * (0.3 + (i % 3) * 0.2);
         if (!dy.isNaN && !dx.isNaN) {
           final r = 1.5 + (i % 3) * 0.8;
-          canvas.drawCircle(Offset(dx, dy.clamp(0, fillH)), r, dotPaint);
+          canvas.drawCircle(Offset(dx, dy.clamp(0, fillH)), r, bubblePaint);
         }
       }
     }
@@ -737,63 +616,5 @@ class _WavePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WavePainter old) =>
-      old.progress != progress ||
-      old.wave != wave ||
-      old.glowIntensity != glowIntensity;
-}
-
-class _QuickAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool enabled;
-  final VoidCallback? onTap;
-
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.enabled,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: enabled ? 0.06 : 0.03),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: enabled ? 0.08 : 0.04),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color:
-                  enabled
-                      ? _textSecondary
-                      : _textSecondary.withValues(alpha: 0.3),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color:
-                    enabled
-                        ? _textSecondary
-                        : _textSecondary.withValues(alpha: 0.3),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+      old.progress != progress || old.phase != phase;
 }

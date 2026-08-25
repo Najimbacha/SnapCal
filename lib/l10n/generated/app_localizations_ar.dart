@@ -756,6 +756,31 @@ class AppLocalizationsAr extends AppLocalizations {
   String get water_hydration => 'الترطيب';
 
   @override
+  String water_add_amount(int count) {
+    return 'أضف $count مل';
+  }
+
+  @override
+  String water_remaining(int count) {
+    return 'بقي $count مل';
+  }
+
+  @override
+  String get water_goal_complete => 'تم تحقيق الهدف اليومي';
+
+  @override
+  String get water_reset => 'إعادة تعيين';
+
+  @override
+  String get water_undo => 'تراجع';
+
+  @override
+  String get water_reset_title => 'إعادة تعيين الماء؟';
+
+  @override
+  String get water_reset_body => 'حذف كل الماء المسجل اليوم.';
+
+  @override
   String get water_tracker => 'متتبع الترطيب';
 
   @override
