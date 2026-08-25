@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:snapcal/core/theme/app_colors.dart';
 
@@ -23,8 +24,20 @@ const _minimalBg = Color(0xFFF9F8F5);
 const _minimalDarkBg = Color(0xFF14130F);
 const _minimalInk = Color(0xFF1C1917);
 const _minimalLine = Color(0xFFE8E4DC);
-const _minimalGreen = Color(0xFF1A3D2B);
-const _minimalGreenText = Color(0xFF16733A);
+const _minimalGreen = AppColors.primary;
+const _minimalGreenText = AppColors.primaryDark;
+
+// Same destinations the Settings > About screen links to. Store review requires
+// these to be reachable from the purchase screen itself, not only from Settings.
+const _privacyPolicyUrl =
+    'https://gist.githubusercontent.com/Najimbacha/ab1c18844431efb2c5701e36f1ab0ff0/raw';
+const _termsUrl = 'https://snapcal.app/terms';
+
+/// A free introductory offer resolved from the store product, never assumed.
+class _TrialInfo {
+  final int days;
+  const _TrialInfo(this.days);
+}
 
 class PaywallScreen extends ConsumerStatefulWidget {
   final bool limitReached;
@@ -44,6 +57,8 @@ class PaywallScreen extends ConsumerStatefulWidget {
 
 class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   bool _isLoading = false;
+  bool _loadingOfferings = true;
+  String? _offeringsNotice;
   Package? _selectedPackage;
   List<Package> _packages = [];
   String? _purchaseNotice;
@@ -55,14 +70,20 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   }
 
   Future<void> _loadOfferings() async {
+    if (mounted) {
+      setState(() {
+        _loadingOfferings = true;
+        _offeringsNotice = null;
+      });
+    }
     try {
       final offerings = await SubscriptionService().getOfferings().timeout(
         const Duration(seconds: 8),
       );
-      if (mounted &&
-          offerings?.current != null &&
-          offerings!.current!.availablePackages.isNotEmpty) {
-        setState(() {
+      if (!mounted) return;
+      setState(() {
+        if (offerings?.current != null &&
+            offerings!.current!.availablePackages.isNotEmpty) {
           _packages = offerings.current!.availablePackages;
           try {
             _selectedPackage = _packages.firstWhere(
@@ -71,10 +92,138 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           } catch (_) {
             _selectedPackage = _packages.isNotEmpty ? _packages.first : null;
           }
-        });
-      }
+          _offeringsNotice = null;
+        } else {
+          _packages = const [];
+          _selectedPackage = null;
+          _offeringsNotice = _purchaseCopy(
+            context,
+            _PurchaseCopyKey.plansUnavailable,
+          );
+        }
+      });
     } catch (e) {
       debugPrint("Error loading offerings: $e");
+      // Never leave the highest-value screen on an indefinite spinner: surface
+      // a retry affordance when the store connection fails (§7).
+      if (!mounted) return;
+      setState(() {
+        _packages = const [];
+        _selectedPackage = null;
+        _offeringsNotice = _purchaseCopy(
+          context,
+          _PurchaseCopyKey.plansUnavailable,
+        );
+      });
+    } finally {
+      if (mounted) setState(() => _loadingOfferings = false);
+    }
+  }
+
+  /// Reads the real introductory offer off the store product.
+  ///
+  /// Returns null when there is no offer, or when the offer is a discounted
+  /// (rather than free) intro price — in both cases the CTA must not promise a
+  /// free trial. Never assume a trial exists because a package is annual.
+  _TrialInfo? _trialFor(Package? package) {
+    if (package == null) return null;
+    try {
+      final intro = package.storeProduct.introductoryPrice;
+      if (intro == null) return null;
+      if (intro.price > 0) return null;
+      final units = intro.periodNumberOfUnits;
+      if (units <= 0) return null;
+      final unit = intro.periodUnit.name.toLowerCase();
+      final days =
+          unit.startsWith('day')
+              ? units
+              : unit.startsWith('week')
+              ? units * 7
+              : unit.startsWith('month')
+              ? units * 30
+              : unit.startsWith('year')
+              ? units * 365
+              : units;
+      return _TrialInfo(days);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Percentage saved by the annual plan against twelve monthly payments.
+  int? _savingsPercent(Package? monthly, Package? yearly) {
+    if (monthly == null || yearly == null || identical(monthly, yearly)) {
+      return null;
+    }
+    try {
+      final m = monthly.storeProduct.price;
+      final y = yearly.storeProduct.price;
+      if (m <= 0 || y <= 0) return null;
+      final fullPrice = m * 12;
+      if (y >= fullPrice) return null;
+      final pct = ((fullPrice - y) / fullPrice * 100).round();
+      return pct >= 5 ? pct : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// "SAR 12.50/mo" — with the separator the store's own priceString uses.
+  String? _monthlyEquivalent(Package package) {
+    try {
+      final price = package.storeProduct.price;
+      if (price <= 0) return null;
+      final priceString = package.storeProduct.priceString;
+      final symbol = priceString.replaceAll(RegExp(r'[0-9.,\s]+'), '').trim();
+      if (symbol.isEmpty) return null;
+      final formatted = (price / 12.0).toStringAsFixed(2);
+      return priceString.trim().startsWith(symbol)
+          ? '$symbol $formatted/mo'
+          : '$formatted $symbol/mo';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The billing disclosure shown directly beneath the CTA.
+  ///
+  /// Apple 3.1.2 and Google Play both require the trial length, the price
+  /// charged afterwards, and the billing period to appear next to the purchase
+  /// button before the user commits.
+  String? _disclosureFor(Package? package, AppLocalizations l10n) {
+    if (package == null) return null;
+    final String priceString;
+    try {
+      priceString = package.storeProduct.priceString;
+    } catch (_) {
+      return null;
+    }
+    final trial = _trialFor(package);
+    switch (package.packageType) {
+      case PackageType.annual:
+        return trial == null
+            ? l10n.paywall_disclosure_year(priceString)
+            : l10n.paywall_disclosure_trial_year(trial.days, priceString);
+      case PackageType.monthly:
+        return trial == null
+            ? l10n.paywall_disclosure_month(priceString)
+            : l10n.paywall_disclosure_trial_month(trial.days, priceString);
+      case PackageType.lifetime:
+        return l10n.paywall_disclosure_lifetime(priceString);
+      default:
+        return trial == null
+            ? null
+            : l10n.paywall_disclosure_trial_month(trial.days, priceString);
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Paywall: could not open $url: $e');
     }
   }
 
@@ -111,7 +260,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     _handleSubscriptionResult(
       result,
       messenger: messenger,
-      settings: ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
+      settings:
+          ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
       successMessage: l10n.premium_welcome,
       isRestore: false,
     );
@@ -131,7 +281,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     _handleSubscriptionResult(
       result,
       messenger: messenger,
-      settings: ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
+      settings:
+          ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
       successMessage: l10n.premium_restore_success,
       isRestore: true,
     );
@@ -264,12 +415,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final ambientGradient =
         isDark
             ? const LinearGradient(
-              colors: [Color(0xFF0B0E0C), Color(0xFF05120B)],
+              colors: [_minimalDarkBg, Color(0xFF05120B)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             )
             : const LinearGradient(
-              colors: [Color(0xFFFFFDF9), Color(0xFFEAF5F0)],
+              colors: [_minimalBg, Color(0xFFEAF5F0)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             );
@@ -284,7 +435,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             final tight = viewport.maxHeight < 700;
             final heroHeight = ((viewport.maxWidth + 22) * 0.90).clamp(
               216.0,
-              379.0,
+              352.0,
             );
             final hPad = compact ? 20.0 : 24.0;
 
@@ -299,6 +450,26 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                       child: Stack(
                         children: [
                           const Positioned.fill(child: _FoodScanShowcase()),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            height: 72,
+                            child: IgnorePointer(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      bgColor.withValues(alpha: 0),
+                                      bgColor,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                           // Close button (top-left, over image)
                           Positioned(
                             top: topPadding + 8,
@@ -334,48 +505,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                               ),
                             ),
                           ),
-                          // Restore button (top-right, over image)
-                          Positioned(
-                            top: topPadding + 8,
-                            right: hPad,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                                child: GestureDetector(
-                                  onTap: _handleRestore,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.25,
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.20,
-                                        ),
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      AppLocalizations.of(
-                                        context,
-                                      )!.paywall_restore,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -391,16 +520,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                SizedBox(height: tight ? 4 : 8),
-                                _buildContextualTitle(context, compact),
-                                SizedBox(height: tight ? 6 : 10),
-                                _buildCheckmarkBenefits(context, compact),
-                                SizedBox(
-                                  height: tight ? 12 : 16,
+                                const SizedBox(height: 8),
+                                _buildContextualTitle(context),
+                                const SizedBox(height: 12),
+                                _buildCheckmarkBenefits(context),
+                                const SizedBox(
+                                  height: 20,
                                 ), // Clears the plan badge
                                 _buildPricingRow(context, compact),
+                                _buildTrialTimeline(context),
                                 const SizedBox(
-                                  height: 4,
+                                  height: 8,
                                 ), // Space before sticky footer
                               ],
                             ),
@@ -413,9 +543,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     Container(
                       padding: EdgeInsets.fromLTRB(
                         hPad,
-                        6,
+                        8,
                         hPad,
-                        math.max(6.0, bottomPadding),
+                        math.max(8.0, bottomPadding),
                       ),
                       decoration: BoxDecoration(
                         color: bgColor.withValues(alpha: 0.96),
@@ -438,19 +568,24 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _LuxeButton(
-                                  text:
-                                      _selectedPackage?.packageType ==
-                                              PackageType.annual
-                                          ? AppLocalizations.of(
-                                            context,
-                                          )!.premium_start_trial
-                                          : AppLocalizations.of(
-                                            context,
-                                          )!.paywall_unlock_snapcal_pro,
-                                  isLoading: _isLoading,
-                                  height: tight ? 48 : 52,
-                                  onTap: _handlePurchase,
+                                Builder(
+                                  builder: (context) {
+                                    final l10n = AppLocalizations.of(context)!;
+                                    // The CTA promises a trial only when the
+                                    // store product actually carries a free
+                                    // introductory offer.
+                                    final hasTrial =
+                                        _trialFor(_selectedPackage) != null;
+                                    return _LuxeButton(
+                                      text:
+                                          hasTrial
+                                              ? l10n.premium_start_trial
+                                              : l10n.paywall_unlock_snapcal_pro,
+                                      isLoading: _isLoading,
+                                      height: tight ? 48 : 52,
+                                      onTap: _handlePurchase,
+                                    );
+                                  },
                                 ).animate().fadeIn(
                                   delay: 100.ms,
                                   duration: 200.ms,
@@ -461,8 +596,41 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                                     message: _purchaseNotice!,
                                   ),
                                 ],
-                                const SizedBox(height: 6),
-                                // Cancel anytime
+                                // Billing disclosure. Apple 3.1.2 and Google
+                                // Play require trial length, the price charged
+                                // afterwards, and the billing period to sit
+                                // beside the purchase button.
+                                Builder(
+                                  builder: (context) {
+                                    final disclosure = _disclosureFor(
+                                      _selectedPackage,
+                                      AppLocalizations.of(context)!,
+                                    );
+                                    if (disclosure == null) {
+                                      return const SizedBox(height: 8);
+                                    }
+                                    return Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        4,
+                                        8,
+                                        4,
+                                        0,
+                                      ),
+                                      child: Text(
+                                        disclosure,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: colorScheme.onSurfaceVariant
+                                              .withValues(alpha: 0.92),
+                                          fontSize: 11,
+                                          height: 1.35,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 8),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -481,29 +649,46 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                                         style: TextStyle(
                                           color: colorScheme.onSurfaceVariant
                                               .withValues(alpha: 0.72),
-                                          fontSize: 12,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 8),
+                                // Restore lives here now — a required but
+                                // rarely-used control, no longer competing
+                                // with the hero.
                                 Wrap(
                                   alignment: WrapAlignment.center,
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   spacing: 8,
-                                  runSpacing: 2,
+                                  runSpacing: 4,
                                   children: [
                                     _FooterLink(
                                       label:
                                           AppLocalizations.of(
                                             context,
-                                          )!.settings_privacy,
-                                      onTap: () {},
+                                          )!.paywall_restore,
+                                      onTap: _isLoading ? null : _handleRestore,
                                     ),
                                     Text(
-                                      "·",
+                                      "\u00b7",
+                                      style: TextStyle(
+                                        color: colorScheme.outlineVariant,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    _FooterLink(
+                                      label:
+                                          AppLocalizations.of(
+                                            context,
+                                          )!.settings_privacy,
+                                      onTap: () => _openUrl(_privacyPolicyUrl),
+                                    ),
+                                    Text(
+                                      "\u00b7",
                                       style: TextStyle(
                                         color: colorScheme.outlineVariant,
                                         fontSize: 11,
@@ -514,7 +699,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                                           AppLocalizations.of(
                                             context,
                                           )!.paywall_terms_conditions,
-                                      onTap: () {},
+                                      onTap: () => _openUrl(_termsUrl),
                                     ),
                                   ],
                                 ),
@@ -534,7 +719,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     );
   }
 
-  Widget _buildContextualTitle(BuildContext context, bool compact) {
+  Widget _buildContextualTitle(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
@@ -583,18 +768,18 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(
             color: isDark ? Colors.white : _minimalInk,
-            fontSize: compact ? 22 : 26,
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             height: 1.1,
           ),
         ),
-        SizedBox(height: compact ? 2 : 4),
+        const SizedBox(height: 4),
         Text(
           subtitle,
           textAlign: TextAlign.center,
           style: TextStyle(
             color: colorScheme.onSurfaceVariant.withValues(alpha: 0.72),
-            fontSize: compact ? 13 : 14,
+            fontSize: 14,
             fontWeight: FontWeight.w500,
             height: 1.3,
           ),
@@ -603,154 +788,331 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     );
   }
 
-  Widget _buildCheckmarkBenefits(BuildContext context, bool compact) {
+  Widget _buildCheckmarkBenefits(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final lead = l10n.paywall_benefit_unlimited_scans;
     final benefits = [
-      l10n.paywall_benefit_unlimited_scans,
       l10n.paywall_benefit_ai_guidance,
       l10n.paywall_benefit_full_history,
       l10n.paywall_benefit_weekly_reports,
       l10n.paywall_benefit_smart_planner,
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final itemWidth = (constraints.maxWidth - 8) / 2;
+    Widget benefitRow(String label) => Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: _minimalGreenText.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Icon(LucideIcons.check, size: 14, color: _minimalGreenText),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.visible,
+            softWrap: true,
+            style: TextStyle(
+              color: context.textPrimaryColor,
+              fontSize: 14,
+              height: 1.25,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
 
-        return Wrap(
-          spacing: 8,
-          runSpacing: compact ? 10 : 14,
-          children:
-              benefits
-                  .map(
-                    (b) => SizedBox(
-                      width: itemWidth,
-                      child: Row(
-                        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: _minimalGreenText,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: const Icon(
+                LucideIcons.check,
+                size: 16,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                lead,
+                style: TextStyle(
+                  color: isDark ? Colors.white : _minimalInk,
+                  fontSize: 16,
+                  height: 1.25,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final itemWidth = (constraints.maxWidth - 12) / 2;
+
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final b in benefits)
+                  SizedBox(width: itemWidth, child: benefitRow(b)),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  /// Plain-language timeline of what the trial does and when money moves.
+  ///
+  /// Shown only when the selected package genuinely carries a free offer, so it
+  /// can never describe a trial the store will not honour.
+  Widget _buildTrialTimeline(BuildContext context) {
+    final trial = _trialFor(_selectedPackage);
+    if (trial == null) return const SizedBox.shrink();
+
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final reminderDay = trial.days <= 2 ? 1 : trial.days - 2;
+
+    final steps = <List<Object>>[
+      [
+        LucideIcons.unlock,
+        l10n.paywall_trial_today,
+        l10n.paywall_trial_today_desc,
+      ],
+      [
+        LucideIcons.bell,
+        l10n.paywall_trial_reminder(reminderDay),
+        l10n.paywall_trial_reminder_desc,
+      ],
+      [
+        LucideIcons.creditCard,
+        l10n.paywall_trial_end(trial.days),
+        l10n.paywall_trial_end_desc,
+      ],
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+        decoration: BoxDecoration(
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : Colors.white.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.08) : _minimalLine,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.paywall_trial_title,
+              style: TextStyle(
+                color: isDark ? Colors.white : _minimalInk,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (var i = 0; i < steps.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color:
+                                i == steps.length - 1
+                                    ? _minimalGreenText.withValues(alpha: 0.12)
+                                    : _minimalGreenText.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: Icon(
+                            steps[i][0] as IconData,
+                            size: 13,
+                            color: _minimalGreenText,
+                          ),
+                        ),
+                        if (i < steps.length - 1)
                           Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              color: _minimalGreenText.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(7),
-                            ),
-                            child: Icon(
-                              LucideIcons.check,
-                              size: 14,
-                              color: _minimalGreenText,
+                            width: 1.5,
+                            height: 16,
+                            margin: const EdgeInsets.only(top: 2),
+                            color: _minimalGreenText.withValues(alpha: 0.18),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            steps[i][1] as String,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : _minimalInk,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              b,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: context.textPrimaryColor,
-                                fontSize: compact ? 13 : 14,
-                                fontWeight: FontWeight.w600,
+                          const SizedBox(height: 4),
+                          Text(
+                            steps[i][2] as String,
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.78,
                               ),
+                              fontSize: 11,
+                              height: 1.3,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  )
-                  .toList(),
-        );
-      },
-    );
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: 320.ms, duration: 240.ms);
   }
 
   Widget _buildPricingRow(BuildContext context, bool compact) {
     if (_packages.isEmpty) {
-      return SizedBox(
-        height: compact ? 108 : 122,
-        child: const Center(
-          child: CircularProgressIndicator(color: _minimalGreenText),
+      if (!_loadingOfferings && _offeringsNotice != null) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _offeringsNotice!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: context.textPrimaryColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: _loadOfferings,
+                icon: const Icon(LucideIcons.refreshCw, size: 14),
+                label: Text(AppLocalizations.of(context)!.common_try_again),
+              ),
+            ],
+          ),
+        );
+      }
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child:
+              _loadingOfferings
+                  ? const CircularProgressIndicator(color: _minimalGreenText)
+                  : TextButton.icon(
+                    onPressed: _loadOfferings,
+                    icon: const Icon(LucideIcons.refreshCw, size: 14),
+                    label: Text(AppLocalizations.of(context)!.common_try_again),
+                  ),
         ),
       );
     }
 
-    Package packageFor(PackageType type, Package fallback) {
-      return _packages.firstWhere(
-        (p) => p.packageType == type,
-        orElse: () => fallback,
-      );
-    }
-
-    final monthly = packageFor(PackageType.monthly, _packages.first);
-    final yearly = packageFor(PackageType.annual, _packages.last);
-    Package? lifetime;
-    for (final package in _packages) {
-      if (package.packageType == PackageType.lifetime) {
-        lifetime = package;
-        break;
+    Package? byType(PackageType type) {
+      for (final package in _packages) {
+        if (package.packageType == type) return package;
       }
+      return null;
     }
 
-    String monthlyEquivalent(Package package) {
-      try {
-        final price = package.storeProduct.price;
-        final priceString = package.storeProduct.priceString;
-        final monthlyPrice = price / 12.0;
-
-        final regExp = RegExp(r'[0-9.,\s]+');
-        final symbol = priceString.replaceAll(regExp, '').trim();
-
-        final formattedPrice = monthlyPrice.toStringAsFixed(2);
-        if (priceString.trim().startsWith(symbol)) {
-          return '$symbol$formattedPrice/mo';
-        } else {
-          return '$formattedPrice $symbol/mo';
-        }
-      } catch (e) {
-        return '\$3.33/mo';
-      }
-    }
-
+    final monthly = byType(PackageType.monthly);
+    final yearly = byType(PackageType.annual);
+    final lifetime = byType(PackageType.lifetime);
+    final savings = _savingsPercent(monthly, yearly);
     final l10n = AppLocalizations.of(context)!;
-    final options = <Widget>[
-      Expanded(
-        child: _PricingOption(
-          package: monthly,
-          isSelected: _selectedPackage == monthly,
-          onTap: () => setState(() => _selectedPackage = monthly),
-          label: l10n.premium_plan_monthly,
-          subLabel: l10n.paywall_billing_monthly,
-          compact: compact,
-        ),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: _PricingOption(
-          package: yearly,
-          isSelected: _selectedPackage == yearly,
-          onTap: () => setState(() => _selectedPackage = yearly),
-          label: l10n.premium_plan_yearly,
-          subLabel: monthlyEquivalent(yearly),
-          showBadge: true,
-          compact: compact,
-        ),
-      ),
-      if (lifetime != null) ...[
-        const SizedBox(width: 10),
+
+    final cards = <Widget>[];
+    void addCard(
+      Package? package,
+      String label,
+      String subLabel, {
+      String? badgeLabel,
+    }) {
+      if (package == null) return;
+      if (cards.isNotEmpty) cards.add(const SizedBox(width: 10));
+      cards.add(
         Expanded(
           child: _PricingOption(
-            package: lifetime,
-            isSelected: _selectedPackage == lifetime,
-            onTap: () => setState(() => _selectedPackage = lifetime),
-            label: l10n.premium_plan_lifetime,
-            subLabel: l10n.paywall_billing_lifetime,
+            package: package,
+            isSelected: _selectedPackage == package,
+            onTap: () => setState(() => _selectedPackage = package),
+            label: label,
+            subLabel: subLabel,
+            badgeLabel: badgeLabel,
             compact: compact,
           ),
         ),
-      ],
-    ];
+      );
+    }
+
+    addCard(monthly, l10n.premium_plan_monthly, l10n.paywall_billing_monthly);
+    addCard(
+      yearly,
+      l10n.premium_plan_yearly,
+      yearly == null ? '' : (_monthlyEquivalent(yearly) ?? ''),
+      // Lead with the real number. "BEST VALUE" only when we cannot compute it.
+      badgeLabel:
+          savings != null
+              ? l10n.paywall_save_percent(savings)
+              : l10n.paywall_best_value,
+    );
+    addCard(
+      lifetime,
+      l10n.premium_plan_lifetime,
+      l10n.paywall_billing_lifetime,
+    );
+
+    // Offerings can be configured with package types we do not special-case;
+    // render them rather than showing an empty pricing area.
+    if (cards.isEmpty) {
+      for (final package in _packages) {
+        addCard(package, package.storeProduct.title, '');
+      }
+    }
 
     return Row(
-      children: options,
+      children: cards,
     ).animate().fadeIn(delay: 260.ms).slideY(begin: 0.08, end: 0);
   }
 }
@@ -761,7 +1123,7 @@ class _PricingOption extends StatelessWidget {
   final VoidCallback onTap;
   final String label;
   final String subLabel;
-  final bool showBadge;
+  final String? badgeLabel;
   final bool compact;
 
   const _PricingOption({
@@ -771,13 +1133,12 @@ class _PricingOption extends StatelessWidget {
     required this.label,
     required this.subLabel,
     required this.compact,
-    this.showBadge = false,
+    this.badgeLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l10n = AppLocalizations.of(context)!;
 
     return Stack(
           clipBehavior: Clip.none,
@@ -789,119 +1150,104 @@ class _PricingOption extends StatelessWidget {
                 curve: Curves.easeOutCubic,
                 height: compact ? 96 : 110,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow:
+                  color:
                       isSelected
-                          ? [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF2EE59D,
-                              ).withValues(alpha: 0.18),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ]
-                          : null,
-                ),
-                child: ClipRRect(
+                          ? AppColors.primary.withValues(
+                            alpha: isDark ? 0.14 : 0.07,
+                          )
+                          : isDark
+                          ? Colors.white.withValues(alpha: 0.02)
+                          : Colors.black.withValues(alpha: 0.01),
                   borderRadius: BorderRadius.circular(18),
-                  child: Stack(
-                    children: [
-                      if (isSelected) ...[
-                        Positioned.fill(
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF1A3D2B), Color(0xFF2EE59D)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: Container(
-                            margin: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: isDark ? _minimalDarkBg : _minimalBg,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        ),
-                      ] else ...[
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color:
-                                  isDark
-                                      ? Colors.white.withValues(alpha: 0.02)
-                                      : Colors.black.withValues(alpha: 0.01),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
+                  border: Border.all(
+                    color:
+                        isSelected
+                            ? _minimalGreenText.withValues(
+                              alpha: isDark ? 0.65 : 0.45,
+                            )
+                            : isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06),
+                    width: 1.0,
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              label.toUpperCase(),
+                              style: TextStyle(
                                 color:
-                                    isDark
-                                        ? Colors.white.withValues(alpha: 0.08)
-                                        : Colors.black.withValues(alpha: 0.06),
-                                width: 1.0,
+                                    isSelected
+                                        ? _minimalGreenText
+                                        : context.textSecondaryColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.7,
                               ),
                             ),
-                          ),
-                        ),
-                      ],
-
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                label.toUpperCase(),
+                            const SizedBox(height: 8),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                package.storeProduct.priceString,
                                 style: TextStyle(
-                                  color:
-                                      isSelected
-                                          ? _minimalGreenText
-                                          : context.textSecondaryColor,
-                                  fontSize: compact ? 10 : 11,
+                                  color: context.textPrimaryColor,
+                                  fontSize: compact ? 32 : 36,
                                   fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.7,
+                                  letterSpacing: 0,
                                 ),
                               ),
-                              SizedBox(height: compact ? 4 : 6),
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  package.storeProduct.priceString,
-                                  style: TextStyle(
-                                    color: context.textPrimaryColor,
-                                    fontSize: compact ? 22 : 26,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0,
-                                  ),
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              subLabel,
+                              style: TextStyle(
+                                color:
+                                    isSelected
+                                        ? context.textSecondaryColor
+                                        : context.textMutedColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
                               ),
-                              SizedBox(height: compact ? 1 : 2),
-                              Text(
-                                subLabel,
-                                style: TextStyle(
-                                  color:
-                                      isSelected
-                                          ? context.textSecondaryColor
-                                          : context.textMutedColor,
-                                  fontSize: compact ? 10 : 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IgnorePointer(
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 180),
+                          opacity: isSelected ? 1 : 0,
+                          child: Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: _minimalGreenText,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              LucideIcons.check,
+                              size: 12,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            if (showBadge)
+            if (badgeLabel != null)
               Positioned(
                 top: -14,
                 left: 0,
@@ -909,33 +1255,20 @@ class _PricingOption extends StatelessWidget {
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 7,
+                      horizontal: 12,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF165C38), Color(0xFF26B06E)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: isDark ? Colors.white : _minimalInk,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF165C38,
-                          ).withValues(alpha: 0.22),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
                     child: Text(
-                      l10n.paywall_best_value,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
+                      badgeLabel!,
+                      style: TextStyle(
+                        color: isDark ? _minimalDarkBg : Colors.white,
+                        fontSize: 11,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 1.0,
+                        letterSpacing: 0.8,
                       ),
                     ),
                   ),
@@ -1086,7 +1419,7 @@ class _PurchaseNoticeBanner extends StatelessWidget {
               message,
               style: TextStyle(
                 color: context.textPrimaryColor,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 height: 1.25,
               ),
@@ -1176,19 +1509,27 @@ class _LuxeButton extends StatelessWidget {
 
 class _FooterLink extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   const _FooterLink({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Text(
-        label,
-        style: TextStyle(
-          color: context.textMutedColor,
-          fontSize: 11,
-          decoration: TextDecoration.underline,
+      behavior: HitTestBehavior.opaque,
+      child: Opacity(
+        opacity: onTap == null ? 0.45 : 1,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: context.textMutedColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              decoration: TextDecoration.underline,
+            ),
+          ),
         ),
       ),
     );
@@ -1231,9 +1572,13 @@ class _FoodScanShowcase extends StatefulWidget {
 
 class _FoodScanShowcaseState extends State<_FoodScanShowcase>
     with TickerProviderStateMixin {
+  static const int _slideCount = 3;
+  static const Duration _slideDuration = Duration(milliseconds: 7500);
+
   late final PageController _pageController;
   late final AnimationController _scanController;
   int _currentPage = 0;
+  int _autoAdvances = 0;
 
   @override
   void initState() {
@@ -1254,12 +1599,16 @@ class _FoodScanShowcaseState extends State<_FoodScanShowcase>
     });
 
     // Keep resolved scan labels readable before advancing.
-    Future.delayed(const Duration(milliseconds: 7500), _autoPlayNextPage);
+    Future.delayed(_slideDuration, _autoPlayNextPage);
   }
 
   void _autoPlayNextPage() {
     if (!mounted) return;
-    final nextPage = (_currentPage + 1) % 3;
+    // Stop after one full cycle: on a decision screen, looping hero motion
+    // keeps competing with the CTA for attention.
+    if (_autoAdvances >= _slideCount) return;
+    _autoAdvances++;
+    final nextPage = (_currentPage + 1) % _slideCount;
     _pageController
         .animateToPage(
           nextPage,
@@ -1268,10 +1617,7 @@ class _FoodScanShowcaseState extends State<_FoodScanShowcase>
         )
         .then((_) {
           if (mounted) {
-            Future.delayed(
-              const Duration(milliseconds: 7500),
-              _autoPlayNextPage,
-            );
+            Future.delayed(_slideDuration, _autoPlayNextPage);
           }
         });
   }
@@ -1309,15 +1655,6 @@ class _FoodScanShowcaseState extends State<_FoodScanShowcase>
             isLeftSide: true,
             labelY: 0.80,
           ),
-          _FoodDetectionLabel(
-            name: l10n.paywall_slide_cherry_tomatoes,
-            portion: l10n.paywall_slide_tomatoes_portion,
-            calories: "30 kcal",
-            foodX: 0.65, // Exact middle of cherry tomatoes
-            foodY: 0.65,
-            isLeftSide: false,
-            labelY: 0.80,
-          ),
         ],
       ),
       _ScanSlideData(
@@ -1340,15 +1677,6 @@ class _FoodScanShowcaseState extends State<_FoodScanShowcase>
             foodY: 0.35,
             isLeftSide: false,
             labelY: 0.28,
-          ),
-          _FoodDetectionLabel(
-            name: l10n.paywall_slide_broccoli,
-            portion: l10n.paywall_slide_broccoli_portion,
-            calories: "40 kcal",
-            foodX: 0.65, // Exact middle of broccoli bouquet
-            foodY: 0.65,
-            isLeftSide: false,
-            labelY: 0.80,
           ),
         ],
       ),
@@ -1544,7 +1872,7 @@ class _FoodScanShowcaseState extends State<_FoodScanShowcase>
                     shape: BoxShape.circle,
                     color:
                         _currentPage == index
-                            ? const Color(0xFF2EE59D)
+                            ? AppColors.primary
                             : Colors.white.withValues(alpha: 0.35),
                   ),
                 ),
@@ -1929,7 +2257,7 @@ class _GlassCalorieLabel extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Color(0xFF1C1C1E),
-                    fontSize: 12.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w900,
                     height: 1.1,
                   ),
@@ -1967,7 +2295,7 @@ class _GlassCalorieLabel extends StatelessWidget {
                         calories,
                         style: const TextStyle(
                           color: Color(0xFF1C1C1E),
-                          fontSize: 10.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -1997,4 +2325,3 @@ class _GlassCalorieLabel extends StatelessWidget {
     );
   }
 }
-
