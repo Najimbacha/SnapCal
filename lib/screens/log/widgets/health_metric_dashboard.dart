@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -17,17 +19,17 @@ Color _metricAccentFor(BuildContext context, LogMetricType type) {
     case LogMetricType.calories:
       return Theme.of(context).colorScheme.primary;
     case LogMetricType.energy:
-      return Colors.orange;
+      return AppColors.warning;
     case LogMetricType.steps:
-      return Theme.of(context).colorScheme.primary;
+      return AppColors.violet;
     case LogMetricType.water:
-      return const Color(0xFF3B82F6);
+      return AppColors.sky;
     case LogMetricType.protein:
-      return const Color(0xFF7C9A6D);
+      return AppColors.protein;
     case LogMetricType.carbs:
-      return const Color(0xFF4F8CC9);
+      return AppColors.carbs;
     case LogMetricType.fat:
-      return const Color(0xFFD18B47);
+      return AppColors.fat;
   }
 }
 
@@ -223,7 +225,8 @@ class HealthMetricCard extends StatelessWidget {
                       Text(
                         data.title,
                         style: AppTypography.labelSmall.copyWith(
-                          color: isDark ? Colors.white60 : const Color(0xFF78716C),
+                          color:
+                              isDark ? Colors.white60 : const Color(0xFF78716C),
                           fontWeight: FontWeight.w500,
                           fontSize: 10,
                         ),
@@ -236,10 +239,17 @@ class HealthMetricCard extends StatelessWidget {
                   Center(
                     child: Column(
                       children: [
-                        Icon(LucideIcons.lock, size: 16, color: isDark ? Colors.white30 : const Color(0xFFA8A29E)),
+                        Icon(
+                          LucideIcons.lock,
+                          size: 16,
+                          color:
+                              isDark ? Colors.white30 : const Color(0xFFA8A29E),
+                        ),
                         const SizedBox(height: 4),
                         Text(
-                          AppLocalizations.of(context)!.common_unlock.toUpperCase(),
+                          (AppLocalizations.of(context)?.common_unlock ??
+                                  'UNLOCK')
+                              .toUpperCase(),
                           style: AppTypography.labelSmall.copyWith(
                             color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w600,
@@ -266,9 +276,10 @@ class HealthMetricCard extends StatelessWidget {
               color: cardColor,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : const Color(0xFFEFEBE4),
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : const Color(0xFFEFEBE4),
                 width: 1.0,
               ),
             ),
@@ -281,7 +292,8 @@ class HealthMetricCard extends StatelessWidget {
                     Text(
                       data.title,
                       style: AppTypography.labelSmall.copyWith(
-                        color: isDark ? Colors.white54 : const Color(0xFF78716C),
+                        color:
+                            isDark ? Colors.white54 : const Color(0xFF78716C),
                         fontWeight: FontWeight.w500,
                         fontSize: 10,
                       ),
@@ -308,7 +320,12 @@ class HealthMetricCard extends StatelessWidget {
                     Text(
                       data.value,
                       style: AppTypography.displayLarge.copyWith(
-                        color: textColor,
+                        // An empty day stays quiet; display weight is
+                        // reserved for numbers the user actually earned.
+                        color:
+                            hasData
+                                ? textColor
+                                : textColor.withValues(alpha: 0.30),
                         fontWeight: FontWeight.w700,
                         fontSize: 26,
                         height: 1.0,
@@ -320,7 +337,8 @@ class HealthMetricCard extends StatelessWidget {
                       Text(
                         data.unit,
                         style: AppTypography.labelSmall.copyWith(
-                          color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+                          color:
+                              isDark ? Colors.white38 : const Color(0xFFB4AFA8),
                           fontWeight: FontWeight.w500,
                           fontSize: 10,
                         ),
@@ -343,9 +361,10 @@ class HealthMetricCard extends StatelessWidget {
                 Text(
                   data.status,
                   style: AppTypography.labelSmall.copyWith(
-                    color: hasData
-                        ? accent.withValues(alpha: 0.7)
-                        : textColor.withValues(alpha: 0.35),
+                    color:
+                        hasData
+                            ? accent.withValues(alpha: 0.7)
+                            : textColor.withValues(alpha: 0.35),
                     fontWeight: FontWeight.w500,
                     fontSize: 10,
                   ),
@@ -423,6 +442,9 @@ class _MiniChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
     final data = values.isEmpty ? const [0] : values;
+    // No tracked days, nothing drawn: a goal guide with zero data behind it
+    // reads as progress that does not exist.
+    if (!data.any((v) => v > 0)) return;
     final maxValue = math.max(goal, data.fold<int>(0, math.max));
     final yMax = math.max(maxValue, 1).toDouble();
 

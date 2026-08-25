@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -10,12 +11,14 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
+import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
+import '../../widgets/macro_display.dart';
 import '../../data/services/premium_conversion_service.dart';
 import 'models/log_metric_models.dart';
 import 'widgets/health_metric_dashboard.dart';
@@ -45,6 +48,14 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     final selectedDate = ref.watch(selectedDateProvider);
     final todaysMeals = ref.watch(todaysMealsProvider);
     final selectedDateMeals = todaysMeals.valueOrNull ?? [];
+    var dayProtein = 0;
+    var dayCarbs = 0;
+    var dayFat = 0;
+    for (final meal in selectedDateMeals) {
+      dayProtein += meal.macros.protein;
+      dayCarbs += meal.macros.carbs;
+      dayFat += meal.macros.fat;
+    }
     final isPro = settings.valueOrNull?.isPro ?? false;
     final l10n = AppLocalizations.of(context)!;
     final summaries = _buildDailySummaries();
@@ -81,8 +92,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
               ref.read(selectedDateProvider.notifier).select(dateStr);
             },
             isDateLocked:
-                (dateStr) =>
-                    !(isPro || app_date.DateUtils.isToday(dateStr)),
+                (dateStr) => !(isPro || app_date.DateUtils.isToday(dateStr)),
             onLockedDateSelected: (dateStr) {
               PremiumConversionService().openPaywall(
                 context,
@@ -108,20 +118,26 @@ class _LogScreenState extends ConsumerState<LogScreen> {
           if (!isPro) ...[
             const SizedBox(height: 16),
             _CompactMacroCard(
-              onTap: () => PremiumConversionService().openPaywall(
-                context,
-                PaywallEntryPoint.macroDetails,
-                featureName: 'log_macros',
-              ),
+              macros: Macros(protein: dayProtein, carbs: dayCarbs, fat: dayFat),
+              proteinGoal: settings.valueOrNull?.dailyProteinGoal ?? 0,
+              carbGoal: settings.valueOrNull?.dailyCarbGoal ?? 0,
+              fatGoal: settings.valueOrNull?.dailyFatGoal ?? 0,
+              onTap:
+                  () => PremiumConversionService().openPaywall(
+                    context,
+                    PaywallEntryPoint.macroDetails,
+                    featureName: 'log_macros',
+                  ),
             ),
           ],
           const SizedBox(height: 24),
           Text(
             l10n.home_metric_meals.toUpperCase(),
             style: AppTypography.labelSmall.copyWith(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white38
-                  : const Color(0xFFB4AFA8),
+              color:
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white38
+                      : const Color(0xFFB4AFA8),
               fontWeight: FontWeight.w600,
               fontSize: 11,
               letterSpacing: 1.2,
@@ -150,12 +166,16 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                           (modalContext) => EditMealModal(
                             meal: meal,
                             onSave: (updatedMeal) {
-                              ref.read(mealLogProvider.notifier).updateMeal(updatedMeal);
+                              ref
+                                  .read(mealLogProvider.notifier)
+                                  .updateMeal(updatedMeal);
                               Navigator.of(modalContext).pop();
                             },
                             onDelete: () {
                               Navigator.of(modalContext).pop();
-                              ref.read(mealLogProvider.notifier).deleteMeal(meal.id);
+                              ref
+                                  .read(mealLogProvider.notifier)
+                                  .deleteMeal(meal.id);
                             },
                             onCancel: () => Navigator.of(modalContext).pop(),
                           ),
@@ -188,16 +208,21 @@ class _LogScreenState extends ConsumerState<LogScreen> {
 
     final dayCount = isPro ? 90 : 14;
     final visibleDayCount = math.max(dayCount, 14);
+    final todayKey = app_date.DateUtils.getDateString(now);
+    final liveSteps = ref.watch(activityProvider).valueOrNull?.steps ?? 0;
     return List.generate(visibleDayCount, (index) {
       final date = now.subtract(Duration(days: visibleDayCount - 1 - index));
+      final dateString = app_date.DateUtils.getDateString(date);
       return _buildSummaryForDate(
-        dateString: app_date.DateUtils.getDateString(date),
+        dateString: dateString,
+        steps: dateString == todayKey ? liveSteps : 0,
       );
     });
   }
 
   DailySummary _buildSummaryForDate({
     required String dateString,
+    int steps = 0,
   }) {
     final settings = ref.watch(settingsProvider);
     final s = settings.valueOrNull ?? UserSettings.defaults();
@@ -225,7 +250,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       fatGoal: s.dailyFatGoal,
       waterMl: 0,
       waterGoal: ref.watch(waterProvider).valueOrNull?.goal ?? 2500,
-      steps: 0,
+      steps: steps,
       stepGoal: 10000,
       mealCount: meals.length,
     );
@@ -273,6 +298,18 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     final activityTrend = List<int>.filled(7, 0);
     final stepTrend = lastSeven.map((summary) => summary.steps).toList();
 
+    final activityVal = activity.valueOrNull;
+    final isTodaySelected =
+        todaySummary.dateString ==
+        app_date.DateUtils.getDateString(DateTime.now());
+    final energyBurned =
+        isTodaySelected ? (activityVal?.activeCalories ?? 0).round() : 0;
+    final energyEstimated =
+        isTodaySelected && (activityVal?.activeCaloriesEstimated ?? true);
+    if (activityTrend.isNotEmpty) {
+      activityTrend[activityTrend.length - 1] = energyBurned;
+    }
+
     return [
       HealthMetricCardData(
         type: LogMetricType.calories,
@@ -293,11 +330,14 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       HealthMetricCardData(
         type: LogMetricType.energy,
         title: l10n.log_metric_energy_burned,
-        value: _formatInt(context, 0),
+        value:
+            energyEstimated
+                ? '~${_formatInt(context, energyBurned)}'
+                : _formatInt(context, energyBurned),
         unit: l10n.settings_kcal_unit,
         status: _metricStatus(
           context,
-          0,
+          energyBurned,
           0,
           l10n.settings_kcal_unit,
         ),
@@ -402,12 +442,14 @@ class _HealthLogHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final parsed = DateTime.tryParse(selectedDate);
-    final dateFormatted = parsed != null
-        ? DateFormat.yMMMMd(l10n.localeName).format(parsed)
-        : selectedDate;
-    final muted = Theme.of(context).brightness == Brightness.dark
-        ? Colors.white38
-        : const Color(0xFFA8A29E);
+    final dateFormatted =
+        parsed != null
+            ? DateFormat.yMMMMd(l10n.localeName).format(parsed)
+            : selectedDate;
+    final muted =
+        Theme.of(context).brightness == Brightness.dark
+            ? Colors.white38
+            : const Color(0xFFA8A29E);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,16 +474,13 @@ class _HealthLogHeader extends StatelessWidget {
                 height: 36,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.black.withValues(alpha: 0.04),
+                  color:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.04),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  LucideIcons.settings2,
-                  color: muted,
-                  size: 17,
-                ),
+                child: Icon(LucideIcons.settings2, color: muted, size: 17),
               ),
             ),
           ],
@@ -460,6 +499,7 @@ String _metricStatus(
 }) {
   final l10n = AppLocalizations.of(context)!;
   if (value <= 0) return l10n.log_metric_no_data;
+  if (goal <= 0) return '';
   final remaining = goal - value;
   if (remaining <= 0) return l10n.log_metric_goal_hit;
   if (belowRangeLabel) return l10n.log_metric_below_range;
@@ -488,11 +528,7 @@ class _EmptyMealsState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            LucideIcons.utensilsCrossed,
-            size: 32,
-            color: muted,
-          ),
+          Icon(LucideIcons.utensilsCrossed, size: 32, color: muted),
           const SizedBox(height: 16),
           Text(
             l10n.home_no_meals_title,
@@ -520,170 +556,73 @@ class _EmptyMealsState extends StatelessWidget {
 
 // ── Compact locked macro card ────────────────────────────────────────────────
 
+/// Free-tier macro surface. Shows the day's real macro composition —
+/// percentages, never a lock, grams withheld — the same treatment Home and
+/// the scan result use, so the tier reads consistently everywhere.
 class _CompactMacroCard extends StatelessWidget {
+  final Macros macros;
+  final int proteinGoal;
+  final int carbGoal;
+  final int fatGoal;
   final VoidCallback onTap;
-  const _CompactMacroCard({required this.onTap});
+
+  const _CompactMacroCard({
+    required this.macros,
+    required this.proteinGoal,
+    required this.carbGoal,
+    required this.fatGoal,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
-    final cardBg =
-        isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7);
-    final borderColor =
-        isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : const Color(0xFFE8E4DC);
-    final muted =
-        isDark ? Colors.white38 : const Color(0xFFB4AFA8);
-    final mutedText =
-        isDark ? Colors.white60 : const Color(0xFF78716C);
 
-    final macros = [
-      (l10n.result_protein, const Color(0xFF7C9A6D), 0.65),
-      (l10n.result_carbs, const Color(0xFF4F8CC9), 0.50),
-      (l10n.result_fat, const Color(0xFFD18B47), 0.40),
-    ];
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : const Color(0xFFE8E4DC),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.home_section_macros,
-                  style: AppTypography.titleSmall.copyWith(
-                    color:
-                        isDark ? Colors.white : const Color(0xFF1C1917),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 1.5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    'PRO',
-                    style: TextStyle(
-                      color: mutedText,
-                      fontSize: 7,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.home_section_macros,
+            style: AppTypography.titleSmall.copyWith(
+              color: isDark ? Colors.white : const Color(0xFF1C1917),
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
             ),
-            const SizedBox(height: 14),
-
-            // Three macro columns
-            Row(
-              children: macros.map(
-                (m) => Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        m.$1,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: mutedText,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(LucideIcons.lock, size: 10, color: muted),
-                          const SizedBox(width: 3),
-                          Text(
-                            '— g',
-                            style: AppTypography.labelMedium.copyWith(
-                              color: muted,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        height: 3,
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: m.$2.withValues(
-                            alpha: isDark ? 0.10 : 0.15,
-                          ),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: FractionallySizedBox(
-                          widthFactor: m.$3,
-                          heightFactor: 1,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: m.$2.withValues(
-                                alpha: isDark ? 0.35 : 0.40,
-                              ),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ).toList(),
-            ),
-
-            const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.log_macro_unlock_tracking,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-                Icon(
-                  LucideIcons.chevronRight,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          MacroDisplay(
+            macros: macros,
+            proteinGoal: proteinGoal,
+            carbGoal: carbGoal,
+            fatGoal: fatGoal,
+            variant: MacroDisplayVariant.composition,
+            showGrams: false,
+            showGoals: false,
+            upgradeLabel: l10n.macro_unlock_card_title,
+            onUpgradeTap: onTap,
+          ),
+        ],
       ),
     );
   }
@@ -705,7 +644,12 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
     final isPro = ref.read(settingsProvider).valueOrNull?.isPro ?? false;
 
     final allMetrics = [
-      (l10n.log_metric_calories_intake, 'Calories', LucideIcons.utensils, false),
+      (
+        l10n.log_metric_calories_intake,
+        'Calories',
+        LucideIcons.utensils,
+        false,
+      ),
       (l10n.log_metric_energy_burned, 'Energy', LucideIcons.flame, false),
       (l10n.log_metric_steps, 'Steps', LucideIcons.footprints, false),
       (l10n.log_metric_water, 'Water', LucideIcons.droplets, false),
@@ -824,9 +768,12 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                       Icon(
                         item.$3,
                         size: 18,
-                        color: isRowLocked
-                            ? Colors.grey
-                            : (isDark ? Colors.white60 : const Color(0xFF78716C)),
+                        color:
+                            isRowLocked
+                                ? Colors.grey
+                                : (isDark
+                                    ? Colors.white60
+                                    : const Color(0xFF78716C)),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -862,10 +809,11 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                                 child: Text(
                                   l10n.home_pro_badge,
                                   style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white38
-                                        : const Color(0xFFA8A29E),
-                                    fontSize: 8,
+                                    color:
+                                        isDark
+                                            ? Colors.white38
+                                            : const Color(0xFFA8A29E),
+                                    fontSize: 9,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.3,
                                   ),
@@ -898,4 +846,3 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
     );
   }
 }
-
