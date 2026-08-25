@@ -42,7 +42,8 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal> {
   @override
   void initState() {
     super.initState();
-    final metricsList = ref.read(bodyMetricsProvider).valueOrNull ?? <BodyMetric>[];
+    final metricsList =
+        ref.read(bodyMetricsProvider).valueOrNull ?? <BodyMetric>[];
     final settings = ref.read(settingsProvider).valueOrNull;
     final lastMetric = metricsList.isEmpty ? null : metricsList.first;
 

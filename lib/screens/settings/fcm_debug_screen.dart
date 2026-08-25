@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/theme/app_colors.dart';
 import '../../data/services/fcm_service.dart';
 
 /// Developer-only FCM debug screen.
@@ -50,9 +52,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
     if (!kDebugMode) {
       return Scaffold(
         appBar: AppBar(title: const Text('FCM Debug')),
-        body: const Center(
-          child: Text('Available only in debug mode'),
-        ),
+        body: const Center(child: Text('Available only in debug mode')),
       );
     }
 
@@ -86,7 +86,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
           _sectionCard(
             title: 'FCM Token',
             icon: LucideIcons.key,
-            color: const Color(0xFF3B82F6),
+            color: AppColors.primary,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -133,7 +133,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
           _sectionCard(
             title: 'Topic: snapcal_all_users',
             icon: LucideIcons.hash,
-            color: const Color(0xFF8B5CF6),
+            color: AppColors.secondary,
             child: Row(
               children: [
                 _miniButton(
@@ -185,7 +185,9 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.4,
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -234,35 +236,40 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: pairs.map((pair) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 120,
-                child: Text(
-                  pair.$1,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+      children:
+          pairs.map((pair) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      pair.$1,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  Text(
+                    pair.$2,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.85,
+                      ),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                pair.$2,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 
@@ -275,7 +282,9 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.35,
+        ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
@@ -319,12 +328,13 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
     }
 
     final n = msg.notification;
-    final buf = StringBuffer()
-      ..writeln('messageId : ${msg.messageId}')
-      ..writeln('title     : ${n?.title}')
-      ..writeln('body      : ${n?.body}')
-      ..writeln('sentTime  : ${msg.sentTime}')
-      ..writeln('data      : ${jsonEncode(msg.data)}');
+    final buf =
+        StringBuffer()
+          ..writeln('messageId : ${msg.messageId}')
+          ..writeln('title     : ${n?.title}')
+          ..writeln('body      : ${n?.body}')
+          ..writeln('sentTime  : ${msg.sentTime}')
+          ..writeln('data      : ${jsonEncode(msg.data)}');
 
     return SelectableText(
       buf.toString(),
@@ -351,4 +361,3 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
     );
   }
 }
-

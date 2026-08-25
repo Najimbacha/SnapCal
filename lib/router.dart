@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
@@ -12,6 +13,12 @@ import 'screens/log/models/log_metric_models.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/settings/about_screen.dart';
+import 'screens/settings/account_screen.dart';
+import 'screens/settings/body_profile_screen.dart';
+import 'screens/settings/data_sync_screen.dart';
+import 'screens/settings/nutrition_goals_screen.dart';
+import 'screens/settings/preferences_screen.dart';
 import 'screens/assistant/assistant_screen.dart';
 import 'screens/home/activity_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
@@ -21,7 +28,7 @@ import 'providers/settings_provider.dart';
 import 'screens/planner/meal_planner_screen.dart';
 import 'screens/paywall/paywall_screen.dart';
 import 'data/services/premium_conversion_service.dart';
-import 'screens/onboarding/onboarding_screen.dart';
+import 'screens/onboarding/onboarding_flow_screen.dart';
 import 'screens/progress/progress_screen.dart';
 import 'widgets/hero_action_button.dart';
 import 'screens/achievements/achievements_screen.dart';
@@ -39,8 +46,8 @@ GoRouter? globalRouter;
 
 class _RouterNotifier extends ChangeNotifier {
   _RouterNotifier(this._ref) {
-    _ref.listen(authStateProvider, (_, __) => notifyListeners());
-    _ref.listen(settingsProvider, (_, __) => notifyListeners());
+    _ref.listen(authStateProvider, (_, _) => notifyListeners());
+    _ref.listen(settingsProvider, (_, _) => notifyListeners());
   }
   final Ref _ref;
 
@@ -50,7 +57,12 @@ class _RouterNotifier extends ChangeNotifier {
     final onboarding = state.matchedLocation == '/onboarding';
     final loggingIn = state.matchedLocation == '/auth';
 
-    if (auth != null && !auth.isAnonymous && settings != null && !settings.onboardingComplete && !onboarding && !loggingIn) {
+    if (auth != null &&
+        !auth.isAnonymous &&
+        settings != null &&
+        !settings.onboardingComplete &&
+        !onboarding &&
+        !loggingIn) {
       return '/onboarding';
     }
     if (loggingIn && auth != null && !auth.isAnonymous) {
@@ -58,9 +70,6 @@ class _RouterNotifier extends ChangeNotifier {
     }
     return null;
   }
-
-  @override
-  void dispose() { super.dispose(); }
 }
 
 @Riverpod(keepAlive: true)
@@ -72,55 +81,199 @@ GoRouter router(RouterRef ref) {
     refreshListenable: notifier,
     redirect: notifier._redirect,
     routes: [
-      GoRoute(path: '/onboarding', pageBuilder: (context, state) => _sharedAxisPage(state, const OnboardingScreen())),
-      GoRoute(path: '/auth', pageBuilder: (context, state) => _sharedAxisPage(state, const AuthScreen())),
-      GoRoute(path: '/settings', pageBuilder: (context, state) => _sharedAxisPage(state, const SettingsScreen(showBack: true))),
-      GoRoute(path: '/settings/fcm-debug', pageBuilder: (context, state) => _sharedAxisPage(state, const FcmDebugScreen())),
+      GoRoute(
+        path: '/onboarding',
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const OnboardingFlowScreen()),
+      ),
+      GoRoute(
+        path: '/auth',
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const AuthScreen()),
+      ),
+      GoRoute(
+        path: '/settings',
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const SettingsScreen(showBack: true)),
+      ),
+      GoRoute(
+        path: '/settings/body-profile',
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const BodyProfileScreen()),
+      ),
+      GoRoute(
+        path: '/settings/nutrition-goals',
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const NutritionGoalsScreen()),
+      ),
+      GoRoute(
+        path: '/settings/preferences',
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const PreferencesScreen()),
+      ),
+      GoRoute(
+        path: '/settings/account',
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const AccountScreen()),
+      ),
+      GoRoute(
+        path: '/settings/data-sync',
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const DataSyncScreen()),
+      ),
+      GoRoute(
+        path: '/settings/about',
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const AboutScreen()),
+      ),
+      // Exposes the raw FCM token and message payloads — debug builds only (BUG-021).
+      if (kDebugMode)
+        GoRoute(
+          path: '/settings/fcm-debug',
+          pageBuilder:
+              (context, state) =>
+                  _sharedAxisPage(state, const FcmDebugScreen()),
+        ),
       GoRoute(
         path: '/paywall',
         pageBuilder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
           final limitReached = extra?['limitReached'] as bool? ?? false;
-          final entryPoint = PremiumConversionService().parseEntryPoint(extra?['entryPoint'] as String?, limitReached: limitReached);
+          final entryPoint = PremiumConversionService().parseEntryPoint(
+            extra?['entryPoint'] as String?,
+            limitReached: limitReached,
+          );
           final featureName = extra?['featureName'] as String?;
-          return _sharedAxisPage(state, PaywallScreen(limitReached: limitReached, entryPoint: entryPoint, featureName: featureName));
+          return _sharedAxisPage(
+            state,
+            PaywallScreen(
+              limitReached: limitReached,
+              entryPoint: entryPoint,
+              featureName: featureName,
+            ),
+          );
         },
       ),
-      GoRoute(path: '/progress', pageBuilder: (context, state) => _sharedAxisPage(state, const ProgressScreen())),
-      GoRoute(path: '/assistant', pageBuilder: (context, state) => _sharedAxisPage(state, const AssistantScreen())),
-      GoRoute(path: '/planner', pageBuilder: (context, state) => _sharedAxisPage(state, const MealPlannerScreen())),
-      GoRoute(path: '/achievements', pageBuilder: (context, state) => _sharedAxisPage(state, const AchievementsScreen())),
-      GoRoute(path: '/insights', pageBuilder: (context, state) => _sharedAxisPage(state, const WeeklyWrapScreen())),
-      GoRoute(path: '/activity', pageBuilder: (context, state) => _sharedAxisPage(state, const ActivityScreen())),
+      GoRoute(
+        path: '/progress',
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const ProgressScreen()),
+      ),
+      GoRoute(
+        path: '/assistant',
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const AssistantScreen()),
+      ),
+      GoRoute(
+        path: '/planner',
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const MealPlannerScreen()),
+      ),
+      GoRoute(
+        path: '/achievements',
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const AchievementsScreen()),
+      ),
+      GoRoute(
+        path: '/insights',
+        pageBuilder:
+            (context, state) =>
+                _sharedAxisPage(state, const WeeklyWrapScreen()),
+      ),
+      GoRoute(
+        path: '/activity',
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const ActivityScreen()),
+      ),
       GoRoute(
         path: '/log/metric/:metric',
         pageBuilder: (context, state) {
           final metric = LogMetricType.fromId(state.pathParameters['metric']);
-          return _sharedAxisPage(state, HealthMetricDetailScreen(metric: metric ?? LogMetricType.calories));
+          return _sharedAxisPage(
+            state,
+            HealthMetricDetailScreen(metric: metric ?? LogMetricType.calories),
+          );
         },
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => MainShell(navigationShell: navigationShell),
+        builder:
+            (context, state, navigationShell) =>
+                MainShell(navigationShell: navigationShell),
         branches: [
-          StatefulShellBranch(routes: [GoRoute(path: '/', pageBuilder: (context, state) => const NoTransitionPage(child: HomeScreen()))]),
-          StatefulShellBranch(routes: [GoRoute(path: '/log', pageBuilder: (context, state) => const NoTransitionPage(child: LogScreen()))]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/snap',
-              pageBuilder: (context, state) {
-                final initialMode = state.uri.queryParameters['mode'] == 'barcode' ? SnapInitialMode.barcode : SnapInitialMode.food;
-                return NoTransitionPage(key: ValueKey(state.uri.toString()), child: SnapScreen(initialMode: initialMode));
-              },
-            ),
-          ]),
-          StatefulShellBranch(routes: [GoRoute(path: '/reports', pageBuilder: (context, state) => const NoTransitionPage(child: ReportsScreen()))]),
-          StatefulShellBranch(routes: [GoRoute(path: '/profile', pageBuilder: (context, state) => const NoTransitionPage(child: SettingsScreen()))]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/',
+                pageBuilder:
+                    (context, state) =>
+                        const NoTransitionPage(child: HomeScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/log',
+                pageBuilder:
+                    (context, state) =>
+                        const NoTransitionPage(child: LogScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/snap',
+                pageBuilder: (context, state) {
+                  final initialMode =
+                      state.uri.queryParameters['mode'] == 'barcode'
+                          ? SnapInitialMode.barcode
+                          : SnapInitialMode.food;
+                  return NoTransitionPage(
+                    key: ValueKey(state.uri.toString()),
+                    child: SnapScreen(initialMode: initialMode),
+                  );
+                },
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/reports',
+                pageBuilder:
+                    (context, state) =>
+                        const NoTransitionPage(child: ReportsScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                pageBuilder:
+                    (context, state) =>
+                        const NoTransitionPage(child: SettingsScreen()),
+              ),
+            ],
+          ),
         ],
       ),
     ],
   );
   globalRouter = router;
-  ref.onDispose(() { globalRouter = null; router.dispose(); notifier.dispose(); });
+  ref.onDispose(() {
+    globalRouter = null;
+    router.dispose();
+    notifier.dispose();
+  });
   return router;
 }
 
@@ -132,7 +285,8 @@ CustomTransitionPage<void> _sharedAxisPage(GoRouterState state, Widget child) {
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       return SharedAxisTransition(
-        animation: animation, secondaryAnimation: secondaryAnimation,
+        animation: animation,
+        secondaryAnimation: secondaryAnimation,
         transitionType: SharedAxisTransitionType.scaled,
         fillColor: Theme.of(context).colorScheme.surface,
         child: child,
@@ -172,31 +326,39 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       extendBody: true,
       body: widget.navigationShell,
-      floatingActionButton: currentBranch == 2 ? null
-          : Transform.translate(
-              offset: const Offset(0, 28),
-              child: HeroActionButton(
-                isActive: false,
-                onTap: () {
-                  showScanChoiceSheet(
-                    context: context,
-                    onFoodScan: () => context.go('/snap'),
-                    onBarcodeScan: () => context.go('/snap?mode=barcode'),
+      floatingActionButton:
+          currentBranch == 2
+              ? null
+              : Transform.translate(
+                offset: const Offset(0, 28),
+                child: HeroActionButton(
+                  isActive: false,
+                  onTap: () {
+                    showScanChoiceSheet(
+                      context: context,
+                      onFoodScan: () => context.go('/snap'),
+                      onBarcodeScan: () => context.go('/snap?mode=barcode'),
+                    );
+                  },
+                ),
+              ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar:
+          currentBranch == 2
+              ? const SizedBox.shrink()
+              : BottomNavBar(
+                currentIndex: _branchToNav(currentBranch),
+                onTap: (index) {
+                  HapticFeedback.selectionClick();
+                  final branchIndex = _navToBranch(index);
+                  widget.navigationShell.goBranch(
+                    branchIndex,
+                    initialLocation:
+                        branchIndex == widget.navigationShell.currentIndex,
                   );
+                  if (mounted) setState(() {});
                 },
               ),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: currentBranch == 2 ? const SizedBox.shrink()
-          : BottomNavBar(
-              currentIndex: _branchToNav(currentBranch),
-              onTap: (index) {
-                HapticFeedback.selectionClick();
-                final branchIndex = _navToBranch(index);
-                widget.navigationShell.goBranch(branchIndex, initialLocation: branchIndex == widget.navigationShell.currentIndex);
-                if (mounted) setState(() {});
-              },
-            ),
     );
   }
 }
