@@ -95,6 +95,13 @@ service cloud.firestore {
         'notificationsEnabled',
         'mealRemindersEnabled',
         'dailyMotivationEnabled',
+        'goalAlertsEnabled',
+        'foodRemindersEnabled',
+        'fcmToken',
+        'lastFoodReminderDate',
+        'currentStreak',
+        'lastLoggedDate',
+        'lastOpenedDate',
         'breakfastTime',
         'lunchTime',
         'dinnerTime',
@@ -123,13 +130,19 @@ service cloud.firestore {
         'scanSource',
         'aiRationale',
         'originalCalories',
-        'userCorrected'
+        'userCorrected',
+        'weightG',
+        'nutritionMatchId',
+        'nutritionPer100g'
       ])
       && noTrustedUserFields()
       && request.resource.data.id is string
       && request.resource.data.foodName is string
       && request.resource.data.calories is int
-      && request.resource.data.macros is map;
+      && request.resource.data.macros is map
+      && (!('weightG' in request.resource.data.keys()) || request.resource.data.weightG == null || request.resource.data.weightG is number)
+      && (!('nutritionMatchId' in request.resource.data.keys()) || request.resource.data.nutritionMatchId == null || request.resource.data.nutritionMatchId is string)
+      && (!('nutritionPer100g' in request.resource.data.keys()) || request.resource.data.nutritionPer100g == null || request.resource.data.nutritionPer100g is map);
     }
 
     function validDailyLog() {

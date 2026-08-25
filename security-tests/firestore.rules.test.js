@@ -85,6 +85,8 @@ test('users cannot create or update trusted scan result fields', async () => {
 
 test('users can write only their own compatible meal records', async () => {
   const alice = dbFor('alice');
+  // Mirrors Meal.toJson() (lib/data/models/meal.dart) — include v2 scanner
+  // nullable fields so a model change fails this test instead of production.
   const meal = {
     id: 'meal1',
     timestamp: Date.now(),
@@ -103,11 +105,84 @@ test('users can write only their own compatible meal records', async () => {
     aiRationale: null,
     originalCalories: null,
     userCorrected: true,
+    weightG: 120,
+    nutritionMatchId: null,
+    nutritionPer100g: { calories: 167, protein: 4, carbs: 40, fat: 2 },
   };
 
   await assertSucceeds(setDoc(doc(alice, 'users/alice/meals/meal1'), meal));
   await assertFails(setDoc(doc(alice, 'users/bob/meals/meal1'), meal));
   await assertFails(setDoc(doc(alice, 'users/alice/meals/meal2'), { ...meal, id: 'meal1' }));
+});
+
+test('meal records accept the v2 scanner fields as null or typed', async () => {
+  const alice = dbFor('alice');
+  const base = {
+    id: 'meal3',
+    timestamp: Date.now(),
+    dateString: '2026-06-02',
+    foodName: 'Rice',
+    calories: 200,
+    macros: { protein: 4, carbs: 40, fat: 2 },
+    synced: true,
+    userCorrected: false,
+    weightG: null,
+    nutritionMatchId: null,
+    nutritionPer100g: null,
+  };
+  await assertSucceeds(setDoc(doc(alice, 'users/alice/meals/meal3'), base));
+
+  await assertFails(setDoc(doc(alice, 'users/alice/meals/meal4'), {
+    ...base,
+    id: 'meal4',
+    weightG: 'not-a-number',
+  }));
+  await assertFails(setDoc(doc(alice, 'users/alice/meals/meal5'), {
+    ...base,
+    id: 'meal5',
+    nutritionPer100g: 'not-a-map',
+  }));
+});
+
+test('app-settings payload written by SettingsRepository is accepted', async () => {
+  const alice = dbFor('alice');
+  // Mirrors SettingsRepository._appSettingsPayload() keys so model changes
+  // surface in this test rather than as rejected writes in production.
+  const appSettings = {
+    themeMode: 'system',
+    languageCode: 'en',
+    onboardingComplete: true,
+    notificationsEnabled: true,
+    mealRemindersEnabled: true,
+    dailyMotivationEnabled: true,
+    goalAlertsEnabled: true,
+    foodRemindersEnabled: false,
+    fcmToken: 'fcm:token',
+    lastFoodReminderDate: '2026-08-20',
+    currentStreak: 12,
+    lastLoggedDate: '2026-08-22',
+    lastOpenedDate: '2026-08-23',
+    breakfastTime: '08:00',
+    lunchTime: '12:30',
+    dinnerTime: '19:00',
+    weightUnit: 'kg',
+    heightUnit: 'cm',
+    updatedAt: Date.now(),
+  };
+
+  await assertSucceeds(setDoc(
+    doc(alice, 'users/alice/settings/app'),
+    appSettings,
+  ));
+});
+
+test('users cannot set trusted app-settings fields', async () => {
+  const alice = dbFor('alice');
+  await assertFails(setDoc(doc(alice, 'users/alice/settings/app'), {
+    themeMode: 'dark',
+    isPro: true,
+    entitlement: 'pro',
+  }));
 });
 
 test('admin claim can read audit logs but cannot write them', async () => {

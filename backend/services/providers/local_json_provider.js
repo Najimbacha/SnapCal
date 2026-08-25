@@ -4,28 +4,109 @@ const path = require('path');
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'nutrition_db.json');
 const ALIASES_PATH = path.join(__dirname, '..', '..', 'data', 'food_aliases.json');
 
+// Minimum score an inexact candidate must reach before it is accepted. Below
+// this the provider returns null, so the caller falls back to "not in
+// database" instead of logging a confident wrong food. A null is recoverable
+// by the user; a plausible-looking wrong number is not.
+const MIN_SCORE = Number(process.env.NUTRITION_MIN_MATCH_SCORE || 0.6);
+
+// Preparation moves energy density more than any other qualifier — frying a
+// chicken breast roughly doubles its calories — so a conflict here is
+// disqualifying rather than merely penalised.
+const LEAN_PREP = new Set([
+  'grilled', 'roasted', 'baked', 'boiled', 'steamed', 'poached',
+  'broiled', 'barbecued', 'bbq', 'raw', 'fresh', 'skinless',
+]);
+const FAT_PREP = new Set([
+  'fried', 'deepfried', 'breaded', 'battered', 'crispy',
+  'sauteed', 'panfried', 'tempura', 'crumbed', 'buttered',
+]);
+
 let nutritionDb = null;
 let aliasMap = null;
+let aliasIndex = null;
+
+function prepClass(words) {
+  for (const w of words) {
+    if (FAT_PREP.has(w)) return 'fat';
+  }
+  for (const w of words) {
+    if (LEAN_PREP.has(w)) return 'lean';
+  }
+  return null;
+}
 
 function load() {
-  if (nutritionDb && aliasMap) return;
+  if (nutritionDb && aliasMap && aliasIndex) return;
   try {
     nutritionDb = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     aliasMap = JSON.parse(fs.readFileSync(ALIASES_PATH, 'utf8'));
-    console.log(`nutrition_db loaded: ${Object.keys(nutritionDb).length} foods, ${Object.keys(aliasMap).length} aliases`);
+    console.log(
+      `nutrition_db loaded: ${Object.keys(nutritionDb).length} foods, ${Object.keys(aliasMap).length} aliases`
+    );
   } catch (err) {
     console.error('Failed to load nutrition database:', err.message);
     nutritionDb = {};
     aliasMap = {};
   }
+  aliasIndex = Object.entries(aliasMap).map(([key, id]) => {
+    const words = String(key).split(/\s+/).filter(Boolean);
+    return { key, id, words, prep: prepClass(words) };
+  });
 }
 
+// Keeps letters of ANY script. The previous implementation stripped
+// [^a-z0-9\s], which deleted Arabic entirely and reduced every Arabic food
+// name to an empty string — an unconditional lookup miss.
 function normalize(name) {
-  return name
+  return String(name == null ? '' : name)
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+// Scores one alias against the query. Returns 0 for a disqualified candidate.
+//
+// Replaces the previous rule, which accepted a single shared word whenever
+// either side was one word and then took whichever alias happened to come
+// first in JSON insertion order. That is how "fried chicken" resolved to
+// "Chicken breast, roasted".
+function scoreCandidate(queryWords, queryPrep, candidate) {
+  const qs = new Set(queryWords);
+  const shared = candidate.words.filter((w) => qs.has(w));
+  if (shared.length === 0) return 0;
+
+  // Opposite preparations are, energetically, different foods.
+  if (queryPrep && candidate.prep && queryPrep !== candidate.prep) return 0;
+  // The query names a fat-added preparation the alias does not claim: refuse
+  // rather than silently returning the lean version.
+  if (queryPrep === 'fat' && candidate.prep !== 'fat') return 0;
+
+  const uniqueShared = new Set(shared).size;
+  const coverage = uniqueShared / Math.max(qs.size, candidate.words.length);
+  const specificity = uniqueShared / candidate.words.length;
+  let score = 0.6 * coverage + 0.4 * specificity;
+
+  // A single word in common is weak evidence on its own.
+  if (uniqueShared < 2) score *= 0.5;
+
+  return score;
+}
+
+function toResult(id, food) {
+  return {
+    id,
+    displayName: food.display_name,
+    per100g: {
+      calories: food.calories,
+      protein: food.protein,
+      carbs: food.carbs,
+      fat: food.fat,
+    },
+  };
 }
 
 function lookup(foodName) {
@@ -36,29 +117,29 @@ function lookup(foodName) {
   const normalized = normalize(foodName);
   if (!normalized) return null;
 
-  const aliasId = aliasMap[normalized];
-  if (aliasId && nutritionDb[aliasId]) {
-    const food = nutritionDb[aliasId];
-    return { id: aliasId, displayName: food.display_name, per100g: { calories: food.calories, protein: food.protein, carbs: food.carbs, fat: food.fat } };
+  // 1. Exact alias — the curated answer always wins.
+  const exactId = aliasMap[normalized];
+  if (exactId && nutritionDb[exactId]) {
+    return toResult(exactId, nutritionDb[exactId]);
   }
 
-  const normWords = normalized.split(/\s+/).filter(Boolean);
-  const subMatch = Object.entries(aliasMap).find(([key]) => {
-    if (normalized === key) return true;
-    if (key.length < 4 && normWords.includes(key)) return true;
-    if (key.length >= 4) {
-      const keyWords = key.split(/\s+/).filter(Boolean);
-      const shared = normWords.filter(w => keyWords.includes(w));
-      if (shared.length >= Math.min(2, Math.min(normWords.length, keyWords.length))) return true;
+  // 2. Best-scoring candidate across the whole index, not the first hit.
+  const queryWords = normalized.split(/\s+/).filter(Boolean);
+  const queryPrep = prepClass(queryWords);
+
+  let best = null;
+  let bestScore = 0;
+  for (const candidate of aliasIndex) {
+    if (!nutritionDb[candidate.id]) continue;
+    const score = scoreCandidate(queryWords, queryPrep, candidate);
+    if (score > bestScore) {
+      bestScore = score;
+      best = candidate;
     }
-    return false;
-  });
-  if (subMatch) {
-    const id = subMatch[1];
-    const food = nutritionDb[id];
-    if (food) {
-      return { id, displayName: food.display_name, per100g: { calories: food.calories, protein: food.protein, carbs: food.carbs, fat: food.fat } };
-    }
+  }
+
+  if (best && bestScore >= MIN_SCORE) {
+    return toResult(best.id, nutritionDb[best.id]);
   }
 
   return null;
@@ -68,7 +149,7 @@ function getFoodById(id) {
   load();
   const food = nutritionDb[id];
   if (!food) return null;
-  return { id, displayName: food.display_name, per100g: { calories: food.calories, protein: food.protein, carbs: food.carbs, fat: food.fat } };
+  return toResult(id, food);
 }
 
 function getAllCategories() {
@@ -80,4 +161,4 @@ function getAllCategories() {
   return [...categories].sort();
 }
 
-module.exports = { lookup, getFoodById, getAllCategories, load };
+module.exports = { lookup, getFoodById, getAllCategories, load, normalize };

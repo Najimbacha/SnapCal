@@ -11,8 +11,18 @@ const rateLimit = require('express-rate-limit');
 const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '10mb';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
-const REQUIRE_APP_CHECK = process.env.REQUIRE_APP_CHECK === 'true';
+// Fail closed: App Check is ON unless explicitly disabled. A misspelled or
+// unset variable must never silently disable the control (BUG-006).
+const REQUIRE_APP_CHECK = process.env.REQUIRE_APP_CHECK !== 'false';
 const REVENUECAT_WEBHOOK_AUTH = process.env.REVENUECAT_WEBHOOK_AUTH || '';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+if (NODE_ENV === 'production' && !REQUIRE_APP_CHECK) {
+  throw new Error(
+    'Refusing to start in production with App Check disabled. ' +
+      'Set REQUIRE_APP_CHECK=true to boot.',
+  );
+}
 
 function initializeFirebaseAdmin() {
   if (admin.apps.length > 0) return;
@@ -57,9 +67,12 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Deny-by-default: an empty ALLOWED_ORIGINS must reject browser origins, not
+// permit every one of them. Native mobile requests carry no Origin header and
+// are unaffected (BUG-006).
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -166,14 +179,14 @@ function getV2SystemPrompt(languageCode) {
   return `Analyze this food photo as a food detector.
 
 STRICT LANGUAGE RULE:
-- YOU MUST RESPOND ENTIRELY IN THE ${languageName} LANGUAGE.
-- The "name" field MUST be in ${languageName}.
-- Use native, common culinary terms for ${languageName}.
+- The "name" field MUST be in ${languageName}. Use native, common culinary terms.
+- The "match_key" field MUST ALWAYS be in ENGLISH, regardless of the language above.
 
 Your ONLY task is to:
 1. Identify each distinct serving or dish in the photo
-2. Estimate its weight in grams
-3. Assign a confidence score (0.0 to 1.0)
+2. Give it a localised display name AND an English match_key
+3. Estimate its weight in grams
+4. Assign a confidence score (0.0 to 1.0)
 
 Do NOT calculate any nutritional values (calories, protein, carbs, fat).
 Do NOT provide health scores, insights, or alternatives.
@@ -185,6 +198,7 @@ Return this exact structure:
   "foods": [
     {
       "name": "string",
+      "match_key": "string",
       "estimated_weight_g": number,
       "confidence": number
     }
@@ -194,7 +208,13 @@ Return this exact structure:
 Rules:
 - Treat an assembled/composite dish as ONE single item (e.g. burger, cheeseburger, sandwich, sub, taco, wrap, pizza, hot dog, burrito). Do NOT list its components (bun, patty, lettuce, toppings, sauce) separately.
 - Only create more than one entry when the photo clearly shows separate, side-by-side servings (e.g. a burger NEXT TO fries = two items; a burger by itself = one item).
-- estimated_weight_g is your best estimate of the weight of that item in grams for the portion visible
+- match_key is the food's common ENGLISH name, lowercase, no punctuation, no brand.
+  Include the preparation when it changes how the food is cooked
+  (e.g. "fried chicken", "grilled chicken breast", "boiled egg", "white rice").
+  This field is used to look the food up in a nutrition database, so be literal
+  and conventional rather than descriptive.
+- estimated_weight_g is your best estimate of the weight of that item in grams for the portion visible.
+  If you genuinely cannot estimate a weight, omit the field rather than guessing 0.
 - confidence is a score from 0.0 (not confident) to 1.0 (very confident)
 - Do NOT include any nutritional information
 - If NOT food at all, return: {"foods": []}`;
@@ -297,6 +317,22 @@ async function getPremiumStatus(uid) {
   const expiresAt = data?.expiresAt;
   const expiresDate = expiresAt?.toDate ? expiresAt.toDate() : null;
   const active = data?.isActive === true && (!expiresDate || expiresDate > new Date());
+
+  // Mirror the authoritative monthly quota so the client displays what the
+  // server will actually enforce, instead of its own local guess (BUG-005).
+  let scansRemaining = null;
+  if (!active) {
+    try {
+      const useSnap = await usageDoc(uid).get();
+      const usage = useSnap.exists ? useSnap.data() : {};
+      const monthKey = currentMonthKey();
+      const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
+      scansRemaining = Math.max(0, FREE_MONTHLY_SCANS - scansUsed);
+    } catch (error) {
+      console.error('Usage read failed for premium status:', error.message);
+    }
+  }
+
   return {
     isActive: active,
     entitlementId: data?.entitlementId || null,
@@ -304,6 +340,8 @@ async function getPremiumStatus(uid) {
     expiresAt: expiresAt || null,
     source: data?.source || null,
     lastVerifiedAt: data?.lastVerifiedAt || null,
+    monthlyScanLimit: FREE_MONTHLY_SCANS,
+    scansRemaining,
   };
 }
 
@@ -355,23 +393,122 @@ async function claimScanQuota(uid, scanId) {
   });
 }
 
+// Transactional quota claim for the stateless /v1/scan endpoint (BUG-011).
+// The increment is committed BEFORE the AI call so parallel requests cannot
+// all read the same scansUsed and slip past the check during the 20-60s
+// processing window. Returns the premium flag at claim time.
+async function claimScanQuotaForScan(uid) {
+  return db.runTransaction(async (tx) => {
+    const subRef = subscriptionDoc(uid);
+    const useRef = usageDoc(uid);
+    const [subSnap, useSnap] = await Promise.all([tx.get(subRef), tx.get(useRef)]);
+
+    const subscription = subSnap.exists ? subSnap.data() : {};
+    const expiresDate = subscription?.expiresAt?.toDate ? subscription.expiresAt.toDate() : null;
+    const isPremium = subscription?.isActive === true && (!expiresDate || expiresDate > new Date());
+    const usage = useSnap.exists ? useSnap.data() : {};
+    const monthKey = currentMonthKey();
+    const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
+
+    if (!isPremium && scansUsed >= FREE_MONTHLY_SCANS) {
+      throw Object.assign(new Error('quota-exceeded'), { code: 402 });
+    }
+
+    tx.set(useRef, {
+      monthKey,
+      scansUsed: scansUsed + 1,
+      premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return { isPremium, monthKey };
+  });
+}
+
+// Best-effort refund when the AI call fails after a successful claim, so a
+// broken provider does not consume a user's quota.
+async function refundScanQuota(uid, claimedMonthKey) {
+  try {
+    await db.runTransaction(async (tx) => {
+      const useRef = usageDoc(uid);
+      const useSnap = await tx.get(useRef);
+      const usage = useSnap.exists ? useSnap.data() : {};
+      if (usage.monthKey !== claimedMonthKey) return;
+      const scansUsed = Number(usage.scansUsed || 0);
+      if (scansUsed <= 0) return;
+      tx.set(useRef, {
+        monthKey: claimedMonthKey,
+        scansUsed: scansUsed - 1,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+  } catch (error) {
+    console.error('Scan quota refund failed:', error.message);
+  }
+}
+
 function normalizeNutrition(rawText) {
   const jsonText = extractJson(rawText);
   const decoded = JSON.parse(jsonText);
   const items = Array.isArray(decoded?.items) ? decoded.items : [decoded];
-  const cleaned = items.map((item) => ({
-    food_name: String(item.food_name || item.foodName || 'Unknown Food').slice(0, 120),
-    portion: String(item.portion || 'Standard portion').slice(0, 120),
-    calories: clampInt(item.calories, 0, 5000),
-    protein: clampInt(item.protein, 0, 500),
-    carbs: clampInt(item.carbs, 0, 800),
-    fat: clampInt(item.fat, 0, 500),
-    health_score: clampInt(item.health_score ?? item.healthScore ?? 5, 0, 10),
-    insights: Array.isArray(item.insights) ? item.insights.slice(0, 3).map((v) => String(v).slice(0, 40)) : [],
-    alternatives: Array.isArray(item.alternatives) ? item.alternatives.slice(0, 3).map((v) => String(v).slice(0, 40)) : [],
-  }));
+  const cleaned = items.map((item) => {
+    const normalized = {
+      food_name: String(item.food_name || item.foodName || 'Unknown Food').slice(0, 120),
+      portion: String(item.portion || 'Standard portion').slice(0, 120),
+      calories: clampInt(item.calories, 0, 5000),
+      protein: clampInt(item.protein, 0, 500),
+      carbs: clampInt(item.carbs, 0, 800),
+      fat: clampInt(item.fat, 0, 500),
+      health_score: clampInt(item.health_score ?? item.healthScore ?? 5, 0, 10),
+      insights: Array.isArray(item.insights) ? item.insights.slice(0, 3).map((v) => String(v).slice(0, 40)) : [],
+      alternatives: Array.isArray(item.alternatives) ? item.alternatives.slice(0, 3).map((v) => String(v).slice(0, 40)) : [],
+    };
+    const check = reconcileNutrition(normalized);
+    normalized.nutrition_source = 'ai_estimate';
+    normalized.nutrition_flag = check.ok ? 'ok' : 'inconsistent';
+    normalized.atwater_ratio = check.ratio;
+    if (!check.ok) {
+      console.warn(
+        JSON.stringify({
+          event: 'nutrition.atwater_mismatch',
+          pipeline: 'v1',
+          food: normalized.food_name,
+          stated: normalized.calories,
+          ratio: check.ratio,
+        })
+      );
+    }
+    return normalized;
+  });
   if (cleaned.length === 0) throw new Error('empty-nutrition-result');
   return { items: cleaned };
+}
+
+// Fraction by which the macro-derived energy may differ from the stated
+// calories before an item is flagged. Deliberately generous: dietary fibre
+// yields ~2 kcal/g rather than 4, and alcohol contributes 7 kcal/g without
+// appearing in protein, carbs or fat at all.
+const ATWATER_TOLERANCE = Number(process.env.ATWATER_TOLERANCE || 0.25);
+
+// Checks that calories, protein, carbs and fat describe the same food.
+//
+// Clamping each value into a plausible range — which is all normalizeNutrition
+// did — cannot catch a self-contradictory set. 400 kcal with 10g protein, 20g
+// carbs and 5g fat reconciles to 165 kcal and was previously logged in silence.
+function reconcileNutrition({ calories, protein, carbs, fat }) {
+  const stated = Number(calories) || 0;
+  const derived =
+    (Number(protein) || 0) * 4 + (Number(carbs) || 0) * 4 + (Number(fat) || 0) * 9;
+
+  // Near-zero foods (tea, black coffee, diet soda) carry rounding noise that
+  // makes a ratio meaningless.
+  if (stated < 25 && derived < 25) return { ok: true, ratio: null };
+  if (stated <= 0) return { ok: derived < 25, ratio: null };
+
+  const ratio = derived / stated;
+  const ok =
+    ratio >= 1 - ATWATER_TOLERANCE && ratio <= 1 + ATWATER_TOLERANCE;
+  return { ok, ratio: Math.round(ratio * 100) / 100 };
 }
 
 function calculateNutrition(per100g, weightGrams) {
@@ -391,23 +528,37 @@ function enrichScanResults(foods) {
 
   const items = foods.map((food) => {
     const name = String(food.name || food.food_name || 'Unknown Food').slice(0, 120);
-    const weightG = Math.round(Math.max(0, Number(food.estimated_weight_g || food.weight_g || 0)));
+    // The display name is localised; the match key is always English. Matching
+    // on the localised name failed outright for non-Latin scripts.
+    const lookupName = String(food.match_key || food.matchKey || name).slice(0, 120);
+    const rawWeight = Number(food.estimated_weight_g ?? food.weight_g ?? 0);
+    const weightG = Number.isFinite(rawWeight) ? Math.round(Math.max(0, rawWeight)) : 0;
     const confidence = Math.min(1, Math.max(0, Number(food.confidence || 0)));
 
-    const matched = nutritionProvider.lookup(name);
+    // A missing weight is unknown, not zero. Previously nutrition was computed
+    // at a silent 100g default while weight_g went out as 0, and the client
+    // then recomputed every macro as per100g x 0 = 0.
+    const hasWeight = weightG > 0;
+    const matched = hasWeight ? nutritionProvider.lookup(lookupName) : null;
     const nutritionMatchId = matched ? matched.id : null;
 
     const item = {
       food_name: name,
-      portion: weightG > 0 ? `${weightG}g` : 'Unknown',
+      match_key: lookupName,
+      portion: hasWeight ? `${weightG}g` : 'Unknown',
       weight_g: weightG,
       confidence: Math.round(confidence * 100) / 100,
       nutrition_match_id: nutritionMatchId,
+      // The database row actually used. Without this the client cannot tell the
+      // user which food the numbers describe, so "fried chicken" resolving to a
+      // near-neighbour is invisible rather than correctable.
+      matched_name: matched ? matched.displayName : null,
       matched: !!matched,
+      nutrition_source: matched ? 'database' : 'unmatched',
     };
 
     if (matched) {
-      const actual = calculateNutrition(matched.per100g, weightG || 100);
+      const actual = calculateNutrition(matched.per100g, weightG);
       item.calories = actual.calories;
       item.protein = actual.protein;
       item.carbs = actual.carbs;
@@ -419,8 +570,31 @@ function enrichScanResults(foods) {
         per100g: { calories: matched.per100g.calories, protein: matched.per100g.protein, carbs: matched.per100g.carbs, fat: matched.per100g.fat },
         actual: actual,
       };
+      // Database-derived values should always reconcile; check anyway so a bad
+      // row in nutrition_db.json surfaces in logs rather than in a user's diary.
+      const check = reconcileNutrition(actual);
+      item.nutrition_flag = check.ok ? 'ok' : 'inconsistent';
+      item.atwater_ratio = check.ratio;
+      if (!check.ok) {
+        console.warn(
+          JSON.stringify({
+            event: 'nutrition.atwater_mismatch',
+            pipeline: 'v2',
+            food: name,
+            match_id: nutritionMatchId,
+            ratio: check.ratio,
+          })
+        );
+      }
     } else {
-      unmatchedFoodLogger.logUnmatched(name, { confidence, weight_g: weightG });
+      unmatchedFoodLogger.logUnmatched(lookupName, {
+        confidence,
+        weight_g: weightG,
+        display_name: name,
+        reason: hasWeight ? 'no_database_match' : 'missing_weight',
+      });
+      item.nutrition_flag = 'unmatched';
+      item.atwater_ratio = null;
       item.calories = null;
       item.protein = null;
       item.carbs = null;
@@ -926,13 +1100,62 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
 
       const type = String(event.type || '');
       const expirationMs = Number(event.expiration_at_ms || 0);
+
+      // A TRANSFER moves an entitlement between app user IDs; treating it as
+      // an expiry would deactivate the *receiving* account (BUG-019).
+      if (type === 'TRANSFER') {
+        const sources = (Array.isArray(event.transferred_from)
+          ? event.transferred_from
+          : [event.transferred_from]
+        ).map((v) => String(v || '')).filter((v) => v && v !== appUserId && isSafeId(v));
+        const destinations = (Array.isArray(event.transferred_to)
+          ? event.transferred_to
+          : [appUserId]
+        ).map((v) => String(v || '')).filter(Boolean);
+
+        for (const source of sources) {
+          tx.set(subscriptionDoc(source), {
+            isActive: false,
+            lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+            source: 'revenuecat_webhook',
+            lastEventType: type,
+            updatedByServer: true,
+          }, { merge: true });
+        }
+
+        for (const destination of destinations) {
+          if (!isSafeId(destination)) continue;
+          const active = expirationMs === 0 || expirationMs > Date.now();
+          tx.set(subscriptionDoc(destination), {
+            entitlementId: event.entitlement_id || event.entitlement_ids?.[0] || 'pro',
+            isActive: active,
+            productId: event.product_id || null,
+            expiresAt: expirationMs ? admin.firestore.Timestamp.fromMillis(expirationMs) : null,
+            lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+            source: 'revenuecat_webhook',
+            revenueCatAppUserId: destination,
+            updatedByServer: true,
+            lastEventType: type,
+          }, { merge: true });
+        }
+
+        tx.set(eventRef, {
+          appUserId,
+          transferredFrom: sources,
+          transferredTo: destinations,
+          type,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          processed: true,
+        });
+        return;
+      }
+
       const isActive = ![
         'EXPIRATION',
         'CANCELLATION',
         'BILLING_ISSUE',
         'PRODUCT_CHANGE',
         'REFUND',
-        'TRANSFER',
       ].includes(type) && (expirationMs === 0 || expirationMs > Date.now());
 
       tx.set(subscriptionDoc(appUserId), {
@@ -1042,18 +1265,17 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
   }
 
   const uid = req.user.uid;
-  const usageRef = usageDoc(uid);
-  const subRef = subscriptionDoc(uid);
-  const [usageSnap, subSnap] = await Promise.all([usageRef.get(), subRef.get()]);
-  const usage = usageSnap.exists ? usageSnap.data() : {};
-  const subscription = subSnap.exists ? subSnap.data() : {};
-  const monthKey = currentMonthKey();
-  const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
-  const expiresDate = subscription?.expiresAt?.toDate ? subscription.expiresAt.toDate() : null;
-  const isPremium = subscription?.isActive === true && (!expiresDate || expiresDate > new Date());
 
-  if (!isPremium && scansUsed >= FREE_MONTHLY_SCANS) {
-    return safeError(res, 402, 'Scan limit reached.');
+  // Claim quota transactionally BEFORE calling the model (BUG-011).
+  let claim;
+  try {
+    claim = await claimScanQuotaForScan(uid);
+  } catch (error) {
+    if (error.code === 402) {
+      return safeError(res, 402, 'Scan limit reached.');
+    }
+    console.error('Scan quota claim failed:', error.message);
+    return safeError(res, 500, 'Could not start scan.');
   }
 
   try {
@@ -1072,13 +1294,6 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
       const matchedCount = result.items.filter(i => i.matched).length;
       console.error(`Scan v2: ${result.items.length} foods (${matchedCount} matched, ${result.items.length - matchedCount} unmatched)`);
 
-      await usageRef.set({
-        monthKey,
-        scansUsed: scansUsed + 1,
-        premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-
       return res.status(200).json({ items: result.items, totals: result.totals });
     }
 
@@ -1095,15 +1310,11 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
     console.log(JSON.stringify({ event: 'scan.success', pipeline: 'v1', status: 200 }));
     console.error('Scan items:', JSON.stringify(nutrition.items.map(i => ({ food_name: i.food_name, calories: i.calories }))));
 
-    await usageRef.set({
-      monthKey,
-      scansUsed: scansUsed + 1,
-      premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-
     return res.status(200).json({ items: nutrition.items, totals });
   } catch (error) {
+    // The quota was consumed up-front; give it back when the scan itself
+    // failed so users are not charged for our provider outages.
+    await refundScanQuota(uid, claim.monthKey);
     console.error(
       JSON.stringify({ event: 'scan.error', status: 502, error: error.message })
     );
@@ -1126,6 +1337,10 @@ if (process.env.NODE_ENV !== 'production') {
     { method: 'POST', path: '/api/revenuecat/webhook' },
     { method: 'GET', path: '/api/admin/users/:uid/summary' },
     { method: 'POST', path: '/api/admin/users/:uid/access' },
+    { method: 'POST', path: '/api/notifications/food-reminder/register' },
+    { method: 'POST', path: '/api/notifications/food-reminder/trigger' },
+    { method: 'POST', path: '/api/debug/grant-premium' },
+    { method: 'POST', path: '/api/debug/revoke-premium' },
   ];
 
   app.get('/debug/routes', (req, res) => {
@@ -1133,27 +1348,44 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// ── Debug endpoints (always available, auth-protected) ─────────
-app.post('/api/debug/grant-premium', authenticateToken, async (req, res) => {
-  await subscriptionDoc(req.user.uid).set({
-    entitlementId: 'pro',
-    isActive: true,
-    productId: 'debug_manual_grant',
-    source: 'debug',
-    lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
-  console.log(`Debug: granted premium to ${req.user.uid}`);
-  return res.json({ ok: true, uid: req.user.uid });
-});
+// ── Debug endpoints ────────────────────────────────────────────
+// Never reachable in production, and admin + App Check gated regardless
+// (BUG-001). Audit production `subscription/current` documents for
+// source: 'debug' — any that exist are already-granted free Pro accounts.
+if (NODE_ENV !== 'production') {
+  app.post(
+    '/api/debug/grant-premium',
+    authenticateToken,
+    verifyAppCheck,
+    requireAdmin,
+    async (req, res) => {
+      await subscriptionDoc(req.user.uid).set({
+        entitlementId: 'pro',
+        isActive: true,
+        productId: 'debug_manual_grant',
+        source: 'debug',
+        lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      console.log(`Debug: granted premium to ${req.user.uid}`);
+      return res.json({ ok: true, uid: req.user.uid });
+    },
+  );
 
-app.post('/api/debug/revoke-premium', authenticateToken, async (req, res) => {
-  await subscriptionDoc(req.user.uid).set({
-    isActive: false,
-    lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
-  console.log(`Debug: revoked premium from ${req.user.uid}`);
-  return res.json({ ok: true, uid: req.user.uid });
-});
+  app.post(
+    '/api/debug/revoke-premium',
+    authenticateToken,
+    verifyAppCheck,
+    requireAdmin,
+    async (req, res) => {
+      await subscriptionDoc(req.user.uid).set({
+        isActive: false,
+        lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      console.log(`Debug: revoked premium from ${req.user.uid}`);
+      return res.json({ ok: true, uid: req.user.uid });
+    },
+  );
+}
 
 app.use((err, req, res, next) => {
   if (err?.type === 'entity.too.large') {
@@ -1163,7 +1395,7 @@ app.use((err, req, res, next) => {
   return safeError(res, 500, 'Internal server error.');
 });
 
-app.post('/api/notifications/food-reminder/register', authenticateToken, async (req, res) => {
+app.post('/api/notifications/food-reminder/register', authenticateToken, verifyAppCheck, async (req, res) => {
   const { fcmToken, enabled } = req.body || {};
   const uid = req.user.uid;
 
@@ -1184,15 +1416,22 @@ app.post('/api/notifications/food-reminder/register', authenticateToken, async (
   }
 });
 
-app.post('/api/notifications/food-reminder/trigger', authenticateToken, async (req, res) => {
-  const { processReminders: trigger } = require('./services/food_reminder_service');
-  try {
-    const result = await trigger();
-    return res.status(200).json(result);
-  } catch (err) {
-    return safeError(res, 500, err.message);
-  }
-});
+// Admin-only: this runs the reminder fan-out for every user (BUG-018).
+app.post(
+  '/api/notifications/food-reminder/trigger',
+  authenticateToken,
+  verifyAppCheck,
+  requireAdmin,
+  async (req, res) => {
+    const { processReminders: trigger } = require('./services/food_reminder_service');
+    try {
+      const result = await trigger();
+      return res.status(200).json(result);
+    } catch (err) {
+      return safeError(res, 500, err.message);
+    }
+  },
+);
 
 if (require.main === module) {
   const port = process.env.PORT || 3000;
@@ -1209,6 +1448,7 @@ module.exports = {
   normalizeAiJsonText,
   isSafeId,
   calculateNutrition,
+  reconcileNutrition,
   enrichScanResults,
   getV2SystemPrompt,
   setAuthVerifierForTest(verifier) {
