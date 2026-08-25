@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -160,7 +160,12 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ],
-          if (kDebugMode) ...[const SizedBox(height: 24), _DebugProToggle()],
+          if (kDebugMode) ...[
+            const SizedBox(height: 24),
+            _DebugProToggle(),
+            const SizedBox(height: 12),
+            const _DebugOnboardingButton(),
+          ],
         ],
       ),
     );
@@ -220,6 +225,66 @@ class _DebugProToggle extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Tap to toggle (debug only)',
+                      style: TextStyle(
+                        color: const Color(0xFFA8A29E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: const Color(0xFFA8A29E),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DebugOnboardingButton extends StatelessWidget {
+  const _DebugOnboardingButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => context.push('/onboarding'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE3F2FD).withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(LucideIcons.flag, size: 20, color: Color(0xFF1565C0)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Debug: Onboarding',
+                      style: TextStyle(
+                        color: const Color(0xFF1565C0),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Replay the onboarding flow',
                       style: TextStyle(
                         color: const Color(0xFFA8A29E),
                         fontSize: 12,
