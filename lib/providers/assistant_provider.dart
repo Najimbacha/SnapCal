@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/repositories/assistant_repository.dart';
 import '../data/services/gemini_service.dart';
@@ -15,7 +14,10 @@ class Assistant extends _$Assistant {
   @override
   FutureOr<void> build() {}
 
-  Future<String> fetchRecommendations(String query, {int? currentCalories}) async {
+  Future<String> fetchRecommendations(
+    String query, {
+    int? currentCalories,
+  }) async {
     _repo ??= await ref.read(assistantRepositoryProvider.future);
     if (currentCalories != null) {
       await _repo!.saveCalorieSnapshot(currentCalories);

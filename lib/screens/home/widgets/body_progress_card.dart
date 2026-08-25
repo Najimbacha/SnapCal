@@ -16,9 +16,20 @@ class BodyProgressCard extends StatelessWidget {
     return Consumer(
       builder: (context, ref, child) {
         final metricsList = ref.watch(bodyMetricsProvider).valueOrNull ?? [];
-        final currentWeight = metricsList.isEmpty ? null : metricsList.first.weight;
-        final bmi = currentWeight != null ? currentWeight / ((170 / 100) * (170 / 100)) : 0.0;
-        final bmiCategory = bmi < 18.5 ? 'underweight' : bmi < 25 ? 'normal' : bmi < 30 ? 'overweight' : 'obese';
+        final currentWeight =
+            metricsList.isEmpty ? null : metricsList.first.weight;
+        final bmi =
+            currentWeight != null
+                ? currentWeight / ((170 / 100) * (170 / 100))
+                : 0.0;
+        final bmiCategory =
+            bmi < 18.5
+                ? 'underweight'
+                : bmi < 25
+                ? 'normal'
+                : bmi < 30
+                ? 'overweight'
+                : 'obese';
         final recentTrend = metricsList.take(7).toList();
         final hasData = currentWeight != null;
 
@@ -119,7 +130,7 @@ class BodyProgressCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                'BMI ${bmi?.toStringAsFixed(1) ?? "--"} • $bmiCategory',
+                                'BMI ${bmi.toStringAsFixed(1)} • $bmiCategory',
                                 style: TextStyle(
                                   color: _getBmiColor(bmi),
                                   fontSize: 12,
@@ -203,5 +214,3 @@ class BodyProgressCard extends StatelessWidget {
     return Colors.redAccent;
   }
 }
-
-

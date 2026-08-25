@@ -57,11 +57,17 @@ class NutritionResult {
 
     // Extract v2 nested nutrition if present
     final Map<String, dynamic>? nutrition =
-        json['nutrition'] is Map ? Map<String, dynamic>.from(json['nutrition']) : null;
+        json['nutrition'] is Map
+            ? Map<String, dynamic>.from(json['nutrition'])
+            : null;
     final Map<String, dynamic>? per100g =
-        nutrition?['per100g'] is Map ? Map<String, dynamic>.from(nutrition!['per100g']) : null;
+        nutrition?['per100g'] is Map
+            ? Map<String, dynamic>.from(nutrition!['per100g'])
+            : null;
     final Map<String, dynamic>? actual =
-        nutrition?['actual'] is Map ? Map<String, dynamic>.from(nutrition!['actual']) : null;
+        nutrition?['actual'] is Map
+            ? Map<String, dynamic>.from(nutrition!['actual'])
+            : null;
 
     // Use v2 nutrition.actual values if available and top-level values are null
     final int calories;
@@ -81,7 +87,11 @@ class NutritionResult {
       fat = _safeInt(json['fat']).clamp(0, 500);
     }
 
-    final bool matched = json['matched'] == true || (json['matched'] != false && (actual != null || (json['calories'] != null && _safeInt(json['calories']) > 0)));
+    final bool matched =
+        json['matched'] == true ||
+        (json['matched'] != false &&
+            (actual != null ||
+                (json['calories'] != null && _safeInt(json['calories']) > 0)));
 
     return NutritionResult(
       foodName: _safeText(json['food_name'], 'Unknown Food'),
@@ -94,7 +104,8 @@ class NutritionResult {
       insights:
           (json['insights'] as List?)?.map((e) => e.toString()).toList() ?? [],
       alternatives:
-          (json['alternatives'] as List?)?.map((e) => e.toString()).toList() ?? [],
+          (json['alternatives'] as List?)?.map((e) => e.toString()).toList() ??
+          [],
       weightG: (json['weight_g'] as num?)?.toDouble(),
       confidence: (json['confidence'] as num?)?.toDouble(),
       nutritionMatchId: json['nutrition_match_id']?.toString(),
@@ -245,6 +256,10 @@ User daily targets:
       throw GeminiException('Please sign in before scanning food.');
     }
     final bytes = await ImageUtils.compressImageBytesAsync(imageBytes);
+    if (bytes == null) {
+      // Undecodable input (unsupported/corrupt format) — not a size problem.
+      throw const UnsupportedImageException();
+    }
     if (bytes.length > AppConstants.maxImageUploadBytes) {
       throw GeminiException('Image is too large to upload safely.');
     }
@@ -261,18 +276,29 @@ User daily targets:
         data: {'image': base64Image, 'language': language},
       );
       if (response.statusCode != 200) {
-        final body = response.data is Map ? jsonEncode(response.data) : response.data.toString();
+        final body =
+            response.data is Map
+                ? jsonEncode(response.data)
+                : response.data.toString();
         debugPrint('❌ Scan failed: status=${response.statusCode}, body=$body');
-        throw GeminiException('Scan failed (status: ${response.statusCode}): $body');
+        throw GeminiException(
+          'Scan failed (status: ${response.statusCode}): $body',
+        );
       }
-      final text = response.data is String
-          ? response.data as String
-          : jsonEncode(response.data);
+      final text =
+          response.data is String
+              ? response.data as String
+              : jsonEncode(response.data);
       return _parseResponse(text);
     } on DioException catch (e) {
       final status = e.response?.statusCode;
-      final body = e.response?.data is Map ? jsonEncode(e.response?.data) : e.response?.data.toString();
-      debugPrint('❌ Scan DioException: type=${e.type}, status=$status, body=$body');
+      final body =
+          e.response?.data is Map
+              ? jsonEncode(e.response?.data)
+              : e.response?.data.toString();
+      debugPrint(
+        '❌ Scan DioException: type=${e.type}, status=$status, body=$body',
+      );
       rethrow;
     }
   }
@@ -520,23 +546,25 @@ Keys 0-6 = Day 1 to Day 7. Each day must have exactly ${settings.mealsPerDay} me
       final foods = jsonResult['foods'] as List;
       // This is the raw AI detection response (before enrichment).
       // The backend should have enriched this already, but handle defensively.
-      final parsed = foods.whereType<Map>().map((food) {
-        final name = food['name']?.toString() ?? 'Unknown Food';
-        final weight = (food['estimated_weight_g'] ?? food['weight_g'] ?? 0);
-        return NutritionResult(
-          foodName: name,
-          portion: weight > 0 ? '${weight}g' : 'Unknown',
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-          weightG: (weight as num?)?.toDouble(),
-          confidence: (food['confidence'] as num?)?.toDouble(),
-          matched: false,
-          nutritionPer100g: null,
-          nutritionActual: null,
-        );
-      }).toList();
+      final parsed =
+          foods.whereType<Map>().map((food) {
+            final name = food['name']?.toString() ?? 'Unknown Food';
+            final weight =
+                (food['estimated_weight_g'] ?? food['weight_g'] ?? 0);
+            return NutritionResult(
+              foodName: name,
+              portion: weight > 0 ? '${weight}g' : 'Unknown',
+              calories: 0,
+              protein: 0,
+              carbs: 0,
+              fat: 0,
+              weightG: (weight as num?)?.toDouble(),
+              confidence: (food['confidence'] as num?)?.toDouble(),
+              matched: false,
+              nutritionPer100g: null,
+              nutritionActual: null,
+            );
+          }).toList();
       if (parsed.isEmpty) {
         throw const FormatException('Nutrition response contained no items.');
       }

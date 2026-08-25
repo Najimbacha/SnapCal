@@ -66,12 +66,7 @@ class NutritionReportView extends StatelessWidget {
                             AppLocalizations.of(context)!.report_calorie_trend,
                       ),
                       const SizedBox(height: 12),
-                      SizedBox(
-                        height: 220,
-                        child: _CalorieChart(
-                          values: [],
-                        ),
-                      ),
+                      SizedBox(height: 220, child: _CalorieChart(values: [])),
                     ],
                   ),
                 ),
@@ -91,11 +86,7 @@ class NutritionReportView extends StatelessWidget {
                           SizedBox(
                             width: 150,
                             height: 150,
-                            child: _MacroChart(
-                              protein: 0,
-                              carbs: 0,
-                              fat: 0,
-                            ),
+                            child: _MacroChart(protein: 0, carbs: 0, fat: 0),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -264,8 +255,7 @@ class _MacroChart extends StatelessWidget {
             value: total > 0 ? protein : 1,
             title: '',
             radius: 18,
-            badgeWidget:
-                total > 0 ? null : Icon(LucideIcons.info, size: 12),
+            badgeWidget: total > 0 ? null : Icon(LucideIcons.info, size: 12),
           ),
           PieChartSectionData(
             color: AppColors.carbs,
@@ -343,5 +333,3 @@ class _LegendRow extends StatelessWidget {
     );
   }
 }
-
-

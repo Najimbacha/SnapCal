@@ -17,8 +17,7 @@ class AppConstants {
   // Model IDs
   static const String defaultGeminiModel = 'gemini-2.0-flash';
   static const String defaultGroqCoachModel = 'llama-3.3-70b-versatile';
-  static const String defaultGroqScannerModel =
-      'llama-3.2-90b-vision-preview';
+  static const String defaultGroqScannerModel = 'llama-3.2-90b-vision-preview';
 
   static const String groqApiUrl =
       'https://api.groq.com/openai/v1/chat/completions';
@@ -101,12 +100,22 @@ Rules:
   static const int defaultWaterGoal = 2000; // in ml
 
   // Free Tier Limits
-  static const int freeTierDailyMealLimit = 3;
+  // (The 3-scans-per-UTC-month free tier lives in ScanGateService._freeTierLimit
+  // and backend FREE_MONTHLY_SCANS — kept together, changed together.)
 
   // Image Processing
   static const int maxImageSize = 768;
   static const int imageQuality = 70;
   static const int maxImageUploadBytes = 5 * 1024 * 1024;
+
+  // Free Tier Feature Flags (overridable via Firebase Remote Config)
+  //
+  // When true, free users see macro grams on scan results and on the home
+  // dashboard. The free tier is then limited by scan count alone, rather than
+  // by scan count AND result depth. Set `free_macros_enabled` to false in
+  // Remote Config to restore the previous locked-macro behaviour without
+  // shipping a new build.
+  static const bool defaultFreeMacrosEnabled = true;
 
   // Animation Durations
   static const Duration shortAnimation = Duration(milliseconds: 200);

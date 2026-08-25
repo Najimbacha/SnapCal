@@ -65,9 +65,7 @@ class MetricProgressStrip extends StatelessWidget {
     return Row(
       children: [
         for (var i = 0; i < items.length; i++) ...[
-          Expanded(
-            child: _MetricCell(item: items[i]),
-          ),
+          Expanded(child: _MetricCell(item: items[i])),
           if (i != items.length - 1) const SizedBox(width: 8),
         ],
       ],
@@ -97,13 +95,13 @@ class _MetricCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = item.target > 0
-        ? (item.value / item.target).clamp(0.0, 1.0)
-        : 0.0;
+    final progress =
+        item.target > 0 ? (item.value / item.target).clamp(0.0, 1.0) : 0.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final track = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.05);
+    final track =
+        isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.black.withValues(alpha: 0.05);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
@@ -126,8 +124,7 @@ class _MetricCell extends StatelessWidget {
                   child: CircularProgressIndicator(
                     value: 1,
                     strokeWidth: 3,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(track),
+                    valueColor: AlwaysStoppedAnimation<Color>(track),
                   ),
                 ),
                 SizedBox.expand(
@@ -139,17 +136,12 @@ class _MetricCell extends StatelessWidget {
                       return CircularProgressIndicator(
                         value: value,
                         strokeWidth: 3,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(item.color),
+                        valueColor: AlwaysStoppedAnimation<Color>(item.color),
                       );
                     },
                   ),
                 ),
-                Icon(
-                  item.icon,
-                  size: 12,
-                  color: item.color,
-                ),
+                Icon(item.icon, size: 12, color: item.color),
               ],
             ),
           ),
@@ -159,7 +151,7 @@ class _MetricCell extends StatelessWidget {
             style: AppTypography.labelSmall.copyWith(
               color: context.textMutedColor,
               fontWeight: FontWeight.w700,
-              fontSize: 10.5,
+              fontSize: 11,
               letterSpacing: 0.4,
             ),
           ),
@@ -178,7 +170,7 @@ class _MetricCell extends StatelessWidget {
             style: AppTypography.labelSmall.copyWith(
               color: context.textMutedColor,
               fontWeight: FontWeight.w500,
-              fontSize: 10.5,
+              fontSize: 11,
             ),
           ),
         ],

@@ -28,7 +28,9 @@ Future<WaterRepository> waterRepository(WaterRepositoryRef ref) async {
 }
 
 @Riverpod(keepAlive: true)
-Future<AssistantRepository> assistantRepository(AssistantRepositoryRef ref) async {
+Future<AssistantRepository> assistantRepository(
+  AssistantRepositoryRef ref,
+) async {
   final repo = AssistantRepository();
   await repo.init();
   return repo;

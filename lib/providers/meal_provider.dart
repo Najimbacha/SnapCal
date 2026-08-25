@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/meal.dart';
-import '../data/repositories/meal_repository.dart';
 import '../core/services/app_lifecycle_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/gemini_service.dart';
@@ -41,7 +39,9 @@ class MealLog extends _$MealLog {
   @override
   FutureOr<void> build() {
     AppLifecycleService().addListener(_handleLifecycleEvent);
-    ref.onDispose(() => AppLifecycleService().removeListener(_handleLifecycleEvent));
+    ref.onDispose(
+      () => AppLifecycleService().removeListener(_handleLifecycleEvent),
+    );
   }
 
   void _handleLifecycleEvent() {
@@ -53,12 +53,20 @@ class MealLog extends _$MealLog {
 
   String generateMealId() => _uuid.v4();
 
-  Future<void> addMeal(Meal meal, {bool rebalancePlanner = true, String? mealDate}) async {
+  Future<void> addMeal(
+    Meal meal, {
+    bool rebalancePlanner = true,
+    String? mealDate,
+  }) async {
     final repo = await ref.read(mealRepositoryProvider.future);
     await repo.addMeal(meal);
 
     // Fire-and-forget streak update via settings
-    unawaited(ref.read(settingsProvider.notifier).updateStreakOnMealLog(mealDate: mealDate));
+    unawaited(
+      ref
+          .read(settingsProvider.notifier)
+          .updateStreakOnMealLog(mealDate: mealDate),
+    );
   }
 
   Future<void> updateMeal(Meal meal) async {
@@ -78,5 +86,6 @@ class MealLog extends _$MealLog {
     _analysisCache[imageKey] = results;
   }
 
-  List<NutritionResult>? getCachedAnalysis(String imageKey) => _analysisCache[imageKey];
+  List<NutritionResult>? getCachedAnalysis(String imageKey) =>
+      _analysisCache[imageKey];
 }

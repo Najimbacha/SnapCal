@@ -166,12 +166,16 @@ class _DayCell extends StatelessWidget {
     final date = DateTime.parse(summary.dateString);
     final today = _isToday(date);
     final l10n = AppLocalizations.of(context)!;
-    final dayLabel = today ? l10n.common_today : DateFormat.E(l10n.localeName).format(date);
+    final dayLabel =
+        today ? l10n.common_today : DateFormat.E(l10n.localeName).format(date);
 
     return Semantics(
       button: true,
       selected: selected,
-      label: today ? l10n.common_today : DateFormat.yMMMMEEEEd(l10n.localeName).format(date),
+      label:
+          today
+              ? l10n.common_today
+              : DateFormat.yMMMMEEEEd(l10n.localeName).format(date),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -180,9 +184,10 @@ class _DayCell extends StatelessWidget {
           width: 50,
           padding: const EdgeInsets.symmetric(vertical: 6),
           decoration: BoxDecoration(
-            color: selected
-                ? colorScheme.primary.withValues(alpha: 0.12)
-                : Colors.transparent,
+            color:
+                selected
+                    ? colorScheme.primary.withValues(alpha: 0.12)
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -191,9 +196,10 @@ class _DayCell extends StatelessWidget {
               Text(
                 dayLabel,
                 style: AppTypography.labelSmall.copyWith(
-                  color: selected
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  color:
+                      selected
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                   fontSize: 9,
                 ),

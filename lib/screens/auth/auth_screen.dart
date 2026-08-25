@@ -27,7 +27,8 @@ class AuthScreen extends ConsumerStatefulWidget {
   ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends ConsumerState<AuthScreen> with TickerProviderStateMixin {
+class _AuthScreenState extends ConsumerState<AuthScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -95,10 +96,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with TickerProviderStat
 
   String _friendlyError(Object e) {
     final msg = e.toString();
-    if (msg.contains('network') || msg.contains('timeout') || msg.contains('SocketException')) {
+    if (msg.contains('network') ||
+        msg.contains('timeout') ||
+        msg.contains('SocketException')) {
       return 'Connection error. Please check your internet and try again.';
     }
-    if (msg.contains('wrong-password') || msg.contains('invalid-email') || msg.contains('user-not-found') || msg.contains('invalid-credential')) {
+    if (msg.contains('wrong-password') ||
+        msg.contains('invalid-email') ||
+        msg.contains('user-not-found') ||
+        msg.contains('invalid-credential')) {
       return 'Invalid email or password. Please try again.';
     }
     if (msg.contains('too-many-requests') || msg.contains('rate-limit')) {

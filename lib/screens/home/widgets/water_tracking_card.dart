@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -156,8 +155,8 @@ class _WaterTrackingCardState extends ConsumerState<WaterTrackingCard>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF3B82F6).withOpacity(0.85),
-                    const Color(0xFF3B82F6),
+                    AppColors.sky.withValues(alpha: 0.85),
+                    AppColors.sky,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -165,7 +164,7 @@ class _WaterTrackingCardState extends ConsumerState<WaterTrackingCard>
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF3B82F6).withOpacity(0.3),
+                    color: AppColors.sky.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -186,9 +185,12 @@ class _WaterTrackingCardState extends ConsumerState<WaterTrackingCard>
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Row(
@@ -206,7 +208,7 @@ class _WaterTrackingCardState extends ConsumerState<WaterTrackingCard>
                         Text(
                           'ml',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                           ),
@@ -274,8 +276,3 @@ class _WaterWaveBarPainter extends CustomPainter {
       oldDelegate.animationValue != animationValue ||
       oldDelegate.progress != progress;
 }
-
-
-
-
-

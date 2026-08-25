@@ -3,6 +3,8 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -122,6 +124,22 @@ class SyncQueueService with ChangeNotifier {
             debugPrint(
               'Dropping sync queue item after $attempts attempts: $failure',
             );
+            // A permission denial on a client write is never transient — it
+            // means the client and the security rules disagree about the
+            // payload shape. That is a shipping bug and must be visible in
+            // Crashlytics, not dropped silently into a debugPrint (BUG-003).
+            if (failure.type == AppFailureType.permissionDenied &&
+                Firebase.apps.isNotEmpty) {
+              unawaited(
+                FirebaseCrashlytics.instance.recordError(
+                  error,
+                  StackTrace.current,
+                  reason:
+                      'Sync queue write rejected by Firestore rules: '
+                      '${op['documentPath']}',
+                ),
+              );
+            }
             await box.delete(key);
             continue;
           }

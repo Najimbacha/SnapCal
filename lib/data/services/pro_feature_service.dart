@@ -1,3 +1,4 @@
+import '../../core/services/config_service.dart';
 import 'premium_conversion_service.dart';
 
 enum ProFeature {
@@ -25,12 +26,22 @@ class ProFeatureService {
 
   static const int freeHistoryDays = 14;
 
+  /// Whether macro grams are visible to this user.
+  ///
+  /// Macro grams are part of the answer a scan produces, not an add-on, so
+  /// free users see them whenever the `free_macros_enabled` Remote Config flag
+  /// is on (the default). What stays behind Pro is the coaching layer built on
+  /// top: daily targets, goal progress, health score, and AI insights.
+  bool canSeeMacros({required bool isPro}) =>
+      isPro || ConfigService().freeMacrosEnabled;
+
   bool canUse(ProFeature feature, {required bool isPro}) {
     switch (feature) {
+      case ProFeature.macroDetails:
+        return canSeeMacros(isPro: isPro);
       case ProFeature.unlimitedScans:
       case ProFeature.mealInsights:
       case ProFeature.reports:
-      case ProFeature.macroDetails:
       case ProFeature.unlimitedAiCoach:
       case ProFeature.fullWeekPlanner:
       case ProFeature.groceryList:

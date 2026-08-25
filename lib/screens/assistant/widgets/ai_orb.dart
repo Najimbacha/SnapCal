@@ -80,10 +80,7 @@ class _AiOrbState extends State<AiOrb> with TickerProviderStateMixin {
               if (widget.isThinking)
                 Transform.rotate(
                   angle: ringRotation,
-                  child: _OrbitDots(
-                    size: widget.size + 12,
-                    color: accent,
-                  ),
+                  child: _OrbitDots(size: widget.size + 12, color: accent),
                 ),
               Transform.scale(
                 scale: breath,
@@ -104,9 +101,7 @@ class _AiOrbState extends State<AiOrb> with TickerProviderStateMixin {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: accent.withValues(
-                          alpha: isDark ? 0.35 : 0.25,
-                        ),
+                        color: accent.withValues(alpha: isDark ? 0.35 : 0.25),
                         blurRadius: 22,
                         spreadRadius: 1,
                       ),
@@ -172,10 +167,7 @@ class _OrbitDots extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: color.withValues(alpha: 0.6),
                 boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.4),
-                    blurRadius: 6,
-                  ),
+                  BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 6),
                 ],
               ),
             ),
@@ -195,42 +187,44 @@ class AiOrbMini extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = accent ?? AppColors.homeCoachAccent;
     return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          center: const Alignment(-0.2, -0.3),
-          radius: 0.95,
-          colors: [
-            color.withValues(alpha: 0.95),
-            color.withValues(alpha: 0.65),
-            AppColors.secondary.withValues(alpha: 0.4),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.25),
-            blurRadius: 10,
-            spreadRadius: -1,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: 6,
-          height: 6,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.9),
+            gradient: RadialGradient(
+              center: const Alignment(-0.2, -0.3),
+              radius: 0.95,
+              colors: [
+                color.withValues(alpha: 0.95),
+                color.withValues(alpha: 0.65),
+                AppColors.secondary.withValues(alpha: 0.4),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.25),
+                blurRadius: 10,
+                spreadRadius: -1,
+              ),
+            ],
           ),
-        ),
-      ),
-    ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
-      duration: 1800.ms,
-      begin: const Offset(0.95, 0.95),
-      end: const Offset(1.05, 1.05),
-      curve: Curves.easeInOut,
-    );
+          child: Center(
+            child: Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scale(
+          duration: 1800.ms,
+          begin: const Offset(0.95, 0.95),
+          end: const Offset(1.05, 1.05),
+          curve: Curves.easeInOut,
+        );
   }
 }

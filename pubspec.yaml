@@ -1,7 +1,7 @@
 name: snapcal
 description: "SnapCal: AI Calorie Counter - Snap a photo, track your calories."
 publish_to: 'none'
-version: 1.0.21+37
+version: 1.0.22+38
 
 environment:
   sdk: ^3.7.0-209.1.beta
@@ -42,7 +42,6 @@ dependencies:
   # UI Components
   water_animation: ^0.0.3
   animations: ^2.2.0
-  dynamic_color: ^1.7.0
   lucide_icons: ^0.257.0
   font_awesome_flutter: ^11.0.0
   flutter_animate: ^4.5.0
@@ -51,6 +50,7 @@ dependencies:
 
   # Utilities
   uuid: ^4.2.2
+  collection: ^1.19.0
   in_app_review: ^2.0.9
   package_info_plus: ^8.3.0
   path_provider: ^2.1.5
@@ -82,6 +82,7 @@ dependencies:
   health: ^13.3.1
   firebase_performance: ^0.11.4+1
   material_symbols_icons: ^4.2928.1
+  firebase_analytics: ^12.4.6
 
 dev_dependencies:
   flutter_test:
@@ -95,6 +96,11 @@ dev_dependencies:
 dependency_overrides:
   # Temporary Android workaround: path_provider_android 2.3.x uses JNI and
   # has caused native libdartjni startup crashes on some devices.
+  #
+  # OWNER: app team. REVIEW BY: next path_provider_android minor upgrade or
+  # Flutter stable upgrade, whichever comes first. Re-test on the affected
+  # devices, then remove the pin. Pins left in place indefinitely drift out
+  # of compatibility and silently block transitive upgrades.
   path_provider_android: 2.2.23
 
 flutter_launcher_icons:

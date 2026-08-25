@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -33,7 +35,8 @@ class HealthMetricDetailScreen extends ConsumerStatefulWidget {
       _HealthMetricDetailScreenState();
 }
 
-class _HealthMetricDetailScreenState extends ConsumerState<HealthMetricDetailScreen> {
+class _HealthMetricDetailScreenState
+    extends ConsumerState<HealthMetricDetailScreen> {
   LogMetricPeriod _period = LogMetricPeriod.week;
   DateTime _anchor = DateTime.now();
 
@@ -226,8 +229,10 @@ class _HealthMetricDetailScreenState extends ConsumerState<HealthMetricDetailScr
   Future<_MetricDetailData> _buildData(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     final locale = l10n.localeName;
-    final settingsVal = ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
-    final waterState = ref.watch(waterProvider).valueOrNull ?? const WaterState(todayTotal: 0);
+    final settingsVal =
+        ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
+    final waterState =
+        ref.watch(waterProvider).valueOrNull ?? const WaterState(todayTotal: 0);
     final isPro = settingsVal.isPro;
     final buckets = metricBucketsFor(_period, _anchor);
 
@@ -1642,11 +1647,11 @@ Color _metricAccentFor(BuildContext context, LogMetricType type) {
     case LogMetricType.steps:
       return Theme.of(context).colorScheme.primary;
     case LogMetricType.water:
-      return const Color(0xFF3B82F6);
+      return AppColors.sky;
     case LogMetricType.protein:
       return const Color(0xFF7C9A6D);
     case LogMetricType.carbs:
-      return const Color(0xFF4F8CC9);
+      return AppColors.carbs;
     case LogMetricType.fat:
       return const Color(0xFFD18B47);
   }
@@ -1740,4 +1745,3 @@ class _UpgradeCliffBanner extends StatelessWidget {
     );
   }
 }
-

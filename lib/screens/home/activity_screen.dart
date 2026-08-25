@@ -9,7 +9,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../data/models/activity_summary.dart';
-import '../../data/services/activity_service.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/activity_provider.dart' as ap;
 import '../../providers/settings_provider.dart';
@@ -38,8 +37,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
   Widget build(BuildContext context) {
     final activityAsync = ref.watch(ap.activityProvider);
     final activityVal = activityAsync.valueOrNull;
-    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
     final steps = activityVal?.steps ?? 0;
+    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
     final stepGoal = 10000;
     final progress = (steps / math.max(stepGoal, 1)).clamp(0.0, 1.0);
     final l10n = AppLocalizations.of(context)!;
@@ -123,9 +122,7 @@ class _TrackingStatusCard extends ConsumerWidget {
       child: Row(
         children: [
           Icon(
-            isConnected
-                ? LucideIcons.footprints
-                : LucideIcons.alertCircle,
+            isConnected ? LucideIcons.footprints : LucideIcons.alertCircle,
             color: isConnected ? AppColors.primary : AppColors.warning,
           ),
           const SizedBox(width: 14),
@@ -157,9 +154,11 @@ class _TrackingStatusCard extends ConsumerWidget {
                     isSyncing
                         ? null
                         : () async {
-                            await ref.read(ap.activityProvider.notifier).authorize();
-                            ref.invalidate(ap.activityProvider);
-                          },
+                          await ref
+                              .read(ap.activityProvider.notifier)
+                              .authorize();
+                          ref.invalidate(ap.activityProvider);
+                        },
                 icon:
                     isSyncing
                         ? const SizedBox(
@@ -227,9 +226,9 @@ class _PremiumActivityDashboard extends ConsumerWidget {
     final activityAsync = ref.watch(ap.activityProvider);
     final activityVal = activityAsync.valueOrNull;
     final l10n = AppLocalizations.of(context)!;
-    final steps = activityVal?.steps ?? 0;
-    final activeCalories = activityVal?.activeCalories?.toInt() ?? 0;
-    final workoutCalories = activityVal?.workouts.fold<int>(0, (sum, w) => sum + w.calories) ?? 0;
+    final activeCalories = activityVal?.activeCalories.toInt() ?? 0;
+    final workoutCalories =
+        activityVal?.workouts.fold<int>(0, (sum, w) => sum + w.calories) ?? 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -474,8 +473,7 @@ class _HealthConnectWorkoutCard extends ConsumerWidget {
     final activityVal = activityAsync.valueOrNull;
     final workouts = activityVal?.workouts ?? [];
     final workout = workouts.isEmpty ? null : workouts.first;
-    final title =
-        workout == null ? 'No workout data today' : workout.name;
+    final title = workout == null ? 'No workout data today' : workout.name;
     final subtitle =
         workout == null
             ? 'Health Connect has no workout session records for today.'
@@ -551,4 +549,3 @@ class _InsightCard extends ConsumerWidget {
     );
   }
 }
-

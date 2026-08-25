@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
+
 @immutable
 class SnapCalTheme extends ThemeExtension<SnapCalTheme> {
   final Color calories;
@@ -22,31 +24,33 @@ class SnapCalTheme extends ThemeExtension<SnapCalTheme> {
     required this.premiumGradient,
   });
 
+  /// Semantic metric colors, tuned per brightness but always derived from the
+  /// shared AppColors palette so charts and cards stay on one identity.
   static const light = SnapCalTheme(
-    calories: Color(0xFFE56B38),
-    protein: Color(0xFF256D63),
-    carbs: Color(0xFFC88A32),
-    fat: Color(0xFF8C67B8),
-    water: Color(0xFF3185C6),
-    steps: Color(0xFF087F5B),
+    calories: AppColors.primaryDark, // Emerald
+    protein: Color(0xFF5F7A52), // Deep sage
+    carbs: Color(0xFF3D6F9F), // Deep slate blue
+    fat: Color(0xFFB06F32), // Deep ochre
+    water: Color(0xFF2563AE), // Deep water blue
+    steps: AppColors.primaryDark,
     premiumGold: Color(0xFFC88A32),
     premiumGradient: LinearGradient(
-      colors: [Color(0xFF087F5B), Color(0xFF21A574)],
+      colors: [AppColors.emeraldDark, Color(0xFF0B6B4F)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
   );
 
   static const dark = SnapCalTheme(
-    calories: Color(0xFFE56B38),
-    protein: Color(0xFF79D6C6),
-    carbs: Color(0xFFE7B766),
-    fat: Color(0xFFBDA1DE),
-    water: Color(0xFF79B7EE),
-    steps: Color(0xFF56D6A5),
+    calories: Color(0xFF34D399), // Mint emerald
+    protein: Color(0xFFA3C293), // Light sage
+    carbs: Color(0xFF7AB4E8), // Light slate blue
+    fat: Color(0xFFE8B87A), // Light ochre
+    water: AppColors.skyLight,
+    steps: Color(0xFF34D399),
     premiumGold: Color(0xFFE7B766),
     premiumGradient: LinearGradient(
-      colors: [Color(0xFF103E31), Color(0xFF087F5B)],
+      colors: [Color(0xFF06251C), Color(0xFF047857)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),

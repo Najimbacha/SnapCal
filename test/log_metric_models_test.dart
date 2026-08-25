@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snapcal/screens/log/models/log_metric_models.dart';
 import 'package:snapcal/screens/log/widgets/health_metric_dashboard.dart';
@@ -79,14 +80,16 @@ void main() {
         }).toList();
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: HealthMetricDashboard(
-              title: 'Key metrics',
-              actionLabel: 'Customize',
-              cards: cards,
-              onMetricTap: (type) => tappedType = type,
+      ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: HealthMetricDashboard(
+                title: 'Key metrics',
+                actionLabel: 'Customize',
+                cards: cards,
+                onMetricTap: (type) => tappedType = type,
+              ),
             ),
           ),
         ),

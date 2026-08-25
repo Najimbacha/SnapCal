@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -21,10 +23,16 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1200),
     );
     _scale = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Cubic(0.16, 1.0, 0.3, 1.0)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Cubic(0.16, 1.0, 0.3, 1.0),
+      ),
     );
     _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.4, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+      ),
     );
     _controller.forward();
   }
@@ -53,17 +61,38 @@ class _SplashScreenState extends State<SplashScreen>
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF5C5FE0),
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: const Center(
-                    child: Text('S', style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w600)),
+                    child: Text(
+                      'S',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text('SnapCal', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: d ? Colors.white : Colors.black)),
+                Text(
+                  'SnapCal',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: d ? Colors.white : Colors.black,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('Calorie Tracker', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: d ? Colors.white38 : const Color(0xFF8E8E93))),
+                Text(
+                  'Calorie Tracker',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: d ? Colors.white38 : const Color(0xFF8E8E93),
+                  ),
+                ),
               ],
             ),
           ),

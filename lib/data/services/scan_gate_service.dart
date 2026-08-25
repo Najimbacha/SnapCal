@@ -2,6 +2,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/utils/pref_scoping.dart';
+
+/// Gates food scans for free users.
+///
+/// The free tier is **3 scans per calendar month (UTC)** — the same window the
+/// server enforces via `/v1/scan` (402 past three per month). The client
+/// counter is a display mirror of that authoritative quota; the server always
+/// decides. Keys are UID-scoped so a new account on a shared device starts
+/// with its own quota, and counters survive a device clock change because the
+/// key is derived from UTC.
 class ScanGateService {
   static final ScanGateService _instance = ScanGateService._internal();
   factory ScanGateService() => _instance;
@@ -12,7 +22,7 @@ class ScanGateService {
   bool _repairRan = false;
 
   static const String _bonusScansKey = 'bonusScansCount';
-  static const String _lastDateKey = 'scanGate_lastDate';
+  static const String _lastPeriodKey = 'scanGate_lastMonth';
   static const int _freeTierLimit = 3;
 
   Future<void> init() async {
@@ -32,16 +42,23 @@ class ScanGateService {
     return false;
   }
 
-  // ── Date helpers ─────────────────────────────────────────────────────────
+  // ── Period helpers ───────────────────────────────────────────────────────
 
-  String _todayKey() {
-    final n = DateTime.now();
-    return 'scanCount_${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+  /// `scanCount_YYYY-MM` in UTC — mirrors the server's monthly quota window.
+  String _currentScanKey() {
+    return scopedPrefKey('scanCount_${utcMonthKey(DateTime.now())}');
   }
 
-  String _todayStr() {
-    final n = DateTime.now();
-    return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+  String _currentMonthStr() => utcMonthKey(DateTime.now());
+
+  /// All stored scan-count keys for the current scope (any month).
+  Iterable<String> _scanKeysForCurrentScope(SharedPreferences prefs) {
+    final scope = resolvePrefScope();
+    return prefs.getKeys().where((k) {
+      if (!k.contains('scanCount_')) return false;
+      if (scope == null || scope.isEmpty) return !k.contains(':');
+      return k.startsWith('$scope:scanCount_');
+    });
   }
 
   // ── Migration & repair (runs once per process) ───────────────────────────
@@ -52,38 +69,50 @@ class ScanGateService {
     if (_prefs == null) return;
 
     final prefs = _prefs!;
-    final todayKey = _todayKey();
-    final todayStr = _todayStr();
+    final currentKey = _currentScanKey();
+    final currentMonth = _currentMonthStr();
 
-    // 1.  Scan every scanCount_* key and repair invalid values.
-    for (final k in prefs.getKeys()) {
-      if (!k.startsWith('scanCount_')) continue;
+    // 1. Repair invalid values and remove stale keys from previous months,
+    //    previous scopes, and the legacy daily (`scanCount_YYYY-MM-DD`)
+    //    scheme.
+    final ourKeys = _scanKeysForCurrentScope(prefs).toSet();
+    for (final k in ourKeys) {
       final v = prefs.get(k);
       final valid = v is int && v >= 0 && v <= 100;
-      if (!valid) {
-        debugPrint('🛠️ ScanGateService: repairing key "$k" (value=$v)');
-        if (k == todayKey) {
-          await prefs.setInt(k, 0);
-        } else {
-          await prefs.remove(k);
-        }
+      if (!valid || k != currentKey) {
+        debugPrint('🛠️ ScanGateService: removing stale key "$k" (value=$v)');
+        await prefs.remove(k);
       }
     }
 
-    // 2.  Detect new-day boundary.
-    //     If storedDate is null → first launch after update → reset.
-    //     If storedDate != today    → new calendar day  → reset.
-    final storedDate = prefs.getString(_lastDateKey);
-    if (storedDate != todayStr) {
+    // 2. Detect new-month boundary and reset.
+    final storedMonth = prefs.getString(scopedPrefKey(_lastPeriodKey));
+    if (storedMonth != currentMonth) {
       debugPrint(
-        '🔄 ScanGateService: daily reset '
-        '(lastDate=$storedDate, today=$todayStr)',
+        '🔄 ScanGateService: monthly reset '
+        '(lastMonth=$storedMonth, now=$currentMonth)',
       );
-      await prefs.setInt(todayKey, 0);
-      await prefs.setString(_lastDateKey, todayStr);
+      await prefs.setInt(currentKey, 0);
+      await prefs.setString(scopedPrefKey(_lastPeriodKey), currentMonth);
     }
 
     _logState();
+  }
+
+  /// Removes every user-scoped counter. Invoked by SessionCleanupService on
+  /// sign-out so the next account starts from zero.
+  Future<void> resetSessionState() async {
+    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    final keys =
+        prefs.getKeys().where((k) {
+          return prefKeyBelongsTo(k, _bonusScansKey) ||
+              prefKeyBelongsTo(k, _lastPeriodKey) ||
+              k.contains('scanCount_');
+        }).toList();
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
+    _repairRan = false;
   }
 
   // ── Safe SharedPreferences reads ─────────────────────────────────────────
@@ -101,25 +130,27 @@ class ScanGateService {
 
   // ── Public API ───────────────────────────────────────────────────────────
 
-  int getTodayScanCount() {
+  /// Scans used in the current UTC month (the server-enforced window).
+  int getPeriodScanCount() {
     if (!_ready()) return 0;
-    final raw = _readInt(_todayKey());
+    final raw = _readInt(_currentScanKey());
     final limit = _freeTierLimit + getBonusScans();
     final clamped = raw.clamp(0, limit);
     if (clamped != raw) {
-      debugPrint('🛠️ ScanGateService: clamped today count $raw ➜ $clamped');
-      _prefs!.setInt(_todayKey(), clamped);
+      debugPrint('🛠️ ScanGateService: clamped period count $raw ➜ $clamped');
+      _prefs!.setInt(_currentScanKey(), clamped);
     }
     return clamped;
   }
 
   int getBonusScans() {
     if (!_ready()) return 0;
-    final raw = _readInt(_bonusScansKey);
+    final key = scopedPrefKey(_bonusScansKey);
+    final raw = _readInt(key);
     final clamped = raw.clamp(0, 100);
     if (clamped != raw) {
       debugPrint('🛠️ ScanGateService: clamped bonus $raw ➜ $clamped');
-      _prefs!.setInt(_bonusScansKey, clamped);
+      _prefs!.setInt(key, clamped);
     }
     return clamped;
   }
@@ -128,18 +159,18 @@ class ScanGateService {
     if (!_ready()) return;
     final cur = getBonusScans();
     final next = cur + count;
-    await _prefs!.setInt(_bonusScansKey, next);
+    await _prefs!.setInt(scopedPrefKey(_bonusScansKey), next);
     debugPrint('📊 ScanGateService: bonus $cur ➜ $next');
   }
 
   Future<void> incrementScanCount() async {
     if (!_ready()) return;
-    final before = getTodayScanCount();
+    final before = getPeriodScanCount();
     final limit = _freeTierLimit + getBonusScans();
     final after = (before + 1).clamp(0, limit);
-    await _prefs!.setInt(_todayKey(), after);
-    await _prefs!.setString(_lastDateKey, _todayStr());
-    debugPrint('📊 ScanGateService: today count $before ➜ $after');
+    await _prefs!.setInt(_currentScanKey(), after);
+    await _prefs!.setString(scopedPrefKey(_lastPeriodKey), _currentMonthStr());
+    debugPrint('📊 ScanGateService: month count $before ➜ $after');
     _logState();
   }
 
@@ -161,7 +192,7 @@ class ScanGateService {
       return true;
     }
 
-    final used = getTodayScanCount();
+    final used = getPeriodScanCount();
     final limit = _freeTierLimit + getBonusScans();
     final ok = used < limit;
 
@@ -169,7 +200,7 @@ class ScanGateService {
       '📊 ScanGateService: '
       'userId=$userId, '
       'isPro=$isPro, '
-      'today=$_todayStr(), '
+      'month=${_currentMonthStr()}, '
       'scansUsed=$used, '
       'scansRemaining=${limit - used}, '
       'limit=$limit '
@@ -183,25 +214,24 @@ class ScanGateService {
     if (isPro) return -1;
     if (!_ready()) return _freeTierLimit;
     final limit = _freeTierLimit + getBonusScans();
-    return (limit - getTodayScanCount()).clamp(0, limit);
+    return (limit - getPeriodScanCount()).clamp(0, limit);
   }
 
   // ── Diagnostics ──────────────────────────────────────────────────────────
 
   void _logState() {
     if (!_initialized) return;
-    final todayKey = _todayKey();
-    final todayStr = _todayStr();
-    final used = _readInt(todayKey);
-    final bonus = _readInt(_bonusScansKey);
+    final used = _readInt(_currentScanKey());
+    final bonus = getBonusScans();
     final limit = _freeTierLimit + bonus;
     final userId = FirebaseAuth.instance.currentUser?.uid ?? 'anon';
     debugPrint('═══════════ ScanGateService State ═══════════');
     debugPrint('  User ID        : $userId');
-    debugPrint('  Today date     : $todayStr');
-    debugPrint('  Last used date : ${_prefs!.getString(_lastDateKey)}');
-    debugPrint('  Today key      : $todayKey');
-    debugPrint('  Today count    : $used');
+    debugPrint('  Current month  : ${_currentMonthStr()}');
+    debugPrint(
+      '  Last period    : ${_prefs!.getString(scopedPrefKey(_lastPeriodKey))}',
+    );
+    debugPrint('  Month count    : $used');
     debugPrint('  Bonus scans    : $bonus');
     debugPrint('  Free tier limit: $_freeTierLimit');
     debugPrint('  Effective limit: $limit');

@@ -1,6 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/water_log.dart';
-import '../data/repositories/water_repository.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import 'repository_providers.dart';
 
@@ -10,8 +9,10 @@ class WaterState {
   final int todayTotal;
   final int goal;
   const WaterState({required this.todayTotal, this.goal = 2500});
-  WaterState copyWith({int? todayTotal, int? goal}) =>
-      WaterState(todayTotal: todayTotal ?? this.todayTotal, goal: goal ?? this.goal);
+  WaterState copyWith({int? todayTotal, int? goal}) => WaterState(
+    todayTotal: todayTotal ?? this.todayTotal,
+    goal: goal ?? this.goal,
+  );
 }
 
 @Riverpod(keepAlive: true)
@@ -27,7 +28,13 @@ class Water extends _$Water {
   Future<void> addWater(int ml) async {
     final repo = await ref.read(waterRepositoryProvider.future);
     final todayStr = app_date.DateUtils.getTodayString();
-    await repo.addWater(WaterLog(dateString: todayStr, amountMl: ml, timestamp: DateTime.now().millisecondsSinceEpoch));
+    await repo.addWater(
+      WaterLog(
+        dateString: todayStr,
+        amountMl: ml,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
     final total = repo.getTotalWater(todayStr);
     state = AsyncData(state.valueOrNull!.copyWith(todayTotal: total));
   }
@@ -56,7 +63,10 @@ class Water extends _$Water {
     return repo.getTotalWater(date);
   }
 
-  Future<Map<String, int>> getTotalsForRange(DateTime start, DateTime end) async {
+  Future<Map<String, int>> getTotalsForRange(
+    DateTime start,
+    DateTime end,
+  ) async {
     final repo = await ref.read(waterRepositoryProvider.future);
     final logs = repo.getWeeklyWater();
     final map = <String, int>{};

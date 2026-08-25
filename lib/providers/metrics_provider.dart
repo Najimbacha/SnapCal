@@ -1,9 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/body_metric.dart';
 import '../core/services/security_service.dart';
-import '../data/services/upload_queue_service.dart';
 
 part 'metrics_provider.g.dart';
 
@@ -16,11 +14,15 @@ class BodyMetrics extends _$BodyMetrics {
   Future<List<BodyMetric>> build() async {
     if (!Hive.isBoxOpen(_boxName)) {
       final encryptionKey = await SecurityService().getEncryptionKey();
-      _box = await Hive.openBox<BodyMetric>(_boxName, encryptionCipher: HiveAesCipher(encryptionKey));
+      _box = await Hive.openBox<BodyMetric>(
+        _boxName,
+        encryptionCipher: HiveAesCipher(encryptionKey),
+      );
     } else {
       _box = Hive.box<BodyMetric>(_boxName);
     }
-    final list = _box!.values.toList()..sort((a, b) => b.date.compareTo(a.date));
+    final list =
+        _box!.values.toList()..sort((a, b) => b.date.compareTo(a.date));
     return list;
   }
 
@@ -49,12 +51,13 @@ class BodyMetrics extends _$BodyMetrics {
     return list.last.weight;
   }
 
-  Future<void> logWeight(double weightKg, {DateTime? date, double? heightCm}) async {
+  Future<void> logWeight(
+    double weightKg, {
+    DateTime? date,
+    double? heightCm,
+  }) async {
     if (_box == null) return;
-    final metric = BodyMetric(
-      date: date ?? DateTime.now(),
-      weight: weightKg,
-    );
+    final metric = BodyMetric(date: date ?? DateTime.now(), weight: weightKg);
     await _box!.add(metric);
     ref.invalidateSelf();
   }

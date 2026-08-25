@@ -108,7 +108,10 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
               children: [
                 _iconButton(LucideIcons.zap, () => _controller.toggleTorch()),
                 const SizedBox(width: 32),
-                _iconButton(LucideIcons.refreshCw, () => _controller.switchCamera()),
+                _iconButton(
+                  LucideIcons.refreshCw,
+                  () => _controller.switchCamera(),
+                ),
               ],
             ),
           ),
@@ -145,11 +148,12 @@ class _BarcodeBracketPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = color
+          ..strokeWidth = strokeWidth
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
 
     const cl = 28.0;
     final w = size.width;
@@ -158,22 +162,38 @@ class _BarcodeBracketPainter extends CustomPainter {
 
     // Top-left
     canvas.drawPath(
-      Path()..moveTo(0, cl)..lineTo(0, r)..quadraticBezierTo(0, 0, r, 0)..lineTo(cl, 0),
+      Path()
+        ..moveTo(0, cl)
+        ..lineTo(0, r)
+        ..quadraticBezierTo(0, 0, r, 0)
+        ..lineTo(cl, 0),
       paint,
     );
     // Top-right
     canvas.drawPath(
-      Path()..moveTo(w - cl, 0)..lineTo(w - r, 0)..quadraticBezierTo(w, 0, w, r)..lineTo(w, cl),
+      Path()
+        ..moveTo(w - cl, 0)
+        ..lineTo(w - r, 0)
+        ..quadraticBezierTo(w, 0, w, r)
+        ..lineTo(w, cl),
       paint,
     );
     // Bottom-left
     canvas.drawPath(
-      Path()..moveTo(0, h - cl)..lineTo(0, h - r)..quadraticBezierTo(0, h, r, h)..lineTo(cl, h),
+      Path()
+        ..moveTo(0, h - cl)
+        ..lineTo(0, h - r)
+        ..quadraticBezierTo(0, h, r, h)
+        ..lineTo(cl, h),
       paint,
     );
     // Bottom-right
     canvas.drawPath(
-      Path()..moveTo(w - cl, h)..lineTo(w - r, h)..quadraticBezierTo(w, h, w, h - r)..lineTo(w, h - cl),
+      Path()
+        ..moveTo(w - cl, h)
+        ..lineTo(w - r, h)
+        ..quadraticBezierTo(w, h, w, h - r)
+        ..lineTo(w, h - cl),
       paint,
     );
   }
@@ -182,4 +202,3 @@ class _BarcodeBracketPainter extends CustomPainter {
   bool shouldRepaint(covariant _BarcodeBracketPainter oldDelegate) =>
       oldDelegate.color != color;
 }
-

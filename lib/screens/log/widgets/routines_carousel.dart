@@ -8,8 +8,6 @@ import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/core/theme/theme_colors.dart';
 import 'package:snapcal/core/theme/app_typography.dart';
 import 'package:snapcal/data/models/meal_template.dart';
-import 'package:snapcal/providers/meal_provider.dart';
-import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/providers/template_provider.dart';
 import 'package:snapcal/widgets/glass_card.dart';
 import 'package:snapcal/widgets/ui_blocks.dart';
@@ -17,7 +15,11 @@ import 'package:snapcal/widgets/ui_blocks.dart';
 class RoutinesCarousel extends ConsumerWidget {
   const RoutinesCarousel({super.key});
 
-  void _logRoutine(BuildContext context, WidgetRef ref, MealTemplate template) async {
+  void _logRoutine(
+    BuildContext context,
+    WidgetRef ref,
+    MealTemplate template,
+  ) async {
     HapticFeedback.mediumImpact();
     final templateProvider = ref.read(templatesProvider.notifier);
 
@@ -236,9 +238,9 @@ class _RoutineOptionsSheet extends ConsumerWidget {
                 final deletedMessage =
                     AppLocalizations.of(context)!.feature_templates_deleted;
 
-                await ref.read(templatesProvider.notifier).deleteTemplate(
-                  template.id,
-                );
+                await ref
+                    .read(templatesProvider.notifier)
+                    .deleteTemplate(template.id);
                 router.pop();
                 messenger.showSnackBar(SnackBar(content: Text(deletedMessage)));
               },
@@ -250,5 +252,3 @@ class _RoutineOptionsSheet extends ConsumerWidget {
     );
   }
 }
-
-

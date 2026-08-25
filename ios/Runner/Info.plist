@@ -68,8 +68,6 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>SnapCal needs access to the camera to scan food items and barcodes for calorie tracking.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>SnapCal needs access to the microphone for recording audio when analyzing food via voice description.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SnapCal needs access to your photo library to pick images of food for calorie counting.</string>
 	<key>NSMotionUsageDescription</key>

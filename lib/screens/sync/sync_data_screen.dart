@@ -422,7 +422,9 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: List.generate(_buildBenefits(context).length, (index) {
+                    children: List.generate(_buildBenefits(context).length, (
+                      index,
+                    ) {
                       return AnimatedBuilder(
                         animation: _mainController,
                         builder: (context, child) {

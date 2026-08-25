@@ -25,7 +25,8 @@ class NotificationService {
   static const String _foodReminderPayload = 'food_reminder';
   static const String foodReminderChannelId = 'food_scan_reminders_v1';
   static const String foodReminderChannelName = 'Food Scan Reminders';
-  static const String foodReminderChannelDesc = 'Gentle reminders to scan your meals.';
+  static const String foodReminderChannelDesc =
+      'Gentle reminders to scan your meals.';
   static const MethodChannel _timeZoneChannel = MethodChannel(
     'snapcal/timezone',
   );

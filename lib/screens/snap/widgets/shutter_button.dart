@@ -51,13 +51,14 @@ class _ShutterButtonState extends State<ShutterButton>
 
     return GestureDetector(
       onTapDown: isEnabled ? (_) => _pressController.forward() : null,
-      onTapUp: isEnabled
-          ? (_) {
-              HapticFeedback.heavyImpact();
-              _pressController.reverse();
-              widget.onPressed!();
-            }
-          : null,
+      onTapUp:
+          isEnabled
+              ? (_) {
+                HapticFeedback.heavyImpact();
+                _pressController.reverse();
+                widget.onPressed!();
+              }
+              : null,
       onTapCancel: () => _pressController.reverse(),
       child: AnimatedBuilder(
         animation: Listenable.merge([_pressScale, _pulseAnim]),
@@ -82,25 +83,27 @@ class _ShutterButtonState extends State<ShutterButton>
                     color: Colors.transparent,
                   ),
                   child: Center(
-                    child: widget.isLoading
-                        ? const SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: Colors.white,
+                    child:
+                        widget.isLoading
+                            ? const SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                            : Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color:
+                                    isEnabled
+                                        ? Colors.white
+                                        : Colors.grey.shade600,
+                              ),
                             ),
-                          )
-                        : Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isEnabled
-                                  ? Colors.white
-                                  : Colors.grey.shade600,
-                            ),
-                          ),
                   ),
                 ),
               ),

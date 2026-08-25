@@ -7,7 +7,6 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/services/premium_conversion_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
-import '../../../providers/meal_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/app_icon.dart';
 
@@ -58,11 +57,12 @@ class CoachLockedOverlay extends StatelessWidget {
             title: l10n.coach_locked_title,
             body: l10n.coach_locked_desc,
             buttonText: l10n.coach_limit_btn,
-            onUpgrade: () => PremiumConversionService().openPaywall(
-              context,
-              PaywallEntryPoint.aiCoachLimit,
-              featureName: 'ai_coach',
-            ),
+            onUpgrade:
+                () => PremiumConversionService().openPaywall(
+                  context,
+                  PaywallEntryPoint.aiCoachLimit,
+                  featureName: 'ai_coach',
+                ),
           ),
         ),
       ],
@@ -130,7 +130,7 @@ class _LockedCard extends StatelessWidget {
                         color: accent,
                         letterSpacing: 1.4,
                         fontWeight: FontWeight.w800,
-                        fontSize: 10.5,
+                        fontSize: 11,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -154,7 +154,7 @@ class _LockedCard extends StatelessWidget {
             style: AppTypography.bodyMedium.copyWith(
               color: context.textSecondaryColor,
               height: 1.5,
-              fontSize: 13.5,
+              fontSize: 14,
             ),
           ),
           const SizedBox(height: 18),
@@ -196,7 +196,7 @@ class _LockedCard extends StatelessWidget {
                             style: AppTypography.titleSmall.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
-                              fontSize: 14.5,
+                              fontSize: 14,
                             ),
                           ),
                         ],
@@ -242,8 +242,9 @@ class _CoachProfileSheetState extends ConsumerState<CoachProfileSheet> {
     _age = TextEditingController(text: s?.age?.toString() ?? '');
     _height = TextEditingController(text: s?.height?.toString() ?? '');
     _weight = TextEditingController(text: s?.startingWeight?.toString() ?? '');
-    _targetWeight =
-        TextEditingController(text: s?.targetWeight?.toString() ?? '');
+    _targetWeight = TextEditingController(
+      text: s?.targetWeight?.toString() ?? '',
+    );
     _dislikes = TextEditingController(text: s?.foodDislikes ?? '');
     _medical = TextEditingController(text: s?.medicalNotes ?? '');
     _gender = s?.gender ?? 'other';
@@ -272,8 +273,7 @@ class _CoachProfileSheetState extends ConsumerState<CoachProfileSheet> {
       child: Container(
         decoration: BoxDecoration(
           color: context.surfaceColor,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           border: Border.all(color: context.cardBorderColor),
         ),
         child: SingleChildScrollView(
@@ -317,9 +317,7 @@ class _CoachProfileSheetState extends ConsumerState<CoachProfileSheet> {
                       label: 'Age',
                       controller: _age,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -333,13 +331,9 @@ class _CoachProfileSheetState extends ConsumerState<CoachProfileSheet> {
                           value: 'female',
                           child: Text('Female'),
                         ),
-                        DropdownMenuItem(
-                          value: 'other',
-                          child: Text('Other'),
-                        ),
+                        DropdownMenuItem(value: 'other', child: Text('Other')),
                       ],
-                      onChanged: (v) =>
-                          setState(() => _gender = v ?? _gender),
+                      onChanged: (v) => setState(() => _gender = v ?? _gender),
                     ),
                   ),
                 ],
@@ -429,8 +423,8 @@ class _CoachProfileSheetState extends ConsumerState<CoachProfileSheet> {
                           child: Text('Very active'),
                         ),
                       ],
-                      onChanged: (v) =>
-                          setState(() => _activity = v ?? _activity),
+                      onChanged:
+                          (v) => setState(() => _activity = v ?? _activity),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -447,22 +441,13 @@ class _CoachProfileSheetState extends ConsumerState<CoachProfileSheet> {
                           value: 'vegetarian',
                           child: Text('Vegetarian'),
                         ),
-                        DropdownMenuItem(
-                          value: 'vegan',
-                          child: Text('Vegan'),
-                        ),
+                        DropdownMenuItem(value: 'vegan', child: Text('Vegan')),
                         DropdownMenuItem(
                           value: 'gluten-free',
                           child: Text('Gluten-free'),
                         ),
-                        DropdownMenuItem(
-                          value: 'keto',
-                          child: Text('Keto'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'halal',
-                          child: Text('Halal'),
-                        ),
+                        DropdownMenuItem(value: 'keto', child: Text('Keto')),
+                        DropdownMenuItem(value: 'halal', child: Text('Halal')),
                       ],
                       onChanged: (v) => setState(() => _diet = v ?? _diet),
                     ),
@@ -493,14 +478,15 @@ class _CoachProfileSheetState extends ConsumerState<CoachProfileSheet> {
                     gender: _gender,
                     goalMode: _goal,
                     activityLevel: _activity,
-                    dietaryRestriction:
-                        _diet == 'none' ? null : _diet,
-                    foodDislikes: _dislikes.text.trim().isEmpty
-                        ? null
-                        : _dislikes.text.trim(),
-                    medicalNotes: _medical.text.trim().isEmpty
-                        ? null
-                        : _medical.text.trim(),
+                    dietaryRestriction: _diet == 'none' ? null : _diet,
+                    foodDislikes:
+                        _dislikes.text.trim().isEmpty
+                            ? null
+                            : _dislikes.text.trim(),
+                    medicalNotes:
+                        _medical.text.trim().isEmpty
+                            ? null
+                            : _medical.text.trim(),
                   );
                   if (context.mounted) {
                     Navigator.pop(context);
@@ -733,15 +719,10 @@ class WeeklyReportSheet extends ConsumerWidget {
         settings.dailyCalorieGoal > 0 ? settings.dailyCalorieGoal : 2000;
     final targetProtein =
         settings.dailyProteinGoal > 0 ? settings.dailyProteinGoal : 120;
-    final targetCarbs =
-        settings.dailyCarbGoal > 0 ? settings.dailyCarbGoal : 220;
-    final targetFat =
-        settings.dailyFatGoal > 0 ? settings.dailyFatGoal : 65;
 
     final bestDay = 'No data';
 
-    final nextTarget =
-        'Maintain $calorieGoal kcal/day — keep your rhythm.';
+    final nextTarget = 'Maintain $calorieGoal kcal/day — keep your rhythm.';
 
     return Padding(
       padding: EdgeInsets.only(
@@ -750,8 +731,7 @@ class WeeklyReportSheet extends ConsumerWidget {
       child: Container(
         decoration: BoxDecoration(
           color: context.surfaceColor,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           border: Border.all(color: context.cardBorderColor),
         ),
         child: SingleChildScrollView(
@@ -777,8 +757,7 @@ class WeeklyReportSheet extends ConsumerWidget {
                     height: 36,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color:
-                          AppColors.homeCoachAccent.withValues(alpha: 0.14),
+                      color: AppColors.homeCoachAccent.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -838,8 +817,7 @@ class WeeklyReportSheet extends ConsumerWidget {
                   color: AppColors.homeCoachAccent.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color:
-                        AppColors.homeCoachAccent.withValues(alpha: 0.15),
+                    color: AppColors.homeCoachAccent.withValues(alpha: 0.15),
                   ),
                 ),
                 child: Column(
@@ -849,7 +827,7 @@ class WeeklyReportSheet extends ConsumerWidget {
                       'NEXT TARGET',
                       style: TextStyle(
                         color: AppColors.homeCoachAccent,
-                        fontSize: 10.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.4,
                       ),

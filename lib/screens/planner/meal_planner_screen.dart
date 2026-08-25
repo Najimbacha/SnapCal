@@ -18,7 +18,6 @@ import '../../data/models/meal_plan.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/meal_provider.dart';
-import '../../providers/auth_notifier_provider.dart';
 import '../../providers/metrics_provider.dart';
 import '../../providers/planner_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -36,7 +35,8 @@ import 'meal_preferences_screen.dart';
 enum _PlannerAction { grocery, preferences, regenerateWeek, optimize }
 
 final plannerNotifierProvider = ChangeNotifierProvider<PlannerProvider>((ref) {
-  final settings = ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
+  final settings =
+      ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
   return PlannerProvider(AIService(), settings);
 });
 
@@ -218,7 +218,8 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              width: 56, height: 56,
+              width: 56,
+              height: 56,
               child: CircularProgressIndicator(
                 strokeWidth: 3,
                 valueColor: AlwaysStoppedAnimation<Color>(context.primaryColor),
@@ -250,8 +251,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         body: _plannerProvider.error ?? l10n.error_generic,
         actionLabel: l10n.common_try_again,
         onAction: () {
-          final isOnline =
-              ConnectivityService().hasInternetAccess;
+          final isOnline = ConnectivityService().hasInternetAccess;
           if (!isOnline) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -286,9 +286,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         body: l10n.error_offline,
         actionLabel: l10n.common_try_again,
         onAction: () async {
-          await ConnectivityService().refreshReachability(
-            force: true,
-          );
+          await ConnectivityService().refreshReachability(force: true);
         },
       ),
     );
@@ -678,13 +676,12 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                       ],
                     ),
                   ),
-                  if ((settings?.isPro ?? false) && planner.canRegenerate && !isLocked)
+                  if ((settings?.isPro ?? false) &&
+                      planner.canRegenerate &&
+                      !isLocked)
                     TextButton.icon(
                       onPressed:
-                          () => _confirmRegenerateDay(
-                            context,
-                            activeIndex,
-                          ),
+                          () => _confirmRegenerateDay(context, activeIndex),
                       style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         padding: const EdgeInsets.symmetric(
@@ -829,8 +826,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                           ? null
                           : () => _logPlannedMeal(meal),
                   onSwapMeal:
-                      () =>
-                          _confirmSwapMeal(context, meal, activeIndex),
+                      () => _confirmSwapMeal(context, meal, activeIndex),
                 ),
               ),
           ],
@@ -929,10 +925,12 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     }
 
     context.push('/assistant');
-    ref.read(assistantProvider.notifier).fetchRecommendations(
-      l10n.settings_recalculate_query,
-      currentCalories: totalCalories,
-    );
+    ref
+        .read(assistantProvider.notifier)
+        .fetchRecommendations(
+          l10n.settings_recalculate_query,
+          currentCalories: totalCalories,
+        );
   }
 
   void _logPlannedMeal(Meal meal) async {
@@ -995,10 +993,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     );
   }
 
-  void _confirmRegenerateDay(
-    BuildContext context,
-    int dayIndex,
-  ) {
+  void _confirmRegenerateDay(BuildContext context, int dayIndex) {
     final planner = _plannerProvider;
     final isOnline = ConnectivityService().hasInternetAccess;
     if (!isOnline) {
@@ -1046,11 +1041,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     );
   }
 
-  void _confirmSwapMeal(
-    BuildContext context,
-    Meal meal,
-    int dayIndex,
-  ) async {
+  void _confirmSwapMeal(BuildContext context, Meal meal, int dayIndex) async {
     final planner = _plannerProvider;
     // Check connectivity
     final isOnline = ConnectivityService().hasInternetAccess;
@@ -1162,8 +1153,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         builder:
             (context) => MealPreferencesScreen(
               onGenerate: () {
-                final isOnline =
-                    ConnectivityService().hasInternetAccess;
+                final isOnline = ConnectivityService().hasInternetAccess;
                 if (!isOnline) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -1400,7 +1390,8 @@ class _GrocerySheet extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if ((settings?.isPro ?? false) && provider.groceryList.isNotEmpty)
+                    if ((settings?.isPro ?? false) &&
+                        provider.groceryList.isNotEmpty)
                       TextButton.icon(
                         onPressed: () {
                           SharePlus.instance.share(
@@ -1838,11 +1829,16 @@ class _GeneratingMessagesState extends State<_GeneratingMessages> {
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
-      transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+      transitionBuilder:
+          (child, anim) => FadeTransition(opacity: anim, child: child),
       child: Text(
         msgs[_msgIdx],
         key: ValueKey(msgs[_msgIdx]),
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: widget.color),
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: widget.color,
+        ),
         textAlign: TextAlign.center,
       ),
     );
@@ -2138,4 +2134,3 @@ class _SwapPreferencesSheetState extends State<_SwapPreferencesSheet> {
     );
   }
 }
-

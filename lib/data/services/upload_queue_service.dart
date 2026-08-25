@@ -122,7 +122,9 @@ class UploadQueueService with ChangeNotifier {
             job['lastError'] = failure.message;
             job['nextRetryAt'] = 0;
             await box.put(key, job);
-            debugPrint('Upload queue item stalled after $attempts attempts: $failure');
+            debugPrint(
+              'Upload queue item stalled after $attempts attempts: $failure',
+            );
             continue;
           }
           job['attempts'] = attempts;

@@ -68,14 +68,14 @@ class AssistantWelcomeState extends ConsumerWidget {
 
     final meals = todaysMeals.length;
     final calories = todaysMeals.fold<int>(0, (sum, m) => sum + m.calories);
-    final targetCalories =
-        settings.valueOrNull?.dailyCalorieGoal ?? 2000;
-    final protein = todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.protein);
-    final targetProtein =
-        settings.valueOrNull?.dailyProteinGoal ?? 120;
+    final targetCalories = settings.valueOrNull?.dailyCalorieGoal ?? 2000;
+    final protein = todaysMeals.fold<int>(
+      0,
+      (sum, m) => sum + m.macros.protein,
+    );
+    final targetProtein = settings.valueOrNull?.dailyProteinGoal ?? 120;
     final carbs = todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.carbs);
-    final targetCarbs =
-        settings.valueOrNull?.dailyCarbGoal ?? 220;
+    final targetCarbs = settings.valueOrNull?.dailyCarbGoal ?? 220;
     final fat = todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.fat);
     final targetFat = settings.valueOrNull?.dailyFatGoal ?? 65;
 
@@ -109,32 +109,32 @@ class AssistantWelcomeState extends ConsumerWidget {
 
           // Greeting
           Center(
-            child: Text(
-              greeting,
-              style: AppTypography.headlineMedium.copyWith(
-                color: context.textPrimaryColor,
-                fontWeight: FontWeight.w700,
-                fontSize: 28,
-                letterSpacing: -0.8,
-                height: 1.15,
-              ),
-            ),
-          )
+                child: Text(
+                  greeting,
+                  style: AppTypography.headlineMedium.copyWith(
+                    color: context.textPrimaryColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 28,
+                    letterSpacing: -0.8,
+                    height: 1.15,
+                  ),
+                ),
+              )
               .animate()
               .fadeIn(delay: 80.ms, duration: 400.ms)
               .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
           const SizedBox(height: 6),
           Center(
-            child: Text(
-              "I'm your AI nutrition coach. What's on your mind?",
-              textAlign: TextAlign.center,
-              style: AppTypography.bodyMedium.copyWith(
-                color: context.textSecondaryColor,
-                fontSize: 14,
-                height: 1.5,
-              ),
-            ),
-          )
+                child: Text(
+                  "I'm your AI nutrition coach. What's on your mind?",
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: context.textSecondaryColor,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              )
               .animate()
               .fadeIn(delay: 140.ms, duration: 400.ms)
               .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
@@ -149,15 +149,15 @@ class AssistantWelcomeState extends ConsumerWidget {
 
           // Metric strip
           MetricProgressStrip(
-            calories: calories,
-            targetCalories: targetCalories,
-            protein: protein,
-            targetProtein: targetProtein,
-            carbs: carbs,
-            targetCarbs: targetCarbs,
-            fat: fat,
-            targetFat: targetFat,
-          )
+                calories: calories,
+                targetCalories: targetCalories,
+                protein: protein,
+                targetProtein: targetProtein,
+                carbs: carbs,
+                targetCarbs: targetCarbs,
+                fat: fat,
+                targetFat: targetFat,
+              )
               .animate()
               .fadeIn(delay: 300.ms, duration: 400.ms)
               .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
@@ -170,54 +170,63 @@ class AssistantWelcomeState extends ConsumerWidget {
               color: context.textMutedColor,
               letterSpacing: 1.8,
               fontWeight: FontWeight.w800,
-              fontSize: 10.5,
+              fontSize: 11,
             ),
-          )
-              .animate()
-              .fadeIn(delay: 360.ms, duration: 400.ms),
+          ).animate().fadeIn(delay: 360.ms, duration: 400.ms),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [
-              _QuickPromptChip(
-                icon: AppSymbols.utensils,
-                label: 'Plan my next meal',
-                onTap: () => onQuickPrompt(
-                    'Suggest a meal that fits my remaining calories today.'),
-              ),
-              _QuickPromptChip(
-                icon: AppSymbols.target,
-                label: 'How are my macros?',
-                onTap: () => onQuickPrompt(
-                    'Look at my macros today. What should I focus on?'),
-              ),
-              _QuickPromptChip(
-                icon: AppSymbols.lightbulb,
-                label: 'Quick nutrition tips',
-                onTap: () => onQuickPrompt(
-                    'Give me 3 quick, practical nutrition tips for today.'),
-              ),
-              _QuickPromptChip(
-                icon: AppSymbols.leaf,
-                label: 'Help me hit protein',
-                onTap: () => onQuickPrompt(
-                    'I want to hit my protein goal — what should I eat next?'),
-              ),
-              _QuickPromptChip(
-                icon: AppSymbols.barChart3,
-                label: 'Weekly check-in',
-                onTap: () => onQuickPrompt(
-                    'How did this week go compared to my goal?'),
-              ),
-            ]
-                .map(
-                  (w) => w
-                      .animate()
-                      .fadeIn(delay: 420.ms, duration: 300.ms)
-                      .slideY(begin: 0.1, end: 0),
-                )
-                .toList(),
+            children:
+                [
+                      _QuickPromptChip(
+                        icon: AppSymbols.utensils,
+                        label: 'Plan my next meal',
+                        onTap:
+                            () => onQuickPrompt(
+                              'Suggest a meal that fits my remaining calories today.',
+                            ),
+                      ),
+                      _QuickPromptChip(
+                        icon: AppSymbols.target,
+                        label: 'How are my macros?',
+                        onTap:
+                            () => onQuickPrompt(
+                              'Look at my macros today. What should I focus on?',
+                            ),
+                      ),
+                      _QuickPromptChip(
+                        icon: AppSymbols.lightbulb,
+                        label: 'Quick nutrition tips',
+                        onTap:
+                            () => onQuickPrompt(
+                              'Give me 3 quick, practical nutrition tips for today.',
+                            ),
+                      ),
+                      _QuickPromptChip(
+                        icon: AppSymbols.leaf,
+                        label: 'Help me hit protein',
+                        onTap:
+                            () => onQuickPrompt(
+                              'I want to hit my protein goal — what should I eat next?',
+                            ),
+                      ),
+                      _QuickPromptChip(
+                        icon: AppSymbols.barChart3,
+                        label: 'Weekly check-in',
+                        onTap:
+                            () => onQuickPrompt(
+                              'How did this week go compared to my goal?',
+                            ),
+                      ),
+                    ]
+                    .map(
+                      (w) => w
+                          .animate()
+                          .fadeIn(delay: 420.ms, duration: 300.ms)
+                          .slideY(begin: 0.1, end: 0),
+                    )
+                    .toList(),
           ),
         ],
       ),
@@ -255,18 +264,14 @@ class _InsightCard extends StatelessWidget {
                   color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  AppSymbols.sparkles,
-                  size: 14,
-                  color: accent,
-                ),
+                child: Icon(AppSymbols.sparkles, size: 14, color: accent),
               ),
               const SizedBox(width: 10),
               Text(
                 'TODAY\'S FOCUS',
                 style: TextStyle(
                   color: accent,
-                  fontSize: 10.5,
+                  fontSize: 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.6,
                 ),

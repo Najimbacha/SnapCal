@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/theme/app_colors.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -83,9 +85,8 @@ class _EditMealModalState extends State<EditMealModal> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark
-        ? const Color(0xFF1C1B1E)
-        : const Color(0xFFFCFCFA);
+    final surfaceColor =
+        isDark ? const Color(0xFF1C1B1E) : const Color(0xFFFCFCFA);
 
     return Container(
       decoration: BoxDecoration(
@@ -108,9 +109,10 @@ class _EditMealModalState extends State<EditMealModal> {
                 width: 32,
                 height: 3,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.15)
-                      : Colors.black.withValues(alpha: 0.10),
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.15)
+                          : Colors.black.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -129,8 +131,7 @@ class _EditMealModalState extends State<EditMealModal> {
                   ),
                 ),
                 IconButton(
-                  onPressed:
-                      widget.onCancel ?? () => Navigator.pop(context),
+                  onPressed: widget.onCancel ?? () => Navigator.pop(context),
                   icon: Icon(LucideIcons.x),
                   color: isDark ? Colors.white54 : const Color(0xFFA8A29E),
                   iconSize: 20,
@@ -186,11 +187,29 @@ class _EditMealModalState extends State<EditMealModal> {
             const SizedBox(height: 8),
             Row(
               children: [
-                _macroField(l10n.result_protein, _proteinController, const Color(0xFF7C9A6D), isDark, context),
+                _macroField(
+                  l10n.result_protein,
+                  _proteinController,
+                  const Color(0xFF7C9A6D),
+                  isDark,
+                  context,
+                ),
                 const SizedBox(width: 8),
-                _macroField(l10n.result_carbs, _carbsController, const Color(0xFF4F8CC9), isDark, context),
+                _macroField(
+                  l10n.result_carbs,
+                  _carbsController,
+                  AppColors.carbs,
+                  isDark,
+                  context,
+                ),
                 const SizedBox(width: 8),
-                _macroField(l10n.result_fat, _fatController, const Color(0xFFD18B47), isDark, context),
+                _macroField(
+                  l10n.result_fat,
+                  _fatController,
+                  const Color(0xFFD18B47),
+                  isDark,
+                  context,
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -329,9 +348,10 @@ Widget _compactInput({
             fontWeight: FontWeight.w500,
           ),
           filled: true,
-          fillColor: isDark
-              ? Colors.white.withValues(alpha: 0.04)
-              : Colors.black.withValues(alpha: 0.03),
+          fillColor:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.black.withValues(alpha: 0.03),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,
@@ -347,7 +367,13 @@ Widget _compactInput({
   );
 }
 
-Widget _macroField(String label, TextEditingController controller, Color color, bool isDark, BuildContext context) {
+Widget _macroField(
+  String label,
+  TextEditingController controller,
+  Color color,
+  bool isDark,
+  BuildContext context,
+) {
   return Expanded(
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -374,9 +400,10 @@ Widget _macroField(String label, TextEditingController controller, Color color, 
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.black.withValues(alpha: 0.03),
+            fillColor:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.03),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
@@ -392,4 +419,3 @@ Widget _macroField(String label, TextEditingController controller, Color color, 
     ),
   );
 }
-

@@ -23,13 +23,14 @@ void main() {
       ),
     );
 
-    expect(find.text('Create your meal plan'), findsOneWidget);
-    expect(find.text('Based on your goal'), findsOneWidget);
-    expect(find.text('Meals per day'), findsOneWidget);
-    expect(find.text('Diet style'), findsOneWidget);
-    expect(find.text('Requirements'), findsOneWidget);
-    expect(find.text('More preferences'), findsOneWidget);
-    expect(find.text('Create my plan'), findsOneWidget);
+    // Compact bento layout: one heading, three choice sections, one CTA.
+    expect(find.text('Meal Preferences'), findsOneWidget);
+    expect(find.text('Quick setup before your plan'), findsOneWidget);
+    expect(find.text('PLAN STYLE'), findsOneWidget);
+    expect(find.text('MEALS PER DAY'), findsOneWidget);
+    expect(find.text('DIETARY RESTRICTION'), findsOneWidget);
+    expect(find.text('CUISINE STYLE'), findsOneWidget);
+    expect(find.text('Generate My Plan'), findsOneWidget);
   });
 }
 

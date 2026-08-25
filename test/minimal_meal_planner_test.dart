@@ -24,15 +24,16 @@ void main() {
       ),
     );
 
-    expect(find.text('Greek yogurt bowl'), findsOneWidget);
-    expect(find.text('420 kcal'), findsOneWidget);
-    expect(find.text('PRO'), findsNothing);
+    // Macro chips render as "P" + "32g" pairs in a single compact row.
+    expect(find.text('420'), findsOneWidget);
+    expect(find.text('kcal'), findsOneWidget);
+    expect(find.text('P'), findsNothing);
     expect(find.text('32g'), findsNothing);
 
     await tester.tap(find.text('Greek yogurt bowl'));
     await tester.pumpAndSettle();
 
-    expect(find.text('PRO'), findsOneWidget);
+    expect(find.text('P'), findsOneWidget);
     expect(find.text('32g'), findsOneWidget);
     expect(find.text('Greek yogurt, Blueberries'), findsOneWidget);
   });

@@ -9,8 +9,10 @@ Future<CustomerInfo> subscriptionInfo(SubscriptionInfoRef ref) =>
 
 @Riverpod(keepAlive: true)
 bool isPremium(IsPremiumRef ref) {
-  return ref.watch(subscriptionInfoProvider).maybeWhen(
-    data: (info) => info.entitlements.active.containsKey('premium'),
-    orElse: () => false,
-  );
+  return ref
+      .watch(subscriptionInfoProvider)
+      .maybeWhen(
+        data: (info) => info.entitlements.active.containsKey('premium'),
+        orElse: () => false,
+      );
 }

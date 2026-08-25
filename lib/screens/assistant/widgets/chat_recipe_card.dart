@@ -100,41 +100,42 @@ class ChatRecipeCard extends StatelessWidget {
             // Body
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-              child: parsed.hasStructure
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (parsed.ingredients.isNotEmpty) ...[
-                          _Section(
-                            icon: AppSymbols.utensils,
-                            label: 'Ingredients',
-                            child: _IngredientsWrap(
-                              items: parsed.ingredients,
+              child:
+                  parsed.hasStructure
+                      ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (parsed.ingredients.isNotEmpty) ...[
+                            _Section(
+                              icon: AppSymbols.utensils,
+                              label: 'Ingredients',
+                              child: _IngredientsWrap(
+                                items: parsed.ingredients,
+                              ),
                             ),
-                          ),
-                          if (parsed.steps.isNotEmpty)
-                            const SizedBox(height: 18),
+                            if (parsed.steps.isNotEmpty)
+                              const SizedBox(height: 18),
+                          ],
+                          if (parsed.steps.isNotEmpty) ...[
+                            _Section(
+                              icon: AppSymbols.listChecks,
+                              label: 'Steps',
+                              child: _StepsList(steps: parsed.steps),
+                            ),
+                          ],
+                          if (parsed.note.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            _CoachNote(note: parsed.note),
+                          ],
                         ],
-                        if (parsed.steps.isNotEmpty) ...[
-                          _Section(
-                            icon: AppSymbols.listChecks,
-                            label: 'Steps',
-                            child: _StepsList(steps: parsed.steps),
-                          ),
-                        ],
-                        if (parsed.note.isNotEmpty) ...[
-                          const SizedBox(height: 14),
-                          _CoachNote(note: parsed.note),
-                        ],
-                      ],
-                    )
-                  : Text(
-                      parsed.fallbackText,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: context.textPrimaryColor,
-                        height: 1.55,
+                      )
+                      : Text(
+                        parsed.fallbackText,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: context.textPrimaryColor,
+                          height: 1.55,
+                        ),
                       ),
-                    ),
             ),
           ],
         ),
@@ -147,7 +148,11 @@ class _Section extends StatelessWidget {
   final IconData icon;
   final String label;
   final Widget child;
-  const _Section({required this.icon, required this.label, required this.child});
+  const _Section({
+    required this.icon,
+    required this.label,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +169,7 @@ class _Section extends StatelessWidget {
                 color: context.textMutedColor,
                 letterSpacing: 1.4,
                 fontWeight: FontWeight.w800,
-                fontSize: 10.5,
+                fontSize: 11,
               ),
             ),
           ],
@@ -186,30 +191,32 @@ class _IngredientsWrap extends StatelessWidget {
     return Wrap(
       spacing: 6,
       runSpacing: 6,
-      children: items
-          .map(
-            (s) => Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : Colors.black.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                s,
-                style: AppTypography.bodySmall.copyWith(
-                  color: context.textPrimaryColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5,
+      children:
+          items
+              .map(
+                (s) => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    s,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.textPrimaryColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          )
-          .toList(),
+              )
+              .toList(),
     );
   }
 }
@@ -278,9 +285,7 @@ class _CoachNote extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.success.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.success.withValues(alpha: 0.15),
-        ),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.15)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,26 +331,15 @@ class _MacroChips extends StatelessWidget {
         'protein',
         AppColors.protein,
       ),
-      (
-        AppSymbols.wheat,
-        '${macros['carbs'] ?? 0}g',
-        'carbs',
-        AppColors.carbs,
-      ),
-      (
-        AppSymbols.droplet,
-        '${macros['fat'] ?? 0}g',
-        'fat',
-        AppColors.fat,
-      ),
+      (AppSymbols.wheat, '${macros['carbs'] ?? 0}g', 'carbs', AppColors.carbs),
+      (AppSymbols.droplet, '${macros['fat'] ?? 0}g', 'fat', AppColors.fat),
     ];
     return Row(
       children: [
         for (var i = 0; i < items.length; i++) ...[
           Expanded(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               decoration: BoxDecoration(
                 color: items[i].$4.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
@@ -411,10 +405,11 @@ class ParsedRecipe {
     final trimmed = title.trim();
     if (trimmed.isNotEmpty && trimmed != defaultCoachTitle) return trimmed;
     for (final rawLine in content.split('\n')) {
-      final cleaned = _clean(rawLine)
-          .replaceFirst(RegExp(r'^#+\s*'), '')
-          .replaceFirst(RegExp(r'^title:\s*', caseSensitive: false), '')
-          .trim();
+      final cleaned =
+          _clean(rawLine)
+              .replaceFirst(RegExp(r'^#+\s*'), '')
+              .replaceFirst(RegExp(r'^title:\s*', caseSensitive: false), '')
+              .trim();
       final lower = cleaned.toLowerCase();
       if (cleaned.isEmpty ||
           lower.contains('ingredient') ||
@@ -437,14 +432,13 @@ class ParsedRecipe {
     for (final rawLine in content.split('\n')) {
       final line = rawLine.trim();
       if (line.isEmpty) continue;
-      final normalized = line
-          .replaceFirst(RegExp(r'^#+\s*'), '')
-          .replaceAll('**', '')
-          .trim();
+      final normalized =
+          line.replaceFirst(RegExp(r'^#+\s*'), '').replaceAll('**', '').trim();
       final lower = normalized.toLowerCase();
-      final payload = normalized.contains(':')
-          ? normalized.substring(normalized.indexOf(':') + 1).trim()
-          : '';
+      final payload =
+          normalized.contains(':')
+              ? normalized.substring(normalized.indexOf(':') + 1).trim()
+              : '';
 
       if (_matches(lower, const ['ingredient'])) {
         section = 'ingredients';
@@ -497,36 +491,43 @@ class ParsedRecipe {
     return keywords.any(lower.contains);
   }
 
-  static String _clean(String value) => value
-      .replaceAll('**', '')
-      .replaceFirst(RegExp(r'^[-*•]\s*'), '')
-      .replaceFirst(RegExp(r'^\d+[\.)]\s*'), '')
-      .trim();
+  static String _clean(String value) =>
+      value
+          .replaceAll('**', '')
+          .replaceFirst(RegExp(r'^[-*•]\s*'), '')
+          .replaceFirst(RegExp(r'^\d+[\.)]\s*'), '')
+          .trim();
 
-  static List<String> _splitPayload(String value) => value
-      .split(RegExp(r',|\band\b', caseSensitive: false))
-      .map(_clean)
-      .where((s) => s.length > 2)
-      .take(10)
-      .toList();
+  static List<String> _splitPayload(String value) =>
+      value
+          .split(RegExp(r',|\band\b', caseSensitive: false))
+          .map(_clean)
+          .where((s) => s.length > 2)
+          .take(10)
+          .toList();
 
   static void _parseCompact(
     String content,
     List<String> ingredients,
     List<String> steps,
   ) {
-    final sentences = content
-        .replaceAll('\n', ' ')
-        .split(RegExp(r'[.!?]\s*'))
-        .map(_clean)
-        .where((s) => s.length > 3)
-        .toList();
+    final sentences =
+        content
+            .replaceAll('\n', ' ')
+            .split(RegExp(r'[.!?]\s*'))
+            .map(_clean)
+            .where((s) => s.length > 3)
+            .toList();
     for (final sentence in sentences.take(5)) {
       final lower = sentence.toLowerCase();
       if (lower.startsWith('combine ') || lower.startsWith('mix ')) {
-        final ingredientText = sentence
-            .replaceFirst(RegExp(r'^(combine|mix)\s+', caseSensitive: false), '')
-            .trim();
+        final ingredientText =
+            sentence
+                .replaceFirst(
+                  RegExp(r'^(combine|mix)\s+', caseSensitive: false),
+                  '',
+                )
+                .trim();
         ingredients.addAll(_splitPayload(ingredientText));
         steps.add(sentence);
       } else if (lower.contains('cook') ||

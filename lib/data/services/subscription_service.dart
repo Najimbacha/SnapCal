@@ -153,8 +153,7 @@ class SubscriptionService {
   }
 
   Future<void> _processCustomerInfo(CustomerInfo customerInfo) async {
-    _currentEntitlement =
-        customerInfo.entitlements.all[_entitlementId];
+    _currentEntitlement = customerInfo.entitlements.all[_entitlementId];
     debugPrint("RevenueCat Customer ID: ${customerInfo.originalAppUserId}");
     debugPrint(
       "RevenueCat Active Entitlements: "

@@ -22,6 +22,7 @@ class ConfigService {
         'revenuecat_apple_api_key': AppConstants.defaultRevenueCatAppleApiKey,
         'revenuecat_google_api_key': AppConstants.defaultRevenueCatGoogleApiKey,
         'backend_proxy_url': AppConstants.defaultBackendProxyUrl,
+        'free_macros_enabled': AppConstants.defaultFreeMacrosEnabled,
       });
 
       await _remoteConfig.setConfigSettings(
@@ -87,6 +88,13 @@ class ConfigService {
     if (!_initialized) return AppConstants.defaultBackendProxyUrl;
     final url = _remoteConfig.getString('backend_proxy_url').trim();
     return url.isEmpty ? AppConstants.defaultBackendProxyUrl : url;
+  }
+
+  /// Whether free users can see macro grams on scan results and the home
+  /// dashboard. Defaults to true; flip in Remote Config to A/B the gate.
+  bool get freeMacrosEnabled {
+    if (!_initialized) return AppConstants.defaultFreeMacrosEnabled;
+    return _remoteConfig.getBool('free_macros_enabled');
   }
 
   String get latestVersion {

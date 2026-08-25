@@ -58,11 +58,9 @@ class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
     setState(() => _isSaving = true);
 
     try {
-      await ref.read(templatesProvider.notifier).saveTemplate(
-        name: name,
-        emoji: _selectedEmoji,
-        meals: widget.meals,
-      );
+      await ref
+          .read(templatesProvider.notifier)
+          .saveTemplate(name: name, emoji: _selectedEmoji, meals: widget.meals);
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -238,6 +236,3 @@ class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
     );
   }
 }
-
-
-

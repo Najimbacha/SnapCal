@@ -123,14 +123,11 @@ class AssistantService {
           sendTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 25),
         ),
-        data: {
-          'prompt': prompt,
-          'maxOutputTokens': 500,
-          'timeoutMs': 25000,
-        },
+        data: {'prompt': prompt, 'maxOutputTokens': 500, 'timeoutMs': 25000},
       );
 
-      final text = response.data is Map ? response.data['text'] as String? : null;
+      final text =
+          response.data is Map ? response.data['text'] as String? : null;
 
       if (text != null) {
         debugPrint("Assistant Raw Response: $text");
@@ -139,14 +136,22 @@ class AssistantService {
           jsonString = _sanitizeJsonString(jsonString);
           final dynamic decoded = jsonDecode(jsonString);
           if (decoded is List) {
-            return decoded.map((e) => AssistantResponse.fromJson(e as Map<String, dynamic>)).toList();
+            return decoded
+                .map(
+                  (e) => AssistantResponse.fromJson(e as Map<String, dynamic>),
+                )
+                .toList();
           } else if (decoded is Map) {
-            return [AssistantResponse.fromJson(decoded as Map<String, dynamic>)];
+            return [
+              AssistantResponse.fromJson(decoded as Map<String, dynamic>),
+            ];
           }
         } catch (_) {
           // Response is not JSON — treat as plain text coaching
           final clean = text.trim();
-          return [AssistantResponse(title: '', content: clean, type: 'coaching')];
+          return [
+            AssistantResponse(title: '', content: clean, type: 'coaching'),
+          ];
         }
         return [];
       }
@@ -244,14 +249,11 @@ User Stats: $currentCalories / $targetCalories kcal.
           sendTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 25),
         ),
-        data: {
-          'prompt': prompt,
-          'image': base64Image,
-          'language': language,
-        },
+        data: {'prompt': prompt, 'image': base64Image, 'language': language},
       );
 
-      final text = response.data is Map ? response.data['text'] as String? : null;
+      final text =
+          response.data is Map ? response.data['text'] as String? : null;
       if (text != null) {
         final jsonString = _extractJson(text);
         final jsonResult = jsonDecode(jsonString) as List<dynamic>;
@@ -293,8 +295,6 @@ User Stats: $currentCalories / $targetCalories kcal.
     String? medicalNotes,
   }) {
     final languageName = AIService.languageNames[language] ?? 'English';
-    final remainingCalories = targetCalories - currentCalories;
-    final remainingProtein = targetMacros['protein']! - currentMacros['protein']!;
 
     return """
 You are Fajar, a friendly and knowledgeable AI nutritionist.

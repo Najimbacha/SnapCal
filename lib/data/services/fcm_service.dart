@@ -81,7 +81,9 @@ class FcmService {
       FirebaseMessaging.onMessageOpenedApp.listen(handleNotificationOpenedApp);
 
       // 8. Configure background message handler (top-level).
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
 
       // 9. Check if the app was opened from a terminated-state notification.
       await _checkInitialMessage();
@@ -100,8 +102,11 @@ class FcmService {
   Future<void> _createNotificationChannel() async {
     try {
       final plugin = FlutterLocalNotificationsPlugin();
-      final androidPlugin = plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin =
+          plugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >();
 
       if (androidPlugin != null) {
         await androidPlugin.createNotificationChannel(
@@ -136,7 +141,8 @@ class FcmService {
         provisional: false,
         sound: true,
       );
-      _permissionGranted = settings.authorizationStatus == AuthorizationStatus.authorized ||
+      _permissionGranted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional;
       debugPrint(
         '🔔 FcmService: permission status = ${settings.authorizationStatus.name} '
@@ -236,9 +242,15 @@ class FcmService {
     _logMessage(message);
 
     if (_isFoodReminder(message)) {
-      final title = message.data['title'] ?? message.notification?.title ?? 'Time to scan your food';
+      final title =
+          message.data['title'] ??
+          message.notification?.title ??
+          'Time to scan your food';
       final body = message.data['body'] ?? message.notification?.body ?? '';
-      await NotificationService().showFoodReminderNotification(title: title, body: body);
+      await NotificationService().showFoodReminderNotification(
+        title: title,
+        body: body,
+      );
     } else {
       await _showLocalNotification(message);
     }

@@ -15,14 +15,34 @@ class DateUtils {
     return getDateString(DateTime.now());
   }
 
-  /// Parse date string to DateTime
+  /// Parse date string to DateTime.
+  ///
+  /// Stored date strings come from Hive (`Meal.dateString`) and can be
+  /// truncated or corrupted; this must never throw from deep inside list
+  /// rendering. Falls back to today for unparseable input so one bad row
+  /// degrades gracefully instead of crashing the screen (BUG-014).
   static DateTime parseDate(String dateString) {
+    final parsed = DateTime.tryParse(dateString);
+    if (parsed != null) return parsed;
+
     final parts = dateString.split('-');
-    return DateTime(
-      int.parse(parts[0]),
-      int.parse(parts[1]),
-      int.parse(parts[2]),
-    );
+    if (parts.length >= 3) {
+      final year = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final day = int.tryParse(parts[2]);
+      if (year != null &&
+          month != null &&
+          day != null &&
+          month >= 1 &&
+          month <= 12 &&
+          day >= 1 &&
+          day <= 31) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
   }
 
   /// Get a human-readable date label

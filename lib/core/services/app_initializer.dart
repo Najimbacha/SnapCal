@@ -95,13 +95,11 @@ class AppInitializer {
       _runOptionalBackgroundService('Notification init', () async {
         await NotificationService().init();
       }),
-      _runOptionalBackgroundService(
-        'Subscription init', () async {
-          final repo = SettingsRepository();
-          await repo.init();
-          await SubscriptionService.init(repo);
-        },
-      ),
+      _runOptionalBackgroundService('Subscription init', () async {
+        final repo = SettingsRepository();
+        await repo.init();
+        await SubscriptionService.init(repo);
+      }),
       _runOptionalBackgroundService('Widget init', WidgetService.init),
       _runOptionalBackgroundService(
         'Sync queue flush',

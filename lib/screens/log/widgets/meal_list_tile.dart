@@ -53,9 +53,10 @@ class MealListTile extends StatelessWidget {
             color: context.cardColor,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.black.withValues(alpha: 0.03),
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.03),
               width: 1.0,
             ),
           ),
@@ -101,7 +102,11 @@ class MealListTile extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        Icon(LucideIcons.clock, size: 9, color: context.textMutedColor),
+                        Icon(
+                          LucideIcons.clock,
+                          size: 9,
+                          color: context.textMutedColor,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           meal.formattedTime,
@@ -111,12 +116,16 @@ class MealListTile extends StatelessWidget {
                             fontSize: 11,
                           ),
                         ),
-                        if (meal.portion != null && meal.portion!.isNotEmpty) ...[
+                        if (meal.portion != null &&
+                            meal.portion!.isNotEmpty) ...[
                           const SizedBox(width: 6),
                           Container(
-                            width: 2, height: 2,
+                            width: 2,
+                            height: 2,
                             decoration: BoxDecoration(
-                              color: context.textMutedColor.withValues(alpha: 0.3),
+                              color: context.textMutedColor.withValues(
+                                alpha: 0.3,
+                              ),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -125,7 +134,9 @@ class MealListTile extends StatelessWidget {
                             child: Text(
                               meal.portion!,
                               style: AppTypography.labelSmall.copyWith(
-                                color: context.textMutedColor.withValues(alpha: 0.7),
+                                color: context.textMutedColor.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontWeight: FontWeight.w500,
                                 fontSize: 11,
                               ),
@@ -162,7 +173,7 @@ class MealListTile extends StatelessWidget {
                         style: AppTypography.labelSmall.copyWith(
                           color: context.primaryColor.withValues(alpha: 0.6),
                           fontWeight: FontWeight.w600,
-                          fontSize: 8,
+                          fontSize: 9,
                         ),
                       ),
                     ],
@@ -171,11 +182,20 @@ class MealListTile extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        _EliteMacroPill(color: AppColors.protein, value: '${meal.macros.protein}'),
+                        _EliteMacroPill(
+                          color: AppColors.protein,
+                          value: '${meal.macros.protein}',
+                        ),
                         const SizedBox(width: 4),
-                        _EliteMacroPill(color: AppColors.carbs, value: '${meal.macros.carbs}'),
+                        _EliteMacroPill(
+                          color: AppColors.carbs,
+                          value: '${meal.macros.carbs}',
+                        ),
                         const SizedBox(width: 4),
-                        _EliteMacroPill(color: AppColors.fat, value: '${meal.macros.fat}'),
+                        _EliteMacroPill(
+                          color: AppColors.fat,
+                          value: '${meal.macros.fat}',
+                        ),
                       ],
                     ),
                   ],
@@ -239,4 +259,3 @@ class _EliteMacroPill extends StatelessWidget {
     );
   }
 }
-

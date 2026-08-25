@@ -2,11 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/activity_provider.dart';
 import '../../../widgets/app_icon.dart';
+
+const int _dailyStepGoal = 10000;
 
 void showActivityHealthConnectSheet(BuildContext context) {
   showModalBottomSheet(
@@ -43,15 +46,21 @@ class _SheetScaffold extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 12, bottom: 4),
               child: Center(
                 child: Container(
-                  width: 36, height: 4,
+                  width: 36,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.12),
+                    color: (isDark ? Colors.white : Colors.black).withValues(
+                      alpha: 0.12,
+                    ),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
               ),
             ),
-            if (isConnected) const _ConnectedState() else const _DisconnectedState(),
+            if (isConnected)
+              const _ConnectedState()
+            else
+              const _DisconnectedState(),
           ],
         ),
       ),
@@ -74,13 +83,18 @@ class _DisconnectedState extends ConsumerWidget {
       child: Column(
         children: [
           Container(
-            width: 72, height: 72,
+            width: 72,
+            height: 72,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: AppColors.green.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(AppSymbols.heartPulse, size: 34, color: AppColors.green),
+            child: Icon(
+              AppSymbols.heartPulse,
+              size: 34,
+              color: AppColors.green,
+            ),
           ),
           const SizedBox(height: 20),
           Text(
@@ -104,10 +118,14 @@ class _DisconnectedState extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _StatusBadge(activityVal: activityVal, isLoading: activityAsync.isLoading),
+          _StatusBadge(
+            activityVal: activityVal,
+            isLoading: activityAsync.isLoading,
+          ),
           const SizedBox(height: 20),
           SizedBox(
-            width: double.infinity, height: 50,
+            width: double.infinity,
+            height: 50,
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -190,8 +208,10 @@ class _ConnectedState extends ConsumerWidget {
     final activityVal = ref.watch(activityProvider).valueOrNull;
     final steps = activityVal?.steps ?? 0;
     final calories = (activityVal?.activeCalories ?? 0).toInt();
-    final stepProgress = steps / math.max(10000, 1);
+    final caloriesEstimated = activityVal?.activeCaloriesEstimated ?? true;
+    final stepProgress = steps / math.max(_dailyStepGoal, 1);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? Colors.white38 : const Color(0xFFB4AFA8);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
@@ -214,31 +234,31 @@ class _ConnectedState extends ConsumerWidget {
           Text(
             'Steps Today',
             style: AppTypography.bodyMedium.copyWith(
-              color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+              color: muted,
               fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            '$calories kcal burned',
+            caloriesEstimated
+                ? '~$calories kcal burned · estimated'
+                : '$calories kcal burned',
             style: AppTypography.bodyMedium.copyWith(
-              color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
+              color: muted,
               fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
           ),
-          if (steps >= 200) ...[
-            const SizedBox(height: 6),
-            Text(
-              '${(steps / 100).round()} min walk',
-              style: AppTypography.bodySmall.copyWith(
-                color: isDark ? Colors.white24 : const Color(0xFFD6D3D1),
-                fontWeight: FontWeight.w500,
-                fontSize: 13,
-              ),
+          const SizedBox(height: 6),
+          Text(
+            '${(stepProgress * 100).round()}% of ${NumberFormat.decimalPattern().format(_dailyStepGoal)} daily goal',
+            style: AppTypography.bodySmall.copyWith(
+              color: muted,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
             ),
-          ],
+          ),
           const SizedBox(height: 24),
           const _LastSyncBadge(),
         ],
@@ -257,27 +277,39 @@ class _ActivityRing extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final clamped = progress.clamp(0.0, 1.0);
     return SizedBox(
-      width: 180, height: 180,
+      width: 180,
+      height: 180,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          SizedBox(width: 160, height: 160,
+          SizedBox(
+            width: 160,
+            height: 160,
             child: CircularProgressIndicator(
-              value: 1, strokeWidth: 8, strokeCap: StrokeCap.round,
+              value: 1,
+              strokeWidth: 8,
+              strokeCap: StrokeCap.round,
               valueColor: AlwaysStoppedAnimation<Color>(
                 (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
               ),
             ),
           ),
-          SizedBox(width: 160, height: 160,
+          SizedBox(
+            width: 160,
+            height: 160,
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: clamped),
               duration: const Duration(milliseconds: 800),
               curve: Curves.easeOutCubic,
-              builder: (context, value, _) => CircularProgressIndicator(
-                value: value, strokeWidth: 8, strokeCap: StrokeCap.round,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.green),
-              ),
+              builder:
+                  (context, value, _) => CircularProgressIndicator(
+                    value: value,
+                    strokeWidth: 8,
+                    strokeCap: StrokeCap.round,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.green,
+                    ),
+                  ),
             ),
           ),
           Column(

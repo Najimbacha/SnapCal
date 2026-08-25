@@ -75,11 +75,12 @@ class _CornerBracketPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = color
+          ..strokeWidth = strokeWidth
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
 
     final w = size.width;
     final h = size.height;
@@ -87,19 +88,35 @@ class _CornerBracketPainter extends CustomPainter {
     final l = cornerLength;
 
     canvas.drawPath(
-      Path()..moveTo(0, l)..lineTo(0, r)..quadraticBezierTo(0, 0, r, 0)..lineTo(l, 0),
+      Path()
+        ..moveTo(0, l)
+        ..lineTo(0, r)
+        ..quadraticBezierTo(0, 0, r, 0)
+        ..lineTo(l, 0),
       paint,
     );
     canvas.drawPath(
-      Path()..moveTo(w - l, 0)..lineTo(w - r, 0)..quadraticBezierTo(w, 0, w, r)..lineTo(w, l),
+      Path()
+        ..moveTo(w - l, 0)
+        ..lineTo(w - r, 0)
+        ..quadraticBezierTo(w, 0, w, r)
+        ..lineTo(w, l),
       paint,
     );
     canvas.drawPath(
-      Path()..moveTo(0, h - l)..lineTo(0, h - r)..quadraticBezierTo(0, h, r, h)..lineTo(l, h),
+      Path()
+        ..moveTo(0, h - l)
+        ..lineTo(0, h - r)
+        ..quadraticBezierTo(0, h, r, h)
+        ..lineTo(l, h),
       paint,
     );
     canvas.drawPath(
-      Path()..moveTo(w - l, h)..lineTo(w - r, h)..quadraticBezierTo(w, h, w, h - r)..lineTo(w, h - l),
+      Path()
+        ..moveTo(w - l, h)
+        ..lineTo(w - r, h)
+        ..quadraticBezierTo(w, h, w, h - r)
+        ..lineTo(w, h - l),
       paint,
     );
   }

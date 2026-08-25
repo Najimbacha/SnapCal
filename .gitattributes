@@ -1,0 +1,22 @@
+# Normalize all text files to LF in the repository, checked out per-OS.
+# Without this the mixed CRLF/LF history made every file show as fully
+# modified under plain `git diff`, hiding real regressions (BUG-026).
+* text=auto eol=lf
+
+# Windows scripts conventionally keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets must never be normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.otf binary
+*.jar binary
+*.keystore binary

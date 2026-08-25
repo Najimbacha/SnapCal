@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../core/theme/app_colors.dart';
+
 class HeroActionButton extends StatefulWidget {
   final VoidCallback onTap;
   final bool isActive;
@@ -66,7 +68,6 @@ class _HeroActionButtonState extends State<HeroActionButton>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const green = Color(0xFF1A3D2B);
 
     return GestureDetector(
       onTapDown: (_) {
@@ -101,15 +102,26 @@ class _HeroActionButtonState extends State<HeroActionButton>
                   clipBehavior: Clip.hardEdge,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: green,
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primary, AppColors.primaryDark],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     border: Border.all(
                       color:
                           isDark
                               ? Colors.white.withValues(alpha: 0.14)
-                              : const Color(0xFFF9F8F5),
+                              : const Color(0xFFFAFAF8),
                       width: 4,
                     ),
                     boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(
+                          alpha: isDark ? 0.35 : 0.30,
+                        ),
+                        blurRadius: 22,
+                        offset: const Offset(0, 6),
+                      ),
                       BoxShadow(
                         color: Colors.black.withValues(
                           alpha: isDark ? 0.30 : 0.14,

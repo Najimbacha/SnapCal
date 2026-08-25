@@ -15,7 +15,8 @@ class MealPreferencesScreen extends ConsumerStatefulWidget {
   const MealPreferencesScreen({super.key, required this.onGenerate});
 
   @override
-  ConsumerState<MealPreferencesScreen> createState() => _MealPreferencesScreenState();
+  ConsumerState<MealPreferencesScreen> createState() =>
+      _MealPreferencesScreenState();
 }
 
 class _MealPreferencesScreenState extends ConsumerState<MealPreferencesScreen> {
@@ -256,16 +257,13 @@ class _MealPreferencesScreenState extends ConsumerState<MealPreferencesScreen> {
                 children: [
                   FilledButton.icon(
                     onPressed: () {
-                      ref.read(settingsProvider.notifier).updatePlannerPreferences(
-                        mealsPerDay: _mealsPerDay,
-                        dietaryRestriction: _restriction,
-                        cuisinePreference: _cuisine,
-                      );
-                      ref.read(settingsProvider.notifier).updatePlannerPreferences(
-                        mealsPerDay: _mealsPerDay,
-                        dietaryRestriction: _restriction,
-                        cuisinePreference: _cuisine,
-                      );
+                      ref
+                          .read(settingsProvider.notifier)
+                          .updatePlannerPreferences(
+                            mealsPerDay: _mealsPerDay,
+                            dietaryRestriction: _restriction,
+                            cuisinePreference: _cuisine,
+                          );
                       Navigator.pop(context);
                       widget.onGenerate();
                     },
@@ -584,7 +582,7 @@ class _ChipButton extends StatelessWidget {
                 style: AppTypography.labelMedium.copyWith(
                   color: selected ? Colors.white : context.textPrimaryColor,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  fontSize: 11.5,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -594,4 +592,3 @@ class _ChipButton extends StatelessWidget {
     );
   }
 }
-

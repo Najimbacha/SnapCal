@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/utils/pref_scoping.dart';
 import 'analytics_service.dart';
 
 class PremiumGateService {
@@ -10,7 +12,8 @@ class PremiumGateService {
   late SharedPreferences _prefs;
   bool _initialized = false;
 
-  // Storage Keys
+  // Storage Keys (always read through scopedPrefKey so they are namespaced by
+  // the signed-in UID — account switching must not inherit quota state).
   static const String _lastPopupDateKey = 'last_premium_popup_date';
   static const String _popupCountTodayKey = 'premium_popup_count_today';
   static const String _lastUpgradeTapKey = 'last_upgrade_tap_timestamp';
@@ -39,20 +42,39 @@ class PremiumGateService {
   }
 
   void _resetDailyCountsIfNeeded() {
-    final lastDate = _prefs.getString(_lastPopupDateKey);
-    final today = _getTodayString();
+    final lastDate = _prefs.getString(scopedPrefKey(_lastPopupDateKey));
+    final today = utcDateKey(DateTime.now());
 
     if (lastDate != today) {
-      _prefs.setString(_lastPopupDateKey, today);
-      _prefs.setInt(_popupCountTodayKey, 0);
-      _prefs.setInt(_aiMessagesUsedKey, 0);
-      _prefs.setInt(_freeScansUsedKey, 0);
+      _prefs.setString(scopedPrefKey(_lastPopupDateKey), today);
+      _prefs.setInt(scopedPrefKey(_popupCountTodayKey), 0);
+      _prefs.setInt(scopedPrefKey(_aiMessagesUsedKey), 0);
+      _prefs.setInt(scopedPrefKey(_freeScansUsedKey), 0);
     }
   }
 
-  String _getTodayString() {
-    final now = DateTime.now();
-    return "${now.year}-${now.month}-${now.day}";
+  /// Removes every user-scoped counter. Invoked by SessionCleanupService on
+  /// sign-out.
+  Future<void> resetSessionState() async {
+    if (!_initialized) return;
+    final keys =
+        _prefs
+            .getKeys()
+            .where(
+              (k) => [
+                _lastPopupDateKey,
+                _popupCountTodayKey,
+                _lastUpgradeTapKey,
+                _lastPopupShownKey,
+                _lastPopupDismissedKey,
+                _aiMessagesUsedKey,
+                _freeScansUsedKey,
+              ].any((base) => prefKeyBelongsTo(k, base)),
+            )
+            .toList();
+    for (final k in keys) {
+      await _prefs.remove(k);
+    }
   }
 
   // --- Logic Checks ---
@@ -72,22 +94,24 @@ class PremiumGateService {
 
     _resetDailyCountsIfNeeded();
 
-    final countToday = _prefs.getInt(_popupCountTodayKey) ?? 0;
+    final countToday = _prefs.getInt(scopedPrefKey(_popupCountTodayKey)) ?? 0;
     if (countToday >= _maxAutomaticPopupsPerDay) return false;
 
-    final lastUpgradeTap = _prefs.getInt(_lastUpgradeTapKey) ?? 0;
+    final lastUpgradeTap =
+        _prefs.getInt(scopedPrefKey(_lastUpgradeTapKey)) ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
 
     if (now - lastUpgradeTap < _postCtaCooldown.inMilliseconds) {
       return false;
     }
 
-    final lastDismissed = _prefs.getInt(_lastPopupDismissedKey) ?? 0;
+    final lastDismissed =
+        _prefs.getInt(scopedPrefKey(_lastPopupDismissedKey)) ?? 0;
     if (now - lastDismissed < _postDismissCooldown.inMilliseconds) {
       return false;
     }
 
-    final lastShown = _prefs.getInt(_lastPopupShownKey) ?? 0;
+    final lastShown = _prefs.getInt(scopedPrefKey(_lastPopupShownKey)) ?? 0;
     if (now - lastShown < _modalCooldown.inMilliseconds) {
       return false;
     }
@@ -98,10 +122,10 @@ class PremiumGateService {
   // --- Recording Actions ---
 
   Future<void> recordPopupShown() async {
-    final count = _prefs.getInt(_popupCountTodayKey) ?? 0;
-    await _prefs.setInt(_popupCountTodayKey, count + 1);
+    final count = _prefs.getInt(scopedPrefKey(_popupCountTodayKey)) ?? 0;
+    await _prefs.setInt(scopedPrefKey(_popupCountTodayKey), count + 1);
     await _prefs.setInt(
-      _lastPopupShownKey,
+      scopedPrefKey(_lastPopupShownKey),
       DateTime.now().millisecondsSinceEpoch,
     );
     AnalyticsService().logEvent('premium_popup_seen');
@@ -109,7 +133,7 @@ class PremiumGateService {
 
   Future<void> recordCtaClicked(String source) async {
     await _prefs.setInt(
-      _lastUpgradeTapKey,
+      scopedPrefKey(_lastUpgradeTapKey),
       DateTime.now().millisecondsSinceEpoch,
     );
     AnalyticsService().logEvent(
@@ -120,7 +144,7 @@ class PremiumGateService {
 
   Future<void> recordPopupClosed() async {
     await _prefs.setInt(
-      _lastPopupDismissedKey,
+      scopedPrefKey(_lastPopupDismissedKey),
       DateTime.now().millisecondsSinceEpoch,
     );
     AnalyticsService().logEvent('premium_popup_closed');
@@ -128,11 +152,12 @@ class PremiumGateService {
 
   // --- Message/Scan Tracking ---
 
-  int getAiMessagesUsed() => _prefs.getInt(_aiMessagesUsedKey) ?? 0;
+  int getAiMessagesUsed() =>
+      _prefs.getInt(scopedPrefKey(_aiMessagesUsedKey)) ?? 0;
 
   Future<void> incrementAiMessages() async {
     final current = getAiMessagesUsed();
-    await _prefs.setInt(_aiMessagesUsedKey, current + 1);
+    await _prefs.setInt(scopedPrefKey(_aiMessagesUsedKey), current + 1);
   }
 
   bool hasReachedAiLimit(bool isPremium) {

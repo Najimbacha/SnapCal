@@ -15,7 +15,6 @@ class AchievementsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final achievementsAsync = ref.watch(achievementsProvider);
     final achievementsNotifier = ref.read(achievementsProvider.notifier);
     final l10n = AppLocalizations.of(context)!;
 

@@ -9,6 +9,16 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # Vendored npm tree pulled in by the Firestore rules tests; its template
+    # files are not ours to lint.
+    - security-tests/node_modules/**
+  errors:
+    # Using a BuildContext across an async gap crashes real devices during
+    # navigation and purchases. Keep it at error so it cannot regress.
+    use_build_context_synchronously: error
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

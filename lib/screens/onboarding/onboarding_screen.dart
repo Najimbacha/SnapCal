@@ -270,7 +270,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   }
 
   Future<void> _generateRecommendation(OnboardingProfileInput profile) async {
-    final languageCode = ref.watch(settingsProvider).valueOrNull?.languageCode ?? 'en';
+    final languageCode =
+        ref.watch(settingsProvider).valueOrNull?.languageCode ?? 'en';
     // 1. Calculate local results immediately for instant UI feedback
     final localResult = _service.computeBasePlan(
       profile,

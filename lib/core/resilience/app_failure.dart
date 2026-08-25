@@ -43,6 +43,11 @@ class AppFailure implements Exception {
   });
 
   bool get isRetryable {
+    // 402 (payment required / free-tier exhausted) is a terminal state for
+    // the request: retrying cannot succeed and the user must upgrade.
+    if (type == AppFailureType.quotaExceeded && statusCode == 402) {
+      return false;
+    }
     switch (type) {
       case AppFailureType.offline:
       case AppFailureType.timeout:
@@ -178,9 +183,10 @@ class AppFailure implements Exception {
 
     if (status == 401 || status == 403) {
       return AppFailure(
-        type: status == 403
-            ? AppFailureType.permissionDenied
-            : AppFailureType.unauthorized,
+        type:
+            status == 403
+                ? AppFailureType.permissionDenied
+                : AppFailureType.unauthorized,
         message: 'Your session needs to be refreshed.',
         statusCode: status,
         rawError: error,
@@ -199,9 +205,10 @@ class AppFailure implements Exception {
     if (status == 408 || status == 409) {
       return AppFailure(
         type: status == 409 ? AppFailureType.conflict : AppFailureType.timeout,
-        message: status == 409
-            ? 'This data changed elsewhere. Please refresh and try again.'
-            : 'The request timed out. Please try again.',
+        message:
+            status == 409
+                ? 'This data changed elsewhere. Please refresh and try again.'
+                : 'The request timed out. Please try again.',
         statusCode: status,
         rawError: error,
       );
@@ -213,6 +220,18 @@ class AppFailure implements Exception {
         message: 'Service quota was reached. Please try again shortly.',
         statusCode: status,
         retryAfter: retryAfter,
+        rawError: error,
+      );
+    }
+
+    // 402 is the backend's free-tier scan-limit response (BUG-005). It must
+    // surface as a quota failure the UI can route to the paywall, not the
+    // generic "request could not be completed" validation message.
+    if (status == 402) {
+      return AppFailure(
+        type: AppFailureType.quotaExceeded,
+        message: 'Free scan limit reached for this month.',
+        statusCode: status,
         rawError: error,
       );
     }

@@ -322,7 +322,7 @@ class RecentMealTile extends StatelessWidget {
                     'KCAL',
                     style: AppTypography.labelSmall.copyWith(
                       color: AppColors.primary.withValues(alpha: 0.8),
-                      fontSize: 8,
+                      fontSize: 9,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.5,
                     ),

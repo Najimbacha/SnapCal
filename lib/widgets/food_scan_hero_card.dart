@@ -272,8 +272,14 @@ class _FoodScanHeroCardState extends State<FoodScanHeroCard>
                       gradient: LinearGradient(
                         colors:
                             isDark
-                                ? const [AppColors.neutralDarkDeep, AppColors.neutralDarkDeepAlt]
-                                : const [AppColors.white, AppColors.neutralCoolSurface],
+                                ? const [
+                                  AppColors.neutralDarkDeep,
+                                  AppColors.neutralDarkDeepAlt,
+                                ]
+                                : const [
+                                  AppColors.white,
+                                  AppColors.neutralCoolSurface,
+                                ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),

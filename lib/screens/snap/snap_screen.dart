@@ -188,10 +188,9 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             position: Tween<Offset>(
               begin: const Offset(0, 0.08),
               end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            )),
+            ).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
             child: child,
           );
         },
@@ -226,10 +225,9 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             position: Tween<Offset>(
               begin: const Offset(0, 0.08),
               end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            )),
+            ).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
             child: child,
           );
         },
@@ -317,7 +315,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
                     ? AppLocalizations.of(context)!.log_unknown_food
                     : item.foodName,
             calories: item.calories,
-            macros: Macros(protein: item.protein, carbs: item.carbs, fat: item.fat),
+            macros: Macros(
+              protein: item.protein,
+              carbs: item.carbs,
+              fat: item.fat,
+            ),
             portion: item.portion,
             scanConfidence: item.confidence ?? 0.82,
             scanSource: 'ai_scan',
@@ -394,322 +396,317 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
 
     final cameraContent = <Widget>[];
 
-          if (_controller.isScanningBarcode) {
-            cameraContent.add(
-                  BarcodeScannerView(
-                onBarcodeDetected:
-                    (code) => _controller.handleBarcodeDetected(
-                      code,
-                      context: context,
-                      settingsProvider: ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
-                      connectivity: ConnectivityService(),
-                      onShowPaywall: _showPaywall,
-                      onShowResult: _showResultModal,
-                      onShowManualInput: _showManualInputModal,
-                    ),
-                onCancel: () => context.go('/'),
+    if (_controller.isScanningBarcode) {
+      cameraContent.add(
+        BarcodeScannerView(
+          onBarcodeDetected:
+              (code) => _controller.handleBarcodeDetected(
+                code,
+                context: context,
+                settingsProvider:
+                    ref.read(settingsProvider).valueOrNull ??
+                    UserSettings.defaults(),
+                connectivity: ConnectivityService(),
+                onShowPaywall: _showPaywall,
+                onShowResult: _showResultModal,
+                onShowManualInput: _showManualInputModal,
               ),
+          onCancel: () => context.go('/'),
+        ),
+      );
+    } else if (_controller.isInitialized &&
+        _controller.cameraController != null) {
+      cameraContent.add(
+        GestureDetector(
+          onTapUp: (details) {
+            HapticFeedback.selectionClick();
+            final box = context.findRenderObject() as RenderBox;
+            final size = box.size;
+            final point = Offset(
+              details.localPosition.dx / size.width,
+              details.localPosition.dy / size.height,
             );
-          } else if (_controller.isInitialized &&
-              _controller.cameraController != null) {
-            cameraContent.add(
-              GestureDetector(
-                onTapUp: (details) {
-                  HapticFeedback.selectionClick();
-                  final box = context.findRenderObject() as RenderBox;
-                  final size = box.size;
-                  final point = Offset(
-                    details.localPosition.dx / size.width,
-                    details.localPosition.dy / size.height,
-                  );
-                  _controller.setFocusPoint(point);
-                  setState(() => _focusPoint = details.localPosition);
-                  _focusAnimController?.reset();
-                  _focusAnimController?.forward();
-                },
-                child:
-                    (_controller.cameraController?.value.isInitialized ?? false)
-                        ? CameraPreview(
-                          _controller.cameraController!,
-                          key: ObjectKey(_controller.cameraController),
-                        )
-                        : const _CameraShimmerSkeleton(),
-              ),
-            );
-          } else if (_controller.errorMessage != null) {
-            cameraContent.add(
-              _StatePanel(
-                icon: LucideIcons.cameraOff,
-                title: AppLocalizations.of(context)!.error_camera,
-                body: _controller.errorMessage!,
-                actionLabel: AppLocalizations.of(context)!.assistant_retry,
-                onAction: _controller.initializeCamera,
-              ),
-            );
-          } else {
-            cameraContent.add(const _CameraShimmerSkeleton());
-          }
+            _controller.setFocusPoint(point);
+            setState(() => _focusPoint = details.localPosition);
+            _focusAnimController?.reset();
+            _focusAnimController?.forward();
+          },
+          child:
+              (_controller.cameraController?.value.isInitialized ?? false)
+                  ? CameraPreview(
+                    _controller.cameraController!,
+                    key: ObjectKey(_controller.cameraController),
+                  )
+                  : const _CameraShimmerSkeleton(),
+        ),
+      );
+    } else if (_controller.errorMessage != null) {
+      cameraContent.add(
+        _StatePanel(
+          icon: LucideIcons.cameraOff,
+          title: AppLocalizations.of(context)!.error_camera,
+          body: _controller.errorMessage!,
+          actionLabel: AppLocalizations.of(context)!.assistant_retry,
+          onAction: _controller.initializeCamera,
+        ),
+      );
+    } else {
+      cameraContent.add(const _CameraShimmerSkeleton());
+    }
 
-          return Scaffold(
-            backgroundColor: const Color(0xFF000000),
-            body: Stack(
-              children: [
-                // ── Rounded camera preview area ──
-                Positioned(
-                  top: topSafe + 56,
-                  left: previewH,
-                  right: previewH,
-                  bottom: 210 + bottomSafe,
-                  child: ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(cornerRadius),
+    return Scaffold(
+      backgroundColor: const Color(0xFF000000),
+      body: Stack(
+        children: [
+          // ── Rounded camera preview area ──
+          Positioned(
+            top: topSafe + 56,
+            left: previewH,
+            right: previewH,
+            bottom: 210 + bottomSafe,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(cornerRadius),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(cornerRadius),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.10),
+                    width: 0.5,
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    ...cameraContent,
+                    // Tap-to-focus ring
+                    if (_focusPoint != null && _focusAnimController != null)
+                      AnimatedBuilder(
+                        animation: _focusAnimController!,
+                        builder: (context, _) {
+                          return Positioned(
+                            left: _focusPoint!.dx - 30,
+                            top: _focusPoint!.dy - 30,
+                            child: Opacity(
+                              opacity: _focusOpacity?.value ?? 0,
+                              child: Transform.scale(
+                                scale: _focusScale?.value ?? 1.0,
+                                child: Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0xFFFFD700),
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Bottom gradient for readability ──
+          if (!_controller.isScanningBarcode)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 200,
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.60),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Top bar ──
+          if (!_controller.isScanningBarcode)
+            Positioned(
+              top: topSafe + 12,
+              left: 16,
+              right: 16,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => context.go('/'),
                     child: Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(cornerRadius),
+                        color: Colors.black.withValues(alpha: 0.30),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        LucideIcons.x,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  if (_controller.isInitialized &&
+                      _controller.errorMessage == null)
+                    GestureDetector(
+                      onTap: _controller.toggleFlash,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.30),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _controller.flashMode == FlashMode.off
+                              ? LucideIcons.zapOff
+                              : LucideIcons.zap,
+                          color:
+                              _controller.flashMode == FlashMode.off
+                                  ? Colors.white54
+                                  : const Color(0xFFFFD700),
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+          // ── Bottom controls ──
+          if (!_controller.isScanningBarcode)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: bottomSafe + 72,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      // Gallery
+                      Expanded(
+                        child: GestureDetector(
+                          onTap:
+                              () => _controller.pickFromGallery(
+                                context: context,
+                                mealProvider: ref.read(
+                                  mealLogProvider.notifier,
+                                ),
+                                settingsProvider:
+                                    ref.read(settingsProvider).valueOrNull ??
+                                    UserSettings.defaults(),
+                                isPro: ref.read(effectiveIsProProvider),
+                                connectivity: ConnectivityService(),
+                                onShowPaywall: _showPaywall,
+                                onShowResult: _showResultModal,
+                                onShowManualInput: _showManualInputModal,
+                              ),
+                          child: const _BottomIcon(
+                            icon: LucideIcons.image,
+                            label: 'Gallery',
+                          ),
+                        ),
+                      ),
+                      // Shutter
+                      ShutterButton(
+                        onPressed:
+                            () => _controller.captureAndAnalyze(
+                              context: context,
+                              mealProvider: ref.read(mealLogProvider.notifier),
+                              settingsProvider:
+                                  ref.read(settingsProvider).valueOrNull ??
+                                  UserSettings.defaults(),
+                              isPro: ref.read(effectiveIsProProvider),
+                              connectivity: ConnectivityService(),
+                              onShowPaywall: _showPaywall,
+                              onShowResult: _showResultModal,
+                              onShowManualInput: _showManualInputModal,
+                            ),
+                        isLoading: _controller.isCapturing,
+                      ),
+                      // Barcode
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _controller.isScanningBarcode = true,
+                          child: const _BottomIcon(
+                            icon: LucideIcons.scanLine,
+                            label: 'Barcode',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Manual search escape hatch (Case D)
+                  GestureDetector(
+                    onTap: _showManualInputModal,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.10),
+                          color: Colors.white.withValues(alpha: 0.15),
                           width: 0.5,
                         ),
                       ),
-                      child: Stack(
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          ...cameraContent,
-                          // Tap-to-focus ring
-                          if (_focusPoint != null &&
-                              _focusAnimController != null)
-                            AnimatedBuilder(
-                              animation: _focusAnimController!,
-                              builder: (context, _) {
-                                return Positioned(
-                                  left: _focusPoint!.dx - 30,
-                                  top: _focusPoint!.dy - 30,
-                                  child: Opacity(
-                                    opacity:
-                                        _focusOpacity?.value ?? 0,
-                                    child: Transform.scale(
-                                      scale:
-                                          _focusScale?.value ?? 1.0,
-                                      child: Container(
-                                        width: 60,
-                                        height: 60,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color:
-                                                const Color(0xFFFFD700),
-                                            width: 2,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
+                          Icon(
+                            LucideIcons.type,
+                            color: Colors.white70,
+                            size: 14,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Type Ingredient',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
+                          ),
                         ],
                       ),
                     ),
                   ),
-                ),
-
-                // ── Bottom gradient for readability ──
-                if (!_controller.isScanningBarcode)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    height: 200,
-                    child: IgnorePointer(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.60),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                // ── Top bar ──
-                if (!_controller.isScanningBarcode)
-                  Positioned(
-                    top: topSafe + 12,
-                    left: 16,
-                    right: 16,
-                    child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                      children: [
-                        GestureDetector(
-                          onTap: () => context.go('/'),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: Colors.black
-                                  .withValues(alpha: 0.30),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              LucideIcons.x,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                        if (_controller.isInitialized &&
-                            _controller.errorMessage == null)
-                          GestureDetector(
-                            onTap: _controller.toggleFlash,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: Colors.black
-                                    .withValues(alpha: 0.30),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                _controller.flashMode == FlashMode.off
-                                    ? LucideIcons.zapOff
-                                    : LucideIcons.zap,
-                                color: _controller.flashMode ==
-                                        FlashMode.off
-                                    ? Colors.white54
-                                    : const Color(0xFFFFD700),
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                // ── Bottom controls ──
-                if (!_controller.isScanningBarcode)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: bottomSafe + 72,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(height: 22),
-                        Row(
-                          children: [
-                            // Gallery
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () =>
-                                    _controller.pickFromGallery(
-                                      context: context,
-                                      mealProvider:
-                                          ref.read(mealLogProvider.notifier),
-                                      settingsProvider:
-                                          ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
-                                      connectivity:
-                                          ConnectivityService(),
-                                      onShowPaywall: _showPaywall,
-                                      onShowResult: _showResultModal,
-                                      onShowManualInput:
-                                          _showManualInputModal,
-                                    ),
-                                child: const _BottomIcon(
-                                  icon: LucideIcons.image,
-                                  label: 'Gallery',
-                                ),
-                              ),
-                            ),
-                            // Shutter
-                            ShutterButton(
-                              onPressed: () =>
-                                  _controller.captureAndAnalyze(
-                                    context: context,
-                                    mealProvider:
-                                        ref.read(mealLogProvider.notifier),
-                                    settingsProvider:
-                                        ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults(),
-                                    connectivity:
-                                        ConnectivityService(),
-                                    onShowPaywall: _showPaywall,
-                                    onShowResult: _showResultModal,
-                                    onShowManualInput:
-                                        _showManualInputModal,
-                                  ),
-                              isLoading: _controller.isCapturing,
-                            ),
-                            // Barcode
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () =>
-                                    _controller.isScanningBarcode =
-                                        true,
-                                child: const _BottomIcon(
-                                  icon: LucideIcons.scanLine,
-                                  label: 'Barcode',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        // Manual search escape hatch (Case D)
-                        GestureDetector(
-                          onTap: _showManualInputModal,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                width: 0.5,
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(LucideIcons.type,
-                                    color: Colors.white70, size: 14),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Type Ingredient',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // ── Analyzing overlay ──
-                if (_controller.isAnalyzing)
-                  Positioned.fill(
-                    child: AnalyzingOverlay(
-                      controller: _controller,
-                      onManualEntry: _showManualInputModal,
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          );
-  }
 
+          // ── Analyzing overlay ──
+          if (_controller.isAnalyzing)
+            Positioned.fill(
+              child: AnalyzingOverlay(
+                controller: _controller,
+                onManualEntry: _showManualInputModal,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CameraShimmerSkeleton extends StatelessWidget {
@@ -846,4 +843,3 @@ class _StatePanel extends StatelessWidget {
     );
   }
 }
-

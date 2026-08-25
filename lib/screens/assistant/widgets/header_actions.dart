@@ -30,9 +30,10 @@ class AssistantHeaderActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tint = isDark
-        ? Colors.white.withValues(alpha: 0.06)
-        : Colors.black.withValues(alpha: 0.04);
+    final tint =
+        isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.04);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -41,9 +42,7 @@ class AssistantHeaderActions extends StatelessWidget {
           tooltip: 'Weekly report',
           onTap: onWeeklyReport,
           tint: tint,
-          badge: !isPro
-              ? const _ProBadge()
-              : null,
+          badge: !isPro ? const _ProBadge() : null,
         ),
         const SizedBox(width: 6),
         _ActionButton(
@@ -57,12 +56,11 @@ class AssistantHeaderActions extends StatelessWidget {
           icon: AppSymbols.add,
           tooltip: 'New conversation',
           onTap: onNewChat,
-          tint: hasActiveThread
-              ? AppColors.homeCoachAccent.withValues(alpha: 0.12)
-              : tint,
-          iconColor: hasActiveThread
-              ? AppColors.homeCoachAccent
-              : null,
+          tint:
+              hasActiveThread
+                  ? AppColors.homeCoachAccent.withValues(alpha: 0.12)
+                  : tint,
+          iconColor: hasActiveThread ? AppColors.homeCoachAccent : null,
         ),
       ],
     );
@@ -123,11 +121,7 @@ class _ActionButtonState extends State<_ActionButton> {
                 ),
               ),
               if (widget.badge != null)
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: widget.badge!,
-                ),
+                Positioned(top: -2, right: -2, child: widget.badge!),
             ],
           ),
         ),
@@ -142,23 +136,17 @@ class _ProBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 14,
-      height: 14,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.premiumGold,
-        shape: BoxShape.circle,
-        border: Border.all(color: context.surfaceColor, width: 1.5),
-      ),
-      child: const Icon(
-        AppSymbols.lock,
-        size: 7,
-        color: Colors.black,
-      ),
-    ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(
-          duration: 1800.ms,
-          begin: 1,
-          end: 1.12,
-        );
+          width: 14,
+          height: 14,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.premiumGold,
+            shape: BoxShape.circle,
+            border: Border.all(color: context.surfaceColor, width: 1.5),
+          ),
+          child: const Icon(AppSymbols.lock, size: 7, color: Colors.black),
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scaleXY(duration: 1800.ms, begin: 1, end: 1.12);
   }
 }

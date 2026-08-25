@@ -127,96 +127,97 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final metrics = ref.watch(bodyMetricsProvider).valueOrNull ?? <BodyMetric>[];
+    final metrics =
+        ref.watch(bodyMetricsProvider).valueOrNull ?? <BodyMetric>[];
     final photos = metrics.where((m) => m.photoFrontPath != null).toList();
     final trend = metrics.take(7).toList();
     final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
     final canAdd = isPro || photos.length < 3;
 
-        final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context)!;
 
-        return AppPageScaffold(
-          title: l10n.report_tab_body,
-          subtitle: null,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (photos.length >= 2)
-                _ScaleTap(
-                  onTap: () => _generateJourney(photos),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child:
-                        _isGenerating
-                            ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                            : Icon(
-                              LucideIcons.video,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
+    return AppPageScaffold(
+      title: l10n.report_tab_body,
+      subtitle: null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (photos.length >= 2)
+            _ScaleTap(
+              onTap: () => _generateJourney(photos),
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
                   ),
                 ),
-              _ScaleTap(
-                onTap: () => _handleCapture(context, canAdd),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: colorScheme.primary.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Icon(
-                    LucideIcons.camera,
-                    color: colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              if (trend.isNotEmpty)
-                _staggeredSlide(
-                  _itemAnims[0],
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: AppSectionCard(
-                      glass: true,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: WeightTrendChart(metrics: trend),
-                    ),
-                  ),
-                ),
-              Expanded(
                 child:
-                    photos.isEmpty
-                        ? _staggeredSlide(
-                          _itemAnims[1],
-                          _buildEmpty(context, canAdd),
+                    _isGenerating
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                        : _buildList(context, photos),
+                        : Icon(
+                          LucideIcons.video,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
               ),
-            ],
+            ),
+          _ScaleTap(
+            onTap: () => _handleCapture(context, canAdd),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: colorScheme.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Icon(
+                LucideIcons.camera,
+                color: colorScheme.primary,
+                size: 20,
+              ),
+            ),
           ),
-        );
+        ],
+      ),
+      child: Column(
+        children: [
+          if (trend.isNotEmpty)
+            _staggeredSlide(
+              _itemAnims[0],
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppSectionCard(
+                  glass: true,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: WeightTrendChart(metrics: trend),
+                ),
+              ),
+            ),
+          Expanded(
+            child:
+                photos.isEmpty
+                    ? _staggeredSlide(
+                      _itemAnims[1],
+                      _buildEmpty(context, canAdd),
+                    )
+                    : _buildList(context, photos),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEmpty(BuildContext context, bool canAdd) {

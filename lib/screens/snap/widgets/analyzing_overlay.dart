@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../snap_controller.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -11,7 +10,11 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 class AnalyzingOverlay extends StatefulWidget {
   final SnapController controller;
   final VoidCallback? onManualEntry;
-  const AnalyzingOverlay({super.key, required this.controller, this.onManualEntry});
+  const AnalyzingOverlay({
+    super.key,
+    required this.controller,
+    this.onManualEntry,
+  });
 
   @override
   State<AnalyzingOverlay> createState() => _AnalyzingOverlayState();
@@ -147,20 +150,22 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                     children: [
                       // Outer ring pulse
                       Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            width: 1,
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.08),
+                                width: 1,
+                              ),
+                            ),
+                          )
+                          .animate(controller: _pulseController)
+                          .scale(
+                            begin: const Offset(0.92, 0.92),
+                            end: const Offset(1.08, 1.08),
+                            curve: Curves.easeInOut,
                           ),
-                        ),
-                      ).animate(controller: _pulseController).scale(
-                        begin: const Offset(0.92, 0.92),
-                        end: const Offset(1.08, 1.08),
-                        curve: Curves.easeInOut,
-                      ),
                       // Middle ring
                       Container(
                         width: 76,
@@ -185,29 +190,29 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                         child: SizedBox(
                           width: 76,
                           height: 76,
-                          child: CustomPaint(
-                            painter: _ScanArcPainter(),
-                          ),
+                          child: CustomPaint(painter: _ScanArcPainter()),
                         ),
                       ),
                       // Inner icon
                       Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.06),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          LucideIcons.brain,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ).animate(controller: _pulseController).scale(
-                        begin: const Offset(0.95, 0.95),
-                        end: const Offset(1.05, 1.05),
-                        curve: Curves.easeInOut,
-                      ),
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.06),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              LucideIcons.brain,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          )
+                          .animate(controller: _pulseController)
+                          .scale(
+                            begin: const Offset(0.95, 0.95),
+                            end: const Offset(1.05, 1.05),
+                            curve: Curves.easeInOut,
+                          ),
                     ],
                   ),
                 ),
@@ -254,16 +259,20 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                         position: Tween<Offset>(
                           begin: const Offset(0, 0.15),
                           end: Offset.zero,
-                        ).animate(CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeOutCubic,
-                        )),
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
                         child: child,
                       ),
                     );
                   },
                   child: Text(
-                    _statusMessages.isNotEmpty ? _statusMessages[_messageIndex] : '',
+                    _statusMessages.isNotEmpty
+                        ? _statusMessages[_messageIndex]
+                        : '',
                     key: ValueKey<int>(_messageIndex),
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.35),
@@ -278,19 +287,20 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                 AnimatedOpacity(
                   opacity: _showTimeoutHint ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 600),
-                  child: _showTimeoutHint
-                      ? Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Text(
-                            "Can't identify? Try Manual Search.",
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                  child:
+                      _showTimeoutHint
+                          ? Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              "Can't identify? Try Manual Search.",
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
+                          )
+                          : const SizedBox.shrink(),
                 ),
 
                 // Manual entry link
@@ -309,7 +319,9 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        AppLocalizations.of(context)!.scan_overlay_manual.toUpperCase(),
+                        AppLocalizations.of(
+                          context,
+                        )!.scan_overlay_manual.toUpperCase(),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.4),
                           fontSize: 10,
@@ -335,18 +347,20 @@ class _ScanArcPainter extends CustomPainter {
     final radius = size.width / 2 - 1;
 
     // Full subtle ring
-    final ringPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.10)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+    final ringPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.10)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5;
     canvas.drawCircle(center, radius, ringPaint);
 
     // Scanning arc (120 degrees)
-    final arcPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
+    final arcPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -pi / 2,
@@ -359,4 +373,3 @@ class _ScanArcPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

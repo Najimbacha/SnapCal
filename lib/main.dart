@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dynamic_color/dynamic_color.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'core/theme/app_theme.dart';
@@ -41,7 +40,6 @@ class AppInitializerGate extends ConsumerStatefulWidget {
 
 class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
   late Future<void> _initFuture;
-  bool _initialized = false;
 
   @override
   void initState() {
@@ -50,16 +48,22 @@ class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
   }
 
   void _runInit() {
-    _initFuture = AppInitializer.init().timeout(
-      const Duration(seconds: 35),
-      onTimeout: () => throw TimeoutException('Initialization timed out. Please check your internet connection or restart the app.'),
-    ).then((_) {
-      debugPrint('✅ SnapCalApp: Initialization Complete');
-      _initialized = true;
-    }).catchError((e) {
-      debugPrint('❌ SnapCalApp: Initialization Error: $e');
-      throw e;
-    });
+    _initFuture = AppInitializer.init()
+        .timeout(
+          const Duration(seconds: 35),
+          onTimeout:
+              () =>
+                  throw TimeoutException(
+                    'Initialization timed out. Please check your internet connection or restart the app.',
+                  ),
+        )
+        .then((_) {
+          debugPrint('✅ SnapCalApp: Initialization Complete');
+        })
+        .catchError((e) {
+          debugPrint('❌ SnapCalApp: Initialization Error: $e');
+          throw e;
+        });
   }
 
   @override
@@ -91,15 +95,35 @@ class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(LucideIcons.alertCircle, color: Colors.orangeAccent, size: 64),
+                      Icon(
+                        LucideIcons.alertCircle,
+                        color: Colors.orangeAccent,
+                        size: 64,
+                      ),
                       const SizedBox(height: 24),
-                      Text(l10n.startup_launch_issue, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
+                      Text(
+                        l10n.startup_launch_issue,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
                       const SizedBox(height: 12),
-                      Text(snapshot.error is TimeoutException ? l10n.startup_initialization_slow : l10n.startup_setup_failed, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white60)),
+                      Text(
+                        snapshot.error is TimeoutException
+                            ? l10n.startup_initialization_slow
+                            : l10n.startup_setup_failed,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white60),
+                      ),
                       const SizedBox(height: 32),
                       FilledButton.icon(
                         onPressed: _runInit,
-                        style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                        ),
                         icon: Icon(LucideIcons.refreshCw, size: 18),
                         label: Text(l10n.startup_retry_launch),
                       ),
@@ -124,7 +148,9 @@ class AppTree extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(authStateProvider, (prev, next) {
       if (next.valueOrNull == null && next.hasValue) {
-        Future.microtask(() => ref.read(authNotifierProvider.notifier).signInAnonymously());
+        Future.microtask(
+          () => ref.read(authNotifierProvider.notifier).signInAnonymously(),
+        );
       }
     });
 
@@ -134,44 +160,54 @@ class AppTree extends ConsumerWidget {
     FcmService().onFoodReminderTapped = () => globalRouter?.go('/snap');
     NotificationService.onFoodReminderTapped = () => globalRouter?.go('/snap');
 
-    return DynamicColorBuilder(
-      builder: (lightDynamic, darkDynamic) {
-        final settingsAsync = ref.watch(settingsProvider);
-        if (!settingsAsync.hasValue) return const SizedBox.shrink();
-        final settings = settingsAsync.requireValue;
+    // SnapCal brand identity: always use the seeded emerald schemes.
+    // (DynamicColorBuilder wallpaper palettes previously overrode the brand.)
+    final settingsAsync = ref.watch(settingsProvider);
+    if (!settingsAsync.hasValue) return const SizedBox.shrink();
+    final settings = settingsAsync.requireValue;
 
-        return MaterialApp.router(
-          title: AppLocalizations.of(context)?.appTitle ?? 'SnapCal',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme.copyWith(colorScheme: lightDynamic ?? AppTheme.lightTheme.colorScheme),
-          darkTheme: AppTheme.darkTheme.copyWith(colorScheme: darkDynamic ?? AppTheme.darkTheme.colorScheme),
-          themeMode: _getThemeMode(settings.themeMode),
-          routerConfig: router,
-          locale: Locale(settings.languageCode ?? 'en'),
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: const [Locale('en'), Locale('ar'), Locale('es'), Locale('fr')],
-        );
-      },
+    return MaterialApp.router(
+      title: AppLocalizations.of(context)?.appTitle ?? 'SnapCal',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: _getThemeMode(settings.themeMode),
+      routerConfig: router,
+      locale: Locale(settings.languageCode ?? 'en'),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('ar'),
+        Locale('es'),
+        Locale('fr'),
+      ],
     );
   }
 
   ThemeMode _getThemeMode(String mode) {
     switch (mode) {
-      case 'light': return ThemeMode.light;
-      case 'dark': return ThemeMode.dark;
-      default: return ThemeMode.system;
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
     }
   }
 }
 
 AppLocalizations _startupLocalizations() {
   final locale = WidgetsBinding.instance.platformDispatcher.locale;
-  final languageCode = AppLocalizations.supportedLocales.any((l) => l.languageCode == locale.languageCode) ? locale.languageCode : 'en';
+  final languageCode =
+      AppLocalizations.supportedLocales.any(
+            (l) => l.languageCode == locale.languageCode,
+          )
+          ? locale.languageCode
+          : 'en';
   return lookupAppLocalizations(Locale(languageCode));
 }
-

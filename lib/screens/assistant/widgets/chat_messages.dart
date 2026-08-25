@@ -22,9 +22,10 @@ class ChatUserBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : AppColors.primary.withValues(alpha: 0.08);
+    final bg =
+        isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : AppColors.primary.withValues(alpha: 0.08);
     final fg = context.textPrimaryColor;
 
     return Padding(
@@ -35,10 +36,7 @@ class ChatUserBubble extends StatelessWidget {
           Flexible(
             child: Container(
               constraints: const BoxConstraints(maxWidth: 320),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: bg,
                 borderRadius: const BorderRadius.only(
@@ -48,9 +46,10 @@ class ChatUserBubble extends StatelessWidget {
                   bottomRight: Radius.circular(6),
                 ),
                 border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : AppColors.primary.withValues(alpha: 0.12),
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : AppColors.primary.withValues(alpha: 0.12),
                 ),
               ),
               child: Row(
@@ -110,8 +109,7 @@ class ChatAiMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isRecipe =
-        type == 'recipe' || _ParsedRecipe.looksLikeRecipe(content);
+    final isRecipe = type == 'recipe' || _ParsedRecipe.looksLikeRecipe(content);
 
     if (isRecipe) {
       return Padding(
@@ -175,7 +173,7 @@ class ChatAiMessage extends StatelessWidget {
                     p: AppTypography.bodyMedium.copyWith(
                       color: textColor,
                       height: 1.55,
-                      fontSize: 14.5,
+                      fontSize: 14,
                     ),
                     strong: AppTypography.bodyMedium.copyWith(
                       color: textColor,
@@ -201,9 +199,10 @@ class ChatAiMessage extends StatelessWidget {
                       fontFamily: 'monospace',
                       fontSize: 13,
                       color: textColor.withValues(alpha: 0.85),
-                      backgroundColor: isDark
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : Colors.black.withValues(alpha: 0.05),
+                      backgroundColor:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.black.withValues(alpha: 0.05),
                     ),
                   ),
                 ),
@@ -212,34 +211,43 @@ class ChatAiMessage extends StatelessWidget {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: actions!
-                        .map(
-                          (a) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.05)
-                                  : Colors.black.withValues(alpha: 0.04),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : Colors.black.withValues(alpha: 0.06),
+                    children:
+                        actions!
+                            .map(
+                              (a) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isDark
+                                          ? Colors.white.withValues(alpha: 0.05)
+                                          : Colors.black.withValues(
+                                            alpha: 0.04,
+                                          ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color:
+                                        isDark
+                                            ? Colors.white.withValues(
+                                              alpha: 0.08,
+                                            )
+                                            : Colors.black.withValues(
+                                              alpha: 0.06,
+                                            ),
+                                  ),
+                                ),
+                                child: Text(
+                                  a.label,
+                                  style: AppTypography.labelMedium.copyWith(
+                                    color: textColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              a.label,
-                              style: AppTypography.labelMedium.copyWith(
-                                color: textColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                            )
+                            .toList(),
                   ),
                 ],
               ],

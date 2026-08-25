@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -21,10 +22,9 @@ class BottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final navHeight = Responsive.navBarHeight(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final navColor =
-        isDark
-            ? const Color(0xFF14130F).withValues(alpha: 0.94)
-            : const Color(0xFFF9F8F5).withValues(alpha: 0.96);
+    final navColor = Theme.of(
+      context,
+    ).scaffoldBackgroundColor.withValues(alpha: isDark ? 0.94 : 0.96);
 
     return ClipRect(
       child: BackdropFilter(
@@ -85,7 +85,7 @@ class BottomNavBar extends StatelessWidget {
   ) {
     final isSelected = currentIndex == index;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const activeColor = Color(0xFF1A3D2B);
+    const activeColor = AppColors.primary;
     final inactiveColor =
         isDark ? Colors.white.withValues(alpha: 0.34) : const Color(0xFFA8A29E);
 

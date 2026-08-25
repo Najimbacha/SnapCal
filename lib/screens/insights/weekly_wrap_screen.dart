@@ -11,9 +11,6 @@ import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/core/theme/app_typography.dart';
 import 'package:snapcal/providers/insights_provider.dart';
 import 'package:snapcal/providers/settings_provider.dart';
-import 'package:snapcal/providers/meal_provider.dart';
-import 'package:snapcal/providers/activity_provider.dart';
-import 'package:snapcal/data/repositories/water_repository.dart';
 import 'package:snapcal/data/services/premium_conversion_service.dart';
 import 'package:snapcal/widgets/app_page_scaffold.dart';
 import 'package:snapcal/widgets/glass_card.dart';
@@ -38,9 +35,11 @@ class _WeeklyWrapScreenState extends ConsumerState<WeeklyWrapScreen> {
       if (mounted) {
         final settings = ref.read(settingsProvider).valueOrNull;
         if (settings?.isPro == true) {
-          ref.read(insightsProvider.notifier).generateWeeklyReport(
-            languageCode: settings?.languageCode ?? 'en',
-          );
+          ref
+              .read(insightsProvider.notifier)
+              .generateWeeklyReport(
+                languageCode: settings?.languageCode ?? 'en',
+              );
         }
       }
     });
@@ -135,9 +134,11 @@ class _WeeklyWrapScreenState extends ConsumerState<WeeklyWrapScreen> {
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: () {
-                  ref.read(insightsProvider.notifier).generateWeeklyReport(
-                    languageCode: settings?.languageCode ?? 'en',
-                  );
+                  ref
+                      .read(insightsProvider.notifier)
+                      .generateWeeklyReport(
+                        languageCode: settings?.languageCode ?? 'en',
+                      );
                 },
                 icon: Icon(LucideIcons.refreshCw, size: 16),
                 label: Text(l10n.common_try_again),
@@ -254,4 +255,3 @@ class _WeeklyWrapScreenState extends ConsumerState<WeeklyWrapScreen> {
     );
   }
 }
-

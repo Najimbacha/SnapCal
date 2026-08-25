@@ -48,9 +48,11 @@ class _OptimizePlanButtonState extends ConsumerState<OptimizePlanButton> {
 
     if (success && mounted) {
       context.push('/assistant');
-      ref.read(assistantProvider.notifier).fetchRecommendations(
-        AppLocalizations.of(context)!.settings_recalculate_query,
-      );
+      ref
+          .read(assistantProvider.notifier)
+          .fetchRecommendations(
+            AppLocalizations.of(context)!.settings_recalculate_query,
+          );
     } else if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -193,4 +195,3 @@ class _OptimizePlanButtonState extends ConsumerState<OptimizePlanButton> {
     );
   }
 }
-
