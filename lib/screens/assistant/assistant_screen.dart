@@ -6,7 +6,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../providers/assistant_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../data/services/assistant_service.dart';
+import '../../data/services/premium_gate_service.dart';
+import '../../data/services/pro_feature_service.dart';
+import 'widgets/coach_overlays.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
@@ -21,6 +25,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   final Set<int> _typedIndices = {};
   final List<dynamic> _messages = [];
   bool _isLoading = false;
+
+  /// Set when a free user has spent their daily AI message. Drives the
+  /// [CoachLockedOverlay] below. The counter and the ceiling live in
+  /// [PremiumGateService]; the server enforces the same limit independently.
+  bool _limitReached = false;
+
+  /// Sentinel content for a failed request, rendered as an error bubble with
+  /// a retry affordance instead of hanging on the typing indicator forever.
+  static const String _errorMsg = '__coach_error__';
+  String? _lastQuery;
 
   @override
   void initState() {
@@ -39,25 +53,61 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     String? query,
     bool clear = false,
     bool force = false,
+    bool echoUser = true,
   }) async {
     if (!mounted) return;
-    if (query != null && query.isNotEmpty) {
+
+    // The coach was never gated: CoachLockedOverlay existed but was imported
+    // nowhere, and the counters in PremiumGateService were never called, so
+    // every free user had unlimited AI messages.
+    final access = ref.read(proAccessProvider);
+    final unlimited = access.can(ProFeature.unlimitedAiCoach);
+    if (!unlimited && access.isFree) {
+      if (PremiumGateService().hasReachedAiLimit(false)) {
+        setState(() => _limitReached = true);
+        return;
+      }
+    }
+
+    if (echoUser && query != null && query.isNotEmpty) {
       setState(() => _messages.add({'type': 'user', 'content': query}));
     }
+    if (query != null && query.isNotEmpty) {
+      _lastQuery = query;
+    }
     setState(() => _isLoading = true);
-    final ap = ref.read(assistantProvider.notifier);
-    final result = await ap.fetchRecommendations(query ?? '');
+
+    String? result;
+    Object? error;
+    try {
+      result = await ref
+          .read(assistantProvider.notifier)
+          .fetchRecommendations(query ?? '');
+    } catch (e) {
+      error = e;
+    }
     if (!mounted) return;
+
     setState(() {
       _isLoading = false;
       if (clear || force) {
         _messages.clear();
         _typedIndices.clear();
       }
-      if (result.isNotEmpty) {
+      if (error != null || result == null || result.isEmpty) {
+        debugPrint('AI coach request failed: $error');
+        _messages.add(const {'type': 'assistant', 'content': _errorMsg});
+      } else {
         _messages.add({'type': 'assistant', 'content': result});
       }
     });
+
+    if (!unlimited && access.isFree && error == null && result!.isNotEmpty) {
+      await PremiumGateService().incrementAiMessages();
+      if (mounted && PremiumGateService().hasReachedAiLimit(false)) {
+        setState(() => _limitReached = true);
+      }
+    }
     if (mounted) {
       await Future.delayed(const Duration(milliseconds: 100));
       if (_scroll.hasClients) {
@@ -68,6 +118,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         );
       }
     }
+  }
+
+  /// Drops trailing error bubbles and re-sends the last question without
+  /// echoing a duplicate user bubble.
+  void _retryLast() {
+    while (_messages.isNotEmpty && _parseContent(_messages.last) == _errorMsg) {
+      _messages.removeLast();
+    }
+    setState(() {});
+    _fetch(query: _lastQuery, echoUser: false);
   }
 
   void _handleSuggestion(String query) {
@@ -195,238 +255,282 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Expanded(
-              child:
-                  _messages.isEmpty && _isLoading
-                      ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildAvatar(48),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Fajar is thinking...',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color:
-                                    d
-                                        ? const Color(0xFF71717A)
-                                        : const Color(0xFF8E8E93),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                      : _messages.isEmpty
-                      ? SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 40),
-                            _buildAvatar(80),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Fajar',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w600,
-                                color:
-                                    d ? Colors.white : const Color(0xFF1C1C1E),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'AI Nutrition Coach',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color:
-                                    d
-                                        ? const Color(0xFF71717A)
-                                        : const Color(0xFF8E8E93),
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                            Text(
-                              'What can I help you with?',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color:
-                                    d
-                                        ? const Color(0xFFA1A1AA)
-                                        : const Color(0xFF6B7280),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            _buildActionGrid(d),
-                            const SizedBox(height: 24),
-                            _buildDivider(d),
-                            const SizedBox(height: 20),
-                            _buildSuggestions(d),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
-                      )
-                      : ListView.builder(
-                        controller: _scroll,
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, i) {
-                          final msg = _messages[i];
-                          final user = _isUser(msg);
-                          final text = _parseContent(msg);
-                          if (text.isEmpty) return const SizedBox.shrink();
-
-                          final showTyping =
-                              !user && !_typedIndices.contains(i);
-                          if (showTyping && text.isNotEmpty) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted && !_typedIndices.contains(i)) {
-                                setState(() => _typedIndices.add(i));
-                              }
-                            });
-                          }
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Row(
-                              mainAxisAlignment:
-                                  user
-                                      ? MainAxisAlignment.end
-                                      : MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
+        children: [
+          SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                Expanded(
+                  child:
+                      _messages.isEmpty && _isLoading
+                          ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (!user) ...[
-                                  _buildAvatar(28),
-                                  const SizedBox(width: 8),
-                                ],
-                                Flexible(
-                                  child: Column(
+                                _buildAvatar(48),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Fajar is thinking...',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color:
+                                        d
+                                            ? const Color(0xFF71717A)
+                                            : const Color(0xFF8E8E93),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          : _messages.isEmpty
+                          ? SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 40),
+                                _buildAvatar(80),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Fajar',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        d
+                                            ? Colors.white
+                                            : const Color(0xFF1C1C1E),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'AI Nutrition Coach',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        d
+                                            ? const Color(0xFF71717A)
+                                            : const Color(0xFF8E8E93),
+                                  ),
+                                ),
+                                const SizedBox(height: 28),
+                                Text(
+                                  'What can I help you with?',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        d
+                                            ? const Color(0xFFA1A1AA)
+                                            : const Color(0xFF6B7280),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                _buildActionGrid(d),
+                                const SizedBox(height: 24),
+                                _buildDivider(d),
+                                const SizedBox(height: 20),
+                                _buildSuggestions(d),
+                                const SizedBox(height: 20),
+                              ],
+                            ),
+                          )
+                          : ListView.builder(
+                            controller: _scroll,
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, i) {
+                              final msg = _messages[i];
+                              final user = _isUser(msg);
+                              final text = _parseContent(msg);
+                              if (text.isEmpty) return const SizedBox.shrink();
+
+                              if (text == _errorMsg) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Row(
                                     crossAxisAlignment:
-                                        user
-                                            ? CrossAxisAlignment.end
-                                            : CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      if (!user)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 2,
-                                            bottom: 4,
-                                          ),
-                                          child: Text(
-                                            'Fajar',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color:
-                                                  d
-                                                      ? const Color(0xFFA1A1AA)
-                                                      : const Color(0xFF6B7280),
-                                            ),
-                                          ),
-                                        ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              user
-                                                  ? (d
-                                                      ? AppColors.primaryDark
-                                                      : AppColors.primary)
-                                                  : (d
-                                                      ? const Color(0xFF18181B)
-                                                      : const Color(
-                                                        0xFFF2F2F7,
-                                                      )),
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ).copyWith(
-                                            bottomRight:
-                                                user
-                                                    ? const Radius.circular(4)
-                                                    : null,
-                                            bottomLeft:
-                                                !user
-                                                    ? const Radius.circular(4)
-                                                    : null,
-                                          ),
-                                        ),
-                                        child:
-                                            showTyping
-                                                ? _TypingText(
-                                                  text: text,
+                                      _buildAvatar(28),
+                                      const SizedBox(width: 8),
+                                      Flexible(child: _buildErrorBubble(d)),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              final showTyping =
+                                  !user && !_typedIndices.contains(i);
+                              if (showTyping && text.isNotEmpty) {
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  if (mounted && !_typedIndices.contains(i)) {
+                                    setState(() => _typedIndices.add(i));
+                                  }
+                                });
+                              }
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      user
+                                          ? MainAxisAlignment.end
+                                          : MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (!user) ...[
+                                      _buildAvatar(28),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Flexible(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            user
+                                                ? CrossAxisAlignment.end
+                                                : CrossAxisAlignment.start,
+                                        children: [
+                                          if (!user)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                left: 2,
+                                                bottom: 4,
+                                              ),
+                                              child: Text(
+                                                'Fajar',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
                                                   color:
                                                       d
                                                           ? const Color(
-                                                            0xFFE4E4E7,
+                                                            0xFFA1A1AA,
                                                           )
                                                           : const Color(
-                                                            0xFF1C1C1E,
+                                                            0xFF6B7280,
                                                           ),
-                                                  onComplete: () {
-                                                    if (mounted) {
-                                                      setState(
-                                                        () => _typedIndices.add(
-                                                          i,
-                                                        ),
-                                                      );
-                                                      _scroll.animateTo(
-                                                        _scroll
-                                                            .position
-                                                            .maxScrollExtent,
-                                                        duration:
-                                                            const Duration(
-                                                              milliseconds: 100,
-                                                            ),
-                                                        curve: Curves.easeOut,
-                                                      );
-                                                    }
-                                                  },
-                                                )
-                                                : _buildRichText(text, user, d),
+                                                ),
+                                              ),
+                                            ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 10,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  user
+                                                      ? (d
+                                                          ? AppColors
+                                                              .primaryDark
+                                                          : AppColors.primary)
+                                                      : (d
+                                                          ? const Color(
+                                                            0xFF18181B,
+                                                          )
+                                                          : const Color(
+                                                            0xFFF2F2F7,
+                                                          )),
+                                              borderRadius: BorderRadius.circular(
+                                                16,
+                                              ).copyWith(
+                                                bottomRight:
+                                                    user
+                                                        ? const Radius.circular(
+                                                          4,
+                                                        )
+                                                        : null,
+                                                bottomLeft:
+                                                    !user
+                                                        ? const Radius.circular(
+                                                          4,
+                                                        )
+                                                        : null,
+                                              ),
+                                            ),
+                                            child:
+                                                showTyping
+                                                    ? _TypingText(
+                                                      text: text,
+                                                      color:
+                                                          d
+                                                              ? const Color(
+                                                                0xFFE4E4E7,
+                                                              )
+                                                              : const Color(
+                                                                0xFF1C1C1E,
+                                                              ),
+                                                      onComplete: () {
+                                                        if (mounted) {
+                                                          setState(
+                                                            () => _typedIndices
+                                                                .add(i),
+                                                          );
+                                                          _scroll.animateTo(
+                                                            _scroll
+                                                                .position
+                                                                .maxScrollExtent,
+                                                            duration:
+                                                                const Duration(
+                                                                  milliseconds:
+                                                                      100,
+                                                                ),
+                                                            curve:
+                                                                Curves.easeOut,
+                                                          );
+                                                        }
+                                                      },
+                                                    )
+                                                    : _buildRichText(
+                                                      text,
+                                                      user,
+                                                      d,
+                                                    ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (user) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        width: 28,
+                                        height: 28,
+                                        decoration: BoxDecoration(
+                                          color:
+                                              d
+                                                  ? const Color(0xFF27272A)
+                                                  : const Color(0xFFE5E5EA),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          LucideIcons.user,
+                                          size: 14,
+                                          color:
+                                              d
+                                                  ? const Color(0xFFA1A1AA)
+                                                  : const Color(0xFF8E8E93),
+                                        ),
                                       ),
                                     ],
-                                  ),
+                                  ],
                                 ),
-                                if (user) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    width: 28,
-                                    height: 28,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          d
-                                              ? const Color(0xFF27272A)
-                                              : const Color(0xFFE5E5EA),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      LucideIcons.user,
-                                      size: 14,
-                                      color:
-                                          d
-                                              ? const Color(0xFFA1A1AA)
-                                              : const Color(0xFF8E8E93),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                              );
+                            },
+                          ),
+                ),
+                _buildInputBar(d),
+              ],
             ),
-            _buildInputBar(d),
-          ],
-        ),
+          ),
+          // The daily-limit wall. Only ever shown to a user we know
+          // is on the free tier.
+          if (_limitReached) const Positioned.fill(child: CoachLockedOverlay()),
+        ],
       ),
     );
   }
@@ -440,6 +544,71 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         fit: BoxFit.cover,
         cacheWidth: 80,
         cacheHeight: 80,
+      ),
+    );
+  }
+
+  Widget _buildErrorBubble(bool d) {
+    final tint = AppColors.error;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: d ? 0.14 : 0.06),
+        borderRadius: BorderRadius.circular(
+          16,
+        ).copyWith(bottomLeft: const Radius.circular(4)),
+        border: Border.all(color: tint.withValues(alpha: 0.30)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.wifiOff, size: 14, color: tint),
+              const SizedBox(width: 8),
+              Text(
+                "Fajar couldn't reply",
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: d ? const Color(0xFFE4E4E7) : const Color(0xFF1C1C1E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Check your connection and try again.',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.35,
+              color: d ? const Color(0xFFA1A1AA) : const Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _isLoading ? null : _retryLast,
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.refreshCw,
+                  size: 12,
+                  color: d ? AppColors.primary : AppColors.primaryDark,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Retry',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: d ? AppColors.primary : AppColors.primaryDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
