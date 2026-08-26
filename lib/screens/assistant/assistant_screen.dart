@@ -102,6 +102,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           'AI coach request failed'
           '${statusCode != null ? ' (HTTP $statusCode)' : ''}: $error',
         );
+        if (error is DioException && error.response?.data != null) {
+          debugPrint('AI coach server detail: ${error.response!.data}');
+        }
         _messages.add({
           'type': 'assistant',
           'content': _errorMsg,

@@ -11,10 +11,17 @@ const rateLimit = require('express-rate-limit');
 const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '10mb';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
+const FREE_DAILY_AI_MESSAGES = Number(process.env.FREE_DAILY_AI_MESSAGES || 1);
 // Fail closed: App Check is ON unless explicitly disabled. A misspelled or
 // unset variable must never silently disable the control (BUG-006).
 const REQUIRE_APP_CHECK = process.env.REQUIRE_APP_CHECK !== 'false';
 const REVENUECAT_WEBHOOK_AUTH = process.env.REVENUECAT_WEBHOOK_AUTH || '';
+const REVENUECAT_SECRET_API_KEY = process.env.REVENUECAT_SECRET_API_KEY || '';
+// RevenueCat event types that end entitlement access at once. Everything
+// else (CANCELLATION, BILLING_ISSUE, PRODUCT_CHANGE, RENEWAL, ...) leaves
+// the user active until expiration_at_ms passes, which getPremiumStatus()
+// re-checks on every read.
+const REVOKES_ACCESS_IMMEDIATELY = ['EXPIRATION', 'REFUND', 'SUBSCRIPTION_PAUSED'];
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 if (NODE_ENV === 'production' && !REQUIRE_APP_CHECK) {
@@ -311,12 +318,151 @@ function currentMonthKey() {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+function currentDayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Claims one free AI coach message, transactionally.
+//
+// The client counts these too (PremiumGateService), but a client-side counter
+// is cleared by reinstalling, so the ceiling was effectively unlimited. This is
+// the enforcing copy. Throws a 402 when a free user is out for the day.
+async function claimAiMessageQuota(uid) {
+  return db.runTransaction(async (tx) => {
+    const subRef = subscriptionDoc(uid);
+    const useRef = usageDoc(uid);
+    const [subSnap, useSnap] = await Promise.all([tx.get(subRef), tx.get(useRef)]);
+
+    const subscription = subSnap.exists ? subSnap.data() : {};
+    const expiresDate = subscription?.expiresAt?.toDate ? subscription.expiresAt.toDate() : null;
+    const isPremium = subscription?.isActive === true && (!expiresDate || expiresDate > new Date());
+    if (isPremium) return { isPremium: true };
+
+    const usage = useSnap.exists ? useSnap.data() : {};
+    const dayKey = currentDayKey();
+    const used = usage.aiDayKey === dayKey ? Number(usage.aiMessagesUsed || 0) : 0;
+
+    if (used >= FREE_DAILY_AI_MESSAGES) {
+      throw Object.assign(new Error('ai-quota-exceeded'), { code: 402 });
+    }
+
+    tx.set(useRef, {
+      aiDayKey: dayKey,
+      aiMessagesUsed: used + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return { isPremium: false };
+  });
+}
+
+// How long a RevenueCat REST verification is trusted before we ask again.
+// Bounds the fallback below to roughly one call per user per interval.
+const REVENUECAT_RECHECK_MS = Number(process.env.REVENUECAT_RECHECK_MS || 10 * 60 * 1000);
+
+// Reads the entitlement straight from RevenueCat.
+//
+// `subscription/current` is written by the webhook, which can be late, retried,
+// or misconfigured. When it is, a user who has genuinely paid looks inactive to
+// every caller of getPremiumStatus(). This makes the webhook an optimisation
+// instead of a single point of failure. Returns null when no key is configured
+// or the call fails -- callers must treat null as "unknown", never as "free".
+async function fetchRevenueCatEntitlement(uid) {
+  if (!REVENUECAT_SECRET_API_KEY) return null;
+
+  try {
+    const response = await axios.get(
+      `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(uid)}`,
+      {
+        headers: { Authorization: `Bearer ${REVENUECAT_SECRET_API_KEY}` },
+        timeout: 8000,
+        validateStatus: (status) => status === 200 || status === 404,
+      },
+    );
+    if (response.status === 404) {
+      return { isActive: false, entitlementId: null, productId: null, expiresMs: 0 };
+    }
+
+    const entitlements = response.data?.subscriber?.entitlements || {};
+    const now = Date.now();
+    let best = null;
+    for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
+      const expiresMs = entitlement?.expires_date
+        ? Date.parse(entitlement.expires_date)
+        : 0;
+      const isActive = expiresMs === 0 || (Number.isFinite(expiresMs) && expiresMs > now);
+      const candidate = {
+        entitlementId,
+        productId: entitlement?.product_identifier || null,
+        expiresMs: Number.isFinite(expiresMs) ? expiresMs : 0,
+        isActive,
+      };
+      // Prefer an active entitlement, and among those the one lasting longest.
+      if (!best) best = candidate;
+      else if (candidate.isActive && !best.isActive) best = candidate;
+      else if (candidate.isActive === best.isActive && candidate.expiresMs === 0) best = candidate;
+      else if (candidate.isActive === best.isActive && best.expiresMs !== 0 && candidate.expiresMs > best.expiresMs) best = candidate;
+    }
+
+    return best || { isActive: false, entitlementId: null, productId: null, expiresMs: 0 };
+  } catch (error) {
+    console.error('RevenueCat REST verification failed:', error.message);
+    return null;
+  }
+}
+
 async function getPremiumStatus(uid) {
   const snap = await subscriptionDoc(uid).get();
-  const data = snap.exists ? snap.data() : {};
-  const expiresAt = data?.expiresAt;
-  const expiresDate = expiresAt?.toDate ? expiresAt.toDate() : null;
-  const active = data?.isActive === true && (!expiresDate || expiresDate > new Date());
+  let data = snap.exists ? snap.data() : {};
+  let expiresAt = data?.expiresAt;
+  let expiresDate = expiresAt?.toDate ? expiresAt.toDate() : null;
+  let active = data?.isActive === true && (!expiresDate || expiresDate > new Date());
+
+  // Webhook fallback. Only runs when the mirror says "not active", and is
+  // throttled by lastRestCheckAt so a genuinely free user costs one call per
+  // REVENUECAT_RECHECK_MS rather than one per request.
+  if (!active && REVENUECAT_SECRET_API_KEY) {
+    const lastCheck = data?.lastRestCheckAt?.toMillis ? data.lastRestCheckAt.toMillis() : 0;
+    if (Date.now() - lastCheck > REVENUECAT_RECHECK_MS) {
+      const verified = await fetchRevenueCatEntitlement(uid);
+      if (verified) {
+        const payload = {
+          lastRestCheckAt: admin.firestore.FieldValue.serverTimestamp(),
+          source: 'revenuecat_rest',
+          updatedByServer: true,
+        };
+        if (verified.isActive) {
+          payload.isActive = true;
+          payload.entitlementId = verified.entitlementId || 'pro';
+          payload.productId = verified.productId;
+          payload.expiresAt = verified.expiresMs
+            ? admin.firestore.Timestamp.fromMillis(verified.expiresMs)
+            : null;
+          payload.lastVerifiedAt = admin.firestore.FieldValue.serverTimestamp();
+
+          active = true;
+          expiresAt = payload.expiresAt;
+          expiresDate = verified.expiresMs ? new Date(verified.expiresMs) : null;
+          // Merge the plain values only. The serverTimestamp() sentinels above
+          // are write instructions, not data, and must not reach the response.
+          data = {
+            ...data,
+            isActive: true,
+            entitlementId: payload.entitlementId,
+            productId: payload.productId,
+            expiresAt: payload.expiresAt,
+            source: 'revenuecat_rest',
+            lastVerifiedAt: admin.firestore.Timestamp.now(),
+          };
+        }
+        try {
+          await subscriptionDoc(uid).set(payload, { merge: true });
+        } catch (error) {
+          console.error('Subscription mirror write failed:', error.message);
+        }
+      }
+    }
+  }
 
   // Mirror the authoritative monthly quota so the client displays what the
   // server will actually enforce, instead of its own local guess (BUG-005).
@@ -846,9 +992,35 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   throw new Error('ai-scan-failed');
 }
 
+/// Text generation with a real provider chain.
+///
+/// This used to be Gemini -> OpenRouter/Qwen and nothing else: if
+/// OPENROUTER_API_KEY and QWEN_API_KEY were both unset it threw
+/// `ai-not-configured` the instant Gemini hiccuped, even though GROQ_API_KEY
+/// and DEEPSEEK_API_KEY were configured and perfectly usable. Every text
+/// feature then returned a hard 500 with no fallback. The meal planner tripped
+/// it first because it is the only caller asking for 8192 tokens of JSON.
+///
+/// Two behaviours worth keeping in mind:
+///  - A Gemini response truncated at MAX_TOKENS has no `parts[0].text`. That
+///    case used to fall through silently, logging nothing; it now logs the
+///    finishReason so a truncation is distinguishable from a model error.
+///  - Every leg is tried before giving up, and the thrown error names what each
+///    provider actually said instead of a bare `ai-not-configured`.
 async function callAiText(prompt, options = {}) {
   const requireJson = options.responseMimeType === 'application/json' || options.requireJson === true;
   const effectivePrompt = requireJson ? buildJsonPrompt(prompt) : prompt;
+  const maxOutputTokens = options.maxOutputTokens || 2048;
+  const temperature = requireJson ? 0.2 : (options.temperature ?? 0.7);
+  const timeout = options.timeout || 25000;
+  const failures = [];
+
+  const detailOf = (err) => {
+    const data = err.response?.data;
+    if (!data) return err.message;
+    return typeof data === 'string' ? data.slice(0, 300) : JSON.stringify(data).slice(0, 300);
+  };
+
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (geminiApiKey) {
     try {
@@ -857,44 +1029,93 @@ async function callAiText(prompt, options = {}) {
         {
           contents: [{ parts: [{ text: effectivePrompt }] }],
           generationConfig: {
-            temperature: requireJson ? 0.2 : (options.temperature ?? 0.7),
-            maxOutputTokens: options.maxOutputTokens || 2048,
+            temperature,
+            maxOutputTokens,
             ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
           },
         },
-        { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }, timeout: options.timeout || 25000 },
+        { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }, timeout },
       );
-      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const candidate = response.data?.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text;
       if (text) return requireJson ? normalizeAiJsonText(text) : text;
+
+      const reason = candidate?.finishReason
+        || response.data?.promptFeedback?.blockReason
+        || 'no-text-in-response';
+      console.error(`Gemini text returned no usable text (finishReason=${reason}, maxOutputTokens=${maxOutputTokens}). Trying next provider.`);
+      failures.push(`gemini:${reason}`);
     } catch (err) {
-      console.error('Gemini text failed:', err.response?.data || err.message);
+      const detail = detailOf(err);
+      console.error('Gemini text failed:', detail);
+      failures.push(`gemini:${detail}`);
     }
   }
 
-  const providerKey = process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY;
-  if (!providerKey) throw new Error('ai-not-configured');
-  try {
-    const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model: options.textModel || process.env.TEXT_MODEL || 'qwen/qwen-plus',
-        messages: [
-          ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
-          { role: 'user', content: effectivePrompt },
-        ],
-        max_tokens: options.maxOutputTokens || 2048,
-        temperature: requireJson ? 0.2 : (options.temperature ?? 0.7),
-        ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
-      },
-      { headers: { Authorization: `Bearer ${providerKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' }, timeout: options.timeout || 25000 },
-    );
-    const content = response.data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error('empty-provider-response');
-    return requireJson ? normalizeAiJsonText(content) : content;
-  } catch (err) {
-    console.error('Text AI failed:', err.response?.data || err.message);
-    throw err;
+  // OpenAI-compatible fallbacks, in order. Keys that are not configured are
+  // skipped rather than treated as a fatal misconfiguration.
+  const fallbacks = [
+    {
+      name: 'groq',
+      key: process.env.GROQ_API_KEY,
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      model: options.groqTextModel || process.env.GROQ_TEXT_MODEL || 'llama-3.3-70b-versatile',
+    },
+    {
+      name: 'deepseek',
+      key: process.env.DEEPSEEK_API_KEY,
+      url: 'https://api.deepseek.com/chat/completions',
+      model: process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat',
+    },
+    {
+      name: 'openrouter',
+      key: process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY,
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      model: options.textModel || process.env.TEXT_MODEL || 'qwen/qwen-plus',
+      extraHeaders: { 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
+    },
+  ].filter((provider) => provider.key);
+
+  if (!geminiApiKey && fallbacks.length === 0) throw new Error('ai-not-configured');
+
+  for (const provider of fallbacks) {
+    try {
+      const response = await axios.post(
+        provider.url,
+        {
+          model: provider.model,
+          messages: [
+            ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
+            { role: 'user', content: effectivePrompt },
+          ],
+          max_tokens: maxOutputTokens,
+          temperature,
+          ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${provider.key}`,
+            'Content-Type': 'application/json',
+            ...(provider.extraHeaders || {}),
+          },
+          timeout,
+        },
+      );
+      const content = response.data?.choices?.[0]?.message?.content;
+      if (content) {
+        const cleaned = stripThink(content);
+        if (cleaned) return requireJson ? normalizeAiJsonText(cleaned) : cleaned;
+      }
+      console.error(`${provider.name} text returned empty content (model=${provider.model}).`);
+      failures.push(`${provider.name}:empty-response`);
+    } catch (err) {
+      const detail = detailOf(err);
+      console.error(`${provider.name} text failed (model=${provider.model}):`, detail);
+      failures.push(`${provider.name}:${detail}`);
+    }
   }
+
+  throw new Error(`ai-text-unavailable: ${failures.join(' | ') || 'no-providers-configured'}`);
 }
 
 async function writeAuditLog({ actorUid, action, targetUid, result, metadata = {} }) {
@@ -1047,6 +1268,21 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => 
     return safeError(res, 400, 'Invalid AI request.');
   }
 
+  // Only the coach is rate-limited. This endpoint also serves planner,
+  // insight and report generation, which are free-tier features -- gating the
+  // whole endpoint would break them.
+  if (body.purpose === 'coach') {
+    try {
+      await claimAiMessageQuota(req.user.uid);
+    } catch (error) {
+      if (error.code === 402) {
+        return safeError(res, 402, 'Daily AI coach limit reached. Upgrade to Pro for unlimited coaching.');
+      }
+      console.error('AI quota claim failed:', error.message);
+      return safeError(res, 500, 'AI request failed.');
+    }
+  }
+
   try {
     const text = await callAiText(body.prompt, {
       maxOutputTokens: Math.min(Number(body.maxOutputTokens || 2048), 8192),
@@ -1057,8 +1293,14 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => 
     });
     return res.status(200).json({ text });
   } catch (error) {
+    // TEMPORARY DEBUG: the failure chain (which provider failed and why) is
+    // included in the response so the client logcat names the root cause.
+    // Remove once the coach's provider config is verified.
     console.error('AI text request failed:', error.message);
-    return safeError(res, 500, 'AI request failed.');
+    return res.status(500).json({
+      error: 'AI request failed.',
+      detail: String(error.message || 'unknown').slice(0, 400),
+    });
   }
 });
 
@@ -1150,13 +1392,14 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
         return;
       }
 
-      const isActive = ![
-        'EXPIRATION',
-        'CANCELLATION',
-        'BILLING_ISSUE',
-        'PRODUCT_CHANGE',
-        'REFUND',
-      ].includes(type) && (expirationMs === 0 || expirationMs > Date.now());
+      // Only these end access before the period the user already paid for.
+      // CANCELLATION means auto-renew was turned off -- access continues until
+      // expiration_at_ms. PRODUCT_CHANGE is a plan switch on an active
+      // subscription. BILLING_ISSUE opens the store grace period. Treating any
+      // of those as a revocation deactivates a paying customer (BUG-021).
+      const isActive =
+        !REVOKES_ACCESS_IMMEDIATELY.includes(type) &&
+        (expirationMs === 0 || expirationMs > Date.now());
 
       tx.set(subscriptionDoc(appUserId), {
         entitlementId: event.entitlement_id || event.entitlement_ids?.[0] || 'pro',
