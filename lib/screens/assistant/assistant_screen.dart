@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -79,12 +80,14 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
 
     String? result;
     Object? error;
+    int? statusCode;
     try {
       result = await ref
           .read(assistantProvider.notifier)
           .fetchRecommendations(query ?? '');
     } catch (e) {
       error = e;
+      if (e is DioException) statusCode = e.response?.statusCode;
     }
     if (!mounted) return;
 
@@ -95,8 +98,15 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         _typedIndices.clear();
       }
       if (error != null || result == null || result.isEmpty) {
-        debugPrint('AI coach request failed: $error');
-        _messages.add(const {'type': 'assistant', 'content': _errorMsg});
+        debugPrint(
+          'AI coach request failed'
+          '${statusCode != null ? ' (HTTP $statusCode)' : ''}: $error',
+        );
+        _messages.add({
+          'type': 'assistant',
+          'content': _errorMsg,
+          if (statusCode != null) 'status': statusCode,
+        });
       } else {
         _messages.add({'type': 'assistant', 'content': result});
       }
@@ -347,6 +357,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                               if (text.isEmpty) return const SizedBox.shrink();
 
                               if (text == _errorMsg) {
+                                final status =
+                                    msg is Map && msg['status'] is int
+                                        ? msg['status'] as int
+                                        : null;
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 12),
                                   child: Row(
@@ -355,7 +369,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                     children: [
                                       _buildAvatar(28),
                                       const SizedBox(width: 8),
-                                      Flexible(child: _buildErrorBubble(d)),
+                                      Flexible(
+                                        child: _buildErrorBubble(d, status),
+                                      ),
                                     ],
                                   ),
                                 );
@@ -548,8 +564,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     );
   }
 
-  Widget _buildErrorBubble(bool d) {
+  Widget _buildErrorBubble(bool d, int? statusCode) {
     final tint = AppColors.error;
+    // A 5xx is the server failing, not the phone: "check your connection"
+    // would send the user staring at their Wi-Fi for nothing.
+    final isServerIssue =
+        statusCode != null && statusCode >= 500 && statusCode < 600;
+    final detail =
+        isServerIssue
+            ? "Fajar's server is having trouble right now. Give it a moment and retry."
+            : 'Check your connection and try again.';
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
@@ -578,7 +602,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Check your connection and try again.',
+            detail,
             style: TextStyle(
               fontSize: 13,
               height: 1.35,
