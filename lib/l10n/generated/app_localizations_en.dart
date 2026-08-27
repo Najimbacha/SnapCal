@@ -2134,6 +2134,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scan_overlay_manual => 'LOG MANUALLY';
 
   @override
+  String get scan_wait_stay => 'Keep this screen open';
+
+  @override
+  String get scan_wait_longer =>
+      'Taking longer than usual — your result is still coming.';
+
+  @override
   String get report_card_title => 'WEEKLY PROGRESS REPORT';
 
   @override
@@ -3792,6 +3799,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get macro_pro_label => 'Pro';
 
   @override
+  String get macro_ring_unlock_title => 'See your exact numbers';
+
+  @override
+  String get macro_ring_unlock_body => 'Unlock grams and daily targets';
+
+  @override
+  String macro_ring_on_track(String macro) {
+    return 'You\'re on track for $macro — unlock exact grams';
+  }
+
+  @override
   String result_add_to_log_kcal(String calories) {
     return 'Add to log · $calories kcal';
   }
@@ -3834,5 +3852,48 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String paywall_disclosure_lifetime(String price) {
     return '$price, one-time payment. No subscription.';
+  }
+
+  @override
+  String paywall_disclosure_intro_year(String introPrice, String price) {
+    return '$introPrice for the first year, then $price per year. Renews automatically until you cancel.';
+  }
+
+  @override
+  String paywall_disclosure_intro_month(String introPrice, String price) {
+    return '$introPrice for the first month, then $price per month. Renews automatically until you cancel.';
+  }
+
+  @override
+  String paywall_intro_first_year(String introPrice) {
+    return '$introPrice first year';
+  }
+
+  @override
+  String paywall_intro_first_month(String introPrice) {
+    return '$introPrice first month';
+  }
+
+  @override
+  String home_goal_activity_bonus(int kcal) {
+    return '+$kcal kcal earned from activity';
+  }
+
+  @override
+  String home_metric_of_goal(String goal, String unit) {
+    return 'of $goal $unit';
+  }
+
+  @override
+  String get water_unit_ml => 'ml';
+
+  @override
+  String home_kcal_short(int kcal) {
+    return '$kcal kcal';
+  }
+
+  @override
+  String home_kcal_estimated_short(int kcal) {
+    return '~$kcal kcal';
   }
 }

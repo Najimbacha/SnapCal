@@ -1,4 +1,4 @@
-﻿{
+{
   "@@locale": "en",
   "appTitle": "SnapCal",
   "@appTitle": {
@@ -872,6 +872,14 @@
   "scan_overlay_scanning": "AI VISION SCANNING",
   "scan_overlay_desc": "Detecting ingredients and calculating\nnutritional density with Gemini...",
   "scan_overlay_manual": "LOG MANUALLY",
+  "scan_wait_stay": "Keep this screen open",
+  "@scan_wait_stay": {
+    "description": "SnapCal UI string: scan_wait_stay"
+  },
+  "scan_wait_longer": "Taking longer than usual \u2014 your result is still coming.",
+  "@scan_wait_longer": {
+    "description": "SnapCal UI string: scan_wait_longer"
+  },
   "report_card_title": "WEEKLY PROGRESS REPORT",
   "report_card_subtitle": "See why some days went over target and get personalized suggestions to fix it.",
   "startup_launch_issue": "Launch Encountered an Issue",
@@ -1740,6 +1748,23 @@
   "@macro_pro_label": {
     "description": "SnapCal UI string: macro_pro_label"
   },
+  "macro_ring_unlock_title": "See your exact numbers",
+  "@macro_ring_unlock_title": {
+    "description": "SnapCal UI string: macro_ring_unlock_title"
+  },
+  "macro_ring_unlock_body": "Unlock grams and daily targets",
+  "@macro_ring_unlock_body": {
+    "description": "SnapCal UI string: macro_ring_unlock_body"
+  },
+  "macro_ring_on_track": "You're on track for {macro} \u2014 unlock exact grams",
+  "@macro_ring_on_track": {
+    "description": "SnapCal UI string: macro_ring_on_track",
+    "placeholders": {
+      "macro": {
+        "type": "String"
+      }
+    }
+  },
   "result_add_to_log_kcal": "Add to log · {calories} kcal",
   "@result_add_to_log_kcal": {
     "description": "SnapCal UI string: result_add_to_log_kcal",
@@ -1821,6 +1846,91 @@
     "placeholders": {
       "price": {
         "type": "String"
+      }
+    }
+  },
+  "paywall_disclosure_intro_year": "{introPrice} for the first year, then {price} per year. Renews automatically until you cancel.",
+  "@paywall_disclosure_intro_year": {
+    "description": "SnapCal UI string: paywall_disclosure_intro_year",
+    "placeholders": {
+      "introPrice": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_disclosure_intro_month": "{introPrice} for the first month, then {price} per month. Renews automatically until you cancel.",
+  "@paywall_disclosure_intro_month": {
+    "description": "SnapCal UI string: paywall_disclosure_intro_month",
+    "placeholders": {
+      "introPrice": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_intro_first_year": "{introPrice} first year",
+  "@paywall_intro_first_year": {
+    "description": "SnapCal UI string: paywall_intro_first_year",
+    "placeholders": {
+      "introPrice": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_intro_first_month": "{introPrice} first month",
+  "@paywall_intro_first_month": {
+    "description": "SnapCal UI string: paywall_intro_first_month",
+    "placeholders": {
+      "introPrice": {
+        "type": "String"
+      }
+    }
+  },
+  "home_goal_activity_bonus": "+{kcal} kcal earned from activity",
+  "@home_goal_activity_bonus": {
+    "description": "SnapCal UI string: home_goal_activity_bonus",
+    "placeholders": {
+      "kcal": {
+        "type": "int"
+      }
+    }
+  },
+  "home_metric_of_goal": "of {goal} {unit}",
+  "@home_metric_of_goal": {
+    "description": "SnapCal UI string: home_metric_of_goal",
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "water_unit_ml": "ml",
+  "@water_unit_ml": {
+    "description": "SnapCal UI string: water_unit_ml"
+  },
+  "home_kcal_short": "{kcal} kcal",
+  "@home_kcal_short": {
+    "description": "SnapCal UI string: home_kcal_short",
+    "placeholders": {
+      "kcal": {
+        "type": "int"
+      }
+    }
+  },
+  "home_kcal_estimated_short": "~{kcal} kcal",
+  "@home_kcal_estimated_short": {
+    "description": "SnapCal UI string: home_kcal_estimated_short",
+    "placeholders": {
+      "kcal": {
+        "type": "int"
       }
     }
   }

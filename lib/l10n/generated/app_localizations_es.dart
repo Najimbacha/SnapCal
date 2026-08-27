@@ -2153,6 +2153,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scan_overlay_manual => 'REGISTRAR MANUALMENTE';
 
   @override
+  String get scan_wait_stay => 'Mantén esta pantalla abierta';
+
+  @override
+  String get scan_wait_longer =>
+      'Está tardando más de lo normal: tu resultado sigue en camino.';
+
+  @override
   String get report_card_title => 'INFORME DE PROGRESO SEMANAL';
 
   @override
@@ -3836,6 +3843,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get macro_pro_label => 'Pro';
 
   @override
+  String get macro_ring_unlock_title => 'Ve tus números exactos';
+
+  @override
+  String get macro_ring_unlock_body =>
+      'Desbloquea los gramos y los objetivos diarios';
+
+  @override
+  String macro_ring_on_track(String macro) {
+    return 'Vas bien con $macro — desbloquea los gramos exactos';
+  }
+
+  @override
   String result_add_to_log_kcal(String calories) {
     return 'Añadir al registro · $calories kcal';
   }
@@ -3878,5 +3897,48 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String paywall_disclosure_lifetime(String price) {
     return '$price, pago único. Sin suscripción.';
+  }
+
+  @override
+  String paywall_disclosure_intro_year(String introPrice, String price) {
+    return '$introPrice el primer año, luego $price al año. Se renueva automáticamente hasta que canceles.';
+  }
+
+  @override
+  String paywall_disclosure_intro_month(String introPrice, String price) {
+    return '$introPrice el primer mes, luego $price al mes. Se renueva automáticamente hasta que canceles.';
+  }
+
+  @override
+  String paywall_intro_first_year(String introPrice) {
+    return '$introPrice el primer año';
+  }
+
+  @override
+  String paywall_intro_first_month(String introPrice) {
+    return '$introPrice el primer mes';
+  }
+
+  @override
+  String home_goal_activity_bonus(int kcal) {
+    return '+$kcal kcal ganadas por actividad';
+  }
+
+  @override
+  String home_metric_of_goal(String goal, String unit) {
+    return 'de $goal $unit';
+  }
+
+  @override
+  String get water_unit_ml => 'ml';
+
+  @override
+  String home_kcal_short(int kcal) {
+    return '$kcal kcal';
+  }
+
+  @override
+  String home_kcal_estimated_short(int kcal) {
+    return '~$kcal kcal';
   }
 }

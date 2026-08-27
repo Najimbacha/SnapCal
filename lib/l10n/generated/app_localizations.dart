@@ -4008,6 +4008,18 @@ abstract class AppLocalizations {
   /// **'LOG MANUALLY'**
   String get scan_overlay_manual;
 
+  /// SnapCal UI string: scan_wait_stay
+  ///
+  /// In en, this message translates to:
+  /// **'Keep this screen open'**
+  String get scan_wait_stay;
+
+  /// SnapCal UI string: scan_wait_longer
+  ///
+  /// In en, this message translates to:
+  /// **'Taking longer than usual — your result is still coming.'**
+  String get scan_wait_longer;
+
   /// No description provided for @report_card_title.
   ///
   /// In en, this message translates to:
@@ -6946,6 +6958,24 @@ abstract class AppLocalizations {
   /// **'Pro'**
   String get macro_pro_label;
 
+  /// SnapCal UI string: macro_ring_unlock_title
+  ///
+  /// In en, this message translates to:
+  /// **'See your exact numbers'**
+  String get macro_ring_unlock_title;
+
+  /// SnapCal UI string: macro_ring_unlock_body
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock grams and daily targets'**
+  String get macro_ring_unlock_body;
+
+  /// SnapCal UI string: macro_ring_on_track
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on track for {macro} — unlock exact grams'**
+  String macro_ring_on_track(String macro);
+
   /// SnapCal UI string: result_add_to_log_kcal
   ///
   /// In en, this message translates to:
@@ -7005,6 +7035,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{price}, one-time payment. No subscription.'**
   String paywall_disclosure_lifetime(String price);
+
+  /// SnapCal UI string: paywall_disclosure_intro_year
+  ///
+  /// In en, this message translates to:
+  /// **'{introPrice} for the first year, then {price} per year. Renews automatically until you cancel.'**
+  String paywall_disclosure_intro_year(String introPrice, String price);
+
+  /// SnapCal UI string: paywall_disclosure_intro_month
+  ///
+  /// In en, this message translates to:
+  /// **'{introPrice} for the first month, then {price} per month. Renews automatically until you cancel.'**
+  String paywall_disclosure_intro_month(String introPrice, String price);
+
+  /// SnapCal UI string: paywall_intro_first_year
+  ///
+  /// In en, this message translates to:
+  /// **'{introPrice} first year'**
+  String paywall_intro_first_year(String introPrice);
+
+  /// SnapCal UI string: paywall_intro_first_month
+  ///
+  /// In en, this message translates to:
+  /// **'{introPrice} first month'**
+  String paywall_intro_first_month(String introPrice);
+
+  /// SnapCal UI string: home_goal_activity_bonus
+  ///
+  /// In en, this message translates to:
+  /// **'+{kcal} kcal earned from activity'**
+  String home_goal_activity_bonus(int kcal);
+
+  /// SnapCal UI string: home_metric_of_goal
+  ///
+  /// In en, this message translates to:
+  /// **'of {goal} {unit}'**
+  String home_metric_of_goal(String goal, String unit);
+
+  /// SnapCal UI string: water_unit_ml
+  ///
+  /// In en, this message translates to:
+  /// **'ml'**
+  String get water_unit_ml;
+
+  /// SnapCal UI string: home_kcal_short
+  ///
+  /// In en, this message translates to:
+  /// **'{kcal} kcal'**
+  String home_kcal_short(int kcal);
+
+  /// SnapCal UI string: home_kcal_estimated_short
+  ///
+  /// In en, this message translates to:
+  /// **'~{kcal} kcal'**
+  String home_kcal_estimated_short(int kcal);
 }
 
 class _AppLocalizationsDelegate

@@ -111,11 +111,12 @@ Rules:
   // Free Tier Feature Flags (overridable via Firebase Remote Config)
   //
   // When true, free users see macro grams on scan results and on the home
-  // dashboard. The free tier is then limited by scan count alone, rather than
-  // by scan count AND result depth. Set `free_macros_enabled` to false in
-  // Remote Config to restore the previous locked-macro behaviour without
-  // shipping a new build.
-  static const bool defaultFreeMacrosEnabled = true;
+  // dashboard, and the free tier is limited by scan count alone. Now defaults
+  // to false: macros are the Pro surface, and the home rings show free users
+  // their real progress arc with the numbers withheld. Set
+  // `free_macros_enabled` to true in Remote Config to hand macros back to the
+  // free tier — for an A/B test, say — without shipping a new build.
+  static const bool defaultFreeMacrosEnabled = false;
 
   // Animation Durations
   static const Duration shortAnimation = Duration(milliseconds: 200);

@@ -1,4 +1,4 @@
-﻿{
+{
   "@@locale": "fr",
   "appTitle": "SnapCal",
   "common_save": "Enregistrer",
@@ -686,6 +686,8 @@
   "scan_overlay_scanning": "ANALYSE PAR VISION IA",
   "scan_overlay_desc": "Détection des ingrédients et calcul de la densité nutritionnelle avec Gemini...",
   "scan_overlay_manual": "SAISIR MANUELLEMENT",
+  "scan_wait_stay": "Gardez cet \u00e9cran ouvert",
+  "scan_wait_longer": "Cela prend plus de temps que d'habitude \u2014 votre r\u00e9sultat arrive.",
   "report_card_title": "RAPPORT DE PROGRÈS HEBDOMADAIRE",
   "report_card_subtitle": "Découvrez pourquoi certains jours ont dépassé l'objectif et obtenez des suggestions personnalisées pour y remédier.",
   "startup_launch_issue": "Un problème est survenu au lancement",
@@ -1367,6 +1369,9 @@
   "macro_no_meals_yet": "Aucun repas enregistré",
   "macro_targets_cta": "Objectifs quotidiens et suivi",
   "macro_pro_label": "Pro",
+  "macro_ring_unlock_title": "Voyez vos chiffres exacts",
+  "macro_ring_unlock_body": "D\u00e9bloquez les grammes et les objectifs quotidiens",
+  "macro_ring_on_track": "Vous \u00eates sur la bonne voie pour {macro} \u2014 d\u00e9bloquez les grammes exacts",
   "result_add_to_log_kcal": "Ajouter au journal · {calories} kcal",
   "planner_teaser_locked_summary": "+{count} repas de plus · {kcal} kcal planifiées",
   "planner_teaser_title": "Débloquez les plans complets",
@@ -1376,5 +1381,14 @@
   "paywall_disclosure_trial_month": "Gratuit pendant {days} jours, puis {price} par mois. Annulez avant pour éviter les frais.",
   "paywall_disclosure_year": "{price} par an. Renouvellement automatique jusqu’à annulation.",
   "paywall_disclosure_month": "{price} par mois. Renouvellement automatique jusqu’à annulation.",
-  "paywall_disclosure_lifetime": "{price}, paiement unique. Sans abonnement."
+  "paywall_disclosure_lifetime": "{price}, paiement unique. Sans abonnement.",
+  "paywall_disclosure_intro_year": "{introPrice} la première année, puis {price} par an. Renouvellement automatique jusqu’à annulation.",
+  "paywall_disclosure_intro_month": "{introPrice} le premier mois, puis {price} par mois. Renouvellement automatique jusqu’à annulation.",
+  "paywall_intro_first_year": "{introPrice} la première année",
+  "paywall_intro_first_month": "{introPrice} le premier mois",
+  "home_goal_activity_bonus": "+{kcal} kcal gagnées grâce à l’activité",
+  "home_metric_of_goal": "sur {goal} {unit}",
+  "water_unit_ml": "ml",
+  "home_kcal_short": "{kcal} kcal",
+  "home_kcal_estimated_short": "~{kcal} kcal"
 }

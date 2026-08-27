@@ -16,6 +16,7 @@ import 'widgets/smart_meal_planner_card.dart';
 import 'widgets/activity_health_connect_sheet.dart';
 import '../log/widgets/hydration_sheet.dart';
 import '../../data/services/premium_conversion_service.dart';
+import '../../data/services/promotional_paywall_service.dart';
 import '../../data/services/pro_feature_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
@@ -458,30 +459,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     // Smart Premium Encouragement (Aha Moment)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) {
-          final todaysMealsAsync = ref.read(todaysMealsProvider);
-          final hasAiMeal = (todaysMealsAsync.valueOrNull ?? []).any(
-            (m) => m.scanSource == 'ai_scan',
-          );
-
-          if (hasAiMeal) {
-            final l10n = AppLocalizations.of(context)!;
-            PremiumPromptModal.show(
-              context,
-              ref,
-              title: l10n.aha_prompt_title,
-              subtitle: l10n.aha_prompt_subtitle,
-              buttonText: l10n.aha_prompt_btn,
-              icon: LucideIcons.sparkles,
-              entryPoint: PaywallEntryPoint.homeAha,
-              featureName: 'first_ai_scan',
-              hasCompletedValueAction: true,
-            );
-          }
-        }
-      });
+      Future.delayed(const Duration(milliseconds: 1500), _maybePromptUpgrade);
     });
+  }
+
+  /// Runs the two upgrade prompts, in priority order, once Pro status is known.
+  ///
+  /// `PremiumPromptModal.show` settles the status itself before deciding, so a
+  /// paying user is never shown either of these — which is what used to happen
+  /// when this fired 1.5s after init, before settings had loaded.
+  Future<void> _maybePromptUpgrade() async {
+    if (!mounted) return;
+
+    final todaysMealsAsync = ref.read(todaysMealsProvider);
+    final hasAiMeal = (todaysMealsAsync.valueOrNull ?? []).any(
+      (m) => m.scanSource == 'ai_scan',
+    );
+
+    if (hasAiMeal) {
+      final l10n = AppLocalizations.of(context)!;
+      await PremiumPromptModal.show(
+        context,
+        ref,
+        title: l10n.aha_prompt_title,
+        subtitle: l10n.aha_prompt_subtitle,
+        buttonText: l10n.aha_prompt_btn,
+        icon: LucideIcons.sparkles,
+        entryPoint: PaywallEntryPoint.homeAha,
+        featureName: 'first_ai_scan',
+        hasCompletedValueAction: true,
+      );
+      return;
+    }
+
+    // The promotional paywall: the well-throttled upsell for engaged users
+    // (4 opens, 2 distinct days, 3 logged meals, 7-day cooldown, 3 lifetime
+    // displays). All of that logic existed but nothing ever called it.
+    if (!mounted) return;
+    final access = ref.read(proAccessProvider);
+    if (!access.isFree) return;
+
+    final settings = ref.read(settingsProvider).valueOrNull;
+    final promo = PromotionalPaywallService.instance();
+    final eligible = await promo.canShowPromotionalPaywall(
+      isPremium: access.isPro,
+      onboardingComplete: settings?.onboardingComplete ?? false,
+      homeLoaded: true,
+    );
+    if (!eligible || !mounted) return;
+
+    await promo.recordPromotionalPaywallShown();
+    if (!mounted) return;
+    await PremiumConversionService().openPaywall(
+      context,
+      PaywallEntryPoint.homeAha,
+      featureName: 'promotional',
+    );
   }
 
   @override
@@ -515,8 +548,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     final activitySummary = ref.watch(activityProvider).valueOrNull;
     final activitySteps = activitySummary?.steps ?? 0;
+    // ActivitySummary carries no step goal and no source provides one; the
+    // app-wide constant is the single source of truth until a real goal exists.
+    final activityStepGoal = 10000;
     final activeCalories = activitySummary?.activeCalories.round() ?? 0;
-    final healthConnected = activitySummary?.healthConnected ?? false;
 
     final waterState = ref.watch(waterProvider).valueOrNull;
     final waterTotal = waterState?.todayTotal ?? 0;
@@ -567,6 +602,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   remaining: remaining,
                   mealCount: mealCount,
                   progress: calorieProgress,
+                  // Pro's goal grows with movement (see adjustedGoal above).
+                  // That was folded silently into one number, so the feature
+                  // people pay for looked like an arbitrary target.
+                  activityBonus: isPro ? activeCalories : 0,
                 ),
           ),
           const SizedBox(height: 2),
@@ -592,14 +631,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               waterTotal: waterTotal,
               waterGoal: waterGoal,
               steps: activitySteps,
+              stepGoal: activityStepGoal,
               burnedCalories: activeCalories,
               caloriesEstimated:
                   activitySummary?.activeCaloriesEstimated ?? true,
-              stepsUnit: 'steps',
-              activityLive: healthConnected,
               onWaterTap: () => showHydrationSheet(context),
               onWaterAdd: () => _addWater(ref),
-              onWaterRemove: () => _removeWater(ref),
+              onWaterUndo: () => _removeWater(ref),
               onActivityTap: () => showActivityHealthConnectSheet(context),
             ),
           ),
@@ -676,12 +714,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _addWater(WidgetRef ref) {
     HapticFeedback.lightImpact();
-    ref.read(waterProvider.notifier).addWater(250);
+    ref.read(waterProvider.notifier).addWater(_waterQuickAddMl);
   }
 
   void _removeWater(WidgetRef ref) {
     HapticFeedback.lightImpact();
-    ref.read(waterProvider.notifier).removeWater(250);
+    ref.read(waterProvider.notifier).removeWater(_waterQuickAddMl);
   }
 }
 
@@ -861,12 +899,16 @@ class _MinimalCalorieHero extends StatelessWidget {
   final int mealCount;
   final double progress;
 
+  /// Active calories folded into [goal]. Zero when there is no bonus to show.
+  final int activityBonus;
+
   const _MinimalCalorieHero({
     required this.consumed,
     required this.goal,
     required this.remaining,
     required this.mealCount,
     required this.progress,
+    this.activityBonus = 0,
   });
 
   @override
@@ -932,7 +974,12 @@ class _MinimalCalorieHero extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        if (activityBonus > 0) ...[
+          const SizedBox(height: 12),
+          _ActivityBonusPill(kcal: activityBonus, isDark: isDark),
+          const SizedBox(height: 8),
+        ] else
+          const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Row(
@@ -967,6 +1014,55 @@ class _MinimalCalorieHero extends StatelessWidget {
         const SizedBox(height: 10),
         const _MinimalSectionDivider(),
       ],
+    );
+  }
+}
+
+/// Names the calories movement added to today's goal.
+///
+/// Without it the Pro goal just reads as a different number from the free one
+/// and the feature is invisible -- which is the whole point of showing it.
+class _ActivityBonusPill extends StatelessWidget {
+  const _ActivityBonusPill({required this.kcal, required this.isDark});
+
+  final int kcal;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.10),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              LucideIcons.footprints,
+              size: 12,
+              color: isDark ? _minimalGreen : _minimalGreenText,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                l10n.home_goal_activity_bonus(kcal),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.labelSmall.copyWith(
+                  color: isDark ? _minimalGreen : _minimalGreenText,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1070,9 +1166,11 @@ class _MinimalSectionDivider extends StatelessWidget {
 
 /// Macros for the home dashboard.
 ///
-/// Pro sees grams against daily targets. Free sees the real composition of
-/// what they actually ate today — never the fabricated 65/50/40 bars this
-/// card used to draw, and never a blurred number.
+/// Both tiers get the same three ring cards, in the same place, at the same
+/// size. Pro shows grams inside each ring against the daily target. Free sees
+/// its own real progress drawn as a silhouette with the number withheld, plus
+/// one upgrade affordance — so upgrading swaps a lock for a number in place
+/// and nothing on the screen moves.
 class _MinimalMacroSection extends StatelessWidget {
   final Macros macros;
   final int proteinGoal;
@@ -1091,7 +1189,6 @@ class _MinimalMacroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final showGrams = const ProFeatureService().canSeeMacros(isPro: isPro);
 
     return Padding(
@@ -1101,53 +1198,23 @@ class _MinimalMacroSection extends StatelessWidget {
         children: [
           _MinimalSectionLabel(text: l10n.home_section_macros_today),
           const SizedBox(height: 12),
-          if (isPro)
-            MacroDisplay(
-              macros: macros,
-              proteinGoal: proteinGoal,
-              carbGoal: carbGoal,
-              fatGoal: fatGoal,
-              variant: MacroDisplayVariant.compact,
-            )
-          else
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
-              decoration: BoxDecoration(
-                color:
-                    isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color:
-                      isDark
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : const Color(0xFFE8E4DC),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: MacroDisplay(
-                macros: macros,
-                proteinGoal: proteinGoal,
-                carbGoal: carbGoal,
-                fatGoal: fatGoal,
-                variant: MacroDisplayVariant.composition,
-                showGrams: showGrams,
-                showGoals: false,
-                upgradeLabel: showGrams ? null : l10n.macro_unlock_card_title,
-                onUpgradeTap:
-                    () => PremiumConversionService().openPaywall(
+          MacroDisplay(
+            macros: macros,
+            proteinGoal: proteinGoal,
+            carbGoal: carbGoal,
+            fatGoal: fatGoal,
+            variant: MacroDisplayVariant.rings,
+            showGrams: showGrams,
+            showGoals: showGrams,
+            onUpgradeTap:
+                showGrams
+                    ? null
+                    : () => PremiumConversionService().openPaywall(
                       context,
                       PaywallEntryPoint.macroDetails,
                       featureName: 'home_macros',
                     ),
-              ),
-            ),
+          ),
           const SizedBox(height: 14),
           const _MinimalSectionDivider(),
         ],
@@ -1635,6 +1702,9 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
     );
   }
 }
+
+/// One glass. Tap the card's + to add it, long-press to take it back.
+const int _waterQuickAddMl = 250;
 
 String _formatNumber(int value) {
   if (value < 10000) return '$value';
@@ -2331,37 +2401,36 @@ class _SecondaryDashboardGrid extends StatelessWidget {
   final int waterTotal;
   final int waterGoal;
   final int steps;
+  final int stepGoal;
   final int burnedCalories;
   final bool caloriesEstimated;
-  final String stepsUnit;
-  final bool activityLive;
   final VoidCallback onWaterTap;
   final VoidCallback onWaterAdd;
-  final VoidCallback onWaterRemove;
+  final VoidCallback onWaterUndo;
   final VoidCallback onActivityTap;
 
   const _SecondaryDashboardGrid({
     required this.waterTotal,
     required this.waterGoal,
     required this.steps,
+    required this.stepGoal,
     required this.burnedCalories,
     required this.caloriesEstimated,
-    required this.stepsUnit,
-    required this.activityLive,
     required this.onWaterTap,
     required this.onWaterAdd,
-    required this.onWaterRemove,
+    required this.onWaterUndo,
     required this.onActivityTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final stepsProgress = (steps / 10000).clamp(0.0, 1.0);
+    // "15 estimated kcal" does not fit beside a title in a half-width card.
+    // The tilde carries the estimated/measured distinction instead.
     final caloriesText =
         caloriesEstimated
-            ? l10n.home_estimated_kcal(burnedCalories)
-            : l10n.home_active_kcal(burnedCalories);
+            ? l10n.home_kcal_estimated_short(burnedCalories)
+            : l10n.home_kcal_short(burnedCalories);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 6, 22, 10),
@@ -2371,32 +2440,39 @@ class _SecondaryDashboardGrid extends StatelessWidget {
           _MinimalSectionLabel(text: l10n.home_daily_wellness),
           const SizedBox(height: 8),
           SizedBox(
-            height: 110,
+            height: 124,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: _WaterFillCard(
-                    total: waterTotal,
+                  child: _WellnessCard(
+                    icon: LucideIcons.droplets,
+                    accent: const Color(0xFF3B9BE8),
+                    title: l10n.water_hydration,
+                    value: waterTotal,
                     goal: waterGoal,
+                    unit: l10n.water_unit_ml,
                     onTap: onWaterTap,
                     onAdd: onWaterAdd,
+                    onUndo: onWaterUndo,
+                    addSemanticLabel: l10n.water_add_amount(_waterQuickAddMl),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _MinimalWellnessCard(
+                  child: _WellnessCard(
                     icon: LucideIcons.footprints,
-                    color: Theme.of(context).colorScheme.primary,
+                    accent: AppColors.primary,
                     title: l10n.home_metric_activity,
-                    value:
-                        steps == 0
-                            ? '0 ${l10n.log_metric_steps_unit}'
-                            : '$steps',
-                    subtitle:
-                        steps == 0 ? l10n.home_start_walking : caloriesText,
-                    progress: stepsProgress,
+                    value: steps,
+                    // Was `steps / 10000`. ActivitySummary has carried a real
+                    // stepGoal all along; the card just never asked for it,
+                    // so a 3k-a-day walker and a 20k-a-day walker saw the
+                    // same bar.
+                    goal: stepGoal,
+                    unit: l10n.log_metric_steps_unit,
                     onTap: onActivityTap,
+                    trailingStat: caloriesText,
                   ),
                 ),
               ],
@@ -2408,266 +2484,215 @@ class _SecondaryDashboardGrid extends StatelessWidget {
   }
 }
 
-class _WaterFillCard extends StatefulWidget {
-  final int total;
-  final int goal;
-  final VoidCallback onTap;
-  final VoidCallback onAdd;
-
-  const _WaterFillCard({
-    required this.total,
-    required this.goal,
-    required this.onTap,
-    required this.onAdd,
-  });
-
-  @override
-  State<_WaterFillCard> createState() => _WaterFillCardState();
-}
-
-class _WaterFillCardState extends State<_WaterFillCard> {
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l10n = AppLocalizations.of(context)!;
-    final blue = AppColors.sky;
-    final progress = (widget.total / widget.goal).clamp(0.0, 1.0);
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        widget.onTap();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : const Color(0xFFE8E4DC),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _WellnessCardHeader(
-              icon: LucideIcons.droplets,
-              color: blue,
-              title: l10n.water_hydration,
-              isDark: isDark,
-            ),
-            const Spacer(),
-            Text(
-              widget.total == 0 ? '0 ml' : '${widget.total} ml',
-              style: AppTypography.titleLarge.copyWith(
-                color: isDark ? Colors.white : const Color(0xFF1C1917),
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                height: 1.1,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              widget.total == 0
-                  ? l10n.water_tap_to_open
-                  : l10n.water_goal_progress(widget.goal),
-              style: AppTypography.labelSmall.copyWith(
-                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const Spacer(),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: progress),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) {
-                return SizedBox(
-                  height: 3,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: blue.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: value.clamp(0.0, 1.0),
-                        heightFactor: 1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: blue.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: value.clamp(0.0, 1.0),
-                        heightFactor: 1,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: blue,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: blue.withValues(alpha: 0.4),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MinimalWellnessCard extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String value;
-  final String subtitle;
-  final double progress;
-  final VoidCallback onTap;
-
-  const _MinimalWellnessCard({
+/// One card for every wellness metric.
+///
+/// Hydration and Activity used to be two unrelated widgets that merely looked
+/// alike -- a StatefulWidget and a StatelessWidget sharing no code -- and they
+/// had already drifted: one subtitle was an instruction and the other was data,
+/// one showed its target only after the first entry and the other never did,
+/// one read a real goal and the other divided by a hardcoded 10000. A single
+/// widget cannot drift from itself.
+///
+/// The trailing slot in the header carries an action where one exists (water's
+/// quick add) and a stat otherwise (calories burned), so both cards keep the
+/// same skeleton.
+class _WellnessCard extends StatelessWidget {
+  const _WellnessCard({
     required this.icon,
-    required this.color,
+    required this.accent,
     required this.title,
     required this.value,
-    required this.subtitle,
-    required this.progress,
+    required this.goal,
+    required this.unit,
     required this.onTap,
+    this.onAdd,
+    this.onUndo,
+    this.addSemanticLabel,
+    this.trailingStat,
   });
+
+  final IconData icon;
+  final Color accent;
+  final String title;
+  final int value;
+  final int goal;
+  final String unit;
+  final VoidCallback onTap;
+
+  /// Quick add. Present for hydration: logging a glass is the most repeated
+  /// action in the app after logging food, and it was costing three taps
+  /// through a sheet while this handler sat wired to nothing.
+  final VoidCallback? onAdd;
+
+  /// Long-press partner for [onAdd], so a mistaken tap costs one gesture
+  /// instead of a trip through the sheet.
+  final VoidCallback? onUndo;
+  final String? addSemanticLabel;
+
+  /// A short secondary figure, right-aligned on the goal line. Kept short on
+  /// purpose: the header has no room for it beside the title.
+  final String? trailingStat;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final progress = goal <= 0 ? 0.0 : (value / goal).clamp(0.0, 1.0);
+    final ink = isDark ? Colors.white : _minimalInk;
+    final muted = isDark ? Colors.white38 : const Color(0xFFB4AFA8);
+    final reached = value >= goal && goal > 0;
+
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-          borderRadius: BorderRadius.circular(14),
+          // A whisper of the metric's own colour, so the two cards read as a
+          // set without either shouting.
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors:
+                isDark
+                    ? [
+                      accent.withValues(alpha: 0.10),
+                      const Color(0xFF17171B),
+                    ]
+                    : [
+                      accent.withValues(alpha: 0.07),
+                      const Color(0xFFFEFCF7),
+                    ],
+          ),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color:
                 isDark
                     ? Colors.white.withValues(alpha: 0.06)
-                    : const Color(0xFFE8E4DC),
+                    : accent.withValues(alpha: 0.14),
           ),
+          boxShadow:
+              isDark
+                  ? null
+                  : [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.07),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _WellnessCardHeader(
-              icon: icon,
-              color: color,
-              title: title,
-              isDark: isDark,
-            ),
-            const Spacer(),
-            Text(
-              value,
-              style: AppTypography.titleLarge.copyWith(
-                color: isDark ? Colors.white : const Color(0xFF1C1917),
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                height: 1.1,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: AppTypography.labelSmall.copyWith(
-                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const Spacer(),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: progress),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) {
-                return SizedBox(
-                  height: 3,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: value.clamp(0.0, 1.0),
-                        heightFactor: 1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: value.clamp(0.0, 1.0),
-                        heightFactor: 1,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+            Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: isDark ? 0.22 : 0.13),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                );
-              },
+                  child: Icon(icon, size: 13, color: accent),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: muted,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                if (onAdd != null)
+                  _QuickAddButton(
+                    accent: accent,
+                    isDark: isDark,
+                    onTap: onAdd!,
+                    onUndo: onUndo,
+                    semanticLabel: addSemanticLabel,
+                  ),
+              ],
+            ),
+            const Spacer(),
+            RichText(
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: _formatNumber(value),
+                    style: AppTypography.titleLarge.copyWith(
+                      color: ink,
+                      fontSize: 21,
+                      height: 1,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  TextSpan(
+                    text: ' $unit',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: ink.withValues(alpha: 0.5),
+                      fontSize: 10.5,
+                      height: 1,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 3),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                // The target, always. It used to appear only once you had
+                // logged something, which hid it exactly when it mattered.
+                Flexible(
+                  child: Text(
+                    AppLocalizations.of(context)!.home_metric_of_goal(
+                      _formatNumber(goal),
+                      unit,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: muted,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (trailingStat != null) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    trailingStat!,
+                    maxLines: 1,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: accent,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 9),
+            _WellnessProgressBar(
+              progress: progress,
+              accent: accent,
+              isDark: isDark,
+              reached: reached,
             ),
           ],
         ),
@@ -2676,44 +2701,150 @@ class _MinimalWellnessCard extends StatelessWidget {
   }
 }
 
-class _WellnessCardHeader extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String title;
-  final bool isDark;
-
-  const _WellnessCardHeader({
-    required this.icon,
-    required this.color,
-    required this.title,
+/// Tap adds, long-press takes it back.
+class _QuickAddButton extends StatefulWidget {
+  const _QuickAddButton({
+    required this.accent,
     required this.isDark,
+    required this.onTap,
+    this.onUndo,
+    this.semanticLabel,
   });
+
+  final Color accent;
+  final bool isDark;
+  final VoidCallback onTap;
+  final VoidCallback? onUndo;
+  final String? semanticLabel;
+
+  @override
+  State<_QuickAddButton> createState() => _QuickAddButtonState();
+}
+
+class _QuickAddButtonState extends State<_QuickAddButton> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 22,
-          height: 22,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(6),
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) {
+          setState(() => _pressed = false);
+          widget.onTap();
+        },
+        onLongPress: widget.onUndo,
+        child: AnimatedScale(
+          scale: _pressed ? 0.86 : 1,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: widget.accent.withValues(
+                alpha: widget.isDark ? 0.26 : 0.15,
+              ),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: widget.accent.withValues(alpha: 0.28),
+              ),
+            ),
+            child: Icon(LucideIcons.plus, size: 14, color: widget.accent),
           ),
-          child: Icon(icon, size: 12, color: color),
         ),
-        const SizedBox(width: 6),
-        Text(
-          title,
-          style: AppTypography.labelSmall.copyWith(
-            color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+      ),
+    );
+  }
+}
+
+/// Rounded track with a gradient fill and a bead at the leading edge.
+///
+/// The old 3px hairline was invisible at the small values these cards spend
+/// most of the day showing.
+class _WellnessProgressBar extends StatelessWidget {
+  const _WellnessProgressBar({
+    required this.progress,
+    required this.accent,
+    required this.isDark,
+    required this.reached,
+  });
+
+  final double progress;
+  final Color accent;
+  final bool isDark;
+  final bool reached;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: progress),
+      duration: const Duration(milliseconds: 850),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return SizedBox(
+          height: 6,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final filled = constraints.maxWidth * value.clamp(0.0, 1.0);
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: isDark ? 0.16 : 0.13),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                  if (filled > 0)
+                    Container(
+                      width: math.max(filled, 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            accent.withValues(alpha: 0.72),
+                            accent,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(99),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.34),
+                            blurRadius: 7,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (reached)
+                    Positioned(
+                      right: 0,
+                      top: -3,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: accent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          LucideIcons.check,
+                          size: 8,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
