@@ -975,7 +975,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   // reasons before answering, which is accurate but costs ~20s. Reorder from
   // the dashboard — AI_IMAGE_PROVIDER_ORDER=deepseek pins a single provider,
   // which is what DEEPSEEK_STRICT used to do.
-  const order = (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,gemini,deepseek,openrouter')
+  const order = (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,deepseek,gemini,openrouter')
     .split(',').map(p => p.trim().toLowerCase()).filter(p => providers[p]);
 
   const configured = order.filter(name => {
@@ -1058,101 +1058,117 @@ async function callAiText(prompt, options = {}) {
     return typeof data === 'string' ? data.slice(0, 300) : JSON.stringify(data).slice(0, 300);
   };
 
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  if (geminiApiKey) {
-    try {
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-3.6-flash'}:generateContent`,
-        {
-          contents: [{ parts: [{ text: effectivePrompt }] }],
-          generationConfig: {
-            temperature,
-            maxOutputTokens,
-            ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
-          },
+  // One OpenAI-shaped text request; three of the four providers speak it.
+  const openAiText = async (name, url, model, key, extraHeaders) => {
+    const response = await axios.post(
+      url,
+      {
+        model,
+        messages: [
+          ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
+          { role: 'user', content: effectivePrompt },
+        ],
+        max_tokens: maxOutputTokens,
+        temperature,
+        ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          ...(extraHeaders || {}),
         },
-        { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }, timeout },
-      );
-      const candidate = response.data?.candidates?.[0];
-      const text = candidate?.content?.parts?.[0]?.text;
-      if (text) return requireJson ? normalizeAiJsonText(text) : text;
+        timeout,
+      },
+    );
+    const content = response.data?.choices?.[0]?.message?.content;
+    const cleaned = content ? stripThink(content) : '';
+    if (cleaned) return requireJson ? normalizeAiJsonText(cleaned) : cleaned;
+    throw new Error(`empty-response (model=${model})`);
+  };
 
-      const reason = candidate?.finishReason
-        || response.data?.promptFeedback?.blockReason
-        || 'no-text-in-response';
-      console.error(`Gemini text returned no usable text (finishReason=${reason}, maxOutputTokens=${maxOutputTokens}). Trying next provider.`);
-      failures.push(`gemini:${reason}`);
+  const providers = {
+    deepseek: {
+      key: () => process.env.DEEPSEEK_API_KEY,
+      run: (key) => openAiText(
+        'deepseek',
+        'https://api.deepseek.com/chat/completions',
+        process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat',
+        key,
+      ),
+    },
+    gemini: {
+      key: () => process.env.GEMINI_API_KEY,
+      run: async (key) => {
+        const response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-3.6-flash'}:generateContent`,
+          {
+            contents: [{ parts: [{ text: effectivePrompt }] }],
+            generationConfig: {
+              temperature,
+              maxOutputTokens,
+              ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
+            },
+          },
+          { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, timeout },
+        );
+        const candidate = response.data?.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+        if (text) return requireJson ? normalizeAiJsonText(text) : text;
+        // A response truncated at maxOutputTokens carries no parts[0].text.
+        // Naming the reason keeps a truncation distinguishable from a refusal.
+        const reason = candidate?.finishReason
+          || response.data?.promptFeedback?.blockReason
+          || 'no-text-in-response';
+        throw new Error(`${reason} (maxOutputTokens=${maxOutputTokens})`);
+      },
+    },
+    groq: {
+      key: () => process.env.GROQ_API_KEY,
+      run: (key) => openAiText(
+        'groq',
+        'https://api.groq.com/openai/v1/chat/completions',
+        options.groqTextModel || process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b',
+        key,
+      ),
+    },
+    openrouter: {
+      key: () => process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY,
+      run: (key) => openAiText(
+        'openrouter',
+        'https://openrouter.ai/api/v1/chat/completions',
+        options.textModel || process.env.TEXT_MODEL || 'qwen/qwen-plus',
+        key,
+        { 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
+      ),
+    },
+  };
+
+  // Gemini used to be hardcoded ahead of the fallback array, so it could not be
+  // reordered without a deploy. Order is configuration here, as it is for
+  // images — though the two chains are deliberately separate: the coach and
+  // planner want a strong writer, the scanner wants speed.
+  const order = (options.providerOrder || process.env.AI_TEXT_PROVIDER_ORDER || 'deepseek,gemini,groq,openrouter')
+    .split(',').map(p => p.trim().toLowerCase()).filter(p => providers[p]);
+
+  const configured = order.filter(name => Boolean(providers[name].key()));
+  if (configured.length === 0) {
+    throw new Error(`ai-not-configured: no key set for any of [${order.join(', ')}]`);
+  }
+
+  for (const name of configured) {
+    try {
+      const result = await providers[name].run(providers[name].key());
+      console.error(`${name} text succeeded (model tier: ${name})`);
+      return result;
     } catch (err) {
       const detail = detailOf(err);
-      console.error('Gemini text failed:', detail);
-      failures.push(`gemini:${detail}`);
+      console.error(`${name} text failed:`, detail);
+      failures.push(`${name}:${detail}`);
     }
   }
 
-  // OpenAI-compatible fallbacks, in order. Keys that are not configured are
-  // skipped rather than treated as a fatal misconfiguration.
-  const fallbacks = [
-    {
-      name: 'groq',
-      key: process.env.GROQ_API_KEY,
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      model: options.groqTextModel || process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b',
-    },
-    {
-      name: 'deepseek',
-      key: process.env.DEEPSEEK_API_KEY,
-      url: 'https://api.deepseek.com/chat/completions',
-      model: process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat',
-    },
-    {
-      name: 'openrouter',
-      key: process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY,
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      model: options.textModel || process.env.TEXT_MODEL || 'qwen/qwen-plus',
-      extraHeaders: { 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
-    },
-  ].filter((provider) => provider.key);
-
-  if (!geminiApiKey && fallbacks.length === 0) throw new Error('ai-not-configured');
-
-  for (const provider of fallbacks) {
-    try {
-      const response = await axios.post(
-        provider.url,
-        {
-          model: provider.model,
-          messages: [
-            ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
-            { role: 'user', content: effectivePrompt },
-          ],
-          max_tokens: maxOutputTokens,
-          temperature,
-          ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${provider.key}`,
-            'Content-Type': 'application/json',
-            ...(provider.extraHeaders || {}),
-          },
-          timeout,
-        },
-      );
-      const content = response.data?.choices?.[0]?.message?.content;
-      if (content) {
-        const cleaned = stripThink(content);
-        if (cleaned) return requireJson ? normalizeAiJsonText(cleaned) : cleaned;
-      }
-      console.error(`${provider.name} text returned empty content (model=${provider.model}).`);
-      failures.push(`${provider.name}:empty-response`);
-    } catch (err) {
-      const detail = detailOf(err);
-      console.error(`${provider.name} text failed (model=${provider.model}):`, detail);
-      failures.push(`${provider.name}:${detail}`);
-    }
-  }
-
-  throw new Error(`ai-text-unavailable: ${failures.join(' | ') || 'no-providers-configured'}`);
+  throw new Error(`ai-text-unavailable: ${failures.join(' | ')}`);
 }
 
 async function writeAuditLog({ actorUid, action, targetUid, result, metadata = {} }) {
@@ -1224,7 +1240,7 @@ app.get('/health', (req, res) => {
       lastError: lastScanError,
     },
     providers: {
-      order: (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,gemini,deepseek,openrouter').split(',').map(p => p.trim()),
+      order: (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,deepseek,gemini,openrouter').split(',').map(p => p.trim()),
       configured,
     },
   });
