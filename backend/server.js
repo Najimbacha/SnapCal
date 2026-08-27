@@ -994,7 +994,15 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
     for (const name of configured) {
       if (outOfTime()) break;
       try {
-        return await providers[name].run(providers[name].key(), attempt);
+        const result = await providers[name].run(providers[name].key(), attempt);
+        // Which provider actually answered. Without this the only way to tell
+        // is the absence of failure lines above the success, which is an
+        // inference, not a fact — and it silently breaks the moment a
+        // provider succeeds after another has already failed.
+        console.error(
+          `${name} vision scan succeeded in ${elapsed()}ms (attempt ${attempt}/${maxRetries})`,
+        );
+        return result;
       } catch (err) {
         const detail = err.response?.data
           ? JSON.stringify(err.response.data).slice(0, 300)
