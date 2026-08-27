@@ -866,8 +866,6 @@ const AI_IMAGE_MAX_TOKENS = Number(process.env.AI_IMAGE_MAX_TOKENS) || 4096;
 
 async function callAiWithImage(base64Data, language, customPrompt = null, useV2 = false) {
   const systemPrompt = customPrompt || (useV2 ? getV2SystemPrompt(language) : getSystemPrompt(language));
-  const providerKey = process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY;
-  const geminiApiKeys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
   const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 3;
   const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 2000;
 
@@ -887,107 +885,54 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   // Never wait past the deadline on a single call.
   const budget = () => Math.max(1000, Math.min(perCall, deadline - elapsed()));
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const deepseekKey = process.env.DEEPSEEK_API_KEY;
-    if (deepseekKey && !outOfTime()) {
-      try {
-        const response = await axios.post(
-          'https://api.deepseek.com/chat/completions',
-          {
-            model: process.env.DEEPSEEK_SCANNER_MODEL || 'deepseek-v4-flash-vision-exp',
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'text', text: systemPrompt },
-                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } },
-              ],
-            }],
-            temperature: 0.4,
-            max_tokens: AI_IMAGE_MAX_TOKENS,
-          },
-          {
-            headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
-            timeout: budget(),
-          },
-        );
-        const choice = response.data?.choices?.[0];
-        const content = choice?.message?.content;
-        if (content) return stripThink(content);
-        // A reasoning model that spends its whole budget thinking returns an
-        // empty content with finish_reason 'length'. Name it.
-        throw new Error(
-          `empty-deepseek-response (finish_reason=${choice?.finish_reason ?? 'unknown'}, `
-          + `reasoning_chars=${(choice?.message?.reasoning_content || '').length})`,
-        );
-      } catch (err) {
-        console.error(`DeepSeek vision scan failed (attempt ${attempt}/${maxRetries}):`, err.response?.data || err.message);
-        if (process.env.DEEPSEEK_STRICT === 'true') {
-          const detail = err.response?.data ? JSON.stringify(err.response.data).slice(0, 500) : err.message;
-          throw new Error(`deepseek-strict-failed: ${detail}`);
-        }
-      }
-    }
+  const dataUrl = `data:image/jpeg;base64,${base64Data}`;
 
-    if (providerKey && !outOfTime()) {
-      try {
-        const response = await axios.post(
-          'https://openrouter.ai/api/v1/chat/completions',
-          {
-            model: process.env.SCANNER_MODEL || 'qwen/qwen3-vl-8b-instruct',
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'text', text: systemPrompt },
-                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } },
-              ],
-            }],
-            temperature: 0.4,
-            max_tokens: AI_IMAGE_MAX_TOKENS,
-          },
-          {
-            headers: { Authorization: `Bearer ${providerKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
-            timeout: budget(),
-          },
-        );
-        const content = response.data?.choices?.[0]?.message?.content;
-        if (content) return stripThink(content);
-      } catch (err) {
-        console.error(`Primary AI scan failed (attempt ${attempt}/${maxRetries}):`, err.response?.data || err.message);
-      }
-    }
+  // One OpenAI-shaped vision request, since three of the four speak it.
+  const openAiVision = async (url, model, headers) => {
+    const response = await axios.post(
+      url,
+      {
+        model,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: systemPrompt },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ],
+        }],
+        temperature: 0.4,
+        max_tokens: AI_IMAGE_MAX_TOKENS,
+      },
+      { headers: { ...headers, 'Content-Type': 'application/json' }, timeout: budget() },
+    );
+    const choice = response.data?.choices?.[0];
+    const content = choice?.message?.content;
+    if (content) return stripThink(content);
+    // A reasoning model that spends its whole budget thinking returns an
+    // empty content with finish_reason 'length'. Name it.
+    throw new Error(
+      `empty-response (finish_reason=${choice?.finish_reason ?? 'unknown'}, `
+      + `reasoning_chars=${(choice?.message?.reasoning_content || '').length})`,
+    );
+  };
 
-    const groqKey = process.env.GROQ_API_KEY;
-    if (groqKey && !outOfTime()) {
-      try {
-        const response = await axios.post(
-          'https://api.groq.com/openai/v1/chat/completions',
-          {
-            model: process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b',
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'text', text: systemPrompt },
-                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } },
-              ],
-            }],
-            temperature: 0.4,
-            max_tokens: AI_IMAGE_MAX_TOKENS,
-          },
-          {
-            headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-            timeout: budget(),
-          },
-        );
-        const content = response.data?.choices?.[0]?.message?.content;
-        if (content) return stripThink(content);
-      } catch (err) {
-        console.error(`Groq vision scan failed (attempt ${attempt}/${maxRetries}):`, err.response?.data || err.message);
-      }
-    }
-
-    if (geminiApiKeys.length > 0 && !outOfTime()) {
-      const geminiKey = geminiApiKeys[(attempt - 1) % geminiApiKeys.length];
-      try {
+  // Each entry reports whether it is configured, so an absent key is a skip
+  // rather than a failed leg. `attempt` only matters to Gemini, which rotates
+  // across however many keys are configured.
+  const providers = {
+    groq: {
+      key: () => process.env.GROQ_API_KEY,
+      run: (key) => openAiVision(
+        'https://api.groq.com/openai/v1/chat/completions',
+        process.env.GROQ_VISION_MODEL || 'qwen/qwen3.6-27b',
+        { Authorization: `Bearer ${key}` },
+      ),
+    },
+    gemini: {
+      key: () => (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '')
+        .split(',').map(k => k.trim()).filter(Boolean),
+      run: async (keys, attempt) => {
+        const key = keys[(attempt - 1) % keys.length];
         const response = await axios.post(
           `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_SCANNER_MODEL || 'gemini-3.6-flash'}:generateContent`,
           {
@@ -999,17 +944,63 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
             }],
             generationConfig: { temperature: 0.4, maxOutputTokens: AI_IMAGE_MAX_TOKENS },
           },
-          { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey }, timeout: budget() },
+          { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, timeout: budget() },
         );
-        const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const candidate = response.data?.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
         if (text) return stripThink(text);
-        throw new Error('empty-gemini-response');
+        throw new Error(`empty-response (finishReason=${candidate?.finishReason ?? 'unknown'})`);
+      },
+    },
+    deepseek: {
+      key: () => process.env.DEEPSEEK_API_KEY,
+      run: (key) => openAiVision(
+        'https://api.deepseek.com/chat/completions',
+        process.env.DEEPSEEK_SCANNER_MODEL || 'deepseek-v4-flash-vision-exp',
+        { Authorization: `Bearer ${key}` },
+      ),
+    },
+    openrouter: {
+      key: () => process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY,
+      run: (key) => openAiVision(
+        'https://openrouter.ai/api/v1/chat/completions',
+        process.env.SCANNER_MODEL || 'qwen/qwen3-vl-8b-instruct',
+        { Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
+      ),
+    },
+  };
+
+  // Order is configuration, not code. Groq and Gemini lead because both are
+  // fast non-reasoning models on free tiers; DeepSeek backs them up because it
+  // reasons before answering, which is accurate but costs ~20s. Reorder from
+  // the dashboard — AI_IMAGE_PROVIDER_ORDER=deepseek pins a single provider,
+  // which is what DEEPSEEK_STRICT used to do.
+  const order = (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,gemini,deepseek,openrouter')
+    .split(',').map(p => p.trim().toLowerCase()).filter(p => providers[p]);
+
+  const configured = order.filter(name => {
+    const key = providers[name].key();
+    return Array.isArray(key) ? key.length > 0 : Boolean(key);
+  });
+
+  if (configured.length === 0) {
+    // Distinct from a provider outage on purpose: nothing was even attempted.
+    throw new Error(`ai-not-configured: no key set for any of [${order.join(', ')}]`);
+  }
+
+  const failures = [];
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    for (const name of configured) {
+      if (outOfTime()) break;
+      try {
+        return await providers[name].run(providers[name].key(), attempt);
       } catch (err) {
-        console.error(`Gemini scan failed (attempt ${attempt}/${maxRetries}, key ${(attempt - 1) % geminiApiKeys.length + 1}/${geminiApiKeys.length}):`, {
-          status: err.response?.status,
-          data: err.response?.data,
-          message: err.message,
-        });
+        const detail = err.response?.data
+          ? JSON.stringify(err.response.data).slice(0, 300)
+          : err.message;
+        failures.push(`${name}: ${detail}`);
+        console.error(`${name} vision scan failed (attempt ${attempt}/${maxRetries}):`, detail);
       }
     }
 
@@ -1025,7 +1016,9 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
     }
   }
 
-  throw new Error('ai-scan-failed');
+  // Name what each provider actually said, so a misconfiguration is never
+  // again indistinguishable from an outage.
+  throw new Error(`ai-scan-failed after ${elapsed()}ms — ${failures.slice(-configured.length).join(' | ')}`);
 }
 
 /// Text generation with a real provider chain.
