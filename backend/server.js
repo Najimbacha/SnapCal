@@ -871,9 +871,25 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 3;
   const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 2000;
 
+  // A 20s per-call ceiling was fine while replies were capped at 1024 tokens.
+  // With a 4096 budget the model writes a full answer and runs past it, and
+  // axios aborts a request that was about to succeed ('aborted' in the logs).
+  const perCall = Number(process.env.AI_IMAGE_TIMEOUT_MS) || 45000;
+
+  // And an overall deadline, because the client gives up at 60s
+  // (TimeoutPolicy.aiScan). Without it, a full chain — three providers times
+  // three attempts — keeps burning upstream calls long after the only caller
+  // has stopped listening, and the user never sees the result it paid for.
+  const deadline = Number(process.env.AI_IMAGE_DEADLINE_MS) || 50000;
+  const startedAt = Date.now();
+  const elapsed = () => Date.now() - startedAt;
+  const outOfTime = () => elapsed() >= deadline;
+  // Never wait past the deadline on a single call.
+  const budget = () => Math.max(1000, Math.min(perCall, deadline - elapsed()));
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
-    if (deepseekKey) {
+    if (deepseekKey && !outOfTime()) {
       try {
         const response = await axios.post(
           'https://api.deepseek.com/chat/completions',
@@ -891,7 +907,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
           },
           {
             headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
-            timeout: 20000,
+            timeout: budget(),
           },
         );
         const choice = response.data?.choices?.[0];
@@ -912,7 +928,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
       }
     }
 
-    if (providerKey) {
+    if (providerKey && !outOfTime()) {
       try {
         const response = await axios.post(
           'https://openrouter.ai/api/v1/chat/completions',
@@ -930,7 +946,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
           },
           {
             headers: { Authorization: `Bearer ${providerKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
-            timeout: 20000,
+            timeout: budget(),
           },
         );
         const content = response.data?.choices?.[0]?.message?.content;
@@ -941,7 +957,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
     }
 
     const groqKey = process.env.GROQ_API_KEY;
-    if (groqKey) {
+    if (groqKey && !outOfTime()) {
       try {
         const response = await axios.post(
           'https://api.groq.com/openai/v1/chat/completions',
@@ -959,7 +975,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
           },
           {
             headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-            timeout: 20000,
+            timeout: budget(),
           },
         );
         const content = response.data?.choices?.[0]?.message?.content;
@@ -969,7 +985,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
       }
     }
 
-    if (geminiApiKeys.length > 0) {
+    if (geminiApiKeys.length > 0 && !outOfTime()) {
       const geminiKey = geminiApiKeys[(attempt - 1) % geminiApiKeys.length];
       try {
         const response = await axios.post(
@@ -983,7 +999,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
             }],
             generationConfig: { temperature: 0.4, maxOutputTokens: AI_IMAGE_MAX_TOKENS },
           },
-          { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey }, timeout: 15000 },
+          { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey }, timeout: budget() },
         );
         const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) return stripThink(text);
@@ -995,6 +1011,11 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
           message: err.message,
         });
       }
+    }
+
+    if (outOfTime()) {
+      console.error(`Image deadline reached after ${elapsed()}ms, giving up`);
+      break;
     }
 
     if (attempt < maxRetries) {
