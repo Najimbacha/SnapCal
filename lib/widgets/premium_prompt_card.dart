@@ -32,7 +32,12 @@ class PremiumPromptCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(settingsProvider).valueOrNull?.isPro == true) {
+    // Every upsell card in the app renders through here, so this is the one
+    // place worth being strict: show it only when we positively know the user
+    // is not subscribed. `isPro == true` used to let the card through while
+    // status was still loading, which put "Unlock Pro" in front of paying
+    // users on cold start and for a moment after every refresh.
+    if (!ref.watch(proAccessProvider).isFree) {
       return const SizedBox.shrink();
     }
 

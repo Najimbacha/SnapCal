@@ -26,6 +26,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   final _focus = FocusNode();
   final Set<int> _typedIndices = {};
   final List<dynamic> _messages = [];
+
+  /// Turns of history sent with each request. Six covers a normal
+  /// question-and-answer exchange without crowding the prompt.
+  static const int _historyTurns = 6;
   bool _isLoading = false;
 
   /// Set when a free user has spent their daily AI message. Drives the
@@ -98,9 +102,29 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     Object? error;
     int? statusCode;
     try {
+      // The last few turns, so a reply of "1" to a numbered question reads as
+      // an answer rather than a new topic. Capped because the whole prompt
+      // rides in one string the backend limits to 12,000 characters.
+      final prior = <dynamic>[..._messages];
+      // The current question was echoed into _messages a moment ago, and it is
+      // sent separately as USER QUESTION — leaving it here would repeat it.
+      if (prior.isNotEmpty &&
+          prior.last is Map &&
+          prior.last['type'] == 'user' &&
+          prior.last['content'] == query) {
+        prior.removeLast();
+      }
+      final history = <Map<String, String>>[
+        for (final m in prior.length > _historyTurns
+            ? prior.sublist(prior.length - _historyTurns)
+            : prior)
+          if (m is Map && m['content'] is String)
+            {'type': '${m['type']}', 'content': m['content'] as String},
+      ];
+
       result = await ref
           .read(assistantProvider.notifier)
-          .fetchRecommendations(query ?? '');
+          .fetchRecommendations(query ?? '', history: history);
     } catch (e) {
       error = e;
       if (e is DioException) statusCode = e.response?.statusCode;
@@ -890,12 +914,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
 
   Widget _buildInputBar(bool d) {
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        10,
-        16,
-        MediaQuery.of(context).viewInsets.bottom + 10,
-      ),
+      // No viewInsets here. Scaffold.resizeToAvoidBottomInset defaults to true,
+      // so the body has already been shrunk by the keyboard; adding the inset
+      // again padded this bar by a second keyboard height, which collapsed the
+      // Expanded message list to nothing and left the field pinned under the
+      // app bar above a screen of empty bar-coloured space. SafeArea takes
+      // care of the gesture bar when no keyboard is up.
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
         color: d ? const Color(0xFF09090B) : Colors.white,
         border: Border(

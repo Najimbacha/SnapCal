@@ -7,13 +7,25 @@ import 'upload_queue_service.dart';
 
 /// Enhanced Connectivity Service using connectivity_plus for stable network tracking.
 class ConnectivityService with ChangeNotifier {
+  /// Single shared instance.
+  ///
+  /// Every call site writes `ConnectivityService()`, and this was a plain
+  /// generative constructor: each of those allocated a fresh object with its
+  /// own never-cancelled `onConnectivityChanged` subscription, and reported
+  /// the optimistic `true` defaults below until its own async probe landed.
+  /// Listeners registered on one instance never heard about a state change
+  /// observed by another. One instance, one subscription, one answer.
+  static final ConnectivityService _instance = ConnectivityService._internal();
+
+  factory ConnectivityService() => _instance;
+
   bool _isOnline = true;
   bool _hasInternetAccess = true;
   DateTime? _lastReachabilityCheck;
   final Connectivity _connectivity = Connectivity();
   late StreamSubscription<List<ConnectivityResult>> _subscription;
 
-  ConnectivityService() {
+  ConnectivityService._internal() {
     _checkInitialStatus();
     _subscription = _connectivity.onConnectivityChanged.listen(
       _onConnectivityChanged,

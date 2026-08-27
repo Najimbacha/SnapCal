@@ -24,7 +24,9 @@ class SubscriptionService {
   bool _customerInfoListenerRegistered = false;
   Future<void>? _initFuture;
   EntitlementInfo? _currentEntitlement;
+  CustomerInfo? _currentCustomerInfo;
   Offering? _currentOffering;
+  String? _lastKnownUid;
 
   static const String _entitlementId = "pro";
   static const Set<String> _proProductIds = {
@@ -107,7 +109,7 @@ class SubscriptionService {
   bool get isPurchaseInFlight => _purchaseInFlight;
 
   Future<bool> hasActivePremiumEntitlement() async {
-    return _currentEntitlement?.isActive == true;
+    return _hasProAccess();
   }
 
   Future<bool> hasValidCurrentOffering() async {
@@ -119,6 +121,7 @@ class SubscriptionService {
 
     try {
       if (user != null) {
+        _lastKnownUid = user.uid;
         final result = await Purchases.logIn(
           user.uid,
         ).timeout(TimeoutPolicy.revenueCat);
@@ -127,10 +130,27 @@ class SubscriptionService {
         return;
       }
 
-      await _settingsRepository?.updateProStatus(false);
+      // `authStateChanges()` emits null in more cases than a real sign-out:
+      // during cold start before the persisted session is restored, and around
+      // token refresh failures. Acting on those wiped Pro locally *and* moved
+      // the device onto a fresh anonymous RevenueCat ID with no entitlement,
+      // so nothing could recover it. Wait for the emission to settle and
+      // confirm against `currentUser` before treating it as a sign-out.
+      if (_lastKnownUid != null) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+        if (FirebaseAuth.instance.currentUser != null) {
+          debugPrint("RevenueCat: ignoring transient null auth state");
+          return;
+        }
+      }
+
+      _lastKnownUid = null;
       final customerInfo = await Purchases.logOut().timeout(
         TimeoutPolicy.revenueCat,
       );
+      // Downgrade only once the store has actually released the identity. A
+      // failed logout must not leave the user stripped of Pro.
+      await _settingsRepository?.updateProStatus(false);
       await _processCustomerInfo(customerInfo);
     } catch (e) {
       debugPrint("RevenueCat identity sync warning: $e");
@@ -153,6 +173,7 @@ class SubscriptionService {
   }
 
   Future<void> _processCustomerInfo(CustomerInfo customerInfo) async {
+    _currentCustomerInfo = customerInfo;
     _currentEntitlement = customerInfo.entitlements.all[_entitlementId];
     debugPrint("RevenueCat Customer ID: ${customerInfo.originalAppUserId}");
     debugPrint(
@@ -167,8 +188,13 @@ class SubscriptionService {
     debugPrint("🏆 Server verified Pro Active: $backendActive");
   }
 
-  // ignore: unused_element
-  bool _hasProAccess(CustomerInfo customerInfo) {
+  /// Whether the cached [CustomerInfo] carries Pro access, by any of the three
+  /// signals the store gives us: the configured entitlement, any other active
+  /// entitlement, or an active subscription on a known Pro product.
+  bool _hasProAccess([CustomerInfo? info]) {
+    final customerInfo = info ?? _currentCustomerInfo;
+    if (customerInfo == null) return _currentEntitlement?.isActive == true;
+
     final configuredEntitlementActive =
         customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
     if (configuredEntitlementActive) return true;
@@ -326,20 +352,48 @@ class SubscriptionService {
     return refreshBackendPremiumStatus();
   }
 
+  /// Reconciles Pro status against the backend, without ever letting a
+  /// negative or failed answer override a live store entitlement.
+  ///
+  /// `subscription/current` is written by the RevenueCat webhook, so a late,
+  /// retried or misconfigured webhook makes the backend say `isActive: false`
+  /// for someone who has genuinely paid. The store is the payment authority;
+  /// the backend is its mirror. Only the store itself may take Pro away.
   Future<bool> refreshBackendPremiumStatus() async {
+    final storeSaysActive = hasLocalEntitlement;
+
     try {
       final response = await ApiClient.dio
           .get('${ConfigService().backendProxyUrl}/api/premium-status')
           .timeout(TimeoutPolicy.revenueCat);
-      final isActive =
+      final serverSaysActive =
           response.data is Map && response.data['isActive'] == true;
-      await _settingsRepository?.updateProStatus(isActive);
-      return isActive;
+
+      final effective = serverSaysActive || storeSaysActive;
+      if (!serverSaysActive && storeSaysActive) {
+        debugPrint(
+          "⚠️ Backend reports inactive while the store entitlement is live — "
+          "keeping Pro. Check the RevenueCat webhook.",
+        );
+      }
+      await _settingsRepository?.updateProStatus(effective);
+      return effective;
     } catch (e) {
       debugPrint("Backend premium status refresh failed: $e");
+      if (storeSaysActive) {
+        await _settingsRepository?.updateProStatus(true);
+        return true;
+      }
+      // Unreachable backend is not evidence of anything. Leave the stored
+      // value alone rather than guessing.
       return _settingsRepository?.isPro() ?? false;
     }
   }
+
+  /// Whether the device is holding an active entitlement, according to the
+  /// store SDK itself. This is the check `_hasProAccess` was written for and
+  /// then never wired up.
+  bool get hasLocalEntitlement => _hasProAccess();
 
   void _scheduleDelayedEntitlementVerification() {
     unawaited(

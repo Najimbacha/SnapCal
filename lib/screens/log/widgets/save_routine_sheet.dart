@@ -78,7 +78,7 @@ class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+    final isPro = ref.watch(effectiveIsProProvider);
     final templateNotifier = ref.watch(templatesProvider.notifier);
 
     final canAdd = templateNotifier.canAddTemplate(isPro);

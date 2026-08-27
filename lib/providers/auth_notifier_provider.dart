@@ -10,6 +10,7 @@ import '../core/network/api_client.dart';
 import '../core/resilience/timeout_policy.dart';
 import '../core/services/config_service.dart';
 import '../core/services/session_cleanup_service.dart';
+import '../data/services/scan_gate_service.dart';
 import '../data/services/subscription_service.dart';
 
 part 'auth_notifier_provider.g.dart';
@@ -62,6 +63,14 @@ class AuthNotifier extends _$AuthNotifier {
     }
 
     await FirebaseAuth.instance.signInWithCredential(credential);
+
+    // Quota keys are UID-scoped, so a switch would otherwise hand the user a
+    // fresh set of free scans. Carry the anonymous counters across.
+    final newUid = FirebaseAuth.instance.currentUser?.uid;
+    if (newUid != null) {
+      await ScanGateService().migrateScopeTo(newUid);
+    }
+
     unawaited(
       _reportStrandedEntitlementIfNeeded(anonymousUser.uid, previousUidToken),
     );

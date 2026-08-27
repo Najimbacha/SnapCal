@@ -22,6 +22,7 @@ import '../../data/services/barcode_service.dart';
 import '../../data/services/subscription_service.dart';
 import '../../data/services/scan_gate_service.dart';
 import '../../data/services/premium_gate_service.dart';
+import '../../data/services/promotional_paywall_service.dart';
 import '../../data/services/sync_queue_service.dart';
 import '../../data/services/upload_queue_service.dart';
 import '../../data/services/fcm_service.dart';
@@ -86,6 +87,10 @@ class AppInitializer {
       _runOptionalBackgroundService(
         'Premium gate init',
         PremiumGateService().init,
+      ),
+      _runOptionalBackgroundService(
+        'Promotional paywall init',
+        PromotionalPaywallService.instance().init,
       ),
       _runOptionalBackgroundService('Sync queue init', SyncQueueService().init),
       _runOptionalBackgroundService(

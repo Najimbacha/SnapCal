@@ -27,7 +27,7 @@ class NutritionReportView extends StatelessWidget {
             child: AppSectionSkeleton(rows: 3),
           );
         }
-        final isPro = settings.valueOrNull?.isPro ?? false;
+        final isPro = ref.watch(effectiveIsProProvider);
         return SingleChildScrollView(
           padding: EdgeInsets.only(top: 16, bottom: 40),
           child: Column(

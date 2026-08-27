@@ -17,7 +17,7 @@ class NutritionGoalsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+    final isPro = ref.watch(effectiveIsProProvider);
     return AppPageScaffold(
       title: l10n.settings_nutrition_goals_title,
       scrollable: true,

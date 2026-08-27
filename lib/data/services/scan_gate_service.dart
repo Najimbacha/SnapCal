@@ -25,6 +25,10 @@ class ScanGateService {
   static const String _lastPeriodKey = 'scanGate_lastMonth';
   static const int _freeTierLimit = 3;
 
+  /// The free monthly allowance, before bonus scans. Read this instead of
+  /// re-deriving the number elsewhere.
+  static int get freeTierLimit => _freeTierLimit;
+
   Future<void> init() async {
     if (_initialized) return;
     try {
@@ -34,6 +38,37 @@ class ScanGateService {
     } catch (e) {
       debugPrint('❌ ScanGateService.init() failed: $e');
     }
+  }
+
+  /// Carries the anonymous session's counters over to [uid].
+  ///
+  /// Quota keys are namespaced by Firebase UID, and the app signs users in
+  /// anonymously at launch — so signing in with Google produced a fresh UID
+  /// and a fresh, empty quota. Three free scans became six. Call this on
+  /// sign-in, before the new scope is used.
+  Future<void> migrateScopeTo(String uid) async {
+    if (!_ready()) return;
+    final prefs = _prefs!;
+    final monthKey = utcMonthKey(DateTime.now());
+
+    final fromCount = prefs.getInt('scanCount_$monthKey') ?? 0;
+    final fromBonus = prefs.getInt(_bonusScansKey) ?? 0;
+    if (fromCount == 0 && fromBonus == 0) return;
+
+    final toCountKey = '$uid:scanCount_$monthKey';
+    final toBonusKey = '$uid:$_bonusScansKey';
+
+    // Take the higher count so a migration can never hand back free scans.
+    final merged = (prefs.getInt(toCountKey) ?? 0);
+    await prefs.setInt(toCountKey, fromCount > merged ? fromCount : merged);
+    if (fromBonus > (prefs.getInt(toBonusKey) ?? 0)) {
+      await prefs.setInt(toBonusKey, fromBonus);
+    }
+    await prefs.setString('$uid:$_lastPeriodKey', monthKey);
+
+    await prefs.remove('scanCount_$monthKey');
+    await prefs.remove(_bonusScansKey);
+    debugPrint('🔀 ScanGateService: migrated anonymous quota into $uid');
   }
 
   bool _ready() {

@@ -39,8 +39,7 @@ class AccountScreen extends ConsumerWidget {
             children: [
               Consumer(
                 builder: (context, ref, _) {
-                  final isPro =
-                      ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+                  final isPro = ref.watch(effectiveIsProProvider);
                   return SettingsRow(
                     icon: LucideIcons.crown,
                     title: l10n.settings_subscription,

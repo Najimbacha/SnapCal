@@ -175,7 +175,7 @@ class HealthMetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer(
       builder: (context, ref, _) {
-        final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+        final isPro = ref.watch(effectiveIsProProvider);
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final textColor = Theme.of(context).colorScheme.onSurface;
         final accent = _metricAccentFor(context, data.type);

@@ -9,8 +9,20 @@ import '../models/user_settings.dart';
 import '../../core/constants/app_constants.dart';
 import '../services/sync_queue_service.dart';
 
-/// Repository for managing user settings in Hive and Firestore
+/// Repository for managing user settings in Hive and Firestore.
+///
+/// Deliberately a singleton. Every instance owns its own broadcast
+/// [StreamController], so a second instance would emit settings changes that
+/// no widget is listening to: `SubscriptionService` writes Pro status through
+/// the instance built in `AppInitializer`, while `settingsProvider` watches
+/// the one built by `settingsRepositoryProvider`. When those were two objects,
+/// a completed purchase updated Hive but never reached the UI until the app
+/// was relaunched. One instance, one stream, one source of truth.
 class SettingsRepository {
+  static final SettingsRepository _instance = SettingsRepository._internal();
+  factory SettingsRepository() => _instance;
+  SettingsRepository._internal();
+
   Box<UserSettings>? _settingsBox;
   final _settingsController = StreamController<UserSettings>.broadcast();
   FirebaseFirestore? _firestore;
@@ -149,20 +161,41 @@ class SettingsRepository {
 
       final appSettings = docs[0].data() ?? const <String, dynamic>{};
       final profile = docs[1].data() ?? const <String, dynamic>{};
-      final subscription = docs[2].data() ?? const <String, dynamic>{};
+      final subscriptionSnap = docs[2];
       final legacySettings = docs[3].data()?['settings'];
       if (appSettings.isNotEmpty ||
           profile.isNotEmpty ||
           legacySettings is Map<String, dynamic>) {
-        final cloudSettings = UserSettings.fromJson({
+        final localSettings = getSettings();
+
+        // Field-wise merge, not wholesale replacement.
+        //
+        // The two upload payloads do not carry every field (recommendation
+        // copy, plan pace, dietary notes, ...). Building the merged object
+        // from cloud data alone meant every absent key fell back to its
+        // default and then overwrote a perfectly good local value — silent
+        // data loss on every sign-in. Local values are the base; the cloud
+        // only overrides keys it actually has.
+        final cloudJson = <String, dynamic>{
           if (legacySettings is Map<String, dynamic>) ...legacySettings,
           ...profile,
           ...appSettings,
-        });
-        final localSettings = getSettings();
-        final serverPro = subscription['isActive'] == true;
+        }..removeWhere((_, value) => value == null);
 
-        final mergedSettings = cloudSettings.copyWith(isPro: serverPro);
+        // `isPro` is server-owned, but "document not found" is not the same
+        // answer as "not subscribed". A missing subscription doc (webhook
+        // lag, first launch after purchase) must leave Pro exactly as it is.
+        final subscriptionData = subscriptionSnap.data();
+        final serverPro =
+            subscriptionSnap.exists
+                ? subscriptionData != null &&
+                    subscriptionData['isActive'] == true
+                : localSettings.isPro;
+
+        final mergedSettings = UserSettings.fromJson({
+          ...localSettings.toJson(),
+          ...cloudJson,
+        }).copyWith(isPro: serverPro);
 
         // Compare merged settings with local settings using mapEquals to avoid redundant writes
         if (!mapEquals(mergedSettings.toJson(), localSettings.toJson())) {
@@ -242,6 +275,9 @@ class SettingsRepository {
       'dailyMotivationEnabled': settings.dailyMotivationEnabled,
       'goalAlertsEnabled': settings.goalAlertsEnabled,
       'foodRemindersEnabled': settings.foodRemindersEnabled,
+      'recommendationInsight': settings.recommendationInsight,
+      'recommendationTip': settings.recommendationTip,
+      'recommendationSafetyNote': settings.recommendationSafetyNote,
       'fcmToken': settings.fcmToken,
       'lastFoodReminderDate': settings.lastFoodReminderDate,
       'currentStreak': settings.currentStreak,
@@ -260,6 +296,11 @@ class SettingsRepository {
     return {
       'age': settings.age,
       'height': settings.height,
+      // Written under its own name. This used to be uploaded as `weight`
+      // while `fromJson` read `startingWeight`, so the baseline never made it
+      // back down and every cloud pull reset it to null. `weight` is still
+      // written for one release so older clients keep reading something.
+      'startingWeight': settings.startingWeight,
       'weight': settings.startingWeight,
       'targetWeight': settings.targetWeight,
       'dailyCalorieGoal': settings.dailyCalorieGoal,
@@ -269,8 +310,12 @@ class SettingsRepository {
       'gender': settings.gender,
       'activityLevel': settings.activityLevel,
       'goalMode': settings.goalMode,
+      'goalTimelineMonths': settings.goalTimelineMonths,
+      'weeklyRateKg': settings.weeklyRateKg,
       'dietaryRestriction': settings.dietaryRestriction,
       'cuisinePreference': settings.cuisinePreference,
+      'foodDislikes': settings.foodDislikes,
+      'medicalNotes': settings.medicalNotes,
       'mealsPerDay': settings.mealsPerDay,
       'updatedAt': DateTime.now().millisecondsSinceEpoch,
     };

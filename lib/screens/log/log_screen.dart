@@ -13,8 +13,11 @@ import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
+import '../../data/models/water_log.dart';
 import '../../providers/activity_provider.dart';
+import '../../providers/log_metrics_preferences.dart';
 import '../../providers/meal_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
@@ -56,7 +59,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       dayCarbs += meal.macros.carbs;
       dayFat += meal.macros.fat;
     }
-    final isPro = settings.valueOrNull?.isPro ?? false;
+    final isPro = ref.watch(effectiveIsProProvider);
     final l10n = AppLocalizations.of(context)!;
     final summaries = _buildDailySummaries();
     final dashboardCards = _buildDashboardCards(
@@ -105,7 +108,14 @@ class _LogScreenState extends ConsumerState<LogScreen> {
           HealthMetricDashboard(
             title: l10n.log_key_metrics,
             actionLabel: l10n.log_customize,
-            cards: isPro ? dashboardCards : dashboardCards.take(4).toList(),
+            cards:
+                (isPro ? dashboardCards : dashboardCards.take(4).toList())
+                    .where(
+                      (card) => ref
+                          .watch(visibleLogMetricsProvider)
+                          .contains(card.type),
+                    )
+                    .toList(),
             onMetricTap: (type) {
               if (type == LogMetricType.water) {
                 showHydrationSheet(context);
@@ -202,8 +212,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
   }
 
   List<DailySummary> _buildDailySummaries() {
-    final settings = ref.watch(settingsProvider);
-    final isPro = settings.valueOrNull?.isPro ?? false;
+    final isPro = ref.watch(effectiveIsProProvider);
     final now = DateTime.now();
 
     final dayCount = isPro ? 90 : 14;
@@ -226,17 +235,25 @@ class _LogScreenState extends ConsumerState<LogScreen> {
   }) {
     final settings = ref.watch(settingsProvider);
     final s = settings.valueOrNull ?? UserSettings.defaults();
-    final meals = <dynamic>[];
+    // Real per-day data from the repositories. The old implementation iterated
+    // a hardcoded empty list, so calories/water/macros were pinned to zero on
+    // every card no matter what was logged.
+    final mealRepo = ref.watch(mealRepositoryProvider).valueOrNull;
+    final waterRepo = ref.watch(waterRepositoryProvider).valueOrNull;
+    final meals = mealRepo?.getMealsByDate(dateString) ?? const <Meal>[];
     var calories = 0;
     var protein = 0;
     var carbs = 0;
     var fat = 0;
     for (final meal in meals) {
-      calories += (meal.calories as int);
-      protein += (meal.macros.protein as int);
-      carbs += (meal.macros.carbs as int);
-      fat += (meal.macros.fat as int);
+      calories += meal.calories;
+      protein += meal.macros.protein;
+      carbs += meal.macros.carbs;
+      fat += meal.macros.fat;
     }
+    final waterMl = (waterRepo?.getWaterByDate(dateString) ??
+            const <WaterLog>[])
+        .fold<int>(0, (sum, log) => sum + log.amountMl);
 
     return DailySummary(
       dateString: dateString,
@@ -248,7 +265,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       carbGoal: s.dailyCarbGoal,
       fat: fat,
       fatGoal: s.dailyFatGoal,
-      waterMl: 0,
+      waterMl: waterMl,
       waterGoal: ref.watch(waterProvider).valueOrNull?.goal ?? 2500,
       steps: steps,
       stepGoal: 10000,
@@ -640,22 +657,38 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
     final bg = isDark ? colorScheme.surfaceContainerHigh : Colors.white;
-    const accent = Color(0xFF009A92);
-    final isPro = ref.read(settingsProvider).valueOrNull?.isPro ?? false;
+    final accent = Theme.of(context).colorScheme.primary;
+    final isPro = ref.watch(effectiveIsProProvider);
+    final visible = ref.watch(visibleLogMetricsProvider);
 
     final allMetrics = [
       (
         l10n.log_metric_calories_intake,
-        'Calories',
         LucideIcons.utensils,
+        LogMetricType.calories,
         false,
       ),
-      (l10n.log_metric_energy_burned, 'Energy', LucideIcons.flame, false),
-      (l10n.log_metric_steps, 'Steps', LucideIcons.footprints, false),
-      (l10n.log_metric_water, 'Water', LucideIcons.droplets, false),
-      (l10n.log_metric_protein, 'Protein', LucideIcons.dumbbell, true),
-      (l10n.log_metric_carbs, 'Carbs', LucideIcons.wheat, true),
-      (l10n.log_metric_fat, 'Fat', LucideIcons.circle, true),
+      (
+        l10n.log_metric_energy_burned,
+        LucideIcons.flame,
+        LogMetricType.energy,
+        false,
+      ),
+      (
+        l10n.log_metric_steps,
+        LucideIcons.footprints,
+        LogMetricType.steps,
+        false,
+      ),
+      (l10n.log_metric_water, LucideIcons.droplets, LogMetricType.water, false),
+      (
+        l10n.log_metric_protein,
+        LucideIcons.dumbbell,
+        LogMetricType.protein,
+        true,
+      ),
+      (l10n.log_metric_carbs, LucideIcons.wheat, LogMetricType.carbs, true),
+      (l10n.log_metric_fat, LucideIcons.circle, LogMetricType.fat, true),
     ];
 
     return Container(
@@ -725,8 +758,12 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
           const SizedBox(height: 16),
           // Metric list
           ...allMetrics.map((item) {
+            final label = item.$1;
+            final icon = item.$2;
+            final type = item.$3;
             final isGated = item.$4;
             final isRowLocked = isGated && !isPro;
+            final isVisible = visible.contains(type);
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -738,13 +775,15 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                       PaywallEntryPoint.macroDetails,
                       featureName: 'customize_macros',
                     );
+                    return;
                   }
+                  ref.read(visibleLogMetricsProvider.notifier).toggle(type);
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 14,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
                     color:
@@ -766,7 +805,7 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                   child: Row(
                     children: [
                       Icon(
-                        item.$3,
+                        icon,
                         size: 18,
                         color:
                             isRowLocked
@@ -780,7 +819,7 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                         child: Row(
                           children: [
                             Text(
-                              item.$1,
+                              label,
                               style: AppTypography.titleMedium.copyWith(
                                 color:
                                     isDark
@@ -823,17 +862,21 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      Icon(
-                        isRowLocked
-                            ? LucideIcons.lock
-                            : LucideIcons.gripHorizontal,
-                        color:
-                            isRowLocked
-                                ? const Color(0xFFE29200)
-                                : (isDark ? Colors.white : Colors.black)
-                                    .withValues(alpha: 0.28),
-                        size: isRowLocked ? 16 : 22,
-                      ),
+                      if (isRowLocked)
+                        Icon(
+                          LucideIcons.lock,
+                          color: const Color(0xFFE29200),
+                          size: 16,
+                        )
+                      else
+                        Switch.adaptive(
+                          value: isVisible,
+                          activeThumbColor: accent,
+                          onChanged:
+                              (_) => ref
+                                  .read(visibleLogMetricsProvider.notifier)
+                                  .toggle(type),
+                        ),
                     ],
                   ),
                 ),

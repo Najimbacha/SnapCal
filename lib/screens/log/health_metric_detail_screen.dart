@@ -47,8 +47,7 @@ class _HealthMetricDetailScreenState
     final bg = isDark ? _minimalDarkBg : _minimalBg;
     final accent = _metricAccentFor(context, widget.metric);
     final isLockedMacro =
-        !(ref.watch(settingsProvider).valueOrNull?.isPro ?? false) &&
-        _isMacroMetric(widget.metric);
+        !ref.watch(effectiveIsProProvider) && _isMacroMetric(widget.metric);
 
     final overlayStyle =
         isDark
@@ -233,7 +232,7 @@ class _HealthMetricDetailScreenState
         ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
     final waterState =
         ref.watch(waterProvider).valueOrNull ?? const WaterState(todayTotal: 0);
-    final isPro = settingsVal.isPro;
+    final isPro = ref.watch(effectiveIsProProvider);
     final buckets = metricBucketsFor(_period, _anchor);
 
     final points = <MetricPoint>[];

@@ -211,6 +211,9 @@ class UserSettings extends HiveObject {
     bool? foodRemindersEnabled,
     String? lastFoodReminderDate,
     String? fcmToken,
+    // `copyWith(lastLoggedDate: null)` cannot clear the field — the `??`
+    // below reads it as "leave unchanged". Pass this to actually clear it.
+    bool clearLastLoggedDate = false,
   }) {
     return UserSettings(
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -219,7 +222,8 @@ class UserSettings extends HiveObject {
       dailyFatGoal: dailyFatGoal ?? this.dailyFatGoal,
       isPro: isPro ?? this.isPro,
       currentStreak: currentStreak ?? this.currentStreak,
-      lastLoggedDate: lastLoggedDate ?? this.lastLoggedDate,
+      lastLoggedDate:
+          clearLastLoggedDate ? null : (lastLoggedDate ?? this.lastLoggedDate),
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       mealRemindersEnabled: mealRemindersEnabled ?? this.mealRemindersEnabled,
       goalAlertsEnabled: goalAlertsEnabled ?? this.goalAlertsEnabled,
@@ -322,15 +326,21 @@ class UserSettings extends HiveObject {
       breakfastTime: json['breakfastTime'] as String? ?? '08:00',
       lunchTime: json['lunchTime'] as String? ?? '13:00',
       dinnerTime: json['dinnerTime'] as String? ?? '19:00',
-      height: json['height'] as double?,
-      targetWeight: json['targetWeight'] as double?,
+      // Firestore stores a whole number as an int, so `170 as double?` throws
+      // a TypeError and takes the whole settings sync down with it. Always
+      // widen through num.
+      height: (json['height'] as num?)?.toDouble(),
+      targetWeight: (json['targetWeight'] as num?)?.toDouble(),
       themeMode: json['themeMode'] as String? ?? 'system',
       onboardingComplete: json['onboardingComplete'] as bool? ?? false,
       age: json['age'] as int?,
       gender: json['gender'] as String?,
       activityLevel: json['activityLevel'] as String?,
       goalTimelineMonths: json['goalTimelineMonths'] as int?,
-      startingWeight: json['startingWeight'] as double?,
+      // `weight` is the legacy key older profile documents were written with.
+      startingWeight:
+          (json['startingWeight'] as num?)?.toDouble() ??
+          (json['weight'] as num?)?.toDouble(),
       weightUnit: json['weightUnit'] as String? ?? 'kg',
       heightUnit: json['heightUnit'] as String? ?? 'cm',
       goalMode: json['goalMode'] as String? ?? 'maintain',

@@ -5,6 +5,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/user_settings.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/services/scan_gate_service.dart';
+import '../data/services/pro_feature_service.dart';
+import '../data/services/subscription_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/notification_service.dart';
 import '../data/services/fcm_service.dart';
@@ -26,17 +28,78 @@ class DebugProOverride extends _$DebugProOverride {
   void disable() => state = false;
 }
 
+/// Whether Pro status is known yet, and what it is.
+///
+/// The third state is the point. Reading `settings.valueOrNull?.isPro ?? false`
+/// answers "free" for a user whose settings simply have not loaded — so a Pro
+/// user was shown upgrade prompts during every cold start, and for a moment
+/// after every provider refresh. "Not loaded" and "not subscribed" are
+/// different answers and the UI has to be able to tell them apart.
+enum ProStatus { unknown, free, pro }
+
+/// The single answer to "what may this user do?".
+///
+/// Ask [can] for feature access and [shouldOfferUpgrade] before showing
+/// anything that sells Pro. Never branch on [isPro] alone to decide whether to
+/// show a paywall: that treats [ProStatus.unknown] as a free user.
+class ProAccess {
+  const ProAccess(this.status);
+
+  final ProStatus status;
+
+  /// True only when we know the user is subscribed.
+  bool get isPro => status == ProStatus.pro;
+
+  /// True only when we know the user is *not* subscribed.
+  bool get isFree => status == ProStatus.free;
+
+  /// Status has not resolved yet: show neither the feature nor the upsell.
+  bool get isUnknown => status == ProStatus.unknown;
+
+  /// Whether [feature] is unlocked, per [ProFeatureService].
+  bool can(ProFeature feature) =>
+      const ProFeatureService().canUse(feature, isPro: isPro);
+
+  /// Whether a paywall card, lock badge or upgrade prompt may be shown for
+  /// [feature]. False while status is unknown, by construction.
+  bool shouldOfferUpgrade(ProFeature feature) => isFree && !can(feature);
+
+  @override
+  bool operator ==(Object other) =>
+      other is ProAccess && other.status == status;
+
+  @override
+  int get hashCode => status.hashCode;
+}
+
+/// The one place Pro status is decided. Everything else reads this.
+@Riverpod(keepAlive: true)
+ProAccess proAccess(ProAccessRef ref) {
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  if (settings == null) return const ProAccess(ProStatus.unknown);
+
+  var isPro = settings.isPro;
+  if (kDebugMode && !isPro) {
+    isPro = ref.watch(debugProOverrideProvider);
+  }
+  return ProAccess(isPro ? ProStatus.pro : ProStatus.free);
+}
+
+/// Whether Pro status has resolved. Guard delayed upsells with this.
+@Riverpod(keepAlive: true)
+bool isProResolved(IsProResolvedRef ref) =>
+    !ref.watch(proAccessProvider).isUnknown;
+
 /// Combines real Pro status with debug override.
 /// In debug mode, the debug override can toggle Pro features on/off.
+///
+/// Kept as the plain-boolean view of [proAccessProvider] for the many call
+/// sites that only gate a feature (where "unknown" and "free" behave the same
+/// way — the feature stays locked until status resolves). Anything that *sells*
+/// Pro must read [proAccessProvider] instead.
 @Riverpod(keepAlive: true)
-bool effectiveIsPro(EffectiveIsProRef ref) {
-  final realPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
-  if (kDebugMode) {
-    final debugOverride = ref.watch(debugProOverrideProvider);
-    return realPro || debugOverride;
-  }
-  return realPro;
-}
+bool effectiveIsPro(EffectiveIsProRef ref) =>
+    ref.watch(proAccessProvider).isPro;
 
 @Riverpod(keepAlive: true)
 class Settings extends _$Settings {
@@ -46,8 +109,12 @@ class Settings extends _$Settings {
   @override
   Future<UserSettings> build() async {
     final repo = await ref.watch(settingsRepositoryProvider.future);
-    final settings = repo.getSettings();
-    _validateStreakOnStart(settings, repo);
+    // Use the streak repair's result. The write stays fire-and-forget (it
+    // reaches Firestore, which must not block first paint), but build() now
+    // returns the *repaired* object. It used to return the stale one, and the
+    // stream listener below was attached after the write, so the correction
+    // was dropped and the UI disagreed with Hive until the next settings save.
+    final settings = _validateStreakOnStart(repo.getSettings(), repo);
     _settingsSubscription = repo.settingsStream.listen((s) {
       state = AsyncData(s);
     });
@@ -63,15 +130,21 @@ class Settings extends _$Settings {
     return settings;
   }
 
-  void _validateStreakOnStart(UserSettings settings, SettingsRepository repo) {
+  UserSettings _validateStreakOnStart(
+    UserSettings settings,
+    SettingsRepository repo,
+  ) {
     final today = app_date.DateUtils.getTodayString();
     final yesterday = app_date.DateUtils.getPreviousDay(today);
     final lastLogged = settings.lastLoggedDate;
     if (lastLogged != null && lastLogged != today && lastLogged != yesterday) {
       if (settings.currentStreak > 0) {
-        repo.saveSettings(settings.copyWith(currentStreak: 0));
+        final repaired = settings.copyWith(currentStreak: 0);
+        unawaited(repo.saveSettings(repaired));
+        return repaired;
       }
     }
+    return settings;
   }
 
   void _onLifecycleChanged() {
@@ -96,6 +169,21 @@ class Settings extends _$Settings {
     final repo = await ref.read(settingsRepositoryProvider.future);
     await repo.saveSettings(updated);
     _syncNotifications(updated);
+  }
+
+  /// Re-reads Pro status from the store and the backend, and pushes the result
+  /// into state.
+  ///
+  /// Use this instead of `ref.invalidate(settingsProvider)` after a purchase.
+  /// Invalidating drops the provider back to `loading`, which makes every
+  /// consumer briefly see "unknown" — including, before this change, as
+  /// "free". This keeps the current value on screen and updates it in place.
+  Future<void> refreshProStatus() async {
+    final repo = await ref.read(settingsRepositoryProvider.future);
+    await SubscriptionService().verifyCurrentEntitlement();
+    // The repository stream is the normal path, but emit directly too so the
+    // update lands even if the listener has not been re-attached yet.
+    state = AsyncData(repo.getSettings());
   }
 
   void _syncNotifications(UserSettings s) {
@@ -389,8 +477,10 @@ class Settings extends _$Settings {
     final s = _data;
     if (s == null) return -1;
     if (_effectiveIsPro(s)) return -1;
-    final count = ScanGateService().getPeriodScanCount();
-    return (3 - count).clamp(0, 3);
+    // Ask the gate rather than re-deriving the number. This used to hardcode
+    // `3 - count`, ignoring bonus scans, so a user who had earned extras was
+    // told they had none left while canScan() happily allowed more.
+    return ScanGateService().getRemainingScans(false);
   }
 
   Future<void> updateCalorieGoal(int goal) async {
@@ -583,16 +673,38 @@ class Settings extends _$Settings {
     if (!wasLastMealOfDay) return;
     final s = _data;
     if (s == null) return;
-    if (s.lastLoggedDate == dateOfDeletedMeal) {
-      final newStreak = (s.currentStreak - 1).clamp(0, 9999);
-      final previousDay = app_date.DateUtils.getPreviousDay(dateOfDeletedMeal);
+    if (s.lastLoggedDate != dateOfDeletedMeal) return;
+
+    // Recompute from the meals that actually exist, rather than decrementing
+    // and rolling `lastLoggedDate` back a calendar day. The old version
+    // invented a logged day: delete today's only meal after a break and the
+    // app believed you had logged yesterday, so the next meal extended a
+    // streak that was never earned.
+    final repo = await ref.read(mealRepositoryProvider.future);
+    final loggedDays = repo.getAllMeals().map((m) => m.dateString).toSet();
+
+    if (loggedDays.isEmpty) {
       await _updateSettings(
-        s.copyWith(
-          currentStreak: newStreak,
-          lastLoggedDate: newStreak == 0 ? null : previousDay,
-        ),
+        s.copyWith(currentStreak: 0, clearLastLoggedDate: true),
       );
+      return;
     }
+
+    final sortedDays = loggedDays.toList()..sort();
+    final mostRecent = sortedDays.last;
+
+    var streak = 1;
+    var cursor = mostRecent;
+    while (true) {
+      final previous = app_date.DateUtils.getPreviousDay(cursor);
+      if (!loggedDays.contains(previous)) break;
+      streak++;
+      cursor = previous;
+    }
+
+    await _updateSettings(
+      s.copyWith(currentStreak: streak, lastLoggedDate: mostRecent),
+    );
   }
 
   Future<bool> recalculatePlan({required double currentWeightKg}) async {
