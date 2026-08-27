@@ -855,6 +855,15 @@ function clampInt(value, min, max) {
   return Math.max(min, Math.min(max, Math.round(parsed)));
 }
 
+// Output budget for image calls.
+//
+// This was 1024 (512 on Gemini). The v2 detector emits a JSON object per food,
+// so a full plate ran past the cap and the reply was cut mid-key — which
+// surfaced two different ways: `json-not-found` when the truncated text still
+// had content, and `empty-deepseek-response` when a reasoning model spent the
+// whole budget before emitting any. Both were the same bug.
+const AI_IMAGE_MAX_TOKENS = Number(process.env.AI_IMAGE_MAX_TOKENS) || 4096;
+
 async function callAiWithImage(base64Data, language, customPrompt = null, useV2 = false) {
   const systemPrompt = customPrompt || (useV2 ? getV2SystemPrompt(language) : getSystemPrompt(language));
   const providerKey = process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY;
@@ -878,16 +887,22 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
               ],
             }],
             temperature: 0.4,
-            max_tokens: 1024,
+            max_tokens: AI_IMAGE_MAX_TOKENS,
           },
           {
             headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
             timeout: 20000,
           },
         );
-        const content = response.data?.choices?.[0]?.message?.content;
+        const choice = response.data?.choices?.[0];
+        const content = choice?.message?.content;
         if (content) return stripThink(content);
-        throw new Error('empty-deepseek-response');
+        // A reasoning model that spends its whole budget thinking returns an
+        // empty content with finish_reason 'length'. Name it.
+        throw new Error(
+          `empty-deepseek-response (finish_reason=${choice?.finish_reason ?? 'unknown'}, `
+          + `reasoning_chars=${(choice?.message?.reasoning_content || '').length})`,
+        );
       } catch (err) {
         console.error(`DeepSeek vision scan failed (attempt ${attempt}/${maxRetries}):`, err.response?.data || err.message);
         if (process.env.DEEPSEEK_STRICT === 'true') {
@@ -911,7 +926,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
               ],
             }],
             temperature: 0.4,
-            max_tokens: 1024,
+            max_tokens: AI_IMAGE_MAX_TOKENS,
           },
           {
             headers: { Authorization: `Bearer ${providerKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
@@ -940,7 +955,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
               ],
             }],
             temperature: 0.4,
-            max_tokens: 1024,
+            max_tokens: AI_IMAGE_MAX_TOKENS,
           },
           {
             headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
@@ -958,7 +973,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
       const geminiKey = geminiApiKeys[(attempt - 1) % geminiApiKeys.length];
       try {
         const response = await axios.post(
-          `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_SCANNER_MODEL || 'gemini-2.0-flash'}:generateContent`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_SCANNER_MODEL || 'gemini-3.6-flash'}:generateContent`,
           {
             contents: [{
               parts: [
@@ -966,7 +981,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
                 { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
               ],
             }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 512 },
+            generationConfig: { temperature: 0.4, maxOutputTokens: AI_IMAGE_MAX_TOKENS },
           },
           { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey }, timeout: 15000 },
         );
@@ -1025,7 +1040,7 @@ async function callAiText(prompt, options = {}) {
   if (geminiApiKey) {
     try {
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-2.0-flash'}:generateContent`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-3.6-flash'}:generateContent`,
         {
           contents: [{ parts: [{ text: effectivePrompt }] }],
           generationConfig: {
@@ -1059,7 +1074,7 @@ async function callAiText(prompt, options = {}) {
       name: 'groq',
       key: process.env.GROQ_API_KEY,
       url: 'https://api.groq.com/openai/v1/chat/completions',
-      model: options.groqTextModel || process.env.GROQ_TEXT_MODEL || 'llama-3.3-70b-versatile',
+      model: options.groqTextModel || process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b',
     },
     {
       name: 'deepseek',
