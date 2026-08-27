@@ -1170,8 +1170,64 @@ app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'SnapCal Backend' });
 });
 
+// Rolling record of recent scan outcomes.
+//
+// The previous /health returned a hardcoded 'ok'. It proved Node was running,
+// which was never the question — it reported perfect health throughout a period
+// when every single scan was failing, which is why a total outage of the app's
+// core feature was found by a human trying it rather than by a monitor.
+const SCAN_WINDOW = Number(process.env.HEALTH_WINDOW) || 20;
+const scanOutcomes = [];
+let lastScanError = null;
+let lastScanSuccessAt = null;
+
+function recordScan(ok, detail) {
+  scanOutcomes.push(ok);
+  if (scanOutcomes.length > SCAN_WINDOW) scanOutcomes.shift();
+  if (ok) {
+    lastScanSuccessAt = new Date().toISOString();
+  } else {
+    lastScanError = { at: new Date().toISOString(), detail: String(detail || '').slice(0, 300) };
+  }
+}
+
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  const attempts = scanOutcomes.length;
+  const failures = scanOutcomes.filter(ok => !ok).length;
+  const failureRate = attempts > 0 ? failures / attempts : 0;
+
+  // Which providers could serve a scan. Names and booleans only — never keys.
+  const providerKeys = {
+    groq: Boolean(process.env.GROQ_API_KEY),
+    gemini: Boolean(process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY),
+    deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
+    openrouter: Boolean(process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY),
+  };
+  const configured = Object.entries(providerKeys).filter(([, v]) => v).map(([k]) => k);
+
+  // Unhealthy on a sustained failure rate, or with nothing able to serve a
+  // scan at all. A monitor watching for non-200 pages you on either — which is
+  // the whole point of the endpoint.
+  const threshold = Number(process.env.HEALTH_FAIL_THRESHOLD) || 0.5;
+  const degraded = configured.length === 0 || (attempts >= 3 && failureRate > threshold);
+
+  res.status(degraded ? 503 : 200).json({
+    status: degraded ? 'degraded' : 'ok',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime()),
+    scan: {
+      pipeline: (process.env.SCAN_PIPELINE || SCAN_PIPELINE),
+      recentAttempts: attempts,
+      recentFailures: failures,
+      failureRate: Number(failureRate.toFixed(2)),
+      lastSuccessAt: lastScanSuccessAt,
+      lastError: lastScanError,
+    },
+    providers: {
+      order: (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,gemini,deepseek,openrouter').split(',').map(p => p.trim()),
+      configured,
+    },
+  });
 });
 
 app.use('/api', apiLimiter);
@@ -1570,6 +1626,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
       }
       const result = enrichScanResults(foods);
 
+      recordScan(true);
       console.log(JSON.stringify({ event: 'scan.success.v2', pipeline: 'v2', status: 200 }));
       const matchedCount = result.items.filter(i => i.matched).length;
       console.error(`Scan v2: ${result.items.length} foods (${matchedCount} matched, ${result.items.length - matchedCount} unmatched)`);
@@ -1587,6 +1644,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
       fat: acc.fat + item.fat,
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
+    recordScan(true);
     console.log(JSON.stringify({ event: 'scan.success', pipeline: 'v1', status: 200 }));
     console.error('Scan items:', JSON.stringify(nutrition.items.map(i => ({ food_name: i.food_name, calories: i.calories }))));
 
@@ -1594,6 +1652,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
   } catch (error) {
     // The quota was consumed up-front; give it back when the scan itself
     // failed so users are not charged for our provider outages.
+    recordScan(false, error.message);
     await refundScanQuota(uid, claim.monthKey);
     console.error(
       JSON.stringify({ event: 'scan.error', status: 502, error: error.message })
