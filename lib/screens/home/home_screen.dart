@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 // ignore_for_file: unused_element
@@ -6,20 +7,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/meal_slot.dart';
+import '../../data/models/promo_offer.dart';
 import 'widgets/smart_meal_planner_card.dart';
 import 'widgets/activity_health_connect_sheet.dart';
 import '../log/widgets/hydration_sheet.dart';
 import '../../data/services/premium_conversion_service.dart';
+import '../../data/services/promotional_paywall_service.dart';
 import '../../data/services/pro_feature_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/meal_provider.dart';
+import '../../providers/promo_offer_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
@@ -458,30 +463,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     // Smart Premium Encouragement (Aha Moment)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) {
-          final todaysMealsAsync = ref.read(todaysMealsProvider);
-          final hasAiMeal = (todaysMealsAsync.valueOrNull ?? []).any(
-            (m) => m.scanSource == 'ai_scan',
-          );
-
-          if (hasAiMeal) {
-            final l10n = AppLocalizations.of(context)!;
-            PremiumPromptModal.show(
-              context,
-              ref,
-              title: l10n.aha_prompt_title,
-              subtitle: l10n.aha_prompt_subtitle,
-              buttonText: l10n.aha_prompt_btn,
-              icon: LucideIcons.sparkles,
-              entryPoint: PaywallEntryPoint.homeAha,
-              featureName: 'first_ai_scan',
-              hasCompletedValueAction: true,
-            );
-          }
-        }
-      });
+      Future.delayed(const Duration(milliseconds: 1500), _maybePromptUpgrade);
     });
+  }
+
+  /// Runs the two upgrade prompts, in priority order, once Pro status is known.
+  ///
+  /// `PremiumPromptModal.show` settles the status itself before deciding, so a
+  /// paying user is never shown either of these — which is what used to happen
+  /// when this fired 1.5s after init, before settings had loaded.
+  Future<void> _maybePromptUpgrade() async {
+    if (!mounted) return;
+
+    final todaysMealsAsync = ref.read(todaysMealsProvider);
+    final hasAiMeal = (todaysMealsAsync.valueOrNull ?? []).any(
+      (m) => m.scanSource == 'ai_scan',
+    );
+
+    if (hasAiMeal) {
+      final l10n = AppLocalizations.of(context)!;
+      await PremiumPromptModal.show(
+        context,
+        ref,
+        title: l10n.aha_prompt_title,
+        subtitle: l10n.aha_prompt_subtitle,
+        buttonText: l10n.aha_prompt_btn,
+        icon: LucideIcons.sparkles,
+        entryPoint: PaywallEntryPoint.homeAha,
+        featureName: 'first_ai_scan',
+        hasCompletedValueAction: true,
+      );
+      return;
+    }
+
+    // The promotional paywall: the well-throttled upsell for engaged users
+    // (4 opens, 2 distinct days, 3 logged meals, 7-day cooldown, 3 lifetime
+    // displays). All of that logic existed but nothing ever called it.
+    if (!mounted) return;
+    final access = ref.read(proAccessProvider);
+    if (!access.isFree) return;
+
+    final settings = ref.read(settingsProvider).valueOrNull;
+    final promo = PromotionalPaywallService.instance();
+    final eligible = await promo.canShowPromotionalPaywall(
+      isPremium: access.isPro,
+      onboardingComplete: settings?.onboardingComplete ?? false,
+      homeLoaded: true,
+    );
+    if (!eligible || !mounted) return;
+
+    await promo.recordPromotionalPaywallShown();
+    if (!mounted) return;
+    await PremiumConversionService().openPaywall(
+      context,
+      PaywallEntryPoint.homeAha,
+      featureName: 'promotional',
+    );
   }
 
   @override
@@ -515,8 +552,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     final activitySummary = ref.watch(activityProvider).valueOrNull;
     final activitySteps = activitySummary?.steps ?? 0;
+    // ActivitySummary carries no step goal and no source provides one; the
+    // app-wide constant is the single source of truth until a real goal exists.
+    final activityStepGoal = 10000;
     final activeCalories = activitySummary?.activeCalories.round() ?? 0;
-    final healthConnected = activitySummary?.healthConnected ?? false;
 
     final waterState = ref.watch(waterProvider).valueOrNull;
     final waterTotal = waterState?.todayTotal ?? 0;
@@ -567,6 +606,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   remaining: remaining,
                   mealCount: mealCount,
                   progress: calorieProgress,
+                  // Pro's goal grows with movement (see adjustedGoal above).
+                  // That was folded silently into one number, so the feature
+                  // people pay for looked like an arbitrary target.
+                  activityBonus: isPro ? activeCalories : 0,
                 ),
           ),
           const SizedBox(height: 2),
@@ -592,14 +635,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               waterTotal: waterTotal,
               waterGoal: waterGoal,
               steps: activitySteps,
+              stepGoal: activityStepGoal,
               burnedCalories: activeCalories,
               caloriesEstimated:
                   activitySummary?.activeCaloriesEstimated ?? true,
-              stepsUnit: 'steps',
-              activityLive: healthConnected,
               onWaterTap: () => showHydrationSheet(context),
               onWaterAdd: () => _addWater(ref),
-              onWaterRemove: () => _removeWater(ref),
+              onWaterUndo: () => _removeWater(ref),
               onActivityTap: () => showActivityHealthConnectSheet(context),
             ),
           ),
@@ -676,12 +718,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _addWater(WidgetRef ref) {
     HapticFeedback.lightImpact();
-    ref.read(waterProvider.notifier).addWater(250);
+    ref.read(waterProvider.notifier).addWater(_waterQuickAddMl);
   }
 
   void _removeWater(WidgetRef ref) {
     HapticFeedback.lightImpact();
-    ref.read(waterProvider.notifier).removeWater(250);
+    ref.read(waterProvider.notifier).removeWater(_waterQuickAddMl);
   }
 }
 
@@ -813,30 +855,11 @@ class _MinimalHomeTopBar extends ConsumerWidget {
             ),
             const SizedBox(width: 14),
           ],
-          // Pro Badge / Go Pro
-          AppScaleTap(
-            onTap: isPro ? onSettingsTap : onProTap,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isPro ? LucideIcons.gem : LucideIcons.crown,
-                  color: isPro ? AppColors.success : AppColors.premiumGold,
-                  size: 14,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isPro
-                      ? AppLocalizations.of(context)!.home_pro_badge
-                      : AppLocalizations.of(context)!.home_go_pro,
-                  style: TextStyle(
-                    color: isPro ? AppColors.success : AppColors.premiumGold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
+          // Pro badge, or the live offer when a campaign is running.
+          _HeaderProAffordance(
+            isPro: isPro,
+            onProTap: onProTap,
+            onSettingsTap: onSettingsTap,
           ),
           const SizedBox(width: 14),
           // Settings button
@@ -861,12 +884,16 @@ class _MinimalCalorieHero extends StatelessWidget {
   final int mealCount;
   final double progress;
 
+  /// Active calories folded into [goal]. Zero when there is no bonus to show.
+  final int activityBonus;
+
   const _MinimalCalorieHero({
     required this.consumed,
     required this.goal,
     required this.remaining,
     required this.mealCount,
     required this.progress,
+    this.activityBonus = 0,
   });
 
   @override
@@ -907,7 +934,7 @@ class _MinimalCalorieHero extends StatelessWidget {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        _formatNumber(remaining.abs()),
+                        _formatNumber(context, remaining.abs()),
                         style: AppTypography.displayLarge.copyWith(
                           color: ink,
                           fontSize: 40,
@@ -932,7 +959,12 @@ class _MinimalCalorieHero extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        if (activityBonus > 0) ...[
+          const SizedBox(height: 12),
+          _ActivityBonusPill(kcal: activityBonus, isDark: isDark),
+          const SizedBox(height: 8),
+        ] else
+          const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Row(
@@ -940,7 +972,7 @@ class _MinimalCalorieHero extends StatelessWidget {
               Expanded(
                 child: _MinimalHeroStat(
                   label: l10n.home_calories_eaten,
-                  value: _formatNumber(consumed),
+                  value: _formatNumber(context, consumed),
                   unit: 'kcal',
                 ),
               ),
@@ -948,7 +980,7 @@ class _MinimalCalorieHero extends StatelessWidget {
               Expanded(
                 child: _MinimalHeroStat(
                   label: l10n.home_metric_goal,
-                  value: _formatNumber(goal),
+                  value: _formatNumber(context, goal),
                   unit: 'kcal',
                   valueColor: _minimalGreenText,
                 ),
@@ -957,7 +989,7 @@ class _MinimalCalorieHero extends StatelessWidget {
               Expanded(
                 child: _MinimalHeroStat(
                   label: l10n.home_metric_meals,
-                  value: _formatNumber(mealCount),
+                  value: _formatNumber(context, mealCount),
                   unit: l10n.log_entries.toLowerCase(),
                 ),
               ),
@@ -967,6 +999,55 @@ class _MinimalCalorieHero extends StatelessWidget {
         const SizedBox(height: 10),
         const _MinimalSectionDivider(),
       ],
+    );
+  }
+}
+
+/// Names the calories movement added to today's goal.
+///
+/// Without it the Pro goal just reads as a different number from the free one
+/// and the feature is invisible -- which is the whole point of showing it.
+class _ActivityBonusPill extends StatelessWidget {
+  const _ActivityBonusPill({required this.kcal, required this.isDark});
+
+  final int kcal;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.10),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              LucideIcons.footprints,
+              size: 12,
+              color: isDark ? _minimalGreen : _minimalGreenText,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                l10n.home_goal_activity_bonus(kcal),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.labelSmall.copyWith(
+                  color: isDark ? _minimalGreen : _minimalGreenText,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1070,9 +1151,11 @@ class _MinimalSectionDivider extends StatelessWidget {
 
 /// Macros for the home dashboard.
 ///
-/// Pro sees grams against daily targets. Free sees the real composition of
-/// what they actually ate today — never the fabricated 65/50/40 bars this
-/// card used to draw, and never a blurred number.
+/// Both tiers get the same three ring cards, in the same place, at the same
+/// size. Pro shows grams inside each ring against the daily target. Free sees
+/// its own real progress drawn as a silhouette with the number withheld, plus
+/// one upgrade affordance — so upgrading swaps a lock for a number in place
+/// and nothing on the screen moves.
 class _MinimalMacroSection extends StatelessWidget {
   final Macros macros;
   final int proteinGoal;
@@ -1091,8 +1174,12 @@ class _MinimalMacroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final showGrams = const ProFeatureService().canSeeMacros(isPro: isPro);
+    // Nothing logged yet: three empty rings each captioned "Pro" is an upgrade
+    // prompt for data that does not exist — it reads as a disabled control,
+    // and it spends the paywall ask before the user has seen anything worth
+    // paying for. The section keeps its place and says what to do instead.
+    final empty = macros.protein <= 0 && macros.carbs <= 0 && macros.fat <= 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
@@ -1101,55 +1188,83 @@ class _MinimalMacroSection extends StatelessWidget {
         children: [
           _MinimalSectionLabel(text: l10n.home_section_macros_today),
           const SizedBox(height: 12),
-          if (isPro)
-            MacroDisplay(
-              macros: macros,
-              proteinGoal: proteinGoal,
-              carbGoal: carbGoal,
-              fatGoal: fatGoal,
-              variant: MacroDisplayVariant.compact,
-            )
+          if (empty)
+            _MacroEmptyPrompt(text: l10n.home_macro_empty)
           else
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
-              decoration: BoxDecoration(
-                color:
-                    isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color:
-                      isDark
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : const Color(0xFFE8E4DC),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: MacroDisplay(
-                macros: macros,
-                proteinGoal: proteinGoal,
-                carbGoal: carbGoal,
-                fatGoal: fatGoal,
-                variant: MacroDisplayVariant.composition,
-                showGrams: showGrams,
-                showGoals: false,
-                upgradeLabel: showGrams ? null : l10n.macro_unlock_card_title,
-                onUpgradeTap:
-                    () => PremiumConversionService().openPaywall(
+            MacroDisplay(
+            macros: macros,
+            proteinGoal: proteinGoal,
+            carbGoal: carbGoal,
+            fatGoal: fatGoal,
+            variant: MacroDisplayVariant.rings,
+            showGrams: showGrams,
+            showGoals: showGrams,
+            onUpgradeTap:
+                showGrams
+                    ? null
+                    : () => PremiumConversionService().openPaywall(
                       context,
                       PaywallEntryPoint.macroDetails,
                       featureName: 'home_macros',
                     ),
-              ),
-            ),
+          ),
           const SizedBox(height: 14),
           const _MinimalSectionDivider(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Holds the macro section's place before the first meal of the day.
+///
+/// Same height and shell as the ring row it stands in for, so the dashboard
+/// does not jump when the first meal lands. It asks for the action that fills
+/// the section rather than for money.
+class _MacroEmptyPrompt extends StatelessWidget {
+  final String text;
+
+  const _MacroEmptyPrompt({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      decoration: BoxDecoration(
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.035)
+                : Colors.black.withValues(alpha: 0.015),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: scheme.onSurface.withValues(alpha: isDark ? 0.07 : 0.06),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            LucideIcons.scanLine,
+            size: 15,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+          ),
+          const SizedBox(width: 9),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodySmall.copyWith(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+                fontWeight: FontWeight.w600,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1172,14 +1287,16 @@ class _MinimalToolsSection extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _MinimalSectionLabel(text: 'Plan and coach'),
+          _MinimalSectionLabel(text: l10n.home_section_plan_coach),
           const SizedBox(height: 10),
-          Row(
-            children: [
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               Expanded(
                 child: _PremiumBentoCard(
                   icon: LucideIcons.calendarDays,
@@ -1194,14 +1311,15 @@ class _MinimalToolsSection extends StatelessWidget {
                 child: _PremiumBentoCard(
                   icon: LucideIcons.sparkles,
                   title: l10n.assistant_title,
-                  subtitle: 'Personalized AI advice',
+                  subtitle: l10n.assistant_home_subtitle,
                   isPro: isPro,
                   onTap: onCoachTap,
                 ),
               ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           const _MinimalSectionDivider(),
         ],
       ),
@@ -1227,80 +1345,136 @@ class _PremiumBentoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        height: 100,
-        padding: const EdgeInsets.all(14),
+        // A fixed height overflows the moment the device's text scale grows.
+        // The card sizes to its content and the row equalises the pair.
+        constraints: const BoxConstraints(minHeight: 86),
+        padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+        // The dashboard's shell, with one deliberate exception: these are the
+        // paid tools, so they are the single place on Home that gets richness.
+        // Everything else stays plain white — spend the boldness once, or the
+        // premium tier stops looking like a tier.
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color:
+          borderRadius: BorderRadius.circular(16),
+          // Emerald only. Gold at a few percent over white turns beige, which
+          // reads as a stain rather than as luxury — it belongs in the badge,
+          // saturated enough to actually be a colour.
+          // Committed, not hinted. A 7% wash is indistinguishable from white
+          // at arm's length, which is the same as having no treatment at all —
+          // the tint has to be strong enough to name a tier.
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors:
                 isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : const Color(0xFFE8E4DC),
+                    ? [
+                      AppColors.primary.withValues(alpha: 0.22),
+                      AppColors.primary.withValues(alpha: 0.05),
+                    ]
+                    : [
+                      const Color(0xFFD9F2E7),
+                      const Color(0xFFF4FBF8),
+                    ],
+            stops: const [0.0, 0.85],
           ),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: isDark ? 0.28 : 0.24),
+          ),
+          boxShadow:
+              isDark
+                  ? null
+                  : [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
+                // The gradient badge is the tier's signature — the same one
+                // the paywall and the scan result use, so a paid tool is
+                // recognisable before you read its name.
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(7),
+                    gradient: AppColors.premiumGradient,
+                    borderRadius: BorderRadius.circular(9),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.28),
+                        blurRadius: 9,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  child: Icon(icon, size: 13, color: AppColors.primary),
+                  child: Icon(icon, size: 14, color: Colors.white),
                 ),
                 const Spacer(),
+                // Outlined, not filled: it marks the tier without competing
+                // with the one ask on the screen that is meant to be clicked.
                 if (!isPro)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 6,
-                      vertical: 2,
+                      vertical: 2.5,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Text(
-                      'PRO',
-                      style: TextStyle(
+                      l10n.macro_pro_label.toUpperCase(),
+                      style: AppTypography.labelSmall.copyWith(
                         fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
-                        letterSpacing: 0.5,
                         height: 1,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.7,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
               ],
             ),
-            const Spacer(),
+            const SizedBox(height: 12),
             Text(
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+              style: AppTypography.titleSmall.copyWith(
+                fontSize: 14,
+                height: 1.1,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.15,
+                color: isDark ? Colors.white : _minimalInk,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: AppTypography.labelSmall.copyWith(
                 fontSize: 11,
-                fontWeight: FontWeight.w400,
-                color: isDark ? Colors.white38 : const Color(0xFF8E8E93),
+                height: 1.1,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0,
+                color: scheme.onSurface.withValues(alpha: isDark ? 0.42 : 0.45),
               ),
             ),
           ],
@@ -1478,7 +1652,7 @@ class _MinimalMealRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              _formatNumber(meal.calories),
+              _formatNumber(context, meal.calories),
               style: AppTypography.bodyMedium.copyWith(
                 color: ink,
                 fontSize: 14,
@@ -1636,12 +1810,18 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
   }
 }
 
-String _formatNumber(int value) {
-  if (value < 10000) return '$value';
-  return value.toString().replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (match) => ',',
-  );
+/// One glass. Tap the card's + to add it, long-press to take it back.
+const int _waterQuickAddMl = 250;
+
+/// Locale-aware grouping, shared with the Log screen's `_formatInt`.
+///
+/// This used to group only above 10,000 with a hardcoded comma, so the same
+/// figure read "1448" here and "1,448" on Log — and always with a comma, even
+/// in locales that group differently.
+String _formatNumber(BuildContext context, int value) {
+  return NumberFormat.decimalPattern(
+    AppLocalizations.of(context)?.localeName,
+  ).format(value);
 }
 
 /// A clean settings gear icon button that replaces the old avatar circle.
@@ -1831,6 +2011,322 @@ class _PremiumProBadge extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The header's Pro affordance, which becomes the offer when one is running.
+///
+/// Deliberately the same slot rather than a fourth element: the header already
+/// carries a streak, an upgrade path and settings, and a badge that fights
+/// them for attention gets tuned out. When a campaign is live the upgrade
+/// entry point simply says something better.
+class _HeaderProAffordance extends ConsumerStatefulWidget {
+  const _HeaderProAffordance({
+    required this.isPro,
+    required this.onProTap,
+    required this.onSettingsTap,
+  });
+
+  final bool isPro;
+  final VoidCallback onProTap;
+  final VoidCallback onSettingsTap;
+
+  @override
+  ConsumerState<_HeaderProAffordance> createState() =>
+      _HeaderProAffordanceState();
+}
+
+class _HeaderProAffordanceState extends ConsumerState<_HeaderProAffordance>
+    with TickerProviderStateMixin {
+  late final AnimationController _entrance;
+  late final AnimationController _sheen;
+  late final AnimationController _glow;
+  late final AnimationController _nudge;
+  Timer? _tick;
+  Timer? _nudgeTimer;
+  int _nudgesRun = 0;
+  DateTime _now = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _entrance = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    // Slow, and only a specular pass — a looping pulse or bounce is what makes
+    // a discount badge read as cheap, and it never stops costing frames.
+    _sheen = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3800),
+    );
+    // The glow breathes rather than blinks: slow enough to read as light on a
+    // surface, not as a notification demanding to be tapped.
+    _glow = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    );
+    // The attention cue. A badge that bounces forever reads as spam and stops
+    // being seen within a day; a pop every few seconds, a handful of times, is
+    // noticed once and then leaves the user alone.
+    _nudge = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 760),
+    );
+  }
+
+  static const int _maxNudges = 4;
+  static const Duration _nudgeGap = Duration(seconds: 6);
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    _nudgeTimer?.cancel();
+    _entrance.dispose();
+    _sheen.dispose();
+    _glow.dispose();
+    _nudge.dispose();
+    super.dispose();
+  }
+
+  void _syncAnimations({required bool active, required bool counting}) {
+    if (!mounted) return;
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (active && !reduced) {
+      if (!_entrance.isCompleted && !_entrance.isAnimating) _entrance.forward();
+      if (!_sheen.isAnimating) _sheen.repeat();
+      if (!_glow.isAnimating) _glow.repeat(reverse: true);
+      _nudgeTimer ??= Timer.periodic(_nudgeGap, (timer) {
+        if (!mounted || _nudgesRun >= _maxNudges) {
+          timer.cancel();
+          _nudgeTimer = null;
+          return;
+        }
+        _nudgesRun++;
+        _nudge.forward(from: 0);
+      });
+    } else {
+      _nudgeTimer?.cancel();
+      _nudgeTimer = null;
+      _entrance.value = 1;
+      if (_sheen.isAnimating) _sheen.stop();
+      if (_glow.isAnimating) _glow.stop();
+    }
+    // One timer, only while a deadline is actually being shown.
+    if (active && counting) {
+      _tick ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _now = DateTime.now());
+      });
+    } else {
+      _tick?.cancel();
+      _tick = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final offer = ref.watch(promoOfferProvider).valueOrNull;
+    final live = !widget.isPro && offer != null && offer.isLiveAt(_now);
+    final remaining = live ? offer.remainingAt(_now) : null;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncAnimations(active: live, counting: remaining != null);
+    });
+
+    if (!live) return _plain(context);
+    return _offerPill(context, offer, remaining);
+  }
+
+  /// The unchanged badge: gem for Pro, crown for everyone else.
+  Widget _plain(BuildContext context) {
+    return AppScaleTap(
+      onTap: widget.isPro ? widget.onSettingsTap : widget.onProTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            widget.isPro ? LucideIcons.gem : LucideIcons.crown,
+            color: widget.isPro ? AppColors.success : AppColors.premiumGold,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            widget.isPro
+                ? AppLocalizations.of(context)!.home_pro_badge
+                : AppLocalizations.of(context)!.home_go_pro,
+            style: TextStyle(
+              color: widget.isPro ? AppColors.success : AppColors.premiumGold,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _offerPill(
+    BuildContext context,
+    PromoOffer offer,
+    Duration? remaining,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final urgent =
+        remaining != null && remaining <= const Duration(hours: 1);
+    // Says "SAVE 76%", the same words and the same number the paywall uses.
+    // "76% OFF" would imply 76% off the annual list price, which is not what
+    // the comparison measures — it is the saving against paying monthly.
+    final label =
+        offer.label ?? l10n.paywall_save_percent('${offer.percentOff}');
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([_entrance, _nudge]),
+      builder: (context, child) {
+        final t = Curves.easeOutBack.transform(_entrance.value.clamp(0.0, 1.0));
+        // One pop with a slight tilt: the shape of something tapping you on
+        // the shoulder, not of something demanding attention.
+        final n = Curves.elasticOut.transform(_nudge.value.clamp(0.0, 1.0));
+        final pop = _nudge.isAnimating ? 1 + 0.09 * (1 - n) : 1.0;
+        final tilt = _nudge.isAnimating ? 0.035 * (1 - n) : 0.0;
+        return Opacity(
+          opacity: _entrance.value.clamp(0.0, 1.0),
+          child: Transform.rotate(
+            angle: tilt,
+            child: Transform.scale(
+              scale: (0.9 + 0.1 * t) * pop,
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: AppScaleTap(
+        onTap: widget.onProTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: Stack(
+            children: [
+              AnimatedBuilder(
+                animation: _glow,
+                builder: (context, child) {
+                  final g = Curves.easeInOut.transform(_glow.value);
+                  return Container(
+                    padding: const EdgeInsetsDirectional.fromSTEB(9, 5, 10, 5),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.premiumGradient,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(
+                            alpha: 0.26 + 0.26 * g,
+                          ),
+                          blurRadius: 9 + 9 * g,
+                          spreadRadius: g,
+                          offset: const Offset(0, 3),
+                        ),
+                        BoxShadow(
+                          color: const Color(
+                            0xFFC88A32,
+                          ).withValues(alpha: 0.10 + 0.16 * g),
+                          blurRadius: 14 + 8 * g,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: child,
+                  );
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      LucideIcons.zap,
+                      size: 12,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                        height: 1,
+                      ),
+                    ),
+                    if (remaining != null) ...[
+                      const SizedBox(width: 7),
+                      Container(
+                        width: 1,
+                        height: 11,
+                        color: Colors.white.withValues(alpha: 0.35),
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        _format(remaining),
+                        style: TextStyle(
+                          // Amber under the hour: colour carries urgency
+                          // better than motion, and costs nothing to read.
+                          color:
+                              urgent
+                                  ? const Color(0xFFFFE08A)
+                                  : Colors.white.withValues(alpha: 0.92),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                          // Without tabular figures the pill twitches every
+                          // second as digit widths change.
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              // A single specular pass, left to right. Its own builder: as a
+              // static `child` it never rebuilt, so the sweep never moved.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedBuilder(
+                    animation: _sheen,
+                    builder:
+                        (context, _) => FractionalTranslation(
+                          translation: Offset(-1.4 + 2.8 * _sheen.value, 0),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [
+                                  Colors.white.withValues(alpha: 0),
+                                  Colors.white.withValues(alpha: 0.38),
+                                  Colors.white.withValues(alpha: 0),
+                                ],
+                                stops: const [0.34, 0.5, 0.66],
+                              ),
+                            ),
+                          ),
+                        ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// `2d 04h` above a day, `11:59:32` below it — the shape people read as a
+  /// deadline rather than as a number.
+  String _format(Duration d) {
+    if (d.inDays >= 1) {
+      return '${d.inDays}d ${(d.inHours % 24).toString().padLeft(2, '0')}h';
+    }
+    final h = d.inHours.toString().padLeft(2, '0');
+    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$h:$m:$s';
   }
 }
 
@@ -2331,37 +2827,36 @@ class _SecondaryDashboardGrid extends StatelessWidget {
   final int waterTotal;
   final int waterGoal;
   final int steps;
+  final int stepGoal;
   final int burnedCalories;
   final bool caloriesEstimated;
-  final String stepsUnit;
-  final bool activityLive;
   final VoidCallback onWaterTap;
   final VoidCallback onWaterAdd;
-  final VoidCallback onWaterRemove;
+  final VoidCallback onWaterUndo;
   final VoidCallback onActivityTap;
 
   const _SecondaryDashboardGrid({
     required this.waterTotal,
     required this.waterGoal,
     required this.steps,
+    required this.stepGoal,
     required this.burnedCalories,
     required this.caloriesEstimated,
-    required this.stepsUnit,
-    required this.activityLive,
     required this.onWaterTap,
     required this.onWaterAdd,
-    required this.onWaterRemove,
+    required this.onWaterUndo,
     required this.onActivityTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final stepsProgress = (steps / 10000).clamp(0.0, 1.0);
+    // "15 estimated kcal" does not fit beside a title in a half-width card.
+    // The tilde carries the estimated/measured distinction instead.
     final caloriesText =
         caloriesEstimated
-            ? l10n.home_estimated_kcal(burnedCalories)
-            : l10n.home_active_kcal(burnedCalories);
+            ? l10n.home_kcal_estimated_short(burnedCalories)
+            : l10n.home_kcal_short(burnedCalories);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 6, 22, 10),
@@ -2371,32 +2866,39 @@ class _SecondaryDashboardGrid extends StatelessWidget {
           _MinimalSectionLabel(text: l10n.home_daily_wellness),
           const SizedBox(height: 8),
           SizedBox(
-            height: 110,
+            height: 108,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: _WaterFillCard(
-                    total: waterTotal,
+                  child: _WellnessCard(
+                    icon: LucideIcons.droplets,
+                    accent: const Color(0xFF3B9BE8),
+                    title: l10n.water_hydration,
+                    value: waterTotal,
                     goal: waterGoal,
+                    unit: l10n.water_unit_ml,
                     onTap: onWaterTap,
                     onAdd: onWaterAdd,
+                    onUndo: onWaterUndo,
+                    addSemanticLabel: l10n.water_add_amount(_waterQuickAddMl),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _MinimalWellnessCard(
+                  child: _WellnessCard(
                     icon: LucideIcons.footprints,
-                    color: Theme.of(context).colorScheme.primary,
+                    accent: AppColors.primary,
                     title: l10n.home_metric_activity,
-                    value:
-                        steps == 0
-                            ? '0 ${l10n.log_metric_steps_unit}'
-                            : '$steps',
-                    subtitle:
-                        steps == 0 ? l10n.home_start_walking : caloriesText,
-                    progress: stepsProgress,
+                    value: steps,
+                    // Was `steps / 10000`. ActivitySummary has carried a real
+                    // stepGoal all along; the card just never asked for it,
+                    // so a 3k-a-day walker and a 20k-a-day walker saw the
+                    // same bar.
+                    goal: stepGoal,
+                    unit: l10n.log_metric_steps_unit,
                     onTap: onActivityTap,
+                    trailingStat: caloriesText,
                   ),
                 ),
               ],
@@ -2408,266 +2910,185 @@ class _SecondaryDashboardGrid extends StatelessWidget {
   }
 }
 
-class _WaterFillCard extends StatefulWidget {
-  final int total;
-  final int goal;
-  final VoidCallback onTap;
-  final VoidCallback onAdd;
-
-  const _WaterFillCard({
-    required this.total,
-    required this.goal,
-    required this.onTap,
-    required this.onAdd,
-  });
-
-  @override
-  State<_WaterFillCard> createState() => _WaterFillCardState();
-}
-
-class _WaterFillCardState extends State<_WaterFillCard> {
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l10n = AppLocalizations.of(context)!;
-    final blue = AppColors.sky;
-    final progress = (widget.total / widget.goal).clamp(0.0, 1.0);
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        widget.onTap();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : const Color(0xFFE8E4DC),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _WellnessCardHeader(
-              icon: LucideIcons.droplets,
-              color: blue,
-              title: l10n.water_hydration,
-              isDark: isDark,
-            ),
-            const Spacer(),
-            Text(
-              widget.total == 0 ? '0 ml' : '${widget.total} ml',
-              style: AppTypography.titleLarge.copyWith(
-                color: isDark ? Colors.white : const Color(0xFF1C1917),
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                height: 1.1,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              widget.total == 0
-                  ? l10n.water_tap_to_open
-                  : l10n.water_goal_progress(widget.goal),
-              style: AppTypography.labelSmall.copyWith(
-                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const Spacer(),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: progress),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) {
-                return SizedBox(
-                  height: 3,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: blue.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: value.clamp(0.0, 1.0),
-                        heightFactor: 1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: blue.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: value.clamp(0.0, 1.0),
-                        heightFactor: 1,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: blue,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: blue.withValues(alpha: 0.4),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MinimalWellnessCard extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String value;
-  final String subtitle;
-  final double progress;
-  final VoidCallback onTap;
-
-  const _MinimalWellnessCard({
+/// One card for every wellness metric.
+///
+/// Hydration and Activity used to be two unrelated widgets that merely looked
+/// alike -- a StatefulWidget and a StatelessWidget sharing no code -- and they
+/// had already drifted: one subtitle was an instruction and the other was data,
+/// one showed its target only after the first entry and the other never did,
+/// one read a real goal and the other divided by a hardcoded 10000. A single
+/// widget cannot drift from itself.
+///
+/// The trailing slot in the header carries an action where one exists (water's
+/// quick add) and a stat otherwise (calories burned), so both cards keep the
+/// same skeleton.
+class _WellnessCard extends StatelessWidget {
+  const _WellnessCard({
     required this.icon,
-    required this.color,
+    required this.accent,
     required this.title,
     required this.value,
-    required this.subtitle,
-    required this.progress,
+    required this.goal,
+    required this.unit,
     required this.onTap,
+    this.onAdd,
+    this.onUndo,
+    this.addSemanticLabel,
+    this.trailingStat,
   });
+
+  final IconData icon;
+  final Color accent;
+  final String title;
+  final int value;
+  final int goal;
+  final String unit;
+  final VoidCallback onTap;
+
+  /// Quick add. Present for hydration: logging a glass is the most repeated
+  /// action in the app after logging food, and it was costing three taps
+  /// through a sheet while this handler sat wired to nothing.
+  final VoidCallback? onAdd;
+
+  /// Long-press partner for [onAdd], so a mistaken tap costs one gesture
+  /// instead of a trip through the sheet.
+  final VoidCallback? onUndo;
+  final String? addSemanticLabel;
+
+  /// A short secondary figure, right-aligned on the goal line. Kept short on
+  /// purpose: the header has no room for it beside the title.
+  final String? trailingStat;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final progress = goal <= 0 ? 0.0 : (value / goal).clamp(0.0, 1.0);
+    final ink = isDark ? Colors.white : _minimalInk;
+    final muted = scheme.onSurface.withValues(alpha: isDark ? 0.45 : 0.48);
+    final reached = value >= goal && goal > 0;
+
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.fromLTRB(12, 11, 11, 11),
+        // The card carries no colour of its own. A pastel gradient fill with a
+        // tinted border and a coloured shadow made two small metrics the
+        // loudest surface on the screen; the accent now lives only in the
+        // ring, where it means something.
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-          borderRadius: BorderRadius.circular(14),
+          color: isDark ? Colors.white.withValues(alpha: 0.045) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color:
                 isDark
                     ? Colors.white.withValues(alpha: 0.06)
-                    : const Color(0xFFE8E4DC),
+                    : const Color(0xFFEDE9E1),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _WellnessCardHeader(
+            // A ring, not a bar: it echoes the calorie gauge above and the
+            // macro rings between, so the dashboard reads as one system.
+            _WellnessRing(
+              progress: progress,
+              accent: accent,
               icon: icon,
-              color: color,
-              title: title,
               isDark: isDark,
+              reached: reached,
             ),
-            const Spacer(),
-            Text(
-              value,
-              style: AppTypography.titleLarge.copyWith(
-                color: isDark ? Colors.white : const Color(0xFF1C1917),
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                height: 1.1,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: AppTypography.labelSmall.copyWith(
-                color: isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const Spacer(),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: progress),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) {
-                return SizedBox(
-                  height: 3,
-                  child: Stack(
-                    clipBehavior: Clip.none,
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
                     children: [
-                      Container(
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: value.clamp(0.0, 1.0),
-                        heightFactor: 1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(99),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: muted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0,
                           ),
                         ),
                       ),
-                      FractionallySizedBox(
-                        widthFactor: value.clamp(0.0, 1.0),
-                        heightFactor: 1,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                          ),
+                      if (onAdd != null) ...[
+                        const SizedBox(width: 4),
+                        _QuickAddButton(
+                          accent: accent,
+                          isDark: isDark,
+                          onTap: onAdd!,
+                          onUndo: onUndo,
+                          semanticLabel: addSemanticLabel,
                         ),
-                      ),
+                      ],
                     ],
                   ),
-                );
-              },
+                  const SizedBox(height: 6),
+                  RichText(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: _formatNumber(context, value),
+                          style: AppTypography.titleLarge.copyWith(
+                            color: value > 0 ? ink : ink.withValues(alpha: 0.32),
+                            fontSize: 22,
+                            height: 1,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' $unit',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: ink.withValues(alpha: 0.42),
+                            fontSize: 10.5,
+                            height: 1,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    // The trailing stat replaces the target where one exists:
+                    // calories burned says more than "of 10,000 steps" once
+                    // the ring already shows the ratio.
+                    trailingStat ??
+                        AppLocalizations.of(context)!.home_metric_of_goal(
+                          _formatNumber(context, goal),
+                          unit,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall.copyWith(
+                      color:
+                          trailingStat != null
+                              ? accent.withValues(alpha: isDark ? 0.9 : 0.85)
+                              : muted,
+                      fontSize: 10.5,
+                      fontWeight: trailingStat != null
+                          ? FontWeight.w700
+                          : FontWeight.w600,
+                      letterSpacing: 0,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -2676,44 +3097,182 @@ class _MinimalWellnessCard extends StatelessWidget {
   }
 }
 
-class _WellnessCardHeader extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String title;
-  final bool isDark;
-
-  const _WellnessCardHeader({
+/// The metric's progress as a ring around its own icon.
+///
+/// Sized to sit beside two lines of type without dominating them; the icon in
+/// the middle keeps the card readable at a glance without a second label.
+class _WellnessRing extends StatelessWidget {
+  const _WellnessRing({
+    required this.progress,
+    required this.accent,
     required this.icon,
-    required this.color,
-    required this.title,
     required this.isDark,
+    required this.reached,
   });
+
+  final double progress;
+  final Color accent;
+  final IconData icon;
+  final bool isDark;
+  final bool reached;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 22,
-          height: 22,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(6),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: progress),
+      duration: const Duration(milliseconds: 850),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return SizedBox(
+          width: 44,
+          height: 44,
+          child: CustomPaint(
+            painter: _WellnessRingPainter(
+              progress: value,
+              accent: accent,
+              track: accent.withValues(alpha: isDark ? 0.18 : 0.13),
+              reached: reached,
+            ),
+            child: Center(
+              child: Icon(
+                reached ? LucideIcons.check : icon,
+                size: 16,
+                color: accent.withValues(alpha: reached ? 1 : 0.9),
+              ),
+            ),
           ),
-          child: Icon(icon, size: 12, color: color),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          title,
-          style: AppTypography.labelSmall.copyWith(
-            color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+        );
+      },
+    );
+  }
+}
+
+class _WellnessRingPainter extends CustomPainter {
+  const _WellnessRingPainter({
+    required this.progress,
+    required this.accent,
+    required this.track,
+    required this.reached,
+  });
+
+  final double progress;
+  final Color accent;
+  final Color track;
+  final bool reached;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 3.5;
+    final centre = Offset(size.width / 2, size.height / 2);
+    final radius = (math.min(size.width, size.height) - stroke) / 2;
+
+    canvas.drawCircle(
+      centre,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = track,
+    );
+
+    final swept = progress.clamp(0.0, 1.0);
+    if (swept <= 0) return;
+
+    final rect = Rect.fromCircle(center: centre, radius: radius);
+    const from = -math.pi / 2;
+    final sweep = 2 * math.pi * swept;
+
+    canvas.drawArc(
+      rect,
+      from,
+      sweep,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..shader = SweepGradient(
+          colors: [accent.withValues(alpha: 0.75), accent],
+          transform: const GradientRotation(from),
+        ).createShader(rect),
+    );
+
+    // A cap dot marks where the day has got to, unless the ring is closed.
+    if (swept < 1) {
+      final angle = from + sweep;
+      canvas.drawCircle(
+        centre + Offset(math.cos(angle) * radius, math.sin(angle) * radius),
+        stroke * 0.62,
+        Paint()..color = accent,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WellnessRingPainter old) =>
+      old.progress != progress ||
+      old.accent != accent ||
+      old.track != track ||
+      old.reached != reached;
+}
+
+/// Tap adds, long-press takes it back.
+class _QuickAddButton extends StatefulWidget {
+  const _QuickAddButton({
+    required this.accent,
+    required this.isDark,
+    required this.onTap,
+    this.onUndo,
+    this.semanticLabel,
+  });
+
+  final Color accent;
+  final bool isDark;
+  final VoidCallback onTap;
+  final VoidCallback? onUndo;
+  final String? semanticLabel;
+
+  @override
+  State<_QuickAddButton> createState() => _QuickAddButtonState();
+}
+
+class _QuickAddButtonState extends State<_QuickAddButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) {
+          setState(() => _pressed = false);
+          widget.onTap();
+        },
+        onLongPress: widget.onUndo,
+        child: AnimatedScale(
+          scale: _pressed ? 0.86 : 1,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: Container(
+            width: 22,
+            height: 22,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: widget.accent.withValues(
+                alpha: widget.isDark ? 0.26 : 0.15,
+              ),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: widget.accent.withValues(alpha: 0.28),
+              ),
+            ),
+            child: Icon(LucideIcons.plus, size: 13, color: widget.accent),
           ),
         ),
-      ],
+      ),
     );
   }
 }

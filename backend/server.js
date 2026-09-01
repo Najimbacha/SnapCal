@@ -8,7 +8,10 @@ const axios = require('axios');
 const admin = require('firebase-admin');
 const rateLimit = require('express-rate-limit');
 
-const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '10mb';
+// A 10mb ceiling on every route meant any endpoint could be used to make the
+// process buffer 10MB per concurrent request. Image routes opt in explicitly.
+const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '2mb';
+const MAX_IMAGE_BODY = process.env.MAX_IMAGE_BODY || '14mb';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
 const FREE_DAILY_AI_MESSAGES = Number(process.env.FREE_DAILY_AI_MESSAGES || 1);
@@ -87,30 +90,106 @@ app.use(cors({
   },
 }));
 app.use(morgan(process.env.NODE_ENV === 'test' ? 'combined' : 'dev'));
+// Image-bearing routes get the large parser; everything else gets 2mb. The
+// base64 expansion factor is ~1.37, so 14mb covers the 10MB image cap.
+const imageBodyParser = express.json({
+  limit: MAX_IMAGE_BODY,
+  type: 'application/json',
+});
+app.use('/v1/scan', imageBodyParser);
+app.use('/api/ai/image', imageBodyParser);
 app.use(express.json({ limit: MAX_JSON_BODY, type: 'application/json' }));
 app.use(express.urlencoded({ limit: MAX_JSON_BODY, extended: false }));
 
-const apiLimiter = rateLimit({
+// ── Rate limiting ────────────────────────────────────────────────────────────
+//
+// Two problems with the previous configuration, both of which only appear at
+// scale. It used the default MemoryStore, so every limit was per-process:
+// three instances meant three times the configured quota, and a deploy reset
+// every counter. And it keyed on IP, which on mobile means carrier-grade NAT —
+// thousands of real users sharing one address trip the window while an abuser
+// simply rotates addresses.
+//
+// The store is now Redis when REDIS_URL is set (shared across instances,
+// survives deploys) and falls back to memory with a loud warning otherwise, so
+// local development still runs with no dependencies.
+let limiterStoreFactory = () => undefined;
+let redisClient = null;
+
+if (process.env.REDIS_URL) {
+  try {
+    const { createClient } = require('redis');
+    const { RedisStore } = require('rate-limit-redis');
+    redisClient = createClient({ url: process.env.REDIS_URL });
+    redisClient.on('error', (err) =>
+      console.error('Redis error (rate limits degrade to allow):', err.message),
+    );
+    redisClient.connect().catch((err) =>
+      console.error('Redis connect failed:', err.message),
+    );
+    limiterStoreFactory = (prefix) =>
+      new RedisStore({
+        prefix,
+        sendCommand: (...args) => redisClient.sendCommand(args),
+      });
+    console.log('Rate limiting backed by Redis');
+  } catch (error) {
+    console.error(
+      'REDIS_URL set but the Redis store could not load:',
+      error.message,
+    );
+  }
+} else if (NODE_ENV === 'production') {
+  console.warn(
+    'WARNING: no REDIS_URL. Rate limits are per-instance and reset on deploy.',
+  );
+}
+
+/// Buckets by identity, not by address.
+///
+/// After authenticateToken the uid is authoritative. Limiters that run before
+/// it (the /api mount) fall back to a hash of the bearer token, which is
+/// per-user and unforgeable — a caller cannot claim someone else's bucket
+/// without their token. Unauthenticated callers still bucket by IP.
+function identityKey(req) {
+  if (req.user && req.user.uid) return `uid:${req.user.uid}`;
+  const match = (req.headers.authorization || '').match(/^Bearer (.+)$/);
+  if (match) {
+    return `tok:${crypto.createHash('sha256').update(match[1]).digest('hex').slice(0, 32)}`;
+  }
+  return `ip:${req.ip}`;
+}
+
+function makeLimiter({ prefix, windowMs, max, message }) {
+  return rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: identityKey,
+    store: limiterStoreFactory(prefix),
+    ...(message ? { message } : {}),
+  });
+}
+
+const apiLimiter = makeLimiter({
+  prefix: 'rl:api:',
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.API_RATE_LIMIT || 120),
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
 });
 
-const scanLimiter = rateLimit({
+const scanLimiter = makeLimiter({
+  prefix: 'rl:scan:',
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.SCAN_RATE_LIMIT || 20),
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: 'Too many scan requests. Please try again later.' },
 });
 
-const webhookLimiter = rateLimit({
+const webhookLimiter = makeLimiter({
+  prefix: 'rl:hook:',
   windowMs: 60 * 1000,
   max: Number(process.env.WEBHOOK_RATE_LIMIT || 120),
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
 function getLanguageName(code) {
@@ -262,9 +341,14 @@ async function authenticateToken(req, res, next) {
   }
 
   try {
+    // checkRevoked was true here for every request. That flag makes the Admin
+    // SDK fetch the user record from Google on each call instead of verifying
+    // the signature locally, so every authenticated request carried a network
+    // round-trip (30-80ms) and an external quota. ID tokens live one hour;
+    // routes that genuinely need immediate revocation use requireFreshAuth.
     const decodedToken = authVerifierForTest
       ? await authVerifierForTest(match[1])
-      : await admin.auth().verifyIdToken(match[1], true);
+      : await admin.auth().verifyIdToken(match[1]);
     req.user = {
       uid: decodedToken.uid,
       email: decodedToken.email || null,
@@ -289,6 +373,24 @@ async function verifyAppCheck(req, res, next) {
   } catch (error) {
     console.error('App Check token rejected:', error.message);
     return safeError(res, 401, 'App Check required.');
+  }
+}
+
+/// Re-verifies the caller's token with revocation checking.
+///
+/// Costs a round-trip to Firebase Auth, so it is reserved for routes where a
+/// stolen or revoked session must stop working within the hour rather than at
+/// token expiry: anything under /api/admin, and account-level changes.
+async function requireFreshAuth(req, res, next) {
+  if (authVerifierForTest) return next();
+  const match = (req.headers.authorization || '').match(/^Bearer (.+)$/);
+  if (!match) return safeError(res, 401, 'Authentication required.');
+  try {
+    await admin.auth().verifyIdToken(match[1], true);
+    return next();
+  } catch (error) {
+    console.error('Revocation check failed:', error.message);
+    return safeError(res, 401, 'Authentication required.');
   }
 }
 
@@ -975,7 +1077,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   // reasons before answering, which is accurate but costs ~20s. Reorder from
   // the dashboard — AI_IMAGE_PROVIDER_ORDER=deepseek pins a single provider,
   // which is what DEEPSEEK_STRICT used to do.
-  const order = (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,gemini,deepseek,openrouter')
+  const order = (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,deepseek,gemini,openrouter')
     .split(',').map(p => p.trim().toLowerCase()).filter(p => providers[p]);
 
   const configured = order.filter(name => {
@@ -1058,101 +1160,117 @@ async function callAiText(prompt, options = {}) {
     return typeof data === 'string' ? data.slice(0, 300) : JSON.stringify(data).slice(0, 300);
   };
 
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  if (geminiApiKey) {
-    try {
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-3.6-flash'}:generateContent`,
-        {
-          contents: [{ parts: [{ text: effectivePrompt }] }],
-          generationConfig: {
-            temperature,
-            maxOutputTokens,
-            ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
-          },
+  // One OpenAI-shaped text request; three of the four providers speak it.
+  const openAiText = async (name, url, model, key, extraHeaders) => {
+    const response = await axios.post(
+      url,
+      {
+        model,
+        messages: [
+          ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
+          { role: 'user', content: effectivePrompt },
+        ],
+        max_tokens: maxOutputTokens,
+        temperature,
+        ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          ...(extraHeaders || {}),
         },
-        { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }, timeout },
-      );
-      const candidate = response.data?.candidates?.[0];
-      const text = candidate?.content?.parts?.[0]?.text;
-      if (text) return requireJson ? normalizeAiJsonText(text) : text;
+        timeout,
+      },
+    );
+    const content = response.data?.choices?.[0]?.message?.content;
+    const cleaned = content ? stripThink(content) : '';
+    if (cleaned) return requireJson ? normalizeAiJsonText(cleaned) : cleaned;
+    throw new Error(`empty-response (model=${model})`);
+  };
 
-      const reason = candidate?.finishReason
-        || response.data?.promptFeedback?.blockReason
-        || 'no-text-in-response';
-      console.error(`Gemini text returned no usable text (finishReason=${reason}, maxOutputTokens=${maxOutputTokens}). Trying next provider.`);
-      failures.push(`gemini:${reason}`);
+  const providers = {
+    deepseek: {
+      key: () => process.env.DEEPSEEK_API_KEY,
+      run: (key) => openAiText(
+        'deepseek',
+        'https://api.deepseek.com/chat/completions',
+        process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat',
+        key,
+      ),
+    },
+    gemini: {
+      key: () => process.env.GEMINI_API_KEY,
+      run: async (key) => {
+        const response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/${options.model || process.env.GEMINI_TEXT_MODEL || 'gemini-3.6-flash'}:generateContent`,
+          {
+            contents: [{ parts: [{ text: effectivePrompt }] }],
+            generationConfig: {
+              temperature,
+              maxOutputTokens,
+              ...(options.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
+            },
+          },
+          { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, timeout },
+        );
+        const candidate = response.data?.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+        if (text) return requireJson ? normalizeAiJsonText(text) : text;
+        // A response truncated at maxOutputTokens carries no parts[0].text.
+        // Naming the reason keeps a truncation distinguishable from a refusal.
+        const reason = candidate?.finishReason
+          || response.data?.promptFeedback?.blockReason
+          || 'no-text-in-response';
+        throw new Error(`${reason} (maxOutputTokens=${maxOutputTokens})`);
+      },
+    },
+    groq: {
+      key: () => process.env.GROQ_API_KEY,
+      run: (key) => openAiText(
+        'groq',
+        'https://api.groq.com/openai/v1/chat/completions',
+        options.groqTextModel || process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b',
+        key,
+      ),
+    },
+    openrouter: {
+      key: () => process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY,
+      run: (key) => openAiText(
+        'openrouter',
+        'https://openrouter.ai/api/v1/chat/completions',
+        options.textModel || process.env.TEXT_MODEL || 'qwen/qwen-plus',
+        key,
+        { 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
+      ),
+    },
+  };
+
+  // Gemini used to be hardcoded ahead of the fallback array, so it could not be
+  // reordered without a deploy. Order is configuration here, as it is for
+  // images — though the two chains are deliberately separate: the coach and
+  // planner want a strong writer, the scanner wants speed.
+  const order = (options.providerOrder || process.env.AI_TEXT_PROVIDER_ORDER || 'deepseek,gemini,groq,openrouter')
+    .split(',').map(p => p.trim().toLowerCase()).filter(p => providers[p]);
+
+  const configured = order.filter(name => Boolean(providers[name].key()));
+  if (configured.length === 0) {
+    throw new Error(`ai-not-configured: no key set for any of [${order.join(', ')}]`);
+  }
+
+  for (const name of configured) {
+    try {
+      const result = await providers[name].run(providers[name].key());
+      console.error(`${name} text succeeded (model tier: ${name})`);
+      return result;
     } catch (err) {
       const detail = detailOf(err);
-      console.error('Gemini text failed:', detail);
-      failures.push(`gemini:${detail}`);
+      console.error(`${name} text failed:`, detail);
+      failures.push(`${name}:${detail}`);
     }
   }
 
-  // OpenAI-compatible fallbacks, in order. Keys that are not configured are
-  // skipped rather than treated as a fatal misconfiguration.
-  const fallbacks = [
-    {
-      name: 'groq',
-      key: process.env.GROQ_API_KEY,
-      url: 'https://api.groq.com/openai/v1/chat/completions',
-      model: options.groqTextModel || process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b',
-    },
-    {
-      name: 'deepseek',
-      key: process.env.DEEPSEEK_API_KEY,
-      url: 'https://api.deepseek.com/chat/completions',
-      model: process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat',
-    },
-    {
-      name: 'openrouter',
-      key: process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY,
-      url: 'https://openrouter.ai/api/v1/chat/completions',
-      model: options.textModel || process.env.TEXT_MODEL || 'qwen/qwen-plus',
-      extraHeaders: { 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
-    },
-  ].filter((provider) => provider.key);
-
-  if (!geminiApiKey && fallbacks.length === 0) throw new Error('ai-not-configured');
-
-  for (const provider of fallbacks) {
-    try {
-      const response = await axios.post(
-        provider.url,
-        {
-          model: provider.model,
-          messages: [
-            ...(requireJson ? [{ role: 'system', content: 'Return only valid JSON. No markdown. No prose.' }] : []),
-            { role: 'user', content: effectivePrompt },
-          ],
-          max_tokens: maxOutputTokens,
-          temperature,
-          ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${provider.key}`,
-            'Content-Type': 'application/json',
-            ...(provider.extraHeaders || {}),
-          },
-          timeout,
-        },
-      );
-      const content = response.data?.choices?.[0]?.message?.content;
-      if (content) {
-        const cleaned = stripThink(content);
-        if (cleaned) return requireJson ? normalizeAiJsonText(cleaned) : cleaned;
-      }
-      console.error(`${provider.name} text returned empty content (model=${provider.model}).`);
-      failures.push(`${provider.name}:empty-response`);
-    } catch (err) {
-      const detail = detailOf(err);
-      console.error(`${provider.name} text failed (model=${provider.model}):`, detail);
-      failures.push(`${provider.name}:${detail}`);
-    }
-  }
-
-  throw new Error(`ai-text-unavailable: ${failures.join(' | ') || 'no-providers-configured'}`);
+  throw new Error(`ai-text-unavailable: ${failures.join(' | ')}`);
 }
 
 async function writeAuditLog({ actorUid, action, targetUid, result, metadata = {} }) {
@@ -1170,8 +1288,64 @@ app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'SnapCal Backend' });
 });
 
+// Rolling record of recent scan outcomes.
+//
+// The previous /health returned a hardcoded 'ok'. It proved Node was running,
+// which was never the question — it reported perfect health throughout a period
+// when every single scan was failing, which is why a total outage of the app's
+// core feature was found by a human trying it rather than by a monitor.
+const SCAN_WINDOW = Number(process.env.HEALTH_WINDOW) || 20;
+const scanOutcomes = [];
+let lastScanError = null;
+let lastScanSuccessAt = null;
+
+function recordScan(ok, detail) {
+  scanOutcomes.push(ok);
+  if (scanOutcomes.length > SCAN_WINDOW) scanOutcomes.shift();
+  if (ok) {
+    lastScanSuccessAt = new Date().toISOString();
+  } else {
+    lastScanError = { at: new Date().toISOString(), detail: String(detail || '').slice(0, 300) };
+  }
+}
+
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  const attempts = scanOutcomes.length;
+  const failures = scanOutcomes.filter(ok => !ok).length;
+  const failureRate = attempts > 0 ? failures / attempts : 0;
+
+  // Which providers could serve a scan. Names and booleans only — never keys.
+  const providerKeys = {
+    groq: Boolean(process.env.GROQ_API_KEY),
+    gemini: Boolean(process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY),
+    deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
+    openrouter: Boolean(process.env.OPENROUTER_API_KEY || process.env.QWEN_API_KEY),
+  };
+  const configured = Object.entries(providerKeys).filter(([, v]) => v).map(([k]) => k);
+
+  // Unhealthy on a sustained failure rate, or with nothing able to serve a
+  // scan at all. A monitor watching for non-200 pages you on either — which is
+  // the whole point of the endpoint.
+  const threshold = Number(process.env.HEALTH_FAIL_THRESHOLD) || 0.5;
+  const degraded = configured.length === 0 || (attempts >= 3 && failureRate > threshold);
+
+  res.status(degraded ? 503 : 200).json({
+    status: degraded ? 'degraded' : 'ok',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime()),
+    scan: {
+      pipeline: (process.env.SCAN_PIPELINE || SCAN_PIPELINE),
+      recentAttempts: attempts,
+      recentFailures: failures,
+      failureRate: Number(failureRate.toFixed(2)),
+      lastSuccessAt: lastScanSuccessAt,
+      lastError: lastScanError,
+    },
+    providers: {
+      order: (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,deepseek,gemini,openrouter').split(',').map(p => p.trim()),
+      configured,
+    },
+  });
 });
 
 app.use('/api', apiLimiter);
@@ -1464,7 +1638,7 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
   }
 });
 
-app.get('/api/admin/users/:uid/summary', authenticateToken, verifyAppCheck, requireAdmin, async (req, res) => {
+app.get('/api/admin/users/:uid/summary', authenticateToken, verifyAppCheck, requireFreshAuth, requireAdmin, async (req, res) => {
   const targetUid = req.params.uid;
   if (!isSafeId(targetUid)) return safeError(res, 404, 'User not found.');
 
@@ -1487,7 +1661,7 @@ app.get('/api/admin/users/:uid/summary', authenticateToken, verifyAppCheck, requ
   });
 });
 
-app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, requireAdmin, async (req, res) => {
+app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, requireFreshAuth, requireAdmin, async (req, res) => {
   const targetUid = req.params.uid;
   const { isActive, entitlementId = 'pro', productId = 'manual_grant', reason } = req.body || {};
   if (!isSafeId(targetUid) || typeof isActive !== 'boolean' || typeof reason !== 'string' || reason.trim().length < 5) {
@@ -1570,6 +1744,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
       }
       const result = enrichScanResults(foods);
 
+      recordScan(true);
       console.log(JSON.stringify({ event: 'scan.success.v2', pipeline: 'v2', status: 200 }));
       const matchedCount = result.items.filter(i => i.matched).length;
       console.error(`Scan v2: ${result.items.length} foods (${matchedCount} matched, ${result.items.length - matchedCount} unmatched)`);
@@ -1587,6 +1762,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
       fat: acc.fat + item.fat,
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
+    recordScan(true);
     console.log(JSON.stringify({ event: 'scan.success', pipeline: 'v1', status: 200 }));
     console.error('Scan items:', JSON.stringify(nutrition.items.map(i => ({ food_name: i.food_name, calories: i.calories }))));
 
@@ -1594,6 +1770,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
   } catch (error) {
     // The quota was consumed up-front; give it back when the scan itself
     // failed so users are not charged for our provider outages.
+    recordScan(false, error.message);
     await refundScanQuota(uid, claim.monthKey);
     console.error(
       JSON.stringify({ event: 'scan.error', status: 502, error: error.message })
@@ -1684,11 +1861,23 @@ app.post('/api/notifications/food-reminder/register', authenticateToken, verifyA
   }
 
   try {
-    await userDoc(uid).collection('settings').doc('app').set({
+    const settingsRef = userDoc(uid).collection('settings').doc('app');
+    const payload = {
       foodRemindersEnabled: enabled,
       fcmToken: fcmToken || null,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
+    };
+
+    // The reminder fan-out is a range query on lastFoodReminderDate, and
+    // Firestore excludes documents that lack the field entirely from a range
+    // query. Without seeding it here, a user who has never been reminded
+    // could never BE reminded — they would be invisible to the query forever.
+    const existing = await settingsRef.get();
+    if (!existing.exists || existing.get('lastFoodReminderDate') === undefined) {
+      payload.lastFoodReminderDate = '1970-01-01';
+    }
+
+    await settingsRef.set(payload, { merge: true });
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('Food reminder register failed:', err.message);
@@ -1696,12 +1885,35 @@ app.post('/api/notifications/food-reminder/register', authenticateToken, verifyA
   }
 });
 
-// Admin-only: this runs the reminder fan-out for every user (BUG-018).
+/// Lets Cloud Scheduler drive the fan-out without a Firebase identity.
+///
+/// A scheduler has no ID token and no App Check attestation, so requiring them
+/// forced the cron to live inside the API process — which is what caused
+/// duplicate notifications once there was more than one instance. A constant
+/// -time shared-secret comparison is the standard shape for this, and the
+/// route stays admin-only for human callers.
+function allowSchedulerOrAdmin(req, res, next) {
+  const secret = process.env.SCHEDULER_SECRET || '';
+  const presented = req.get('X-Scheduler-Secret') || '';
+  if (secret && presented) {
+    const a = Buffer.from(secret);
+    const b = Buffer.from(presented);
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      req.schedulerAuthenticated = true;
+      return next();
+    }
+    return safeError(res, 401, 'Unauthorized.');
+  }
+  return authenticateToken(req, res, () =>
+    verifyAppCheck(req, res, () => requireAdmin(req, res, next)),
+  );
+}
+
+// Runs the reminder fan-out. Driven by Cloud Scheduler in production; an admin
+// can still call it by hand for a manual run (BUG-018).
 app.post(
   '/api/notifications/food-reminder/trigger',
-  authenticateToken,
-  verifyAppCheck,
-  requireAdmin,
+  allowSchedulerOrAdmin,
   async (req, res) => {
     const { processReminders: trigger } = require('./services/food_reminder_service');
     try {
@@ -1715,7 +1927,18 @@ app.post(
 
 if (require.main === module) {
   const port = process.env.PORT || 3000;
-  startScheduler();
+
+  // The scheduler used to start inside every API process. With more than one
+  // instance behind a load balancer that meant every user received one
+  // notification per instance, and a long reminder run blocked the same event
+  // loop that serves scans. It is now opt-in: run exactly one worker with
+  // ENABLE_SCHEDULER=true, or leave it off entirely and drive
+  // /api/notifications/food-reminder/trigger from Cloud Scheduler.
+  if (process.env.ENABLE_SCHEDULER === 'true') {
+    console.log('Scheduler enabled in this process (must be a single replica)');
+    startScheduler();
+  }
+
   app.listen(port, () => {
     console.log(`SnapCal backend running on port ${port}`);
   });

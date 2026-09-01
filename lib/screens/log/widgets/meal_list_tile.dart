@@ -49,14 +49,15 @@ class MealListTile extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
+          // Matches the metric tiles: same surface, 16px radius, same hairline.
           decoration: BoxDecoration(
-            color: context.cardColor,
-            borderRadius: BorderRadius.circular(14),
+            color: isDark ? Colors.white.withValues(alpha: 0.045) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color:
                   isDark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : Colors.black.withValues(alpha: 0.03),
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : const Color(0xFFEDE9E1),
               width: 1.0,
             ),
           ),

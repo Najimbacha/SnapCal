@@ -5,6 +5,7 @@ import '../data/models/meal.dart';
 import '../core/services/app_lifecycle_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/gemini_service.dart';
+import '../data/services/promotional_paywall_service.dart';
 import 'repository_providers.dart';
 import 'settings_provider.dart';
 
@@ -66,6 +67,13 @@ class MealLog extends _$MealLog {
       ref
           .read(settingsProvider.notifier)
           .updateStreakOnMealLog(mealDate: mealDate),
+    );
+
+    // Feeds the promotional paywall's eligibility rules (3 logged meals across
+    // 2 distinct days). Nothing called this before, so the counter never moved
+    // and the paywall could never become eligible.
+    unawaited(
+      PromotionalPaywallService.instance().recordSuccessfulMealScanOrLog(),
     );
   }
 

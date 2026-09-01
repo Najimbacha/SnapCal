@@ -29,7 +29,19 @@ Because your code is already synced with GitHub, deploying this backend to [Rend
 2. Click **Add Environment Variable** and add the following:
    - `GROQ_API_KEY` = *[Your actual Groq API Key]*
    - `GEMINI_API_KEY` = *[Your actual Google Gemini API Key]*
+   - `REVENUECAT_WEBHOOK_AUTH` = *[the exact Authorization header value you set
+     in RevenueCat -> Integrations -> Webhooks]*
+   - `REVENUECAT_SECRET_API_KEY` = *[RevenueCat -> Project settings -> API keys
+     -> secret key]*
 3. Render will automatically restart the server with the keys applied.
+
+> **Both RevenueCat variables are required for Pro to work.**
+> Without `REVENUECAT_WEBHOOK_AUTH` the webhook endpoint answers `503` to every
+> delivery, so `users/{uid}/subscription/current` is never written and *no user
+> is ever seen as Pro by the backend*. `REVENUECAT_SECRET_API_KEY` enables the
+> REST fallback in `getPremiumStatus()`, which verifies the entitlement
+> directly when the webhook is late or has failed. Optional companion:
+> `REVENUECAT_RECHECK_MS` (default `600000`) throttles that fallback.
 
 ### Step 4: Generate a Public URL
 1. Your service will be assigned a public URL automatically (e.g., `https://snapcal-mxh9.onrender.com`).

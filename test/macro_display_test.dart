@@ -154,4 +154,66 @@ void main() {
 
     expect(tapped, isTrue);
   });
+
+  testWidgets('rings variant shows grams and targets for Pro', (tester) async {
+    await tester.pumpWidget(wrap(build(variant: MacroDisplayVariant.rings)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('42'), findsOneWidget);
+    expect(find.text('of 120g'), findsOneWidget);
+    expect(find.byIcon(LucideIcons.lock), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('rings variant withholds the numbers when locked', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        build(
+          variant: MacroDisplayVariant.rings,
+          showGrams: false,
+          showGoals: false,
+          onUpgradeTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // One padlock for the section, on the CTA — not one per card as well.
+    expect(find.byIcon(LucideIcons.lock), findsOneWidget);
+    expect(find.text('42'), findsNothing);
+    expect(find.text('of 120g'), findsNothing);
+    // Grams are withheld, but the composition share is not: the same 25/49/26
+    // the Log screen's bar shows, so the two screens cannot contradict.
+    expect(find.text('25%'), findsOneWidget);
+    expect(find.text('49%'), findsOneWidget);
+    expect(find.text('26%'), findsOneWidget);
+    expect(find.text('See your exact numbers'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('locked rings CTA speaks to the day and fires', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      wrap(
+        build(
+          variant: MacroDisplayVariant.rings,
+          showGrams: false,
+          showGoals: false,
+          onUpgradeTap: () => tapped = true,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // Fat sits at 20/70 = 29%, carbs at 84/220 = 38%, protein at 35% — none
+    // clears the 60% "on track" bar, so the generic body shows.
+    expect(find.text('Unlock grams and daily targets'), findsOneWidget);
+
+    await tester.tap(find.text('See your exact numbers'));
+    await tester.pump();
+
+    expect(tapped, isTrue);
+  });
 }

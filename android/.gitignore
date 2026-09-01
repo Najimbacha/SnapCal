@@ -12,3 +12,8 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# JVM crash dumps / heap dumps from Gradle OOMs
+*.hprof
+hs_err_pid*.log
+replay_pid*.log

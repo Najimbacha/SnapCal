@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -25,6 +26,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   final _focus = FocusNode();
   final Set<int> _typedIndices = {};
   final List<dynamic> _messages = [];
+
+  /// Turns of history sent with each request. Six covers a normal
+  /// question-and-answer exchange without crowding the prompt.
+  static const int _historyTurns = 6;
   bool _isLoading = false;
 
   /// Set when a free user has spent their daily AI message. Drives the
@@ -40,10 +45,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   @override
   void initState() {
     super.initState();
+    _ctrl.addListener(_onCtrlChanged);
+  }
+
+  void _onCtrlChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _ctrl.removeListener(_onCtrlChanged);
     _ctrl.dispose();
     _scroll.dispose();
     _focus.dispose();
@@ -77,14 +88,43 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       _lastQuery = query;
     }
     setState(() => _isLoading = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) {
+        _scroll.animateTo(
+          _scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
 
     String? result;
     Object? error;
     int? statusCode;
     try {
+      // The last few turns, so a reply of "1" to a numbered question reads as
+      // an answer rather than a new topic. Capped because the whole prompt
+      // rides in one string the backend limits to 12,000 characters.
+      final prior = <dynamic>[..._messages];
+      // The current question was echoed into _messages a moment ago, and it is
+      // sent separately as USER QUESTION — leaving it here would repeat it.
+      if (prior.isNotEmpty &&
+          prior.last is Map &&
+          prior.last['type'] == 'user' &&
+          prior.last['content'] == query) {
+        prior.removeLast();
+      }
+      final history = <Map<String, String>>[
+        for (final m in prior.length > _historyTurns
+            ? prior.sublist(prior.length - _historyTurns)
+            : prior)
+          if (m is Map && m['content'] is String)
+            {'type': '${m['type']}', 'content': m['content'] as String},
+      ];
+
       result = await ref
           .read(assistantProvider.notifier)
-          .fetchRecommendations(query ?? '');
+          .fetchRecommendations(query ?? '', history: history);
     } catch (e) {
       error = e;
       if (e is DioException) statusCode = e.response?.statusCode;
@@ -149,9 +189,11 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     _fetch(query: query);
   }
 
+  bool get _canSend => _ctrl.text.trim().isNotEmpty && !_isLoading;
+
   void _submit() {
     final q = _ctrl.text.trim();
-    if (q.isEmpty) return;
+    if (q.isEmpty || _isLoading) return;
     _ctrl.clear();
     _focus.unfocus();
     _fetch(query: q);
@@ -283,15 +325,19 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                               children: [
                                 _buildAvatar(48),
                                 const SizedBox(height: 16),
-                                Text(
-                                  'Fajar is thinking...',
-                                  style: TextStyle(
-                                    fontSize: 14,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 14,
+                                  ),
+                                  decoration: BoxDecoration(
                                     color:
                                         d
-                                            ? const Color(0xFF71717A)
-                                            : const Color(0xFF8E8E93),
+                                            ? const Color(0xFF18181B)
+                                            : const Color(0xFFF2F2F7),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
+                                  child: const _TypingDots(),
                                 ),
                               ],
                             ),
@@ -352,8 +398,39 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                           : ListView.builder(
                             controller: _scroll,
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                            itemCount: _messages.length,
+                            itemCount: _messages.length + (_isLoading ? 1 : 0),
                             itemBuilder: (context, i) {
+                              if (i == _messages.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildAvatar(28),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 18,
+                                            vertical: 14,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                d
+                                                    ? const Color(0xFF18181B)
+                                                    : const Color(0xFFF2F2F7),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
+                                          child: const _TypingDots(),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
                               final msg = _messages[i];
                               final user = _isUser(msg);
                               final text = _parseContent(msg);
@@ -837,12 +914,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
 
   Widget _buildInputBar(bool d) {
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        10,
-        16,
-        MediaQuery.of(context).viewInsets.bottom + 10,
-      ),
+      // No viewInsets here. Scaffold.resizeToAvoidBottomInset defaults to true,
+      // so the body has already been shrunk by the keyboard; adding the inset
+      // again padded this bar by a second keyboard height, which collapsed the
+      // Expanded message list to nothing and left the field pinned under the
+      // app bar above a screen of empty bar-coloured space. SafeArea takes
+      // care of the gesture bar when no keyboard is up.
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
         color: d ? const Color(0xFF09090B) : Colors.white,
         border: Border(
@@ -890,15 +968,25 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           ),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: _submit,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: const BoxDecoration(
-                color: AppColors.primaryDark,
-                shape: BoxShape.circle,
+            onTap: _canSend ? _submit : null,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 150),
+              opacity: _canSend ? 1.0 : 0.4,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color:
+                      _canSend
+                          ? AppColors.primaryDark
+                          : (d
+                              ? const Color(0xFF27272A)
+                              : const Color(0xFFC7C7CC)),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(LucideIcons.arrowUp, size: 18, color: Colors.white),
               ),
-              child: Icon(LucideIcons.arrowUp, size: 18, color: Colors.white),
             ),
           ),
         ],
@@ -1023,4 +1111,58 @@ class _GridItem {
     required this.label,
     required this.query,
   });
+}
+
+/// The standard "AI is typing" affordance: three dots pulsing in sequence.
+/// Lives for as long as a coach request is in flight, so the wait is never
+/// a silent void.
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final phase = ((_c.value * 3.0) - i * 0.5) % 1.0;
+            final wave = math.sin(phase * math.pi);
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2.5),
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color.lerp(
+                  isDark ? const Color(0xFF3F3F46) : const Color(0xFFC7C7CC),
+                  isDark ? const Color(0xFFE4E4E7) : const Color(0xFF6B7280),
+                  wave,
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
 }

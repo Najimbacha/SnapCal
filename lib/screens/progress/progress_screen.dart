@@ -15,6 +15,7 @@ import 'widgets/progress_card.dart';
 import 'widgets/weight_trend_chart.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/services/premium_conversion_service.dart';
+import '../../data/services/pro_feature_service.dart';
 import '../../data/services/transformation_video_service.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -72,8 +73,9 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
   bool _isGenerating = false;
 
   Future<void> _generateJourney(List<BodyMetric> photos) async {
-    final settings = ref.read(settingsProvider).valueOrNull;
-    if (settings == null || !settings.isPro) {
+    final access = ref.read(proAccessProvider);
+    if (access.isUnknown) return; // Status unresolved: do nothing, sell nothing.
+    if (!access.can(ProFeature.journeyVideo)) {
       PremiumConversionService().openPaywall(
         context,
         PaywallEntryPoint.progressPhotoLimit,
@@ -131,7 +133,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
         ref.watch(bodyMetricsProvider).valueOrNull ?? <BodyMetric>[];
     final photos = metrics.where((m) => m.photoFrontPath != null).toList();
     final trend = metrics.take(7).toList();
-    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+    final isPro = ref.watch(effectiveIsProProvider);
     final canAdd = isPro || photos.length < 3;
 
     final l10n = AppLocalizations.of(context)!;

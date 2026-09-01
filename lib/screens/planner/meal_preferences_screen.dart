@@ -256,15 +256,21 @@ class _MealPreferencesScreenState extends ConsumerState<MealPreferencesScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   FilledButton.icon(
-                    onPressed: () {
-                      ref
+                    onPressed: () async {
+                      // Await the save. It was fire-and-forget, so generation
+                      // could start against the previous preferences — and the
+                      // settings write that landed a moment later used to tear
+                      // the planner notifier down mid-request.
+                      final navigator = Navigator.of(context);
+                      await ref
                           .read(settingsProvider.notifier)
                           .updatePlannerPreferences(
                             mealsPerDay: _mealsPerDay,
                             dietaryRestriction: _restriction,
                             cuisinePreference: _cuisine,
                           );
-                      Navigator.pop(context);
+                      if (!context.mounted) return;
+                      navigator.pop();
                       widget.onGenerate();
                     },
                     icon: Icon(LucideIcons.sparkles, size: 18),

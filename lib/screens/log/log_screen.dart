@@ -13,14 +13,18 @@ import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
+import '../../data/models/water_log.dart';
 import '../../providers/activity_provider.dart';
+import '../../providers/log_metrics_preferences.dart';
 import '../../providers/meal_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/macro_display.dart';
 import '../../data/services/premium_conversion_service.dart';
 import 'models/log_metric_models.dart';
+import 'widgets/day_insights.dart';
 import 'widgets/health_metric_dashboard.dart';
 import 'widgets/hydration_sheet.dart';
 import 'widgets/horizontal_day_calendar.dart';
@@ -56,9 +60,27 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       dayCarbs += meal.macros.carbs;
       dayFat += meal.macros.fat;
     }
-    final isPro = settings.valueOrNull?.isPro ?? false;
+    final isPro = ref.watch(effectiveIsProProvider);
     final l10n = AppLocalizations.of(context)!;
     final summaries = _buildDailySummaries();
+    final selectedSummary = _summaryFor(
+      summaries: summaries,
+      selectedDate: selectedDate,
+      settings: settings,
+      water: water,
+    );
+    final lastSevenDays =
+        summaries.length <= 7
+            ? summaries
+            : summaries.sublist(summaries.length - 7);
+    final loggedDays =
+        lastSevenDays.where((day) => day.calories > 0).toList(growable: false);
+    final weekAverage =
+        loggedDays.isEmpty
+            ? 0
+            : (loggedDays.fold<int>(0, (sum, day) => sum + day.calories) /
+                    loggedDays.length)
+                .round();
     final dashboardCards = _buildDashboardCards(
       context: context,
       summaries: summaries,
@@ -78,7 +100,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
               : const Color(0xFFF9F8F5),
       child: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(22, 20, 22, 112),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 116),
         children: [
           _HealthLogHeader(
             selectedDate: selectedDate,
@@ -101,49 +123,22 @@ class _LogScreenState extends ConsumerState<LogScreen> {
               );
             },
           ),
-          const SizedBox(height: 24),
-          HealthMetricDashboard(
-            title: l10n.log_key_metrics,
-            actionLabel: l10n.log_customize,
-            cards: isPro ? dashboardCards : dashboardCards.take(4).toList(),
-            onMetricTap: (type) {
-              if (type == LogMetricType.water) {
-                showHydrationSheet(context);
-              } else {
-                context.push('/log/metric/${type.id}');
-              }
-            },
-            onCustomize: () => _showCustomizeSheet(context, l10n),
+          const SizedBox(height: 14),
+          DayComparisonLine(
+            consumed: selectedSummary.calories,
+            average: weekAverage,
+            format: (value) => _formatInt(context, value),
           ),
-          if (!isPro) ...[
-            const SizedBox(height: 16),
-            _CompactMacroCard(
-              macros: Macros(protein: dayProtein, carbs: dayCarbs, fat: dayFat),
-              proteinGoal: settings.valueOrNull?.dailyProteinGoal ?? 0,
-              carbGoal: settings.valueOrNull?.dailyCarbGoal ?? 0,
-              fatGoal: settings.valueOrNull?.dailyFatGoal ?? 0,
-              onTap:
-                  () => PremiumConversionService().openPaywall(
-                    context,
-                    PaywallEntryPoint.macroDetails,
-                    featureName: 'log_macros',
-                  ),
+          const SizedBox(height: 22),
+          LogSectionHeader(title: l10n.home_metric_meals),
+          const SizedBox(height: 14),
+          if (selectedDateMeals.isNotEmpty) ...[
+            MealSplitBar(
+              meals: selectedDateMeals,
+              format: (value) => _formatInt(context, value),
             ),
+            const SizedBox(height: 14),
           ],
-          const SizedBox(height: 24),
-          Text(
-            l10n.home_metric_meals.toUpperCase(),
-            style: AppTypography.labelSmall.copyWith(
-              color:
-                  Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white38
-                      : const Color(0xFFB4AFA8),
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 16),
           if (selectedDateMeals.isEmpty)
             _EmptyMealsState(l10n: l10n)
           else
@@ -187,6 +182,65 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                 );
               },
             ),
+          const SizedBox(height: 26),
+          LogSectionHeader(title: l10n.log_this_week),
+          const SizedBox(height: 14),
+          WeekSummaryCard(
+            week: lastSevenDays,
+            selectedDate: selectedDate,
+            format: (value) => _formatInt(context, value),
+          ),
+          // Macros as the same three rings Home draws. Pro users get
+          // protein/carb/fat tiles in the grid below instead.
+          if (!isPro) ...[
+            const SizedBox(height: 26),
+            LogSectionHeader(title: l10n.home_section_macros_today),
+            const SizedBox(height: 14),
+            MacroDisplay(
+              macros: Macros(
+                protein: dayProtein,
+                carbs: dayCarbs,
+                fat: dayFat,
+              ),
+              proteinGoal: settings.valueOrNull?.dailyProteinGoal ?? 0,
+              carbGoal: settings.valueOrNull?.dailyCarbGoal ?? 0,
+              fatGoal: settings.valueOrNull?.dailyFatGoal ?? 0,
+              variant: MacroDisplayVariant.rings,
+              showGrams: false,
+              showGoals: false,
+              onUpgradeTap:
+                  () => PremiumConversionService().openPaywall(
+                    context,
+                    PaywallEntryPoint.macroDetails,
+                    featureName: 'log_macros',
+                  ),
+            ),
+          ],
+          const SizedBox(height: 26),
+          HealthMetricDashboard(
+            title: l10n.log_key_metrics,
+            actionLabel: l10n.log_customize,
+            cards:
+                (isPro ? dashboardCards : dashboardCards.take(4).toList())
+                    .where(
+                      (card) =>
+                          // Calories are not repeated here: the week card and
+                          // the meal list already carry them.
+                          card.type != LogMetricType.calories &&
+                          ref
+                              .watch(visibleLogMetricsProvider)
+                              .contains(card.type),
+                    )
+                    .toList(),
+            onMetricTap: (type) {
+              if (type == LogMetricType.water) {
+                showHydrationSheet(context);
+              } else {
+                context.push('/log/metric/${type.id}');
+              }
+            },
+            onCustomize: () => _showCustomizeSheet(context, l10n),
+          ),
         ],
       ),
     );
@@ -202,8 +256,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
   }
 
   List<DailySummary> _buildDailySummaries() {
-    final settings = ref.watch(settingsProvider);
-    final isPro = settings.valueOrNull?.isPro ?? false;
+    final isPro = ref.watch(effectiveIsProProvider);
     final now = DateTime.now();
 
     final dayCount = isPro ? 90 : 14;
@@ -226,17 +279,25 @@ class _LogScreenState extends ConsumerState<LogScreen> {
   }) {
     final settings = ref.watch(settingsProvider);
     final s = settings.valueOrNull ?? UserSettings.defaults();
-    final meals = <dynamic>[];
+    // Real per-day data from the repositories. The old implementation iterated
+    // a hardcoded empty list, so calories/water/macros were pinned to zero on
+    // every card no matter what was logged.
+    final mealRepo = ref.watch(mealRepositoryProvider).valueOrNull;
+    final waterRepo = ref.watch(waterRepositoryProvider).valueOrNull;
+    final meals = mealRepo?.getMealsByDate(dateString) ?? const <Meal>[];
     var calories = 0;
     var protein = 0;
     var carbs = 0;
     var fat = 0;
     for (final meal in meals) {
-      calories += (meal.calories as int);
-      protein += (meal.macros.protein as int);
-      carbs += (meal.macros.carbs as int);
-      fat += (meal.macros.fat as int);
+      calories += meal.calories;
+      protein += meal.macros.protein;
+      carbs += meal.macros.carbs;
+      fat += meal.macros.fat;
     }
+    final waterMl = (waterRepo?.getWaterByDate(dateString) ??
+            const <WaterLog>[])
+        .fold<int>(0, (sum, log) => sum + log.amountMl);
 
     return DailySummary(
       dateString: dateString,
@@ -248,7 +309,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       carbGoal: s.dailyCarbGoal,
       fat: fat,
       fatGoal: s.dailyFatGoal,
-      waterMl: 0,
+      waterMl: waterMl,
       waterGoal: ref.watch(waterProvider).valueOrNull?.goal ?? 2500,
       steps: steps,
       stepGoal: 10000,
@@ -256,18 +317,19 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     );
   }
 
-  List<HealthMetricCardData> _buildDashboardCards({
-    required BuildContext context,
+  /// The summary for the day the user is looking at.
+  ///
+  /// Shared by the summary card and the metric grid so the two can never
+  /// disagree about the same day.
+  DailySummary _summaryFor({
     required List<DailySummary> summaries,
+    required String selectedDate,
     required AsyncValue<UserSettings> settings,
-    required AsyncValue<ActivitySummary> activity,
     required AsyncValue<WaterState> water,
   }) {
-    final l10n = AppLocalizations.of(context)!;
-    final selectedDate = ref.watch(selectedDateProvider);
     final s = settings.valueOrNull ?? UserSettings.defaults();
     final w = water.valueOrNull ?? const WaterState(todayTotal: 0);
-    final todaySummary = summaries.firstWhere(
+    return summaries.firstWhere(
       (summary) => summary.dateString == selectedDate,
       orElse:
           () =>
@@ -289,6 +351,23 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                     mealCount: 0,
                   )
                   : summaries.last,
+    );
+  }
+
+  List<HealthMetricCardData> _buildDashboardCards({
+    required BuildContext context,
+    required List<DailySummary> summaries,
+    required AsyncValue<UserSettings> settings,
+    required AsyncValue<ActivitySummary> activity,
+    required AsyncValue<WaterState> water,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    final selectedDate = ref.watch(selectedDateProvider);
+    final todaySummary = _summaryFor(
+      summaries: summaries,
+      selectedDate: selectedDate,
+      settings: settings,
+      water: water,
     );
     final lastSeven =
         summaries.length <= 7
@@ -331,7 +410,11 @@ class _LogScreenState extends ConsumerState<LogScreen> {
         type: LogMetricType.energy,
         title: l10n.log_metric_energy_burned,
         value:
-            energyEstimated
+            energyBurned <= 0
+                // Nothing measured: the card says "No data" below, so the
+                // slot holds a dash rather than a zero that contradicts it.
+                ? '–'
+                : energyEstimated
                 ? '~${_formatInt(context, energyBurned)}'
                 : _formatInt(context, energyBurned),
         unit: l10n.settings_kcal_unit,
@@ -498,7 +581,10 @@ String _metricStatus(
   bool belowRangeLabel = false,
 }) {
   final l10n = AppLocalizations.of(context)!;
-  if (value <= 0) return l10n.log_metric_no_data;
+  // An empty metric with a goal still has something useful to say ("2,000 ml
+  // left"). "No data" is reserved for the case where there is no value AND no
+  // target — otherwise the card prints a zero and denies it in the same breath.
+  if (value <= 0 && goal <= 0) return l10n.log_metric_no_data;
   if (goal <= 0) return '';
   final remaining = goal - value;
   if (remaining <= 0) return l10n.log_metric_goal_hit;
@@ -554,80 +640,6 @@ class _EmptyMealsState extends StatelessWidget {
   }
 }
 
-// ── Compact locked macro card ────────────────────────────────────────────────
-
-/// Free-tier macro surface. Shows the day's real macro composition —
-/// percentages, never a lock, grams withheld — the same treatment Home and
-/// the scan result use, so the tier reads consistently everywhere.
-class _CompactMacroCard extends StatelessWidget {
-  final Macros macros;
-  final int proteinGoal;
-  final int carbGoal;
-  final int fatGoal;
-  final VoidCallback onTap;
-
-  const _CompactMacroCard({
-    required this.macros,
-    required this.proteinGoal,
-    required this.carbGoal,
-    required this.fatGoal,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l10n = AppLocalizations.of(context)!;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : const Color(0xFFE8E4DC),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.home_section_macros,
-            style: AppTypography.titleSmall.copyWith(
-              color: isDark ? Colors.white : const Color(0xFF1C1917),
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 12),
-          MacroDisplay(
-            macros: macros,
-            proteinGoal: proteinGoal,
-            carbGoal: carbGoal,
-            fatGoal: fatGoal,
-            variant: MacroDisplayVariant.composition,
-            showGrams: false,
-            showGoals: false,
-            upgradeLabel: l10n.macro_unlock_card_title,
-            onUpgradeTap: onTap,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── Customize metrics bottom sheet ───────────────────────────────────────────
 
 class _CustomizeMetricsSheet extends ConsumerWidget {
@@ -640,22 +652,38 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
     final bg = isDark ? colorScheme.surfaceContainerHigh : Colors.white;
-    const accent = Color(0xFF009A92);
-    final isPro = ref.read(settingsProvider).valueOrNull?.isPro ?? false;
+    final accent = Theme.of(context).colorScheme.primary;
+    final isPro = ref.watch(effectiveIsProProvider);
+    final visible = ref.watch(visibleLogMetricsProvider);
 
     final allMetrics = [
       (
         l10n.log_metric_calories_intake,
-        'Calories',
         LucideIcons.utensils,
+        LogMetricType.calories,
         false,
       ),
-      (l10n.log_metric_energy_burned, 'Energy', LucideIcons.flame, false),
-      (l10n.log_metric_steps, 'Steps', LucideIcons.footprints, false),
-      (l10n.log_metric_water, 'Water', LucideIcons.droplets, false),
-      (l10n.log_metric_protein, 'Protein', LucideIcons.dumbbell, true),
-      (l10n.log_metric_carbs, 'Carbs', LucideIcons.wheat, true),
-      (l10n.log_metric_fat, 'Fat', LucideIcons.circle, true),
+      (
+        l10n.log_metric_energy_burned,
+        LucideIcons.flame,
+        LogMetricType.energy,
+        false,
+      ),
+      (
+        l10n.log_metric_steps,
+        LucideIcons.footprints,
+        LogMetricType.steps,
+        false,
+      ),
+      (l10n.log_metric_water, LucideIcons.droplets, LogMetricType.water, false),
+      (
+        l10n.log_metric_protein,
+        LucideIcons.dumbbell,
+        LogMetricType.protein,
+        true,
+      ),
+      (l10n.log_metric_carbs, LucideIcons.wheat, LogMetricType.carbs, true),
+      (l10n.log_metric_fat, LucideIcons.circle, LogMetricType.fat, true),
     ];
 
     return Container(
@@ -725,8 +753,12 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
           const SizedBox(height: 16),
           // Metric list
           ...allMetrics.map((item) {
+            final label = item.$1;
+            final icon = item.$2;
+            final type = item.$3;
             final isGated = item.$4;
             final isRowLocked = isGated && !isPro;
+            final isVisible = visible.contains(type);
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -738,13 +770,15 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                       PaywallEntryPoint.macroDetails,
                       featureName: 'customize_macros',
                     );
+                    return;
                   }
+                  ref.read(visibleLogMetricsProvider.notifier).toggle(type);
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 14,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
                     color:
@@ -766,7 +800,7 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                   child: Row(
                     children: [
                       Icon(
-                        item.$3,
+                        icon,
                         size: 18,
                         color:
                             isRowLocked
@@ -780,7 +814,7 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                         child: Row(
                           children: [
                             Text(
-                              item.$1,
+                              label,
                               style: AppTypography.titleMedium.copyWith(
                                 color:
                                     isDark
@@ -823,17 +857,21 @@ class _CustomizeMetricsSheet extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      Icon(
-                        isRowLocked
-                            ? LucideIcons.lock
-                            : LucideIcons.gripHorizontal,
-                        color:
-                            isRowLocked
-                                ? const Color(0xFFE29200)
-                                : (isDark ? Colors.white : Colors.black)
-                                    .withValues(alpha: 0.28),
-                        size: isRowLocked ? 16 : 22,
-                      ),
+                      if (isRowLocked)
+                        Icon(
+                          LucideIcons.lock,
+                          color: const Color(0xFFE29200),
+                          size: 16,
+                        )
+                      else
+                        Switch.adaptive(
+                          value: isVisible,
+                          activeThumbColor: accent,
+                          onChanged:
+                              (_) => ref
+                                  .read(visibleLogMetricsProvider.notifier)
+                                  .toggle(type),
+                        ),
                     ],
                   ),
                 ),

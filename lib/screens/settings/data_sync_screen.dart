@@ -38,7 +38,7 @@ class DataSyncScreen extends ConsumerWidget {
                   final settingsVal = ref.read(settingsProvider).valueOrNull;
                   final authUser = ref.read(authStateProvider).valueOrNull;
 
-                  if (!(settingsVal?.isPro ?? false)) {
+                  if (!ref.read(effectiveIsProProvider)) {
                     PremiumConversionService().openPaywall(
                       context,
                       PaywallEntryPoint.reportInsight,

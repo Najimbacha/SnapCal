@@ -6,6 +6,12 @@ import '../../core/constants/app_constants.dart';
 
 /// Repository for managing water intake data in Hive
 class WaterRepository {
+  /// Singleton, for consistency with the other repositories: one Hive handle
+  /// and one init future per box. See [SettingsRepository].
+  static final WaterRepository _instance = WaterRepository._internal();
+  factory WaterRepository() => _instance;
+  WaterRepository._internal();
+
   Box<WaterLog>? _waterBox;
   Future<void>? _initFuture;
   bool _initialized = false;

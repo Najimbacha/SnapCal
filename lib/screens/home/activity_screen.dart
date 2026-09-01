@@ -38,7 +38,7 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     final activityAsync = ref.watch(ap.activityProvider);
     final activityVal = activityAsync.valueOrNull;
     final steps = activityVal?.steps ?? 0;
-    final isPro = ref.watch(settingsProvider).valueOrNull?.isPro ?? false;
+    final isPro = ref.watch(effectiveIsProProvider);
     final stepGoal = 10000;
     final progress = (steps / math.max(stepGoal, 1)).clamp(0.0, 1.0);
     final l10n = AppLocalizations.of(context)!;

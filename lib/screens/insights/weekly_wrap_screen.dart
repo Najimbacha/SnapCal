@@ -34,7 +34,7 @@ class _WeeklyWrapScreenState extends ConsumerState<WeeklyWrapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final settings = ref.read(settingsProvider).valueOrNull;
-        if (settings?.isPro == true) {
+        if (ref.read(proAccessProvider).isPro) {
           ref
               .read(insightsProvider.notifier)
               .generateWeeklyReport(
@@ -77,7 +77,21 @@ class _WeeklyWrapScreenState extends ConsumerState<WeeklyWrapScreen> {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (settings?.isPro != true) {
+    final access = ref.watch(proAccessProvider);
+    if (access.isUnknown) {
+      // Pro status has not resolved. Show the frame, not the paywall.
+      return AppPageScaffold(
+        title: l10n.feature_insights_title,
+        subtitle: l10n.feature_insights_desc,
+        scrollable: true,
+        child: const Padding(
+          padding: EdgeInsets.only(top: 64),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (!access.isPro) {
       return AppPageScaffold(
         title: l10n.feature_insights_title,
         subtitle: l10n.feature_insights_desc,

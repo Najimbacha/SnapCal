@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
+// package:intl exports its own TextDirection class, which shadows the
+// dart:ui enum in this file. Reach the enum through a prefix.
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -34,10 +37,31 @@ import 'meal_preferences_screen.dart';
 
 enum _PlannerAction { grocery, preferences, regenerateWeek, optimize }
 
+/// The planner notifier is built ONCE per app session.
+///
+/// It deliberately does not `watch` [settingsProvider]. A `ChangeNotifierProvider`
+/// is torn down and rebuilt whenever a watched dependency emits, and settings
+/// emit constantly (streaks, logged meals, planner preferences). That disposed
+/// the live PlannerProvider mid-flight — most visibly when saving planner
+/// preferences invalidated the notifier a frame before `generateWeeklyPlan()`
+/// ran on the now-orphaned instance, so generation silently never happened.
+///
+/// Settings are read once for construction and pushed in afterwards via
+/// [PlannerProvider.updateSettings], which keeps the plan, the grocery list and
+/// any in-flight generation intact.
 final plannerNotifierProvider = ChangeNotifierProvider<PlannerProvider>((ref) {
   final settings =
-      ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
-  return PlannerProvider(AIService(), settings);
+      ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults();
+  final planner = PlannerProvider(AIService(), settings);
+
+  ref.listen<AsyncValue<UserSettings>>(settingsProvider, (previous, next) {
+    final updated = next.valueOrNull;
+    if (updated == null) return;
+    if (previous?.valueOrNull == updated) return;
+    planner.updateSettings(updated);
+  });
+
+  return planner;
 });
 
 class MealPlannerScreen extends ConsumerStatefulWidget {
@@ -48,10 +72,13 @@ class MealPlannerScreen extends ConsumerStatefulWidget {
 }
 
 class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
-  late final PlannerProvider _plannerProvider;
-  bool _listeningToPlanner = false;
   bool _isOptimizing = false;
   int? _selectedDayIndex;
+
+  /// Always read the notifier at call time. Holding it in a field outlived the
+  /// instance it pointed at and left every action on this screen talking to a
+  /// dead object.
+  PlannerProvider get _planner => ref.read(plannerNotifierProvider);
 
   List<String> _getDayLabels(BuildContext context, {MealPlan? plan}) {
     final l10n = AppLocalizations.of(context)!;
@@ -74,47 +101,27 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     return labels;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _plannerProvider = ref.read(plannerNotifierProvider);
-
-    // Guard against non-pro users accessing the screen directly
-    if (!(ref.read(settingsProvider).valueOrNull?.isPro ?? false)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          } else {
-            context.go('/');
-          }
-          PremiumConversionService().openPaywall(
-            context,
-            PaywallEntryPoint.plannerLockedDay,
-            featureName: 'meal_planner',
-          );
-        }
-      });
-      return;
-    }
-
-    _plannerProvider.addListener(_onPlannerChange);
-    _listeningToPlanner = true;
+  /// Shows the paywall for a user we *know* is on the free tier.
+  ///
+  /// This used to run from `initState` on a synchronous `effectiveIsPro` read,
+  /// which treats `ProStatus.unknown` — the status while it is still resolving
+  /// — as "free". Paying users opening the planner were popped straight back
+  /// to the previous screen and sold a subscription they already had. Pro
+  /// status is now settled before anything is gated on it, and free users get
+  /// the two-day preview the rest of this screen was already written for
+  /// rather than being bounced off the route.
+  void _offerUpgrade() {
+    PremiumConversionService().openPaywall(
+      context,
+      PaywallEntryPoint.plannerLockedDay,
+      featureName: 'meal_planner',
+    );
   }
 
-  @override
-  void dispose() {
-    if (_listeningToPlanner) {
-      _plannerProvider.removeListener(_onPlannerChange);
-    }
-    super.dispose();
-  }
-
-  void _onPlannerChange() {
-    if (_plannerProvider.error != null &&
-        _plannerProvider.currentPlan != null) {
-      final errorMsg = _plannerProvider.error!;
-      _plannerProvider.clearError();
+  void _onPlannerChange(PlannerProvider planner) {
+    if (planner.error != null && planner.currentPlan != null) {
+      final errorMsg = planner.error!;
+      planner.clearError();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -143,6 +150,16 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final connectivity = ConnectivityService();
     final isOnline = connectivity.hasInternetAccess;
 
+    // Surfacing planner errors used to depend on a manual addListener against a
+    // field-held notifier. Listening through the provider keeps this bound to
+    // whatever instance is live.
+    ref.listen<PlannerProvider>(
+      plannerNotifierProvider,
+      (_, planner) => _onPlannerChange(planner),
+    );
+
+    final proAccess = ref.watch(proAccessProvider);
+
     return AppPageScaffold(
       title: '', // Custom large Apple header inside body
       scrollable: false,
@@ -160,9 +177,32 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
             stops: const [0.0, 0.40],
           ),
         ),
-        child: Consumer(
-          builder: (context, ref, _) {
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // showHeader is false on the scaffold, so its back button never
+            // renders. Without this bar every planner state — empty,
+            // generating, offline, error, upgrade and the plan itself — is a
+            // dead end on Android's gesture-nav and on iOS alike.
+            const _PlannerBackBar(),
+            Expanded(
+              child: Consumer(
+                builder: (context, ref, _) {
             final planner = ref.watch(plannerNotifierProvider);
+
+            // 0. Pro status has not resolved yet. Deciding anything here —
+            // especially showing a paywall — would treat a paying user as free.
+            if (proAccess.isUnknown) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            // 0b. Known free user with nothing to preview: sell Pro in place
+            // rather than popping the route out from under them. Once a plan
+            // exists, _buildPlanView shows days 1-2 and locks the rest.
+            if (proAccess.isFree && planner.currentPlan == null) {
+              return _buildUpgradeState();
+            }
+
             // 1. Generating state
             if (planner.isGenerating && planner.currentPlan == null) {
               return _buildGeneratingState();
@@ -186,7 +226,10 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
               state: planner.uiState,
               child: _buildPlanView(),
             );
-          },
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -248,7 +291,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       child: AppEmptyState(
         icon: LucideIcons.alertTriangle,
         title: l10n.error_generic,
-        body: _plannerProvider.error ?? l10n.error_generic,
+        body: _planner.error ?? l10n.error_generic,
         actionLabel: l10n.common_try_again,
         onAction: () {
           final isOnline = ConnectivityService().hasInternetAccess;
@@ -271,7 +314,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
             );
             return;
           }
-          _plannerProvider.generateWeeklyPlan();
+          _planner.generateWeeklyPlan();
         },
       ),
     );
@@ -288,6 +331,21 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         onAction: () async {
           await ConnectivityService().refreshReachability(force: true);
         },
+      ),
+    );
+  }
+
+  /// Shown to a user we know is on the free tier, in place of the old
+  /// pop-and-paywall in `initState`.
+  Widget _buildUpgradeState() {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: AppEmptyState(
+        icon: LucideIcons.crown,
+        title: l10n.planner_empty_headline,
+        body: l10n.planner_empty_body,
+        actionLabel: l10n.planner_upgrade_pro,
+        onAction: _offerUpgrade,
       ),
     );
   }
@@ -349,7 +407,6 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
 
   Widget _buildPlanView() {
     final planner = ref.watch(plannerNotifierProvider);
-    final settings = ref.watch(settingsProvider).valueOrNull;
     final isDark = context.isDarkMode;
     final plan = planner.currentPlan;
     final todayIndex = _todayIndexForPlan(plan);
@@ -373,7 +430,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         if (planner.isCurrentPlanExpired)
           _ExpiredPlanBanner(
             onGenerate:
-                (settings?.isPro ?? false)
+                ref.watch(effectiveIsProProvider)
                     ? () => _confirmRegenerate(context)
                     : () => _showPaywall(
                       context,
@@ -391,7 +448,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
           _buildWeekDatePicker(
             plan: plan,
             activeIndex: activeIndex,
-            isPro: settings?.isPro ?? false,
+            isPro: ref.watch(effectiveIsProProvider),
             todayIndex: todayIndex,
           ),
         Expanded(
@@ -596,7 +653,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final plan = planner.currentPlan;
     if (plan == null) return const SizedBox.shrink();
     final todayIndex = _todayIndexForPlan(plan);
-    final isLocked = !(settings?.isPro ?? false) && activeIndex >= 2;
+    final isLocked = !ref.watch(effectiveIsProProvider) && activeIndex >= 2;
     final meals = plan.weeklyMeals[activeIndex] ?? const <Meal>[];
     final totalCalories = meals.fold<int>(
       0,
@@ -676,7 +733,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                       ],
                     ),
                   ),
-                  if ((settings?.isPro ?? false) &&
+                  if (ref.watch(effectiveIsProProvider) &&
                       planner.canRegenerate &&
                       !isLocked)
                     TextButton.icon(
@@ -846,7 +903,6 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
 
   void _showGrocerySheet() {
     final planner = ref.read(plannerNotifierProvider);
-    final settings = ref.read(settingsProvider).valueOrNull;
     HapticFeedback.selectionClick();
     showModalBottomSheet(
       context: context,
@@ -861,7 +917,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
             builder:
                 (context, scrollController) => _GrocerySheet(
                   provider: planner,
-                  settings: settings,
+                  isPro: ref.read(effectiveIsProProvider),
                   scrollController: scrollController,
                   onUpgrade:
                       () =>
@@ -872,7 +928,6 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   }
 
   void _handlePlannerAction(_PlannerAction action) {
-    final settings = ref.read(settingsProvider).valueOrNull;
     switch (action) {
       case _PlannerAction.grocery:
         _showGrocerySheet();
@@ -881,7 +936,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         _showPreferences(context);
         break;
       case _PlannerAction.regenerateWeek:
-        if (!(settings?.isPro ?? false)) {
+        if (!ref.read(effectiveIsProProvider)) {
           _showPaywall(context, PaywallEntryPoint.plannerPreferences);
           return;
         }
@@ -899,7 +954,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final settingsNotifier = ref.read(settingsProvider.notifier);
     final currentWeight = metricsProvider.currentWeight;
     final l10n = AppLocalizations.of(context)!;
-    final todaysMeals = ref.watch(todaysMealsProvider).valueOrNull ?? [];
+    final todaysMeals = ref.read(todaysMealsProvider).valueOrNull ?? [];
     final totalCalories = todaysMeals.fold<int>(0, (s, m) => s + m.calories);
 
     if (currentWeight == null) {
@@ -951,7 +1006,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   }
 
   void _confirmRegenerate(BuildContext context) {
-    final planner = _plannerProvider;
+    final planner = _planner;
     final isOnline = ConnectivityService().hasInternetAccess;
     if (!isOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -994,7 +1049,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   }
 
   void _confirmRegenerateDay(BuildContext context, int dayIndex) {
-    final planner = _plannerProvider;
+    final planner = _planner;
     final isOnline = ConnectivityService().hasInternetAccess;
     if (!isOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1042,7 +1097,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   }
 
   void _confirmSwapMeal(BuildContext context, Meal meal, int dayIndex) async {
-    final planner = _plannerProvider;
+    final planner = _planner;
     // Check connectivity
     final isOnline = ConnectivityService().hasInternetAccess;
     if (!isOnline) {
@@ -1064,8 +1119,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     }
 
     // Check Pro status
-    final settings = ref.read(settingsProvider).valueOrNull;
-    if (!(settings?.isPro ?? false)) {
+    if (!ref.read(effectiveIsProProvider)) {
       _showPaywall(context, PaywallEntryPoint.plannerPreferences);
       return;
     }
@@ -1146,16 +1200,25 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
   }
 
   void _showPreferences(BuildContext context) {
+    // `onGenerate` runs *after* the preferences route has popped itself, so the
+    // builder's context is deactivated by then. Anything looked up off it —
+    // ScaffoldMessenger, AppLocalizations — threw, and the throw was swallowed:
+    // the user landed back on the planner and nothing happened. Capture this
+    // screen's own context and messenger instead; they outlive the sheet.
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context)!;
+
     Navigator.push(
       context,
       MaterialPageRoute(
         fullscreenDialog: true,
         builder:
-            (context) => MealPreferencesScreen(
+            (_) => MealPreferencesScreen(
               onGenerate: () {
+                if (!mounted) return;
                 final isOnline = ConnectivityService().hasInternetAccess;
                 if (!isOnline) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Row(
                         children: [
@@ -1165,11 +1228,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                             size: 18,
                           ),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              AppLocalizations.of(context)!.error_offline,
-                            ),
-                          ),
+                          Expanded(child: Text(l10n.error_offline)),
                         ],
                       ),
                       backgroundColor: Colors.redAccent,
@@ -1177,7 +1236,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                   );
                   return;
                 }
-                _plannerProvider.generateWeeklyPlan();
+                _planner.generateWeeklyPlan();
               },
             ),
       ),
@@ -1189,6 +1248,52 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       context,
       entryPoint,
       featureName: 'meal_planner',
+    );
+  }
+}
+
+/// A minimal nav row: back arrow only, sized and bordered like the planner's
+/// other header buttons so it reads as part of the same set. The large title
+/// below it is the screen's identity, so this bar carries no title of its own.
+class _PlannerBackBar extends StatelessWidget {
+  const _PlannerBackBar();
+
+  @override
+  Widget build(BuildContext context) {
+    if (!context.canPop()) return const SizedBox(height: 8);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: IconButton(
+          key: const ValueKey('planner-back-button'),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+          style: IconButton.styleFrom(
+            backgroundColor: context.cardSoftColor,
+            foregroundColor: context.textPrimaryColor,
+            fixedSize: const Size(40, 40),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: context.cardBorderColor),
+            ),
+          ),
+          // Arabic reads right to left, so the arrow must flip with it.
+          icon: Icon(
+            Directionality.of(context) == ui.TextDirection.rtl
+                ? LucideIcons.arrowRight
+                : LucideIcons.arrowLeft,
+            size: 18,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1210,7 +1315,7 @@ class _PlannerHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 14),
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
       child: Row(
         children: [
           Expanded(
@@ -1343,13 +1448,13 @@ class _MenuRow extends StatelessWidget {
 
 class _GrocerySheet extends StatelessWidget {
   final PlannerProvider provider;
-  final UserSettings? settings;
+  final bool isPro;
   final ScrollController scrollController;
   final VoidCallback onUpgrade;
 
   const _GrocerySheet({
     required this.provider,
-    required this.settings,
+    required this.isPro,
     required this.scrollController,
     required this.onUpgrade,
   });
@@ -1390,8 +1495,7 @@ class _GrocerySheet extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if ((settings?.isPro ?? false) &&
-                        provider.groceryList.isNotEmpty)
+                    if (isPro && provider.groceryList.isNotEmpty)
                       TextButton.icon(
                         onPressed: () {
                           SharePlus.instance.share(
@@ -1416,7 +1520,7 @@ class _GrocerySheet extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    if (!(settings?.isPro ?? false)) {
+    if (!isPro) {
       return Center(
         child: AppEmptyState(
           icon: LucideIcons.crown,

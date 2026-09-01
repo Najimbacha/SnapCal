@@ -177,6 +177,14 @@ class PromotionalPaywallService {
       return false;
     }
 
+    final lastDismissed = _readDate(
+      prefs.getString(scopedPrefKey(_lastDismissedAtKey)),
+    );
+    if (lastDismissed != null &&
+        _clock().difference(lastDismissed) < promotionalCooldown) {
+      return false;
+    }
+
     final activePremium =
         isPremium || await _subscriptionGateway.hasActivePremiumEntitlement();
     if (activePremium) return false;

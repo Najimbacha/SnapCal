@@ -1,4 +1,4 @@
-﻿{
+{
   "@@locale": "en",
   "appTitle": "SnapCal",
   "@appTitle": {
@@ -368,9 +368,9 @@
       }
     }
   },
-  "settings_core_config": "Core Configuration",
-  "settings_data_security": "Data & Security",
-  "settings_information": "Information",
+  "settings_core_config": "You",
+  "settings_data_security": "Your data",
+  "settings_information": "About",
   "settings_body_profile": "Body Profile",
   "settings_body_profile_sub": "Update your stats and goals",
   "settings_nutrition_goals": "Nutrition Goals",
@@ -872,6 +872,14 @@
   "scan_overlay_scanning": "AI VISION SCANNING",
   "scan_overlay_desc": "Detecting ingredients and calculating\nnutritional density with Gemini...",
   "scan_overlay_manual": "LOG MANUALLY",
+  "scan_wait_stay": "Keep this screen open",
+  "@scan_wait_stay": {
+    "description": "SnapCal UI string: scan_wait_stay"
+  },
+  "scan_wait_longer": "Taking longer than usual — your result is still coming.",
+  "@scan_wait_longer": {
+    "description": "SnapCal UI string: scan_wait_longer"
+  },
   "report_card_title": "WEEKLY PROGRESS REPORT",
   "report_card_subtitle": "See why some days went over target and get personalized suggestions to fix it.",
   "startup_launch_issue": "Launch Encountered an Issue",
@@ -1740,6 +1748,23 @@
   "@macro_pro_label": {
     "description": "SnapCal UI string: macro_pro_label"
   },
+  "macro_ring_unlock_title": "See your exact numbers",
+  "@macro_ring_unlock_title": {
+    "description": "SnapCal UI string: macro_ring_unlock_title"
+  },
+  "macro_ring_unlock_body": "Unlock grams and daily targets",
+  "@macro_ring_unlock_body": {
+    "description": "SnapCal UI string: macro_ring_unlock_body"
+  },
+  "macro_ring_on_track": "You're on track for {macro} — unlock exact grams",
+  "@macro_ring_on_track": {
+    "description": "SnapCal UI string: macro_ring_on_track",
+    "placeholders": {
+      "macro": {
+        "type": "String"
+      }
+    }
+  },
   "result_add_to_log_kcal": "Add to log · {calories} kcal",
   "@result_add_to_log_kcal": {
     "description": "SnapCal UI string: result_add_to_log_kcal",
@@ -1823,5 +1848,164 @@
         "type": "String"
       }
     }
-  }
+  },
+  "paywall_disclosure_intro_year": "{introPrice} for the first year, then {price} per year. Renews automatically until you cancel.",
+  "@paywall_disclosure_intro_year": {
+    "description": "SnapCal UI string: paywall_disclosure_intro_year",
+    "placeholders": {
+      "introPrice": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_disclosure_intro_month": "{introPrice} for the first month, then {price} per month. Renews automatically until you cancel.",
+  "@paywall_disclosure_intro_month": {
+    "description": "SnapCal UI string: paywall_disclosure_intro_month",
+    "placeholders": {
+      "introPrice": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_intro_first_year": "{introPrice} first year",
+  "@paywall_intro_first_year": {
+    "description": "SnapCal UI string: paywall_intro_first_year",
+    "placeholders": {
+      "introPrice": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_intro_first_month": "{introPrice} first month",
+  "@paywall_intro_first_month": {
+    "description": "SnapCal UI string: paywall_intro_first_month",
+    "placeholders": {
+      "introPrice": {
+        "type": "String"
+      }
+    }
+  },
+  "home_goal_activity_bonus": "+{kcal} kcal earned from activity",
+  "@home_goal_activity_bonus": {
+    "description": "SnapCal UI string: home_goal_activity_bonus",
+    "placeholders": {
+      "kcal": {
+        "type": "int"
+      }
+    }
+  },
+  "home_metric_of_goal": "of {goal} {unit}",
+  "@home_metric_of_goal": {
+    "description": "SnapCal UI string: home_metric_of_goal",
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "water_unit_ml": "ml",
+  "@water_unit_ml": {
+    "description": "SnapCal UI string: water_unit_ml"
+  },
+  "home_kcal_short": "{kcal} kcal",
+  "@home_kcal_short": {
+    "description": "SnapCal UI string: home_kcal_short",
+    "placeholders": {
+      "kcal": {
+        "type": "int"
+      }
+    }
+  },
+  "home_kcal_estimated_short": "~{kcal} kcal",
+  "@home_kcal_estimated_short": {
+    "description": "SnapCal UI string: home_kcal_estimated_short",
+    "placeholders": {
+      "kcal": {
+        "type": "int"
+      }
+    }
+  },
+  "log_this_week": "This week",
+  "log_week_average": "{value} avg",
+  "@log_week_average": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "log_week_on_target": "{count} of {total} on target",
+  "@log_week_on_target": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "log_week_no_data": "Nothing logged this week yet",
+  "log_vs_average_above": "{value} above your 7-day average",
+  "@log_vs_average_above": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "log_vs_average_below": "{value} below your 7-day average",
+  "@log_vs_average_below": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "log_vs_average_same": "Right on your 7-day average",
+  "log_meal_split": "Where the calories came from",
+  "macro_target_met": "Target met",
+  "macro_grams_to_go": "{value}g to go",
+  "@macro_grams_to_go": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "macro_targets_met_count": "{count} of {total} targets met",
+  "@macro_targets_met_count": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "result_unlock_personal_title": "Does this fit your day?",
+  "result_unlock_personal_body": "Pro checks this meal against your protein, carb and fat targets",
+  "home_macro_empty": "Scan a meal to see your macro split",
+  "home_section_plan_coach": "Plan and coach",
+  "assistant_home_subtitle": "Personalized AI advice",
+  "home_offer_percent_off": "{value}% OFF",
+  "@home_offer_percent_off": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "home_offer_ends_soon": "Ends soon",
+  "settings_guest_sync": "Sync your data across devices"
 }

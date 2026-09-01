@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/services/premium_conversion_service.dart';
+import '../../../data/services/pro_feature_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/app_icon.dart';
@@ -702,8 +703,12 @@ class WeeklyReportSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.read(settingsProvider).valueOrNull;
-    if (settings == null || !settings.isPro) {
+    final settings = ref.watch(settingsProvider).valueOrNull;
+    final access = ref.watch(proAccessProvider);
+    if (access.isUnknown || settings == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (!access.can(ProFeature.reports)) {
       PremiumConversionService().openPaywall(
         context,
         PaywallEntryPoint.reportInsight,

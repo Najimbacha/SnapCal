@@ -11,6 +11,13 @@ import '../services/sync_queue_service.dart';
 
 /// Repository for managing meal data in Hive and Firestore
 class MealRepository {
+  /// Singleton: the broadcast stream below is the only channel the meal
+  /// providers listen on, and a second instance (PreloadService built one)
+  /// emits into a stream with no subscribers. See [SettingsRepository].
+  static final MealRepository _instance = MealRepository._internal();
+  factory MealRepository() => _instance;
+  MealRepository._internal();
+
   Box<Meal>? _mealsBox;
   Box<List<String>>? _indexBox;
 

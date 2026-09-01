@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import '../models/promo_offer.dart';
 import '../repositories/settings_repository.dart';
 import '../../core/services/config_service.dart';
 import '../../core/network/api_client.dart';
@@ -24,7 +25,9 @@ class SubscriptionService {
   bool _customerInfoListenerRegistered = false;
   Future<void>? _initFuture;
   EntitlementInfo? _currentEntitlement;
+  CustomerInfo? _currentCustomerInfo;
   Offering? _currentOffering;
+  String? _lastKnownUid;
 
   static const String _entitlementId = "pro";
   static const Set<String> _proProductIds = {
@@ -107,7 +110,7 @@ class SubscriptionService {
   bool get isPurchaseInFlight => _purchaseInFlight;
 
   Future<bool> hasActivePremiumEntitlement() async {
-    return _currentEntitlement?.isActive == true;
+    return _hasProAccess();
   }
 
   Future<bool> hasValidCurrentOffering() async {
@@ -119,6 +122,7 @@ class SubscriptionService {
 
     try {
       if (user != null) {
+        _lastKnownUid = user.uid;
         final result = await Purchases.logIn(
           user.uid,
         ).timeout(TimeoutPolicy.revenueCat);
@@ -127,10 +131,27 @@ class SubscriptionService {
         return;
       }
 
-      await _settingsRepository?.updateProStatus(false);
+      // `authStateChanges()` emits null in more cases than a real sign-out:
+      // during cold start before the persisted session is restored, and around
+      // token refresh failures. Acting on those wiped Pro locally *and* moved
+      // the device onto a fresh anonymous RevenueCat ID with no entitlement,
+      // so nothing could recover it. Wait for the emission to settle and
+      // confirm against `currentUser` before treating it as a sign-out.
+      if (_lastKnownUid != null) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+        if (FirebaseAuth.instance.currentUser != null) {
+          debugPrint("RevenueCat: ignoring transient null auth state");
+          return;
+        }
+      }
+
+      _lastKnownUid = null;
       final customerInfo = await Purchases.logOut().timeout(
         TimeoutPolicy.revenueCat,
       );
+      // Downgrade only once the store has actually released the identity. A
+      // failed logout must not leave the user stripped of Pro.
+      await _settingsRepository?.updateProStatus(false);
       await _processCustomerInfo(customerInfo);
     } catch (e) {
       debugPrint("RevenueCat identity sync warning: $e");
@@ -153,6 +174,7 @@ class SubscriptionService {
   }
 
   Future<void> _processCustomerInfo(CustomerInfo customerInfo) async {
+    _currentCustomerInfo = customerInfo;
     _currentEntitlement = customerInfo.entitlements.all[_entitlementId];
     debugPrint("RevenueCat Customer ID: ${customerInfo.originalAppUserId}");
     debugPrint(
@@ -167,8 +189,13 @@ class SubscriptionService {
     debugPrint("🏆 Server verified Pro Active: $backendActive");
   }
 
-  // ignore: unused_element
-  bool _hasProAccess(CustomerInfo customerInfo) {
+  /// Whether the cached [CustomerInfo] carries Pro access, by any of the three
+  /// signals the store gives us: the configured entitlement, any other active
+  /// entitlement, or an active subscription on a known Pro product.
+  bool _hasProAccess([CustomerInfo? info]) {
+    final customerInfo = info ?? _currentCustomerInfo;
+    if (customerInfo == null) return _currentEntitlement?.isActive == true;
+
     final configuredEntitlementActive =
         customerInfo.entitlements.all[_entitlementId]?.isActive ?? false;
     if (configuredEntitlementActive) return true;
@@ -206,7 +233,8 @@ class SubscriptionService {
       ).timeout(TimeoutPolicy.revenueCat);
 
       await _processCustomerInfo(purchaseResult.customerInfo);
-      if (await refreshBackendPremiumStatus()) {
+      invalidatePremiumCache();
+      if (await refreshBackendPremiumStatus(force: true)) {
         return const SubscriptionResult.active();
       }
 
@@ -248,7 +276,8 @@ class SubscriptionService {
         TimeoutPolicy.revenueCat,
       );
       await _processCustomerInfo(customerInfo);
-      if (await refreshBackendPremiumStatus()) {
+      invalidatePremiumCache();
+      if (await refreshBackendPremiumStatus(force: true)) {
         return const SubscriptionResult.active();
       }
 
@@ -285,11 +314,105 @@ class SubscriptionService {
     }
 
     try {
-      return await Purchases.getOfferings().timeout(const Duration(seconds: 8));
+      final offerings = await Purchases.getOfferings().timeout(
+        const Duration(seconds: 8),
+      );
+      // `_currentOffering` was declared and read but never assigned, so
+      // hasValidCurrentOffering() answered false for every user and the
+      // promotional paywall could never fire.
+      _currentOffering = offerings.current ?? _currentOffering;
+      return offerings;
     } catch (e) {
       debugPrint("Failed to get offerings: $e");
       return null;
     }
+  }
+
+  /// The discount currently configured on the RevenueCat offering, if any.
+  ///
+  /// Campaigns are driven from the dashboard: the app reads
+  /// `discount_percent` and an optional `ends_at` off the offering's metadata,
+  /// so starting or ending one needs no release.
+  Future<PromoOffer?> fetchPromoOffer() async {
+    // Home builds before RevenueCat finishes configuring, and getOfferings()
+    // answers null until it has. Without this wait the first (and, for a
+    // cached provider, only) read always missed.
+    if (!_configured) {
+      // Home builds well before RevenueCat finishes configuring — on a cold
+      // start it is queued behind Firebase, FCM and the ads SDK — and
+      // getOfferings() answers null until it has. A short wait lost the race
+      // every time; this one is generous because it costs nothing but a
+      // pending future on a background path.
+      await _initFuture;
+      const step = Duration(seconds: 1);
+      for (var waited = 0; waited < 15 && !_configured; waited++) {
+        await Future<void>.delayed(step);
+      }
+      if (!_configured) {
+        debugPrint('🏷️ Promo: RevenueCat did not configure within 15s — '
+            'skipping (check the API key and network)');
+        return null;
+      }
+      debugPrint('🏷️ Promo: RevenueCat ready, reading offerings');
+    }
+
+    final offerings = await getOfferings();
+    final offering = offerings?.current ?? _currentOffering;
+    if (offering == null) {
+      debugPrint('🏷️ Promo: no current offering — check RevenueCat is '
+          'configured and an offering is marked current');
+      return null;
+    }
+
+    // A dashboard campaign wins, because it can carry a deadline. Otherwise
+    // fall back to the Play Console offer on the plan itself, derived from the
+    // prices rather than typed anywhere.
+    var offer = PromoOffer.fromMetadata(
+      offering.identifier,
+      offering.metadata,
+    );
+
+    if (offer == null) {
+      // Resolve by package TYPE, not by the offering's `annual`/`monthly`
+      // getters: those only match the standard $rc_annual / $rc_monthly
+      // identifiers, and this project names its packages differently — so the
+      // getters were null, the annual-vs-monthly comparison never ran, and the
+      // header fell back to a different (also true) number than the paywall.
+      Package? byType(PackageType type) {
+        for (final package in offering.availablePackages) {
+          if (package.packageType == type) return package;
+        }
+        return null;
+      }
+
+      offer = PromoOffer.fromPackages(
+        offeringId: offering.identifier,
+        annual: byType(PackageType.annual) ?? offering.annual,
+        monthly: byType(PackageType.monthly) ?? offering.monthly,
+      );
+      if (offer != null) {
+        debugPrint('🏷️ Promo: derived ${offer.percentOff}% from live prices '
+            '(annual=${byType(PackageType.annual)?.storeProduct.identifier}, '
+            'monthly=${byType(PackageType.monthly)?.storeProduct.identifier})');
+      }
+    }
+
+    if (offer == null) {
+      // Says which offering was read and what it carried, so a campaign put on
+      // the wrong offering is one log line away instead of a guess.
+      debugPrint('🏷️ Promo: offering "${offering.identifier}" carries no '
+          'discount — no metadata (got: ${offering.metadata}) and no '
+          'discounted pricing phase on its packages');
+      return null;
+    }
+
+    if (!offer.isLiveAt(DateTime.now())) {
+      debugPrint('🏷️ Promo: offer expired — ends_at was ${offer.endsAt}');
+      return null;
+    }
+
+    debugPrint('🏷️ Promo LIVE: $offer');
+    return offer;
   }
 
   Future<bool> purchasePackage(Package package) async {
@@ -326,20 +449,93 @@ class SubscriptionService {
     return refreshBackendPremiumStatus();
   }
 
-  Future<bool> refreshBackendPremiumStatus() async {
+  /// Reconciles Pro status against the backend, without ever letting a
+  /// negative or failed answer override a live store entitlement.
+  ///
+  /// `subscription/current` is written by the RevenueCat webhook, so a late,
+  /// retried or misconfigured webhook makes the backend say `isActive: false`
+  /// for someone who has genuinely paid. The store is the payment authority;
+  /// the backend is its mirror. Only the store itself may take Pro away.
+  /// Cached answer and its age.
+  ///
+  /// This call fired 8-12 times on a single app launch: RevenueCat listeners,
+  /// the auth notifier and the entitlement verifier all reach for it
+  /// independently. At 250k daily users that is ten million requests a day for
+  /// a value that changes when someone subscribes — about once per user, ever.
+  static bool? _cachedServerActive;
+  static DateTime? _cachedAt;
+  static Future<bool>? _inFlight;
+  static const _cacheTtl = Duration(minutes: 5);
+
+  /// Drops the cache so the next read hits the backend. Called after a
+  /// purchase or restore, where the answer has genuinely just changed.
+  static void invalidatePremiumCache() {
+    _cachedServerActive = null;
+    _cachedAt = null;
+  }
+
+  Future<bool> refreshBackendPremiumStatus({bool force = false}) async {
+    final storeSaysActive = hasLocalEntitlement;
+
+    if (!force) {
+      final cachedAt = _cachedAt;
+      final cached = _cachedServerActive;
+      if (cached != null &&
+          cachedAt != null &&
+          DateTime.now().difference(cachedAt) < _cacheTtl) {
+        return cached || storeSaysActive;
+      }
+      // Collapse the burst: concurrent callers await one request instead of
+      // issuing one each.
+      final pending = _inFlight;
+      if (pending != null) return pending;
+    }
+
+    final request = _fetchBackendPremiumStatus(storeSaysActive);
+    _inFlight = request;
+    try {
+      return await request;
+    } finally {
+      _inFlight = null;
+    }
+  }
+
+  Future<bool> _fetchBackendPremiumStatus(bool storeSaysActive) async {
     try {
       final response = await ApiClient.dio
           .get('${ConfigService().backendProxyUrl}/api/premium-status')
           .timeout(TimeoutPolicy.revenueCat);
-      final isActive =
+      final serverSaysActive =
           response.data is Map && response.data['isActive'] == true;
-      await _settingsRepository?.updateProStatus(isActive);
-      return isActive;
+
+      _cachedServerActive = serverSaysActive;
+      _cachedAt = DateTime.now();
+
+      final effective = serverSaysActive || storeSaysActive;
+      if (!serverSaysActive && storeSaysActive) {
+        debugPrint(
+          "⚠️ Backend reports inactive while the store entitlement is live — "
+          "keeping Pro. Check the RevenueCat webhook.",
+        );
+      }
+      await _settingsRepository?.updateProStatus(effective);
+      return effective;
     } catch (e) {
       debugPrint("Backend premium status refresh failed: $e");
+      if (storeSaysActive) {
+        await _settingsRepository?.updateProStatus(true);
+        return true;
+      }
+      // Unreachable backend is not evidence of anything. Leave the stored
+      // value alone rather than guessing.
       return _settingsRepository?.isPro() ?? false;
     }
   }
+
+  /// Whether the device is holding an active entitlement, according to the
+  /// store SDK itself. This is the check `_hasProAccess` was written for and
+  /// then never wired up.
+  bool get hasLocalEntitlement => _hasProAccess();
 
   void _scheduleDelayedEntitlementVerification() {
     unawaited(

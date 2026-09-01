@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -72,8 +73,15 @@ class AppPageScaffold extends ConsumerWidget {
             )
             : Padding(padding: resolvedPadding, child: child);
 
+    // Two things this must get right, and both used to be wrong: an unknown
+    // state is not offline (the stream has no value until connectivity
+    // changes, so `?? false` flashed the banner on every launch and hot
+    // reload), and a non-empty result list is not online — it can hold
+    // exactly ConnectivityResult.none.
+    final results = ref.watch(connectivityProvider).valueOrNull;
     final isOnline =
-        ref.watch(connectivityProvider).valueOrNull?.isNotEmpty ?? false;
+        results == null ||
+        results.any((result) => result != ConnectivityResult.none);
 
     final statusBarTopInset =
         extendBehindStatusBar ? MediaQuery.of(context).padding.top : 0.0;

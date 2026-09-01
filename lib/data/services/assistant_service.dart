@@ -95,7 +95,7 @@ class AssistantService {
     String? medicalNotes,
   }) async {
     try {
-      final prompt = _buildPrompt(
+      final prompt = buildCoachPrompt(
         currentCalories: currentCalories,
         targetCalories: targetCalories,
         currentMacros: currentMacros,
@@ -123,7 +123,14 @@ class AssistantService {
           sendTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 25),
         ),
-        data: {'prompt': prompt, 'maxOutputTokens': 500, 'timeoutMs': 25000},
+        data: {
+          'prompt': prompt,
+          'maxOutputTokens': 500,
+          'timeoutMs': 25000,
+          // Counts against the free daily coach allowance. Planner and report
+          // generation share this endpoint and must not be limited with it.
+          'purpose': 'coach',
+        },
       );
 
       final text =
@@ -275,7 +282,10 @@ User Stats: $currentCalories / $targetCalories kcal.
     }
   }
 
-  String _buildPrompt({
+  /// The coach's prompt. Public because the coach path builds it directly:
+  /// getRecommendations wants a structured list, the chat wants prose, and both
+  /// need the same persona and the same view of the user.
+  String buildCoachPrompt({
     required int currentCalories,
     required int targetCalories,
     required Map<String, int> currentMacros,
@@ -293,8 +303,19 @@ User Stats: $currentCalories / $targetCalories kcal.
     String? activityLevel,
     String? foodDislikes,
     String? medicalNotes,
+    /// Prior turns, oldest first, as {'type': 'user'|'assistant', 'content': ...}.
+    /// Without these the model answers every message as if it were the first,
+    /// so a reply of "1" to a numbered question is genuinely unreadable to it.
+    List<Map<String, String>> history = const [],
   }) {
     final languageName = AIService.languageNames[language] ?? 'English';
+
+    final transcript = history.isEmpty
+        ? ''
+        : '\nCONVERSATION SO FAR (oldest first):\n${history.map((m) {
+            final who = m['type'] == 'user' ? 'User' : 'You (Fajar)';
+            return '$who: ${m['content']}';
+          }).join('\n')}\n';
 
     return """
 You are Fajar, a friendly and knowledgeable AI nutritionist.
@@ -319,6 +340,13 @@ CONTEXT (use only when relevant):
 - Today: ${currentCalories}cal/${targetCalories}cal | Protein: ${currentMacros['protein']}g/${targetMacros['protein']}g | Carbs: ${currentMacros['carbs']}g/${targetMacros['carbs']}g | Fat: ${currentMacros['fat']}g/${targetMacros['fat']}g
 - Meals logged: ${mealNames.isEmpty ? 'None yet' : mealNames.join(', ')}
 
+NEVER ask the user for anything listed under CONTEXT — their goal, diet,
+calorie target or macros are already known. Ask only for what is genuinely
+missing, and at most one question at a time.
+
+Read CONVERSATION SO FAR before replying. A short message such as "1" or
+"yes" is an answer to your own last question, never a new topic.
+$transcript
 Respond in $languageName. Use **bold** for emphasis. Keep it SHORT and clear.
 
 USER QUESTION: ${userQuery ?? "Give a friendly greeting and ask how you can help with their nutrition goals."}

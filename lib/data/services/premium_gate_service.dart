@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,11 +30,30 @@ class PremiumGateService {
   static const Duration _postCtaCooldown = Duration(hours: 48);
 
   Future<void> init() async {
-    if (!_initialized) {
-      _prefs = await SharedPreferences.getInstance();
-      _initialized = true;
-      _resetDailyCountsIfNeeded();
+    if (_initialized) return;
+    _prefs = await SharedPreferences.getInstance();
+
+    // Wait for auth to settle before touching any key.
+    //
+    // `scopedPrefKey` namespaces by the current UID, and init() runs inside
+    // the parallel background-services block, which is not ordered after
+    // Firebase restores its session. With a null user the daily reset wrote to
+    // the *bare* key while every later read used `<uid>:...`, so the
+    // "one popup per day" ceiling silently reset itself on every launch.
+    try {
+      if (FirebaseAuth.instance.currentUser == null) {
+        await FirebaseAuth.instance
+            .authStateChanges()
+            .firstWhere((user) => user != null)
+            .timeout(const Duration(seconds: 5));
+      }
+    } catch (_) {
+      // No user within the window: fall through and use the unscoped keys,
+      // which is the documented pre-auth behaviour.
     }
+
+    _initialized = true;
+    _resetDailyCountsIfNeeded();
   }
 
   @visibleForTesting

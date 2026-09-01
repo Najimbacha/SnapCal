@@ -7,6 +7,13 @@ import '../../core/constants/app_constants.dart';
 import '../services/assistant_service.dart';
 
 class AssistantRepository {
+  /// Singleton, for consistency with the other repositories: one Hive handle
+  /// and one init future per box. See [SettingsRepository].
+  static final AssistantRepository _instance =
+      AssistantRepository._internal();
+  factory AssistantRepository() => _instance;
+  AssistantRepository._internal();
+
   Box? _box;
   Future<void>? _initFuture;
   bool _initialized = false;

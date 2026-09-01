@@ -17,6 +17,7 @@ import '../../providers/auth_state_provider.dart';
 import '../../providers/repository_providers.dart';
 import '../../widgets/premium_prompt_modal.dart';
 import '../../data/services/premium_conversion_service.dart';
+import '../../data/services/pro_feature_service.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -80,9 +81,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
   Future<void> _exportPdfReport() async {
     if (_isExporting) return;
 
-    final settingsVal = ref.watch(settingsProvider).valueOrNull;
-    final isPro = settingsVal?.isPro ?? false;
-    if (!isPro) {
+    // ref.read, not ref.watch: this runs from a button callback, and watching
+    // outside build registers a dependency that leaks and rebuilds the screen.
+    final settingsVal = ref.read(settingsProvider).valueOrNull;
+    final access = ref.read(proAccessProvider);
+    if (access.isUnknown) return;
+    if (!access.can(ProFeature.reports)) {
       PremiumConversionService().openPaywall(
         context,
         PaywallEntryPoint.reportInsight,
@@ -95,7 +99,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     HapticFeedback.mediumImpact();
 
     try {
-      final authState = ref.watch(authStateProvider).valueOrNull;
+      final authState = ref.read(authStateProvider).valueOrNull;
 
       final userName =
           authState?.displayName ??

@@ -363,7 +363,7 @@ void main() {
     expect(find.textContaining('Add to log'), findsNothing);
   });
 
-  testWidgets('free user sees macro grams, never a blurred value', (tester) async {
+  testWidgets('free user sees macro shares, never grams or a blur', (tester) async {
     await setupTester(tester);
     await tester.pumpWidget(
       buildSubject(
@@ -379,12 +379,21 @@ void main() {
       ),
     );
 
-    // free_macros_enabled defaults to true: macro grams are part of the answer
-    // a scan produces, so the free tier is capped by scan count alone.
-    expect(find.text('4 g', skipOffstage: false), findsAtLeastNWidgets(1));
-    expect(find.text('35 g', skipOffstage: false), findsAtLeastNWidgets(1));
+    // free_macros_enabled now defaults to false: macros are the Pro surface,
+    // on the result screen as well as the home card, so upgrading swaps a
+    // share for a gram figure in place.
+    //
+    // Shares are of the macro subtotal, not of the meal's stated calories:
+    // cals = 4*4 + 35*4 + 1*9 = 165, so protein 16/165 = 10%,
+    // carbs 140/165 = 85%, fat 9/165 = 5%.
+    expect(find.text('4 g', skipOffstage: false), findsNothing);
+    expect(find.text('35 g', skipOffstage: false), findsNothing);
+    expect(find.text('10%', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.text('85%', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.text('5%', skipOffstage: false), findsAtLeastNWidgets(1));
 
-    // The upsell now sells the coaching layer, not the macros themselves.
+    // Values are withheld, never obscured: no blur, no padlock over a figure.
+    // The upsell is a separate block that sells the coaching layer.
     expect(
       find.text('Unlock deeper insights', skipOffstage: false),
       findsOneWidget,

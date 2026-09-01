@@ -30,9 +30,11 @@ class Macros extends HiveObject {
 
   factory Macros.fromJson(Map<String, dynamic> json) {
     return Macros(
-      protein: json['protein'] as int? ?? 0,
-      carbs: json['carbs'] as int? ?? 0,
-      fat: json['fat'] as int? ?? 0,
+      // Widen through num: a source that sends 12.0 instead of 12 must not
+      // throw and take the whole meal with it.
+      protein: (json['protein'] as num?)?.round() ?? 0,
+      carbs: (json['carbs'] as num?)?.round() ?? 0,
+      fat: (json['fat'] as num?)?.round() ?? 0,
     );
   }
 
@@ -204,17 +206,17 @@ class Meal extends HiveObject {
       dateString: json['dateString'] as String,
       imageUri: json['imageUri'] as String?,
       foodName: json['foodName'] as String,
-      calories: json['calories'] as int,
+      calories: (json['calories'] as num?)?.round() ?? 0,
       macros: Macros.fromJson(json['macros'] as Map<String, dynamic>),
       synced: json['synced'] as bool? ?? false,
       ingredients: (json['ingredients'] as List?)?.cast<String>(),
-      prepTimeMins: json['prepTimeMins'] as int?,
+      prepTimeMins: (json['prepTimeMins'] as num?)?.round(),
       mealType: json['mealType'] as String?,
       portion: json['portion'] as String?,
       scanConfidence: (json['scanConfidence'] as num?)?.toDouble(),
       scanSource: json['scanSource'] as String?,
       aiRationale: json['aiRationale'] as String?,
-      originalCalories: json['originalCalories'] as int?,
+      originalCalories: (json['originalCalories'] as num?)?.round(),
       userCorrected: json['userCorrected'] as bool? ?? false,
       weightG: (json['weightG'] as num?)?.toDouble(),
       nutritionMatchId: json['nutritionMatchId'] as String?,

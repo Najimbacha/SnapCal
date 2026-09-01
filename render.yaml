@@ -1,0 +1,93 @@
+# Infrastructure as code for the SnapCal backend.
+#
+# This file exists because the deployment previously lived only in the Render
+# dashboard: nothing in the repository described how the service ran, what it
+# scaled to, or which variables it needed. That is a single point of knowledge
+# failure and it makes an incident recovery a guessing game.
+#
+# Two services, deliberately:
+#   snapcal-api     - stateless, autoscaled, NO scheduler
+#   snapcal-worker  - exactly one instance, runs the reminder cron
+#
+# Running the scheduler inside the API is what caused every user to receive one
+# notification per instance.
+
+services:
+  - type: web
+    name: snapcal-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    plan: standard
+    healthCheckPath: /health
+    numInstances: 2
+    scaling:
+      minInstances: 2
+      maxInstances: 10
+      targetCPUPercent: 65
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REQUIRE_APP_CHECK
+        value: "true"
+      # Never in this process. See snapcal-worker.
+      - key: ENABLE_SCHEDULER
+        value: "false"
+      - key: API_RATE_LIMIT
+        value: "120"
+      - key: SCAN_RATE_LIMIT
+        value: "20"
+      - key: MAX_JSON_BODY
+        value: 2mb
+      - key: TRUST_PROXY_COUNT
+        value: "1"
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: snapcal-redis
+          property: connectionString
+      # Secrets stay in the dashboard; declared here so a fresh environment
+      # fails loudly at deploy instead of silently at runtime.
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: REVENUECAT_WEBHOOK_AUTH
+        sync: false
+      - key: REVENUECAT_SECRET_API_KEY
+        sync: false
+      - key: SCHEDULER_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+
+  - type: worker
+    name: snapcal-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    plan: starter
+    # Exactly one. More than one replica means duplicate notifications.
+    numInstances: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ENABLE_SCHEDULER
+        value: "true"
+      - key: REQUIRE_APP_CHECK
+        value: "true"
+      - key: REMINDER_PAGE_SIZE
+        value: "500"
+      - key: REMINDER_MAX_PER_RUN
+        value: "50000"
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+
+  - type: redis
+    name: snapcal-redis
+    region: oregon
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

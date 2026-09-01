@@ -662,14 +662,21 @@ class SettingsRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           child: Row(
             children: [
-              Container(
+              // A bare glyph, not a tinted well. Every row carrying the same
+              // mint square made the icons read as a texture down the left
+              // edge rather than as signposts — colour that marks everything
+              // marks nothing. The accent is kept for the destructive row,
+              // where it actually means something.
+              SizedBox(
                 width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: isDark ? 0.14 : 0.09),
-                  borderRadius: BorderRadius.circular(8),
+                child: Icon(
+                  icon,
+                  size: 19,
+                  color:
+                      destructive
+                          ? accent
+                          : settingsText(context).withValues(alpha: 0.55),
                 ),
-                child: Center(child: Icon(icon, color: accent, size: 16)),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -1024,7 +1031,8 @@ class SettingsSection extends StatelessWidget {
                                 isDark
                                     ? Colors.white.withValues(alpha: 0.06)
                                     : kSettingsLine,
-                            indent: 52,
+                            indent: 62,
+                            endIndent: 16,
                           ),
                       ],
                     )

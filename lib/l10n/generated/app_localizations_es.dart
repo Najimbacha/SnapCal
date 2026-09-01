@@ -827,13 +827,13 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get settings_core_config => 'Configuración central';
+  String get settings_core_config => 'Tú';
 
   @override
-  String get settings_data_security => 'Datos y seguridad';
+  String get settings_data_security => 'Tus datos';
 
   @override
-  String get settings_information => 'Información';
+  String get settings_information => 'Acerca de';
 
   @override
   String get settings_body_profile => 'Perfil corporal';
@@ -2151,6 +2151,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get scan_overlay_manual => 'REGISTRAR MANUALMENTE';
+
+  @override
+  String get scan_wait_stay => 'Mantén esta pantalla abierta';
+
+  @override
+  String get scan_wait_longer =>
+      'Está tardando más de lo normal: tu resultado sigue en camino.';
 
   @override
   String get report_card_title => 'INFORME DE PROGRESO SEMANAL';
@@ -3836,6 +3843,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get macro_pro_label => 'Pro';
 
   @override
+  String get macro_ring_unlock_title => 'Ve tus números exactos';
+
+  @override
+  String get macro_ring_unlock_body =>
+      'Desbloquea los gramos y los objetivos diarios';
+
+  @override
+  String macro_ring_on_track(String macro) {
+    return 'Vas bien con $macro — desbloquea los gramos exactos';
+  }
+
+  @override
   String result_add_to_log_kcal(String calories) {
     return 'Añadir al registro · $calories kcal';
   }
@@ -3879,4 +3898,120 @@ class AppLocalizationsEs extends AppLocalizations {
   String paywall_disclosure_lifetime(String price) {
     return '$price, pago único. Sin suscripción.';
   }
+
+  @override
+  String paywall_disclosure_intro_year(String introPrice, String price) {
+    return '$introPrice el primer año, luego $price al año. Se renueva automáticamente hasta que canceles.';
+  }
+
+  @override
+  String paywall_disclosure_intro_month(String introPrice, String price) {
+    return '$introPrice el primer mes, luego $price al mes. Se renueva automáticamente hasta que canceles.';
+  }
+
+  @override
+  String paywall_intro_first_year(String introPrice) {
+    return '$introPrice el primer año';
+  }
+
+  @override
+  String paywall_intro_first_month(String introPrice) {
+    return '$introPrice el primer mes';
+  }
+
+  @override
+  String home_goal_activity_bonus(int kcal) {
+    return '+$kcal kcal ganadas por actividad';
+  }
+
+  @override
+  String home_metric_of_goal(String goal, String unit) {
+    return 'de $goal $unit';
+  }
+
+  @override
+  String get water_unit_ml => 'ml';
+
+  @override
+  String home_kcal_short(int kcal) {
+    return '$kcal kcal';
+  }
+
+  @override
+  String home_kcal_estimated_short(int kcal) {
+    return '~$kcal kcal';
+  }
+
+  @override
+  String get log_this_week => 'Esta semana';
+
+  @override
+  String log_week_average(String value) {
+    return '$value de media';
+  }
+
+  @override
+  String log_week_on_target(String count, String total) {
+    return '$count de $total en objetivo';
+  }
+
+  @override
+  String get log_week_no_data => 'Aún no has registrado nada esta semana';
+
+  @override
+  String log_vs_average_above(String value) {
+    return '$value por encima de tu media de 7 días';
+  }
+
+  @override
+  String log_vs_average_below(String value) {
+    return '$value por debajo de tu media de 7 días';
+  }
+
+  @override
+  String get log_vs_average_same => 'Justo en tu media de 7 días';
+
+  @override
+  String get log_meal_split => 'De dónde vienen las calorías';
+
+  @override
+  String get macro_target_met => 'Objetivo cumplido';
+
+  @override
+  String macro_grams_to_go(String value) {
+    return 'Faltan $value g';
+  }
+
+  @override
+  String macro_targets_met_count(String count, String total) {
+    return '$count de $total objetivos cumplidos';
+  }
+
+  @override
+  String get result_unlock_personal_title => '¿Encaja en tu día?';
+
+  @override
+  String get result_unlock_personal_body =>
+      'Pro compara esta comida con tus objetivos de proteína, carbohidratos y grasa';
+
+  @override
+  String get home_macro_empty =>
+      'Escanea una comida para ver tu reparto de macros';
+
+  @override
+  String get home_section_plan_coach => 'Plan y coach';
+
+  @override
+  String get assistant_home_subtitle => 'Consejos personalizados con IA';
+
+  @override
+  String home_offer_percent_off(String value) {
+    return '$value% DTO';
+  }
+
+  @override
+  String get home_offer_ends_soon => 'Termina pronto';
+
+  @override
+  String get settings_guest_sync => 'Sincroniza tus datos entre dispositivos';
 }
