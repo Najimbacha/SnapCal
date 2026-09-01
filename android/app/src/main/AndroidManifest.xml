@@ -66,6 +66,11 @@
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_stat_notification" />
 
+        <!-- AdMob App ID (test ID — replace with real ID before release) -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
+
         <!-- Home Screen Widget -->
         <receiver android:name="com.snapcal.snapcal.SnapCalWidgetProvider" android:exported="true">
             <intent-filter>

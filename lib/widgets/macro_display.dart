@@ -485,7 +485,6 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
 
   late final AnimationController _grow;
   late final AnimationController _sheen;
-  late final AnimationController _pulse;
   int _cyclesRun = 0;
 
   @override
@@ -499,14 +498,9 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 4600),
     );
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3400),
-    );
     if (widget.locked) {
       _sheen.addStatusListener(_onSheenStatus);
       _sheen.forward();
-      _pulse.repeat(reverse: true);
     }
   }
 
@@ -515,9 +509,6 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
     _cyclesRun++;
     if (_cyclesRun < _sheenCycles) {
       _sheen.forward(from: 0);
-    } else {
-      _pulse.stop();
-      _pulse.animateTo(0, duration: const Duration(milliseconds: 400));
     }
   }
 
@@ -526,7 +517,6 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
     _sheen.removeStatusListener(_onSheenStatus);
     _grow.dispose();
     _sheen.dispose();
-    _pulse.dispose();
     super.dispose();
   }
 
@@ -538,7 +528,7 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
       mainAxisSize: MainAxisSize.min,
       children: [
         AnimatedBuilder(
-          animation: Listenable.merge([_grow, _sheen, _pulse]),
+          animation: Listenable.merge([_grow, _sheen]),
           builder:
               (context, _) => Row(
                 // Never stretch here: the Row sits in an unbounded-height
@@ -557,9 +547,22 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
         if (widget.locked && widget.onUpgradeTap != null) ...[
           const SizedBox(height: 11),
           _cta(context, l10n),
-        ],
+        ] else if (!widget.locked)
+          _metSummary(context, l10n),
       ],
     );
+  }
+
+  /// This macro's share of the day's calories, using the same formula as the
+  /// composition bar on the Log screen so both surfaces always agree.
+  String _shareLabel(_MacroDatum m) {
+    final total = widget.data.fold<int>(
+      0,
+      (sum, d) => sum + (d.value * d.kcalPerGram),
+    );
+    if (total <= 0) return '–';
+    final pct = ((m.value * m.kcalPerGram) / total * 100).round().clamp(0, 100);
+    return '$pct%';
   }
 
   // ── One card ─────────────────────────────────────────────────────────────
@@ -571,13 +574,15 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
 
     final target = (m.value / math.max(m.goal, 1)).clamp(0.0, 1.0);
     final progress = target * Curves.easeOutCubic.transform(_grow.value);
+    // Hitting a target changes the card, not just the number.
+    final met = !locked && m.goal > 0 && m.value >= m.goal;
+    final remaining = m.goal - m.value;
 
     // Sheen sweeps left to right, staggered card to card.
     final raw = _sheen.value - index * 0.09;
     final sweep = raw <= 0 ? 0.0 : (raw / _sweepFraction).clamp(0.0, 1.0);
     final sweeping = locked && sweep > 0 && sweep < 1;
 
-    final pulse = 1 + 0.05 * Curves.easeInOut.transform(_pulse.value);
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -597,7 +602,12 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: m.color.withValues(
-            alpha: locked ? (isDark ? 0.16 : 0.13) : (isDark ? 0.20 : 0.16),
+            alpha:
+                met
+                    ? (isDark ? 0.55 : 0.45)
+                    : locked
+                    ? (isDark ? 0.16 : 0.13)
+                    : (isDark ? 0.20 : 0.16),
           ),
         ),
       ),
@@ -652,9 +662,9 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Name row. For free, a small padlock sits at the end of it —
-                // one unambiguous "this card is locked" marker per card,
-                // rather than a heavy chip competing with the value slot.
+                // Name row. The lock lives once, on the CTA below: a padlock
+                // per card plus a PRO caption plus the CTA was four markers
+                // for one locked thing.
                 Row(
                   children: [
                     Container(
@@ -678,14 +688,11 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    if (locked)
-                      Transform.scale(
-                        scale: pulse,
-                        child: Icon(
-                          LucideIcons.lock,
-                          size: 11,
-                          color: m.color.withValues(alpha: isDark ? 0.85 : 0.75),
-                        ),
+                    if (met)
+                      Icon(
+                        LucideIcons.check,
+                        size: 12,
+                        color: m.color,
                       ),
                   ],
                 ),
@@ -696,8 +703,8 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                 // zero behind the digit.
                 Center(
                   child: SizedBox(
-                    width: 50,
-                    height: 50,
+                    width: 54,
+                    height: 54,
                     child: CustomPaint(
                       painter: _RingPainter(
                         progress: progress,
@@ -708,34 +715,47 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                         track: scheme.onSurface.withValues(
                           alpha: isDark ? 0.20 : 0.13,
                         ),
-                        stroke: 4.5,
+                        stroke: 5,
                         glow: !locked,
+                        ghostTail: locked,
+                        capDot: !locked,
                       ),
                       child: Center(
                         child:
                             locked
-                                // Three dots hold the number's place: the
-                                // value exists, it is simply withheld.
-                                ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    for (var d = 0; d < 3; d++) ...[
-                                      if (d > 0) const SizedBox(width: 3),
-                                      Container(
-                                        width: 4,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: m.color.withValues(
-                                            alpha: isDark ? 0.80 : 0.70,
-                                          ),
+                                // The composition percentage stands in for the
+                                // grams: a real number, the same one the Log
+                                // screen's bar shows, so the two screens never
+                                // contradict each other. Grams stay withheld.
+                                ? Text(
+                                  _shareLabel(m),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1,
+                                    letterSpacing: -0.4,
+                                    color: m.color.withValues(
+                                      alpha: isDark ? 0.92 : 0.85,
+                                    ),
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                                )
+                                : Text.rich(
+                                  TextSpan(
+                                    text: '${m.value}',
+                                    children: const [
+                                      TextSpan(
+                                        text: 'g',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0,
                                         ),
                                       ),
                                     ],
-                                  ],
-                                )
-                                : Text(
-                                  '${m.value}',
+                                  ),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w800,
@@ -761,24 +781,71 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                 Text(
                   locked
                       ? AppLocalizations.of(context)!.macro_pro_label
-                          .toUpperCase()
+                      : met
+                      ? AppLocalizations.of(context)!.macro_target_met
+                      : m.goal > 0
+                      ? AppLocalizations.of(
+                        context,
+                      )!.macro_grams_to_go('$remaining')
                       : 'of ${m.goal}g',
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: locked ? FontWeight.w800 : FontWeight.w600,
+                    fontSize: 10,
+                    fontWeight:
+                        (locked || met) ? FontWeight.w700 : FontWeight.w600,
                     height: 1,
-                    letterSpacing: locked ? 0.7 : 0,
+                    letterSpacing: locked ? 0.2 : 0,
                     color:
                         locked
                             ? m.color.withValues(alpha: isDark ? 0.75 : 0.70)
+                            : met
+                            ? m.color
                             : scheme.onSurfaceVariant.withValues(alpha: 0.75),
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Closes the Pro section with the thing a paying user actually wants to
+  /// know. Costs nothing: it counts the macros already passed in. Silent when
+  /// no targets are set, and when the day has not started.
+  Widget _metSummary(BuildContext context, AppLocalizations l10n) {
+    final withGoals = widget.data.where((m) => m.goal > 0).toList();
+    if (withGoals.isEmpty || widget.data.every((m) => m.value <= 0)) {
+      return const SizedBox.shrink();
+    }
+    final met = withGoals.where((m) => m.value >= m.goal).length;
+    final scheme = Theme.of(context).colorScheme;
+    final done = met == withGoals.length;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 11),
+      child: Row(
+        children: [
+          Icon(
+            done ? LucideIcons.checkCircle2 : LucideIcons.check,
+            size: 14,
+            color: scheme.primary.withValues(alpha: done ? 1 : 0.55),
+          ),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              l10n.macro_targets_met_count('$met', '${withGoals.length}'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -964,12 +1031,22 @@ class _RingPainter extends CustomPainter {
   final double stroke;
   final bool glow;
 
+  /// Dots the arc that has not been drawn, in the same hue. On a locked card
+  /// it reads as "there is more of this you cannot see yet" — a withheld
+  /// value stated in the shape rather than announced with a padlock.
+  final bool ghostTail;
+
+  /// A dot at the head of the arc. Turns a static ratio into a position.
+  final bool capDot;
+
   const _RingPainter({
     required this.progress,
     required this.color,
     required this.track,
     this.stroke = 5,
     this.glow = false,
+    this.ghostTail = false,
+    this.capDot = false,
   });
 
   @override
@@ -1024,6 +1101,32 @@ class _RingPainter extends CustomPainter {
           transform: const GradientRotation(-math.pi / 2),
         ).createShader(rect),
     );
+
+    if (ghostTail && swept < 1) {
+      // Dotted, drawn as short segments so it never competes with the arc.
+      final dotPaint =
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = stroke * 0.62
+            ..strokeCap = StrokeCap.round
+            ..color = color.withValues(alpha: 0.26);
+      final tailStart = from + sweep;
+      final tailSweep = 2 * math.pi - sweep;
+      // One dot every ~11 degrees, with the first cleared of the arc's cap.
+      const step = 0.19;
+      for (var a = tailStart + 0.16; a < tailStart + tailSweep - 0.06; a += step) {
+        canvas.drawArc(rect, a, 0.012, false, dotPaint);
+      }
+    }
+
+    if (capDot && swept > 0 && swept < 1) {
+      final angle = from + sweep;
+      canvas.drawCircle(
+        centre + Offset(math.cos(angle) * radius, math.sin(angle) * radius),
+        stroke * 0.52,
+        Paint()..color = color,
+      );
+    }
   }
 
   @override
@@ -1031,5 +1134,7 @@ class _RingPainter extends CustomPainter {
       old.progress != progress ||
       old.color != color ||
       old.track != track ||
-      old.glow != glow;
+      old.glow != glow ||
+      old.ghostTail != ghostTail ||
+      old.capDot != capDot;
 }

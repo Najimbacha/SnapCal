@@ -119,6 +119,7 @@ class SnapController {
     required Function() onShowPaywall,
     required Function() onShowResult,
     required Function() onShowManualInput,
+    Function()? onWatchAd,
   }) async {
     if (_isCapturing || _isAnalyzing) return;
     _isCapturing = true;
@@ -141,7 +142,12 @@ class SnapController {
     if (!ScanGateService().canScan(isPro)) {
       _isCapturing = false;
       onStateChanged?.call();
-      onShowPaywall();
+      // Offer rewarded ad first; fall back to paywall if not available.
+      if (onWatchAd != null) {
+        onWatchAd();
+      } else {
+        onShowPaywall();
+      }
       return;
     }
 

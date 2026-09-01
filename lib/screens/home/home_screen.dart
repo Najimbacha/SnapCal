@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 // ignore_for_file: unused_element
@@ -6,12 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/meal_slot.dart';
+import '../../data/models/promo_offer.dart';
 import 'widgets/smart_meal_planner_card.dart';
 import 'widgets/activity_health_connect_sheet.dart';
 import '../log/widgets/hydration_sheet.dart';
@@ -21,6 +24,7 @@ import '../../data/services/pro_feature_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/meal_provider.dart';
+import '../../providers/promo_offer_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
@@ -851,30 +855,11 @@ class _MinimalHomeTopBar extends ConsumerWidget {
             ),
             const SizedBox(width: 14),
           ],
-          // Pro Badge / Go Pro
-          AppScaleTap(
-            onTap: isPro ? onSettingsTap : onProTap,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isPro ? LucideIcons.gem : LucideIcons.crown,
-                  color: isPro ? AppColors.success : AppColors.premiumGold,
-                  size: 14,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isPro
-                      ? AppLocalizations.of(context)!.home_pro_badge
-                      : AppLocalizations.of(context)!.home_go_pro,
-                  style: TextStyle(
-                    color: isPro ? AppColors.success : AppColors.premiumGold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
+          // Pro badge, or the live offer when a campaign is running.
+          _HeaderProAffordance(
+            isPro: isPro,
+            onProTap: onProTap,
+            onSettingsTap: onSettingsTap,
           ),
           const SizedBox(width: 14),
           // Settings button
@@ -949,7 +934,7 @@ class _MinimalCalorieHero extends StatelessWidget {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        _formatNumber(remaining.abs()),
+                        _formatNumber(context, remaining.abs()),
                         style: AppTypography.displayLarge.copyWith(
                           color: ink,
                           fontSize: 40,
@@ -987,7 +972,7 @@ class _MinimalCalorieHero extends StatelessWidget {
               Expanded(
                 child: _MinimalHeroStat(
                   label: l10n.home_calories_eaten,
-                  value: _formatNumber(consumed),
+                  value: _formatNumber(context, consumed),
                   unit: 'kcal',
                 ),
               ),
@@ -995,7 +980,7 @@ class _MinimalCalorieHero extends StatelessWidget {
               Expanded(
                 child: _MinimalHeroStat(
                   label: l10n.home_metric_goal,
-                  value: _formatNumber(goal),
+                  value: _formatNumber(context, goal),
                   unit: 'kcal',
                   valueColor: _minimalGreenText,
                 ),
@@ -1004,7 +989,7 @@ class _MinimalCalorieHero extends StatelessWidget {
               Expanded(
                 child: _MinimalHeroStat(
                   label: l10n.home_metric_meals,
-                  value: _formatNumber(mealCount),
+                  value: _formatNumber(context, mealCount),
                   unit: l10n.log_entries.toLowerCase(),
                 ),
               ),
@@ -1190,6 +1175,11 @@ class _MinimalMacroSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final showGrams = const ProFeatureService().canSeeMacros(isPro: isPro);
+    // Nothing logged yet: three empty rings each captioned "Pro" is an upgrade
+    // prompt for data that does not exist — it reads as a disabled control,
+    // and it spends the paywall ask before the user has seen anything worth
+    // paying for. The section keeps its place and says what to do instead.
+    final empty = macros.protein <= 0 && macros.carbs <= 0 && macros.fat <= 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
@@ -1198,7 +1188,10 @@ class _MinimalMacroSection extends StatelessWidget {
         children: [
           _MinimalSectionLabel(text: l10n.home_section_macros_today),
           const SizedBox(height: 12),
-          MacroDisplay(
+          if (empty)
+            _MacroEmptyPrompt(text: l10n.home_macro_empty)
+          else
+            MacroDisplay(
             macros: macros,
             proteinGoal: proteinGoal,
             carbGoal: carbGoal,
@@ -1223,6 +1216,61 @@ class _MinimalMacroSection extends StatelessWidget {
   }
 }
 
+/// Holds the macro section's place before the first meal of the day.
+///
+/// Same height and shell as the ring row it stands in for, so the dashboard
+/// does not jump when the first meal lands. It asks for the action that fills
+/// the section rather than for money.
+class _MacroEmptyPrompt extends StatelessWidget {
+  final String text;
+
+  const _MacroEmptyPrompt({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      decoration: BoxDecoration(
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.035)
+                : Colors.black.withValues(alpha: 0.015),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: scheme.onSurface.withValues(alpha: isDark ? 0.07 : 0.06),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            LucideIcons.scanLine,
+            size: 15,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+          ),
+          const SizedBox(width: 9),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodySmall.copyWith(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+                fontWeight: FontWeight.w600,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MinimalToolsSection extends StatelessWidget {
   final VoidCallback onPlannerTap;
   final VoidCallback onCoachTap;
@@ -1239,14 +1287,16 @@ class _MinimalToolsSection extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _MinimalSectionLabel(text: 'Plan and coach'),
+          _MinimalSectionLabel(text: l10n.home_section_plan_coach),
           const SizedBox(height: 10),
-          Row(
-            children: [
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               Expanded(
                 child: _PremiumBentoCard(
                   icon: LucideIcons.calendarDays,
@@ -1261,14 +1311,15 @@ class _MinimalToolsSection extends StatelessWidget {
                 child: _PremiumBentoCard(
                   icon: LucideIcons.sparkles,
                   title: l10n.assistant_title,
-                  subtitle: 'Personalized AI advice',
+                  subtitle: l10n.assistant_home_subtitle,
                   isPro: isPro,
                   onTap: onCoachTap,
                 ),
               ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           const _MinimalSectionDivider(),
         ],
       ),
@@ -1294,80 +1345,136 @@ class _PremiumBentoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        height: 100,
-        padding: const EdgeInsets.all(14),
+        // A fixed height overflows the moment the device's text scale grows.
+        // The card sizes to its content and the row equalises the pair.
+        constraints: const BoxConstraints(minHeight: 86),
+        padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+        // The dashboard's shell, with one deliberate exception: these are the
+        // paid tools, so they are the single place on Home that gets richness.
+        // Everything else stays plain white — spend the boldness once, or the
+        // premium tier stops looking like a tier.
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A1A1E) : const Color(0xFFFEFCF7),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color:
+          borderRadius: BorderRadius.circular(16),
+          // Emerald only. Gold at a few percent over white turns beige, which
+          // reads as a stain rather than as luxury — it belongs in the badge,
+          // saturated enough to actually be a colour.
+          // Committed, not hinted. A 7% wash is indistinguishable from white
+          // at arm's length, which is the same as having no treatment at all —
+          // the tint has to be strong enough to name a tier.
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors:
                 isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : const Color(0xFFE8E4DC),
+                    ? [
+                      AppColors.primary.withValues(alpha: 0.22),
+                      AppColors.primary.withValues(alpha: 0.05),
+                    ]
+                    : [
+                      const Color(0xFFD9F2E7),
+                      const Color(0xFFF4FBF8),
+                    ],
+            stops: const [0.0, 0.85],
           ),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: isDark ? 0.28 : 0.24),
+          ),
+          boxShadow:
+              isDark
+                  ? null
+                  : [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
+                // The gradient badge is the tier's signature — the same one
+                // the paywall and the scan result use, so a paid tool is
+                // recognisable before you read its name.
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(7),
+                    gradient: AppColors.premiumGradient,
+                    borderRadius: BorderRadius.circular(9),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.28),
+                        blurRadius: 9,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  child: Icon(icon, size: 13, color: AppColors.primary),
+                  child: Icon(icon, size: 14, color: Colors.white),
                 ),
                 const Spacer(),
+                // Outlined, not filled: it marks the tier without competing
+                // with the one ask on the screen that is meant to be clicked.
                 if (!isPro)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 6,
-                      vertical: 2,
+                      vertical: 2.5,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Text(
-                      'PRO',
-                      style: TextStyle(
+                      l10n.macro_pro_label.toUpperCase(),
+                      style: AppTypography.labelSmall.copyWith(
                         fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
-                        letterSpacing: 0.5,
                         height: 1,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.7,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
               ],
             ),
-            const Spacer(),
+            const SizedBox(height: 12),
             Text(
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+              style: AppTypography.titleSmall.copyWith(
+                fontSize: 14,
+                height: 1.1,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.15,
+                color: isDark ? Colors.white : _minimalInk,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: AppTypography.labelSmall.copyWith(
                 fontSize: 11,
-                fontWeight: FontWeight.w400,
-                color: isDark ? Colors.white38 : const Color(0xFF8E8E93),
+                height: 1.1,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0,
+                color: scheme.onSurface.withValues(alpha: isDark ? 0.42 : 0.45),
               ),
             ),
           ],
@@ -1545,7 +1652,7 @@ class _MinimalMealRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              _formatNumber(meal.calories),
+              _formatNumber(context, meal.calories),
               style: AppTypography.bodyMedium.copyWith(
                 color: ink,
                 fontSize: 14,
@@ -1706,12 +1813,15 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
 /// One glass. Tap the card's + to add it, long-press to take it back.
 const int _waterQuickAddMl = 250;
 
-String _formatNumber(int value) {
-  if (value < 10000) return '$value';
-  return value.toString().replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (match) => ',',
-  );
+/// Locale-aware grouping, shared with the Log screen's `_formatInt`.
+///
+/// This used to group only above 10,000 with a hardcoded comma, so the same
+/// figure read "1448" here and "1,448" on Log — and always with a comma, even
+/// in locales that group differently.
+String _formatNumber(BuildContext context, int value) {
+  return NumberFormat.decimalPattern(
+    AppLocalizations.of(context)?.localeName,
+  ).format(value);
 }
 
 /// A clean settings gear icon button that replaces the old avatar circle.
@@ -1901,6 +2011,322 @@ class _PremiumProBadge extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The header's Pro affordance, which becomes the offer when one is running.
+///
+/// Deliberately the same slot rather than a fourth element: the header already
+/// carries a streak, an upgrade path and settings, and a badge that fights
+/// them for attention gets tuned out. When a campaign is live the upgrade
+/// entry point simply says something better.
+class _HeaderProAffordance extends ConsumerStatefulWidget {
+  const _HeaderProAffordance({
+    required this.isPro,
+    required this.onProTap,
+    required this.onSettingsTap,
+  });
+
+  final bool isPro;
+  final VoidCallback onProTap;
+  final VoidCallback onSettingsTap;
+
+  @override
+  ConsumerState<_HeaderProAffordance> createState() =>
+      _HeaderProAffordanceState();
+}
+
+class _HeaderProAffordanceState extends ConsumerState<_HeaderProAffordance>
+    with TickerProviderStateMixin {
+  late final AnimationController _entrance;
+  late final AnimationController _sheen;
+  late final AnimationController _glow;
+  late final AnimationController _nudge;
+  Timer? _tick;
+  Timer? _nudgeTimer;
+  int _nudgesRun = 0;
+  DateTime _now = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _entrance = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    // Slow, and only a specular pass — a looping pulse or bounce is what makes
+    // a discount badge read as cheap, and it never stops costing frames.
+    _sheen = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3800),
+    );
+    // The glow breathes rather than blinks: slow enough to read as light on a
+    // surface, not as a notification demanding to be tapped.
+    _glow = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    );
+    // The attention cue. A badge that bounces forever reads as spam and stops
+    // being seen within a day; a pop every few seconds, a handful of times, is
+    // noticed once and then leaves the user alone.
+    _nudge = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 760),
+    );
+  }
+
+  static const int _maxNudges = 4;
+  static const Duration _nudgeGap = Duration(seconds: 6);
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    _nudgeTimer?.cancel();
+    _entrance.dispose();
+    _sheen.dispose();
+    _glow.dispose();
+    _nudge.dispose();
+    super.dispose();
+  }
+
+  void _syncAnimations({required bool active, required bool counting}) {
+    if (!mounted) return;
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (active && !reduced) {
+      if (!_entrance.isCompleted && !_entrance.isAnimating) _entrance.forward();
+      if (!_sheen.isAnimating) _sheen.repeat();
+      if (!_glow.isAnimating) _glow.repeat(reverse: true);
+      _nudgeTimer ??= Timer.periodic(_nudgeGap, (timer) {
+        if (!mounted || _nudgesRun >= _maxNudges) {
+          timer.cancel();
+          _nudgeTimer = null;
+          return;
+        }
+        _nudgesRun++;
+        _nudge.forward(from: 0);
+      });
+    } else {
+      _nudgeTimer?.cancel();
+      _nudgeTimer = null;
+      _entrance.value = 1;
+      if (_sheen.isAnimating) _sheen.stop();
+      if (_glow.isAnimating) _glow.stop();
+    }
+    // One timer, only while a deadline is actually being shown.
+    if (active && counting) {
+      _tick ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _now = DateTime.now());
+      });
+    } else {
+      _tick?.cancel();
+      _tick = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final offer = ref.watch(promoOfferProvider).valueOrNull;
+    final live = !widget.isPro && offer != null && offer.isLiveAt(_now);
+    final remaining = live ? offer.remainingAt(_now) : null;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncAnimations(active: live, counting: remaining != null);
+    });
+
+    if (!live) return _plain(context);
+    return _offerPill(context, offer, remaining);
+  }
+
+  /// The unchanged badge: gem for Pro, crown for everyone else.
+  Widget _plain(BuildContext context) {
+    return AppScaleTap(
+      onTap: widget.isPro ? widget.onSettingsTap : widget.onProTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            widget.isPro ? LucideIcons.gem : LucideIcons.crown,
+            color: widget.isPro ? AppColors.success : AppColors.premiumGold,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            widget.isPro
+                ? AppLocalizations.of(context)!.home_pro_badge
+                : AppLocalizations.of(context)!.home_go_pro,
+            style: TextStyle(
+              color: widget.isPro ? AppColors.success : AppColors.premiumGold,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _offerPill(
+    BuildContext context,
+    PromoOffer offer,
+    Duration? remaining,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final urgent =
+        remaining != null && remaining <= const Duration(hours: 1);
+    // Says "SAVE 76%", the same words and the same number the paywall uses.
+    // "76% OFF" would imply 76% off the annual list price, which is not what
+    // the comparison measures — it is the saving against paying monthly.
+    final label =
+        offer.label ?? l10n.paywall_save_percent('${offer.percentOff}');
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([_entrance, _nudge]),
+      builder: (context, child) {
+        final t = Curves.easeOutBack.transform(_entrance.value.clamp(0.0, 1.0));
+        // One pop with a slight tilt: the shape of something tapping you on
+        // the shoulder, not of something demanding attention.
+        final n = Curves.elasticOut.transform(_nudge.value.clamp(0.0, 1.0));
+        final pop = _nudge.isAnimating ? 1 + 0.09 * (1 - n) : 1.0;
+        final tilt = _nudge.isAnimating ? 0.035 * (1 - n) : 0.0;
+        return Opacity(
+          opacity: _entrance.value.clamp(0.0, 1.0),
+          child: Transform.rotate(
+            angle: tilt,
+            child: Transform.scale(
+              scale: (0.9 + 0.1 * t) * pop,
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: AppScaleTap(
+        onTap: widget.onProTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: Stack(
+            children: [
+              AnimatedBuilder(
+                animation: _glow,
+                builder: (context, child) {
+                  final g = Curves.easeInOut.transform(_glow.value);
+                  return Container(
+                    padding: const EdgeInsetsDirectional.fromSTEB(9, 5, 10, 5),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.premiumGradient,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(
+                            alpha: 0.26 + 0.26 * g,
+                          ),
+                          blurRadius: 9 + 9 * g,
+                          spreadRadius: g,
+                          offset: const Offset(0, 3),
+                        ),
+                        BoxShadow(
+                          color: const Color(
+                            0xFFC88A32,
+                          ).withValues(alpha: 0.10 + 0.16 * g),
+                          blurRadius: 14 + 8 * g,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: child,
+                  );
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      LucideIcons.zap,
+                      size: 12,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                        height: 1,
+                      ),
+                    ),
+                    if (remaining != null) ...[
+                      const SizedBox(width: 7),
+                      Container(
+                        width: 1,
+                        height: 11,
+                        color: Colors.white.withValues(alpha: 0.35),
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        _format(remaining),
+                        style: TextStyle(
+                          // Amber under the hour: colour carries urgency
+                          // better than motion, and costs nothing to read.
+                          color:
+                              urgent
+                                  ? const Color(0xFFFFE08A)
+                                  : Colors.white.withValues(alpha: 0.92),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                          // Without tabular figures the pill twitches every
+                          // second as digit widths change.
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              // A single specular pass, left to right. Its own builder: as a
+              // static `child` it never rebuilt, so the sweep never moved.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedBuilder(
+                    animation: _sheen,
+                    builder:
+                        (context, _) => FractionalTranslation(
+                          translation: Offset(-1.4 + 2.8 * _sheen.value, 0),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [
+                                  Colors.white.withValues(alpha: 0),
+                                  Colors.white.withValues(alpha: 0.38),
+                                  Colors.white.withValues(alpha: 0),
+                                ],
+                                stops: const [0.34, 0.5, 0.66],
+                              ),
+                            ),
+                          ),
+                        ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// `2d 04h` above a day, `11:59:32` below it — the shape people read as a
+  /// deadline rather than as a number.
+  String _format(Duration d) {
+    if (d.inDays >= 1) {
+      return '${d.inDays}d ${(d.inHours % 24).toString().padLeft(2, '0')}h';
+    }
+    final h = d.inHours.toString().padLeft(2, '0');
+    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$h:$m:$s';
   }
 }
 
@@ -2440,7 +2866,7 @@ class _SecondaryDashboardGrid extends StatelessWidget {
           _MinimalSectionLabel(text: l10n.home_daily_wellness),
           const SizedBox(height: 8),
           SizedBox(
-            height: 124,
+            height: 108,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -2536,169 +2962,258 @@ class _WellnessCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
     final progress = goal <= 0 ? 0.0 : (value / goal).clamp(0.0, 1.0);
     final ink = isDark ? Colors.white : _minimalInk;
-    final muted = isDark ? Colors.white38 : const Color(0xFFB4AFA8);
+    final muted = scheme.onSurface.withValues(alpha: isDark ? 0.45 : 0.48);
     final reached = value >= goal && goal > 0;
 
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
+        padding: const EdgeInsets.fromLTRB(12, 11, 11, 11),
+        // The card carries no colour of its own. A pastel gradient fill with a
+        // tinted border and a coloured shadow made two small metrics the
+        // loudest surface on the screen; the accent now lives only in the
+        // ring, where it means something.
         decoration: BoxDecoration(
-          // A whisper of the metric's own colour, so the two cards read as a
-          // set without either shouting.
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors:
-                isDark
-                    ? [
-                      accent.withValues(alpha: 0.10),
-                      const Color(0xFF17171B),
-                    ]
-                    : [
-                      accent.withValues(alpha: 0.07),
-                      const Color(0xFFFEFCF7),
-                    ],
-          ),
-          borderRadius: BorderRadius.circular(18),
+          color: isDark ? Colors.white.withValues(alpha: 0.045) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color:
                 isDark
                     ? Colors.white.withValues(alpha: 0.06)
-                    : accent.withValues(alpha: 0.14),
+                    : const Color(0xFFEDE9E1),
           ),
-          boxShadow:
-              isDark
-                  ? null
-                  : [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.07),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: isDark ? 0.22 : 0.13),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, size: 13, color: accent),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: muted,
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-                if (onAdd != null)
-                  _QuickAddButton(
-                    accent: accent,
-                    isDark: isDark,
-                    onTap: onAdd!,
-                    onUndo: onUndo,
-                    semanticLabel: addSemanticLabel,
-                  ),
-              ],
+            // A ring, not a bar: it echoes the calorie gauge above and the
+            // macro rings between, so the dashboard reads as one system.
+            _WellnessRing(
+              progress: progress,
+              accent: accent,
+              icon: icon,
+              isDark: isDark,
+              reached: reached,
             ),
-            const Spacer(),
-            RichText(
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              text: TextSpan(
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextSpan(
-                    text: _formatNumber(value),
-                    style: AppTypography.titleLarge.copyWith(
-                      color: ink,
-                      fontSize: 21,
-                      height: 1,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: muted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                      if (onAdd != null) ...[
+                        const SizedBox(width: 4),
+                        _QuickAddButton(
+                          accent: accent,
+                          isDark: isDark,
+                          onTap: onAdd!,
+                          onUndo: onUndo,
+                          semanticLabel: addSemanticLabel,
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  RichText(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: _formatNumber(context, value),
+                          style: AppTypography.titleLarge.copyWith(
+                            color: value > 0 ? ink : ink.withValues(alpha: 0.32),
+                            fontSize: 22,
+                            height: 1,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' $unit',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: ink.withValues(alpha: 0.42),
+                            fontSize: 10.5,
+                            height: 1,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  TextSpan(
-                    text: ' $unit',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: ink.withValues(alpha: 0.5),
-                      fontSize: 10.5,
-                      height: 1,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 3),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                // The target, always. It used to appear only once you had
-                // logged something, which hid it exactly when it mattered.
-                Flexible(
-                  child: Text(
-                    AppLocalizations.of(context)!.home_metric_of_goal(
-                      _formatNumber(goal),
-                      unit,
-                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    // The trailing stat replaces the target where one exists:
+                    // calories burned says more than "of 10,000 steps" once
+                    // the ring already shows the ratio.
+                    trailingStat ??
+                        AppLocalizations.of(context)!.home_metric_of_goal(
+                          _formatNumber(context, goal),
+                          unit,
+                        ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.labelSmall.copyWith(
-                      color: muted,
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                if (trailingStat != null) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    trailingStat!,
-                    maxLines: 1,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: accent,
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w800,
+                      color:
+                          trailingStat != null
+                              ? accent.withValues(alpha: isDark ? 0.9 : 0.85)
+                              : muted,
+                      fontSize: 10.5,
+                      fontWeight: trailingStat != null
+                          ? FontWeight.w700
+                          : FontWeight.w600,
                       letterSpacing: 0,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
-              ],
-            ),
-            const SizedBox(height: 9),
-            _WellnessProgressBar(
-              progress: progress,
-              accent: accent,
-              isDark: isDark,
-              reached: reached,
+              ),
             ),
           ],
         ),
       ),
     );
   }
+}
+
+/// The metric's progress as a ring around its own icon.
+///
+/// Sized to sit beside two lines of type without dominating them; the icon in
+/// the middle keeps the card readable at a glance without a second label.
+class _WellnessRing extends StatelessWidget {
+  const _WellnessRing({
+    required this.progress,
+    required this.accent,
+    required this.icon,
+    required this.isDark,
+    required this.reached,
+  });
+
+  final double progress;
+  final Color accent;
+  final IconData icon;
+  final bool isDark;
+  final bool reached;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: progress),
+      duration: const Duration(milliseconds: 850),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return SizedBox(
+          width: 44,
+          height: 44,
+          child: CustomPaint(
+            painter: _WellnessRingPainter(
+              progress: value,
+              accent: accent,
+              track: accent.withValues(alpha: isDark ? 0.18 : 0.13),
+              reached: reached,
+            ),
+            child: Center(
+              child: Icon(
+                reached ? LucideIcons.check : icon,
+                size: 16,
+                color: accent.withValues(alpha: reached ? 1 : 0.9),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _WellnessRingPainter extends CustomPainter {
+  const _WellnessRingPainter({
+    required this.progress,
+    required this.accent,
+    required this.track,
+    required this.reached,
+  });
+
+  final double progress;
+  final Color accent;
+  final Color track;
+  final bool reached;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 3.5;
+    final centre = Offset(size.width / 2, size.height / 2);
+    final radius = (math.min(size.width, size.height) - stroke) / 2;
+
+    canvas.drawCircle(
+      centre,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = track,
+    );
+
+    final swept = progress.clamp(0.0, 1.0);
+    if (swept <= 0) return;
+
+    final rect = Rect.fromCircle(center: centre, radius: radius);
+    const from = -math.pi / 2;
+    final sweep = 2 * math.pi * swept;
+
+    canvas.drawArc(
+      rect,
+      from,
+      sweep,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..shader = SweepGradient(
+          colors: [accent.withValues(alpha: 0.75), accent],
+          transform: const GradientRotation(from),
+        ).createShader(rect),
+    );
+
+    // A cap dot marks where the day has got to, unless the ring is closed.
+    if (swept < 1) {
+      final angle = from + sweep;
+      canvas.drawCircle(
+        centre + Offset(math.cos(angle) * radius, math.sin(angle) * radius),
+        stroke * 0.62,
+        Paint()..color = accent,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WellnessRingPainter old) =>
+      old.progress != progress ||
+      old.accent != accent ||
+      old.track != track ||
+      old.reached != reached;
 }
 
 /// Tap adds, long-press takes it back.
@@ -2742,8 +3257,8 @@ class _QuickAddButtonState extends State<_QuickAddButton> {
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeOut,
           child: Container(
-            width: 26,
-            height: 26,
+            width: 22,
+            height: 22,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: widget.accent.withValues(
@@ -2754,97 +3269,10 @@ class _QuickAddButtonState extends State<_QuickAddButton> {
                 color: widget.accent.withValues(alpha: 0.28),
               ),
             ),
-            child: Icon(LucideIcons.plus, size: 14, color: widget.accent),
+            child: Icon(LucideIcons.plus, size: 13, color: widget.accent),
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Rounded track with a gradient fill and a bead at the leading edge.
-///
-/// The old 3px hairline was invisible at the small values these cards spend
-/// most of the day showing.
-class _WellnessProgressBar extends StatelessWidget {
-  const _WellnessProgressBar({
-    required this.progress,
-    required this.accent,
-    required this.isDark,
-    required this.reached,
-  });
-
-  final double progress;
-  final Color accent;
-  final bool isDark;
-  final bool reached;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: progress),
-      duration: const Duration(milliseconds: 850),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, _) {
-        return SizedBox(
-          height: 6,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final filled = constraints.maxWidth * value.clamp(0.0, 1.0);
-              return Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: isDark ? 0.16 : 0.13),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                  if (filled > 0)
-                    Container(
-                      width: math.max(filled, 6),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            accent.withValues(alpha: 0.72),
-                            accent,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: [
-                          BoxShadow(
-                            color: accent.withValues(alpha: 0.34),
-                            blurRadius: 7,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (reached)
-                    Positioned(
-                      right: 0,
-                      top: -3,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: accent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          LucideIcons.check,
-                          size: 8,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      },
     );
   }
 }

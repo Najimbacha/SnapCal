@@ -821,13 +821,13 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get settings_core_config => 'التكوين الأساسي';
+  String get settings_core_config => 'أنت';
 
   @override
-  String get settings_data_security => 'البيانات والأمان';
+  String get settings_data_security => 'بياناتك';
 
   @override
-  String get settings_information => 'المعلومات';
+  String get settings_information => 'حول';
 
   @override
   String get settings_body_profile => 'الملف البدني';
@@ -3888,4 +3888,76 @@ class AppLocalizationsAr extends AppLocalizations {
   String home_kcal_estimated_short(int kcal) {
     return '~$kcal سعرة';
   }
+
+  @override
+  String get log_this_week => 'هذا الأسبوع';
+
+  @override
+  String log_week_average(String value) {
+    return 'المتوسط $value';
+  }
+
+  @override
+  String log_week_on_target(String count, String total) {
+    return '$count من $total ضمن الهدف';
+  }
+
+  @override
+  String get log_week_no_data => 'لا يوجد تسجيل هذا الأسبوع بعد';
+
+  @override
+  String log_vs_average_above(String value) {
+    return '$value فوق متوسط 7 أيام';
+  }
+
+  @override
+  String log_vs_average_below(String value) {
+    return '$value تحت متوسط 7 أيام';
+  }
+
+  @override
+  String get log_vs_average_same => 'مطابق لمتوسط 7 أيام';
+
+  @override
+  String get log_meal_split => 'من أين جاءت السعرات';
+
+  @override
+  String get macro_target_met => 'تم بلوغ الهدف';
+
+  @override
+  String macro_grams_to_go(String value) {
+    return 'بقي $value جم';
+  }
+
+  @override
+  String macro_targets_met_count(String count, String total) {
+    return '$count من $total أهداف تحققت';
+  }
+
+  @override
+  String get result_unlock_personal_title => 'هل تناسب هذه الوجبة يومك؟';
+
+  @override
+  String get result_unlock_personal_body =>
+      'برو يقارن هذه الوجبة بأهدافك من البروتين والكربوهيدرات والدهون';
+
+  @override
+  String get home_macro_empty => 'صوّر وجبة لعرض توزيع المغذيات';
+
+  @override
+  String get home_section_plan_coach => 'الخطة والمدرب';
+
+  @override
+  String get assistant_home_subtitle => 'نصائح ذكية مخصصة لك';
+
+  @override
+  String home_offer_percent_off(String value) {
+    return 'خصم $value%';
+  }
+
+  @override
+  String get home_offer_ends_soon => 'ينتهي قريباً';
+
+  @override
+  String get settings_guest_sync => 'زامن بياناتك بين أجهزتك';
 }

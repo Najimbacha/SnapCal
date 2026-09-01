@@ -75,52 +75,39 @@ class HealthMetricDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Text(
-                title.toUpperCase(),
-                style: AppTypography.labelSmall.copyWith(
-                  color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-            _CustomizeButton(
-              label: actionLabel,
-              isDark: isDark,
-              onTap: onCustomize,
-            ),
-          ],
+        LogSectionHeader(
+          title: title,
+          actionLabel: actionLabel,
+          onAction: onCustomize,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         LayoutBuilder(
           builder: (context, constraints) {
             const spacing = 10.0;
-            final cardWidth = (constraints.maxWidth - spacing) / 2;
+            final half = (constraints.maxWidth - spacing) / 2;
             return Wrap(
               spacing: spacing,
               runSpacing: spacing,
-              children:
-                  cards
-                      .map(
-                        (card) => SizedBox(
-                          width: cardWidth,
-                          child: HealthMetricCard(
-                            key: ValueKey(card.type.id),
-                            data: card,
-                            onTap: () => onMetricTap(card.type),
-                          ),
-                        ),
-                      )
-                      .toList(),
+              children: [
+                for (var i = 0; i < cards.length; i++)
+                  SizedBox(
+                    // Two per row, except a lone trailing tile, which takes
+                    // the full width rather than sitting half-empty beside
+                    // nothing. Free tiers land on an odd count often.
+                    width:
+                        (cards.length.isOdd && i == cards.length - 1)
+                            ? constraints.maxWidth
+                            : half,
+                    child: HealthMetricCard(
+                      key: ValueKey(cards[i].type.id),
+                      data: cards[i],
+                      onTap: () => onMetricTap(cards[i].type),
+                    ),
+                  ),
+              ],
             );
           },
         ),
@@ -129,43 +116,80 @@ class HealthMetricDashboard extends StatelessWidget {
   }
 }
 
-// ── Customize button ─────────────────────────────────────────────────────────
+// ── Section header ───────────────────────────────────────────────────────────
 
-class _CustomizeButton extends StatelessWidget {
-  final String label;
-  final bool isDark;
-  final VoidCallback? onTap;
+/// The one section label used across the Log screen.
+///
+/// There used to be three of these — the dashboard's, the meals list's, and the
+/// cards' own titles — at three sizes and weights, which is most of why the
+/// screen read as noisy. Everything above a section now goes through here.
+class LogSectionHeader extends StatelessWidget {
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
-  const _CustomizeButton({
-    required this.label,
-    required this.isDark,
-    this.onTap,
+  const LogSectionHeader({
+    super.key,
+    required this.title,
+    this.actionLabel,
+    this.onAction,
   });
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    return AppScaleTap(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Text(
-          label,
-          style: AppTypography.labelSmall.copyWith(
-            color: accent,
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-            letterSpacing: 0,
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Text(
+            title.toUpperCase(),
+            style: AppTypography.labelSmall.copyWith(
+              color: scheme.onSurface.withValues(alpha: isDark ? 0.42 : 0.45),
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+              letterSpacing: 1.3,
+            ),
           ),
         ),
-      ),
+        if (actionLabel != null && onAction != null)
+          AppScaleTap(
+            onTap: onAction,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Text(
+                actionLabel!,
+                style: AppTypography.labelSmall.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
 
 // ── Individual card ──────────────────────────────────────────────────────────
 
+/// One metric tile.
+///
+/// Every tile has the same four bands — label, value, a visual, a status line —
+/// so a row of them reads as a table, not as four unrelated cards. The visual
+/// band is the part that used to break: it reserved a sparkline's worth of
+/// height and then painted nothing on a day with no data, leaving three of four
+/// tiles mostly empty. It now falls back to a goal track, which is drawable at
+/// zero and still says something true.
 class HealthMetricCard extends StatelessWidget {
+  /// Fixed so a row of tiles lines up. It has to clear the sum of the bands —
+  /// 22 label + 10 + 27 value + 32 visual + 8 + ~14 status + 25 padding ≈ 138 —
+  /// or the Column overflows; the Spacer takes up the slack.
+  static const double height = 150;
+
   final HealthMetricCardData data;
   final VoidCallback onTap;
 
@@ -177,7 +201,8 @@ class HealthMetricCard extends StatelessWidget {
       builder: (context, ref, _) {
         final isPro = ref.watch(effectiveIsProProvider);
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        final textColor = Theme.of(context).colorScheme.onSurface;
+        final scheme = Theme.of(context).colorScheme;
+        final textColor = scheme.onSurface;
         final accent = _metricAccentFor(context, data.type);
         final isLocked =
             !isPro &&
@@ -186,15 +211,17 @@ class HealthMetricCard extends StatelessWidget {
                 data.type == LogMetricType.fat);
 
         final cardColor =
-            isDark
-                ? Colors.white.withValues(alpha: 0.045)
-                : const Color(0xFFFFFFFF);
+            isDark ? Colors.white.withValues(alpha: 0.045) : Colors.white;
 
         final todayValue = data.values.isNotEmpty ? data.values.last : 0;
         final hasData = todayValue > 0;
+        final hasWindowData = data.values.any((v) => v > 0);
 
         if (isLocked) {
-          return AppScaleTap(
+          return _shell(
+            context,
+            isDark: isDark,
+            cardColor: cardColor,
             onTap: () {
               PremiumConversionService().openPaywall(
                 context,
@@ -202,182 +229,276 @@ class HealthMetricCard extends StatelessWidget {
                 featureName: 'macro_metrics',
               );
             },
-            child: Container(
-              height: 132,
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color:
-                      isDark
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : const Color(0xFFEFEBE4),
-                  width: 1.0,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label(context, isDark: isDark, accent: accent, muted: true),
+              const Spacer(),
+              Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        data.title,
-                        style: AppTypography.labelSmall.copyWith(
-                          color:
-                              isDark ? Colors.white60 : const Color(0xFF78716C),
-                          fontWeight: FontWeight.w500,
-                          fontSize: 10,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  Icon(
+                    LucideIcons.lock,
+                    size: 14,
+                    color: isDark ? Colors.white38 : const Color(0xFFA8A29E),
                   ),
-                  const Spacer(),
-                  Center(
-                    child: Column(
-                      children: [
-                        Icon(
-                          LucideIcons.lock,
-                          size: 16,
-                          color:
-                              isDark ? Colors.white30 : const Color(0xFFA8A29E),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          (AppLocalizations.of(context)?.common_unlock ??
-                                  'UNLOCK')
-                              .toUpperCase(),
-                          style: AppTypography.labelSmall.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 9,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(width: 6),
+                  Text(
+                    (AppLocalizations.of(context)?.common_unlock ?? 'Unlock'),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      letterSpacing: 0,
                     ),
                   ),
-                  const Spacer(),
                 ],
               ),
-            ),
+              const SizedBox(height: 10),
+              _Track(
+                progress: 0,
+                accent: accent,
+                isDark: isDark,
+                dashed: true,
+              ),
+              const SizedBox(height: 10),
+            ],
           );
         }
 
-        return AppScaleTap(
+        return _shell(
+          context,
+          isDark: isDark,
+          cardColor: cardColor,
           onTap: onTap,
-          child: Container(
-            height: 132,
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color:
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : const Color(0xFFEFEBE4),
-                width: 1.0,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _label(context, isDark: isDark, accent: accent),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      data.title,
-                      style: AppTypography.labelSmall.copyWith(
-                        color:
-                            isDark ? Colors.white54 : const Color(0xFF78716C),
-                        fontWeight: FontWeight.w500,
-                        fontSize: 10,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                Flexible(
+                  child: Text(
+                    data.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.displayLarge.copyWith(
+                      // An empty day stays quiet; display weight is reserved
+                      // for numbers the user actually earned.
+                      color:
+                          hasData ? textColor : textColor.withValues(alpha: 0.32),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 27,
+                      height: 1.0,
+                      letterSpacing: -0.6,
                     ),
-                    Container(
-                      width: 24,
-                      height: 24,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(data.icon, color: accent, size: 13),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      data.value,
-                      style: AppTypography.displayLarge.copyWith(
-                        // An empty day stays quiet; display weight is
-                        // reserved for numbers the user actually earned.
-                        color:
-                            hasData
-                                ? textColor
-                                : textColor.withValues(alpha: 0.30),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 26,
-                        height: 1.0,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    if (data.unit.isNotEmpty) ...[
-                      const SizedBox(width: 3),
-                      Text(
-                        data.unit,
-                        style: AppTypography.labelSmall.copyWith(
-                          color:
-                              isDark ? Colors.white38 : const Color(0xFFB4AFA8),
-                          fontWeight: FontWeight.w500,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Expanded(
-                  child: HealthMetricMiniChart(
-                    values: data.values,
-                    goal: data.goal,
-                    style: data.chartStyle,
-                    accent: accent,
-                    surfaceColor: cardColor,
-                    isDark: isDark,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  data.status,
-                  style: AppTypography.labelSmall.copyWith(
-                    color:
-                        hasData
-                            ? accent.withValues(alpha: 0.7)
-                            : textColor.withValues(alpha: 0.35),
-                    fontWeight: FontWeight.w500,
-                    fontSize: 10,
+                if (data.unit.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    data.unit,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: textColor.withValues(alpha: isDark ? 0.42 : 0.40),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ],
               ],
             ),
-          ),
+            const Spacer(),
+            // The seven-day shape when there is one; otherwise the goal track,
+            // which is honest at zero and keeps every tile the same shape.
+            SizedBox(
+              height: 32,
+              child:
+                  hasWindowData
+                      ? HealthMetricMiniChart(
+                        values: data.values,
+                        goal: data.goal,
+                        style: data.chartStyle,
+                        accent: accent,
+                        surfaceColor: cardColor,
+                        isDark: isDark,
+                      )
+                      : Align(
+                        alignment: Alignment.bottomCenter,
+                        child: _Track(
+                          progress: 0,
+                          accent: accent,
+                          isDark: isDark,
+                          dashed: data.goal <= 0,
+                        ),
+                      ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              data.status,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.labelSmall.copyWith(
+                color:
+                    hasData
+                        ? accent.withValues(alpha: isDark ? 0.85 : 0.75)
+                        : textColor.withValues(alpha: 0.38),
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
         );
       },
     );
   }
+
+  Widget _label(
+    BuildContext context, {
+    required bool isDark,
+    required Color accent,
+    bool muted = false,
+  }) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    return Row(
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: muted ? 0.08 : 0.12),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Icon(
+            data.icon,
+            color: accent.withValues(alpha: muted ? 0.6 : 1),
+            size: 12,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            data.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.labelSmall.copyWith(
+              color: textColor.withValues(alpha: isDark ? 0.60 : 0.55),
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _shell(
+    BuildContext context, {
+    required bool isDark,
+    required Color cardColor,
+    required VoidCallback onTap,
+    required List<Widget> children,
+  }) {
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        height: height,
+        padding: const EdgeInsets.fromLTRB(13, 13, 13, 12),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : const Color(0xFFEDE9E1),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
+        ),
+      ),
+    );
+  }
+}
+
+/// The flat stand-in for the sparkline: a 5px goal track. Solid when there is a
+/// target to move along, dashed when there is none, so "no target" and "no
+/// progress" never look like the same thing.
+class _Track extends StatelessWidget {
+  final double progress;
+  final Color accent;
+  final bool isDark;
+  final bool dashed;
+
+  const _Track({
+    required this.progress,
+    required this.accent,
+    required this.isDark,
+    this.dashed = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (dashed) {
+      return SizedBox(
+        height: 5,
+        child: CustomPaint(
+          painter: _DashedTrackPainter(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: isDark ? 0.16 : 0.12),
+          ),
+          size: Size.infinite,
+        ),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(3),
+      child: SizedBox(
+        height: 5,
+        child: LinearProgressIndicator(
+          value: progress.clamp(0.0, 1.0),
+          backgroundColor: Theme.of(
+            context,
+          ).colorScheme.onSurface.withValues(alpha: isDark ? 0.10 : 0.07),
+          valueColor: AlwaysStoppedAnimation<Color>(accent),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashedTrackPainter extends CustomPainter {
+  final Color color;
+
+  const _DashedTrackPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round;
+    const dash = 5.0;
+    const gap = 5.0;
+    final y = size.height / 2;
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(math.min(x + dash, size.width), y),
+        paint,
+      );
+      x += dash + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedTrackPainter old) => old.color != color;
 }
 
 // ── Bottom row (kept for compatibility, no longer used) ─────────────────────

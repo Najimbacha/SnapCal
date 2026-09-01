@@ -74,7 +74,9 @@ class SettingsScreen extends ConsumerWidget {
             PremiumPromptCard(
               title: 'SnapCal Pro',
               subtitle: l10n.settings_upgrade_desc,
-              buttonText: l10n.settings_upgrade_pro,
+              // "Upgrade to Pro" was wide enough to force the subtitle into
+              // an awkward two-line wrap beside it. Same words as the header.
+              buttonText: l10n.home_go_pro,
               icon: LucideIcons.sparkles,
               style: PremiumPromptStyle.mini,
               onTap:
@@ -132,7 +134,9 @@ class SettingsScreen extends ConsumerWidget {
               SettingsRow(
                 icon: LucideIcons.userCircle,
                 title: l10n.settings_account,
-                value: isAnonymous ? l10n.settings_create_account : null,
+                // No "Create account" here: the profile card at the top of
+                // this same screen already makes that offer, and two doors to
+                // one room make a screen feel padded.
                 onTap: () => context.push('/settings/account'),
               ),
             ],
@@ -272,6 +276,16 @@ class _ProfileCard extends ConsumerWidget {
   }
 }
 
+/// The signed-out account row.
+///
+/// Shaped like the account row at the top of every settings screen the user
+/// has already used: avatar, one line naming the action, one line of reason,
+/// a chevron, and the whole row tappable. It previously carried a title, a
+/// subtitle AND a button — three elements for one decision, with two
+/// overlapping tap targets, one of which (the card) was invisible.
+///
+/// The title names the action rather than the state: nobody thinks of
+/// themselves as a "Guest Account", they think "I'm not signed in".
 class _GuestCard extends StatelessWidget {
   final bool isPro;
   const _GuestCard({required this.isPro});
@@ -285,7 +299,7 @@ class _GuestCard extends StatelessWidget {
       onTap: () => AuthModal.show(context),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
         decoration: BoxDecoration(
           color:
               isDark
@@ -300,10 +314,9 @@ class _GuestCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Neutral grey avatar circle
             Container(
-              width: 52,
-              height: 52,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: kSettingsGreenText.withValues(
                   alpha: isDark ? 0.16 : 0.09,
@@ -314,18 +327,18 @@ class _GuestCard extends StatelessWidget {
                 child: Icon(
                   LucideIcons.user,
                   color: kSettingsGreenText,
-                  size: 22,
+                  size: 20,
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    l10n.settings_guest_account,
+                    l10n.settings_sign_in,
                     style: AppTypography.heading3.copyWith(
                       color: settingsText(context),
                       fontWeight: FontWeight.w700,
@@ -333,41 +346,27 @@ class _GuestCard extends StatelessWidget {
                       letterSpacing: -0.3,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
-                    l10n.settings_guest_subtitle,
-                    maxLines: 1,
+                    l10n.settings_guest_sync,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.labelSmall.copyWith(
                       color: settingsSubtext(context),
                       fontWeight: FontWeight.w400,
                       fontSize: 12,
+                      height: 1.35,
                       letterSpacing: 0,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: kSettingsGreen.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: kSettingsGreenText.withValues(alpha: 0.14),
-                  width: 0.8,
-                ),
-              ),
-              child: Text(
-                l10n.settings_sign_in,
-                style: AppTypography.labelSmall.copyWith(
-                  color: kSettingsGreenText,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  letterSpacing: 0,
-                ),
-              ),
+            const SizedBox(width: 10),
+            Icon(
+              LucideIcons.chevronRight,
+              size: 18,
+              color: settingsSubtext(context).withValues(alpha: 0.7),
             ),
           ],
         ),

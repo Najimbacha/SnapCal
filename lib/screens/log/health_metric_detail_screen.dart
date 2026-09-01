@@ -20,6 +20,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/ui_blocks.dart';
 import 'models/log_metric_models.dart';
+import 'widgets/health_metric_dashboard.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 const _minimalBg = Color(0xFFF9F8F5);
@@ -163,7 +164,7 @@ class _HealthMetricDetailScreenState
                                     isDark
                                         ? Colors.white.withValues(alpha: 0.04)
                                         : const Color(0x00FFFFFF),
-                                borderRadius: BorderRadius.circular(22),
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: Theme.of(context)
                                       .colorScheme
@@ -188,7 +189,6 @@ class _HealthMetricDetailScreenState
                             // Section header
                             _SectionHeader(
                               title: l10n.log_metric_detail_list_title,
-                              isDark: isDark,
                             ),
                             const SizedBox(height: 12),
                             _MetricPointList(
@@ -354,7 +354,7 @@ class _LockedMacroMetricDetail extends StatelessWidget {
                 isDark
                     ? Colors.white.withValues(alpha: 0.05)
                     : Colors.white.withValues(alpha: 0.72),
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: accent.withValues(alpha: 0.20)),
           ),
           child: Column(
@@ -366,7 +366,7 @@ class _LockedMacroMetricDetail extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(LucideIcons.lock, color: accent, size: 21),
               ),
@@ -409,25 +409,14 @@ class _LockedMacroMetricDetail extends StatelessWidget {
 
 class _SectionHeader extends StatelessWidget {
   final String title;
-  final bool isDark;
 
-  const _SectionHeader({required this.title, required this.isDark});
+  const _SectionHeader({required this.title});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          title.toUpperCase(),
-          style: AppTypography.labelSmall.copyWith(
-            color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-            fontWeight: FontWeight.w600,
-            fontSize: 10,
-            letterSpacing: 1,
-          ),
-        ),
-      ],
-    );
+    // Same label as the Log screen's sections — one section style in the
+    // feature, not one per screen.
+    return LogSectionHeader(title: title);
   }
 }
 
@@ -450,7 +439,7 @@ class _DetailHeader extends StatelessWidget {
     final chipColor =
         isDark
             ? Colors.white.withValues(alpha: 0.06)
-            : const Color(0xFFE8E4DC).withValues(alpha: 0.56);
+            : const Color(0xFFEDE9E1).withValues(alpha: 0.56);
 
     return Row(
       children: [
@@ -462,7 +451,7 @@ class _DetailHeader extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: chipColor,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color:
                     isDark
@@ -542,8 +531,8 @@ class _PeriodSelector extends StatelessWidget {
         color:
             isDark
                 ? Colors.white.withValues(alpha: 0.06)
-                : const Color(0xFFE8E4DC).withValues(alpha: 0.48),
-        borderRadius: BorderRadius.circular(18),
+                : const Color(0xFFEDE9E1).withValues(alpha: 0.48),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color:
               isDark
@@ -565,7 +554,7 @@ class _PeriodSelector extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: active ? accent : null,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(10),
                       boxShadow:
                           active
                               ? [
@@ -684,8 +673,8 @@ class _NavChip extends StatelessWidget {
           color:
               isDark
                   ? Colors.white.withValues(alpha: 0.07)
-                  : const Color(0xFFE8E4DC).withValues(alpha: 0.56),
-          borderRadius: BorderRadius.circular(13),
+                  : const Color(0xFFEDE9E1).withValues(alpha: 0.56),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color:
                 isDark
@@ -733,7 +722,7 @@ class _MetricHero extends StatelessWidget {
             isDark
                 ? Colors.white.withValues(alpha: 0.04)
                 : const Color(0x00FFFFFF),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: Theme.of(
             context,
@@ -1208,7 +1197,7 @@ class _MetricPointList extends StatelessWidget {
                           ? const Color(0xFF1E1D1A)
                           : const Color(0xFF181714))
                       : Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color:
                     isFirst
@@ -1322,7 +1311,7 @@ class _MetricPointList extends StatelessWidget {
                       color:
                           isDark
                               ? Colors.white.withValues(alpha: 0.08)
-                              : const Color(0xFFE8E4DC).withValues(alpha: 0.56),
+                              : const Color(0xFFEDE9E1).withValues(alpha: 0.56),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Icon(

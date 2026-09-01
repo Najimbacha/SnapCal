@@ -8,7 +8,10 @@
     "test": "node --test test/*.test.js",
     "set-admin": "node scripts/set-admin-claim.js",
     "migrate:dry-run": "node scripts/migrate-user-settings.js --dry-run",
-    "build:nutrition-db": "node scripts/build_nutrition_db.js"
+    "build:nutrition-db": "node scripts/build_nutrition_db.js",
+    "start:worker": "ENABLE_SCHEDULER=true node server.js",
+    "backfill:reminder-date": "node scripts/backfill-reminder-date.js",
+    "backfill:reminder-date:dry": "node scripts/backfill-reminder-date.js --dry-run"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -21,6 +24,8 @@
     "express-rate-limit": "^7.2.0",
     "firebase-admin": "^12.0.0",
     "morgan": "^1.10.0",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "rate-limit-redis": "^4.2.0",
+    "redis": "^4.7.0"
   }
 }

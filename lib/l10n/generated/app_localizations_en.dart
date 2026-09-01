@@ -821,13 +821,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settings_core_config => 'Core Configuration';
+  String get settings_core_config => 'You';
 
   @override
-  String get settings_data_security => 'Data & Security';
+  String get settings_data_security => 'Your data';
 
   @override
-  String get settings_information => 'Information';
+  String get settings_information => 'About';
 
   @override
   String get settings_body_profile => 'Body Profile';
@@ -3896,4 +3896,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String home_kcal_estimated_short(int kcal) {
     return '~$kcal kcal';
   }
+
+  @override
+  String get log_this_week => 'This week';
+
+  @override
+  String log_week_average(String value) {
+    return '$value avg';
+  }
+
+  @override
+  String log_week_on_target(String count, String total) {
+    return '$count of $total on target';
+  }
+
+  @override
+  String get log_week_no_data => 'Nothing logged this week yet';
+
+  @override
+  String log_vs_average_above(String value) {
+    return '$value above your 7-day average';
+  }
+
+  @override
+  String log_vs_average_below(String value) {
+    return '$value below your 7-day average';
+  }
+
+  @override
+  String get log_vs_average_same => 'Right on your 7-day average';
+
+  @override
+  String get log_meal_split => 'Where the calories came from';
+
+  @override
+  String get macro_target_met => 'Target met';
+
+  @override
+  String macro_grams_to_go(String value) {
+    return '${value}g to go';
+  }
+
+  @override
+  String macro_targets_met_count(String count, String total) {
+    return '$count of $total targets met';
+  }
+
+  @override
+  String get result_unlock_personal_title => 'Does this fit your day?';
+
+  @override
+  String get result_unlock_personal_body =>
+      'Pro checks this meal against your protein, carb and fat targets';
+
+  @override
+  String get home_macro_empty => 'Scan a meal to see your macro split';
+
+  @override
+  String get home_section_plan_coach => 'Plan and coach';
+
+  @override
+  String get assistant_home_subtitle => 'Personalized AI advice';
+
+  @override
+  String home_offer_percent_off(String value) {
+    return '$value% OFF';
+  }
+
+  @override
+  String get home_offer_ends_soon => 'Ends soon';
+
+  @override
+  String get settings_guest_sync => 'Sync your data across devices';
 }

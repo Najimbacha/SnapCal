@@ -368,9 +368,9 @@
       }
     }
   },
-  "settings_core_config": "Core Configuration",
-  "settings_data_security": "Data & Security",
-  "settings_information": "Information",
+  "settings_core_config": "You",
+  "settings_data_security": "Your data",
+  "settings_information": "About",
   "settings_body_profile": "Body Profile",
   "settings_body_profile_sub": "Update your stats and goals",
   "settings_nutrition_goals": "Nutrition Goals",
@@ -876,7 +876,7 @@
   "@scan_wait_stay": {
     "description": "SnapCal UI string: scan_wait_stay"
   },
-  "scan_wait_longer": "Taking longer than usual \u2014 your result is still coming.",
+  "scan_wait_longer": "Taking longer than usual — your result is still coming.",
   "@scan_wait_longer": {
     "description": "SnapCal UI string: scan_wait_longer"
   },
@@ -1756,7 +1756,7 @@
   "@macro_ring_unlock_body": {
     "description": "SnapCal UI string: macro_ring_unlock_body"
   },
-  "macro_ring_on_track": "You're on track for {macro} \u2014 unlock exact grams",
+  "macro_ring_on_track": "You're on track for {macro} — unlock exact grams",
   "@macro_ring_on_track": {
     "description": "SnapCal UI string: macro_ring_on_track",
     "placeholders": {
@@ -1933,5 +1933,79 @@
         "type": "int"
       }
     }
-  }
+  },
+  "log_this_week": "This week",
+  "log_week_average": "{value} avg",
+  "@log_week_average": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "log_week_on_target": "{count} of {total} on target",
+  "@log_week_on_target": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "log_week_no_data": "Nothing logged this week yet",
+  "log_vs_average_above": "{value} above your 7-day average",
+  "@log_vs_average_above": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "log_vs_average_below": "{value} below your 7-day average",
+  "@log_vs_average_below": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "log_vs_average_same": "Right on your 7-day average",
+  "log_meal_split": "Where the calories came from",
+  "macro_target_met": "Target met",
+  "macro_grams_to_go": "{value}g to go",
+  "@macro_grams_to_go": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "macro_targets_met_count": "{count} of {total} targets met",
+  "@macro_targets_met_count": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "result_unlock_personal_title": "Does this fit your day?",
+  "result_unlock_personal_body": "Pro checks this meal against your protein, carb and fat targets",
+  "home_macro_empty": "Scan a meal to see your macro split",
+  "home_section_plan_coach": "Plan and coach",
+  "assistant_home_subtitle": "Personalized AI advice",
+  "home_offer_percent_off": "{value}% OFF",
+  "@home_offer_percent_off": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "home_offer_ends_soon": "Ends soon",
+  "settings_guest_sync": "Sync your data across devices"
 }

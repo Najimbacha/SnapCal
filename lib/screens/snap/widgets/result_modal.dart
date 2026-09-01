@@ -761,43 +761,57 @@ class _ResultModalState extends ConsumerState<ResultModal> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: _MacroChip(
-              label: l10n.result_protein,
-              grams: _p,
-              share: share(_p, 4),
-              color: AppColors.protein,
-              isDark: d,
-              showGrams: showMacros,
-              onLockedTap: () => _openPaywall(context),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _MacroChip(
+                  label: l10n.result_protein,
+                  grams: _p,
+                  share: share(_p, 4),
+                  color: AppColors.protein,
+                  isDark: d,
+                  showGrams: showMacros,
+                  onLockedTap: () => _openPaywall(context),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MacroChip(
+                  label: l10n.result_carbs,
+                  grams: _c,
+                  share: share(_c, 4),
+                  color: AppColors.carbs,
+                  isDark: d,
+                  showGrams: showMacros,
+                  onLockedTap: () => _openPaywall(context),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MacroChip(
+                  label: l10n.result_fat,
+                  grams: _f,
+                  share: share(_f, 9),
+                  color: AppColors.fat,
+                  isDark: d,
+                  showGrams: showMacros,
+                  onLockedTap: () => _openPaywall(context),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _MacroChip(
-              label: l10n.result_carbs,
-              grams: _c,
-              share: share(_c, 4),
-              color: AppColors.carbs,
+          if (showMacros && (_p + _c + _f) > 0) ...[
+            const SizedBox(height: 10),
+            _MacroProportionBar(
+              protein: _p,
+              carbs: _c,
+              fat: _f,
               isDark: d,
-              showGrams: showMacros,
-              onLockedTap: () => _openPaywall(context),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _MacroChip(
-              label: l10n.result_fat,
-              grams: _f,
-              share: share(_f, 9),
-              color: AppColors.fat,
-              isDark: d,
-              showGrams: showMacros,
-              onLockedTap: () => _openPaywall(context),
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -942,60 +956,111 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     );
   }
 
-  /// Sells the coaching layer, not the macros. Macros are part of the answer.
+  /// The ask, at the moment it lands hardest.
+  ///
+  /// A scan the user just watched succeed is the peak of the session — they
+  /// have a real plate on screen with real numbers against it. So the banner
+  /// leads with this meal rather than a feature list, and shows the macros it
+  /// is talking about. An ambient "unlock deeper insights" card asks for money
+  /// before the user has been shown anything; this one asks right after.
   Widget _upgradeBanner(BuildContext context, AppLocalizations l10n, bool d) {
+    final chips = <(String, int, Color)>[
+      (l10n.result_protein, _p, AppColors.protein),
+      (l10n.result_carbs, _c, AppColors.carbs),
+      (l10n.result_fat, _f, AppColors.fat),
+    ];
+
     return GestureDetector(
       onTap: () => _openPaywall(context),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.fromLTRB(14, 13, 14, 14),
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: d ? 0.12 : 0.06),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.28)),
-          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.32)),
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                gradient: AppColors.premiumGradient,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                LucideIcons.sparkles,
-                size: 15,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.result_unlock_title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: d ? Colors.white : const Color(0xFF1C1C1E),
-                    ),
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    gradient: AppColors.premiumGradient,
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    l10n.result_unlock_subtitle,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: d ? Colors.white54 : const Color(0xFF8E8E93),
+                  child: const Icon(
+                    LucideIcons.sparkles,
+                    size: 15,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.result_unlock_personal_title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                          color: d ? Colors.white : const Color(0xFF1C1C1E),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        l10n.result_unlock_personal_body,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          height: 1.3,
+                          color:
+                              d ? Colors.white60 : const Color(0xFF6E6E73),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  LucideIcons.chevronRight,
+                  size: 18,
+                  color: d ? Colors.white38 : const Color(0xFFC7C7CC),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // The meal's own numbers, so the offer is visibly about this plate.
+            Row(
+              children: [
+                for (var i = 0; i < chips.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 7),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: chips[i].$3.withValues(alpha: d ? 0.16 : 0.10),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${chips[i].$1} ${chips[i].$2}g',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: d ? Colors.white : const Color(0xFF1C1C1E),
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ),
-            Icon(
-              LucideIcons.chevronRight,
-              size: 18,
-              color: d ? Colors.white24 : const Color(0xFFC7C7CC),
+              ],
             ),
           ],
         ),
@@ -1428,7 +1493,7 @@ class _FoodCardState extends State<_FoodCard>
                     ? Colors.white.withValues(alpha: 0.06)
                     : Colors.white.withValues(alpha: 0.75),
             border: Border.all(
-              color: (d ? Colors.white : Colors.white).withValues(alpha: 0.08),
+              color: (d ? Colors.white : Colors.black).withValues(alpha: 0.08),
             ),
           ),
           child: Stack(
@@ -1645,6 +1710,69 @@ class _FoodCardState extends State<_FoodCard>
                                 ],
                               ),
                             ),
+                          ),
+                          const SizedBox(width: 4),
+                          PopupMenuButton<String>(
+                            icon: Icon(
+                              LucideIcons.moreVertical,
+                              size: 16,
+                              color: d ? Colors.white38 : const Color(0xFF8E8E93),
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            style: IconButton.styleFrom(
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              padding: EdgeInsets.zero,
+                            ),
+                            onSelected: (val) {
+                              if (val == 'rename') {
+                                widget.onRename();
+                              } else if (val == 'delete') {
+                                widget.onDelete();
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'rename',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      LucideIcons.pencil,
+                                      size: 14,
+                                      color: d ? Colors.white70 : const Color(0xFF1C1C1E),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      l10n.result_rename,
+                                      style: TextStyle(
+                                        color: d ? Colors.white : const Color(0xFF1C1C1E),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      LucideIcons.trash2,
+                                      size: 14,
+                                      color: Color(0xFFFF3B30),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      l10n.result_discard,
+                                      style: const TextStyle(
+                                        color: Color(0xFFFF3B30),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(width: 6),
                           AnimatedRotation(
@@ -2053,3 +2181,92 @@ class _WtChip extends StatelessWidget {
     );
   }
 }
+
+class _MacroProportionBar extends StatelessWidget {
+  final int protein;
+  final int carbs;
+  final int fat;
+  final bool isDark;
+
+  const _MacroProportionBar({
+    required this.protein,
+    required this.carbs,
+    required this.fat,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final total = protein + carbs + fat;
+    if (total == 0) return const SizedBox.shrink();
+    final pFrac = protein / total;
+    final cFrac = carbs / total;
+    final fFrac = fat / total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            height: 8,
+            child: Row(
+              children: [
+                Expanded(
+                  flex: (pFrac * 1000).round().clamp(1, 1000),
+                  child: Container(color: AppColors.protein),
+                ),
+                const SizedBox(width: 2),
+                Expanded(
+                  flex: (cFrac * 1000).round().clamp(1, 1000),
+                  child: Container(color: AppColors.carbs),
+                ),
+                const SizedBox(width: 2),
+                Expanded(
+                  flex: (fFrac * 1000).round().clamp(1, 1000),
+                  child: Container(color: AppColors.fat),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            _macroLabel('${(pFrac * 100).round()}% P', AppColors.protein),
+            const SizedBox(width: 12),
+            _macroLabel('${(cFrac * 100).round()}% C', AppColors.carbs),
+            const SizedBox(width: 12),
+            _macroLabel('${(fFrac * 100).round()}% F', AppColors.fat),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _macroLabel(String text, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            color: isDark ? Colors.white54 : const Color(0xFF8E8E93),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+

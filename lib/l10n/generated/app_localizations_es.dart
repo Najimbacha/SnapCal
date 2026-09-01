@@ -827,13 +827,13 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get settings_core_config => 'Configuración central';
+  String get settings_core_config => 'Tú';
 
   @override
-  String get settings_data_security => 'Datos y seguridad';
+  String get settings_data_security => 'Tus datos';
 
   @override
-  String get settings_information => 'Información';
+  String get settings_information => 'Acerca de';
 
   @override
   String get settings_body_profile => 'Perfil corporal';
@@ -3941,4 +3941,77 @@ class AppLocalizationsEs extends AppLocalizations {
   String home_kcal_estimated_short(int kcal) {
     return '~$kcal kcal';
   }
+
+  @override
+  String get log_this_week => 'Esta semana';
+
+  @override
+  String log_week_average(String value) {
+    return '$value de media';
+  }
+
+  @override
+  String log_week_on_target(String count, String total) {
+    return '$count de $total en objetivo';
+  }
+
+  @override
+  String get log_week_no_data => 'Aún no has registrado nada esta semana';
+
+  @override
+  String log_vs_average_above(String value) {
+    return '$value por encima de tu media de 7 días';
+  }
+
+  @override
+  String log_vs_average_below(String value) {
+    return '$value por debajo de tu media de 7 días';
+  }
+
+  @override
+  String get log_vs_average_same => 'Justo en tu media de 7 días';
+
+  @override
+  String get log_meal_split => 'De dónde vienen las calorías';
+
+  @override
+  String get macro_target_met => 'Objetivo cumplido';
+
+  @override
+  String macro_grams_to_go(String value) {
+    return 'Faltan $value g';
+  }
+
+  @override
+  String macro_targets_met_count(String count, String total) {
+    return '$count de $total objetivos cumplidos';
+  }
+
+  @override
+  String get result_unlock_personal_title => '¿Encaja en tu día?';
+
+  @override
+  String get result_unlock_personal_body =>
+      'Pro compara esta comida con tus objetivos de proteína, carbohidratos y grasa';
+
+  @override
+  String get home_macro_empty =>
+      'Escanea una comida para ver tu reparto de macros';
+
+  @override
+  String get home_section_plan_coach => 'Plan y coach';
+
+  @override
+  String get assistant_home_subtitle => 'Consejos personalizados con IA';
+
+  @override
+  String home_offer_percent_off(String value) {
+    return '$value% DTO';
+  }
+
+  @override
+  String get home_offer_ends_soon => 'Termina pronto';
+
+  @override
+  String get settings_guest_sync => 'Sincroniza tus datos entre dispositivos';
 }

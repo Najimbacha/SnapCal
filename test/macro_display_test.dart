@@ -180,10 +180,15 @@ void main() {
     );
     await tester.pump();
 
-    // One padlock per card, plus the one on the CTA.
-    expect(find.byIcon(LucideIcons.lock), findsNWidgets(4));
+    // One padlock for the section, on the CTA — not one per card as well.
+    expect(find.byIcon(LucideIcons.lock), findsOneWidget);
     expect(find.text('42'), findsNothing);
     expect(find.text('of 120g'), findsNothing);
+    // Grams are withheld, but the composition share is not: the same 25/49/26
+    // the Log screen's bar shows, so the two screens cannot contradict.
+    expect(find.text('25%'), findsOneWidget);
+    expect(find.text('49%'), findsOneWidget);
+    expect(find.text('26%'), findsOneWidget);
     expect(find.text('See your exact numbers'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

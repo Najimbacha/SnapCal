@@ -11,8 +11,10 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../providers/water_provider.dart';
 
 const _bg = Color(0xFFF9F8F5);
-const _card = Color(0xFFFEFCF7);
-const _line = Color(0xFFE8E4DC);
+// Card surface and hairline shared with the Log screen's tiles, so hydration
+// does not read as a different app. Was 0xFFFEFCF7 / 0xFFE8E4DC.
+const _card = Color(0xFFFFFFFF);
+const _line = Color(0xFFEDE9E1);
 const _ink = Color(0xFF1C1917);
 const _muted = Color(0xFFA8A29E);
 const _blue = AppColors.sky;
@@ -140,7 +142,7 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                           ),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: _line),
                           ),
                           child: Row(
@@ -225,7 +227,7 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                           backgroundColor: _blue,
                           disabledBackgroundColor: _blue.withValues(alpha: 0.5),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         child:
@@ -321,7 +323,7 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
           (ctx) => AlertDialog(
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
               l10n.water_reset_title,
@@ -365,15 +367,15 @@ class _BackChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: _line),
           ),
           child: const Icon(LucideIcons.chevronLeft, color: _ink, size: 20),
@@ -453,7 +455,7 @@ class _QuickAction extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: _line.withValues(alpha: enabled ? 1 : 0.5)),
         ),
         child: Text(
@@ -501,11 +503,11 @@ class _WaveTank extends StatelessWidget {
           height: 300,
           decoration: BoxDecoration(
             color: _card,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: _line),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(23),
+            borderRadius: BorderRadius.circular(15),
             child: Stack(
               children: [
                 CustomPaint(

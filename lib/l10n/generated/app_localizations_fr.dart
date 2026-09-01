@@ -831,13 +831,13 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get settings_core_config => 'Configuration de base';
+  String get settings_core_config => 'Vous';
 
   @override
-  String get settings_data_security => 'Données et sécurité';
+  String get settings_data_security => 'Vos données';
 
   @override
-  String get settings_information => 'Informations';
+  String get settings_information => 'À propos';
 
   @override
   String get settings_body_profile => 'Profil corporel';
@@ -3969,4 +3969,79 @@ class AppLocalizationsFr extends AppLocalizations {
   String home_kcal_estimated_short(int kcal) {
     return '~$kcal kcal';
   }
+
+  @override
+  String get log_this_week => 'Cette semaine';
+
+  @override
+  String log_week_average(String value) {
+    return '$value en moyenne';
+  }
+
+  @override
+  String log_week_on_target(String count, String total) {
+    return '$count sur $total dans l\'objectif';
+  }
+
+  @override
+  String get log_week_no_data =>
+      'Rien enregistré cette semaine pour l\'instant';
+
+  @override
+  String log_vs_average_above(String value) {
+    return '$value au-dessus de votre moyenne sur 7 jours';
+  }
+
+  @override
+  String log_vs_average_below(String value) {
+    return '$value en dessous de votre moyenne sur 7 jours';
+  }
+
+  @override
+  String get log_vs_average_same => 'Pile sur votre moyenne sur 7 jours';
+
+  @override
+  String get log_meal_split => 'D\'où viennent les calories';
+
+  @override
+  String get macro_target_met => 'Objectif atteint';
+
+  @override
+  String macro_grams_to_go(String value) {
+    return 'Encore $value g';
+  }
+
+  @override
+  String macro_targets_met_count(String count, String total) {
+    return '$count sur $total objectifs atteints';
+  }
+
+  @override
+  String get result_unlock_personal_title =>
+      'Est-ce que ça rentre dans votre journée ?';
+
+  @override
+  String get result_unlock_personal_body =>
+      'Pro compare ce repas à vos objectifs de protéines, glucides et lipides';
+
+  @override
+  String get home_macro_empty => 'Scannez un repas pour voir votre répartition';
+
+  @override
+  String get home_section_plan_coach => 'Plan et coach';
+
+  @override
+  String get assistant_home_subtitle => 'Conseils personnalisés par IA';
+
+  @override
+  String home_offer_percent_off(String value) {
+    return '-$value%';
+  }
+
+  @override
+  String get home_offer_ends_soon => 'Bientôt fini';
+
+  @override
+  String get settings_guest_sync =>
+      'Synchronisez vos données entre vos appareils';
 }

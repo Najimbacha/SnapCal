@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "settings",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "foodRemindersEnabled", "order": "ASCENDING" },
+        { "fieldPath": "lastFoodReminderDate", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

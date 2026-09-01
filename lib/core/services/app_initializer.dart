@@ -29,6 +29,7 @@ import '../../data/services/fcm_service.dart';
 import '../../data/services/widget_service.dart';
 import 'app_lifecycle_service.dart';
 import '../utils/async_guard.dart';
+import 'ad_service.dart';
 
 class AppInitializer {
   static bool _errorReportingConfigured = false;
@@ -115,6 +116,7 @@ class AppInitializer {
         () => UploadQueueService().flushDue(),
       ),
       _runOptionalBackgroundService('Service warmup', _warmupSingletons),
+      _runOptionalBackgroundService('Ad init', AdService().init),
     ]);
     debugPrint('⚡ Background services ready');
   }

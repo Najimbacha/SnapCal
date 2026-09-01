@@ -8,7 +8,10 @@ const axios = require('axios');
 const admin = require('firebase-admin');
 const rateLimit = require('express-rate-limit');
 
-const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '10mb';
+// A 10mb ceiling on every route meant any endpoint could be used to make the
+// process buffer 10MB per concurrent request. Image routes opt in explicitly.
+const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '2mb';
+const MAX_IMAGE_BODY = process.env.MAX_IMAGE_BODY || '14mb';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
 const FREE_DAILY_AI_MESSAGES = Number(process.env.FREE_DAILY_AI_MESSAGES || 1);
@@ -87,30 +90,106 @@ app.use(cors({
   },
 }));
 app.use(morgan(process.env.NODE_ENV === 'test' ? 'combined' : 'dev'));
+// Image-bearing routes get the large parser; everything else gets 2mb. The
+// base64 expansion factor is ~1.37, so 14mb covers the 10MB image cap.
+const imageBodyParser = express.json({
+  limit: MAX_IMAGE_BODY,
+  type: 'application/json',
+});
+app.use('/v1/scan', imageBodyParser);
+app.use('/api/ai/image', imageBodyParser);
 app.use(express.json({ limit: MAX_JSON_BODY, type: 'application/json' }));
 app.use(express.urlencoded({ limit: MAX_JSON_BODY, extended: false }));
 
-const apiLimiter = rateLimit({
+// ── Rate limiting ────────────────────────────────────────────────────────────
+//
+// Two problems with the previous configuration, both of which only appear at
+// scale. It used the default MemoryStore, so every limit was per-process:
+// three instances meant three times the configured quota, and a deploy reset
+// every counter. And it keyed on IP, which on mobile means carrier-grade NAT —
+// thousands of real users sharing one address trip the window while an abuser
+// simply rotates addresses.
+//
+// The store is now Redis when REDIS_URL is set (shared across instances,
+// survives deploys) and falls back to memory with a loud warning otherwise, so
+// local development still runs with no dependencies.
+let limiterStoreFactory = () => undefined;
+let redisClient = null;
+
+if (process.env.REDIS_URL) {
+  try {
+    const { createClient } = require('redis');
+    const { RedisStore } = require('rate-limit-redis');
+    redisClient = createClient({ url: process.env.REDIS_URL });
+    redisClient.on('error', (err) =>
+      console.error('Redis error (rate limits degrade to allow):', err.message),
+    );
+    redisClient.connect().catch((err) =>
+      console.error('Redis connect failed:', err.message),
+    );
+    limiterStoreFactory = (prefix) =>
+      new RedisStore({
+        prefix,
+        sendCommand: (...args) => redisClient.sendCommand(args),
+      });
+    console.log('Rate limiting backed by Redis');
+  } catch (error) {
+    console.error(
+      'REDIS_URL set but the Redis store could not load:',
+      error.message,
+    );
+  }
+} else if (NODE_ENV === 'production') {
+  console.warn(
+    'WARNING: no REDIS_URL. Rate limits are per-instance and reset on deploy.',
+  );
+}
+
+/// Buckets by identity, not by address.
+///
+/// After authenticateToken the uid is authoritative. Limiters that run before
+/// it (the /api mount) fall back to a hash of the bearer token, which is
+/// per-user and unforgeable — a caller cannot claim someone else's bucket
+/// without their token. Unauthenticated callers still bucket by IP.
+function identityKey(req) {
+  if (req.user && req.user.uid) return `uid:${req.user.uid}`;
+  const match = (req.headers.authorization || '').match(/^Bearer (.+)$/);
+  if (match) {
+    return `tok:${crypto.createHash('sha256').update(match[1]).digest('hex').slice(0, 32)}`;
+  }
+  return `ip:${req.ip}`;
+}
+
+function makeLimiter({ prefix, windowMs, max, message }) {
+  return rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: identityKey,
+    store: limiterStoreFactory(prefix),
+    ...(message ? { message } : {}),
+  });
+}
+
+const apiLimiter = makeLimiter({
+  prefix: 'rl:api:',
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.API_RATE_LIMIT || 120),
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
 });
 
-const scanLimiter = rateLimit({
+const scanLimiter = makeLimiter({
+  prefix: 'rl:scan:',
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.SCAN_RATE_LIMIT || 20),
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: 'Too many scan requests. Please try again later.' },
 });
 
-const webhookLimiter = rateLimit({
+const webhookLimiter = makeLimiter({
+  prefix: 'rl:hook:',
   windowMs: 60 * 1000,
   max: Number(process.env.WEBHOOK_RATE_LIMIT || 120),
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
 function getLanguageName(code) {
@@ -262,9 +341,14 @@ async function authenticateToken(req, res, next) {
   }
 
   try {
+    // checkRevoked was true here for every request. That flag makes the Admin
+    // SDK fetch the user record from Google on each call instead of verifying
+    // the signature locally, so every authenticated request carried a network
+    // round-trip (30-80ms) and an external quota. ID tokens live one hour;
+    // routes that genuinely need immediate revocation use requireFreshAuth.
     const decodedToken = authVerifierForTest
       ? await authVerifierForTest(match[1])
-      : await admin.auth().verifyIdToken(match[1], true);
+      : await admin.auth().verifyIdToken(match[1]);
     req.user = {
       uid: decodedToken.uid,
       email: decodedToken.email || null,
@@ -289,6 +373,24 @@ async function verifyAppCheck(req, res, next) {
   } catch (error) {
     console.error('App Check token rejected:', error.message);
     return safeError(res, 401, 'App Check required.');
+  }
+}
+
+/// Re-verifies the caller's token with revocation checking.
+///
+/// Costs a round-trip to Firebase Auth, so it is reserved for routes where a
+/// stolen or revoked session must stop working within the hour rather than at
+/// token expiry: anything under /api/admin, and account-level changes.
+async function requireFreshAuth(req, res, next) {
+  if (authVerifierForTest) return next();
+  const match = (req.headers.authorization || '').match(/^Bearer (.+)$/);
+  if (!match) return safeError(res, 401, 'Authentication required.');
+  try {
+    await admin.auth().verifyIdToken(match[1], true);
+    return next();
+  } catch (error) {
+    console.error('Revocation check failed:', error.message);
+    return safeError(res, 401, 'Authentication required.');
   }
 }
 
@@ -1536,7 +1638,7 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
   }
 });
 
-app.get('/api/admin/users/:uid/summary', authenticateToken, verifyAppCheck, requireAdmin, async (req, res) => {
+app.get('/api/admin/users/:uid/summary', authenticateToken, verifyAppCheck, requireFreshAuth, requireAdmin, async (req, res) => {
   const targetUid = req.params.uid;
   if (!isSafeId(targetUid)) return safeError(res, 404, 'User not found.');
 
@@ -1559,7 +1661,7 @@ app.get('/api/admin/users/:uid/summary', authenticateToken, verifyAppCheck, requ
   });
 });
 
-app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, requireAdmin, async (req, res) => {
+app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, requireFreshAuth, requireAdmin, async (req, res) => {
   const targetUid = req.params.uid;
   const { isActive, entitlementId = 'pro', productId = 'manual_grant', reason } = req.body || {};
   if (!isSafeId(targetUid) || typeof isActive !== 'boolean' || typeof reason !== 'string' || reason.trim().length < 5) {
@@ -1759,11 +1861,23 @@ app.post('/api/notifications/food-reminder/register', authenticateToken, verifyA
   }
 
   try {
-    await userDoc(uid).collection('settings').doc('app').set({
+    const settingsRef = userDoc(uid).collection('settings').doc('app');
+    const payload = {
       foodRemindersEnabled: enabled,
       fcmToken: fcmToken || null,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
+    };
+
+    // The reminder fan-out is a range query on lastFoodReminderDate, and
+    // Firestore excludes documents that lack the field entirely from a range
+    // query. Without seeding it here, a user who has never been reminded
+    // could never BE reminded — they would be invisible to the query forever.
+    const existing = await settingsRef.get();
+    if (!existing.exists || existing.get('lastFoodReminderDate') === undefined) {
+      payload.lastFoodReminderDate = '1970-01-01';
+    }
+
+    await settingsRef.set(payload, { merge: true });
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('Food reminder register failed:', err.message);
@@ -1771,12 +1885,35 @@ app.post('/api/notifications/food-reminder/register', authenticateToken, verifyA
   }
 });
 
-// Admin-only: this runs the reminder fan-out for every user (BUG-018).
+/// Lets Cloud Scheduler drive the fan-out without a Firebase identity.
+///
+/// A scheduler has no ID token and no App Check attestation, so requiring them
+/// forced the cron to live inside the API process — which is what caused
+/// duplicate notifications once there was more than one instance. A constant
+/// -time shared-secret comparison is the standard shape for this, and the
+/// route stays admin-only for human callers.
+function allowSchedulerOrAdmin(req, res, next) {
+  const secret = process.env.SCHEDULER_SECRET || '';
+  const presented = req.get('X-Scheduler-Secret') || '';
+  if (secret && presented) {
+    const a = Buffer.from(secret);
+    const b = Buffer.from(presented);
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      req.schedulerAuthenticated = true;
+      return next();
+    }
+    return safeError(res, 401, 'Unauthorized.');
+  }
+  return authenticateToken(req, res, () =>
+    verifyAppCheck(req, res, () => requireAdmin(req, res, next)),
+  );
+}
+
+// Runs the reminder fan-out. Driven by Cloud Scheduler in production; an admin
+// can still call it by hand for a manual run (BUG-018).
 app.post(
   '/api/notifications/food-reminder/trigger',
-  authenticateToken,
-  verifyAppCheck,
-  requireAdmin,
+  allowSchedulerOrAdmin,
   async (req, res) => {
     const { processReminders: trigger } = require('./services/food_reminder_service');
     try {
@@ -1790,7 +1927,18 @@ app.post(
 
 if (require.main === module) {
   const port = process.env.PORT || 3000;
-  startScheduler();
+
+  // The scheduler used to start inside every API process. With more than one
+  // instance behind a load balancer that meant every user received one
+  // notification per instance, and a long reminder run blocked the same event
+  // loop that serves scans. It is now opt-in: run exactly one worker with
+  // ENABLE_SCHEDULER=true, or leave it off entirely and drive
+  // /api/notifications/food-reminder/trigger from Cloud Scheduler.
+  if (process.env.ENABLE_SCHEDULER === 'true') {
+    console.log('Scheduler enabled in this process (must be a single replica)');
+    startScheduler();
+  }
+
   app.listen(port, () => {
     console.log(`SnapCal backend running on port ${port}`);
   });

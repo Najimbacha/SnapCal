@@ -223,7 +223,7 @@ class _EditMealModalState extends State<EditMealModal> {
                   backgroundColor: context.primaryColor,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   elevation: 0,
                 ),
@@ -271,7 +271,7 @@ class _EditMealModalState extends State<EditMealModal> {
           (context) => AlertDialog(
             backgroundColor: context.surfaceContainerColor,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
               l10n.log_delete_meal_title,

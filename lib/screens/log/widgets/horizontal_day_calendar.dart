@@ -116,9 +116,26 @@ class _HorizontalDayCalendarState extends State<HorizontalDayCalendar> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: ListView.separated(
+    // The strip is scrolled so the selected day sits centre-stage, which means
+    // the first visible cell is usually cut in half. Without a fade that reads
+    // as a layout bug rather than as "there is more this way".
+    return ShaderMask(
+      shaderCallback:
+          (bounds) => const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: [0.0, 0.045, 0.955, 1.0],
+            colors: [
+              Color(0x00000000),
+              Color(0xFF000000),
+              Color(0xFF000000),
+              Color(0x00000000),
+            ],
+          ).createShader(bounds),
+      blendMode: BlendMode.dstIn,
+      child: SizedBox(
+        height: 56,
+        child: ListView.separated(
         controller: _controller,
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -140,8 +157,9 @@ class _HorizontalDayCalendarState extends State<HorizontalDayCalendar> {
               }
               widget.onDateSelected(summary.dateString);
             },
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
