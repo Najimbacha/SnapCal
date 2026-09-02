@@ -374,12 +374,31 @@ class MealRepository {
         }
       }
 
-      // Advance the cursor only after the whole page has been applied. Moving
-      // it earlier would skip documents on any failure part-way through, and a
-      // meal missed this way is never picked up again.
-      await _indexBox?.put(_cursorKey(user.uid), [
-        DateTime.now().millisecondsSinceEpoch.toString(),
-      ]);
+      // Advance the cursor only after the whole page has been applied, and
+      // never on a first sync that came back empty.
+      //
+      // An empty first sync is indistinguishable from a failed one. Firestore
+      // returns zero documents both when the user genuinely has no meals and
+      // when a read was refused or raced the auth token settling on sign-in —
+      // and the permission-denied case does not always throw. Writing the
+      // cursor there marks the device permanently "already synced", so the
+      // one-time 30-day pull never runs again and the user's history stays
+      // empty forever with no error anywhere.
+      //
+      // Holding the cursor back costs one empty query per launch until the
+      // account has its first meal, which is a single document read. That is
+      // an unmeasurable price for removing a silent, permanent data-loss mode.
+      final worthRecording = lastSyncMs != null || snapshot.docs.isNotEmpty;
+      if (worthRecording) {
+        await _indexBox?.put(_cursorKey(user.uid), [
+          DateTime.now().millisecondsSinceEpoch.toString(),
+        ]);
+      } else {
+        debugPrint(
+          'MealRepository: first sync found nothing, not recording a cursor '
+          '— the full pull will be retried next launch.',
+        );
+      }
 
       _emitTodaysMeals();
     } catch (e) {

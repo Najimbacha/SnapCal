@@ -270,13 +270,26 @@ class SettingsRepository {
         }
       }
 
-      // Recorded only after the merge succeeded. Stamping it earlier would
-      // make a failed sync look like a completed one and suppress the retry
-      // for six hours.
-      await prefs?.setInt(
-        _cloudSyncKeyFor(user.uid),
-        DateTime.now().millisecondsSinceEpoch,
-      );
+      // Recorded only after the merge succeeded, and never on a first sync
+      // that returned nothing.
+      //
+      // Same failure as the meal cursor: an empty read and a refused one look
+      // identical here, and a permission-denied read does not always throw.
+      // Stamping a first sync that found no documents would tell the device
+      // its settings are fresh for six hours while local storage is empty —
+      // the user sits on default goals with their real ones in the cloud.
+      final gotAnything = appSettings.isNotEmpty || profile.isNotEmpty;
+      if (!isFirstSync || gotAnything) {
+        await prefs?.setInt(
+          _cloudSyncKeyFor(user.uid),
+          DateTime.now().millisecondsSinceEpoch,
+        );
+      } else {
+        debugPrint(
+          'SettingsRepository: first sync found nothing, not stamping — '
+          'the cloud pull will be retried next launch.',
+        );
+      }
     } catch (e) {
       // Cursor deliberately not advanced: the next launch tries again.
       debugPrint('Firestore Pull Error: $e');
