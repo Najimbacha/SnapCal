@@ -59,3 +59,14 @@ GoogleService-Info.plist
 # Temp analysis and heap dumps
 *.txt
 *.hprof
+
+# Local Firestore backups (scripts/backup-firestore.js writes here). Each one
+# contains every user's data in plain text. The pattern in backend/.gitignore
+# does not reach this directory — it sits at the repository root.
+/backups/
+
+# Firebase service account keys. Committing one hands anyone with repo access
+# full admin on the database.
+*serviceAccount*.json
+*service-account*.json
+*-firebase-adminsdk-*.json
