@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { metrics } = require('../metrics');
 
 const db = admin.firestore();
 
@@ -69,6 +70,18 @@ function buildNotificationBody(timeOfDay, streak) {
 // Firestore returns only users who have reminders enabled and have not been
 // reminded today. Cost drops from O(all users) to O(users actually due).
 // Requires the composite index in firestore.indexes.json.
+//
+// The tracking field is `serverReminderSentOn`, NOT `lastFoodReminderDate`.
+// That is deliberate and it is the whole reason this can ship independently of
+// the app. `lastFoodReminderDate` is a field every released version of the
+// client writes on every settings save, with whatever its local copy holds --
+// usually null. Any rule strong enough to stop that from erasing the server's
+// write also rejects the entire settings document from those older apps, which
+// would mean waiting for Play Store adoption before deploying rules.
+//
+// A field no shipped client knows about needs no such rule: old apps never
+// send it, so they can never clear it, and their writes keep working untouched.
+// `lastFoodReminderDate` survives as a legacy field that nothing reads.
 async function* eligibleUserPages() {
   const today = todayKey();
   let cursor = null;
@@ -78,8 +91,8 @@ async function* eligibleUserPages() {
     let query = db
       .collectionGroup('settings')
       .where('foodRemindersEnabled', '==', true)
-      .where('lastFoodReminderDate', '<', today)
-      .orderBy('lastFoodReminderDate')
+      .where('serverReminderSentOn', '<', today)
+      .orderBy('serverReminderSentOn')
       .orderBy('__name__')
       .limit(PAGE_SIZE);
 
@@ -179,8 +192,14 @@ async function sendBatch(users, timeOfDay) {
         const result = await admin.messaging().sendEachForMulticast(message);
         responses = result.responses;
         sent += result.successCount;
+        metrics.reminderRuns.inc({ outcome: 'sent' }, result.successCount);
+        metrics.reminderRuns.inc(
+          { outcome: 'rejected' },
+          slice.length - result.successCount,
+        );
       } catch (err) {
         console.error('FoodReminder: multicast failed:', err.message);
+        metrics.reminderRuns.inc({ outcome: 'batch_failed' }, slice.length);
         continue;
       }
 
@@ -192,7 +211,7 @@ async function sendBatch(users, timeOfDay) {
           writer.set(
             member.ref,
             {
-              lastFoodReminderDate: today,
+              serverReminderSentOn: today,
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             },
             { merge: true },
@@ -205,6 +224,7 @@ async function sendBatch(users, timeOfDay) {
           code === 'messaging/invalid-registration-token'
         ) {
           pruned++;
+          metrics.reminderRuns.inc({ outcome: 'token_pruned' });
           writer.set(
             member.ref,
             { fcmToken: admin.firestore.FieldValue.delete() },

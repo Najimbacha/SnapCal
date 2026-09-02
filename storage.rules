@@ -11,7 +11,16 @@ service firebase.storage {
     }
 
     function isAdmin() {
-      return signedIn() && request.auth.token.admin == true;
+      // `.get('admin', false)`, not `.admin`. Storage rules throw on reading a
+      // property that is absent from the token, and only admins carry the
+      // custom claim — so for every ordinary user this function raised
+      // "Property admin is undefined on object" instead of returning false.
+      //
+      // The outcome happened to be correct (a throwing clause counts as false,
+      // and `||` short-circuits when the caller is the owner), but the rule was
+      // being decided by an error rather than by its own logic, and the
+      // emulator logged it on every run.
+      return signedIn() && request.auth.token.get('admin', false) == true;
     }
 
     function isSafeImageUpload() {
@@ -21,6 +30,20 @@ service firebase.storage {
     }
 
     // Private food scan images. The UID in the path must match the signed-in user.
+    //
+    // Scans live under their own top-level prefix so a GCS lifecycle rule can
+    // expire them (a rule matches an object-name prefix and cannot wildcard the
+    // uid segment). Anything under `users/` is content the user keeps; anything
+    // under `scans/` is disposable input to the AI call and is deleted after 30
+    // days by the policy in scripts/storage-lifecycle.json.
+    match /scans/{uid}/{scanId}/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid) && isSafeImageUpload();
+      allow delete: if isOwner(uid);
+    }
+
+    // Legacy layout, kept readable and deletable so scans uploaded before the
+    // prefix change still work. No new writes land here.
     match /users/{uid}/scans/{scanId}/{fileName} {
       allow read: if isOwner(uid) || isAdmin();
       allow create, update: if isOwner(uid) && isSafeImageUpload();

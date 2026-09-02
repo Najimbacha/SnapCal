@@ -97,11 +97,19 @@ class MealRepository {
       }
     }
 
-    // Initial migration: if meals exist but index is empty
-    if (_mealsBox != null &&
-        _mealsBox!.isNotEmpty &&
-        _indexBox != null &&
-        _indexBox!.isEmpty) {
+    // Initial migration: if meals exist but the date index is missing.
+    //
+    // The check is for date keys specifically, not for an empty box. The box
+    // also holds the meal sync cursor, and treating that as "the index exists"
+    // would skip this rebuild — leaving a user with meals in storage and no
+    // date index, which reads to them as their history having vanished.
+    final hasDateIndex =
+        _indexBox?.keys.any(
+          (k) => k is String && !k.startsWith(_cursorKeyPrefix),
+        ) ??
+        false;
+
+    if (_mealsBox != null && _mealsBox!.isNotEmpty && !hasDateIndex) {
       debugPrint('📦 MealRepository: Rebuilding date index...');
       final Map<String, List<String>> tempIndex = {};
 
@@ -232,17 +240,28 @@ class MealRepository {
     if (user == null) return;
     final path = 'users/${user.uid}/meals/${meal.id}';
 
+    // `updatedAt` is when the record was last WRITTEN; `timestamp` is when the
+    // meal was eaten. Editing a meal from last Tuesday leaves its timestamp in
+    // the past, so only an edit time can drive an incremental pull.
+    //
+    // It lives in the Firestore document only, not on the Meal model, so no
+    // Hive adapter has to be regenerated for this.
+    final payload = {
+      ...meal.toJson(),
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+    };
+
     try {
       await _firestoreClient
           .doc(path)
-          .set(meal.toJson())
+          .set(payload)
           .timeout(TimeoutPolicy.firestore);
     } catch (e) {
       debugPrint('Meal Sync Error: $e');
       await SyncQueueService().enqueueSet(
         id: 'meal:set:${user.uid}:${meal.id}',
         documentPath: path,
-        data: meal.toJson(),
+        data: payload,
       );
     }
   }
@@ -267,23 +286,73 @@ class MealRepository {
     }
   }
 
-  /// Pull recent meals (last 30 days) from Firestore to avoid cost spikes
+  /// How far back a first-ever sync on a device reaches.
+  static const _initialSyncWindow = Duration(days: 30);
+
+  /// Overlap subtracted from the stored cursor, to tolerate clock differences
+  /// between two devices belonging to the same user. Re-reading a couple of
+  /// minutes of documents is far cheaper than silently missing one.
+  static const _cursorOverlap = Duration(minutes: 5);
+
+  static const _cursorKeyPrefix = 'mealSyncCursor:';
+
+  String _cursorKey(String uid) => '$_cursorKeyPrefix$uid';
+
+  /// Pull meals changed since the last sync.
+  ///
+  /// This used to re-download every meal from the last 30 days on every single
+  /// launch — roughly 90 documents per app open, for data the device already
+  /// had. Firestore bills per document read, so at 250k daily actives opening
+  /// the app three times a day that is on the order of 60 million reads a day
+  /// to learn nothing, and it was comfortably the largest read source in the
+  /// system.
+  ///
+  /// Now the device remembers when it last synced and asks only for documents
+  /// written since. A steady-state launch reads zero to a couple of documents.
+  ///
+  /// The first sync on a device has no cursor and still takes the 30-day
+  /// window: meals written by older app versions carry no `updatedAt`, and
+  /// Firestore excludes documents missing a field from a range filter, so an
+  /// incremental query would never see them. That full pull happens once per
+  /// device, and everything after it is incremental.
   Future<void> syncFromFirestore() async {
     final user = _authClient.currentUser;
     if (user == null) return;
 
     try {
-      final cutoff =
-          DateTime.now()
-              .subtract(const Duration(days: 30))
-              .millisecondsSinceEpoch;
-      final snapshot = await _firestoreClient
+      final cursor = _indexBox?.get(_cursorKey(user.uid));
+      final lastSyncMs =
+          cursor != null && cursor.isNotEmpty
+              ? int.tryParse(cursor.first)
+              : null;
+
+      final collection = _firestoreClient
           .collection('users')
           .doc(user.uid)
-          .collection('meals')
-          .where('timestamp', isGreaterThanOrEqualTo: cutoff)
-          .get()
-          .timeout(TimeoutPolicy.firestore);
+          .collection('meals');
+
+      final query =
+          lastSyncMs == null
+              ? collection.where(
+                'timestamp',
+                isGreaterThanOrEqualTo:
+                    DateTime.now()
+                        .subtract(_initialSyncWindow)
+                        .millisecondsSinceEpoch,
+              )
+              : collection.where(
+                'updatedAt',
+                isGreaterThan:
+                    lastSyncMs - _cursorOverlap.inMilliseconds,
+              );
+
+      final snapshot = await query.get().timeout(TimeoutPolicy.firestore);
+
+      debugPrint(
+        lastSyncMs == null
+            ? 'MealRepository: first sync on this device, ${snapshot.docs.length} docs'
+            : 'MealRepository: incremental sync, ${snapshot.docs.length} docs',
+      );
 
       for (var doc in snapshot.docs) {
         final cloudMeal = Meal.fromJson(doc.data());
@@ -304,8 +373,18 @@ class MealRepository {
           }
         }
       }
+
+      // Advance the cursor only after the whole page has been applied. Moving
+      // it earlier would skip documents on any failure part-way through, and a
+      // meal missed this way is never picked up again.
+      await _indexBox?.put(_cursorKey(user.uid), [
+        DateTime.now().millisecondsSinceEpoch.toString(),
+      ]);
+
       _emitTodaysMeals();
     } catch (e) {
+      // The cursor is deliberately NOT advanced here: a failed sync must retry
+      // the same range next launch rather than stepping over it.
       debugPrint('Meal Pull Error: $e');
     }
   }
@@ -325,6 +404,9 @@ class MealRepository {
 
   /// Clear all meals
   Future<void> clearAll() async {
+    // Clearing the index box also drops the sync cursor, which is what we
+    // want: an empty device must take the full 30-day pull again rather than
+    // asking for changes since a time when it still had the data.
     await _mealsBox?.clear();
     await _indexBox?.clear();
     _emitTodaysMeals();

@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/security_service.dart';
+import '../../core/utils/pref_scoping.dart';
 import '../../core/resilience/timeout_policy.dart';
 import '../models/user_settings.dart';
 import '../../core/constants/app_constants.dart';
@@ -145,10 +147,65 @@ class SettingsRepository {
     }
   }
 
-  /// Pull settings from Firestore
-  Future<void> syncFromFirestore() async {
+  /// How stale a device's copy of cloud settings may get before it re-reads.
+  ///
+  /// Settings change rarely and almost never from a second device, so pulling
+  /// them on every single launch bought nothing and cost four document reads
+  /// each time. Six hours keeps a genuine cross-device edit arriving the same
+  /// day while removing the read from almost every launch.
+  static const _cloudSyncInterval = Duration(hours: 6);
+  static const _cloudSyncAtKey = 'settingsCloudSyncAt';
+
+  /// Scoped from this repository's own auth client rather than the global
+  /// `scopedPrefKey()`, which reads `FirebaseAuth.instance`. The format is
+  /// identical, so `prefKeyBelongsTo` still matches it — but the repository
+  /// takes an injectable auth client, and a test that swaps it must not end up
+  /// reading one user's key while writing another's.
+  String _cloudSyncKeyFor(String uid) => '$uid:$_cloudSyncAtKey';
+
+  /// Pull settings from Firestore.
+  ///
+  /// Three behaviours, in order of cost:
+  ///
+  ///  * No record of ever syncing this account on this device — a fresh
+  ///    install, or a different user signing in — reads everything, including
+  ///    the legacy blob on the user root. Four reads. This case must never be
+  ///    skipped: it is how a new device gets the user's data at all.
+  ///  * Synced recently — reads nothing and returns. Local storage is already
+  ///    the source of truth for display.
+  ///  * Synced a while ago — reads the three live documents but not the legacy
+  ///    root, which only matters on a first migration. Three reads.
+  ///
+  /// Pass [force] to bypass the interval where a caller genuinely needs the
+  /// current cloud state, such as an explicit pull-to-refresh.
+  ///
+  /// The key is UID-scoped, so signing in as a different user on a shared
+  /// device always takes the first-sync path rather than inheriting someone
+  /// else's freshness.
+  Future<void> syncFromFirestore({bool force = false}) async {
     final user = _authClient.currentUser;
     if (user == null) return;
+
+    SharedPreferences? prefs;
+    int? lastSyncMs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+      lastSyncMs = prefs.getInt(_cloudSyncKeyFor(user.uid));
+    } catch (_) {
+      // Unavailable in unit tests and on a broken platform channel. Treat it
+      // as "never synced": correct, just not cheap.
+      lastSyncMs = null;
+    }
+
+    final isFirstSync = lastSyncMs == null;
+
+    // Compared against `lastSyncMs` directly rather than through `isFirstSync`:
+    // Dart only promotes a nullable local from an explicit null check, not
+    // through a boolean that happens to hold the result of one.
+    if (!force && lastSyncMs != null) {
+      final age = DateTime.now().millisecondsSinceEpoch - lastSyncMs;
+      if (age < _cloudSyncInterval.inMilliseconds) return;
+    }
 
     try {
       final rootRef = _firestoreClient.collection('users').doc(user.uid);
@@ -156,13 +213,22 @@ class SettingsRepository {
         rootRef.collection('settings').doc('app').get(),
         rootRef.collection('private').doc('profile').get(),
         rootRef.collection('subscription').doc('current').get(),
-        rootRef.get(),
+        // Only on a first sync. This is a compatibility path for settings that
+        // used to live on the user root; once merged, re-reading it every time
+        // is a document read that can never contain anything new.
+        if (isFirstSync) rootRef.get(),
       ]).timeout(TimeoutPolicy.firestore);
 
       final appSettings = docs[0].data() ?? const <String, dynamic>{};
       final profile = docs[1].data() ?? const <String, dynamic>{};
       final subscriptionSnap = docs[2];
-      final legacySettings = docs[3].data()?['settings'];
+      // Written as a statement, not a ternary. Inside a conditional expression
+      // the parser reads the `?` of `data()?['settings']` as a second `?:`
+      // rather than as the null-aware index, and the line stops compiling.
+      Object? legacySettings;
+      if (docs.length > 3) {
+        legacySettings = docs[3].data()?['settings'];
+      }
       if (appSettings.isNotEmpty ||
           profile.isNotEmpty ||
           legacySettings is Map<String, dynamic>) {
@@ -203,7 +269,16 @@ class SettingsRepository {
           _settingsController.add(mergedSettings);
         }
       }
+
+      // Recorded only after the merge succeeded. Stamping it earlier would
+      // make a failed sync look like a completed one and suppress the retry
+      // for six hours.
+      await prefs?.setInt(
+        _cloudSyncKeyFor(user.uid),
+        DateTime.now().millisecondsSinceEpoch,
+      );
     } catch (e) {
+      // Cursor deliberately not advanced: the next launch tries again.
       debugPrint('Firestore Pull Error: $e');
     }
   }
@@ -257,6 +332,31 @@ class SettingsRepository {
   /// Clear all settings (logout)
   Future<void> clear() async {
     await _settingsBox?.clear();
+
+    // The cloud-sync stamp must go with the data it describes. Leaving it
+    // behind means a user who signs back in within the sync interval is told
+    // their settings are fresh when local storage is empty — they would sit on
+    // defaults, with their real settings in Firestore, until the stamp aged
+    // out six hours later.
+    //
+    // Every scoped variant is removed, not just the current user's. `clear()`
+    // can run either side of sign-out, so there may be no uid left to build
+    // the key from — and removing a bare or wrong key would leave the real,
+    // UID-scoped stamp in place and reintroduce exactly the bug above.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stale =
+          prefs
+              .getKeys()
+              .where((k) => prefKeyBelongsTo(k, _cloudSyncAtKey))
+              .toList();
+      for (final key in stale) {
+        await prefs.remove(key);
+      }
+    } catch (_) {
+      // Best effort. A failure here costs a stale window, not data.
+    }
+
     _settingsController.add(UserSettings.defaults());
   }
 
@@ -279,7 +379,14 @@ class SettingsRepository {
       'recommendationTip': settings.recommendationTip,
       'recommendationSafetyNote': settings.recommendationSafetyNote,
       'fcmToken': settings.fcmToken,
-      'lastFoodReminderDate': settings.lastFoodReminderDate,
+      // `lastFoodReminderDate` is deliberately absent. Reminder tracking moved
+      // to the server-owned `serverReminderSentOn`, which no client writes;
+      // this field is now dead. Sending it did real harm while it was the
+      // tracking field -- the payload carries whatever the local copy holds,
+      // which is null until a cloud pull has happened, so a user who changed
+      // their theme after the morning reminder erased the server's date and
+      // became eligible again the same day. Older app versions still send it
+      // and that is harmless: nothing reads it.
       'currentStreak': settings.currentStreak,
       'lastLoggedDate': settings.lastLoggedDate,
       'lastOpenedDate': settings.lastOpenedDate,

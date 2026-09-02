@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * One-time backfill: seed `lastFoodReminderDate` on existing settings docs.
+ * One-time backfill: seed `serverReminderSentOn` on existing settings docs.
  *
  * Why this is needed
  * ------------------
@@ -8,12 +8,16 @@
  *
  *   collectionGroup('settings')
  *     .where('foodRemindersEnabled', '==', true)
- *     .where('lastFoodReminderDate', '<', today)
+ *     .where('serverReminderSentOn', '<', today)
  *
  * and Firestore EXCLUDES documents that do not have the field at all from a
  * range comparison. Every user who existed before this change has no
- * `lastFoodReminderDate`, so without this backfill they would be invisible to
+ * `serverReminderSentOn`, so without this backfill they would be invisible to
  * the query permanently — silently receiving no reminders, with no error.
+ *
+ * Where a document already carries the older `lastFoodReminderDate`, that
+ * value is carried across rather than reset to the epoch: the user was
+ * reminded on that date and should not be reminded again the same day.
  *
  * Usage
  * -----
@@ -97,7 +101,8 @@ async function main() {
   let skipped = 0;
 
   console.log(
-    `Backfill lastFoodReminderDate=${SEED} ${DRY_RUN ? '(DRY RUN)' : '(APPLYING)'}`,
+    `Backfill serverReminderSentOn (seed ${SEED} where absent) ` +
+      `${DRY_RUN ? '(DRY RUN)' : '(APPLYING)'}`,
   );
 
   for (;;) {
@@ -117,14 +122,19 @@ async function main() {
       scanned++;
       if (doc.id !== 'app') continue;
 
-      if (doc.get('lastFoodReminderDate') !== undefined) {
+      if (doc.get('serverReminderSentOn') !== undefined) {
         skipped++;
         continue;
       }
 
+      // Carry the legacy value over when one exists, so a user reminded
+      // earlier today is not reminded a second time by the first run.
+      const legacy = doc.get('lastFoodReminderDate');
+      const value = typeof legacy === 'string' && legacy ? legacy : SEED;
+
       updated++;
       if (writer) {
-        writer.set(doc.ref, { lastFoodReminderDate: SEED }, { merge: true });
+        writer.set(doc.ref, { serverReminderSentOn: value }, { merge: true });
       }
     }
 

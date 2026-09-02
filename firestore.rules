@@ -22,6 +22,35 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
+    // `serverReminderSentOn` records that the worker sent a notification today.
+    // It is server-owned: a client that could clear it would re-arm its own
+    // reminder and be notified twice in a day.
+    //
+    // Why the odd name, rather than guarding `lastFoodReminderDate`: every
+    // released version of the app sends `lastFoodReminderDate` on every
+    // settings save, holding whatever its local copy has (usually null).
+    // Guarding THAT field would reject the whole settings document from those
+    // apps, so the rules could only be deployed once Play Store adoption was
+    // high — a two-week window where older installs silently lose cloud sync.
+    // A field no shipped client knows about cannot be sent by one, so this
+    // guard never fires for them and rules and app releases stay independent.
+    //
+    // These are two functions, not one with a `resource == null` ternary.
+    // `resource` is null on a create, and the engine still evaluated
+    // `resource.data` inside `diff()` on that path — the write was refused by
+    // an evaluation error rather than by the rule. Denied either way, but a
+    // throwing rule is not a working rule, and it would refuse legitimate
+    // writes just as readily. Each function is now only ever called from the
+    // context whose state it reads.
+    function reminderStateAbsent() {
+      return !request.resource.data.keys().hasAny(['serverReminderSentOn']);
+    }
+
+    function reminderStateUnchanged() {
+      return !request.resource.data.diff(resource.data)
+        .affectedKeys().hasAny(['serverReminderSentOn']);
+    }
+
     function validClientTimestamp(value) {
       return value is timestamp || value is int || value == request.time;
     }
@@ -69,6 +98,7 @@ service cloud.firestore {
         'age',
         'height',
         'weight',
+        'startingWeight',
         'targetWeight',
         'targetCalories',
         'dailyCalorieGoal',
@@ -78,9 +108,13 @@ service cloud.firestore {
         'gender',
         'activityLevel',
         'goalMode',
+        'goalTimelineMonths',
+        'weeklyRateKg',
         'dietaryPreferences',
         'dietaryRestriction',
         'cuisinePreference',
+        'foodDislikes',
+        'medicalNotes',
         'mealsPerDay',
         'updatedAt'
       ])
@@ -97,8 +131,14 @@ service cloud.firestore {
         'dailyMotivationEnabled',
         'goalAlertsEnabled',
         'foodRemindersEnabled',
+        'recommendationInsight',
+        'recommendationTip',
+        'recommendationSafetyNote',
         'fcmToken',
+        // Legacy. Older apps still write this on every save and nothing reads
+        // it any more; it stays allowed purely so those writes keep working.
         'lastFoodReminderDate',
+        'serverReminderSentOn',
         'currentStreak',
         'lastLoggedDate',
         'lastOpenedDate',
@@ -133,7 +173,11 @@ service cloud.firestore {
         'userCorrected',
         'weightG',
         'nutritionMatchId',
-        'nutritionPer100g'
+        'nutritionPer100g',
+        // When the record was last written, as opposed to when the meal was
+        // eaten. Drives the incremental pull in MealRepository; without it in
+        // this allowlist every meal write is rejected.
+        'updatedAt'
       ])
       && noTrustedUserFields()
       && request.resource.data.id is string
@@ -174,7 +218,15 @@ service cloud.firestore {
 
       match /settings/app {
         allow read: if isOwner(uid) || isAdmin();
-        allow create, update: if isOwner(uid) && validAppSettings();
+        allow create: if isOwner(uid) && validAppSettings() && reminderStateAbsent();
+        // `resource != null` guards the diff(): Firestore evaluates the update
+        // rule even for a write to a document that does not exist yet, and
+        // diff() against a null document throws. Denied either way there, but
+        // the rule should decide that, not an exception.
+        allow update: if isOwner(uid)
+          && resource != null
+          && validAppSettings()
+          && reminderStateUnchanged();
         allow delete: if false;
       }
 

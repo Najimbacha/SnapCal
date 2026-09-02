@@ -9,9 +9,10 @@
     "set-admin": "node scripts/set-admin-claim.js",
     "migrate:dry-run": "node scripts/migrate-user-settings.js --dry-run",
     "build:nutrition-db": "node scripts/build_nutrition_db.js",
-    "start:worker": "ENABLE_SCHEDULER=true node server.js",
+    "start:worker": "node worker.js",
     "backfill:reminder-date": "node scripts/backfill-reminder-date.js",
-    "backfill:reminder-date:dry": "node scripts/backfill-reminder-date.js --dry-run"
+    "backfill:reminder-date:dry": "node scripts/backfill-reminder-date.js --dry-run",
+    "backup": "node scripts/backup-firestore.js"
   },
   "engines": {
     "node": ">=18.0.0"

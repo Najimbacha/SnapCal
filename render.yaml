@@ -31,9 +31,6 @@ services:
         value: production
       - key: REQUIRE_APP_CHECK
         value: "true"
-      # Never in this process. See snapcal-worker.
-      - key: ENABLE_SCHEDULER
-        value: "false"
       - key: API_RATE_LIMIT
         value: "120"
       - key: SCAN_RATE_LIMIT
@@ -42,6 +39,26 @@ services:
         value: 2mb
       - key: TRUST_PROXY_COUNT
         value: "1"
+      # Scans held per instance before shedding with 503 + Retry-After. Past
+      # this, accepting more work slows everyone already waiting instead of
+      # serving anyone; the load balancer places the excess elsewhere.
+      - key: MAX_CONCURRENT_SCANS
+        value: "40"
+      # Give in-flight scans time to finish on deploy and scale-down. Must
+      # exceed the platform's own SIGTERM-to-SIGKILL grace period to matter.
+      - key: SHUTDOWN_DRAIN_MS
+        value: "5000"
+      # How long a cached entitlement may be served. Every path that changes
+      # entitlement invalidates the key explicitly, so this only bounds changes
+      # the server never observed.
+      - key: ENTITLEMENT_CACHE_TTL
+        value: "60"
+      - key: AUDIT_LOG_RETENTION_DAYS
+        value: "365"
+      # Must stay well above any webhook retry window: this collection is the
+      # idempotency guard, and expiring an id early lets a replay through.
+      - key: REVENUECAT_EVENT_RETENTION_DAYS
+        value: "90"
       - key: REDIS_URL
         fromService:
           type: redis
@@ -57,6 +74,10 @@ services:
         sync: false
       - key: SCHEDULER_SECRET
         sync: false
+      # Bearer token for GET /metrics. Unset means the endpoint 404s rather
+      # than serving traffic shape and provider health to anyone who asks.
+      - key: METRICS_TOKEN
+        sync: false
       - key: ALLOWED_ORIGINS
         sync: false
       - key: GROQ_API_KEY
@@ -69,19 +90,22 @@ services:
     dockerContext: ./backend
     region: oregon
     plan: starter
+    # Its own entry point: the scheduler and the Admin SDK, no Express app.
+    # Booting server.js here loaded every route into the one process allowed
+    # to send reminders, so an API-side fault could silence notifications.
+    dockerCommand: node worker.js
     # Exactly one. More than one replica means duplicate notifications.
     numInstances: 1
     envVars:
       - key: NODE_ENV
         value: production
-      - key: ENABLE_SCHEDULER
-        value: "true"
-      - key: REQUIRE_APP_CHECK
-        value: "true"
       - key: REMINDER_PAGE_SIZE
         value: "500"
       - key: REMINDER_MAX_PER_RUN
         value: "50000"
+      # The worker has no public URL; this is for a private-network scrape.
+      - key: WORKER_METRICS_PORT
+        value: "9100"
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
 

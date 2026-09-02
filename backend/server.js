@@ -5,6 +5,13 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const axios = require('axios');
+const { httpsAgent, httpAgent, agentStats } = require('./http_agents');
+
+// Applied globally rather than per call site: a call that forgets the agent
+// silently falls back to a new connection per request, which is exactly the
+// bug this prevents and is invisible until the socket count explodes.
+axios.defaults.httpsAgent = httpsAgent;
+axios.defaults.httpAgent = httpAgent;
 const admin = require('firebase-admin');
 const rateLimit = require('express-rate-limit');
 
@@ -34,33 +41,24 @@ if (NODE_ENV === 'production' && !REQUIRE_APP_CHECK) {
   );
 }
 
-function initializeFirebaseAdmin() {
-  if (admin.apps.length > 0) return;
-
-  const options = {};
-  if (process.env.FIREBASE_STORAGE_BUCKET) {
-    options.storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
-  }
-
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    try {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-      options.credential = admin.credential.cert(serviceAccount);
-      admin.initializeApp(options);
-      console.log('Firebase Admin initialized with service account from environment');
-      return;
-    } catch (err) {
-      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:', err.message);
-    }
-  }
-
-  admin.initializeApp(options);
-  console.log('Firebase Admin initialized with application default credentials');
-}
+const redisCache = require('./redis');
+const {
+  tryAcquireScanSlot,
+  releaseScanSlot,
+  scanConcurrency,
+  providerAvailable,
+  recordProviderSuccess,
+  recordProviderFailure,
+  breakerStates,
+} = require('./scan_guard');
+const {
+  httpMetricsMiddleware,
+  renderMetrics,
+  metrics,
+} = require('./metrics');
+const { initializeFirebaseAdmin } = require('./firebase');
 
 initializeFirebaseAdmin();
-
-const { startScheduler } = require('./cron/scheduler');
 
 const SCAN_PIPELINE = (process.env.SCAN_PIPELINE || 'v1').toLowerCase();
 const nutritionProvider = require('./services/nutrition_provider');
@@ -90,6 +88,10 @@ app.use(cors({
   },
 }));
 app.use(morgan(process.env.NODE_ENV === 'test' ? 'combined' : 'dev'));
+// Records rate, errors and duration for every request. Mounted before the
+// body parsers so the timing covers parsing too, which is where a large
+// image payload actually spends its first hundred milliseconds.
+app.use(httpMetricsMiddleware);
 // Image-bearing routes get the large parser; everything else gets 2mb. The
 // base64 expansion factor is ~1.37, so 14mb covers the 10MB image cap.
 const imageBodyParser = express.json({
@@ -110,27 +112,20 @@ app.use(express.urlencoded({ limit: MAX_JSON_BODY, extended: false }));
 // thousands of real users sharing one address trip the window while an abuser
 // simply rotates addresses.
 //
-// The store is now Redis when REDIS_URL is set (shared across instances,
-// survives deploys) and falls back to memory with a loud warning otherwise, so
-// local development still runs with no dependencies.
+// The store is Redis when REDIS_URL is set (shared across instances, survives
+// a deploy), and the in-memory default otherwise so local development needs no
+// extra service. The connection is shared with the entitlement cache; see
+// redis.js.
 let limiterStoreFactory = () => undefined;
-let redisClient = null;
 
-if (process.env.REDIS_URL) {
+redisCache.init();
+if (redisCache.getClient()) {
   try {
-    const { createClient } = require('redis');
     const { RedisStore } = require('rate-limit-redis');
-    redisClient = createClient({ url: process.env.REDIS_URL });
-    redisClient.on('error', (err) =>
-      console.error('Redis error (rate limits degrade to allow):', err.message),
-    );
-    redisClient.connect().catch((err) =>
-      console.error('Redis connect failed:', err.message),
-    );
     limiterStoreFactory = (prefix) =>
       new RedisStore({
         prefix,
-        sendCommand: (...args) => redisClient.sendCommand(args),
+        sendCommand: (...args) => redisCache.getClient().sendCommand(args),
       });
     console.log('Rate limiting backed by Redis');
   } catch (error) {
@@ -141,7 +136,8 @@ if (process.env.REDIS_URL) {
   }
 } else if (NODE_ENV === 'production') {
   console.warn(
-    'WARNING: no REDIS_URL. Rate limits are per-instance and reset on deploy.',
+    'WARNING: no REDIS_URL. Rate limits are per-instance and reset on deploy, ' +
+      'and every premium-status read hits Firestore.',
   );
 }
 
@@ -337,6 +333,7 @@ async function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const match = authHeader.match(/^Bearer (.+)$/);
   if (!match) {
+    metrics.authFailures.inc({ control: 'auth_missing' });
     return safeError(res, 401, 'Authentication required.');
   }
 
@@ -356,6 +353,7 @@ async function authenticateToken(req, res, next) {
     };
     return next();
   } catch (error) {
+    metrics.authFailures.inc({ control: 'auth_invalid' });
     console.error('Auth token rejected:', error.message);
     return safeError(res, 401, 'Authentication required.');
   }
@@ -365,12 +363,14 @@ async function verifyAppCheck(req, res, next) {
   if (!REQUIRE_APP_CHECK) return next();
   const token = req.header('X-Firebase-AppCheck');
   if (!token) {
+    metrics.authFailures.inc({ control: 'appcheck_missing' });
     return safeError(res, 401, 'App Check required.');
   }
   try {
     await admin.appCheck().verifyToken(token);
     return next();
   } catch (error) {
+    metrics.authFailures.inc({ control: 'appcheck_invalid' });
     console.error('App Check token rejected:', error.message);
     return safeError(res, 401, 'App Check required.');
   }
@@ -389,6 +389,7 @@ async function requireFreshAuth(req, res, next) {
     await admin.auth().verifyIdToken(match[1], true);
     return next();
   } catch (error) {
+    metrics.authFailures.inc({ control: 'revoked' });
     console.error('Revocation check failed:', error.message);
     return safeError(res, 401, 'Authentication required.');
   }
@@ -396,6 +397,7 @@ async function requireFreshAuth(req, res, next) {
 
 function requireAdmin(req, res, next) {
   if (req.user?.admin === true) return next();
+  metrics.authFailures.inc({ control: 'not_admin' });
   return safeError(res, 403, 'Permission denied.');
 }
 
@@ -513,8 +515,28 @@ async function fetchRevenueCatEntitlement(uid) {
   }
 }
 
-async function getPremiumStatus(uid) {
+// How long a cached entitlement may be served. Short on purpose: this is the
+// window in which a refund or expiry is not yet reflected. Every path that
+// genuinely changes entitlement (webhook, admin grant/revoke, debug routes)
+// invalidates the key explicitly, so the TTL only covers changes the server
+// never saw.
+const ENTITLEMENT_CACHE_TTL = Number(process.env.ENTITLEMENT_CACHE_TTL || 60);
+
+function entitlementCacheKey(uid) {
+  return `ent:v1:${uid}`;
+}
+
+/// Drops a user's cached entitlement. Call this from anywhere that changes
+/// what the answer should be — a stale Pro flag is a support ticket, a stale
+/// free flag is a paying customer who cannot use what they bought.
+async function invalidateEntitlement(uid) {
+  if (!uid) return;
+  await redisCache.del(entitlementCacheKey(uid));
+}
+
+async function loadEntitlement(uid) {
   const snap = await subscriptionDoc(uid).get();
+  metrics.firestoreOps.inc({ operation: 'get', collection: 'subscription' });
   let data = snap.exists ? snap.data() : {};
   let expiresAt = data?.expiresAt;
   let expiresDate = expiresAt?.toDate ? expiresAt.toDate() : null;
@@ -559,25 +581,13 @@ async function getPremiumStatus(uid) {
         }
         try {
           await subscriptionDoc(uid).set(payload, { merge: true });
+          // This path runs on a cache MISS and its result is about to be
+          // cached by the caller, so there is nothing to invalidate here --
+          // but the mirror write means the next miss is cheap.
         } catch (error) {
           console.error('Subscription mirror write failed:', error.message);
         }
       }
-    }
-  }
-
-  // Mirror the authoritative monthly quota so the client displays what the
-  // server will actually enforce, instead of its own local guess (BUG-005).
-  let scansRemaining = null;
-  if (!active) {
-    try {
-      const useSnap = await usageDoc(uid).get();
-      const usage = useSnap.exists ? useSnap.data() : {};
-      const monthKey = currentMonthKey();
-      const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
-      scansRemaining = Math.max(0, FREE_MONTHLY_SCANS - scansUsed);
-    } catch (error) {
-      console.error('Usage read failed for premium status:', error.message);
     }
   }
 
@@ -588,6 +598,50 @@ async function getPremiumStatus(uid) {
     expiresAt: expiresAt || null,
     source: data?.source || null,
     lastVerifiedAt: data?.lastVerifiedAt || null,
+  };
+}
+
+/// The entitlement half is cached; the quota half never is.
+///
+/// The client calls this on every launch and the answer is read-mostly, so a
+/// short cache removes the Firestore read from the hot path entirely for Pro
+/// users. `scansRemaining` is deliberately left out of the cache: it changes on
+/// every scan, and showing a free user a stale count is exactly the confusion
+/// the server-authoritative quota was introduced to end.
+///
+/// The cached value is stored as its own JSON round-trip so a cache hit and a
+/// cache miss serialise byte-identically on the wire — a Firestore Timestamp
+/// and its `{_seconds,_nanoseconds}` form must not be a visible difference.
+async function getPremiumStatus(uid) {
+  let entitlement = await redisCache.getJson(entitlementCacheKey(uid));
+
+  if (entitlement) {
+    metrics.entitlementCache.inc({ result: 'hit' });
+  } else {
+    metrics.entitlementCache.inc({ result: 'miss' });
+    const fresh = await loadEntitlement(uid);
+    entitlement = JSON.parse(JSON.stringify(fresh));
+    await redisCache.setJson(entitlementCacheKey(uid), entitlement, ENTITLEMENT_CACHE_TTL);
+  }
+
+  // Mirror the authoritative monthly quota so the client displays what the
+  // server will actually enforce, instead of its own local guess (BUG-005).
+  let scansRemaining = null;
+  if (!entitlement.isActive) {
+    try {
+      const useSnap = await usageDoc(uid).get();
+      metrics.firestoreOps.inc({ operation: 'get', collection: 'usage' });
+      const usage = useSnap.exists ? useSnap.data() : {};
+      const monthKey = currentMonthKey();
+      const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
+      scansRemaining = Math.max(0, FREE_MONTHLY_SCANS - scansUsed);
+    } catch (error) {
+      console.error('Usage read failed for premium status:', error.message);
+    }
+  }
+
+  return {
+    ...entitlement,
     monthlyScanLimit: FREE_MONTHLY_SCANS,
     scansRemaining,
   };
@@ -1095,6 +1149,14 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     for (const name of configured) {
       if (outOfTime()) break;
+      // A provider that has been failing is skipped outright rather than
+      // waited on. Trying it costs this scan its full timeout before falling
+      // through, which during an outage is added to every user's scan.
+      if (!providerAvailable(name)) {
+        failures.push(`${name}: skipped (circuit open)`);
+        metrics.scans.inc({ outcome: 'provider_skipped', provider: name });
+        continue;
+      }
       try {
         const result = await providers[name].run(providers[name].key(), attempt);
         // Which provider actually answered. Without this the only way to tell
@@ -1104,12 +1166,17 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
         console.error(
           `${name} vision scan succeeded in ${elapsed()}ms (attempt ${attempt}/${maxRetries})`,
         );
+        metrics.scans.inc({ outcome: 'provider_ok', provider: name });
+        recordProviderSuccess(name);
+        lastImageProvider = name;
         return result;
       } catch (err) {
         const detail = err.response?.data
           ? JSON.stringify(err.response.data).slice(0, 300)
           : err.message;
         failures.push(`${name}: ${detail}`);
+        metrics.scans.inc({ outcome: 'provider_error', provider: name });
+        recordProviderFailure(name);
         console.error(`${name} vision scan failed (attempt ${attempt}/${maxRetries}):`, detail);
       }
     }
@@ -1273,6 +1340,44 @@ async function callAiText(prompt, options = {}) {
   throw new Error(`ai-text-unavailable: ${failures.join(' | ')}`);
 }
 
+// Retention, expressed as a field Firestore's TTL service deletes on.
+//
+// Both of these collections grow forever and are never queried by the app.
+// Without a bound they become the largest thing in the database: the cost is
+// storage you keep paying for, and exports and restores that take longer every
+// month for data nobody reads.
+//
+// Firestore deletes a document within ~24h of the timestamp in its TTL field.
+// The policies themselves are declared in firestore.indexes.json and must be
+// deployed (`firebase deploy --only firestore:indexes`) for these fields to do
+// anything -- writing the field without the policy just stores a date.
+const AUDIT_LOG_RETENTION_DAYS = Number(process.env.AUDIT_LOG_RETENTION_DAYS || 365);
+// Comfortably longer than any webhook retry window, since this collection IS
+// the idempotency guard: expiring an event id early would let a replayed
+// webhook be processed twice.
+const REVENUECAT_EVENT_RETENTION_DAYS = Number(process.env.REVENUECAT_EVENT_RETENTION_DAYS || 90);
+
+function retentionDeadline(days) {
+  return admin.firestore.Timestamp.fromMillis(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
+function eventRetentionDeadline() {
+  return retentionDeadline(REVENUECAT_EVENT_RETENTION_DAYS);
+}
+
+/// Whether a stored path belongs to this user's scan.
+///
+/// Accepts the legacy `users/{uid}/scans/...` layout as well as the current
+/// `scans/{uid}/...` one, so scans uploaded before the prefix change stay
+/// processable and deletable. Drop the legacy branch once nothing older than
+/// the storage retention window remains.
+function isOwnedScanPath(storagePath, uid, scanId) {
+  return (
+    storagePath.startsWith(`scans/${uid}/${scanId}/`) ||
+    storagePath.startsWith(`users/${uid}/scans/${scanId}/`)
+  );
+}
+
 async function writeAuditLog({ actorUid, action, targetUid, result, metadata = {} }) {
   await db.collection('auditLogs').add({
     actorUid,
@@ -1281,7 +1386,9 @@ async function writeAuditLog({ actorUid, action, targetUid, result, metadata = {
     result,
     metadata,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt: retentionDeadline(AUDIT_LOG_RETENTION_DAYS),
   });
+  metrics.firestoreOps.inc({ operation: 'create', collection: 'auditLogs' });
 }
 
 app.get('/', (req, res) => {
@@ -1294,12 +1401,27 @@ app.get('/', (req, res) => {
 // which was never the question — it reported perfect health throughout a period
 // when every single scan was failing, which is why a total outage of the app's
 // core feature was found by a human trying it rather than by a monitor.
+// Set the moment a shutdown signal arrives, so /health starts failing and the
+// load balancer stops sending new work here before the listener closes.
+let isShuttingDown = false;
+
 const SCAN_WINDOW = Number(process.env.HEALTH_WINDOW) || 20;
 const scanOutcomes = [];
 let lastScanError = null;
 let lastScanSuccessAt = null;
 
-function recordScan(ok, detail) {
+// Which provider answered the most recent scan, for the outcome metric. Best
+// effort and per-process: it labels a counter, it is not load-bearing.
+let lastImageProvider = 'unknown';
+
+function recordScan(ok, detail, seconds = null) {
+  metrics.scans.inc({
+    outcome: ok ? 'success' : 'failure',
+    provider: ok ? lastImageProvider : 'none',
+  });
+  if (seconds !== null) {
+    metrics.scanDuration.observe({ outcome: ok ? 'success' : 'failure' }, seconds);
+  }
   scanOutcomes.push(ok);
   if (scanOutcomes.length > SCAN_WINDOW) scanOutcomes.shift();
   if (ok) {
@@ -1329,6 +1451,15 @@ app.get('/health', (req, res) => {
   const threshold = Number(process.env.HEALTH_FAIL_THRESHOLD) || 0.5;
   const degraded = configured.length === 0 || (attempts >= 3 && failureRate > threshold);
 
+  // Draining reports 503 too, but says so distinctly: an operator reading this
+  // during a deploy should see a planned shutdown, not a provider outage.
+  if (isShuttingDown) {
+    return res.status(503).json({
+      status: 'shutting_down',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   res.status(degraded ? 503 : 200).json({
     status: degraded ? 'degraded' : 'ok',
     timestamp: new Date().toISOString(),
@@ -1344,8 +1475,34 @@ app.get('/health', (req, res) => {
     providers: {
       order: (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,deepseek,gemini,openrouter').split(',').map(p => p.trim()),
       configured,
+      // Any provider reading 'open' is currently being skipped.
+      breakers: breakerStates(),
     },
+    concurrency: scanConcurrency(),
   });
+});
+
+/// Prometheus scrape target.
+///
+/// Guarded by a bearer token rather than left open: the series names and label
+/// values describe traffic shape, provider health and quota pressure, which is
+/// reconnaissance for anyone deciding what to attack. Set METRICS_TOKEN and
+/// give it to the scraper. Unset in production means the endpoint is off, not
+/// public — failing open on an observability endpoint is how internal metrics
+/// end up indexed.
+app.get('/metrics', (req, res) => {
+  const token = process.env.METRICS_TOKEN || '';
+  if (!token) {
+    return res.status(404).json({ error: 'Not found.' });
+  }
+  const presented = (req.headers.authorization || '').replace(/^Bearer /, '');
+  const a = Buffer.from(presented);
+  const b = Buffer.from(token);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(401).json({ error: 'Unauthorized.' });
+  }
+  res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+  return res.status(200).send(renderMetrics());
 });
 
 app.use('/api', apiLimiter);
@@ -1364,7 +1521,17 @@ app.post('/api/food-scans', scanLimiter, authenticateToken, verifyAppCheck, asyn
     return safeError(res, 400, 'Invalid scan source.');
   }
 
-  const storagePath = `users/${uid}/scans/${scanId}/${fileName}`;
+  // Top-level `scans/` prefix, not `users/{uid}/scans/`.
+  //
+  // A GCS lifecycle rule matches on an object-name PREFIX and cannot wildcard a
+  // path segment, so a uid in the middle makes the scan images unreachable by
+  // any retention policy -- they would grow forever while progress photos, which
+  // must be kept, sit under the same `users/` prefix and would be caught by any
+  // rule broad enough to match. Putting scans under their own root makes the
+  // 30-day rule a one-liner and keeps it away from anything the user owns
+  // long-term. The uid is still the second segment, so the rules stay
+  // owner-scoped exactly as before.
+  const storagePath = `scans/${uid}/${scanId}/${fileName}`;
   try {
     await scanDoc(uid, scanId).set({
       storagePath,
@@ -1398,14 +1565,17 @@ app.post('/api/food-scans/:scanId/process', scanLimiter, authenticateToken, veri
   try {
     scan = await claimScanQuota(uid, scanId);
   } catch (error) {
-    if (error.code === 402) return safeError(res, 402, 'Scan limit reached.');
+    if (error.code === 402) {
+      metrics.quotaDenials.inc({ kind: 'scan' });
+      return safeError(res, 402, 'Scan limit reached.');
+    }
     if (error.code === 409) return safeError(res, 409, 'Scan is already processing.');
     return safeError(res, 404, 'Scan not found.');
   }
 
   try {
     const storagePath = scan.storagePath;
-    if (!storagePath || !storagePath.startsWith(`users/${uid}/scans/${scanId}/`)) {
+    if (!storagePath || !isOwnedScanPath(storagePath, uid, scanId)) {
       throw new Error('invalid-storage-path');
     }
 
@@ -1460,7 +1630,7 @@ app.delete('/api/food-scans/:scanId', authenticateToken, verifyAppCheck, async (
   if (!snap.exists) return safeError(res, 404, 'Scan not found.');
 
   const storagePath = snap.data().storagePath;
-  if (storagePath?.startsWith(`users/${uid}/scans/${scanId}/`)) {
+  if (storagePath && isOwnedScanPath(storagePath, uid, scanId)) {
     await admin.storage().bucket().file(storagePath).delete({ ignoreNotFound: true });
   }
   await ref.delete();
@@ -1487,6 +1657,7 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => 
       await claimAiMessageQuota(req.user.uid);
     } catch (error) {
       if (error.code === 402) {
+        metrics.quotaDenials.inc({ kind: 'ai_coach' });
         return safeError(res, 402, 'Daily AI coach limit reached. Upgrade to Pro for unlimited coaching.');
       }
       console.error('AI quota claim failed:', error.message);
@@ -1535,6 +1706,7 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
     return safeError(res, 503, 'Webhook not configured.');
   }
   if (!safeCompare(req.header('Authorization'), REVENUECAT_WEBHOOK_AUTH)) {
+    metrics.authFailures.inc({ control: 'webhook_secret' });
     return safeError(res, 401, 'Unauthorized webhook.');
   }
 
@@ -1546,6 +1718,9 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
   if (!isSafeId(appUserId)) return safeError(res, 400, 'Invalid webhook user.');
 
   const eventRef = db.collection('revenueCatEvents').doc(eventId);
+  // Which users' cached entitlement this event makes stale. A TRANSFER changes
+  // two accounts, not one.
+  const touchedUids = new Set();
   try {
     await db.runTransaction(async (tx) => {
       const eventSnap = await tx.get(eventRef);
@@ -1598,8 +1773,11 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
           transferredTo: destinations,
           type,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expiresAt: eventRetentionDeadline(),
           processed: true,
         });
+        sources.forEach((uid) => touchedUids.add(uid));
+        destinations.forEach((uid) => touchedUids.add(uid));
         return;
       }
 
@@ -1628,9 +1806,17 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
         appUserId,
         type,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: eventRetentionDeadline(),
         processed: true,
       });
+      touchedUids.add(appUserId);
     });
+
+    // After the commit, never inside it: a transaction can be retried, and
+    // invalidating a cache for a write that then rolls back re-reads Firestore
+    // for nothing. Entitlement just changed for these users, so the cached
+    // answer is wrong now rather than in sixty seconds.
+    await Promise.all([...touchedUids].map(invalidateEntitlement));
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error('RevenueCat webhook failed:', error.message);
@@ -1678,6 +1864,7 @@ app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, requ
     revenueCatAppUserId: targetUid,
     updatedByServer: true,
   }, { merge: true });
+  await invalidateEntitlement(targetUid);
   await writeAuditLog({
     actorUid: req.user.uid,
     action: 'adminUpdateUserAccess',
@@ -1694,7 +1881,38 @@ app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, requ
 //   v1 = AI generates nutrition directly (legacy)
 //   v2 = AI detects foods only, backend calculates nutrition from DB
 // No image is stored anywhere — processed in memory only.
-app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req, res) => {
+/// Sheds scan load past what one instance can hold, instead of accepting it.
+///
+/// Every scan holds a socket for up to 50 seconds. Past the ceiling, taking
+/// one more request does not serve that user -- it slows down everyone already
+/// waiting, including the cheap requests sharing the event loop. A fast 503
+/// with Retry-After lets the load balancer place the work on another instance
+/// and tells the client to come back, which is a far better experience than a
+/// spinner that fails a minute later.
+function limitScanConcurrency(req, res, next) {
+  if (!tryAcquireScanSlot()) {
+    const { inFlight, limit } = scanConcurrency();
+    console.warn(`Scan shed: ${inFlight}/${limit} slots in use`);
+    metrics.scans.inc({ outcome: 'shed', provider: 'none' });
+    res.set('Retry-After', '5');
+    return safeError(res, 503, 'Busy right now. Please try again in a moment.');
+  }
+  // release on 'close', not 'finish': a client that hangs up mid-scan must
+  // free its slot too, or the ceiling ratchets down to zero over time.
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    releaseScanSlot();
+  };
+  res.on('finish', release);
+  res.on('close', release);
+  return next();
+}
+
+app.post('/v1/scan', scanLimiter, limitScanConcurrency, authenticateToken, verifyAppCheck, async (req, res) => {
+  const scanStartedAt = process.hrtime.bigint();
+  const scanSeconds = () => Number(process.hrtime.bigint() - scanStartedAt) / 1e9;
   const { image, language = 'en' } = req.body || {};
   const hasAuth = !!req.headers.authorization;
   const hasImage = !!image && typeof image === 'string';
@@ -1744,7 +1962,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
       }
       const result = enrichScanResults(foods);
 
-      recordScan(true);
+      recordScan(true, null, scanSeconds());
       console.log(JSON.stringify({ event: 'scan.success.v2', pipeline: 'v2', status: 200 }));
       const matchedCount = result.items.filter(i => i.matched).length;
       console.error(`Scan v2: ${result.items.length} foods (${matchedCount} matched, ${result.items.length - matchedCount} unmatched)`);
@@ -1762,7 +1980,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
       fat: acc.fat + item.fat,
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-    recordScan(true);
+    recordScan(true, null, scanSeconds());
     console.log(JSON.stringify({ event: 'scan.success', pipeline: 'v1', status: 200 }));
     console.error('Scan items:', JSON.stringify(nutrition.items.map(i => ({ food_name: i.food_name, calories: i.calories }))));
 
@@ -1770,7 +1988,7 @@ app.post('/v1/scan', scanLimiter, authenticateToken, verifyAppCheck, async (req,
   } catch (error) {
     // The quota was consumed up-front; give it back when the scan itself
     // failed so users are not charged for our provider outages.
-    recordScan(false, error.message);
+    recordScan(false, error.message, scanSeconds());
     await refundScanQuota(uid, claim.monthKey);
     console.error(
       JSON.stringify({ event: 'scan.error', status: 502, error: error.message })
@@ -1823,6 +2041,7 @@ if (NODE_ENV !== 'production') {
         source: 'debug',
         lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
+      await invalidateEntitlement(req.user.uid);
       console.log(`Debug: granted premium to ${req.user.uid}`);
       return res.json({ ok: true, uid: req.user.uid });
     },
@@ -1838,6 +2057,7 @@ if (NODE_ENV !== 'production') {
         isActive: false,
         lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
+      await invalidateEntitlement(req.user.uid);
       console.log(`Debug: revoked premium from ${req.user.uid}`);
       return res.json({ ok: true, uid: req.user.uid });
     },
@@ -1868,13 +2088,16 @@ app.post('/api/notifications/food-reminder/register', authenticateToken, verifyA
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    // The reminder fan-out is a range query on lastFoodReminderDate, and
+    // The reminder fan-out is a range query on serverReminderSentOn, and
     // Firestore excludes documents that lack the field entirely from a range
     // query. Without seeding it here, a user who has never been reminded
     // could never BE reminded — they would be invisible to the query forever.
+    //
+    // Server-owned field, named so that no released client writes it. See the
+    // comment on eligibleUserPages() for why that naming matters.
     const existing = await settingsRef.get();
-    if (!existing.exists || existing.get('lastFoodReminderDate') === undefined) {
-      payload.lastFoodReminderDate = '1970-01-01';
+    if (!existing.exists || existing.get('serverReminderSentOn') === undefined) {
+      payload.serverReminderSentOn = '1970-01-01';
     }
 
     await settingsRef.set(payload, { merge: true });
@@ -1925,23 +2148,66 @@ app.post(
   },
 );
 
+/// Stops accepting work, lets in-flight requests finish, then exits.
+///
+/// Without this, every deploy and every scale-down kills whatever was in
+/// progress. A scan holds its request open for up to 50 seconds while an AI
+/// provider thinks, so on an autoscaling platform -- where instances are
+/// recycled routinely, not rarely -- a steady trickle of users see a failed
+/// scan for which they have already been charged quota, and the refund path
+/// never runs because the process is gone.
+///
+/// The sequence matters: stop the health check passing FIRST so the load
+/// balancer routes new traffic elsewhere, wait a beat for it to notice, then
+/// close the listener and drain.
+function installGracefulShutdown(server) {
+  const DRAIN_MS = Number(process.env.SHUTDOWN_DRAIN_MS || 5000);
+  const HARD_LIMIT_MS = Number(process.env.SHUTDOWN_TIMEOUT_MS || 60000);
+  let shuttingDown = false;
+
+  const stop = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    isShuttingDown = true;
+    console.log(`${signal} received: draining (health now reports shutting_down)`);
+
+    setTimeout(() => {
+      server.close(() => {
+        console.log('All connections closed, exiting cleanly.');
+        process.exit(0);
+      });
+
+      // A provider that never answers must not hold the process open forever;
+      // the platform would SIGKILL it anyway, but on its schedule, not ours.
+      setTimeout(() => {
+        console.error('Drain timed out with requests still open, forcing exit.');
+        process.exit(1);
+      }, HARD_LIMIT_MS).unref();
+    }, DRAIN_MS).unref();
+  };
+
+  process.on('SIGTERM', () => stop('SIGTERM'));
+  process.on('SIGINT', () => stop('SIGINT'));
+}
+
 if (require.main === module) {
   const port = process.env.PORT || 3000;
 
-  // The scheduler used to start inside every API process. With more than one
-  // instance behind a load balancer that meant every user received one
-  // notification per instance, and a long reminder run blocked the same event
-  // loop that serves scans. It is now opt-in: run exactly one worker with
-  // ENABLE_SCHEDULER=true, or leave it off entirely and drive
-  // /api/notifications/food-reminder/trigger from Cloud Scheduler.
-  if (process.env.ENABLE_SCHEDULER === 'true') {
-    console.log('Scheduler enabled in this process (must be a single replica)');
-    startScheduler();
-  }
-
-  app.listen(port, () => {
+  // No scheduler here, ever. The reminder cron runs in worker.js as a single
+  // replica; running it inside an autoscaled API meant one notification per
+  // instance, and a long reminder run blocked the event loop serving scans.
+  // Drive it from Cloud Scheduler via /api/notifications/food-reminder/trigger
+  // if you would rather not run the worker at all.
+  const server = app.listen(port, () => {
     console.log(`SnapCal backend running on port ${port}`);
   });
+
+  // Slightly above the client's own 60s scan timeout, so the server is never
+  // the side that hangs up on a scan the app is still waiting for.
+  server.keepAliveTimeout = Number(process.env.SERVER_KEEPALIVE_TIMEOUT_MS || 65000);
+  server.headersTimeout = server.keepAliveTimeout + 5000;
+
+  installGracefulShutdown(server);
 }
 
 module.exports = {

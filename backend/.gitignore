@@ -14,3 +14,15 @@ yarn-error.log*
 # Editor directories
 .idea/
 .vscode/
+
+# Firebase service account keys. Downloading one to run a script or configure
+# a deploy is normal; committing it hands anyone with repo access full admin
+# on the database. These patterns cover the names the console suggests.
+*serviceAccount*.json
+*service-account*.json
+*-firebase-adminsdk-*.json
+snapcal-*.json
+
+# Local Firestore backups (see scripts/backup-firestore.js). They contain
+# every user's data in plain text.
+backups/
