@@ -440,5 +440,14 @@ requests-per-second and multiply.
   launches — on the order of 150-200 daily users — before the app stops
   working. Any change that reintroduces a per-launch full collection read
   breaks the app at a size you can reach in a week, not at a million users.
+- **`onboardingComplete` was missing for most users, and why.** Settings sync
+  failed closed for every user until 2026-09-02, so the flag never reached
+  Firestore: 464 users had a profile with real goals, 83 carried the flag. A
+  device with empty local storage reads that flag from the cloud, sees false,
+  and walks the user through onboarding again. `npm run backfill:onboarding`
+  repairs it for anyone with a completed profile or a saved meal. If this
+  reappears, the settings allowlist in `firestore.rules` has drifted from
+  `SettingsRepository._appSettingsPayload()` again — the rules test at
+  `security-tests/firestore.rules.test.js` exists to catch exactly that.
 - **`/metrics` unset is off, not open.** If a scrape returns 404, the token is
   missing on that service, not the endpoint.

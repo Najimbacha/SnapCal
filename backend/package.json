@@ -12,7 +12,9 @@
     "start:worker": "node worker.js",
     "backfill:reminder-date": "node scripts/backfill-reminder-date.js",
     "backfill:reminder-date:dry": "node scripts/backfill-reminder-date.js --dry-run",
-    "backup": "node scripts/backup-firestore.js"
+    "backup": "node scripts/backup-firestore.js",
+    "backfill:onboarding": "node scripts/backfill-onboarding-flag.js",
+    "backfill:onboarding:dry": "node scripts/backfill-onboarding-flag.js --dry-run"
   },
   "engines": {
     "node": ">=18.0.0"
