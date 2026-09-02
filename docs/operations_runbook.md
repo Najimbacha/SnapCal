@@ -299,6 +299,67 @@ If a step fails, the drill has done its job. Fix it that week.
 
 ---
 
+## 4b. Running on the free tier
+
+The deployment in `render.yaml` costs nothing. What that buys, and what it
+costs, stated plainly:
+
+| | Free shape | Paid shape (the audit's recommendation) |
+|---|---|---|
+| API | 1 free web service, spins down after 15 min idle | 2-10 autoscaled instances, always warm |
+| Reminders | External cron → HTTPS trigger | Single-replica worker running node-cron |
+| Cache | Free Key Value, 25MB, in-memory only | 1GB with a replica |
+| Cost | $0 | ~$40/month |
+
+### The reminder cron
+
+Render has no free background worker, so the scheduler cannot run on the
+platform. It runs as an external cron calling the trigger endpoint instead —
+which is what that endpoint was built for.
+
+Set `SCHEDULER_SECRET` on the service to a long random string, then create
+three jobs at any free cron provider (cron-job.org, GitHub Actions on a
+schedule, or similar):
+
+```
+POST https://<your-service>.onrender.com/api/notifications/food-reminder/trigger
+Header: X-Scheduler-Secret: <the same secret>
+```
+
+Schedule them for 07:00, 12:00 and 19:00 in the users' timezone. The endpoint
+compares the secret in constant time and is admin-only for human callers, so
+the URL leaking is not by itself an exposure.
+
+**`ENABLE_SCHEDULER` must stay unset on the web service.** It is the switch
+that put node-cron back inside the API process, and with more than one instance
+that means one notification per instance. The external cron replaces it
+entirely.
+
+### What spin-down actually costs you
+
+A free web service sleeps after 15 minutes without traffic and takes roughly a
+minute to wake. Three consequences worth knowing before a user reports them:
+
+- **A scan after a quiet period can time out.** The client waits 60 seconds;
+  a cold start eats most of that before the AI provider is even called. This is
+  the strongest argument for the cheapest paid plan once there is any budget.
+- **The reminder cron wakes the service**, so the 07:00 job pays the cold start
+  and the users' notifications are a minute late. Harmless.
+- **`/metrics` scrapes keep it awake** if you scrape more often than every 15
+  minutes — which changes the free plan's economics, since instance hours are
+  capped at 750/month per workspace. Scrape every 5 minutes and you are paying
+  for an always-on service in hours rather than dollars. Prefer a 15-minute
+  scrape interval here, and accept the coarser resolution.
+
+### Free Key Value
+
+One instance per workspace, 25MB, in-memory only — everything is lost on
+restart. That is acceptable because both users of it are caches: rate-limit
+counters and cached entitlements. `redis.js` treats an outage and a miss
+identically, so losing the cache degrades performance and never correctness.
+
+---
+
 ## 5. Load testing
 
 `scripts/loadtest.js` is a k6 script modelled on the audit's traffic estimates.

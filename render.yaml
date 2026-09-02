@@ -1,17 +1,40 @@
-# Infrastructure as code for the SnapCal backend.
+# Infrastructure as code for the SnapCal backend — free-tier shape.
 #
 # This file exists because the deployment previously lived only in the Render
 # dashboard: nothing in the repository described how the service ran, what it
 # scaled to, or which variables it needed. That is a single point of knowledge
-# failure and it makes an incident recovery a guessing game.
+# failure and it makes incident recovery a guessing game.
 #
-# Two services, deliberately:
-#   snapcal-api     - stateless, autoscaled, NO scheduler
-#   snapcal-worker  - exactly one instance, runs the reminder cron
+# WHAT THIS IS NOT
+# ----------------
+# It is not the architecture the scalability audit recommends. That one runs an
+# autoscaled web service, a separate single-replica worker for reminders, and a
+# paid Key Value instance — roughly $40/month. This project is on Firebase's
+# free tier and has no budget, so every line below is chosen to cost nothing,
+# and the compromises are named rather than hidden.
 #
-# Running the scheduler inside the API is what caused every user to receive one
-# notification per instance.
-
+# The upgrade path is in docs/operations_runbook.md. Nothing here has to be
+# rewritten to take it — the plans change and a worker is added.
+#
+# THE THREE COMPROMISES
+# ---------------------
+# 1. A free web service spins down after 15 minutes with no traffic and takes
+#    about a minute to wake. A user scanning a meal after a quiet period waits
+#    for that, and the client's 60s scan timeout is uncomfortably close to it.
+#    This is the single biggest user-visible cost of staying free.
+#
+# 2. There is no free background worker on Render, so the reminder scheduler
+#    cannot run here. It is driven instead by an external cron service calling
+#    /api/notifications/food-reminder/trigger with the shared secret. That
+#    endpoint exists precisely so the schedule can live outside the API.
+#    ENABLE_SCHEDULER is therefore never set: a second instance running its own
+#    cron is what sent every user duplicate notifications.
+#
+# 3. Free Key Value is in-memory only and loses everything on restart. That is
+#    fine — it holds rate-limit counters and cached entitlements, both of which
+#    are caches by design and degrade to "read from Firestore" when empty.
+#    Losing it is a performance event, never a correctness one.
+#
 services:
   - type: web
     name: snapcal-api
@@ -19,13 +42,8 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     region: oregon
-    plan: standard
+    plan: free
     healthCheckPath: /health
-    numInstances: 2
-    scaling:
-      minInstances: 2
-      maxInstances: 10
-      targetCPUPercent: 65
     envVars:
       - key: NODE_ENV
         value: production
@@ -39,30 +57,26 @@ services:
         value: 2mb
       - key: TRUST_PROXY_COUNT
         value: "1"
-      # Scans held per instance before shedding with 503 + Retry-After. Past
-      # this, accepting more work slows everyone already waiting instead of
-      # serving anyone; the load balancer places the excess elsewhere.
+      # One free instance, so a lower ceiling is honest: 0.1 CPU and 512MB
+      # cannot hold 40 scans that each pin a socket for up to 50 seconds.
+      # Shedding early with 503 + Retry-After beats timing everyone out.
       - key: MAX_CONCURRENT_SCANS
-        value: "40"
-      # Give in-flight scans time to finish on deploy and scale-down. Must
-      # exceed the platform's own SIGTERM-to-SIGKILL grace period to matter.
+        value: "10"
       - key: SHUTDOWN_DRAIN_MS
         value: "5000"
-      # How long a cached entitlement may be served. Every path that changes
-      # entitlement invalidates the key explicitly, so this only bounds changes
-      # the server never observed.
       - key: ENTITLEMENT_CACHE_TTL
         value: "60"
       - key: AUDIT_LOG_RETENTION_DAYS
         value: "365"
-      # Must stay well above any webhook retry window: this collection is the
-      # idempotency guard, and expiring an id early lets a replay through.
       - key: REVENUECAT_EVENT_RETENTION_DAYS
         value: "90"
+      # Worth having even on the free plan: the entitlement cache is what keeps
+      # premium-status reads off Firestore, and Firestore's free tier caps at
+      # 50,000 document reads a day.
       - key: REDIS_URL
         fromService:
-          type: redis
-          name: snapcal-redis
+          type: keyvalue
+          name: snapcal-cache
           property: connectionString
       # Secrets stay in the dashboard; declared here so a fresh environment
       # fails loudly at deploy instead of silently at runtime.
@@ -72,6 +86,7 @@ services:
         sync: false
       - key: REVENUECAT_SECRET_API_KEY
         sync: false
+      # Required by the external cron that replaces the worker.
       - key: SCHEDULER_SECRET
         sync: false
       # Bearer token for GET /metrics. Unset means the endpoint 404s rather
@@ -83,35 +98,11 @@ services:
       - key: GROQ_API_KEY
         sync: false
 
-  - type: worker
-    name: snapcal-worker
-    runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+  - type: keyvalue
+    name: snapcal-cache
     region: oregon
-    plan: starter
-    # Its own entry point: the scheduler and the Admin SDK, no Express app.
-    # Booting server.js here loaded every route into the one process allowed
-    # to send reminders, so an API-side fault could silence notifications.
-    dockerCommand: node worker.js
-    # Exactly one. More than one replica means duplicate notifications.
-    numInstances: 1
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: REMINDER_PAGE_SIZE
-        value: "500"
-      - key: REMINDER_MAX_PER_RUN
-        value: "50000"
-      # The worker has no public URL; this is for a private-network scrape.
-      - key: WORKER_METRICS_PORT
-        value: "9100"
-      - key: FIREBASE_SERVICE_ACCOUNT
-        sync: false
-
-  - type: redis
-    name: snapcal-redis
-    region: oregon
-    plan: starter
+    plan: free
+    # Eviction is normal operation on a 25MB cache, not a fault. Every reader
+    # in the codebase treats a miss and an outage identically.
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
