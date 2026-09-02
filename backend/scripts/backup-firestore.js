@@ -156,42 +156,52 @@ async function main() {
   console.log(`Read budget: ${MAX_READS} documents\n`);
 
   // Per-user data, which is the part that cannot be regenerated.
+  //
+  // listDocuments(), NOT a collection query.
+  //
+  // Firestore lets a document be "missing" while subcollections still live
+  // underneath it — sign-up paths that write users/{uid}/settings/app without
+  // ever writing users/{uid} itself produce exactly that. A `.get()` on the
+  // collection returns only documents that exist, so it silently skipped every
+  // such user. On this project that was 251 of 462 people: the backup reported
+  // Done and covered less than half the user base.
+  //
+  // listDocuments() returns a reference for every document id in the
+  // collection, present or missing, which is the only enumeration that matches
+  // what the collection-group queries elsewhere in this codebase can see.
   const users = {};
   let complete = true;
   let userCount = 0;
-  let cursor = null;
 
-  for (;;) {
+  const userRefs = await db.collection('users').listDocuments();
+  console.log(`Found ${userRefs.length} user document ids\n`);
+
+  for (const ref of userRefs) {
     if (budgetLeft() <= 0) { complete = false; break; }
 
-    let query = db.collection('users').orderBy('__name__').limit(100);
-    if (cursor) query = query.startAfter(cursor);
-    const snap = await query.get();
-    if (snap.empty) break;
+    userCount++;
 
-    readsUsed += snap.size;
-
-    for (const doc of snap.docs) {
-      cursor = doc;
-      userCount++;
-      users[doc.ref.path] = serialize(doc.data());
-
-      for (const sub of USER_SUBCOLLECTIONS) {
-        const ok = await dumpCollection(
-          doc.ref.collection(sub),
-          users,
-          `${doc.id}/${sub}`,
-        );
-        if (!ok) { complete = false; break; }
-      }
-      if (!complete) break;
-
-      if (userCount % 25 === 0) {
-        console.log(`  ${userCount} users, ${readsUsed} reads used`);
-      }
+    // A missing root document is normal here, and not an error: the user's
+    // real data is in the subcollections below it.
+    const snap = await ref.get();
+    readsUsed++;
+    if (snap.exists) {
+      users[ref.path] = serialize(snap.data());
     }
 
-    if (!complete || snap.size < 100) break;
+    for (const sub of USER_SUBCOLLECTIONS) {
+      const ok = await dumpCollection(ref.collection(sub), users, `${ref.id}/${sub}`);
+      if (!ok) { complete = false; break; }
+    }
+    if (!complete) break;
+
+    if (userCount % 25 === 0) {
+      console.log(`  ${userCount}/${userRefs.length} users, ${readsUsed} reads used`);
+    }
+  }
+
+  if (complete && userCount !== userRefs.length) {
+    complete = false;
   }
 
   fs.writeFileSync(
@@ -213,6 +223,7 @@ async function main() {
   const manifest = {
     takenAt: new Date().toISOString(),
     users: userCount,
+    usersFound: userRefs.length,
     documents: Object.keys(users).length,
     readsUsed,
     complete,
@@ -227,7 +238,7 @@ async function main() {
   );
 
   console.log(`\n${complete ? 'Done.' : 'PARTIAL BACKUP.'}`);
-  console.log(`  users      : ${userCount}`);
+  console.log(`  users      : ${userCount} of ${userRefs.length} found`);
   console.log(`  documents  : ${Object.keys(users).length}`);
   console.log(`  reads used : ${readsUsed} of ${MAX_READS}`);
   console.log(`  folder     : backups/${stamp}/`);

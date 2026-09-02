@@ -240,9 +240,16 @@ Three things to understand about it:
 - **Every document copied costs one read** against the 50,000/day free tier.
   The script stops at 25,000 by default so it cannot exhaust the allowance and
   take the live app down. Run it when the app is quiet.
-- **A partial backup announces itself.** If the budget runs out the manifest
-  says `complete: false` and the script exits non-zero. Do not treat that file
-  as a backup.
+- **A partial backup announces itself.** If the budget runs out, or fewer
+  users are copied than were found, the manifest says `complete: false` and the
+  script exits non-zero. Do not treat that file as a backup.
+- **It enumerates with `listDocuments()`, not a collection query.** Firestore
+  allows a document to be missing while its subcollections still exist, and a
+  query returns only documents that exist. On this project 251 of 462 users
+  have no `users/{uid}` root document — their data lives entirely in
+  subcollections — so a query-based backup covered less than half the user base
+  and reported success. Any tooling that walks users must use `listDocuments()`
+  or a collection-group query, never `collection('users').get()`.
 - **There is no restore script, deliberately.** A restore overwrites live data,
   and a tool that can do that by accident is worse than the problem. The files
   are plain JSON keyed by document path; restoring one user is a small,
