@@ -320,9 +320,12 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                         if (_showBack)
                           GestureDetector(
                             onTap: _handleBack,
+                            behavior: HitTestBehavior.opaque,
                             child: Container(
-                              width: 36,
-                              height: 36,
+                              // 44, not 36: this is the only way back out of
+                              // a step, and missing it reads as being stuck.
+                              width: 44,
+                              height: 44,
                               decoration: BoxDecoration(
                                 color:
                                     isDark
@@ -599,7 +602,10 @@ class _ProgressRail extends StatelessWidget {
         ),
       ),
       child: FractionallySizedBox(
-        alignment: Alignment.centerLeft,
+        // Directional, not left. Arabic is a supported locale, and with a
+        // hard "left" the header mirrors while the progress fill does not,
+        // so the bar appears to drain backwards as you advance.
+        alignment: AlignmentDirectional.centerStart,
         widthFactor: fraction.clamp(0.0, 1.0),
         child: Container(
           decoration: BoxDecoration(

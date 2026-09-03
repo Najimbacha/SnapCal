@@ -91,13 +91,21 @@ class SmartMealPlannerCard extends StatelessWidget {
                         children: [
                           Icon(LucideIcons.calendarDays, color: p, size: 15),
                           const SizedBox(width: 8),
-                          Text(
-                            "Smart Meal Planner",
-                            style: TextStyle(
-                              color: titleC,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              letterSpacing: -0.2,
+                          // Flexible with an ellipsis: a fixed PRO badge sits
+                          // to the right of this title, so a longer
+                          // translation or a large text-scale setting
+                          // overflowed the header with stripes.
+                          Flexible(
+                            child: Text(
+                              "Smart Meal Planner",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: titleC,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                letterSpacing: -0.2,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),

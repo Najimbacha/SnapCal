@@ -764,6 +764,16 @@ const _minimalGreen =
     AppColors.primary; // SnapCal emerald — brand progress color
 const _minimalGreenText = AppColors.primaryDark;
 
+/// The green that reads on the current ground.
+///
+/// [_minimalGreenText] is #047857 -- a deep green chosen against a near-white
+/// card. Several call sites used it unconditionally, so on a black background
+/// the goal figure, the "View all" action and the meal bullet were dark green
+/// on near-black. The sites that got this right did `isDark ? _minimalGreen :
+/// _minimalGreenText` inline; this is that expression, named, so the next call
+/// site cannot forget it.
+Color _greenInk(bool isDark) => isDark ? _minimalGreen : _minimalGreenText;
+
 class _MinimalHomeTopBar extends ConsumerWidget {
   final bool isPro;
   final bool isRefreshing;
@@ -865,10 +875,18 @@ class _MinimalHomeTopBar extends ConsumerWidget {
           // Settings button
           GestureDetector(
             onTap: onSettingsTap,
-            child: Icon(
-              LucideIcons.settings,
-              color: isDark ? Colors.white54 : const Color(0xFF8E8E93),
-              size: 20,
+            // The icon was its own hit area -- a 20px target at the very edge
+            // of the screen, against a 48dp platform minimum. The glyph stays
+            // 20px; only what you can hit changes.
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Icon(
+                LucideIcons.settings,
+                color: isDark ? Colors.white54 : const Color(0xFF8E8E93),
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -982,7 +1000,7 @@ class _MinimalCalorieHero extends StatelessWidget {
                   label: l10n.home_metric_goal,
                   value: _formatNumber(context, goal),
                   unit: 'kcal',
-                  valueColor: _minimalGreenText,
+                  valueColor: _greenInk(isDark),
                 ),
               ),
               _MinimalDivider(isDark: isDark),
@@ -1502,6 +1520,7 @@ class _MinimalMealsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hiddenMealCount = math.max(0, meals.length - 3);
     final viewAllLabel =
         meals.isEmpty
@@ -1520,7 +1539,7 @@ class _MinimalMealsSection extends StatelessWidget {
               TextButton(
                 onPressed: onViewAll,
                 style: TextButton.styleFrom(
-                  foregroundColor: _minimalGreenText,
+                  foregroundColor: _greenInk(isDark),
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   minimumSize: const Size(0, 32),
@@ -1529,7 +1548,7 @@ class _MinimalMealsSection extends StatelessWidget {
                 child: Text(
                   viewAllLabel,
                   style: AppTypography.labelSmall.copyWith(
-                    color: _minimalGreenText,
+                    color: _greenInk(isDark),
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0,
@@ -1614,8 +1633,8 @@ class _MinimalMealRow extends StatelessWidget {
               width: 7,
               height: 7,
               margin: const EdgeInsets.only(top: 6),
-              decoration: const BoxDecoration(
-                color: _minimalGreenText,
+              decoration: BoxDecoration(
+                color: _greenInk(isDark),
                 shape: BoxShape.circle,
               ),
             ),
@@ -3252,24 +3271,32 @@ class _QuickAddButtonState extends State<_QuickAddButton> {
           widget.onTap();
         },
         onLongPress: widget.onUndo,
-        child: AnimatedScale(
-          scale: _pressed ? 0.86 : 1,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
-          child: Container(
-            width: 22,
-            height: 22,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: widget.accent.withValues(
-                alpha: widget.isDark ? 0.26 : 0.15,
+        // The 22px circle was the entire hit area, and it sits on top of a
+        // card that is itself tappable -- so a near miss on "+1 glass" opened
+        // the hydration sheet instead of adding water. Padding widens what
+        // you can hit to 44px without moving or resizing the circle.
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.all(11),
+          child: AnimatedScale(
+            scale: _pressed ? 0.86 : 1,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            child: Container(
+              width: 22,
+              height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: widget.accent.withValues(
+                  alpha: widget.isDark ? 0.26 : 0.15,
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: widget.accent.withValues(alpha: 0.28),
+                ),
               ),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: widget.accent.withValues(alpha: 0.28),
-              ),
+              child: Icon(LucideIcons.plus, size: 13, color: widget.accent),
             ),
-            child: Icon(LucideIcons.plus, size: 13, color: widget.accent),
           ),
         ),
       ),

@@ -131,13 +131,20 @@ class WeekSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              Text(
-                l10n.log_week_average(format(average)),
-                style: AppTypography.labelSmall.copyWith(
-                  color: onSurface.withValues(alpha: isDark ? 0.62 : 0.60),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  letterSpacing: 0,
+              // The second half of this row already ellipsizes; this half
+              // did not, so a long locale string or a five-digit average
+              // clipped the row instead of shortening it.
+              Flexible(
+                child: Text(
+                  l10n.log_week_average(format(average)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: onSurface.withValues(alpha: isDark ? 0.62 : 0.60),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

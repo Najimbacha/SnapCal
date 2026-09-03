@@ -565,7 +565,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _InputLabel(l10n.onboarding_height),
+            // The toggle beside this is a fixed 140px, leaving
+            // ~172dp on a 360dp phone -- not enough for a long
+            // translation of an uppercased label.
+            Expanded(child: _InputLabel(l10n.onboarding_height)),
             _UnitToggle(
               isImperial: _isImperial,
               leftLabel: 'CM',
@@ -625,7 +628,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _InputLabel(l10n.settings_current_weight),
+            // The toggle beside this is a fixed 140px, leaving
+            // ~172dp on a 360dp phone -- not enough for a long
+            // translation of an uppercased label.
+            Expanded(child: _InputLabel(l10n.settings_current_weight)),
             _UnitToggle(
               isImperial: _isImperial,
               leftLabel: 'KG',
@@ -1028,9 +1034,11 @@ class _HeaderButton extends StatelessWidget {
         ignoring: !visible,
         child: GestureDetector(
           onTap: onTap,
+          behavior: HitTestBehavior.opaque,
           child: Container(
-            width: 42,
-            height: 42,
+            // 44, not 42 -- the platform minimum, on the only way back.
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color:
                   isDark
@@ -1064,7 +1072,9 @@ class _ProgressBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(99),
       ),
       child: FractionallySizedBox(
-        alignment: Alignment.centerLeft,
+        // See the note in onboarding_flow_screen: a hard "left" fill runs
+        // backwards under RTL.
+        alignment: AlignmentDirectional.centerStart,
         widthFactor: progress,
         child: Container(
           decoration: BoxDecoration(
@@ -1675,9 +1685,15 @@ class _InputLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10, left: 4),
+      // Directional: a hard `left` puts the inset on the wrong side in Arabic.
+      padding: const EdgeInsetsDirectional.only(bottom: 10, start: 4),
       child: Text(
         label.toUpperCase(),
+        // Uppercased with 1.2 letter-spacing, so these labels are already
+        // wider than the words they hold; a longer translation should
+        // shorten rather than overflow.
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: context.textMutedColor,
           fontSize: 11,
