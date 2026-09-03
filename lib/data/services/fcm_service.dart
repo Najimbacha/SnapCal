@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../../core/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 
@@ -311,7 +313,7 @@ class FcmService {
             importance: Importance.high,
             priority: Priority.high,
             icon: 'ic_stat_notification',
-            color: const Color(0xFF10B981),
+            color: AppColors.primary,
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,

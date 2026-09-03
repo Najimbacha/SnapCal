@@ -7,6 +7,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../core/theme/app_colors.dart';
+
 class NotificationService {
   static NotificationService? customInstance;
   static final NotificationService _instance = NotificationService._internal();
@@ -122,8 +124,8 @@ class NotificationService {
           importance: Importance.max,
           priority: Priority.high,
           icon: _androidNotificationIcon,
-          color: const Color(0xFF10B981),
-          ledColor: const Color(0xFF10B981),
+          color: AppColors.primary,
+          ledColor: AppColors.primary,
           ledOnMs: 1000,
           ledOffMs: 500,
         ),
@@ -193,7 +195,7 @@ class NotificationService {
             importance: Importance.defaultImportance,
             priority: Priority.defaultPriority,
             icon: _androidNotificationIcon,
-            color: Color(0xFF10B981),
+            color: AppColors.primary,
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -284,7 +286,7 @@ class NotificationService {
           importance: Importance.max,
           priority: Priority.high,
           icon: _androidNotificationIcon,
-          color: const Color(0xFF10B981),
+          color: AppColors.primary,
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
@@ -313,7 +315,7 @@ class NotificationService {
             importance: Importance.high,
             priority: Priority.high,
             icon: _androidNotificationIcon,
-            color: const Color(0xFF10B981),
+            color: AppColors.primary,
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,

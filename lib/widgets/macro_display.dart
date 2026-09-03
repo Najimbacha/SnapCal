@@ -923,7 +923,7 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF10B981), Color(0xFF0E9C87)],
+                    colors: [AppColors.primary, Color(0xFF0E9C87)],
                   ),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
@@ -979,7 +979,7 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF10B981), Color(0xFF0FA57C)],
+                    colors: [AppColors.primary, Color(0xFF0FA57C)],
                   ),
                   borderRadius: BorderRadius.circular(99),
                   boxShadow: [

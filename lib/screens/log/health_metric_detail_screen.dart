@@ -1644,12 +1644,16 @@ Color _metricAccentFor(BuildContext context, LogMetricType type) {
       return Theme.of(context).colorScheme.primary;
     case LogMetricType.water:
       return AppColors.sky;
+    // Carbs already came from the token; protein and fat were the same two
+    // hex values copied in. They agree today, so nothing looks wrong -- but
+    // a change to AppColors would have moved carbs and left these behind,
+    // and this screen would then disagree with every other macro readout.
     case LogMetricType.protein:
-      return const Color(0xFF7C9A6D);
+      return AppColors.protein;
     case LogMetricType.carbs:
       return AppColors.carbs;
     case LogMetricType.fat:
-      return const Color(0xFFD18B47);
+      return AppColors.fat;
   }
 }
 

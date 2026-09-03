@@ -190,7 +190,7 @@ class _EditMealModalState extends State<EditMealModal> {
                 _macroField(
                   l10n.result_protein,
                   _proteinController,
-                  const Color(0xFF7C9A6D),
+                  AppColors.protein,
                   isDark,
                   context,
                 ),
@@ -206,7 +206,7 @@ class _EditMealModalState extends State<EditMealModal> {
                 _macroField(
                   l10n.result_fat,
                   _fatController,
-                  const Color(0xFFD18B47),
+                  AppColors.fat,
                   isDark,
                   context,
                 ),

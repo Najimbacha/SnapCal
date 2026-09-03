@@ -73,7 +73,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
           _sectionCard(
             title: 'Service Status',
             icon: LucideIcons.activity,
-            color: const Color(0xFF10B981),
+            color: AppColors.primary,
             child: _buildKeyValue([
               ('Initialized', 'yes'),
               ('Permission', _hasPermission ? 'granted' : 'denied'),
@@ -177,7 +177,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
           _sectionCard(
             title: 'Last Received Notification',
             icon: LucideIcons.messageCircle,
-            color: const Color(0xFFF59E0B),
+            color: AppColors.warning,
             child: _buildLastMessage(),
           ),
           const SizedBox(height: 24),
