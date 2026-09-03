@@ -1409,5 +1409,16 @@
   "assistant_home_subtitle": "Consejos personalizados con IA",
   "home_offer_percent_off": "{value}% DTO",
   "home_offer_ends_soon": "Termina pronto",
-  "settings_guest_sync": "Sincroniza tus datos entre dispositivos"
+  "settings_guest_sync": "Sincroniza tus datos entre dispositivos",
+  "settings_value_range_hint": "Entre {min} y {max}",
+  "settings_value_out_of_range": "Introduce un valor entre {min} y {max}",
+  "settings_macros_total": "Tus macros suman {kcal} kcal",
+  "settings_macros_match_goal": "Coincide con tu objetivo diario de calorías",
+  "settings_macros_over_goal": "{kcal} kcal por encima de tu objetivo diario",
+  "settings_macros_under_goal": "{kcal} kcal por debajo de tu objetivo diario",
+  "settings_calories_adjust_macros_note": "Cambiar tus calorías ajusta tus macros para que coincidan, manteniendo el mismo equilibrio.",
+  "settings_recalculate_title": "¿Actualizar tus objetivos diarios?",
+  "settings_recalculate_body": "Tus calorías y macros se calcularon con tus datos anteriores. ¿Recalcularlos ahora? Se reemplazarán los objetivos que hayas fijado tú.",
+  "settings_recalculate_keep": "Mantener los míos",
+  "settings_recalculate_apply": "Recalcular"
 }

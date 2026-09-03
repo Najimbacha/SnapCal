@@ -57,12 +57,26 @@ String? settingsLanguageName(String? code) {
   }
 }
 
+/// Numeric entry for a single settings value.
+///
+/// [min] and [max] are shown to the user before they type and enforced after.
+/// The previous version validated `value > 0`, which accepted an age of 500,
+/// a height of 3 and a calorie goal of 1 — and gave no indication of what a
+/// reasonable answer looked like. Bounds that are stated up front are a hint;
+/// bounds discovered by having Confirm greyed out are a puzzle, so the range
+/// is always visible and the error explains itself.
+///
+/// [helperText] carries any extra consequence worth knowing before saving —
+/// for calories, that the macros will move with it.
 void showSettingsNumberDialog(
   BuildContext context, {
   required String title,
   required int currentValue,
   required String unit,
   required Future<void> Function(int) onSave,
+  int? min,
+  int? max,
+  String? helperText,
 }) {
   final controller = TextEditingController(text: currentValue.toString());
 
@@ -71,8 +85,18 @@ void showSettingsNumberDialog(
     builder:
         (dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) {
+            final l10nDialog = AppLocalizations.of(context)!;
             final value = int.tryParse(controller.text);
-            final isValid = value != null && value > 0;
+            final inRange =
+                value != null &&
+                (min == null || value >= min) &&
+                (max == null || value <= max);
+            // A bare `> 0` fallback stays for callers that pass no bounds, so
+            // adding a range to a call site is opt-in rather than a rewrite.
+            final isValid = value != null && (min == null && max == null
+                ? value > 0
+                : inRange);
+            final showError = controller.text.isNotEmpty && !isValid;
 
             return AlertDialog(
               backgroundColor: settingsBg(context),
@@ -121,6 +145,28 @@ void showSettingsNumberDialog(
                       contentPadding: const EdgeInsets.all(20),
                     ),
                   ),
+                  if (min != null || max != null || helperText != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      showError && (min != null || max != null)
+                          ? l10nDialog.settings_value_out_of_range(
+                            '${min ?? ''}',
+                            '${max ?? ''}',
+                          )
+                          : helperText ??
+                              l10nDialog.settings_value_range_hint(
+                                '${min ?? ''}',
+                                '${max ?? ''}',
+                              ),
+                      style: AppTypography.labelSmall.copyWith(
+                        fontSize: 12,
+                        color:
+                            showError
+                                ? const Color(0xFFE05A47)
+                                : settingsSubtext(context),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -155,6 +201,65 @@ void showSettingsNumberDialog(
               ],
             );
           },
+        ),
+  );
+}
+
+/// Asks before recalculating the nutrition plan from a changed profile.
+///
+/// Editing height, age or target weight used to call updateBodyProfile with
+/// recalculateNutrition defaulting to true, which overwrote dailyCalorieGoal
+/// and all three macros with freshly computed values. A user who had
+/// deliberately set 2000 kcal lost it by correcting their height, with no
+/// warning and nothing naming the action that did it.
+///
+/// Returns true to recalculate, false to keep the current targets, and null if
+/// the user dismissed the dialog — which callers should treat as "do neither",
+/// since a dismissal is not consent to replace anything.
+Future<bool?> askToRecalculatePlan(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  return showDialog<bool>(
+    context: context,
+    builder:
+        (dialogContext) => AlertDialog(
+          backgroundColor: settingsBg(context),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          title: Text(
+            l10n.settings_recalculate_title,
+            style: AppTypography.heading3.copyWith(
+              color: settingsText(context),
+              fontSize: 20,
+            ),
+          ),
+          content: Text(
+            l10n.settings_recalculate_body,
+            style: AppTypography.bodySmall.copyWith(
+              color: settingsSubtext(context),
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(
+                l10n.settings_recalculate_keep,
+                style: TextStyle(color: settingsSubtext(context)),
+              ),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                backgroundColor: kSettingsGreen,
+                foregroundColor: const Color(0xFFF0FDF4),
+              ),
+              child: Text(l10n.settings_recalculate_apply),
+            ),
+          ],
         ),
   );
 }

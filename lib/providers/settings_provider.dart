@@ -10,6 +10,7 @@ import '../data/services/subscription_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/notification_service.dart';
 import '../data/services/fcm_service.dart';
+import '../core/nutrition/plan_math.dart';
 import '../data/services/calorie_onboarding_service.dart';
 import '../core/network/api_client.dart';
 import '../core/services/config_service.dart';
@@ -483,25 +484,70 @@ class Settings extends _$Settings {
     return ScanGateService().getRemainingScans(false);
   }
 
+  /// The current macro targets as one object.
+  MacroSplit get _currentSplit {
+    final s = _data ?? UserSettings.defaults();
+    return MacroSplit(
+      protein: s.dailyProteinGoal,
+      carbs: s.dailyCarbGoal,
+      fat: s.dailyFatGoal,
+    );
+  }
+
+  /// Sets the calorie target and scales the macros to match.
+  ///
+  /// Calories and macros describe one plan, and letting them disagree produced
+  /// a user-visible lie: a 2000 kcal goal displayed directly above a macro
+  /// chart that added up to 2500. The scaling holds the user's existing ratio
+  /// rather than normalising it — someone eating high-protein chose that, and
+  /// a calorie change is not the moment to overrule them.
   Future<void> updateCalorieGoal(int goal) async {
     final current = _data ?? UserSettings.defaults();
-    await _updateSettings(current.copyWith(dailyCalorieGoal: goal));
+    final clamped = goal.clamp(PlanLimits.minCalories, PlanLimits.maxCalories);
+    final split = rebalanceToCalories(
+      current: _currentSplit,
+      targetCalories: clamped,
+    );
+
+    await _updateSettings(
+      current.copyWith(
+        dailyCalorieGoal: clamped,
+        dailyProteinGoal: split.protein,
+        dailyCarbGoal: split.carbs,
+        dailyFatGoal: split.fat,
+      ),
+    );
   }
 
-  Future<void> updateProteinGoal(int goal) async {
+  /// Applies a macro change and moves the calorie target to match it.
+  ///
+  /// The reverse direction of [updateCalorieGoal]. Editing one macro is an
+  /// explicit statement about that macro, so the other two are left exactly as
+  /// they are and the calorie total absorbs the change — anything else would
+  /// silently edit a number the user did not touch.
+  Future<void> _applyMacroChange(MacroSplit split) async {
     final current = _data ?? UserSettings.defaults();
-    await _updateSettings(current.copyWith(dailyProteinGoal: goal));
+    await _updateSettings(
+      current.copyWith(
+        dailyProteinGoal: split.protein,
+        dailyCarbGoal: split.carbs,
+        dailyFatGoal: split.fat,
+        dailyCalorieGoal: split.kcal.clamp(
+          PlanLimits.minCalories,
+          PlanLimits.maxCalories,
+        ),
+      ),
+    );
   }
 
-  Future<void> updateCarbGoal(int goal) async {
-    final current = _data ?? UserSettings.defaults();
-    await _updateSettings(current.copyWith(dailyCarbGoal: goal));
-  }
+  Future<void> updateProteinGoal(int goal) =>
+      _applyMacroChange(_currentSplit.copyWith(protein: goal));
 
-  Future<void> updateFatGoal(int goal) async {
-    final current = _data ?? UserSettings.defaults();
-    await _updateSettings(current.copyWith(dailyFatGoal: goal));
-  }
+  Future<void> updateCarbGoal(int goal) =>
+      _applyMacroChange(_currentSplit.copyWith(carbs: goal));
+
+  Future<void> updateFatGoal(int goal) =>
+      _applyMacroChange(_currentSplit.copyWith(fat: goal));
 
   Future<void> updateBodyProfile({
     double? height,

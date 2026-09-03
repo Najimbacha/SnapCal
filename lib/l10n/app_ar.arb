@@ -1412,5 +1412,16 @@
   "assistant_home_subtitle": "نصائح ذكية مخصصة لك",
   "home_offer_percent_off": "خصم {value}%",
   "home_offer_ends_soon": "ينتهي قريباً",
-  "settings_guest_sync": "زامن بياناتك بين أجهزتك"
+  "settings_guest_sync": "زامن بياناتك بين أجهزتك",
+  "settings_value_range_hint": "بين {min} و{max}",
+  "settings_value_out_of_range": "أدخل قيمة بين {min} و{max}",
+  "settings_macros_total": "مجموع الماكروز لديك {kcal} سعرة",
+  "settings_macros_match_goal": "يطابق هدف السعرات اليومي",
+  "settings_macros_over_goal": "{kcal} سعرة فوق هدفك اليومي",
+  "settings_macros_under_goal": "{kcal} سعرة تحت هدفك اليومي",
+  "settings_calories_adjust_macros_note": "تغيير السعرات يعدّل الماكروز لتتوافق معها مع الحفاظ على التوازن نفسه.",
+  "settings_recalculate_title": "تحديث أهدافك اليومية؟",
+  "settings_recalculate_body": "تم حساب السعرات والماكروز من بياناتك السابقة. هل تريد إعادة حسابها الآن؟ سيتم استبدال أي أهداف حددتها بنفسك.",
+  "settings_recalculate_keep": "احتفظ بأهدافي",
+  "settings_recalculate_apply": "إعادة الحساب"
 }

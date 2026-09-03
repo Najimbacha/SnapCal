@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
+import '../../core/nutrition/plan_math.dart';
 import '../../core/theme/app_typography.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/services/premium_conversion_service.dart';
@@ -58,6 +59,9 @@ class NutritionGoalsScreen extends ConsumerWidget {
                           title: l10n.settings_daily_calories,
                           currentValue: value,
                           unit: 'kcal',
+                          min: PlanLimits.minCalories,
+                          max: PlanLimits.maxCalories,
+                          helperText: l10n.settings_calories_adjust_macros_note,
                           onSave:
                               ref
                                   .read(settingsProvider.notifier)
@@ -88,6 +92,8 @@ class NutritionGoalsScreen extends ConsumerWidget {
                               title: l10n.settings_protein,
                               currentValue: value,
                               unit: 'g',
+                              min: PlanLimits.minMacroGrams,
+                              max: PlanLimits.maxMacroGrams,
                               onSave:
                                   ref
                                       .read(settingsProvider.notifier)
@@ -120,6 +126,8 @@ class NutritionGoalsScreen extends ConsumerWidget {
                               title: l10n.settings_carbs,
                               currentValue: value,
                               unit: 'g',
+                              min: PlanLimits.minMacroGrams,
+                              max: PlanLimits.maxMacroGrams,
                               onSave:
                                   ref
                                       .read(settingsProvider.notifier)
@@ -152,6 +160,8 @@ class NutritionGoalsScreen extends ConsumerWidget {
                               title: l10n.settings_fat,
                               currentValue: value,
                               unit: 'g',
+                              min: PlanLimits.minMacroGrams,
+                              max: PlanLimits.maxMacroGrams,
                               onSave:
                                   ref
                                       .read(settingsProvider.notifier)
@@ -184,21 +194,26 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
         final pGrams = settings?.dailyProteinGoal ?? 50;
         final cGrams = settings?.dailyCarbGoal ?? 250;
         final fGrams = settings?.dailyFatGoal ?? 65;
+        final calorieGoal = settings?.dailyCalorieGoal ?? 2000;
 
-        final pKcal = pGrams * 4.0;
-        final cKcal = cGrams * 4.0;
-        final fKcal = fGrams * 9.0;
-        final totalKcal = pKcal + cKcal + fKcal;
+        final split = MacroSplit(protein: pGrams, carbs: cGrams, fat: fGrams);
+        final shares = split.shares;
 
-        double pPct = 0.33;
-        double cPct = 0.33;
-        double fPct = 0.34;
+        // Per-macro energy, for the legend. Taken from the shared constants so
+        // the card and the plan maths can never drift apart on 4/4/9.
+        final pKcal = (pGrams * kcalPerGramProtein).toDouble();
+        final cKcal = (cGrams * kcalPerGramCarb).toDouble();
+        final fKcal = (fGrams * kcalPerGramFat).toDouble();
+        final pPct = shares.protein;
+        final cPct = shares.carbs;
+        final fPct = shares.fat;
 
-        if (totalKcal > 0) {
-          pPct = pKcal / totalKcal;
-          cPct = cKcal / totalKcal;
-          fPct = fKcal / totalKcal;
-        }
+        // This card used to compute its percentages from the macros alone, so
+        // it could never show that they disagreed with the calorie goal
+        // printed two rows below it — it drew a confident, tidy bar over a
+        // contradiction. It now states the relationship it is named after.
+        final agrees = macrosAgreeWithCalories(split, calorieGoal);
+        final drift = macroCalorieDrift(split, calorieGoal);
 
         final l10n = AppLocalizations.of(context)!;
         return SettingsSurface(
@@ -222,7 +237,38 @@ class _MacroCalorieRelationshipCard extends StatelessWidget {
                   fontSize: 12,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(
+                    agrees ? LucideIcons.check : LucideIcons.alertTriangle,
+                    size: 14,
+                    color:
+                        agrees ? kSettingsGreenText : const Color(0xFFE0A34F),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      agrees
+                          ? l10n.settings_macros_match_goal
+                          : (drift > 0
+                              ? l10n.settings_macros_over_goal('$drift')
+                              : l10n.settings_macros_under_goal(
+                                '${drift.abs()}',
+                              )),
+                      style: AppTypography.labelSmall.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            agrees
+                                ? settingsSubtext(context)
+                                : const Color(0xFFE0A34F),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               // Segmented bar
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),

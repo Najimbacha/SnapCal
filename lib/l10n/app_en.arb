@@ -2007,5 +2007,57 @@
     }
   },
   "home_offer_ends_soon": "Ends soon",
-  "settings_guest_sync": "Sync your data across devices"
+  "settings_guest_sync": "Sync your data across devices",
+  "settings_value_range_hint": "Between {min} and {max}",
+  "@settings_value_range_hint": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "settings_value_out_of_range": "Enter a value between {min} and {max}",
+  "@settings_value_out_of_range": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "settings_macros_total": "Your macros add up to {kcal} kcal",
+  "@settings_macros_total": {
+    "placeholders": {
+      "kcal": {
+        "type": "String"
+      }
+    }
+  },
+  "settings_macros_match_goal": "Matches your daily calorie goal",
+  "settings_macros_over_goal": "{kcal} kcal above your daily goal",
+  "@settings_macros_over_goal": {
+    "placeholders": {
+      "kcal": {
+        "type": "String"
+      }
+    }
+  },
+  "settings_macros_under_goal": "{kcal} kcal below your daily goal",
+  "@settings_macros_under_goal": {
+    "placeholders": {
+      "kcal": {
+        "type": "String"
+      }
+    }
+  },
+  "settings_calories_adjust_macros_note": "Changing your calories adjusts your macros to match, keeping the same balance.",
+  "settings_recalculate_title": "Update your daily targets?",
+  "settings_recalculate_body": "Your calories and macros were worked out from your old details. Recalculate them now? Any targets you set yourself will be replaced.",
+  "settings_recalculate_keep": "Keep mine",
+  "settings_recalculate_apply": "Recalculate"
 }

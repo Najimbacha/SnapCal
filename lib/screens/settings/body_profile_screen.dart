@@ -5,6 +5,7 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_typography.dart';
 import '../../providers/auth_state_provider.dart';
+import '../../core/nutrition/plan_math.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/metrics_provider.dart';
 import '../../data/models/user_settings.dart';
@@ -61,18 +62,26 @@ class BodyProfileScreen extends ConsumerWidget {
                               title: l10n.settings_age,
                               currentValue: settings?.age ?? 25,
                               unit: 'yrs',
-                              onSave:
-                                  (value) => ref
-                                      .read(settingsProvider.notifier)
-                                      .updateBodyProfile(
-                                        age: value,
-                                        currentWeightKg:
-                                            ref
-                                                .read(
-                                                  bodyMetricsProvider.notifier,
-                                                )
-                                                .currentWeight,
-                                      ),
+                              min: PlanLimits.minAge,
+                              max: PlanLimits.maxAge,
+                              onSave: (value) async {
+                                final notifier = ref.read(
+                                  settingsProvider.notifier,
+                                );
+                                final weight =
+                                    ref
+                                        .read(bodyMetricsProvider.notifier)
+                                        .currentWeight;
+                                // Ask before replacing targets the user may
+                                // have set by hand. Dismissing is not consent.
+                                final recalculate =
+                                    await askToRecalculatePlan(context);
+                                await notifier.updateBodyProfile(
+                                  age: value,
+                                  currentWeightKg: weight,
+                                  recalculateNutrition: recalculate == true,
+                                );
+                              },
                             ),
                       ),
                       SettingsRow(
@@ -155,18 +164,32 @@ class BodyProfileScreen extends ConsumerWidget {
                               displayTarget?.round() ??
                               (weightUnit == 'lb' ? 154 : 70),
                           unit: weightUnit,
-                          onSave: (value) {
+                          min:
+                              weightUnit == 'lb'
+                                  ? (PlanLimits.minWeightKg * 2.20462).round()
+                                  : PlanLimits.minWeightKg.round(),
+                          max:
+                              weightUnit == 'lb'
+                                  ? (PlanLimits.maxWeightKg * 2.20462).round()
+                                  : PlanLimits.maxWeightKg.round(),
+                          onSave: (value) async {
                             double kg = value.toDouble();
                             if (weightUnit == 'lb') kg = value / 2.20462;
-                            return ref
-                                .read(settingsProvider.notifier)
-                                .updateBodyProfile(
-                                  targetWeight: kg,
-                                  currentWeightKg:
-                                      ref
-                                          .read(bodyMetricsProvider.notifier)
-                                          .currentWeight,
-                                );
+                            final notifier = ref.read(
+                              settingsProvider.notifier,
+                            );
+                            final weight =
+                                ref
+                                    .read(bodyMetricsProvider.notifier)
+                                    .currentWeight;
+                            final recalculate = await askToRecalculatePlan(
+                              context,
+                            );
+                            await notifier.updateBodyProfile(
+                              targetWeight: kg,
+                              currentWeightKg: weight,
+                              recalculateNutrition: recalculate == true,
+                            );
                           },
                         ),
                   );
@@ -198,18 +221,32 @@ class BodyProfileScreen extends ConsumerWidget {
                               displayHeight?.round() ??
                               (heightUnit == 'in' ? 67 : 170),
                           unit: heightUnit,
-                          onSave: (value) {
+                          min:
+                              heightUnit == 'in'
+                                  ? (PlanLimits.minHeightCm / 2.54).round()
+                                  : PlanLimits.minHeightCm.round(),
+                          max:
+                              heightUnit == 'in'
+                                  ? (PlanLimits.maxHeightCm / 2.54).round()
+                                  : PlanLimits.maxHeightCm.round(),
+                          onSave: (value) async {
                             double cm = value.toDouble();
                             if (heightUnit == 'in') cm = value * 2.54;
-                            return ref
-                                .read(settingsProvider.notifier)
-                                .updateBodyProfile(
-                                  height: cm,
-                                  currentWeightKg:
-                                      ref
-                                          .read(bodyMetricsProvider.notifier)
-                                          .currentWeight,
-                                );
+                            final notifier = ref.read(
+                              settingsProvider.notifier,
+                            );
+                            final weight =
+                                ref
+                                    .read(bodyMetricsProvider.notifier)
+                                    .currentWeight;
+                            final recalculate = await askToRecalculatePlan(
+                              context,
+                            );
+                            await notifier.updateBodyProfile(
+                              height: cm,
+                              currentWeightKg: weight,
+                              recalculateNutrition: recalculate == true,
+                            );
                           },
                         ),
                   );
