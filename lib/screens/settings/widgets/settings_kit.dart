@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -57,17 +59,13 @@ String? settingsLanguageName(String? code) {
   }
 }
 
-/// Numeric entry for a single settings value.
+/// Opens the value editor for a whole number.
 ///
-/// [min] and [max] are shown to the user before they type and enforced after.
-/// The previous version validated `value > 0`, which accepted an age of 500,
-/// a height of 3 and a calorie goal of 1 — and gave no indication of what a
-/// reasonable answer looked like. Bounds that are stated up front are a hint;
-/// bounds discovered by having Confirm greyed out are a puzzle, so the range
-/// is always visible and the error explains itself.
-///
-/// [helperText] carries any extra consequence worth knowing before saving —
-/// for calories, that the macros will move with it.
+/// Kept as a function so the twenty-odd call sites across Settings did not all
+/// have to change when the presentation moved from a centred dialog to a
+/// bottom sheet. [min] and [max] are shown as a slider rather than described
+/// in a sentence; the old `value > 0` check accepted an age of 500 and a
+/// height of 3.
 void showSettingsNumberDialog(
   BuildContext context, {
   required String title,
@@ -76,149 +74,32 @@ void showSettingsNumberDialog(
   required Future<void> Function(int) onSave,
   int? min,
   int? max,
+  int? step,
   String? helperText,
 }) {
-  final controller = TextEditingController(text: currentValue.toString());
-
-  showDialog(
+  showModalBottomSheet(
     context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
     builder:
-        (dialogContext) => StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            final l10nDialog = AppLocalizations.of(context)!;
-            final value = int.tryParse(controller.text);
-            final inRange =
-                value != null &&
-                (min == null || value >= min) &&
-                (max == null || value <= max);
-            // A bare `> 0` fallback stays for callers that pass no bounds, so
-            // adding a range to a call site is opt-in rather than a rewrite.
-            final isValid = value != null && (min == null && max == null
-                ? value > 0
-                : inRange);
-            final showError = controller.text.isNotEmpty && !isValid;
-
-            return AlertDialog(
-              backgroundColor: settingsBg(context),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
-              ),
-              title: Text(
-                title,
-                style: AppTypography.heading3.copyWith(
-                  color: settingsText(context),
-                  fontSize: 22,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.settings_enter_value(title),
-                    style: AppTypography.bodySmall.copyWith(
-                      color: settingsSubtext(context),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: controller,
-                    keyboardType: TextInputType.number,
-                    autofocus: true,
-                    onChanged: (_) => setDialogState(() {}),
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: kSettingsGreenText,
-                    ),
-                    decoration: InputDecoration(
-                      suffixText: localizeOption(context, unit),
-                      suffixStyle: AppTypography.titleMedium,
-                      filled: true,
-                      fillColor:
-                          Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : kSettingsLine.withValues(alpha: 0.48),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.all(20),
-                    ),
-                  ),
-                  if (min != null || max != null || helperText != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      showError && (min != null || max != null)
-                          ? l10nDialog.settings_value_out_of_range(
-                            '${min ?? ''}',
-                            '${max ?? ''}',
-                          )
-                          : helperText ??
-                              l10nDialog.settings_value_range_hint(
-                                '${min ?? ''}',
-                                '${max ?? ''}',
-                              ),
-                      style: AppTypography.labelSmall.copyWith(
-                        fontSize: 12,
-                        color:
-                            showError
-                                ? const Color(0xFFE05A47)
-                                : settingsSubtext(context),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: Text(
-                    AppLocalizations.of(context)!.common_cancel,
-                    style: TextStyle(color: settingsSubtext(context)),
-                  ),
-                ),
-                FilledButton(
-                  onPressed:
-                      isValid
-                          ? () {
-                            Navigator.pop(dialogContext);
-                            // Confirming without changing anything is not an
-                            // edit. Writing anyway re-saves the value, and on
-                            // the body profile it also raises the "recalculate
-                            // your plan?" prompt for a change that never
-                            // happened.
-                            if (value == currentValue) return;
-                            onSave(value);
-                          }
-                          : null,
-                  style: FilledButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    backgroundColor: kSettingsGreen,
-                    disabledBackgroundColor: kSettingsGreen.withValues(
-                      alpha: 0.35,
-                    ),
-                    foregroundColor: const Color(0xFFF0FDF4),
-                  ),
-                  child: Text(AppLocalizations.of(context)!.common_confirm),
-                ),
-              ],
-            );
-          },
+        (sheetContext) => SettingsValueSheet(
+          title: title,
+          initialValue: currentValue.toDouble(),
+          unit: unit,
+          min: min?.toDouble(),
+          max: max?.toDouble(),
+          step: step?.toDouble(),
+          helperText: helperText,
+          onSave: (value) => onSave(value.round()),
         ),
   );
 }
 
-/// Numeric entry that accepts a fractional value.
+/// Opens the value editor for a value with a fractional part.
 ///
-/// Weight is the case that needs it. The integer dialog forced a round trip
-/// through whole numbers, so a 70kg target shown in pounds became 154, saved
-/// back as 69.85kg, redisplayed as 154 — and every open-and-confirm walked the
-/// stored value a little further from where the user put it. Keeping a decimal
-/// place, and skipping the write entirely when the displayed value has not
-/// changed, stops the drift at both ends.
+/// Weight is the case that needs it: the whole-number editor forced a round
+/// trip through integers, so a 70kg target displayed in pounds became 154,
+/// saved back as 69.85kg, and drifted a little further on every visit.
 void showSettingsDecimalDialog(
   BuildContext context, {
   required String title,
@@ -227,143 +108,25 @@ void showSettingsDecimalDialog(
   required Future<void> Function(double) onSave,
   double? min,
   double? max,
+  double? step,
   int decimals = 1,
   String? helperText,
 }) {
-  final initialText = currentValue.toStringAsFixed(decimals);
-  final controller = TextEditingController(text: initialText);
-
-  showDialog(
+  showModalBottomSheet(
     context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
     builder:
-        (dialogContext) => StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            final l10nDialog = AppLocalizations.of(context)!;
-            // Accept a comma as the decimal separator: most of the locales
-            // this app ships in type it that way.
-            final raw = controller.text.replaceAll(',', '.');
-            final value = double.tryParse(raw);
-            final isValid =
-                value != null &&
-                (min == null || value >= min) &&
-                (max == null || value <= max);
-            final showError = controller.text.isNotEmpty && !isValid;
-
-            String bound(double? v) =>
-                v == null ? '' : v.toStringAsFixed(decimals);
-
-            return AlertDialog(
-              backgroundColor: settingsBg(context),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
-              ),
-              title: Text(
-                title,
-                style: AppTypography.heading3.copyWith(
-                  color: settingsText(context),
-                  fontSize: 22,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10nDialog.settings_enter_value(title),
-                    style: AppTypography.bodySmall.copyWith(
-                      color: settingsSubtext(context),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: controller,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    autofocus: true,
-                    onChanged: (_) => setDialogState(() {}),
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: kSettingsGreenText,
-                    ),
-                    decoration: InputDecoration(
-                      suffixText: localizeOption(context, unit),
-                      suffixStyle: AppTypography.titleMedium,
-                      filled: true,
-                      fillColor:
-                          Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : kSettingsLine.withValues(alpha: 0.48),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.all(20),
-                    ),
-                  ),
-                  if (min != null || max != null || helperText != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      showError && (min != null || max != null)
-                          ? l10nDialog.settings_value_out_of_range(
-                            bound(min),
-                            bound(max),
-                          )
-                          : helperText ??
-                              l10nDialog.settings_value_range_hint(
-                                bound(min),
-                                bound(max),
-                              ),
-                      style: AppTypography.labelSmall.copyWith(
-                        fontSize: 12,
-                        color:
-                            showError
-                                ? const Color(0xFFE05A47)
-                                : settingsSubtext(context),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: Text(
-                    l10nDialog.common_cancel,
-                    style: TextStyle(color: settingsSubtext(context)),
-                  ),
-                ),
-                FilledButton(
-                  onPressed:
-                      isValid
-                          ? () {
-                            Navigator.pop(dialogContext);
-                            // Compared as displayed, not as stored: 154.0 lb
-                            // round-trips to 69.8532kg, which is never equal to
-                            // the original double but is the same answer.
-                            if (value.toStringAsFixed(decimals) ==
-                                initialText) {
-                              return;
-                            }
-                            onSave(value);
-                          }
-                          : null,
-                  style: FilledButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    backgroundColor: kSettingsGreen,
-                    disabledBackgroundColor: kSettingsGreen.withValues(
-                      alpha: 0.35,
-                    ),
-                    foregroundColor: const Color(0xFFF0FDF4),
-                  ),
-                  child: Text(l10nDialog.common_confirm),
-                ),
-              ],
-            );
-          },
+        (sheetContext) => SettingsValueSheet(
+          title: title,
+          initialValue: currentValue,
+          unit: unit,
+          min: min,
+          max: max,
+          step: step,
+          decimals: decimals,
+          helperText: helperText,
+          onSave: onSave,
         ),
   );
 }
@@ -674,6 +437,360 @@ class SettingsSelectionSheet extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A value editor as a bottom sheet, replacing the centred alert dialog.
+///
+/// The old dialog was a modal box with a large bare text field and nothing
+/// else: no sense of scale, no way to nudge a number, the keyboard covering
+/// half the screen, and the whole thing floating in the middle of the display
+/// where no thumb reaches. It also looked nothing like the rest of Settings,
+/// which already uses bottom sheets for its pickers.
+///
+/// This is the same surface as [SettingsSelectionSheet] — same radius, same
+/// ground, same padding — with three ways to reach a value rather than one:
+///
+///  * the steppers, for the small correction that is most edits;
+///  * the slider, which makes the allowed range something you can see instead
+///    of a sentence you have to read;
+///  * the field itself, for when you know the number.
+///
+/// [decimals] switches between whole numbers and one decimal place, so weight
+/// and calories can share an implementation rather than drifting apart as two.
+class SettingsValueSheet extends StatefulWidget {
+  const SettingsValueSheet({
+    super.key,
+    required this.title,
+    required this.initialValue,
+    required this.unit,
+    required this.onSave,
+    this.min,
+    this.max,
+    this.step,
+    this.decimals = 0,
+    this.helperText,
+  });
+
+  final String title;
+  final double initialValue;
+  final String unit;
+  final ValueChanged<double> onSave;
+  final double? min;
+  final double? max;
+
+  /// How much one tap of a stepper moves the value. Defaults to something
+  /// sensible for the range: nudging calories by 1 would be absurd, and
+  /// nudging age by 25 equally so.
+  final double? step;
+  final int decimals;
+  final String? helperText;
+
+  @override
+  State<SettingsValueSheet> createState() => _SettingsValueSheetState();
+}
+
+class _SettingsValueSheetState extends State<SettingsValueSheet> {
+  late TextEditingController _controller;
+  late String _initialText;
+  late double _step;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialText = widget.initialValue.toStringAsFixed(widget.decimals);
+    _controller = TextEditingController(text: _initialText);
+    _step = widget.step ?? _defaultStep();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// A step proportional to the span being edited: 1% of the range, rounded to
+  /// something a person would actually choose.
+  double _defaultStep() {
+    final min = widget.min;
+    final max = widget.max;
+    if (min == null || max == null) return widget.decimals > 0 ? 0.5 : 1;
+    final span = max - min;
+    if (widget.decimals > 0) return 0.5;
+    // Take the largest step that still leaves ~40 taps across the range. At a
+    // looser threshold, macros (0-800g) picked 25g jumps, which is coarser
+    // than anyone adjusts protein by.
+    for (final candidate in [100.0, 50.0, 25.0, 10.0, 5.0, 1.0]) {
+      if (span / candidate >= 40) return candidate;
+    }
+    return 1;
+  }
+
+  double? get _value =>
+      double.tryParse(_controller.text.replaceAll(',', '.'));
+
+  bool get _isValid {
+    final value = _value;
+    if (value == null) return false;
+    if (widget.min != null && value < widget.min!) return false;
+    if (widget.max != null && value > widget.max!) return false;
+    return true;
+  }
+
+  void _nudge(double delta) {
+    final current = _value ?? widget.initialValue;
+    var next = current + delta;
+    if (widget.min != null) next = math.max(widget.min!, next);
+    if (widget.max != null) next = math.min(widget.max!, next);
+    setState(() {
+      _controller.text = next.toStringAsFixed(widget.decimals);
+    });
+  }
+
+  String _bound(double? v) =>
+      v == null ? '' : v.toStringAsFixed(widget.decimals);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final value = _value;
+    final showError = _controller.text.isNotEmpty && !_isValid;
+    final hasRange = widget.min != null && widget.max != null;
+
+    return Padding(
+      // Lift the sheet above the keyboard rather than letting it cover the
+      // field the user is typing into.
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+        decoration: BoxDecoration(
+          color: settingsBg(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: settingsSubtext(context).withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              widget.title,
+              style: AppTypography.heading3.copyWith(
+                color: settingsText(context),
+                fontSize: 20,
+              ),
+            ),
+            if (widget.helperText != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                widget.helperText!,
+                style: AppTypography.labelSmall.copyWith(
+                  fontSize: 12,
+                  color: settingsSubtext(context),
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+
+            // Value row: nudge down, the number itself, nudge up.
+            Row(
+              children: [
+                _StepButton(
+                  icon: LucideIcons.minus,
+                  onTap: () => _nudge(-_step),
+                ),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      IntrinsicWidth(
+                        child: TextField(
+                          controller: _controller,
+                          keyboardType: TextInputType.numberWithOptions(
+                            decimal: widget.decimals > 0,
+                          ),
+                          textAlign: TextAlign.center,
+                          onChanged: (_) => setState(() {}),
+                          style: AppTypography.headlineSmall.copyWith(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 40,
+                            color:
+                                showError
+                                    ? const Color(0xFFE05A47)
+                                    : kSettingsGreenText,
+                          ),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        localizeOption(context, widget.unit),
+                        style: AppTypography.titleMedium.copyWith(
+                          color: settingsSubtext(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _StepButton(
+                  icon: LucideIcons.plus,
+                  onTap: () => _nudge(_step),
+                ),
+              ],
+            ),
+
+            if (hasRange) ...[
+              const SizedBox(height: 8),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 4,
+                  activeTrackColor: kSettingsGreenText,
+                  inactiveTrackColor: settingsSubtext(
+                    context,
+                  ).withValues(alpha: 0.18),
+                  thumbColor: kSettingsGreenText,
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 16,
+                  ),
+                ),
+                child: Slider(
+                  value: (value ?? widget.initialValue).clamp(
+                    widget.min!,
+                    widget.max!,
+                  ),
+                  min: widget.min!,
+                  max: widget.max!,
+                  onChanged:
+                      (v) => setState(() {
+                        _controller.text = v.toStringAsFixed(widget.decimals);
+                      }),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _bound(widget.min),
+                    style: AppTypography.labelSmall.copyWith(
+                      fontSize: 11,
+                      color: settingsSubtext(context),
+                    ),
+                  ),
+                  Text(
+                    _bound(widget.max),
+                    style: AppTypography.labelSmall.copyWith(
+                      fontSize: 11,
+                      color: settingsSubtext(context),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            if (showError) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.settings_value_out_of_range(
+                  _bound(widget.min),
+                  _bound(widget.max),
+                ),
+                style: AppTypography.labelSmall.copyWith(
+                  fontSize: 12,
+                  color: const Color(0xFFE05A47),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed:
+                    _isValid
+                        ? () {
+                          Navigator.pop(context);
+                          // Confirming an unchanged value is not an edit.
+                          // Compared as displayed: 154.0 lb never equals its
+                          // own round trip as a double, but is the same answer.
+                          if (value!.toStringAsFixed(widget.decimals) ==
+                              _initialText) {
+                            return;
+                          }
+                          widget.onSave(value);
+                        }
+                        : null,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  backgroundColor: kSettingsGreen,
+                  disabledBackgroundColor: kSettingsGreen.withValues(
+                    alpha: 0.35,
+                  ),
+                  foregroundColor: const Color(0xFFF0FDF4),
+                ),
+                child: Text(l10n.common_confirm),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  l10n.common_cancel,
+                  style: TextStyle(color: settingsSubtext(context)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StepButton extends StatelessWidget {
+  const _StepButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: settingsSubtext(context).withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(icon, size: 20, color: settingsText(context)),
+        ),
       ),
     );
   }
