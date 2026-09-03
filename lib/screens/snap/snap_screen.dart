@@ -174,16 +174,35 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     // Show a loading indicator while the ad gets ready.
     final snack = ScaffoldMessenger.of(context);
 
+    // The grant has to be recorded on the server before we promise it. It
+    // used to be written to SharedPreferences, which the server never saw, so
+    // the scan this ad had just paid for came back 402 -- the app breaking a
+    // promise it made ten seconds earlier.
+    // Recorded after the ad finishes, not inside onRewarded. That callback is
+    // a VoidCallback fired mid-show and never awaited, so an async grant
+    // started there would still be in flight when we checked the result. The
+    // method already returns true only when the reward was actually earned.
     final rewarded = await AdService().showRewardedAdForBonusScan(
-      onRewarded: () => ScanGateService().addBonusScans(1),
+      onRewarded: () {},
     );
+    final granted = rewarded && await ScanGateService().addBonusScans(1);
 
     if (!mounted) return;
-    if (rewarded) {
+    if (rewarded && granted) {
       snack.showSnackBar(
         const SnackBar(
           content: Text('🎉 +1 bonus scan unlocked!'),
           duration: Duration(seconds: 3),
+        ),
+      );
+    } else if (rewarded) {
+      // The ad played but the scan could not be recorded -- offline, or the
+      // monthly bonus cap is spent. Say so rather than sending them into a
+      // scan that will be refused.
+      snack.showSnackBar(
+        const SnackBar(
+          content: Text("Couldn't add your bonus scan. Check your connection."),
+          duration: Duration(seconds: 4),
         ),
       );
     } else {

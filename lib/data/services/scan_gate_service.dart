@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/services/config_service.dart';
 import '../../core/utils/pref_scoping.dart';
 
 /// Gates food scans for free users.
@@ -190,12 +192,71 @@ class ScanGateService {
     return clamped;
   }
 
-  Future<void> addBonusScans(int count) async {
+  /// Records one earned bonus scan, on the server first.
+  ///
+  /// This used to write straight to SharedPreferences. The server knew nothing
+  /// about bonus scans and enforced a flat three a month, so a user watched a
+  /// rewarded ad, got told "+1 bonus scan unlocked", and had that very scan
+  /// refused with a 402. The local number was a promise the server never
+  /// agreed to.
+  ///
+  /// The server owns the count now. It is asked first, and the local mirror is
+  /// only updated with the number it returns -- so the two cannot drift, and a
+  /// failure here means the user is told the truth instead of being sent into
+  /// a scan that is going to bounce.
+  ///
+  /// Returns true when the bonus was actually granted.
+  Future<bool> addBonusScans(int count) async {
+    if (!_ready()) return false;
+    if (count <= 0) return false;
+
+    int? serverBonus;
+    var granted = false;
+    for (var i = 0; i < count; i++) {
+      final result = await _grantBonusScanOnServer();
+      if (result == null) return false;
+      granted = granted || result.$1;
+      serverBonus = result.$2;
+      // The monthly cap was already reached; asking again cannot help.
+      if (!result.$1) break;
+    }
+
+    if (serverBonus != null) {
+      await _prefs!.setInt(scopedPrefKey(_bonusScansKey), serverBonus);
+      debugPrint('📊 ScanGateService: bonus now $serverBonus (from server)');
+    }
+    return granted;
+  }
+
+  /// (granted, bonusScansTotal), or null when the server could not be reached.
+  Future<(bool, int)?> _grantBonusScanOnServer() async {
+    try {
+      final response = await ApiClient.dio.post(
+        '${ConfigService().backendProxyUrl}/api/scans/bonus',
+      );
+      final data = response.data;
+      if (data is! Map) return null;
+      final total = (data['bonusScans'] as num?)?.toInt();
+      if (total == null) return null;
+      return (data['granted'] == true, total);
+    } catch (e) {
+      debugPrint('⚠️ ScanGateService: bonus scan not recorded — $e');
+      return null;
+    }
+  }
+
+  /// Replaces the local bonus mirror with the server's number.
+  ///
+  /// Called from the premium-status refresh, so a device that granted itself
+  /// bonuses under the old build (or lost a response) converges on what the
+  /// server will actually honour.
+  Future<void> syncBonusScansFromServer(int serverBonus) async {
     if (!_ready()) return;
-    final cur = getBonusScans();
-    final next = cur + count;
-    await _prefs!.setInt(scopedPrefKey(_bonusScansKey), next);
-    debugPrint('📊 ScanGateService: bonus $cur ➜ $next');
+    if (serverBonus < 0) return;
+    final key = scopedPrefKey(_bonusScansKey);
+    if (_readInt(key) == serverBonus) return;
+    await _prefs!.setInt(key, serverBonus);
+    debugPrint('🔄 ScanGateService: bonus synced to $serverBonus');
   }
 
   Future<void> incrementScanCount() async {

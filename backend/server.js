@@ -21,6 +21,15 @@ const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '2mb';
 const MAX_IMAGE_BODY = process.env.MAX_IMAGE_BODY || '14mb';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
+
+// Bonus scans earned by watching a rewarded ad.
+//
+// The client has always granted these locally, in SharedPreferences, while the
+// server counted only FREE_MONTHLY_SCANS -- so a user watched an ad, was told
+// "+1 bonus scan unlocked", and then had that scan refused with a 402. The
+// server now keeps the count, and the cap bounds what a forged call could ever
+// be worth.
+const MAX_BONUS_SCANS_PER_MONTH = Number(process.env.MAX_BONUS_SCANS_PER_MONTH || 10);
 const FREE_DAILY_AI_MESSAGES = Number(process.env.FREE_DAILY_AI_MESSAGES || 1);
 // Fail closed: App Check is ON unless explicitly disabled. A misspelled or
 // unset variable must never silently disable the control (BUG-006).
@@ -422,6 +431,23 @@ function currentMonthKey() {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+/// This month's bonus scans, ignoring a stale month's leftovers.
+///
+/// Bonus scans expire with the month exactly like the free allowance: the
+/// usage document carries one monthKey, and anything stamped with a different
+/// one is last month's and does not count.
+function bonusScansFor(usage, monthKey) {
+  if (!usage || usage.monthKey !== monthKey) return 0;
+  const raw = Number(usage.bonusScans || 0);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return Math.min(Math.floor(raw), MAX_BONUS_SCANS_PER_MONTH);
+}
+
+/// Total scans a non-premium user may take this month.
+function freeAllowanceFor(usage, monthKey) {
+  return FREE_MONTHLY_SCANS + bonusScansFor(usage, monthKey);
+}
+
 function currentDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -627,6 +653,8 @@ async function getPremiumStatus(uid) {
   // Mirror the authoritative monthly quota so the client displays what the
   // server will actually enforce, instead of its own local guess (BUG-005).
   let scansRemaining = null;
+  let bonusScans = 0;
+  let scanAllowance = FREE_MONTHLY_SCANS;
   if (!entitlement.isActive) {
     try {
       const useSnap = await usageDoc(uid).get();
@@ -634,7 +662,9 @@ async function getPremiumStatus(uid) {
       const usage = useSnap.exists ? useSnap.data() : {};
       const monthKey = currentMonthKey();
       const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
-      scansRemaining = Math.max(0, FREE_MONTHLY_SCANS - scansUsed);
+      bonusScans = bonusScansFor(usage, monthKey);
+      scanAllowance = freeAllowanceFor(usage, monthKey);
+      scansRemaining = Math.max(0, scanAllowance - scansUsed);
     } catch (error) {
       console.error('Usage read failed for premium status:', error.message);
     }
@@ -642,7 +672,13 @@ async function getPremiumStatus(uid) {
 
   return {
     ...entitlement,
+    // monthlyScanLimit is the base allowance and stays what it always was, so
+    // existing clients keep reading the same field. scanAllowance is that plus
+    // this month's earned bonus -- the number the server actually enforces.
     monthlyScanLimit: FREE_MONTHLY_SCANS,
+    bonusScans,
+    scanAllowance,
+    maxBonusScansPerMonth: MAX_BONUS_SCANS_PER_MONTH,
     scansRemaining,
   };
 }
@@ -674,7 +710,7 @@ async function claimScanQuota(uid, scanId) {
     const monthKey = currentMonthKey();
     const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
 
-    if (!isPremium && scansUsed >= FREE_MONTHLY_SCANS) {
+    if (!isPremium && scansUsed >= freeAllowanceFor(usage, monthKey)) {
       throw Object.assign(new Error('quota-exceeded'), { code: 402 });
     }
 
@@ -712,7 +748,7 @@ async function claimScanQuotaForScan(uid) {
     const monthKey = currentMonthKey();
     const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
 
-    if (!isPremium && scansUsed >= FREE_MONTHLY_SCANS) {
+    if (!isPremium && scansUsed >= freeAllowanceFor(usage, monthKey)) {
       throw Object.assign(new Error('quota-exceeded'), { code: 402 });
     }
 
@@ -1653,6 +1689,75 @@ app.get('/api/premium-status', authenticateToken, verifyAppCheck, async (req, re
   return res.status(200).json(status);
 });
 
+/// Records a bonus scan earned by watching a rewarded ad.
+///
+/// The client used to grant these to itself in SharedPreferences while the
+/// server knew nothing about them, so the scan the user had just earned came
+/// back 402. The count lives here now, which is the only place that can
+/// actually enforce it.
+///
+/// What this does and does not prove: App Check establishes that the call came
+/// from a genuine build of the app, and auth establishes who. Neither proves
+/// an ad was really watched -- that would need AdMob's server-side
+/// verification callback, which is a larger piece of work. The monthly cap is
+/// what bounds the damage in the meantime: the worst a determined user gets is
+/// MAX_BONUS_SCANS_PER_MONTH free scans, which is roughly what they would get
+/// by watching the ads honestly.
+app.post('/api/scans/bonus', apiLimiter, authenticateToken, verifyAppCheck, async (req, res) => {
+  const uid = req.user.uid;
+  try {
+    const result = await db.runTransaction(async (tx) => {
+      const useRef = usageDoc(uid);
+      const useSnap = await tx.get(useRef);
+      const usage = useSnap.exists ? useSnap.data() : {};
+      const monthKey = currentMonthKey();
+      const current = bonusScansFor(usage, monthKey);
+
+      if (current >= MAX_BONUS_SCANS_PER_MONTH) {
+        return { granted: false, bonusScans: current, monthKey, usage };
+      }
+
+      // Writing monthKey here also rolls the month over for a user whose
+      // first action this month is watching an ad: scansUsed is stamped with
+      // last month's key, so it has to reset alongside the bonus or they
+      // would inherit last month's usage against this month's allowance.
+      const rolledOver = usage.monthKey !== monthKey;
+      tx.set(useRef, {
+        monthKey,
+        bonusScans: current + 1,
+        ...(rolledOver ? { scansUsed: 0, premiumScansUsed: 0 } : {}),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      return {
+        granted: true,
+        bonusScans: current + 1,
+        monthKey,
+        usage: rolledOver ? { monthKey, scansUsed: 0 } : usage,
+      };
+    });
+
+    metrics.firestoreOps.inc({ operation: 'set', collection: 'usage' });
+
+    const scansUsed =
+      result.usage && result.usage.monthKey === result.monthKey
+        ? Number(result.usage.scansUsed || 0)
+        : 0;
+    const scanAllowance = FREE_MONTHLY_SCANS + result.bonusScans;
+
+    return res.status(200).json({
+      granted: result.granted,
+      bonusScans: result.bonusScans,
+      maxBonusScansPerMonth: MAX_BONUS_SCANS_PER_MONTH,
+      scanAllowance,
+      scansRemaining: Math.max(0, scanAllowance - scansUsed),
+    });
+  } catch (error) {
+    console.error('Bonus scan grant failed:', error.message);
+    return safeError(res, 500, 'Could not record the bonus scan.');
+  }
+});
+
 app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => {
   const body = req.body || {};
   if (!assertPlainObject(body) || typeof body.prompt !== 'string' || body.prompt.length < 1 || body.prompt.length > 12000) {
@@ -2019,6 +2124,7 @@ if (process.env.NODE_ENV !== 'production') {
     { method: 'GET', path: '/api/premium-status' },
     { method: 'POST', path: '/api/ai/text' },
     { method: 'POST', path: '/api/ai/image' },
+    { method: 'POST', path: '/api/scans/bonus' },
     { method: 'POST', path: '/api/revenuecat/webhook' },
     { method: 'GET', path: '/api/admin/users/:uid/summary' },
     { method: 'POST', path: '/api/admin/users/:uid/access' },
@@ -2244,6 +2350,10 @@ module.exports = {
   reconcileNutrition,
   enrichScanResults,
   getV2SystemPrompt,
+  // Quota arithmetic, exported so the allowance rules can be tested without
+  // standing up Firestore.
+  bonusScansFor,
+  freeAllowanceFor,
   setAuthVerifierForTest(verifier) {
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('Test auth verifier is only available in NODE_ENV=test.');

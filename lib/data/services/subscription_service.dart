@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../models/promo_offer.dart';
 import '../repositories/settings_repository.dart';
+import 'scan_gate_service.dart';
 import '../../core/services/config_service.dart';
 import '../../core/network/api_client.dart';
 import '../../core/resilience/retry_policy.dart';
@@ -507,6 +508,17 @@ class SubscriptionService {
           .timeout(TimeoutPolicy.revenueCat);
       final serverSaysActive =
           response.data is Map && response.data['isActive'] == true;
+
+      // The server owns the bonus-scan count. Take its number whenever it
+      // answers, so a device that granted itself bonuses under an older build
+      // -- or lost the response to one -- converges on what will actually be
+      // honoured instead of showing a scan it cannot spend.
+      if (response.data is Map) {
+        final bonus = (response.data['bonusScans'] as num?)?.toInt();
+        if (bonus != null) {
+          await ScanGateService().syncBonusScansFromServer(bonus);
+        }
+      }
 
       _cachedServerActive = serverSaysActive;
       _cachedAt = DateTime.now();
