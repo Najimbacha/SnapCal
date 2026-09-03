@@ -159,6 +159,7 @@ const APP_SETTINGS_PAYLOAD = {
   dailyMotivationEnabled: true,
   goalAlertsEnabled: true,
   foodRemindersEnabled: false,
+  goalSource: 'profile',
   recommendationInsight: 'Protein is low on weekdays.',
   recommendationTip: 'Add eggs at breakfast.',
   recommendationSafetyNote: null,

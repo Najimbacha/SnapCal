@@ -388,6 +388,7 @@ class SettingsRepository {
       'dailyMotivationEnabled': settings.dailyMotivationEnabled,
       'goalAlertsEnabled': settings.goalAlertsEnabled,
       'foodRemindersEnabled': settings.foodRemindersEnabled,
+      'goalSource': settings.goalSource,
       'recommendationInsight': settings.recommendationInsight,
       'recommendationTip': settings.recommendationTip,
       'recommendationSafetyNote': settings.recommendationSafetyNote,

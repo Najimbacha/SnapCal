@@ -805,9 +805,42 @@ class Settings extends _$Settings {
   ) async {
     final s = _data;
     if (s == null) return false;
+
+    // Targets the user set themselves are theirs. A profile edit recomputes
+    // the plan only while it is sourced from the profile — which is the
+    // setting shown on the goals screen, not a question sprung on them
+    // mid-edit.
+    if (s.goalSource == kGoalSourceCustom) return false;
+
     final currentWeightKg = preferredCurrentWeightKg ?? s.startingWeight;
     if (currentWeightKg == null) return false;
     return recalculatePlan(currentWeightKg: currentWeightKg);
+  }
+
+  /// Switches between profile-derived and hand-set targets.
+  ///
+  /// Choosing 'profile' recomputes immediately: the point of that mode is that
+  /// the numbers follow the body, so leaving stale ones on screen would make
+  /// the switch look broken. Choosing 'custom' changes nothing except who owns
+  /// the numbers from now on.
+  Future<void> setGoalSource(String source) async {
+    final current = _data ?? UserSettings.defaults();
+    if (current.goalSource == source) return;
+
+    await _updateSettings(current.copyWith(goalSource: source));
+
+    if (source == kGoalSourceProfile) {
+      await _recalculatePlanIfProfileComplete(null);
+    }
+  }
+
+  /// Editing a target by hand implies ownership of it. Silently flipping the
+  /// mode would be its own surprise, so callers pass through here and the
+  /// goals screen shows the mode changing.
+  Future<void> claimGoalsAsCustom() async {
+    final current = _data ?? UserSettings.defaults();
+    if (current.goalSource == kGoalSourceCustom) return;
+    await _updateSettings(current.copyWith(goalSource: kGoalSourceCustom));
   }
 
   Future<void> clear() async {

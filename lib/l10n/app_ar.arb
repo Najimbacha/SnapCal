@@ -1424,5 +1424,22 @@
   "settings_recalculate_body": "تم حساب السعرات والماكروز من بياناتك السابقة. هل تريد إعادة حسابها الآن؟ سيتم استبدال أي أهداف حددتها بنفسك.",
   "settings_recalculate_keep": "احتفظ بأهدافي",
   "settings_recalculate_apply": "إعادة الحساب",
-  "settings_maintenance_estimate": "أنت تحرق حوالي {kcal} سعرة يوميًا"
+  "settings_maintenance_estimate": "أنت تحرق حوالي {kcal} سعرة يوميًا",
+  "settings_daily_target": "الهدف اليومي",
+  "settings_from_maintenance": "عن مستوى الثبات",
+  "settings_goal_source_profile": "من ملفك الشخصي",
+  "settings_goal_source_custom": "أحددها بنفسي",
+  "settings_goal_source_note_profile": "تتحدث الأهداف عند تغير عمرك أو طولك أو وزنك.",
+  "settings_goal_source_note_custom": "تبقى أرقامك كما حددتها تمامًا.",
+  "settings_percent_of_calories": "{percent}٪ من السعرات",
+  "settings_group_about_you": "عنك",
+  "settings_group_weight": "الوزن",
+  "settings_group_activity": "النشاط",
+  "settings_group_adjust": "تعديل",
+  "settings_sex": "الجنس",
+  "settings_sex_hint": "يُستخدم في معادلة السعرات",
+  "settings_activity_hint": "يحدد كمية ما تحرقه",
+  "settings_starting_weight_hint": "نقطة البداية لقياس تقدمك",
+  "settings_starting_weight": "البداية",
+  "settings_macros_move_note": "ستتحرك الماكروز مع هذا مع الحفاظ على التوازن نفسه"
 }

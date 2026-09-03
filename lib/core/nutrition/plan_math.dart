@@ -59,6 +59,13 @@ class PlanLimits {
   static const double maxWeightKg = 300;
 }
 
+/// Where the daily targets come from.
+///
+/// Stored as a string on UserSettings rather than an enum so the value
+/// survives a Hive round trip and a Firestore document without a codec.
+const String kGoalSourceProfile = 'profile';
+const String kGoalSourceCustom = 'custom';
+
 /// A protein/carb/fat split, in grams.
 class MacroSplit {
   const MacroSplit({

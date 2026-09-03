@@ -127,6 +127,21 @@ class UserSettings extends HiveObject {
   @HiveField(39)
   final String? fcmToken;
 
+  /// Where the daily targets come from: 'profile' (recomputed whenever age,
+  /// height or weight change) or 'custom' (the user's own numbers, left
+  /// alone).
+  ///
+  /// This replaces asking "recalculate your plan?" at a surprising moment.
+  /// Editing your height and being told your calorie goal is about to be
+  /// overwritten is a question arriving at the wrong time; a mode you can see
+  /// on the goals screen is the same decision, made once, where it belongs.
+  /// It is also what every tracker people already use does.
+  ///
+  /// Defaults to 'profile', which is the behaviour every existing user has
+  /// today — targets were always derived and always overwritten.
+  @HiveField(40)
+  final String goalSource;
+
   UserSettings({
     required this.dailyCalorieGoal,
     required this.dailyProteinGoal,
@@ -167,6 +182,7 @@ class UserSettings extends HiveObject {
     this.foodRemindersEnabled = false,
     this.lastFoodReminderDate,
     this.fcmToken,
+    this.goalSource = 'profile',
     String? languageCode,
   }) : languageCode = languageCode ?? 'en';
 
@@ -211,6 +227,7 @@ class UserSettings extends HiveObject {
     bool? foodRemindersEnabled,
     String? lastFoodReminderDate,
     String? fcmToken,
+    String? goalSource,
     // `copyWith(lastLoggedDate: null)` cannot clear the field — the `??`
     // below reads it as "leave unchanged". Pass this to actually clear it.
     bool clearLastLoggedDate = false,
@@ -260,6 +277,7 @@ class UserSettings extends HiveObject {
       foodRemindersEnabled: foodRemindersEnabled ?? this.foodRemindersEnabled,
       lastFoodReminderDate: lastFoodReminderDate ?? this.lastFoodReminderDate,
       fcmToken: fcmToken ?? this.fcmToken,
+      goalSource: goalSource ?? this.goalSource,
     );
   }
 
@@ -305,6 +323,7 @@ class UserSettings extends HiveObject {
       'foodRemindersEnabled': foodRemindersEnabled,
       'lastFoodReminderDate': lastFoodReminderDate,
       'fcmToken': fcmToken,
+      'goalSource': goalSource,
     };
   }
 
@@ -361,6 +380,7 @@ class UserSettings extends HiveObject {
       foodRemindersEnabled: json['foodRemindersEnabled'] as bool? ?? false,
       lastFoodReminderDate: json['lastFoodReminderDate'] as String?,
       fcmToken: json['fcmToken'] as String?,
+      goalSource: json['goalSource'] as String? ?? 'profile',
     );
   }
 
@@ -407,6 +427,7 @@ class UserSettings extends HiveObject {
       foodRemindersEnabled: false,
       lastFoodReminderDate: null,
       fcmToken: null,
+      goalSource: 'profile',
     );
   }
 }

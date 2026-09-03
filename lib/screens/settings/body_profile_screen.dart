@@ -31,7 +31,7 @@ class BodyProfileScreen extends ConsumerWidget {
           const _WeightProgressBar(),
           const SizedBox(height: 24),
           SettingsSection(
-            title: l10n.onboarding_basic_intro_eyebrow, // "PERSONAL DETAILS"
+            title: l10n.settings_group_about_you,
             children: [
               SettingsRow(
                 icon: LucideIcons.user,
@@ -72,21 +72,17 @@ class BodyProfileScreen extends ConsumerWidget {
                                     ref
                                         .read(bodyMetricsProvider.notifier)
                                         .currentWeight;
-                                // Ask before replacing targets the user may
-                                // have set by hand. Dismissing is not consent.
-                                final recalculate =
-                                    await askToRecalculatePlan(context);
                                 await notifier.updateBodyProfile(
                                   age: value,
                                   currentWeightKg: weight,
-                                  recalculateNutrition: recalculate == true,
-                                );
+                                    );
                               },
                             ),
                       ),
                       SettingsRow(
                         icon: LucideIcons.userCircle,
-                        title: l10n.settings_gender,
+                        title: l10n.settings_sex,
+                        subtitle: l10n.settings_sex_hint,
                         value:
                             settings?.gender != null
                                 ? localizeGender(context, settings!.gender!)
@@ -102,11 +98,64 @@ class BodyProfileScreen extends ConsumerWidget {
                   );
                 },
               ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final height =
+                      ref.watch(settingsProvider).valueOrNull?.height;
+                  final heightUnit =
+                      ref.watch(settingsProvider).valueOrNull?.heightUnit ??
+                      'cm';
+                  double? displayHeight = height;
+                  if (displayHeight != null && heightUnit == 'in') {
+                    displayHeight = displayHeight / 2.54;
+                  }
+                  return SettingsRow(
+                    icon: LucideIcons.ruler,
+                    title: l10n.settings_height,
+                    value:
+                        displayHeight != null
+                            ? '${displayHeight.round()} ${localizeUnit(context, heightUnit)}'
+                            : l10n.settings_set_height,
+                    onTap:
+                        () => showSettingsNumberDialog(
+                          context,
+                          title: l10n.settings_height,
+                          currentValue:
+                              displayHeight?.round() ??
+                              (heightUnit == 'in' ? 67 : 170),
+                          unit: heightUnit,
+                          min:
+                              heightUnit == 'in'
+                                  ? (PlanLimits.minHeightCm / 2.54).round()
+                                  : PlanLimits.minHeightCm.round(),
+                          max:
+                              heightUnit == 'in'
+                                  ? (PlanLimits.maxHeightCm / 2.54).round()
+                                  : PlanLimits.maxHeightCm.round(),
+                          onSave: (value) async {
+                            double cm = value.toDouble();
+                            if (heightUnit == 'in') cm = value * 2.54;
+                            final notifier = ref.read(
+                              settingsProvider.notifier,
+                            );
+                            final weight =
+                                ref
+                                    .read(bodyMetricsProvider.notifier)
+                                    .currentWeight;
+                            await notifier.updateBodyProfile(
+                              height: cm,
+                              currentWeightKg: weight,
+                            );
+                          },
+                        ),
+                  );
+                },
+              ),
             ],
           ),
           const SizedBox(height: 24),
           SettingsSection(
-            title: l10n.home_body_stats, // "Body Stats"
+            title: l10n.settings_group_weight,
             children: [
               Consumer(
                 builder: (context, ref, _) {
@@ -181,70 +230,9 @@ class BodyProfileScreen extends ConsumerWidget {
                                 ref
                                     .read(bodyMetricsProvider.notifier)
                                     .currentWeight;
-                            final recalculate = await askToRecalculatePlan(
-                              context,
-                            );
                             await notifier.updateBodyProfile(
                               targetWeight: kg,
                               currentWeightKg: weight,
-                              recalculateNutrition: recalculate == true,
-                            );
-                          },
-                        ),
-                  );
-                },
-              ),
-              Consumer(
-                builder: (context, ref, _) {
-                  final height =
-                      ref.watch(settingsProvider).valueOrNull?.height;
-                  final heightUnit =
-                      ref.watch(settingsProvider).valueOrNull?.heightUnit ??
-                      'cm';
-                  double? displayHeight = height;
-                  if (displayHeight != null && heightUnit == 'in') {
-                    displayHeight = displayHeight / 2.54;
-                  }
-                  return SettingsRow(
-                    icon: LucideIcons.ruler,
-                    title: l10n.settings_height,
-                    value:
-                        displayHeight != null
-                            ? '${displayHeight.round()} ${localizeUnit(context, heightUnit)}'
-                            : l10n.settings_set_height,
-                    onTap:
-                        () => showSettingsNumberDialog(
-                          context,
-                          title: l10n.settings_height,
-                          currentValue:
-                              displayHeight?.round() ??
-                              (heightUnit == 'in' ? 67 : 170),
-                          unit: heightUnit,
-                          min:
-                              heightUnit == 'in'
-                                  ? (PlanLimits.minHeightCm / 2.54).round()
-                                  : PlanLimits.minHeightCm.round(),
-                          max:
-                              heightUnit == 'in'
-                                  ? (PlanLimits.maxHeightCm / 2.54).round()
-                                  : PlanLimits.maxHeightCm.round(),
-                          onSave: (value) async {
-                            double cm = value.toDouble();
-                            if (heightUnit == 'in') cm = value * 2.54;
-                            final notifier = ref.read(
-                              settingsProvider.notifier,
-                            );
-                            final weight =
-                                ref
-                                    .read(bodyMetricsProvider.notifier)
-                                    .currentWeight;
-                            final recalculate = await askToRecalculatePlan(
-                              context,
-                            );
-                            await notifier.updateBodyProfile(
-                              height: cm,
-                              currentWeightKg: weight,
-                              recalculateNutrition: recalculate == true,
                             );
                           },
                         ),

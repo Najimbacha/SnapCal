@@ -131,65 +131,6 @@ void showSettingsDecimalDialog(
   );
 }
 
-/// Asks before recalculating the nutrition plan from a changed profile.
-///
-/// Editing height, age or target weight used to call updateBodyProfile with
-/// recalculateNutrition defaulting to true, which overwrote dailyCalorieGoal
-/// and all three macros with freshly computed values. A user who had
-/// deliberately set 2000 kcal lost it by correcting their height, with no
-/// warning and nothing naming the action that did it.
-///
-/// Returns true to recalculate, false to keep the current targets, and null if
-/// the user dismissed the dialog — which callers should treat as "do neither",
-/// since a dismissal is not consent to replace anything.
-Future<bool?> askToRecalculatePlan(BuildContext context) {
-  final l10n = AppLocalizations.of(context)!;
-  return showDialog<bool>(
-    context: context,
-    builder:
-        (dialogContext) => AlertDialog(
-          backgroundColor: settingsBg(context),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          title: Text(
-            l10n.settings_recalculate_title,
-            style: AppTypography.heading3.copyWith(
-              color: settingsText(context),
-              fontSize: 20,
-            ),
-          ),
-          content: Text(
-            l10n.settings_recalculate_body,
-            style: AppTypography.bodySmall.copyWith(
-              color: settingsSubtext(context),
-            ),
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(
-                l10n.settings_recalculate_keep,
-                style: TextStyle(color: settingsSubtext(context)),
-              ),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                backgroundColor: kSettingsGreen,
-                foregroundColor: const Color(0xFFF0FDF4),
-              ),
-              child: Text(l10n.settings_recalculate_apply),
-            ),
-          ],
-        ),
-  );
-}
-
 void showSettingsNameDialog(
   BuildContext context,
   WidgetRef ref,
@@ -1013,6 +954,12 @@ class LanguageTile extends StatelessWidget {
 class SettingsRow extends StatelessWidget {
   final IconData icon;
   final String title;
+
+  /// A second line under the title, for the one thing a row cannot say with
+  /// its name alone — what a setting affects, or what a number is a share of.
+  /// Rows that need no explanation do not get one; a subtitle on every row is
+  /// noise, and noise is what makes the one that matters invisible.
+  final String? subtitle;
   final String? value;
   final VoidCallback? onTap;
   final bool destructive;
@@ -1022,6 +969,7 @@ class SettingsRow extends StatelessWidget {
     super.key,
     required this.icon,
     required this.title,
+    this.subtitle,
     this.value,
     this.onTap,
     this.destructive = false,
@@ -1065,15 +1013,35 @@ class SettingsRow extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Text(
-                  title,
-                  style: AppTypography.titleMedium.copyWith(
-                    color:
-                        destructive ? AppColors.error : settingsText(context),
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.2,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.titleMedium.copyWith(
+                        color:
+                            destructive
+                                ? AppColors.error
+                                : settingsText(context),
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (subtitle != null && subtitle!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          subtitle!,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: settingsSubtext(context),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               if (value != null && value!.isNotEmpty) ...[

@@ -131,6 +131,7 @@ service cloud.firestore {
         'dailyMotivationEnabled',
         'goalAlertsEnabled',
         'foodRemindersEnabled',
+        'goalSource',
         'recommendationInsight',
         'recommendationTip',
         'recommendationSafetyNote',
