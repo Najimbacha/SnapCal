@@ -1420,5 +1420,6 @@
   "settings_recalculate_title": "¿Actualizar tus objetivos diarios?",
   "settings_recalculate_body": "Tus calorías y macros se calcularon con tus datos anteriores. ¿Recalcularlos ahora? Se reemplazarán los objetivos que hayas fijado tú.",
   "settings_recalculate_keep": "Mantener los míos",
-  "settings_recalculate_apply": "Recalcular"
+  "settings_recalculate_apply": "Recalcular",
+  "settings_maintenance_estimate": "Quemas aproximadamente {kcal} kcal al día"
 }

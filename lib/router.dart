@@ -58,7 +58,6 @@ class _RouterNotifier extends ChangeNotifier {
     final loggingIn = state.matchedLocation == '/auth';
 
     if (auth != null &&
-        !auth.isAnonymous &&
         settings != null &&
         !settings.onboardingComplete &&
         !onboarding &&

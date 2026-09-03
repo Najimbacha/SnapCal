@@ -359,7 +359,7 @@
   "log_delete_meal_body": "This will permanently remove this meal from your diary.",
   "settings_title": "Settings",
   "settings_display_name": "Display Name",
-  "settings_how_to_call": "How should we call you?",
+  "settings_how_to_call": "What should we call you?",
   "settings_enter_value": "Enter your {title} below",
   "@settings_enter_value": {
     "placeholders": {
@@ -2059,5 +2059,13 @@
   "settings_recalculate_title": "Update your daily targets?",
   "settings_recalculate_body": "Your calories and macros were worked out from your old details. Recalculate them now? Any targets you set yourself will be replaced.",
   "settings_recalculate_keep": "Keep mine",
-  "settings_recalculate_apply": "Recalculate"
+  "settings_recalculate_apply": "Recalculate",
+  "settings_maintenance_estimate": "You burn roughly {kcal} kcal a day",
+  "@settings_maintenance_estimate": {
+    "placeholders": {
+      "kcal": {
+        "type": "String"
+      }
+    }
+  }
 }

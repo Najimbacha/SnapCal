@@ -43,12 +43,31 @@ class NutritionGoalsScreen extends ConsumerWidget {
             children: [
               Consumer(
                 builder: (context, ref, _) {
-                  final value =
-                      ref
-                          .watch(settingsProvider)
-                          .valueOrNull
-                          ?.dailyCalorieGoal ??
-                      2000;
+                  final settings = ref.watch(settingsProvider).valueOrNull;
+                  final value = settings?.dailyCalorieGoal ?? 2000;
+
+                  // A calorie target means little on its own. Where the
+                  // profile is complete enough to estimate it, show roughly
+                  // what the user burns so the number they type has something
+                  // to be relative to. Absent that, fall back to explaining
+                  // what changing it will do.
+                  String? maintenanceHint;
+                  final weight = settings?.startingWeight;
+                  final height = settings?.height;
+                  final age = settings?.age;
+                  if (weight != null && height != null && age != null) {
+                    final maintenance = estimateMaintenanceCalories(
+                      weightKg: weight,
+                      heightCm: height,
+                      age: age,
+                      gender: settings?.gender,
+                      activityLevel: settings?.activityLevel,
+                    );
+                    maintenanceHint = l10n.settings_maintenance_estimate(
+                      '$maintenance',
+                    );
+                  }
+
                   return SettingsRow(
                     icon: LucideIcons.flame,
                     title: l10n.settings_daily_calories,
@@ -61,7 +80,9 @@ class NutritionGoalsScreen extends ConsumerWidget {
                           unit: 'kcal',
                           min: PlanLimits.minCalories,
                           max: PlanLimits.maxCalories,
-                          helperText: l10n.settings_calories_adjust_macros_note,
+                          helperText:
+                              maintenanceHint ??
+                              l10n.settings_calories_adjust_macros_note,
                           onSave:
                               ref
                                   .read(settingsProvider.notifier)

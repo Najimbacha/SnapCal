@@ -158,6 +158,82 @@ void main() {
     });
   });
 
+  group('energy expenditure', () {
+    test('matches Mifflin-St Jeor by hand', () {
+      // 10*70 + 6.25*175 - 5*30 + 5
+      expect(
+        basalMetabolicRate(
+          weightKg: 70,
+          heightCm: 175,
+          age: 30,
+          gender: 'male',
+        ),
+        closeTo(1648.75, 0.01),
+      );
+      // 10*60 + 6.25*165 - 5*30 - 161
+      expect(
+        basalMetabolicRate(
+          weightKg: 60,
+          heightCm: 165,
+          age: 30,
+          gender: 'female',
+        ),
+        closeTo(1320.25, 0.01),
+      );
+    });
+
+    test('anything that is not male takes the female constant', () {
+      // The formula's own binary, not a claim about people. Pinned so an
+      // unexpected or absent value can never fall through to the male branch.
+      final other = basalMetabolicRate(
+        weightKg: 70,
+        heightCm: 175,
+        age: 30,
+        gender: 'nonbinary',
+      );
+      final absent = basalMetabolicRate(
+        weightKg: 70,
+        heightCm: 175,
+        age: 30,
+        gender: null,
+      );
+      expect(other, closeTo(1482.75, 0.01));
+      expect(absent, closeTo(other, 0.01));
+    });
+
+    test('activity multipliers are ordered and default sensibly', () {
+      expect(activityMultiplier('desk_life'), 1.2);
+      expect(activityMultiplier('athlete'), 1.725);
+      expect(activityMultiplier('nonsense'), 1.55);
+      expect(activityMultiplier(null), 1.55);
+    });
+
+    test('maintenance rises with activity and stays inside the plan range', () {
+      int forLevel(String level) => estimateMaintenanceCalories(
+        weightKg: 70,
+        heightCm: 175,
+        age: 30,
+        gender: 'male',
+        activityLevel: level,
+      );
+
+      expect(forLevel('desk_life'), lessThan(forLevel('light_mover')));
+      expect(forLevel('light_mover'), lessThan(forLevel('active')));
+      expect(forLevel('active'), lessThan(forLevel('athlete')));
+
+      // A very small person must not produce a figure below the plan floor.
+      final tiny = estimateMaintenanceCalories(
+        weightKg: 35,
+        heightCm: 140,
+        age: 90,
+        gender: 'female',
+        activityLevel: 'desk_life',
+      );
+      expect(tiny, greaterThanOrEqualTo(PlanLimits.minCalories));
+      expect(tiny, lessThanOrEqualTo(PlanLimits.maxCalories));
+    });
+  });
+
   group('validation', () {
     test('accepts realistic values', () {
       expect(validateCalories(1200).isValid, isTrue);

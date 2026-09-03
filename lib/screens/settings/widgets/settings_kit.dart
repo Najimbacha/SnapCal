@@ -183,6 +183,12 @@ void showSettingsNumberDialog(
                       isValid
                           ? () {
                             Navigator.pop(dialogContext);
+                            // Confirming without changing anything is not an
+                            // edit. Writing anyway re-saves the value, and on
+                            // the body profile it also raises the "recalculate
+                            // your plan?" prompt for a change that never
+                            // happened.
+                            if (value == currentValue) return;
                             onSave(value);
                           }
                           : null,
@@ -197,6 +203,163 @@ void showSettingsNumberDialog(
                     foregroundColor: const Color(0xFFF0FDF4),
                   ),
                   child: Text(AppLocalizations.of(context)!.common_confirm),
+                ),
+              ],
+            );
+          },
+        ),
+  );
+}
+
+/// Numeric entry that accepts a fractional value.
+///
+/// Weight is the case that needs it. The integer dialog forced a round trip
+/// through whole numbers, so a 70kg target shown in pounds became 154, saved
+/// back as 69.85kg, redisplayed as 154 — and every open-and-confirm walked the
+/// stored value a little further from where the user put it. Keeping a decimal
+/// place, and skipping the write entirely when the displayed value has not
+/// changed, stops the drift at both ends.
+void showSettingsDecimalDialog(
+  BuildContext context, {
+  required String title,
+  required double currentValue,
+  required String unit,
+  required Future<void> Function(double) onSave,
+  double? min,
+  double? max,
+  int decimals = 1,
+  String? helperText,
+}) {
+  final initialText = currentValue.toStringAsFixed(decimals);
+  final controller = TextEditingController(text: initialText);
+
+  showDialog(
+    context: context,
+    builder:
+        (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final l10nDialog = AppLocalizations.of(context)!;
+            // Accept a comma as the decimal separator: most of the locales
+            // this app ships in type it that way.
+            final raw = controller.text.replaceAll(',', '.');
+            final value = double.tryParse(raw);
+            final isValid =
+                value != null &&
+                (min == null || value >= min) &&
+                (max == null || value <= max);
+            final showError = controller.text.isNotEmpty && !isValid;
+
+            String bound(double? v) =>
+                v == null ? '' : v.toStringAsFixed(decimals);
+
+            return AlertDialog(
+              backgroundColor: settingsBg(context),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+              title: Text(
+                title,
+                style: AppTypography.heading3.copyWith(
+                  color: settingsText(context),
+                  fontSize: 22,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10nDialog.settings_enter_value(title),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: settingsSubtext(context),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    autofocus: true,
+                    onChanged: (_) => setDialogState(() {}),
+                    style: AppTypography.headlineSmall.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: kSettingsGreenText,
+                    ),
+                    decoration: InputDecoration(
+                      suffixText: localizeOption(context, unit),
+                      suffixStyle: AppTypography.titleMedium,
+                      filled: true,
+                      fillColor:
+                          Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : kSettingsLine.withValues(alpha: 0.48),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.all(20),
+                    ),
+                  ),
+                  if (min != null || max != null || helperText != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      showError && (min != null || max != null)
+                          ? l10nDialog.settings_value_out_of_range(
+                            bound(min),
+                            bound(max),
+                          )
+                          : helperText ??
+                              l10nDialog.settings_value_range_hint(
+                                bound(min),
+                                bound(max),
+                              ),
+                      style: AppTypography.labelSmall.copyWith(
+                        fontSize: 12,
+                        color:
+                            showError
+                                ? const Color(0xFFE05A47)
+                                : settingsSubtext(context),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    l10nDialog.common_cancel,
+                    style: TextStyle(color: settingsSubtext(context)),
+                  ),
+                ),
+                FilledButton(
+                  onPressed:
+                      isValid
+                          ? () {
+                            Navigator.pop(dialogContext);
+                            // Compared as displayed, not as stored: 154.0 lb
+                            // round-trips to 69.8532kg, which is never equal to
+                            // the original double but is the same answer.
+                            if (value.toStringAsFixed(decimals) ==
+                                initialText) {
+                              return;
+                            }
+                            onSave(value);
+                          }
+                          : null,
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    backgroundColor: kSettingsGreen,
+                    disabledBackgroundColor: kSettingsGreen.withValues(
+                      alpha: 0.35,
+                    ),
+                    foregroundColor: const Color(0xFFF0FDF4),
+                  ),
+                  child: Text(l10nDialog.common_confirm),
                 ),
               ],
             );

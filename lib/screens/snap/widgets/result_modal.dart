@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/meal.dart';
 import '../../../data/services/gemini_service.dart';
 import '../../../data/services/premium_conversion_service.dart';
 import '../../../data/services/pro_feature_service.dart';
 import '../../../data/services/scan_gate_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/settings_provider.dart';
+import '../../../widgets/macro_display.dart';
 
 const _presetWeights = <int>[50, 100, 150, 200, 250, 300, 400, 500];
 const _freeTierLimit = 3;
@@ -498,7 +500,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _header(context, l10n, d),
-              _macroStrip(context, l10n, d, showMacros),
+              _macroStrip(context, showMacros),
               const SizedBox(height: 14),
               Expanded(
                 child: ListView(
@@ -747,72 +749,30 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     );
   }
 
-  /// Macro grams for everyone the flag allows; composition percentages for
-  /// everyone else. No blur — a locked number is stated, never obscured.
-  Widget _macroStrip(
-    BuildContext context,
-    AppLocalizations l10n,
-    bool d,
-    bool showMacros,
-  ) {
-    final cals = (_p * 4) + (_c * 4) + (_f * 9);
-    double share(int grams, int perGram) =>
-        cals <= 0 ? 0 : (grams * perGram) / cals;
+  /// The same three rings Home draws, for the same reason.
+  ///
+  /// This screen used to render its own flat chips with a progress bar, so the
+  /// identical data wore two different shapes depending on where you met it —
+  /// and the free tier's lock treatment differed too. One component now serves
+  /// both: percentages and a dotted tail when grams are withheld, grams with a
+  /// cap dot and a met state when they are not.
+  ///
+  /// The rings run against the user's daily targets, so a scanned meal reads
+  /// as its share of the day rather than as a number with no scale.
+  Widget _macroStrip(BuildContext context, bool showMacros) {
+    final settings = ref.watch(settingsProvider).valueOrNull;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _MacroChip(
-                  label: l10n.result_protein,
-                  grams: _p,
-                  share: share(_p, 4),
-                  color: AppColors.protein,
-                  isDark: d,
-                  showGrams: showMacros,
-                  onLockedTap: () => _openPaywall(context),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MacroChip(
-                  label: l10n.result_carbs,
-                  grams: _c,
-                  share: share(_c, 4),
-                  color: AppColors.carbs,
-                  isDark: d,
-                  showGrams: showMacros,
-                  onLockedTap: () => _openPaywall(context),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MacroChip(
-                  label: l10n.result_fat,
-                  grams: _f,
-                  share: share(_f, 9),
-                  color: AppColors.fat,
-                  isDark: d,
-                  showGrams: showMacros,
-                  onLockedTap: () => _openPaywall(context),
-                ),
-              ),
-            ],
-          ),
-          if (showMacros && (_p + _c + _f) > 0) ...[
-            const SizedBox(height: 10),
-            _MacroProportionBar(
-              protein: _p,
-              carbs: _c,
-              fat: _f,
-              isDark: d,
-            ),
-          ],
-        ],
+      child: MacroDisplay(
+        macros: Macros(protein: _p, carbs: _c, fat: _f),
+        proteinGoal: settings?.dailyProteinGoal ?? 0,
+        carbGoal: settings?.dailyCarbGoal ?? 0,
+        fatGoal: settings?.dailyFatGoal ?? 0,
+        variant: MacroDisplayVariant.rings,
+        showGrams: showMacros,
+        showGoals: showMacros,
+        onUpgradeTap: showMacros ? null : () => _openPaywall(context),
       ),
     );
   }
@@ -1186,126 +1146,6 @@ class _TextPromptDialogState extends State<_TextPromptDialog> {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// One macro readout. When [showGrams] is false the grams are withheld but the
-/// composition share is still shown — stated plainly, never blurred.
-class _MacroChip extends StatelessWidget {
-  final String label;
-  final int grams;
-  final double share;
-  final Color color;
-  final bool isDark;
-  final bool showGrams;
-  final VoidCallback onLockedTap;
-
-  const _MacroChip({
-    required this.label,
-    required this.grams,
-    required this.share,
-    required this.color,
-    required this.isDark,
-    required this.showGrams,
-    required this.onLockedTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final d = isDark;
-    final pct = (share.clamp(0.0, 1.0) * 100).round();
-
-    final body = Container(
-      padding: const EdgeInsets.fromLTRB(11, 9, 11, 10),
-      decoration: BoxDecoration(
-        color:
-            d
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.white.withValues(alpha: 0.85),
-        border: Border.all(
-          color: (d ? Colors.white : Colors.black).withValues(alpha: 0.07),
-        ),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.2,
-                    color: d ? Colors.white60 : const Color(0xFF6D6D72),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              showGrams ? '$grams g' : '$pct%',
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w800,
-                color: color,
-                height: 1.05,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
-          const SizedBox(height: 7),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: SizedBox(
-              height: 3,
-              child: TweenAnimationBuilder<double>(
-                duration: const Duration(milliseconds: 420),
-                curve: Curves.easeOutCubic,
-                tween: Tween<double>(begin: 0, end: share.clamp(0.0, 1.0)),
-                builder:
-                    (context, v, _) => Stack(
-                      children: [
-                        Positioned.fill(
-                          child: ColoredBox(
-                            color: color.withValues(alpha: d ? 0.16 : 0.18),
-                          ),
-                        ),
-                        FractionallySizedBox(
-                          widthFactor: v,
-                          heightFactor: 1,
-                          child: ColoredBox(color: color),
-                        ),
-                      ],
-                    ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (showGrams) return body;
-    return GestureDetector(
-      onTap: onLockedTap,
-      behavior: HitTestBehavior.opaque,
-      child: body,
     );
   }
 }
@@ -2178,94 +2018,6 @@ class _WtChip extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _MacroProportionBar extends StatelessWidget {
-  final int protein;
-  final int carbs;
-  final int fat;
-  final bool isDark;
-
-  const _MacroProportionBar({
-    required this.protein,
-    required this.carbs,
-    required this.fat,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final total = protein + carbs + fat;
-    if (total == 0) return const SizedBox.shrink();
-    final pFrac = protein / total;
-    final cFrac = carbs / total;
-    final fFrac = fat / total;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: SizedBox(
-            height: 8,
-            child: Row(
-              children: [
-                Expanded(
-                  flex: (pFrac * 1000).round().clamp(1, 1000),
-                  child: Container(color: AppColors.protein),
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  flex: (cFrac * 1000).round().clamp(1, 1000),
-                  child: Container(color: AppColors.carbs),
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  flex: (fFrac * 1000).round().clamp(1, 1000),
-                  child: Container(color: AppColors.fat),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            _macroLabel('${(pFrac * 100).round()}% P', AppColors.protein),
-            const SizedBox(width: 12),
-            _macroLabel('${(cFrac * 100).round()}% C', AppColors.carbs),
-            const SizedBox(width: 12),
-            _macroLabel('${(fFrac * 100).round()}% F', AppColors.fat),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _macroLabel(String text, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            color: isDark ? Colors.white54 : const Color(0xFF8E8E93),
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 }

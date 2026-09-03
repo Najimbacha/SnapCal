@@ -1420,5 +1420,6 @@
   "settings_recalculate_title": "Mettre à jour vos objectifs quotidiens ?",
   "settings_recalculate_body": "Vos calories et macros ont été calculées à partir de vos anciennes données. Les recalculer maintenant ? Les objectifs que vous avez définis seront remplacés.",
   "settings_recalculate_keep": "Garder les miens",
-  "settings_recalculate_apply": "Recalculer"
+  "settings_recalculate_apply": "Recalculer",
+  "settings_maintenance_estimate": "Vous brûlez environ {kcal} kcal par jour"
 }

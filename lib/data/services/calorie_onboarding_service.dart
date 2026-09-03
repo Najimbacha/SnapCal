@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../core/nutrition/plan_math.dart';
 import '../../core/services/config_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 
@@ -83,12 +84,10 @@ class CalorieOnboardingService {
   final Dio _dio;
   final OnboardingAiBuilder? _aiBuilder;
 
-  static const Map<String, double> _activityMultipliers = {
-    'desk_life': 1.2,
-    'light_mover': 1.375,
-    'active': 1.55,
-    'athlete': 1.725,
-  };
+  // Activity multipliers and the BMR formula live in
+  // core/nutrition/plan_math.dart, so the settings screens and this service
+  // share one implementation. Two copies of the same arithmetic is how a
+  // "maintenance" figure ends up disagreeing with the plan derived from it.
 
   Future<OnboardingRecommendation> buildRecommendation(
     OnboardingProfileInput input, {
@@ -175,13 +174,13 @@ class CalorieOnboardingService {
     OnboardingProfileInput input,
     AppLocalizations l10n,
   ) {
-    final genderFactor = input.gender == 'male' ? 5 : -161;
-    final bmr =
-        (10 * input.currentWeightKg) +
-        (6.25 * input.heightCm) -
-        (5 * input.age) +
-        genderFactor;
-    final tdee = bmr * (_activityMultipliers[input.activityLevel] ?? 1.55);
+    final bmr = basalMetabolicRate(
+      weightKg: input.currentWeightKg,
+      heightCm: input.heightCm,
+      age: input.age,
+      gender: input.gender,
+    );
+    final tdee = bmr * activityMultiplier(input.activityLevel);
 
     final deltaKg = input.goalWeightKg - input.currentWeightKg;
     final totalDays = (input.timelineMonths * 30.4375).round().clamp(30, 366);

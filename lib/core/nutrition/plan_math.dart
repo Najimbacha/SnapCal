@@ -257,3 +257,63 @@ PlanValidation validateWeightKg(double value) =>
           min: PlanLimits.minWeightKg,
           max: PlanLimits.maxWeightKg,
         );
+
+// ── Energy expenditure ───────────────────────────────────────────────────────
+//
+// Mifflin-St Jeor, which is what CalorieOnboardingService already used. It
+// lives here now so the onboarding recommendation and the settings screens
+// cannot drift apart on the formula — two implementations of the same
+// arithmetic is how a "maintenance" figure ends up disagreeing with the plan
+// derived from it.
+
+/// Activity multipliers, keyed by the values the app stores.
+const Map<String, double> kActivityMultipliers = {
+  'desk_life': 1.2,
+  'light_mover': 1.375,
+  'active': 1.55,
+  'athlete': 1.725,
+};
+
+/// The multiplier for [activityLevel], defaulting to moderately active for an
+/// unrecognised value — the same fallback the onboarding service used.
+double activityMultiplier(String? activityLevel) =>
+    kActivityMultipliers[activityLevel] ?? 1.55;
+
+/// Basal metabolic rate (Mifflin-St Jeor).
+///
+/// [gender] is compared against 'male'; every other value takes the -161
+/// constant. That is the formula's own binary, not a statement about people,
+/// and it is what the app has always done.
+double basalMetabolicRate({
+  required double weightKg,
+  required double heightCm,
+  required int age,
+  required String? gender,
+}) {
+  final genderFactor = gender == 'male' ? 5 : -161;
+  return (10 * weightKg) + (6.25 * heightCm) - (5 * age) + genderFactor;
+}
+
+/// Roughly what this person burns in a day at [activityLevel].
+///
+/// An estimate, and worth presenting as one: Mifflin-St Jeor carries a
+/// meaningful error bar on any individual, and the activity multiplier is a
+/// self-report. It is useful as a reference point next to a calorie goal -
+/// "you are eating 300 below maintenance" is information - and misleading if
+/// shown as a precise number.
+int estimateMaintenanceCalories({
+  required double weightKg,
+  required double heightCm,
+  required int age,
+  required String? gender,
+  required String? activityLevel,
+}) {
+  final bmr = basalMetabolicRate(
+    weightKg: weightKg,
+    heightCm: heightCm,
+    age: age,
+    gender: gender,
+  );
+  final tdee = bmr * activityMultiplier(activityLevel);
+  return tdee.round().clamp(PlanLimits.minCalories, PlanLimits.maxCalories);
+}

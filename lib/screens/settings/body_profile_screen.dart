@@ -157,23 +157,22 @@ class BodyProfileScreen extends ConsumerWidget {
                             ? '${displayTarget.toStringAsFixed(1)} ${localizeUnit(context, weightUnit)}'
                             : l10n.settings_set_target,
                     onTap:
-                        () => showSettingsNumberDialog(
+                        () => showSettingsDecimalDialog(
                           context,
                           title: l10n.settings_target_weight,
                           currentValue:
-                              displayTarget?.round() ??
-                              (weightUnit == 'lb' ? 154 : 70),
+                              displayTarget ?? (weightUnit == 'lb' ? 154 : 70),
                           unit: weightUnit,
                           min:
                               weightUnit == 'lb'
-                                  ? (PlanLimits.minWeightKg * 2.20462).round()
-                                  : PlanLimits.minWeightKg.round(),
+                                  ? PlanLimits.minWeightKg * 2.20462
+                                  : PlanLimits.minWeightKg,
                           max:
                               weightUnit == 'lb'
-                                  ? (PlanLimits.maxWeightKg * 2.20462).round()
-                                  : PlanLimits.maxWeightKg.round(),
+                                  ? PlanLimits.maxWeightKg * 2.20462
+                                  : PlanLimits.maxWeightKg,
                           onSave: (value) async {
-                            double kg = value.toDouble();
+                            double kg = value;
                             if (weightUnit == 'lb') kg = value / 2.20462;
                             final notifier = ref.read(
                               settingsProvider.notifier,

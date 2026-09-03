@@ -1423,5 +1423,6 @@
   "settings_recalculate_title": "تحديث أهدافك اليومية؟",
   "settings_recalculate_body": "تم حساب السعرات والماكروز من بياناتك السابقة. هل تريد إعادة حسابها الآن؟ سيتم استبدال أي أهداف حددتها بنفسك.",
   "settings_recalculate_keep": "احتفظ بأهدافي",
-  "settings_recalculate_apply": "إعادة الحساب"
+  "settings_recalculate_apply": "إعادة الحساب",
+  "settings_maintenance_estimate": "أنت تحرق حوالي {kcal} سعرة يوميًا"
 }
