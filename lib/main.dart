@@ -173,6 +173,30 @@ class AppTree extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: _getThemeMode(settings.themeMode),
       routerConfig: router,
+      // Honour the system font size, up to a point.
+      //
+      // Uncapped, Android's largest setting is 2.0x, and the app has ~137
+      // fixed heights holding text -- chips, rows, cards -- so at the top of
+      // that range layouts break app-wide rather than growing. 1.3x is the
+      // usual compromise: a user who needs larger text still gets meaningfully
+      // larger text, and nothing overflows.
+      //
+      // The honest fix is to make those heights flexible, at which point this
+      // clamp should be raised or removed. Until then this is the lesser of
+      // two accessibility failures -- text that is smaller than asked for
+      // beats text that is clipped out of the layout entirely.
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(
+            textScaler: media.textScaler.clamp(
+              minScaleFactor: 1.0,
+              maxScaleFactor: 1.3,
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       locale: Locale(settings.languageCode ?? 'en'),
       localizationsDelegates: const [
         AppLocalizations.delegate,

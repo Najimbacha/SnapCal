@@ -1,7 +1,31 @@
+import 'dart:ui' as ui;
+
 import 'package:hive/hive.dart';
 import '../../core/constants/app_constants.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 part 'user_settings.g.dart';
+
+/// The device's language when SnapCal ships that language, English otherwise.
+///
+/// This is the default for a user who has never opened the language picker.
+/// It used to be a flat 'en', which meant the Arabic, Spanish and French
+/// translations only ever appeared for someone who went looking for them --
+/// a new user on an Arabic phone got an English app and no hint that
+/// anything else existed.
+///
+/// Resolved once, when settings are first created, and stored like any other
+/// choice. Everything downstream -- the AI prompts, the planner, the weekly
+/// report -- reads the stored code, so the assistant answers in the same
+/// language the UI is written in rather than falling back to English on its
+/// own.
+String _deviceLanguageOrEnglish() {
+  final code = ui.PlatformDispatcher.instance.locale.languageCode;
+  final shipped = AppLocalizations.supportedLocales.any(
+    (locale) => locale.languageCode == code,
+  );
+  return shipped ? code : 'en';
+}
 
 /// User settings and goals
 @HiveType(typeId: 2)
@@ -184,7 +208,7 @@ class UserSettings extends HiveObject {
     this.fcmToken,
     this.goalSource = 'profile',
     String? languageCode,
-  }) : languageCode = languageCode ?? 'en';
+  }) : languageCode = languageCode ?? _deviceLanguageOrEnglish();
 
   UserSettings copyWith({
     int? dailyCalorieGoal,
@@ -372,7 +396,10 @@ class UserSettings extends HiveObject {
       dietaryRestriction: json['dietaryRestriction'] as String? ?? 'none',
       cuisinePreference:
           json['cuisinePreference'] as String? ?? 'international',
-      languageCode: json['languageCode'] as String? ?? 'en',
+      // No `?? 'en'`: a document written before this field existed should
+      // fall through to the constructor's device resolution, not be pinned
+      // to English by the deserializer.
+      languageCode: json['languageCode'] as String?,
       dailyMotivationEnabled: json['dailyMotivationEnabled'] as bool? ?? false,
       lastOpenedDate: json['lastOpenedDate'] as String?,
       foodDislikes: json['foodDislikes'] as String?,
@@ -419,7 +446,8 @@ class UserSettings extends HiveObject {
       mealsPerDay: 3,
       dietaryRestriction: 'none',
       cuisinePreference: 'international',
-      languageCode: 'en',
+      // Deliberately not passed: let the constructor resolve it from the
+      // device, the same as any other freshly created settings object.
       dailyMotivationEnabled: false,
       lastOpenedDate: null,
       foodDislikes: null,
