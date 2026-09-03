@@ -3960,4 +3960,110 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settings_guest_sync => 'زامن بياناتك بين أجهزتك';
+
+  @override
+  String settings_value_range_hint(String min, String max) {
+    return 'بين $min و$max';
+  }
+
+  @override
+  String settings_value_out_of_range(String min, String max) {
+    return 'أدخل قيمة بين $min و$max';
+  }
+
+  @override
+  String settings_macros_total(String kcal) {
+    return 'مجموع الماكروز لديك $kcal سعرة';
+  }
+
+  @override
+  String get settings_macros_match_goal => 'يطابق هدف السعرات اليومي';
+
+  @override
+  String settings_macros_over_goal(String kcal) {
+    return '$kcal سعرة فوق هدفك اليومي';
+  }
+
+  @override
+  String settings_macros_under_goal(String kcal) {
+    return '$kcal سعرة تحت هدفك اليومي';
+  }
+
+  @override
+  String get settings_calories_adjust_macros_note =>
+      'تغيير السعرات يعدّل الماكروز لتتوافق معها مع الحفاظ على التوازن نفسه.';
+
+  @override
+  String get settings_recalculate_title => 'تحديث أهدافك اليومية؟';
+
+  @override
+  String get settings_recalculate_body =>
+      'تم حساب السعرات والماكروز من بياناتك السابقة. هل تريد إعادة حسابها الآن؟ سيتم استبدال أي أهداف حددتها بنفسك.';
+
+  @override
+  String get settings_recalculate_keep => 'احتفظ بأهدافي';
+
+  @override
+  String get settings_recalculate_apply => 'إعادة الحساب';
+
+  @override
+  String settings_maintenance_estimate(String kcal) {
+    return 'أنت تحرق حوالي $kcal سعرة يوميًا';
+  }
+
+  @override
+  String get settings_daily_target => 'الهدف اليومي';
+
+  @override
+  String get settings_from_maintenance => 'عن مستوى الثبات';
+
+  @override
+  String get settings_goal_source_profile => 'من ملفك الشخصي';
+
+  @override
+  String get settings_goal_source_custom => 'أحددها بنفسي';
+
+  @override
+  String get settings_goal_source_note_profile =>
+      'تتحدث الأهداف عند تغير عمرك أو طولك أو وزنك.';
+
+  @override
+  String get settings_goal_source_note_custom =>
+      'تبقى أرقامك كما حددتها تمامًا.';
+
+  @override
+  String settings_percent_of_calories(String percent) {
+    return '$percent٪ من السعرات';
+  }
+
+  @override
+  String get settings_group_about_you => 'عنك';
+
+  @override
+  String get settings_group_weight => 'الوزن';
+
+  @override
+  String get settings_group_activity => 'النشاط';
+
+  @override
+  String get settings_group_adjust => 'تعديل';
+
+  @override
+  String get settings_sex => 'الجنس';
+
+  @override
+  String get settings_sex_hint => 'يُستخدم في معادلة السعرات';
+
+  @override
+  String get settings_activity_hint => 'يحدد كمية ما تحرقه';
+
+  @override
+  String get settings_starting_weight_hint => 'نقطة البداية لقياس تقدمك';
+
+  @override
+  String get settings_starting_weight => 'البداية';
+
+  @override
+  String get settings_macros_move_note =>
+      'ستتحرك الماكروز مع هذا مع الحفاظ على التوازن نفسه';
 }

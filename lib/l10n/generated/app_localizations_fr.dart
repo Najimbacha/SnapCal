@@ -4044,4 +4044,112 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get settings_guest_sync =>
       'Synchronisez vos données entre vos appareils';
+
+  @override
+  String settings_value_range_hint(String min, String max) {
+    return 'Entre $min et $max';
+  }
+
+  @override
+  String settings_value_out_of_range(String min, String max) {
+    return 'Saisissez une valeur entre $min et $max';
+  }
+
+  @override
+  String settings_macros_total(String kcal) {
+    return 'Vos macros totalisent $kcal kcal';
+  }
+
+  @override
+  String get settings_macros_match_goal =>
+      'Correspond à votre objectif calorique quotidien';
+
+  @override
+  String settings_macros_over_goal(String kcal) {
+    return '$kcal kcal au-dessus de votre objectif quotidien';
+  }
+
+  @override
+  String settings_macros_under_goal(String kcal) {
+    return '$kcal kcal en dessous de votre objectif quotidien';
+  }
+
+  @override
+  String get settings_calories_adjust_macros_note =>
+      'Modifier vos calories ajuste vos macros en conséquence, en conservant le même équilibre.';
+
+  @override
+  String get settings_recalculate_title =>
+      'Mettre à jour vos objectifs quotidiens ?';
+
+  @override
+  String get settings_recalculate_body =>
+      'Vos calories et macros ont été calculées à partir de vos anciennes données. Les recalculer maintenant ? Les objectifs que vous avez définis seront remplacés.';
+
+  @override
+  String get settings_recalculate_keep => 'Garder les miens';
+
+  @override
+  String get settings_recalculate_apply => 'Recalculer';
+
+  @override
+  String settings_maintenance_estimate(String kcal) {
+    return 'Vous brûlez environ $kcal kcal par jour';
+  }
+
+  @override
+  String get settings_daily_target => 'Objectif quotidien';
+
+  @override
+  String get settings_from_maintenance => 'de l\'entretien';
+
+  @override
+  String get settings_goal_source_profile => 'Depuis votre profil';
+
+  @override
+  String get settings_goal_source_custom => 'Je les définis';
+
+  @override
+  String get settings_goal_source_note_profile =>
+      'Les objectifs se mettent à jour quand votre âge, taille ou poids changent.';
+
+  @override
+  String get settings_goal_source_note_custom =>
+      'Vos chiffres restent exactement tels que vous les avez définis.';
+
+  @override
+  String settings_percent_of_calories(String percent) {
+    return '$percent% des calories';
+  }
+
+  @override
+  String get settings_group_about_you => 'À propos de vous';
+
+  @override
+  String get settings_group_weight => 'Poids';
+
+  @override
+  String get settings_group_activity => 'Activité';
+
+  @override
+  String get settings_group_adjust => 'Ajuster';
+
+  @override
+  String get settings_sex => 'Sexe';
+
+  @override
+  String get settings_sex_hint => 'Utilisé dans la formule des calories';
+
+  @override
+  String get settings_activity_hint => 'Détermine ce que vous brûlez';
+
+  @override
+  String get settings_starting_weight_hint => 'Votre référence de progression';
+
+  @override
+  String get settings_starting_weight => 'Départ';
+
+  @override
+  String get settings_macros_move_note =>
+      'Vos macros suivent, en conservant le même équilibre';
 }

@@ -1599,7 +1599,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_how_to_call.
   ///
   /// In en, this message translates to:
-  /// **'How should we call you?'**
+  /// **'What should we call you?'**
   String get settings_how_to_call;
 
   /// No description provided for @settings_enter_value.
@@ -7203,6 +7203,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sync your data across devices'**
   String get settings_guest_sync;
+
+  /// No description provided for @settings_value_range_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Between {min} and {max}'**
+  String settings_value_range_hint(String min, String max);
+
+  /// No description provided for @settings_value_out_of_range.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a value between {min} and {max}'**
+  String settings_value_out_of_range(String min, String max);
+
+  /// No description provided for @settings_macros_total.
+  ///
+  /// In en, this message translates to:
+  /// **'Your macros add up to {kcal} kcal'**
+  String settings_macros_total(String kcal);
+
+  /// No description provided for @settings_macros_match_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches your daily calorie goal'**
+  String get settings_macros_match_goal;
+
+  /// No description provided for @settings_macros_over_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'{kcal} kcal above your daily goal'**
+  String settings_macros_over_goal(String kcal);
+
+  /// No description provided for @settings_macros_under_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'{kcal} kcal below your daily goal'**
+  String settings_macros_under_goal(String kcal);
+
+  /// No description provided for @settings_calories_adjust_macros_note.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing your calories adjusts your macros to match, keeping the same balance.'**
+  String get settings_calories_adjust_macros_note;
+
+  /// No description provided for @settings_recalculate_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your daily targets?'**
+  String get settings_recalculate_title;
+
+  /// No description provided for @settings_recalculate_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your calories and macros were worked out from your old details. Recalculate them now? Any targets you set yourself will be replaced.'**
+  String get settings_recalculate_body;
+
+  /// No description provided for @settings_recalculate_keep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep mine'**
+  String get settings_recalculate_keep;
+
+  /// No description provided for @settings_recalculate_apply.
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculate'**
+  String get settings_recalculate_apply;
+
+  /// No description provided for @settings_maintenance_estimate.
+  ///
+  /// In en, this message translates to:
+  /// **'You burn roughly {kcal} kcal a day'**
+  String settings_maintenance_estimate(String kcal);
+
+  /// No description provided for @settings_daily_target.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily target'**
+  String get settings_daily_target;
+
+  /// No description provided for @settings_from_maintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'from maintenance'**
+  String get settings_from_maintenance;
+
+  /// No description provided for @settings_goal_source_profile.
+  ///
+  /// In en, this message translates to:
+  /// **'From your profile'**
+  String get settings_goal_source_profile;
+
+  /// No description provided for @settings_goal_source_custom.
+  ///
+  /// In en, this message translates to:
+  /// **'Set my own'**
+  String get settings_goal_source_custom;
+
+  /// No description provided for @settings_goal_source_note_profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Targets update when your age, height or weight change.'**
+  String get settings_goal_source_note_profile;
+
+  /// No description provided for @settings_goal_source_note_custom.
+  ///
+  /// In en, this message translates to:
+  /// **'Your numbers stay exactly as you set them.'**
+  String get settings_goal_source_note_custom;
+
+  /// No description provided for @settings_percent_of_calories.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% of calories'**
+  String settings_percent_of_calories(String percent);
+
+  /// No description provided for @settings_group_about_you.
+  ///
+  /// In en, this message translates to:
+  /// **'About you'**
+  String get settings_group_about_you;
+
+  /// No description provided for @settings_group_weight.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get settings_group_weight;
+
+  /// No description provided for @settings_group_activity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get settings_group_activity;
+
+  /// No description provided for @settings_group_adjust.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust'**
+  String get settings_group_adjust;
+
+  /// No description provided for @settings_sex.
+  ///
+  /// In en, this message translates to:
+  /// **'Sex'**
+  String get settings_sex;
+
+  /// No description provided for @settings_sex_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Used for the calorie formula'**
+  String get settings_sex_hint;
+
+  /// No description provided for @settings_activity_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sets how much you burn'**
+  String get settings_activity_hint;
+
+  /// No description provided for @settings_starting_weight_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your baseline for progress'**
+  String get settings_starting_weight_hint;
+
+  /// No description provided for @settings_starting_weight.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get settings_starting_weight;
+
+  /// No description provided for @settings_macros_move_note.
+  ///
+  /// In en, this message translates to:
+  /// **'Your macros move with this, keeping the same balance'**
+  String get settings_macros_move_note;
 }
 
 class _AppLocalizationsDelegate

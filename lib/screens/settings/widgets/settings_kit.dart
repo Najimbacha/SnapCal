@@ -475,6 +475,13 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
   bool get _isValid {
     final value = _value;
     if (value == null) return false;
+
+    // With no bounds given, fall back to "must be positive" — the rule the
+    // dialog this replaced applied. Dropping it silently let any unbounded
+    // call site accept 0 and negatives, which is a regression the range-aware
+    // call sites hid because they never take this branch.
+    if (widget.min == null && widget.max == null) return value > 0;
+
     if (widget.min != null && value < widget.min!) return false;
     if (widget.max != null && value > widget.max!) return false;
     return true;
@@ -978,7 +985,6 @@ class SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = destructive ? AppColors.error : kSettingsGreenText;
 
     return Material(
