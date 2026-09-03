@@ -114,6 +114,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   List<Package> _packages = [];
   String? _purchaseNotice;
 
+  /// Set once the screen has finished its job, so the success path and the
+  /// late-arriving entitlement below cannot both pop the route.
+  bool _closed = false;
+
   final GlobalKey _dockKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
 
@@ -472,6 +476,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         // and for that window every consumer sees Pro status as unknown,
         // immediately after the purchase succeeded. Refresh in place instead.
         unawaited(ref.read(settingsProvider.notifier).refreshProStatus());
+        _closed = true;
         if (mounted && context.canPop()) {
           context.pop();
         }
@@ -586,6 +591,30 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final palette = _Palette(Theme.of(context).brightness == Brightness.dark);
     final l10n = AppLocalizations.of(context)!;
     final media = MediaQuery.of(context);
+
+    // Close the screen if Pro arrives late.
+    //
+    // A purchase the store accepted but the server had not confirmed yet
+    // comes back as `pending`: the user has been charged, and the paywall
+    // stays up with an amber "processing" notice. SubscriptionService retries
+    // the verification at 8s and 30s, so the entitlement usually does land --
+    // but nothing on this screen was listening for it. The paywall sat there
+    // with the notice still showing and the buy button live, which is how
+    // someone who has already paid ends up buying twice, or writing in to say
+    // nothing happened.
+    //
+    // Guarded by _closed so this and the success path cannot both pop.
+    ref.listen<bool>(effectiveIsProProvider, (previous, isPro) {
+      if (!isPro || _closed || !mounted) return;
+      _closed = true;
+      _showPurchaseSnackBar(
+        ScaffoldMessenger.of(context),
+        l10n.premium_welcome,
+        backgroundColor: AppColors.primary,
+        icon: LucideIcons.sparkles,
+      );
+      if (context.canPop()) context.pop();
+    });
 
     return Scaffold(
       backgroundColor: palette.paper,
