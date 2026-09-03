@@ -12,6 +12,7 @@ import '../../../data/services/scan_gate_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/macro_display.dart';
+import '../../settings/widgets/settings_kit.dart';
 
 const _presetWeights = <int>[50, 100, 150, 200, 250, 300, 400, 500];
 const _freeTierLimit = 3;
@@ -297,18 +298,27 @@ class _ResultModalState extends ConsumerState<ResultModal> {
 
   Future<void> _rename(int i) async {
     final l10n = AppLocalizations.of(context)!;
-    final n = await showDialog<String>(
+    await showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder:
-          (_) => _TextPromptDialog(
+          (_) => SettingsTextSheet(
             title: l10n.result_rename,
-            initialText: _items[i].name,
+            initialValue: _items[i].name,
             hintText: l10n.result_food_name,
+            // Longer than the 40 the settings sheet defaults to: a display
+            // name is one word, "grilled chicken breast with steamed rice"
+            // is a plausible thing to have scanned.
+            maxLength: 60,
+            textCapitalization: TextCapitalization.sentences,
+            onSave: (n) {
+              final name = n.trim();
+              if (name.isEmpty || !mounted) return;
+              setState(() => _items[i] = _items[i].copy(name: name));
+            },
           ),
     );
-    if (n != null && n.isNotEmpty && mounted) {
-      setState(() => _items[i] = _items[i].copy(name: n));
-    }
   }
 
   Future<bool> _confirmDiscard() async {
@@ -465,18 +475,35 @@ class _ResultModalState extends ConsumerState<ResultModal> {
 
   Future<void> _typeWeight(int i) async {
     final l10n = AppLocalizations.of(context)!;
-    final raw = await showDialog<String>(
+    final item = _items[i];
+    await showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder:
-          (_) => _TextPromptDialog(
+          (_) => SettingsValueSheet(
             title: l10n.result_set_weight,
-            initialText: _items[i].weightG.round().toString(),
-            suffixText: 'g',
-            digitsOnly: true,
+            // The item's own name, so the sheet says which of four plates on
+            // screen is being resized.
+            helperText:
+                item.name.trim().isEmpty
+                    ? null
+                    : _capitalize(item.name.trim()),
+            initialValue: item.weightG.roundToDouble().clamp(5, 5000),
+            unit: 'g',
+            min: 5,
+            max: 5000,
+            // The sheet's own default derives a step from the range, which
+            // over 5-5000g lands on 100g jumps -- far coarser than anyone
+            // adjusts a portion. Use the same scale the card's own steppers
+            // use, so a 40g egg nudges by 10 and a 900g roast by 50.
+            step: _stepFor(item.weightG.round()).toDouble(),
+            onSave: (v) {
+              if (!mounted) return;
+              _setWt(i, v.clamp(5, 5000));
+            },
           ),
     );
-    final v = raw == null ? null : int.tryParse(raw);
-    if (v != null && mounted) _setWt(i, v.toDouble().clamp(5, 5000));
   }
 
   @override
@@ -528,7 +555,6 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                       (e) => _FoodCard(
                         key: ValueKey('food-${e.value.uid}'),
                         item: e.value,
-                        index: e.key,
                         isDark: d,
                         accent: _accentFor(e.value),
                         sharePct: _sharePctOf(e.value),
@@ -1049,107 +1075,6 @@ class _ResultModalState extends ConsumerState<ResultModal> {
 /// controller: disposing from the caller raced the pop animation, rebuilding a
 /// live TextField against a disposed controller. State.dispose runs only after
 /// the route has fully unmounted.
-class _TextPromptDialog extends StatefulWidget {
-  const _TextPromptDialog({
-    required this.title,
-    required this.initialText,
-    this.hintText,
-    this.suffixText,
-    this.digitsOnly = false,
-  });
-
-  final String title;
-  final String initialText;
-  final String? hintText;
-  final String? suffixText;
-  final bool digitsOnly;
-
-  @override
-  State<_TextPromptDialog> createState() => _TextPromptDialogState();
-}
-
-class _TextPromptDialogState extends State<_TextPromptDialog> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initialText,
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _popWith() => Navigator.of(context).pop(_controller.text.trim());
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final d = Theme.of(context).brightness == Brightness.dark;
-    return AlertDialog(
-      backgroundColor: d ? const Color(0xFF1C1C1E) : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      title: Text(
-        widget.title,
-        style: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w600,
-          color: d ? Colors.white : const Color(0xFF1C1C1E),
-        ),
-      ),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        keyboardType:
-            widget.digitsOnly
-                ? const TextInputType.numberWithOptions(decimal: false)
-                : TextInputType.text,
-        inputFormatters:
-            widget.digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
-        style: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w700,
-          color: d ? Colors.white : const Color(0xFF1C1C1E),
-        ),
-        decoration: InputDecoration(
-          suffixText: widget.suffixText,
-          hintText: widget.hintText,
-          filled: true,
-          fillColor:
-              d
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : const Color(0xFFF2F2F7),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-        ),
-        onSubmitted: (_) => _popWith(),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            l10n.result_cancel,
-            style: TextStyle(
-              color: d ? Colors.white54 : const Color(0xFF8E8E93),
-            ),
-          ),
-        ),
-        TextButton(
-          onPressed: () => _popWith(),
-          child: Text(
-            l10n.result_save,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _CountUp extends StatefulWidget {
   final int value;
   final TextStyle style;
@@ -1211,7 +1136,6 @@ class _CountUpState extends State<_CountUp>
 
 class _FoodCard extends StatefulWidget {
   final _Item item;
-  final int index;
   final bool isDark;
   final bool showMacros;
   final Color accent;
@@ -1224,7 +1148,6 @@ class _FoodCard extends StatefulWidget {
   const _FoodCard({
     super.key,
     required this.item,
-    required this.index,
     required this.isDark,
     required this.accent,
     required this.sharePct,
@@ -1354,28 +1277,27 @@ class _FoodCardState extends State<_FoodCard>
                     onTap: _toggle,
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                      // Tighter on the trailing edge and top/bottom: the
+                      // chevron now brings its own 40px of height, so
+                      // the old padding would have grown the row.
+                      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
                       child: Row(
                         children: [
+                          // A dot, not a numbered square. The badge was
+                          // already tinted by the item's dominant macro, which
+                          // is the part that carried meaning; the ordinal
+                          // inside it named nothing the user could act on and
+                          // cost 44px of a row that runs out of width before
+                          // the food's own name does.
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 10,
+                            height: 10,
                             decoration: BoxDecoration(
-                              color: accent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${widget.index + 1}',
-                                style: TextStyle(
-                                  color: accent,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              color: accent,
+                              shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 11),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1551,78 +1473,28 @@ class _FoodCardState extends State<_FoodCard>
                               ),
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          PopupMenuButton<String>(
-                            icon: Icon(
-                              LucideIcons.moreVertical,
-                              size: 16,
-                              color: d ? Colors.white38 : const Color(0xFF8E8E93),
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            style: IconButton.styleFrom(
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              padding: EdgeInsets.zero,
-                            ),
-                            onSelected: (val) {
-                              if (val == 'rename') {
-                                widget.onRename();
-                              } else if (val == 'delete') {
-                                widget.onDelete();
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              PopupMenuItem(
-                                value: 'rename',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      LucideIcons.pencil,
-                                      size: 14,
-                                      color: d ? Colors.white70 : const Color(0xFF1C1C1E),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      l10n.result_rename,
-                                      style: TextStyle(
-                                        color: d ? Colors.white : const Color(0xFF1C1C1E),
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
+                          const SizedBox(width: 2),
+                          // The only trailing control left, and now a real
+                          // target: the overflow menu used to sit six pixels
+                          // from this chevron with shrinkWrap and zero
+                          // padding, so two different actions shared about
+                          // 32px of row against a 48dp minimum.
+                          SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Center(
+                              child: AnimatedRotation(
+                                turns: _open ? 0.5 : 0,
+                                duration: const Duration(milliseconds: 200),
+                                child: Icon(
+                                  LucideIcons.chevronDown,
+                                  size: 18,
+                                  color:
+                                      d
+                                          ? Colors.white38
+                                          : const Color(0xFFC7C7CC),
                                 ),
                               ),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      LucideIcons.trash2,
-                                      size: 14,
-                                      color: Color(0xFFFF3B30),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      l10n.result_discard,
-                                      style: const TextStyle(
-                                        color: Color(0xFFFF3B30),
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 6),
-                          AnimatedRotation(
-                            turns: _open ? 0.5 : 0,
-                            duration: const Duration(milliseconds: 200),
-                            child: Icon(
-                              LucideIcons.chevronDown,
-                              size: 16,
-                              color:
-                                  d ? Colors.white38 : const Color(0xFFC7C7CC),
                             ),
                           ),
                         ],
@@ -1778,9 +1650,9 @@ class _FoodCardState extends State<_FoodCard>
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      if (widget.showMacros) ...[
+                                  if (widget.showMacros)
+                                    Row(
+                                      children: [
                                         _dot(
                                           'P',
                                           item.protein,
@@ -1797,37 +1669,44 @@ class _FoodCardState extends State<_FoodCard>
                                         const SizedBox(width: 14),
                                         _dot('F', item.fat, AppColors.fat, d),
                                       ],
-                                      const Spacer(),
-                                      GestureDetector(
-                                        onTap: widget.onRename,
-                                        behavior: HitTestBehavior.opaque,
-                                        child: Container(
-                                          width: 44,
-                                          height: 44,
-                                          alignment: Alignment.center,
-                                          child: Icon(
-                                            LucideIcons.pencil,
-                                            size: 17,
-                                            color:
-                                                d
-                                                    ? Colors.white38
-                                                    : const Color(0xFF8E8E93),
-                                          ),
+                                    ),
+                                  // Named buttons, below a rule.
+                                  //
+                                  // These were a pencil and a trash glyph
+                                  // trailing the macro readouts, which put two
+                                  // unlabelled controls -- one of them
+                                  // destructive -- at the end of a row of
+                                  // numbers, where they read as part of the
+                                  // data. Between them, the overflow menu and
+                                  // the swipe gesture, a card could be deleted
+                                  // three ways and renamed two. Swipe stays as
+                                  // the shortcut; this is the discoverable one.
+                                  const SizedBox(height: 12),
+                                  Divider(
+                                    height: 1,
+                                    color: (d ? Colors.white : Colors.black)
+                                        .withValues(alpha: 0.07),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _CardAction(
+                                          label: l10n.result_rename,
+                                          icon: LucideIcons.pencil,
+                                          onTap: widget.onRename,
+                                          isDark: d,
                                         ),
                                       ),
-                                      GestureDetector(
-                                        key: const ValueKey('card-delete'),
-                                        onTap: widget.onDelete,
-                                        behavior: HitTestBehavior.opaque,
-                                        child: Container(
-                                          width: 44,
-                                          height: 44,
-                                          alignment: Alignment.center,
-                                          child: const Icon(
-                                            LucideIcons.trash2,
-                                            size: 17,
-                                            color: Color(0xFFFF3B30),
-                                          ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _CardAction(
+                                          key: const ValueKey('card-delete'),
+                                          label: l10n.result_discard,
+                                          icon: LucideIcons.trash2,
+                                          onTap: widget.onDelete,
+                                          isDark: d,
+                                          danger: true,
                                         ),
                                       ),
                                     ],
@@ -1928,6 +1807,73 @@ class _FoodCardState extends State<_FoodCard>
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One labelled action at the foot of an expanded card.
+///
+/// Full-height rather than icon-sized: a 40px row is a control you can hit
+/// without aiming, and the word next to the glyph means nobody has to learn
+/// what the glyph meant.
+class _CardAction extends StatelessWidget {
+  const _CardAction({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    required this.isDark,
+    this.danger = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isDark;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    const dangerColor = Color(0xFFFF3B30);
+    final tint =
+        danger
+            ? dangerColor
+            : (isDark ? Colors.white70 : const Color(0xFF1C1C1E));
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color:
+              danger
+                  ? dangerColor.withValues(alpha: isDark ? 0.14 : 0.08)
+                  : (isDark ? Colors.white : Colors.black).withValues(
+                    alpha: 0.05,
+                  ),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: tint),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: tint,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
