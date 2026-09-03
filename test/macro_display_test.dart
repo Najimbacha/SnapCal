@@ -159,8 +159,12 @@ void main() {
     await tester.pumpWidget(wrap(build(variant: MacroDisplayVariant.rings)));
     await tester.pumpAndSettle();
 
-    expect(find.text('42'), findsOneWidget);
-    expect(find.text('of 120g'), findsOneWidget);
+    // The ring renders grams as a Text.rich: the value and a smaller 'g'
+    // span. find.text only reads Text.data unless it is told to flatten the
+    // spans, which is why the old find.text('42') could never match.
+    expect(find.text('42g', findRichText: true), findsOneWidget);
+    // 120 - 42 = 78 left on protein.
+    expect(find.text('78g to go'), findsOneWidget);
     expect(find.byIcon(LucideIcons.lock), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -182,8 +186,8 @@ void main() {
 
     // One padlock for the section, on the CTA — not one per card as well.
     expect(find.byIcon(LucideIcons.lock), findsOneWidget);
-    expect(find.text('42'), findsNothing);
-    expect(find.text('of 120g'), findsNothing);
+    expect(find.text('42g', findRichText: true), findsNothing);
+    expect(find.text('78g to go'), findsNothing);
     // Grams are withheld, but the composition share is not: the same 25/49/26
     // the Log screen's bar shows, so the two screens cannot contradict.
     expect(find.text('25%'), findsOneWidget);

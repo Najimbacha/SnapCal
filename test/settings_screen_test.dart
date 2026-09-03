@@ -9,6 +9,7 @@ import 'package:snapcal/data/models/user_settings.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/providers/activity_provider.dart';
 import 'package:snapcal/providers/auth_state_provider.dart';
+import 'package:snapcal/providers/promo_offer_provider.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/screens/settings/about_screen.dart';
 import 'package:snapcal/screens/settings/settings_screen.dart';
@@ -67,6 +68,12 @@ Widget _host({
         [
           settingsProvider.overrideWith(() => _FakeSettings()),
           activityProvider.overrideWith(() => _FakeActivity()),
+          // Without this the real provider runs, gets null back from an
+          // unconfigured RevenueCat, and schedules a 20-second retry timer
+          // that outlives the widget tree — which the test binding reports as
+          // "a Timer is still pending", failing tests that never touched the
+          // promo pill.
+          promoOfferProvider.overrideWith((ref) async => null),
         ],
     child: MaterialApp.router(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -90,9 +97,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('CORE CONFIGURATION'), findsOneWidget);
-    expect(find.text('DATA & SECURITY'), findsOneWidget);
-    expect(find.text('INFORMATION'), findsOneWidget);
+    // SettingsSection uppercases its title, so these are the l10n values
+    // settings_core_config / settings_data_security / settings_information as
+    // they render. They were renamed when Settings was split into sub-screens
+    // and this expectation kept the old copy.
+    expect(find.text('YOU'), findsOneWidget);
+    expect(find.text('YOUR DATA'), findsOneWidget);
+    expect(find.text('ABOUT'), findsOneWidget);
     expect(find.text('Sign Out'), findsNothing);
     expect(find.text('SnapCal Pro'), findsOneWidget);
   });
