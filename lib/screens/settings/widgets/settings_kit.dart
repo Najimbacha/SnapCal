@@ -136,85 +136,216 @@ void showSettingsNameDialog(
   WidgetRef ref,
   String currentName,
 ) {
-  final controller = TextEditingController(text: currentName);
-
-  showDialog(
+  final l10n = AppLocalizations.of(context)!;
+  showModalBottomSheet(
     context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
     builder:
-        (dialogContext) => AlertDialog(
-          backgroundColor: settingsBg(context),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          title: Text(
-            AppLocalizations.of(context)!.settings_display_name,
-            style: AppTypography.heading3.copyWith(
-              color: settingsText(context),
-              fontSize: 22,
+        (sheetContext) => SettingsTextSheet(
+          title: l10n.settings_display_name,
+          subtitle: l10n.settings_how_to_call,
+          initialValue: currentName,
+          hintText: l10n.settings_set_name,
+          onSave:
+              (name) => ref
+                  .read(authNotifierProvider.notifier)
+                  .updateDisplayName(name),
+        ),
+  );
+}
+
+/// Text entry as a bottom sheet, matching [SettingsValueSheet].
+///
+/// The number editors moved to sheets and this one was left behind as an alert
+/// box with a filled slab of a field in it — the same look the whole redesign
+/// was replacing, still sitting on Body Profile.
+///
+/// The field is a single underline that thickens and takes the accent on
+/// focus, rather than a heavy filled well. A well is a box drawn around
+/// something that is already the only thing on screen; the underline says
+/// "type here" with one stroke and lets the value itself carry the weight.
+class SettingsTextSheet extends StatefulWidget {
+  const SettingsTextSheet({
+    super.key,
+    required this.title,
+    required this.initialValue,
+    required this.onSave,
+    this.subtitle,
+    this.hintText,
+    this.maxLength = 40,
+    this.textCapitalization = TextCapitalization.words,
+  });
+
+  final String title;
+  final String? subtitle;
+  final String initialValue;
+  final String? hintText;
+  final int maxLength;
+  final TextCapitalization textCapitalization;
+  final ValueChanged<String> onSave;
+
+  @override
+  State<SettingsTextSheet> createState() => _SettingsTextSheetState();
+}
+
+class _SettingsTextSheetState extends State<SettingsTextSheet> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+    _focusNode = FocusNode();
+    // Select the existing value rather than parking the caret at the end:
+    // renaming is usually replacing, not appending.
+    _controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _controller.text.length,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  String get _trimmed => _controller.text.trim();
+  bool get _isValid => _trimmed.isNotEmpty;
+
+  void _submit() {
+    if (!_isValid) return;
+    Navigator.pop(context);
+    if (_trimmed == widget.initialValue.trim()) return;
+    widget.onSave(_trimmed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+        decoration: BoxDecoration(
+          color: settingsBg(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: settingsSubtext(context).withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+            const SizedBox(height: 20),
+            Text(
+              widget.title,
+              style: AppTypography.heading3.copyWith(
+                color: settingsText(context),
+                fontSize: 20,
+              ),
+            ),
+            if (widget.subtitle != null) ...[
+              const SizedBox(height: 6),
               Text(
-                AppLocalizations.of(context)!.settings_how_to_call,
-                style: AppTypography.bodySmall.copyWith(
+                widget.subtitle!,
+                style: AppTypography.labelSmall.copyWith(
+                  fontSize: 12,
                   color: settingsSubtext(context),
                 ),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-                style: AppTypography.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: kSettingsGreenText,
-                ),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor:
-                      Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : kSettingsLine.withValues(alpha: 0.48),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.all(20),
-                ),
-              ),
             ],
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(
-                AppLocalizations.of(context)!.common_cancel,
-                style: TextStyle(color: settingsSubtext(context)),
+            const SizedBox(height: 22),
+            TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              autofocus: true,
+              maxLength: widget.maxLength,
+              textCapitalization: widget.textCapitalization,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+              onChanged: (_) => setState(() {}),
+              cursorColor: kSettingsGreenText,
+              style: AppTypography.headlineSmall.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 26,
+                letterSpacing: -0.5,
+                color: settingsText(context),
+              ),
+              decoration: InputDecoration(
+                isDense: true,
+                counterText: '',
+                hintText: widget.hintText,
+                hintStyle: AppTypography.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 26,
+                  letterSpacing: -0.5,
+                  color: settingsSubtext(context).withValues(alpha: 0.45),
+                ),
+                contentPadding: const EdgeInsets.only(bottom: 10),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color:
+                        isDark
+                            ? Colors.white.withValues(alpha: 0.16)
+                            : kSettingsLine,
+                    width: 1.5,
+                  ),
+                ),
+                focusedBorder: const UnderlineInputBorder(
+                  borderSide: BorderSide(color: kSettingsGreenText, width: 2),
+                ),
               ),
             ),
-            FilledButton(
-              onPressed: () {
-                final name = controller.text.trim();
-                if (name.isEmpty) return;
-                Navigator.pop(dialogContext);
-                ref.read(authNotifierProvider.notifier).updateDisplayName(name);
-              },
-              style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _isValid ? _submit : null,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  backgroundColor: kSettingsGreen,
+                  disabledBackgroundColor: kSettingsGreen.withValues(
+                    alpha: 0.35,
+                  ),
+                  foregroundColor: const Color(0xFFF0FDF4),
                 ),
-                backgroundColor: kSettingsGreen,
-                foregroundColor: const Color(0xFFF0FDF4),
+                child: Text(l10n.common_save),
               ),
-              child: Text(AppLocalizations.of(context)!.settings_save_name),
+            ),
+            const SizedBox(height: 4),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  l10n.common_cancel,
+                  style: TextStyle(color: settingsSubtext(context)),
+                ),
+              ),
             ),
           ],
         ),
-  );
+      ),
+    );
+  }
 }
 
 void showGenderSelector(
