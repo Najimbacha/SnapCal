@@ -222,8 +222,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         elevation: 0,
         leading: GestureDetector(
           onTap: () => context.pop(),
+          // The margin sat outside the gesture area, so the target was the
+          // 36px square, not the 52px slot it lives in. Padding is inside.
+          behavior: HitTestBehavior.opaque,
           child: Container(
-            margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+            padding: const EdgeInsetsDirectional.only(start: 16),
+            alignment: Alignment.center,
+            child: Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
@@ -234,6 +239,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               LucideIcons.chevronLeft,
               size: 20,
               color: d ? const Color(0xFFA1A1AA) : const Color(0xFF3C3C43),
+            ),
             ),
           ),
         ),
@@ -293,8 +299,11 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         actions: [
           GestureDetector(
             onTap: () => _fetch(clear: true, force: true),
+            behavior: HitTestBehavior.opaque,
             child: Container(
-              margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+              padding: const EdgeInsetsDirectional.only(end: 16),
+              alignment: Alignment.center,
+              child: Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
@@ -305,6 +314,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                 LucideIcons.refreshCw,
                 size: 18,
                 color: d ? const Color(0xFFA1A1AA) : const Color(0xFF8E8E93),
+              ),
               ),
             ),
           ),
@@ -693,8 +703,12 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           GestureDetector(
             onTap: _isLoading ? null : _retryLast,
             behavior: HitTestBehavior.opaque,
-            child: Row(
-              children: [
+            // A 12px icon and 13px text gave this about 16dp of height, and
+            // it is the only way to recover from a failed reply.
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
                 Icon(
                   LucideIcons.refreshCw,
                   size: 12,
@@ -709,7 +723,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                     color: d ? AppColors.primary : AppColors.primaryDark,
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -969,11 +984,15 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: _canSend ? _submit : null,
+            // The 36px circle was the whole hit area on the primary action of
+            // the screen. It keeps its size; the padding is what you hit.
+            behavior: HitTestBehavior.opaque,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 150),
               opacity: _canSend ? 1.0 : 0.4,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
+                margin: const EdgeInsets.all(4),
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(

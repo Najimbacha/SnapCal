@@ -922,24 +922,42 @@ class _SnapBannerAd extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(
               children: [
-                Text(
-                  l10n.ads_label,
-                  style: const TextStyle(
-                    color: Colors.white38,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.6,
+                // Both halves are localized and neither could shrink, so a
+                // longer translation overflowed the row rather than
+                // ellipsizing.
+                Flexible(
+                  child: Text(
+                    l10n.ads_label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.6,
+                    ),
                   ),
                 ),
                 const Spacer(),
                 GestureDetector(
                   onTap: onUpgradeTap,
-                  child: Text(
-                    l10n.ads_remove_prompt,
-                    style: const TextStyle(
-                      color: Color(0xFF9575CD),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                  behavior: HitTestBehavior.opaque,
+                  // 10px text was the entire hit area, directly above a
+                  // banner ad -- a miss tapped the ad instead.
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      l10n.ads_remove_prompt,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF9575CD),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),

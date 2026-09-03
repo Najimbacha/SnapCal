@@ -10,13 +10,17 @@ import '../../core/theme/app_colors.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/water_provider.dart';
 
-const _bg = Color(0xFFF9F8F5);
-// Card surface and hairline shared with the Log screen's tiles, so hydration
-// does not read as a different app. Was 0xFFFEFCF7 / 0xFFE8E4DC.
-const _card = Color(0xFFFFFFFF);
-const _line = Color(0xFFEDE9E1);
-const _ink = Color(0xFF1C1917);
-const _muted = Color(0xFFA8A29E);
+// This screen had no dark theme at all: every surface was a light constant
+// and there was not one brightness check in the file, so opening the water
+// tracker at night meant a full-screen white page between two dark ones.
+// The light values are unchanged -- card surface and hairline are still the
+// ones shared with the Log screen's tiles, so hydration does not read as a
+// different app -- and each now has a dark counterpart.
+Color _bg(bool d) => d ? const Color(0xFF0B0B0D) : const Color(0xFFF9F8F5);
+Color _card(bool d) => d ? const Color(0xFF161619) : const Color(0xFFFFFFFF);
+Color _line(bool d) => d ? const Color(0xFF2B2B30) : const Color(0xFFEDE9E1);
+Color _ink(bool d) => d ? const Color(0xFFF5F5F4) : const Color(0xFF1C1917);
+Color _muted(bool d) => d ? const Color(0xFF8B8B90) : const Color(0xFFA8A29E);
 const _blue = AppColors.sky;
 const _blueLight = AppColors.skyLight;
 
@@ -97,13 +101,17 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
+    final d = Theme.of(context).brightness == Brightness.dark;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: _bg,
-      ),
+      // The status-bar icons have to flip too, or they disappear into the bar.
+      value: (d ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+          .copyWith(
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: _bg(d),
+          ),
       child: Scaffold(
-        backgroundColor: _bg,
+        backgroundColor: _bg(d),
         body: SafeArea(
           child: Consumer(
             builder: (context, ref, _) {
@@ -141,9 +149,9 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                             vertical: 7,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: _card(d),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: _line),
+                            border: Border.all(color: _line(d)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -159,8 +167,8 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                               const SizedBox(width: 8),
                               Text(
                                 l10n.common_today,
-                                style: const TextStyle(
-                                  color: _muted,
+                                style: TextStyle(
+                                  color: _muted(d),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -175,8 +183,8 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                     child: Text(
                       l10n.water_hydration,
-                      style: const TextStyle(
-                        color: _ink,
+                      style: TextStyle(
+                        color: _ink(d),
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
@@ -289,7 +297,7 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
                                     color:
                                         reached
                                             ? AppColors.primary
-                                            : _muted.withValues(alpha: 0.8),
+                                            : _muted(d).withValues(alpha: 0.8),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -317,28 +325,29 @@ class _WaterTrackerScreenState extends ConsumerState<WaterTrackerScreen>
 
   void _showResetDialog(Water water) {
     final l10n = AppLocalizations.of(context)!;
+    final d = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: Colors.white,
+            backgroundColor: _card(d),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
               l10n.water_reset_title,
-              style: const TextStyle(color: _ink, fontSize: 18),
+              style: TextStyle(color: _ink(d), fontSize: 18),
             ),
             content: Text(
               l10n.water_reset_body,
-              style: const TextStyle(color: _muted, fontSize: 14, height: 1.4),
+              style: TextStyle(color: _muted(d), fontSize: 14, height: 1.4),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text(
                   l10n.common_cancel,
-                  style: const TextStyle(color: _muted),
+                  style: TextStyle(color: _muted(d)),
                 ),
               ),
               TextButton(
@@ -365,8 +374,9 @@ class _BackChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final d = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: Colors.white,
+      color: _card(d),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -376,9 +386,9 @@ class _BackChip extends StatelessWidget {
           height: 40,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _line),
+            border: Border.all(color: _line(d)),
           ),
-          child: const Icon(LucideIcons.chevronLeft, color: _ink, size: 20),
+          child: Icon(LucideIcons.chevronLeft, color: _ink(d), size: 20),
         ),
       ),
     );
@@ -398,6 +408,7 @@ class _PresetChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final d = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -405,10 +416,11 @@ class _PresetChip extends StatelessWidget {
         curve: Curves.easeOutCubic,
         height: 64,
         decoration: BoxDecoration(
-          color: selected ? _blue.withValues(alpha: 0.10) : Colors.white,
+          color:
+              selected ? _blue.withValues(alpha: d ? 0.20 : 0.10) : _card(d),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? _blue.withValues(alpha: 0.45) : _line,
+            color: selected ? _blue.withValues(alpha: 0.45) : _line(d),
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -420,7 +432,7 @@ class _PresetChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: selected ? _blue : _ink,
+                color: selected ? _blue : _ink(d),
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
@@ -430,7 +442,7 @@ class _PresetChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: _muted.withValues(alpha: selected ? 1 : 0.7),
+                color: _muted(d).withValues(alpha: selected ? 1 : 0.7),
               ),
             ),
           ],
@@ -449,21 +461,26 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final d = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        // Was 13px text with 10px of vertical padding -- about 36dp tall,
+        // and one of these is the destructive reset.
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _card(d),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _line.withValues(alpha: enabled ? 1 : 0.5)),
+          border: Border.all(
+            color: _line(d).withValues(alpha: enabled ? 1 : 0.5),
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: enabled ? _ink : _muted.withValues(alpha: 0.45),
+            color: enabled ? _ink(d) : _muted(d).withValues(alpha: 0.45),
           ),
         ),
       ),
@@ -490,6 +507,7 @@ class _WaveTank extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final d = Theme.of(context).brightness == Brightness.dark;
     return AnimatedBuilder(
       animation: Listenable.merge([wave, rise]),
       builder: (context, _) {
@@ -502,9 +520,9 @@ class _WaveTank extends StatelessWidget {
         return Container(
           height: 300,
           decoration: BoxDecoration(
-            color: _card,
+            color: _card(d),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _line),
+            border: Border.all(color: _line(d)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
@@ -523,7 +541,7 @@ class _WaveTank extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 64,
                           fontWeight: FontWeight.w800,
-                          color: _ink,
+                          color: _ink(d),
                           height: 1,
                           letterSpacing: -2,
                           fontFeatures: [FontFeature.tabularFigures()],
@@ -535,7 +553,7 @@ class _WaveTank extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: _ink.withValues(alpha: 0.45),
+                          color: _ink(d).withValues(alpha: 0.45),
                         ),
                       ),
                     ],

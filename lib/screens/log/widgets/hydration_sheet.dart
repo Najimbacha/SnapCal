@@ -321,16 +321,28 @@ class _Header extends StatelessWidget {
         GestureDetector(
           onTap: onClose,
           behavior: HitTestBehavior.opaque,
+          // Padding, not a bigger circle: the drawn dot stays 30px, the
+          // target becomes 44. This is the only tap-to-dismiss on the sheet.
           child: Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: (isDark ? Colors.white : Colors.black).withValues(
-                alpha: 0.06,
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            child: Container(
+              width: 30,
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: (isDark ? Colors.white : Colors.black).withValues(
+                  alpha: 0.06,
+                ),
+                shape: BoxShape.circle,
               ),
-              shape: BoxShape.circle,
+              child: Icon(
+                LucideIcons.x,
+                size: 15,
+                color: ink.withValues(alpha: 0.7),
+              ),
             ),
-            child: Icon(LucideIcons.x, size: 15, color: ink.withValues(alpha: 0.7)),
           ),
         ),
       ],

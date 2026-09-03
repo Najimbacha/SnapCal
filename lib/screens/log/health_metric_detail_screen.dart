@@ -799,13 +799,21 @@ class _MetricHero extends StatelessWidget {
                       color: isGoalHit ? accent : Colors.orange,
                     ),
                     const SizedBox(width: 5),
-                    Text(
-                      data.goalStatus,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: isGoalHit ? accent : Colors.orange,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 11,
-                        letterSpacing: 0,
+                    // The badge is a non-flexible sibling of an Expanded, so
+                    // it is laid out at its intrinsic width first: a long
+                    // goal string pushed it past the card edge instead of
+                    // shortening.
+                    Flexible(
+                      child: Text(
+                        data.goalStatus,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: isGoalHit ? accent : Colors.orange,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                          letterSpacing: 0,
+                        ),
                       ),
                     ),
                   ],

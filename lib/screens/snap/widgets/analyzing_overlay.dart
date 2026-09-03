@@ -203,7 +203,9 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
           style: IconButton.styleFrom(
             backgroundColor: Colors.white.withValues(alpha: 0.08),
             foregroundColor: Colors.white,
-            fixedSize: const Size(38, 38),
+            // fixedSize overrode IconButton's own 48dp target, on the only
+            // way out of a scan that is taking too long.
+            fixedSize: const Size(48, 48),
             shape: const CircleBorder(),
           ),
           icon: const Icon(LucideIcons.x, size: 18),

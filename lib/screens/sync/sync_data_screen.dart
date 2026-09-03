@@ -684,7 +684,13 @@ class _ScaleTapState extends State<_ScaleTap>
         widget.onTap();
       },
       onTapCancel: () => _controller.reverse(),
-      child: ScaleTransition(scale: _scale, child: widget.child),
+      // Without opaque, the hit area is whatever the child paints -- for the
+      // Skip control that is a single line of text, about 20dp tall.
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: ScaleTransition(scale: _scale, child: widget.child),
+      ),
     );
   }
 }
