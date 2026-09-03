@@ -1479,6 +1479,16 @@ app.get('/health', (req, res) => {
       breakers: breakerStates(),
     },
     concurrency: scanConcurrency(),
+    // Booleans only, never the secrets themselves. If both of these read
+    // false the server has no way to find out that anyone paid: the webhook
+    // is the fast path, the REST key is the fallback, and without either a
+    // paying user stays free forever. That failure is completely silent --
+    // nobody reports it, they just ask for a refund -- so it belongs
+    // somewhere you can see it without opening a dashboard.
+    billing: {
+      webhookConfigured: Boolean(REVENUECAT_WEBHOOK_AUTH),
+      restVerificationConfigured: Boolean(REVENUECAT_SECRET_API_KEY),
+    },
   });
 });
 
@@ -2200,6 +2210,20 @@ if (require.main === module) {
   // if you would rather not run the worker at all.
   const server = app.listen(port, () => {
     console.log(`SnapCal backend running on port ${port}`);
+    // Say this once, loudly, at boot. With neither the webhook secret nor the
+    // REST key set, purchases never reach the server and every paying user
+    // keeps seeing the paywall -- with no error anywhere to notice.
+    if (!REVENUECAT_WEBHOOK_AUTH && !REVENUECAT_SECRET_API_KEY) {
+      console.error(
+        'WARNING: no RevenueCat webhook secret and no REST key are configured. ' +
+        'Purchases cannot be verified; every paying user will be treated as free.',
+      );
+    } else if (!REVENUECAT_SECRET_API_KEY) {
+      console.warn(
+        'RevenueCat REST key is not configured: the webhook is now a single ' +
+        'point of failure, with no fallback when a delivery is missed.',
+      );
+    }
   });
 
   // Slightly above the client's own 60s scan timeout, so the server is never
