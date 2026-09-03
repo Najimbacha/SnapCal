@@ -119,19 +119,28 @@ class SectionLabel extends StatelessWidget {
         Container(
           width: 3,
           height: 12,
-          margin: const EdgeInsets.only(right: 8),
+          // Directional: with a physical `right` the gap lands on the far
+          // side of the dash in Arabic and the accent collides with the label.
+          margin: const EdgeInsetsDirectional.only(end: 8),
           decoration: BoxDecoration(
             gradient: AppColors.primaryGradient,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
-        Text(
-          title.toUpperCase(),
-          style: AppTypography.labelSmall.copyWith(
-            color: context.textMutedColor,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w900,
-            fontSize: 10,
+        // Uppercased at 2.0 letter-spacing, so this is already wider than
+        // the words it holds; a longer translation should shorten, not paint
+        // overflow stripes across the section header.
+        Flexible(
+          child: Text(
+            title.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.labelSmall.copyWith(
+              color: context.textMutedColor,
+              letterSpacing: 2.0,
+              fontWeight: FontWeight.w900,
+              fontSize: 10,
+            ),
           ),
         ),
         const Spacer(),

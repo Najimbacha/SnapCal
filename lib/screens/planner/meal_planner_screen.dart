@@ -515,11 +515,14 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
           final isToday = todayIndex == index;
           final isLocked = !isPro && index >= 2;
 
-          // Limit weekday name to 3 chars
-          final label =
-              labels[weekdayIndex].length > 3
-                  ? labels[weekdayIndex].substring(0, 3)
-                  : labels[weekdayIndex];
+          // No truncation. These labels come from planner_day_* in the ARB,
+          // which is already the translator's chosen short form -- "Mon" in
+          // English, "Lun" in French. Cutting them to three UTF-16 code units
+          // was a no-op on the Latin locales it was written against and
+          // damage everywhere else: Arabic "إثنين" became the fragment "إثن".
+          // The Text below ellipsizes if a locale needs a longer form than
+          // the column can hold.
+          final label = labels[weekdayIndex];
 
           return Expanded(
             child: Padding(
@@ -578,6 +581,8 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                           children: [
                             Text(
                               label.toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: AppTypography.labelSmall.copyWith(
                                 color:
                                     isSelected
@@ -691,11 +696,18 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              dateHeaderStr,
-                              style: AppTypography.titleMedium.copyWith(
-                                color: context.textPrimaryColor,
-                                fontWeight: FontWeight.w800,
+                            // The TODAY pill beside this is not flexible, so
+                            // a long localized weekday overflowed the header
+                            // rather than ellipsizing.
+                            Flexible(
+                              child: Text(
+                                dateHeaderStr,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: context.textPrimaryColor,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
                             if (todayIndex == activeIndex) ...[
@@ -1620,7 +1632,14 @@ class _FallbackNoticeBanner extends StatelessWidget {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onDismiss,
-            child: Icon(LucideIcons.x, size: 16),
+            // A 16px glyph was the whole hit area, so these banners could not
+            // reliably be dismissed and stayed on screen.
+            behavior: HitTestBehavior.opaque,
+            child: const SizedBox(
+              width: 44,
+              height: 44,
+              child: Icon(LucideIcons.x, size: 16),
+            ),
           ),
         ],
       ),
@@ -1661,7 +1680,14 @@ class _RebalanceNoticeBanner extends StatelessWidget {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onDismiss,
-            child: Icon(LucideIcons.x, size: 16),
+            // A 16px glyph was the whole hit area, so these banners could not
+            // reliably be dismissed and stayed on screen.
+            behavior: HitTestBehavior.opaque,
+            child: const SizedBox(
+              width: 44,
+              height: 44,
+              child: Icon(LucideIcons.x, size: 16),
+            ),
           ),
         ],
       ),
@@ -1698,9 +1724,14 @@ class _ExpiredPlanBanner extends StatelessWidget {
           TextButton(
             onPressed: onGenerate,
             style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              // padding: zero, minimumSize: zero and shrinkWrap together left
+              // a target the exact size of the glyphs, on the action that
+              // recovers an expired plan.
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              minimumSize: const Size(0, 44),
             ),
             child: Text(
               AppLocalizations.of(context)!.planner_generate_current_week,
@@ -2087,7 +2118,12 @@ class _SwapPreferencesSheetState extends State<_SwapPreferencesSheet> {
                       borderRadius: BorderRadius.circular(16),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        // Horizontal-only padding collapsed these to the
+                        // height of a 16px icon -- about 20dp.
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color:
                               selected

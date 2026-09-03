@@ -158,17 +158,28 @@ class _CloseButton extends StatelessWidget {
       key: const ValueKey('scan-choice-close'),
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
+      // The dot stays 32; the padding around it is what makes the target 44.
       child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          LucideIcons.x,
-          size: 15,
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55),
+        width: 44,
+        height: 44,
+        alignment: Alignment.center,
+        child: Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: (isDark ? Colors.white : Colors.black).withValues(
+              alpha: 0.06,
+            ),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            LucideIcons.x,
+            size: 15,
+            color: (isDark ? Colors.white : Colors.black).withValues(
+              alpha: 0.55,
+            ),
+          ),
         ),
       ),
     );

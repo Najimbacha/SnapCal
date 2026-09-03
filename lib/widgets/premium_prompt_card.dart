@@ -108,8 +108,15 @@ class PremiumPromptCard extends ConsumerWidget {
                 IconButton(
                   onPressed: onDismiss,
                   icon: Icon(LucideIcons.x, size: 18),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                  // padding: zero with constraints: BoxConstraints() strips
+                  // IconButton's 48dp minimum entirely and leaves the 18px
+                  // glyph as the hit area, so the card could not be
+                  // dismissed in practice.
+                  padding: const EdgeInsets.all(10),
+                  constraints: const BoxConstraints(
+                    minWidth: 44,
+                    minHeight: 44,
+                  ),
                   color: (isDark ? Colors.white : Colors.black).withValues(
                     alpha: 0.3,
                   ),

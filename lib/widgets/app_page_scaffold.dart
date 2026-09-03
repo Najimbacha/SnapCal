@@ -139,8 +139,12 @@ class AppPageScaffold extends ConsumerWidget {
             ),
 
           // ── Leading ──
-          Positioned(
-            left: 0,
+          // Directional, not left/right. This scaffold is the chrome for
+          // sixteen screens, so a physical edge here pinned the back arrow to
+          // the left on every one of them under Arabic -- exactly where an
+          // RTL reader expects the trailing action to be.
+          PositionedDirectional(
+            start: 0,
             child:
                 leading ??
                 (shouldShowBack
@@ -161,7 +165,8 @@ class AppPageScaffold extends ConsumerWidget {
           ),
 
           // ── Trailing ──
-          if (trailing != null) Positioned(right: 0, child: trailing!),
+          if (trailing != null)
+            PositionedDirectional(end: 0, child: trailing!),
         ],
       ),
     );
@@ -244,9 +249,12 @@ class _HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 44, not 40. The icon stays 20; this is the back button on sixteen
+    // screens, and it sits close to the status bar where taps are least
+    // accurate.
     return Container(
-      width: 40,
-      height: 40,
+      width: 44,
+      height: 44,
       alignment: Alignment.center,
       color: Colors.transparent,
       child: Icon(icon, size: 20, color: colorScheme.onSurface),

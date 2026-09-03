@@ -2461,10 +2461,17 @@ class _NoticeBanner extends StatelessWidget {
             const SizedBox(width: 8),
             GestureDetector(
               onTap: onRetry,
-              child: Icon(
-                LucideIcons.refreshCw,
-                size: 17,
-                color: palette.accentInk,
+              // The only way back into the purchase flow once the plans fail
+              // to load, and it was a bare 17px glyph.
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  LucideIcons.refreshCw,
+                  size: 17,
+                  color: palette.accentInk,
+                ),
               ),
             ),
           ],
@@ -2725,8 +2732,12 @@ class _FooterLink extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
+      // 11.5pt text with 4px of padding is a 22dp target, and three of
+      // these sit shoulder to shoulder in a Wrap. One of them is Restore
+      // Purchases -- the control a returning subscriber needs to get back
+      // what they already paid for, and the one the stores require here.
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         child: Text(
           label,
           style: TextStyle(
