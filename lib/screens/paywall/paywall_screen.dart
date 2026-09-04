@@ -503,17 +503,33 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         );
         return;
       case SubscriptionStatus.cancelled:
+        // Neutral, not celebratory. This was the brand green with a tick --
+        // the same colours as "Welcome to SnapCal Pro" two cases up, with
+        // only the icon differing. Someone who cancels and glances at a green
+        // check-marked toast can reasonably believe they just subscribed.
         _showPurchaseSnackBar(
           messenger,
           _purchaseCopy(context, _PurchaseCopyKey.purchaseCancelled),
-          backgroundColor: AppColors.primary,
-          icon: LucideIcons.checkCircle2,
+          backgroundColor: const Color(0xFF3A3A3C),
+          icon: LucideIcons.x,
         );
         return;
       case SubscriptionStatus.noPurchase:
+        // Reachable from the buy path too: the store answers "you already own
+        // this", the service quietly switches to a restore, and the restore
+        // finds nothing. Answering "no active subscription was found" to
+        // someone who just tapped Subscribe contradicts what they did, so on
+        // that path say the truthful thing instead -- it did not complete.
+        final message = _purchaseCopy(
+          context,
+          isRestore
+              ? _PurchaseCopyKey.restoreNoPurchase
+              : _PurchaseCopyKey.purchaseFailed,
+        );
+        if (!isRestore) setState(() => _purchaseNotice = message);
         _showPurchaseSnackBar(
           messenger,
-          _purchaseCopy(context, _PurchaseCopyKey.restoreNoPurchase),
+          message,
           backgroundColor: AppColors.warning,
           icon: LucideIcons.refreshCw,
         );
@@ -544,14 +560,20 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         );
         return;
       case SubscriptionStatus.failed:
+        // Also set the persistent notice. This is the state most likely to
+        // leave someone wondering whether they were charged, and it was the
+        // only one whose entire feedback was a toast that clears itself in
+        // four seconds -- gone before a user who looked away could read it.
+        final message = _purchaseCopy(
+          context,
+          isRestore
+              ? _PurchaseCopyKey.restoreFailed
+              : _PurchaseCopyKey.purchaseFailed,
+        );
+        setState(() => _purchaseNotice = message);
         _showPurchaseSnackBar(
           messenger,
-          _purchaseCopy(
-            context,
-            isRestore
-                ? _PurchaseCopyKey.restoreFailed
-                : _PurchaseCopyKey.purchaseFailed,
-          ),
+          message,
           backgroundColor: AppColors.warning,
           icon: LucideIcons.refreshCw,
         );
@@ -616,7 +638,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       if (context.canPop()) context.pop();
     });
 
-    return Scaffold(
+    // Hold the screen while a purchase is in flight.
+    //
+    // Without this, the back gesture and the hero's close button stay live
+    // during the store sheet. Leaving then hits `if (!mounted) return;` right
+    // after the await, and the entire result is discarded -- success included.
+    // The entitlement still lands, so nobody is charged for nothing, but they
+    // are told nothing either, which is exactly the "did that go through?"
+    // message you do not want to receive about a payment.
+    return PopScope(
+      canPop: !_isLoading,
+      child: Scaffold(
       backgroundColor: palette.paper,
       body: LayoutBuilder(
         builder: (context, viewport) {
@@ -675,6 +707,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     palette: palette,
                     topInset: media.padding.top,
                     onClose: () {
+                      if (_isLoading) return;
                       if (context.canPop()) context.pop();
                     },
                   ),
@@ -771,6 +804,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             ],
           );
         },
+      ),
       ),
     );
   }

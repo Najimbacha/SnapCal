@@ -33,6 +33,15 @@ class SettingsRepository {
   Future<void>? _initFuture;
   bool _initialized = false;
 
+  /// Whether the store SDK currently holds a live entitlement.
+  ///
+  /// Pushed in by SubscriptionService whenever CustomerInfo changes. The
+  /// cloud merge below needs it: the store is the payment authority and the
+  /// Firestore document is only its mirror, so a mirror that says "not
+  /// subscribed" must never be allowed to strip Pro from someone the store
+  /// says has paid.
+  bool storeEntitlementActive = false;
+
   FirebaseFirestore get _firestoreClient =>
       _firestore ??= FirebaseFirestore.instance;
   FirebaseAuth get _authClient => _auth ??= FirebaseAuth.instance;
@@ -248,20 +257,36 @@ class SettingsRepository {
           ...appSettings,
         }..removeWhere((_, value) => value == null);
 
-        // `isPro` is server-owned, but "document not found" is not the same
-        // answer as "not subscribed". A missing subscription doc (webhook
-        // lag, first launch after purchase) must leave Pro exactly as it is.
+        // `isPro` is server-owned, but only where the server has actually
+        // expressed an opinion. Two cases that are not opinions:
+        //
+        // A missing document. Webhook lag, or a first launch straight after
+        // purchase -- Pro is left exactly as it is. That was already handled.
+        //
+        // A document with no `isActive` field. This one is new and it is the
+        // more dangerous of the two: the server writes `lastRestCheckAt` and
+        // `source` on every RevenueCat REST check, including for users it
+        // finds are not subscribed, and it only writes `isActive` when they
+        // are. So the mere existence of the document stopped meaning anything,
+        // and reading a missing field as `false` would quietly demote a live
+        // subscriber on the next cloud sync.
         final subscriptionData = subscriptionSnap.data();
+        final serverAnswered =
+            subscriptionSnap.exists &&
+            subscriptionData != null &&
+            subscriptionData.containsKey('isActive');
         final serverPro =
-            subscriptionSnap.exists
-                ? subscriptionData != null &&
-                    subscriptionData['isActive'] == true
+            serverAnswered
+                ? subscriptionData['isActive'] == true
                 : localSettings.isPro;
 
+        // And even a server that says "no" does not outrank the store. This
+        // is the rule SubscriptionService documents -- only the store itself
+        // may take Pro away -- which this merge path was quietly breaking.
         final mergedSettings = UserSettings.fromJson({
           ...localSettings.toJson(),
           ...cloudJson,
-        }).copyWith(isPro: serverPro);
+        }).copyWith(isPro: serverPro || storeEntitlementActive);
 
         // Compare merged settings with local settings using mapEquals to avoid redundant writes
         if (!mapEquals(mergedSettings.toJson(), localSettings.toJson())) {

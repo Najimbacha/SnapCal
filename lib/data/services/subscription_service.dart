@@ -186,6 +186,11 @@ class SubscriptionService {
       "RevenueCat Active Subscriptions: "
       "${customerInfo.activeSubscriptions.join(", ")}",
     );
+    // Tell the repository what the store thinks before anything reconciles
+    // against the cloud, so a stale or silent mirror cannot demote a live
+    // subscriber during the next settings sync.
+    _settingsRepository?.storeEntitlementActive = _hasProAccess(customerInfo);
+
     final backendActive = await refreshBackendPremiumStatus();
     debugPrint("🏆 Server verified Pro Active: $backendActive");
   }
@@ -484,7 +489,16 @@ class SubscriptionService {
       if (cached != null &&
           cachedAt != null &&
           DateTime.now().difference(cachedAt) < _cacheTtl) {
-        return cached || storeSaysActive;
+        final effective = cached || storeSaysActive;
+        // Persist before returning. This early return is the one path that
+        // could answer "Pro" without ever writing it down: a purchase that
+        // confirms late hits it on the 8s retry, so the caller was told the
+        // user is Pro while Hive still said free -- and every gate in the app
+        // reads Hive, not this return value.
+        if (effective && !(_settingsRepository?.isPro() ?? false)) {
+          await _settingsRepository?.updateProStatus(true);
+        }
+        return effective;
       }
       // Collapse the burst: concurrent callers await one request instead of
       // issuing one each.
