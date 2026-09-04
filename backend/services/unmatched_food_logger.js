@@ -25,6 +25,11 @@ function normalize(name) {
 }
 
 async function logUnmatched(foodName, metadata = {}) {
+  // Not in tests. This is fire-and-forget in production, but under `node
+  // --test` there is no project id, so the Firestore client sits retrying and
+  // keeps the process alive long after the assertions have passed.
+  if (process.env.NODE_ENV === 'test') return;
+
   const firestore = getDb();
   if (!firestore) return;
 

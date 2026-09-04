@@ -88,15 +88,29 @@ test('enrichScanResults handles mixed confidence and multiple items', () => {
   assert.equal(result.totals.calories, expectedTotal);
 });
 
-test('v2 system prompt does not ask AI to provide nutrition values', () => {
+// This test used to assert the opposite -- that the prompt forbade the model
+// from producing any nutrition. That instruction is why 39% of scans in
+// production logged a meal with zero calories: the curated table has 285 rows,
+// and a miss had nothing to fall back on. The model is now asked for per-100g
+// values, and the table overrides them where it has an answer.
+test('v2 system prompt asks for per-100g nutrition, not portion totals', () => {
   const prompt = getV2SystemPrompt('en');
-  assert.ok(prompt.includes('Do NOT calculate'));
-  assert.ok(prompt.includes('Do NOT provide health scores'));
+  assert.ok(!prompt.includes('Do NOT calculate'), 'the old prohibition is gone');
+  assert.ok(prompt.includes('per_100g'));
+  assert.ok(prompt.includes('PER 100 GRAMS'));
+
   const returnJson = prompt.substring(prompt.indexOf('Return'));
-  assert.ok(!returnJson.includes('calories'));
-  assert.ok(!returnJson.includes('protein'));
-  assert.ok(!returnJson.includes('carbs'));
-  assert.ok(!returnJson.includes('fat'));
+  assert.ok(returnJson.includes('calories'));
+  assert.ok(returnJson.includes('protein_g'));
+  assert.ok(returnJson.includes('carbs_g'));
+  assert.ok(returnJson.includes('fat_g'));
+
+  // Per-100g, not the portion: the weight is estimated separately and the user
+  // can change it, so the nutrition has to be independent of it.
+  assert.ok(prompt.includes('describes the food itself, NOT the portion'));
+
+  // Still the model's job to identify, not to editorialise.
+  assert.ok(prompt.includes('Do NOT provide health scores'));
   assert.ok(!returnJson.includes('health_score'));
   assert.ok(!returnJson.includes('insights'));
   assert.ok(!returnJson.includes('alternatives'));
@@ -187,15 +201,22 @@ test('enrichScanResults looks up by English match_key, displays localised name',
   assert.equal(result.items[0].calories, 297);
 });
 
-test('enrichScanResults treats a missing weight as unknown, not zero', () => {
+// Also inverted deliberately. A missing weight used to skip the lookup and
+// return nulls, on the reasoning that an unknown portion is not a zero one --
+// right about the zero, wrong about the null. Now that per-100g values always
+// travel with the item, 100g is a starting assumption the user can correct
+// with one drag of the slider, and the item says the weight was guessed.
+test('a missing weight assumes 100g and says so, rather than giving up', () => {
   const result = enrichScanResults([
     { name: 'chicken breast', confidence: 0.9 },
   ]);
   const item = result.items[0];
-  assert.equal(item.matched, false);
-  assert.equal(item.portion, 'Unknown');
-  assert.equal(item.calories, null);
-  assert.equal(item.nutrition_flag, 'unmatched');
+  assert.equal(item.matched, true, 'the lookup no longer depends on the weight');
+  assert.equal(item.weight_g, 100);
+  assert.equal(item.weight_estimated, true);
+  assert.equal(item.portion, '100g');
+  assert.ok(item.calories > 0, 'priced at the assumed portion, not left null');
+  assert.equal(item.nutrition_flag, 'ok');
 });
 
 test('enrichScanResults reports the database row it used', () => {

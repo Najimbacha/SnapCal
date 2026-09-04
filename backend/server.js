@@ -273,13 +273,13 @@ STRICT LANGUAGE RULE:
 - The "name" field MUST be in ${languageName}. Use native, common culinary terms.
 - The "match_key" field MUST ALWAYS be in ENGLISH, regardless of the language above.
 
-Your ONLY task is to:
+Your task is to:
 1. Identify each distinct serving or dish in the photo
 2. Give it a localised display name AND an English match_key
 3. Estimate its weight in grams
-4. Assign a confidence score (0.0 to 1.0)
+4. Estimate its nutrition PER 100 GRAMS
+5. Assign a confidence score (0.0 to 1.0)
 
-Do NOT calculate any nutritional values (calories, protein, carbs, fat).
 Do NOT provide health scores, insights, or alternatives.
 
 Output ONLY a raw JSON object with no markdown formatting, no code blocks, no explanatory text.
@@ -291,6 +291,12 @@ Return this exact structure:
       "name": "string",
       "match_key": "string",
       "estimated_weight_g": number,
+      "per_100g": {
+        "calories": number,
+        "protein_g": number,
+        "carbs_g": number,
+        "fat_g": number
+      },
       "confidence": number
     }
   ]
@@ -305,6 +311,16 @@ Rules:
   This field is used to look the food up in a nutrition database, so be literal
   and conventional rather than descriptive.
 - estimated_weight_g is your best estimate of the weight of that item in grams for the portion visible.
+- per_100g describes the food itself, NOT the portion. It must be the same
+  numbers whether the plate holds 50g or 500g. This is the one part of your
+  answer that does not depend on the photo, so give the conventional reference
+  values for that food as prepared.
+- per_100g must be internally consistent: protein_g x 4 + carbs_g x 4 +
+  fat_g x 9 should come within about 10% of calories. Check it before
+  answering. If they disagree, the macros are wrong more often than the
+  calories are.
+- Give per_100g for every item, including foods you are unsure of. An
+  approximate answer is useful; omitting it is not.
   If you genuinely cannot estimate a weight, omit the field rather than guessing 0.
 - confidence is a score from 0.0 (not confident) to 1.0 (very confident)
 - Do NOT include any nutritional information
@@ -859,6 +875,50 @@ function calculateNutrition(per100g, weightGrams) {
   };
 }
 
+/// The model's own per-100g estimate, cleaned and sanity-checked.
+///
+/// Returns null when the model gave nothing usable. Everything else is
+/// clamped to physically possible territory -- 900 kcal/100g is pure fat, and
+/// no food exceeds 100g of any single macro per 100g.
+function normalizePer100g(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const calories = Number(raw.calories ?? raw.kcal);
+  const protein = Number(raw.protein_g ?? raw.protein);
+  const carbs = Number(raw.carbs_g ?? raw.carbs);
+  const fat = Number(raw.fat_g ?? raw.fat);
+  if (![calories, protein, carbs, fat].every((v) => Number.isFinite(v))) return null;
+  if (calories <= 0 && protein <= 0 && carbs <= 0 && fat <= 0) return null;
+
+  return {
+    calories: Math.max(0, Math.min(900, Math.round(calories))),
+    protein: Math.max(0, Math.min(100, Math.round(protein * 10) / 10)),
+    carbs: Math.max(0, Math.min(100, Math.round(carbs * 10) / 10)),
+    fat: Math.max(0, Math.min(100, Math.round(fat * 10) / 10)),
+  };
+}
+
+/// Brings a model estimate back into agreement with itself.
+///
+/// The macros are wrong more often than the calorie figure is -- a model will
+/// say "300 kcal" for turkey sausage and then hand over 10g protein and no
+/// fat, which is 40 kcal of food. Where the two disagree beyond tolerance and
+/// the macros are the less plausible half, the calorie figure is rebuilt from
+/// the macros, because a day's protein target is the thing a user is actually
+/// tracking and it has to be answerable.
+function reconcilePer100g(per100g) {
+  const check = reconcileNutrition(per100g);
+  if (check.ok) return { per100g, adjusted: false, ratio: check.ratio };
+
+  const derived = Math.round(per100g.protein * 4 + per100g.carbs * 4 + per100g.fat * 9);
+  if (derived <= 0) return { per100g, adjusted: false, ratio: check.ratio };
+
+  return {
+    per100g: { ...per100g, calories: derived },
+    adjusted: true,
+    ratio: check.ratio,
+  };
+}
+
 function enrichScanResults(foods) {
   if (!Array.isArray(foods) || foods.length === 0) {
     throw new Error('empty-food-detection');
@@ -873,18 +933,31 @@ function enrichScanResults(foods) {
     const weightG = Number.isFinite(rawWeight) ? Math.round(Math.max(0, rawWeight)) : 0;
     const confidence = Math.min(1, Math.max(0, Number(food.confidence || 0)));
 
-    // A missing weight is unknown, not zero. Previously nutrition was computed
-    // at a silent 100g default while weight_g went out as 0, and the client
-    // then recomputed every macro as per100g x 0 = 0.
+    // A missing weight used to mean no nutrition at all: the lookup was
+    // skipped and everything went out null. It is safe to assume a portion now
+    // that per-100g values always travel with the item -- the client rescales
+    // from them, so a wrong assumption is one drag of the slider away from
+    // right, where a null was a dead end.
     const hasWeight = weightG > 0;
-    const matched = hasWeight ? nutritionProvider.lookup(lookupName) : null;
+    const effectiveWeight = hasWeight ? weightG : 100;
+    const matched = nutritionProvider.lookup(lookupName);
     const nutritionMatchId = matched ? matched.id : null;
+
+    // The database wins where it has an answer -- those numbers are exact and
+    // reproducible. The model's estimate is the floor, not the ceiling.
+    const estimated = normalizePer100g(food.per_100g ?? food.per100g);
+    const reconciled = estimated ? reconcilePer100g(estimated) : null;
+    const per100g = matched ? matched.per100g : reconciled?.per100g ?? null;
+    const source = matched ? 'database' : per100g ? 'ai_estimate' : 'unresolved';
 
     const item = {
       food_name: name,
       match_key: lookupName,
-      portion: hasWeight ? `${weightG}g` : 'Unknown',
-      weight_g: weightG,
+      portion: `${effectiveWeight}g`,
+      weight_g: effectiveWeight,
+      // So the app can say "we guessed the portion" rather than presenting an
+      // assumption as a measurement.
+      weight_estimated: !hasWeight,
       confidence: Math.round(confidence * 100) / 100,
       nutrition_match_id: nutritionMatchId,
       // The database row actually used. Without this the client cannot tell the
@@ -892,11 +965,16 @@ function enrichScanResults(foods) {
       // near-neighbour is invisible rather than correctable.
       matched_name: matched ? matched.displayName : null,
       matched: !!matched,
-      nutrition_source: matched ? 'database' : 'unmatched',
+      nutrition_source: source,
     };
 
-    if (matched) {
-      const actual = calculateNutrition(matched.per100g, weightG);
+    // One path now, whatever the source. The old code returned nulls whenever
+    // the 285-row table missed, which is how a scan became a meal called "Food
+    // item" worth zero calories -- 39% of them, in the data. A rough number
+    // the user can correct is worth more than a zero, because a zero silently
+    // corrupts the only figure this app exists to show.
+    if (per100g) {
+      const actual = calculateNutrition(per100g, effectiveWeight);
       item.calories = actual.calories;
       item.protein = actual.protein;
       item.carbs = actual.carbs;
@@ -905,19 +983,28 @@ function enrichScanResults(foods) {
       item.insights = [];
       item.alternatives = [];
       item.nutrition = {
-        per100g: { calories: matched.per100g.calories, protein: matched.per100g.protein, carbs: matched.per100g.carbs, fat: matched.per100g.fat },
-        actual: actual,
+        per100g: {
+          calories: per100g.calories,
+          protein: per100g.protein,
+          carbs: per100g.carbs,
+          fat: per100g.fat,
+        },
+        actual,
       };
-      // Database-derived values should always reconcile; check anyway so a bad
-      // row in nutrition_db.json surfaces in logs rather than in a user's diary.
+
       const check = reconcileNutrition(actual);
       item.nutrition_flag = check.ok ? 'ok' : 'inconsistent';
       item.atwater_ratio = check.ratio;
+      // Only meaningful for an estimate; a database row that needed adjusting
+      // is a bug in the row, and the warning below is how it surfaces.
+      item.nutrition_adjusted = !matched && (reconciled?.adjusted ?? false);
+
       if (!check.ok) {
         console.warn(
           JSON.stringify({
             event: 'nutrition.atwater_mismatch',
             pipeline: 'v2',
+            source,
             food: name,
             match_id: nutritionMatchId,
             ratio: check.ratio,
@@ -925,14 +1012,12 @@ function enrichScanResults(foods) {
         );
       }
     } else {
-      unmatchedFoodLogger.logUnmatched(lookupName, {
-        confidence,
-        weight_g: weightG,
-        display_name: name,
-        reason: hasWeight ? 'no_database_match' : 'missing_weight',
-      });
-      item.nutrition_flag = 'unmatched';
+      // Reached only when the model returned no usable nutrition either --
+      // rare now, and genuinely unknown rather than merely absent from the
+      // table. Still null, because inventing a number here would be a lie.
+      item.nutrition_flag = 'unresolved';
       item.atwater_ratio = null;
+      item.nutrition_adjusted = false;
       item.calories = null;
       item.protein = null;
       item.carbs = null;
@@ -941,6 +1026,18 @@ function enrichScanResults(foods) {
       item.insights = ['Nutrition unavailable'];
       item.alternatives = [];
       item.nutrition = null;
+    }
+
+    // Logged on every miss, match or not: this collection is the ranked list
+    // of which foods to add to the curated table, and it stays useful now that
+    // a miss is no longer fatal.
+    if (!matched) {
+      unmatchedFoodLogger.logUnmatched(lookupName, {
+        confidence,
+        weight_g: effectiveWeight,
+        display_name: name,
+        reason: per100g ? 'estimated_no_db_match' : 'no_nutrition_at_all',
+      });
     }
 
     return item;
@@ -2354,6 +2451,8 @@ module.exports = {
   // standing up Firestore.
   bonusScansFor,
   freeAllowanceFor,
+  normalizePer100g,
+  reconcilePer100g,
   setAuthVerifierForTest(verifier) {
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('Test auth verifier is only available in NODE_ENV=test.');
