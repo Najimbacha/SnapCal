@@ -15,7 +15,6 @@ import '../../../widgets/macro_display.dart';
 import '../../settings/widgets/settings_kit.dart';
 
 const _presetWeights = <int>[50, 100, 150, 200, 250, 300, 400, 500];
-const _freeTierLimit = 3;
 
 int _snapWeight(int g) {
   if (g <= 0) return 10;
@@ -836,7 +835,14 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  l10n.result_scans_left(_remainingScans, _freeTierLimit),
+                  // The limit comes from ScanGateService, which takes it
+                  // from the server. A second hardcoded 3 here would
+                  // have gone on saying "of 3" after the real
+                  // allowance changed.
+                  l10n.result_scans_left(
+                    _remainingScans,
+                    ScanGateService.freeTierLimit,
+                  ),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

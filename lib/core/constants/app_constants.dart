@@ -100,7 +100,8 @@ Rules:
   static const int defaultWaterGoal = 2000; // in ml
 
   // Free Tier Limits
-  // (The 3-scans-per-UTC-month free tier lives in ScanGateService._freeTierLimit
+  // (The per-UTC-month free scan allowance is set by the server's
+  // FREE_MONTHLY_SCANS and cached in ScanGateService
   // and backend FREE_MONTHLY_SCANS — kept together, changed together.)
 
   // Image Processing

@@ -25,11 +25,44 @@ class ScanGateService {
 
   static const String _bonusScansKey = 'bonusScansCount';
   static const String _lastPeriodKey = 'scanGate_lastMonth';
-  static const int _freeTierLimit = 3;
+  static const String _scanLimitKey = 'freeScanLimit';
+  static const int _defaultFreeTierLimit = 3;
 
-  /// The free monthly allowance, before bonus scans. Read this instead of
-  /// re-deriving the number elsewhere.
-  static int get freeTierLimit => _freeTierLimit;
+  /// The free monthly allowance, before bonus scans.
+  ///
+  /// The server decides this -- it is FREE_MONTHLY_SCANS on Render, and the
+  /// server is what actually refuses a scan. This used to be a hardcoded 3 on
+  /// both sides, which meant raising the server's number changed nothing: the
+  /// client blocked at 3 before the server was ever asked, so the environment
+  /// variable looked like a live knob and was not one.
+  ///
+  /// The last value premium-status reported is cached here and used until the
+  /// server says otherwise, so the limit survives being offline. 3 is only the
+  /// fallback for a device that has never heard an answer.
+  static int get freeTierLimit => _instance._storedFreeLimit();
+
+  int _storedFreeLimit() {
+    if (!_ready()) return _defaultFreeTierLimit;
+    final raw = _readInt(scopedPrefKey(_scanLimitKey));
+    if (raw <= 0) return _defaultFreeTierLimit;
+    // A sane ceiling: a corrupted or hostile value must not turn the free
+    // tier into an unlimited one.
+    return raw.clamp(1, 100);
+  }
+
+  /// Records the allowance the server just reported.
+  ///
+  /// Called from the premium-status refresh. Takes the base monthly limit,
+  /// not the allowance including bonuses -- the client adds its own bonus
+  /// count on top, and syncing the combined number would count them twice.
+  Future<void> syncFreeLimitFromServer(int serverLimit) async {
+    if (!_ready()) return;
+    if (serverLimit <= 0 || serverLimit > 100) return;
+    final key = scopedPrefKey(_scanLimitKey);
+    if (_readInt(key) == serverLimit) return;
+    await _prefs!.setInt(key, serverLimit);
+    debugPrint('🔄 ScanGateService: free limit synced to $serverLimit');
+  }
 
   Future<void> init() async {
     if (_initialized) return;
@@ -171,7 +204,7 @@ class ScanGateService {
   int getPeriodScanCount() {
     if (!_ready()) return 0;
     final raw = _readInt(_currentScanKey());
-    final limit = _freeTierLimit + getBonusScans();
+    final limit = _storedFreeLimit() + getBonusScans();
     final clamped = raw.clamp(0, limit);
     if (clamped != raw) {
       debugPrint('🛠️ ScanGateService: clamped period count $raw ➜ $clamped');
@@ -262,7 +295,7 @@ class ScanGateService {
   Future<void> incrementScanCount() async {
     if (!_ready()) return;
     final before = getPeriodScanCount();
-    final limit = _freeTierLimit + getBonusScans();
+    final limit = _storedFreeLimit() + getBonusScans();
     final after = (before + 1).clamp(0, limit);
     await _prefs!.setInt(_currentScanKey(), after);
     await _prefs!.setString(scopedPrefKey(_lastPeriodKey), _currentMonthStr());
@@ -289,7 +322,7 @@ class ScanGateService {
     }
 
     final used = getPeriodScanCount();
-    final limit = _freeTierLimit + getBonusScans();
+    final limit = _storedFreeLimit() + getBonusScans();
     final ok = used < limit;
 
     debugPrint(
@@ -308,8 +341,8 @@ class ScanGateService {
 
   int getRemainingScans(bool isPro) {
     if (isPro) return -1;
-    if (!_ready()) return _freeTierLimit;
-    final limit = _freeTierLimit + getBonusScans();
+    if (!_ready()) return _defaultFreeTierLimit;
+    final limit = _storedFreeLimit() + getBonusScans();
     return (limit - getPeriodScanCount()).clamp(0, limit);
   }
 
@@ -319,7 +352,7 @@ class ScanGateService {
     if (!_initialized) return;
     final used = _readInt(_currentScanKey());
     final bonus = getBonusScans();
-    final limit = _freeTierLimit + bonus;
+    final limit = _storedFreeLimit() + bonus;
     final userId = FirebaseAuth.instance.currentUser?.uid ?? 'anon';
     debugPrint('═══════════ ScanGateService State ═══════════');
     debugPrint('  User ID        : $userId');
@@ -329,7 +362,7 @@ class ScanGateService {
     );
     debugPrint('  Month count    : $used');
     debugPrint('  Bonus scans    : $bonus');
-    debugPrint('  Free tier limit: $_freeTierLimit');
+    debugPrint('  Free tier limit: ${_storedFreeLimit()}');
     debugPrint('  Effective limit: $limit');
     debugPrint('  Remaining      : ${(limit - used).clamp(0, limit)}');
     debugPrint('══════════════════════════════════════════════');

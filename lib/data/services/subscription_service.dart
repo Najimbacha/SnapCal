@@ -518,6 +518,14 @@ class SubscriptionService {
         if (bonus != null) {
           await ScanGateService().syncBonusScansFromServer(bonus);
         }
+        // The free monthly allowance is the server's to set. Taking it from
+        // here is what makes FREE_MONTHLY_SCANS a knob that actually moves
+        // something -- the client used to hard-code 3 and refuse the fourth
+        // scan itself, before the server was ever consulted.
+        final limit = (response.data['monthlyScanLimit'] as num?)?.toInt();
+        if (limit != null) {
+          await ScanGateService().syncFreeLimitFromServer(limit);
+        }
       }
 
       _cachedServerActive = serverSaysActive;
