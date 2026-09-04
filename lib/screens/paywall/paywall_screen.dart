@@ -2042,7 +2042,8 @@ class _BenefitLedger extends StatelessWidget {
       l10n.paywall_benefit_smart_planner,
       l10n.paywall_benefit_weekly_reports,
       l10n.paywall_benefit_full_history,
-      l10n.paywall_benefit_ad_free,
+      // "Ad-free" is gone with the ads. Selling the removal of something the
+      // app no longer does reads as padding at best and as a lie at worst.
     ];
 
     return Container(

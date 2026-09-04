@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../core/theme/app_typography.dart';
 import '../../core/services/ad_service.dart';
@@ -150,65 +149,6 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   @override
   void didPopNext() {
     _controller.initializeCamera();
-  }
-
-  Future<void> _showWatchAdForScan() async {
-    if (!mounted) return;
-
-    // Show the offer sheet. Tap "Watch" fires the ad.
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => _WatchAdSheet(
-            onWatch: () => Navigator.of(context).pop(true),
-            onUpgrade: () {
-              Navigator.of(context).pop(false);
-              _showPaywall();
-            },
-          ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    // Show a loading indicator while the ad gets ready.
-    final snack = ScaffoldMessenger.of(context);
-
-    // The grant has to be recorded on the server before we promise it. It
-    // used to be written to SharedPreferences, which the server never saw, so
-    // the scan this ad had just paid for came back 402 -- the app breaking a
-    // promise it made ten seconds earlier.
-    // Recorded after the ad finishes, not inside onRewarded. That callback is
-    // a VoidCallback fired mid-show and never awaited, so an async grant
-    // started there would still be in flight when we checked the result. The
-    // method already returns true only when the reward was actually earned.
-    final rewarded = await AdService().showRewardedAdForBonusScan(
-      onRewarded: () {},
-    );
-    final granted = rewarded && await ScanGateService().addBonusScans(1);
-
-    if (!mounted) return;
-    if (rewarded && granted) {
-      snack.showSnackBar(
-        const SnackBar(
-          content: Text('🎉 +1 bonus scan unlocked!'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-    } else if (rewarded) {
-      // The ad played but the scan could not be recorded -- offline, or the
-      // monthly bonus cap is spent. Say so rather than sending them into a
-      // scan that will be refused.
-      snack.showSnackBar(
-        const SnackBar(
-          content: Text("Couldn't add your bonus scan. Check your connection."),
-          duration: Duration(seconds: 4),
-        ),
-      );
-    } else {
-      // Ad not available — send to paywall.
-      _showPaywall();
-    }
   }
 
   void _showPaywall() {
@@ -700,7 +640,6 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
                               onShowPaywall: _showPaywall,
                               onShowResult: _showResultModal,
                               onShowManualInput: _showManualInputModal,
-                              onWatchAd: _showWatchAdForScan,
                             ),
                         isLoading: _controller.isCapturing,
                       ),
@@ -767,16 +706,6 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
               ),
             ),
 
-          // ── Banner ad (free users only, hidden when analyzing) ──
-          if (!_controller.isAnalyzing &&
-              !_controller.isScanningBarcode &&
-              !ref.watch(effectiveIsProProvider))
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _SnapBannerAd(onUpgradeTap: _showPaywall),
-            ),
         ],
       ),
     );
@@ -913,168 +842,6 @@ class _StatePanel extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Banner Ad Widget ──────────────────────────────────────────────────────────
-
-/// Shows the preloaded banner ad with a labelled header and an "upgrade" link.
-/// Falls back to an empty box if the ad isn't loaded yet.
-class _SnapBannerAd extends StatelessWidget {
-  final VoidCallback onUpgradeTap;
-  const _SnapBannerAd({required this.onUpgradeTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final ad = AdService().bannerAd;
-    if (ad == null) return const SizedBox.shrink();
-
-    return Container(
-      color: Colors.black,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Row(
-              children: [
-                // Both halves are localized and neither could shrink, so a
-                // longer translation overflowed the row rather than
-                // ellipsizing.
-                Flexible(
-                  child: Text(
-                    l10n.ads_label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: onUpgradeTap,
-                  behavior: HitTestBehavior.opaque,
-                  // 10px text was the entire hit area, directly above a
-                  // banner ad -- a miss tapped the ad instead.
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 12,
-                    ),
-                    child: Text(
-                      l10n.ads_remove_prompt,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF9575CD),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: ad.size.width.toDouble(),
-            height: ad.size.height.toDouble(),
-            child: AdWidget(ad: ad),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Watch-Ad Offer Sheet ──────────────────────────────────────────────────────
-
-/// Bottom sheet that offers the user a rewarded ad in exchange for +1 free scan.
-class _WatchAdSheet extends StatelessWidget {
-  final VoidCallback onWatch;
-  final VoidCallback onUpgrade;
-
-  const _WatchAdSheet({required this.onWatch, required this.onUpgrade});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1C1E),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF7E57C2), Color(0xFF42A5F5)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(LucideIcons.tv, color: Colors.white, size: 26),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Watch a short ad',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Get +1 free scan by watching a short ad.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.65),
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onWatch,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF7E57C2),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: const Text(
-                'Watch Ad',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextButton(
-            onPressed: onUpgrade,
-            child: Text(
-              'Remove ads — Go Pro',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.55),
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
