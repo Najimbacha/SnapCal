@@ -134,11 +134,14 @@ class ProFeatureService {
           ProFeature.journeyVideo,
           ProFeature.unlimitedScans,
         };
+      // The app has no ads any more, so there is nothing to remove and
+      // nothing here should offer it as a benefit. The entry point and the
+      // ProFeature value are left in place rather than deleted -- both sit in
+      // exhaustive switches -- but nothing routes to this case now, and if
+      // something ever does it sells only things that are real.
       case PaywallEntryPoint.adRemoval:
         return const {
-          ProFeature.adRemoval,
           ProFeature.unlimitedScans,
-          ProFeature.nextMealAdvice,
           ProFeature.reports,
         };
       case PaywallEntryPoint.settings:

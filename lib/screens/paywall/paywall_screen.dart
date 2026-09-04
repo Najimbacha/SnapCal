@@ -118,6 +118,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   /// late-arriving entitlement below cannot both pop the route.
   bool _closed = false;
 
+  /// Restore is in flight. Separate from [_isLoading] on purpose: sharing one
+  /// flag put a spinner inside the *Subscribe* button while a restore ran, so
+  /// tapping "Restore Purchases" looked like a payment being processed.
+  bool _restoring = false;
+
   final GlobalKey _dockKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
 
@@ -409,6 +414,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   Future<void> _handlePurchase() async {
     if (_isLoading) return;
     if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      // Narrow, but real: just after returning from the background the button
+      // is fully enabled and this returns before setting any state, so the tap
+      // does nothing with no spinner and no message. Say why.
+      _showPurchaseSnackBar(
+        ScaffoldMessenger.of(context),
+        _purchaseCopy(context, _PurchaseCopyKey.storeNotReady),
+        backgroundColor: AppColors.warning,
+        icon: LucideIcons.clock,
+      );
       return;
     }
     if (_selectedPackage == null) {
@@ -446,9 +460,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   }
 
   Future<void> _handleRestore() async {
-    if (_isLoading) return;
+    if (_isLoading || _restoring) return;
     HapticFeedback.mediumImpact();
-    setState(() => _isLoading = true);
+    setState(() => _restoring = true);
     final messenger = ScaffoldMessenger.of(context);
     final subService = SubscriptionService();
     final l10n = AppLocalizations.of(context)!;
@@ -461,7 +475,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       successMessage: l10n.premium_restore_success,
       isRestore: true,
     );
-    if (mounted) setState(() => _isLoading = false);
+    if (mounted) setState(() => _restoring = false);
   }
 
   void _handleSubscriptionResult(
@@ -550,7 +564,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         );
         return;
       case SubscriptionStatus.storeUnavailable:
-        final message = _purchaseCopy(context, _PurchaseCopyKey.storeSlow);
+        // Two very different situations arrive here. If the SDK never
+        // configured, nothing was sent to Google and raising the idea of a
+        // completed payment is both false and frightening.
+        final message = _purchaseCopy(
+          context,
+          result.storeNeverConfigured
+              ? _PurchaseCopyKey.storeNotReady
+              : _PurchaseCopyKey.storeSlow,
+        );
         setState(() => _purchaseNotice = message);
         _showPurchaseSnackBar(
           messenger,
@@ -647,7 +669,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     // are told nothing either, which is exactly the "did that go through?"
     // message you do not want to receive about a payment.
     return PopScope(
-      canPop: !_isLoading,
+      canPop: !_isLoading && !_restoring,
       child: Scaffold(
       backgroundColor: palette.paper,
       body: LayoutBuilder(
@@ -734,6 +756,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                       child: _NoticeBanner(
                         message: _purchaseNotice!,
                         palette: palette,
+                        // A warning with nothing to do about it is a dead
+                        // end. Every purchase notice is a state the user can
+                        // reasonably try again from.
+                        onRetry: _isLoading ? null : _handlePurchase,
                       ),
                     ),
                   ],
@@ -769,7 +795,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                           : _planLabel(_selectedPackage!, l10n),
                   disclosure: _disclosureFor(_selectedPackage, l10n),
                   onPurchase: _handlePurchase,
-                  onRestore: _isLoading ? null : _handleRestore,
+                  restoring: _restoring,
+                  onRestore: (_isLoading || _restoring) ? null : _handleRestore,
                   onTerms: () => _openUrl(_termsUrl),
                   onPrivacy: () => _openUrl(_privacyPolicyUrl),
                 ),
@@ -845,9 +872,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         widget.entryPoint == PaywallEntryPoint.mealInsight) {
       title = l10n.paywall_analytics_title;
       subtitle = l10n.paywall_analytics_subtitle;
-    } else if (widget.entryPoint == PaywallEntryPoint.adRemoval) {
-      title = l10n.paywall_focused_title;
-      subtitle = l10n.paywall_ad_removal_subtitle;
     } else {
       title = l10n.paywall_upgrade_experience_title;
       subtitle = l10n.paywall_upgrade_experience_subtitle;
@@ -2559,6 +2583,7 @@ class _CtaDock extends StatelessWidget {
     required this.palette,
     required this.hPad,
     required this.isLoading,
+    required this.restoring,
     required this.package,
     required this.loadingOfferings,
     required this.trialDays,
@@ -2574,6 +2599,7 @@ class _CtaDock extends StatelessWidget {
   final _Palette palette;
   final double hPad;
   final bool isLoading;
+  final bool restoring;
   final Package? package;
   final bool loadingOfferings;
   final int? trialDays;
@@ -2675,6 +2701,7 @@ class _CtaDock extends StatelessWidget {
                     label: l10n.paywall_restore,
                     onTap: onRestore,
                     palette: palette,
+                    busy: restoring,
                   ),
                 ],
               ),
@@ -2785,11 +2812,17 @@ class _FooterLink extends StatelessWidget {
     required this.label,
     required this.onTap,
     required this.palette,
+    this.busy = false,
   });
 
   final String label;
   final VoidCallback? onTap;
   final _Palette palette;
+
+  /// Shows a spinner in place of the label. Restore had no busy state at all
+  /// and rendered identically whether or not it was disabled, so during a
+  /// purchase it looked tappable and silently did nothing.
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -2802,15 +2835,29 @@ class _FooterLink extends StatelessWidget {
       // what they already paid for, and the one the stores require here.
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: palette.muted,
-            fontSize: 11.5,
-            height: 1.2,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child:
+            busy
+                ? SizedBox(
+                  height: 14,
+                  width: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.8,
+                    valueColor: AlwaysStoppedAnimation<Color>(palette.muted),
+                  ),
+                )
+                : Text(
+                  label,
+                  style: TextStyle(
+                    // Dimmed when there is nothing behind the tap, so a
+                    // disabled link does not look like a live one.
+                    color: palette.muted.withValues(
+                      alpha: onTap == null ? 0.4 : 1,
+                    ),
+                    fontSize: 11.5,
+                    height: 1.2,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
       ),
     );
   }
@@ -2844,6 +2891,7 @@ enum _PurchaseCopyKey {
   purchaseOffline,
   restoreOffline,
   storeSlow,
+  storeNotReady,
   restoreNoPurchase,
   purchaseFailed,
   restoreFailed,
@@ -2867,6 +2915,8 @@ String _purchaseCopy(BuildContext context, _PurchaseCopyKey key) {
           'لا يمكن التحقق الآن. حاول مرة أخرى عند عودة الاتصال.',
       _PurchaseCopyKey.storeSlow:
           'المتجر يستغرق وقتا أطول من المعتاد. إذا اكتمل الدفع، سيتم تفعيل Pro تلقائيا.',
+      _PurchaseCopyKey.storeNotReady:
+          'المتجر غير جاهز بعد. لم تتم أي عملية شراء ولم يتم خصم أي مبلغ. حاول بعد لحظات.',
       _PurchaseCopyKey.restoreNoPurchase:
           'لم نجد اشتراكا نشطا على حساب المتجر هذا.',
       _PurchaseCopyKey.purchaseFailed:
@@ -2889,6 +2939,8 @@ String _purchaseCopy(BuildContext context, _PurchaseCopyKey key) {
           'No podemos verificarlo ahora. Inténtalo de nuevo cuando vuelva la conexión.',
       _PurchaseCopyKey.storeSlow:
           'La tienda está tardando más de lo normal. Si el pago se completó, Pro se activará automáticamente.',
+      _PurchaseCopyKey.storeNotReady:
+          'La tienda aún no está lista. No se inició ninguna compra y no se realizó ningún cargo. Inténtalo en un momento.',
       _PurchaseCopyKey.restoreNoPurchase:
           'No encontramos una suscripción activa en esta cuenta de la tienda.',
       _PurchaseCopyKey.purchaseFailed:
@@ -2910,6 +2962,8 @@ String _purchaseCopy(BuildContext context, _PurchaseCopyKey key) {
           'Vérification impossible pour le moment. Réessayez lorsque la connexion revient.',
       _PurchaseCopyKey.storeSlow:
           'Le store prend plus de temps que prévu. Si le paiement a abouti, Pro sera activé automatiquement.',
+      _PurchaseCopyKey.storeNotReady:
+          "Le store n'est pas encore prêt. Aucun achat n'a été lancé et aucun débit n'a eu lieu. Réessayez dans un instant.",
       _PurchaseCopyKey.restoreNoPurchase:
           'Aucun abonnement actif trouvé sur ce compte du store.',
       _PurchaseCopyKey.purchaseFailed:
@@ -2932,6 +2986,8 @@ String _purchaseCopy(BuildContext context, _PurchaseCopyKey key) {
           'We cannot verify right now. Try again when your connection returns.',
       _PurchaseCopyKey.storeSlow:
           'The store is taking longer than usual. If payment completed, Pro will unlock automatically.',
+      _PurchaseCopyKey.storeNotReady:
+          'The store is not ready yet. No purchase was started and nothing was charged. Try again in a moment.',
       _PurchaseCopyKey.restoreNoPurchase:
           'No active subscription was found for this store account.',
       _PurchaseCopyKey.purchaseFailed:

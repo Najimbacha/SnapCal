@@ -109,6 +109,7 @@ class SubscriptionService {
 
   bool get isConfigured => _configured;
   bool get isPurchaseInFlight => _purchaseInFlight;
+  bool get isRestoreInFlight => _restoreInFlight;
 
   Future<bool> hasActivePremiumEntitlement() async {
     return _hasProAccess();
@@ -224,6 +225,7 @@ class SubscriptionService {
     if (!_configured) {
       return const SubscriptionResult.storeUnavailable(
         message: 'Store is still initializing.',
+        neverConfigured: true,
       );
     }
     if (_purchaseInFlight) {
@@ -268,6 +270,7 @@ class SubscriptionService {
     if (!_configured) {
       return const SubscriptionResult.storeUnavailable(
         message: 'Store is still initializing.',
+        neverConfigured: true,
       );
     }
     if (_restoreInFlight) {
@@ -644,15 +647,35 @@ class SubscriptionResult {
   final SubscriptionStatus status;
   final String? message;
 
-  const SubscriptionResult._(this.status, {this.message});
+  /// True when the store SDK was never configured, so nothing was ever sent
+  /// to Google.
+  ///
+  /// Both this and a store error mid-purchase arrive as `storeUnavailable`,
+  /// and they need opposite copy: one has to reassure someone whose payment
+  /// may be in flight, the other must not raise the idea of a payment at all,
+  /// because none was attempted. Carried as a flag rather than a new status
+  /// so no exhaustive switch elsewhere has to change.
+  final bool storeNeverConfigured;
+
+  const SubscriptionResult._(
+    this.status, {
+    this.message,
+    this.storeNeverConfigured = false,
+  });
   const SubscriptionResult.active() : this._(SubscriptionStatus.active);
   const SubscriptionResult.pending({String? message})
     : this._(SubscriptionStatus.pending, message: message);
   const SubscriptionResult.cancelled() : this._(SubscriptionStatus.cancelled);
   const SubscriptionResult.noPurchase() : this._(SubscriptionStatus.noPurchase);
   const SubscriptionResult.offline() : this._(SubscriptionStatus.offline);
-  const SubscriptionResult.storeUnavailable({String? message})
-    : this._(SubscriptionStatus.storeUnavailable, message: message);
+  const SubscriptionResult.storeUnavailable({
+    String? message,
+    bool neverConfigured = false,
+  }) : this._(
+         SubscriptionStatus.storeUnavailable,
+         message: message,
+         storeNeverConfigured: neverConfigured,
+       );
   const SubscriptionResult.failed({String? message})
     : this._(SubscriptionStatus.failed, message: message);
 

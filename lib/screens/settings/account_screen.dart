@@ -96,7 +96,23 @@ class AccountScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final subService = SubscriptionService();
 
+    // A second tap used to fall through to the service's own in-flight guard,
+    // which answers `pending` -- so an impatient double-tap produced "Restore
+    // is processing, Pro will unlock when the store confirms it" for a restore
+    // that was merely duplicated. Stop at the door instead.
+    if (subService.isRestoreInFlight) return;
+
     HapticFeedback.mediumImpact();
+
+    // This row has no busy state of its own, and a restore can take several
+    // seconds against the store. Say something immediately so the tap is
+    // visibly acknowledged.
+    _showSubscriptionSnackBar(
+      messenger,
+      l10n.premium_loading,
+      color: AppColors.primary,
+      icon: LucideIcons.refreshCw,
+    );
 
     final result = await subService.restorePurchasesDetailed();
     if (!context.mounted) return;
