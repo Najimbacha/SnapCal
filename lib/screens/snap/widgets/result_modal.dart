@@ -84,7 +84,11 @@ class _Item {
   }
 
   factory _Item.from(NutritionResult r) {
-    final hasNutrition = r.nutritionPer100g != null && r.matched;
+    // Presence of per-100g is the signal, not `matched`. `matched` means "in
+    // the curated table", and the server now sends per-100g for AI estimates
+    // too -- requiring both sent every estimate down the lossy path below,
+    // which rebuilds per-100g from rounded totals and drifts the macros.
+    final hasNutrition = r.nutritionPer100g != null;
     var weight = 150.0;
     Map<String, dynamic>? per100g;
 
@@ -387,6 +391,28 @@ class _ResultModalState extends ConsumerState<ResultModal> {
 
   Future<void> _save() async {
     if (_items.isEmpty || _saving) return;
+
+    // Never log a meal worth nothing.
+    //
+    // 39% of scans in the database are a meal called "Food item" with zero
+    // calories and zero macros, saved without a murmur. A zero does not mean
+    // "I ate nothing" -- it silently subtracts from the only figure this app
+    // exists to show, and it is worse than no entry at all. If every source
+    // failed, ask rather than write.
+    if (_kcal <= 0) {
+      final l10n = AppLocalizations.of(context)!;
+      HapticFeedback.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.result_not_matched),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      // Open the first empty item so the fix is one tap away, not a hunt.
+      final idx = _items.indexWhere((i) => i.calories <= 0);
+      if (idx >= 0) await _typeWeight(idx);
+      return;
+    }
     setState(() => _saving = true);
     HapticFeedback.mediumImpact();
     // Brief pause so the success checkmark is perceived before routing home.

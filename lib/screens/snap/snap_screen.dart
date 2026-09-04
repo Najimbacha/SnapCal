@@ -278,10 +278,13 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
           calories: calories,
           macros: Macros(protein: protein, carbs: carbs, fat: fat),
           portion: portion,
-          scanConfidence: 0.82,
+          // Was a hardcoded 0.82 on every meal ever saved, alongside a fixed
+          // sentence claiming the numbers were "estimated from the photo,
+          // visible portion size, and macro balance" -- written even onto the
+          // 382 meals where nothing was estimated at all. The field is
+          // nullable; an honest blank beats an invented score.
+          scanConfidence: null,
           scanSource: 'ai_scan',
-          aiRationale:
-              'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
           originalCalories: calories,
         ),
       );
@@ -323,10 +326,10 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
               fat: item.fat,
             ),
             portion: item.portion,
-            scanConfidence: item.confidence ?? 0.82,
+            // The real value when the detector gave one, nothing when it
+            // did not. See the note on the single-item path above.
+            scanConfidence: item.confidence,
             scanSource: 'ai_scan',
-            aiRationale:
-                'Estimated from the photo, visible portion size, and macro balance. Review the portion before logging.',
             originalCalories: item.calories,
             weightG: item.weightG,
             nutritionMatchId: item.nutritionMatchId,

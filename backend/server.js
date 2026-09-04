@@ -919,6 +919,114 @@ function reconcilePer100g(per100g) {
   };
 }
 
+/// Reads a name-keyed nutrition table out of a model's text reply.
+///
+/// Exported and pure so the parsing can be tested without a model. Anything
+/// that fails normalizePer100g is dropped rather than guessed at.
+function parseNutritionByNameResponse(rawText) {
+  let decoded;
+  try {
+    decoded = JSON.parse(extractJson(rawText));
+  } catch {
+    return {};
+  }
+  const foods = decoded && typeof decoded === 'object' ? decoded.foods ?? decoded : null;
+  if (!foods || typeof foods !== 'object') return {};
+
+  const out = {};
+  for (const [key, value] of Object.entries(foods)) {
+    const per100g = normalizePer100g(value?.per_100g ?? value);
+    if (per100g) out[String(key).toLowerCase().trim()] = per100g;
+  }
+  return out;
+}
+
+/// Second attempt at nutrition, by name alone, for anything the photo pass
+/// left unresolved.
+///
+/// The vision model is asked for per-100g values alongside the detection, but
+/// a vision model dropping one field of a schema is an ordinary event, and the
+/// cost of it used to be a meal logged as zero calories. This is a plain text
+/// call -- no image, so it is fast and cheap -- asking only "what is in 100g
+/// of X". One call covers every unresolved item in the scan.
+///
+/// Best effort throughout: a failure here leaves the item exactly as it was.
+async function fillMissingNutrition(result) {
+  const gaps = result.items.filter((item) => item.nutrition_source === 'unresolved');
+  if (gaps.length === 0) return result;
+
+  const names = [...new Set(gaps.map((item) => item.match_key.toLowerCase().trim()))];
+  const prompt = [
+    'Give typical nutrition per 100 grams for each food listed.',
+    'Use conventional reference values for the food as prepared.',
+    'protein_g x 4 + carbs_g x 4 + fat_g x 9 must be within about 10% of calories.',
+    '',
+    `Foods: ${names.map((n) => JSON.stringify(n)).join(', ')}`,
+    '',
+    'Return only JSON, keyed by the exact food string given:',
+    '{"foods":{"<food>":{"calories":number,"protein_g":number,"carbs_g":number,"fat_g":number}}}',
+  ].join('\n');
+
+  let table = {};
+  try {
+    const raw = await callAiText(prompt, {
+      requireJson: true,
+      maxOutputTokens: 700,
+      timeout: 12000,
+    });
+    table = parseNutritionByNameResponse(raw);
+  } catch (error) {
+    console.warn(
+      JSON.stringify({ event: 'nutrition.name_lookup_failed', error: error.message })
+    );
+    return result;
+  }
+
+  let filled = 0;
+  for (const item of gaps) {
+    const found = table[item.match_key.toLowerCase().trim()];
+    if (!found) continue;
+
+    const { per100g } = reconcilePer100g(found);
+    const actual = calculateNutrition(per100g, item.weight_g);
+    item.calories = actual.calories;
+    item.protein = actual.protein;
+    item.carbs = actual.carbs;
+    item.fat = actual.fat;
+    item.nutrition = { per100g, actual };
+    item.nutrition_source = 'ai_estimate_by_name';
+    item.insights = [];
+    const check = reconcileNutrition(actual);
+    item.nutrition_flag = check.ok ? 'ok' : 'inconsistent';
+    item.atwater_ratio = check.ratio;
+    filled += 1;
+  }
+
+  if (filled > 0) {
+    result.totals = recomputeTotals(result.items);
+    console.log(
+      JSON.stringify({ event: 'nutrition.name_lookup_filled', asked: names.length, filled })
+    );
+  }
+  return result;
+}
+
+/// Totals over whatever each item ended up with, from any source.
+function recomputeTotals(items) {
+  return items.reduce(
+    (acc, item) => {
+      if (item.nutrition && item.nutrition.actual) {
+        acc.calories += item.nutrition.actual.calories;
+        acc.protein += item.nutrition.actual.protein;
+        acc.carbs += item.nutrition.actual.carbs;
+        acc.fat += item.nutrition.actual.fat;
+      }
+      return acc;
+    },
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  );
+}
+
 function enrichScanResults(foods) {
   if (!Array.isArray(foods) || foods.length === 0) {
     throw new Error('empty-food-detection');
@@ -2172,7 +2280,7 @@ app.post('/v1/scan', scanLimiter, limitScanConcurrency, authenticateToken, verif
       if (foods.length === 0) {
         return res.status(200).json({ items: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } });
       }
-      const result = enrichScanResults(foods);
+      const result = await fillMissingNutrition(enrichScanResults(foods));
 
       recordScan(true, null, scanSeconds());
       console.log(JSON.stringify({ event: 'scan.success.v2', pipeline: 'v2', status: 200 }));
@@ -2453,6 +2561,8 @@ module.exports = {
   freeAllowanceFor,
   normalizePer100g,
   reconcilePer100g,
+  parseNutritionByNameResponse,
+  recomputeTotals,
   setAuthVerifierForTest(verifier) {
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('Test auth verifier is only available in NODE_ENV=test.');

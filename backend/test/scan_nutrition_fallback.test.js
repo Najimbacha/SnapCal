@@ -136,3 +136,63 @@ test('reconcilePer100g will not zero out a food whose macros are all zero', () =
   const out = reconcilePer100g({ calories: 2, protein: 0, carbs: 0, fat: 0 });
   assert.strictEqual(out.per100g.calories, 2);
 });
+
+// ── The by-name second pass ─────────────────────────────────────────────────
+//
+// The vision model is asked for per-100g alongside the detection, but a model
+// dropping one field of a schema is an ordinary event, and the cost of it was
+// a meal logged as zero calories. These cover the parsing of the text-only
+// retry; the call itself is exercised in production, not here.
+
+const { parseNutritionByNameResponse, recomputeTotals } = require('../server');
+
+test('parses a name-keyed nutrition table', () => {
+  const out = parseNutritionByNameResponse(JSON.stringify({
+    foods: {
+      'turkish simit pastry': { calories: 340, protein_g: 10, carbs_g: 60, fat_g: 6 },
+    },
+  }));
+  assert.deepStrictEqual(out['turkish simit pastry'], {
+    calories: 340, protein: 10, carbs: 60, fat: 6,
+  });
+});
+
+test('accepts the table without the foods wrapper, and lowercases keys', () => {
+  const out = parseNutritionByNameResponse(JSON.stringify({
+    'Grilled Halloumi': { calories: 320, protein_g: 22, carbs_g: 2, fat_g: 25 },
+  }));
+  assert.ok(out['grilled halloumi'], 'key should be matchable regardless of case');
+});
+
+test('survives markdown fences and surrounding chatter', () => {
+  const raw = 'Sure!\n```json\n{"foods":{"x":{"calories":100,"protein_g":5,"carbs_g":10,"fat_g":4}}}\n```';
+  const out = parseNutritionByNameResponse(raw);
+  assert.strictEqual(out.x.calories, 100);
+});
+
+test('drops entries that are not usable rather than inventing them', () => {
+  const out = parseNutritionByNameResponse(JSON.stringify({
+    foods: {
+      good: { calories: 100, protein_g: 5, carbs_g: 10, fat_g: 4 },
+      empty: { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
+      junk: { calories: 'some', protein_g: null },
+    },
+  }));
+  assert.ok(out.good);
+  assert.strictEqual(out.empty, undefined);
+  assert.strictEqual(out.junk, undefined);
+});
+
+test('a non-JSON reply yields an empty table, not a throw', () => {
+  assert.deepStrictEqual(parseNutritionByNameResponse('the model apologises'), {});
+  assert.deepStrictEqual(parseNutritionByNameResponse(''), {});
+});
+
+test('totals count every item, whatever the source', () => {
+  const totals = recomputeTotals([
+    { nutrition: { actual: { calories: 100, protein: 10, carbs: 5, fat: 2 } } },
+    { nutrition: { actual: { calories: 250, protein: 5, carbs: 30, fat: 9 } } },
+    { nutrition: null },
+  ]);
+  assert.deepStrictEqual(totals, { calories: 350, protein: 15, carbs: 35, fat: 11 });
+});
