@@ -10,6 +10,23 @@ const ALIASES_PATH = path.join(__dirname, '..', '..', 'data', 'food_aliases.json
 // by the user; a plausible-looking wrong number is not.
 const MIN_SCORE = Number(process.env.NUTRITION_MIN_MATCH_SCORE || 0.6);
 
+// How far clear the winner must be of the best *different* food before the
+// tie is treated as real ambiguity.
+//
+// With 285 curated rows a near-tie was rare. Importing USDA takes the table
+// into the thousands, where "chicken breast" has a dozen plausible neighbours
+// -- raw, roasted, with skin, canned -- and picking whichever scored a hair
+// higher is a coin toss presented as a fact.
+const AMBIGUITY_MARGIN = Number(process.env.NUTRITION_AMBIGUITY_MARGIN || 0.05);
+
+// ...but a tie only matters if the answer would differ. Two rows scoring the
+// same and reporting nearly the same energy are not a dilemma, they are two
+// names for the same thing, and refusing there would turn common queries
+// ("grilled chicken breast") into misses for no gain.
+const AMBIGUITY_ENERGY_TOLERANCE = Number(
+  process.env.NUTRITION_AMBIGUITY_ENERGY_TOLERANCE || 0.15
+);
+
 // Preparation moves energy density more than any other qualifier — frying a
 // chicken breast roughly doubles its calories — so a conflict here is
 // disqualifying rather than merely penalised.
@@ -129,20 +146,39 @@ function lookup(foodName) {
 
   let best = null;
   let bestScore = 0;
+  // The best score belonging to a *different* food. Two aliases for the same
+  // row tying is not ambiguity -- it is the row being well aliased.
+  let runnerUp = null;
+  let runnerUpScore = 0;
   for (const candidate of aliasIndex) {
     if (!nutritionDb[candidate.id]) continue;
     const score = scoreCandidate(queryWords, queryPrep, candidate);
     if (score > bestScore) {
+      if (best && best.id !== candidate.id) {
+        runnerUp = best;
+        runnerUpScore = bestScore;
+      }
       bestScore = score;
       best = candidate;
+    } else if (best && candidate.id !== best.id && score > runnerUpScore) {
+      runnerUp = candidate;
+      runnerUpScore = score;
     }
   }
 
-  if (best && bestScore >= MIN_SCORE) {
-    return toResult(best.id, nutritionDb[best.id]);
+  if (!best || bestScore < MIN_SCORE) return null;
+
+  if (runnerUp && bestScore - runnerUpScore < AMBIGUITY_MARGIN) {
+    const a = Number(nutritionDb[best.id]?.calories) || 0;
+    const b = Number(nutritionDb[runnerUp.id]?.calories) || 0;
+    const spread = Math.max(a, b) === 0 ? 0 : Math.abs(a - b) / Math.max(a, b);
+    // Close on score AND far apart on energy: a coin toss the user would
+    // notice. Refuse, and let the estimate downstream answer instead -- it is
+    // roughly right, where a confident wrong row is precisely wrong.
+    if (spread > AMBIGUITY_ENERGY_TOLERANCE) return null;
   }
 
-  return null;
+  return toResult(best.id, nutritionDb[best.id]);
 }
 
 function getFoodById(id) {
