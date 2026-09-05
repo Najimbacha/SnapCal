@@ -104,7 +104,7 @@ function shortAlias(description) {
 }
 
 function nutrientAmount(food, id) {
-  const list = Array.isArray(food.foodNutrients) ? food.foodNutrients : [];
+  const list = Array.isArray(food?.foodNutrients) ? food.foodNutrients : [];
   for (const entry of list) {
     const nid = entry?.nutrient?.id ?? entry?.nutrientId;
     if (nid === id) {
@@ -118,6 +118,11 @@ function nutrientAmount(food, id) {
 /// USDA values are already per 100g for these datasets. Anything outside the
 /// physically possible is a parsing mistake, not a food.
 function toRow(food) {
+  // A null hole in the array is not a food. USDA ships them: the Foundation
+  // Foods export has entries that are literally null, and without this the
+  // whole import dies on one of them partway through.
+  if (!food || typeof food !== 'object') return null;
+
   const calories = nutrientAmount(food, NUTRIENT.ENERGY_KCAL);
   if (calories === null || calories < 0 || calories > 900) return null;
 
