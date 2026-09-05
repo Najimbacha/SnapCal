@@ -538,7 +538,7 @@ class _WaveTank extends StatelessWidget {
                     children: [
                       Text(
                         displayMl.round().toString(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 64,
                           fontWeight: FontWeight.w800,
                           color: _ink(d),

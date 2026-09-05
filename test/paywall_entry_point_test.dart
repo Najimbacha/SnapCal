@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snapcal/data/services/premium_conversion_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -10,15 +11,19 @@ void main() {
     PaywallEntryPoint entryPoint, {
     bool limitReached = false,
   }) {
-    return MaterialApp(
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('en')],
-      home: PaywallScreen(entryPoint: entryPoint, limitReached: limitReached),
+    // PaywallScreen listens on effectiveIsProProvider to close itself when a
+    // pending purchase finally verifies, so it needs a scope to read from.
+    return ProviderScope(
+      child: MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [Locale('en')],
+        home: PaywallScreen(entryPoint: entryPoint, limitReached: limitReached),
+      ),
     );
   }
 

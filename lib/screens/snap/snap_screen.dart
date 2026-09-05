@@ -7,13 +7,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_typography.dart';
-import '../../core/services/ad_service.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/gemini_service.dart';
 import '../../data/services/premium_conversion_service.dart';
-import '../../data/services/scan_gate_service.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import 'snap_controller.dart';
