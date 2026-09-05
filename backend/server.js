@@ -951,35 +951,61 @@ function parseNutritionByNameResponse(rawText) {
 /// of X". One call covers every unresolved item in the scan.
 ///
 /// Best effort throughout: a failure here leaves the item exactly as it was.
+// Bounded, temporary cache of generic food estimates, never photos or user data.
+const nutritionNameCache = new Map();
+const NUTRITION_NAME_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const NUTRITION_NAME_CACHE_LIMIT = 500;
+
 async function fillMissingNutrition(result) {
   const gaps = result.items.filter((item) => item.nutrition_source === 'unresolved');
   if (gaps.length === 0) return result;
 
   const names = [...new Set(gaps.map((item) => item.match_key.toLowerCase().trim()))];
+  const table = Object.create(null);
+  const missingNames = names.filter((name) => {
+    const cached = nutritionNameCache.get(name);
+    if (cached && cached.expiresAt > Date.now()) {
+      table[name] = cached.value;
+      return false;
+    }
+    nutritionNameCache.delete(name);
+    return true;
+  });
   const prompt = [
     'Give typical nutrition per 100 grams for each food listed.',
     'Use conventional reference values for the food as prepared.',
     'protein_g x 4 + carbs_g x 4 + fat_g x 9 must be within about 10% of calories.',
     '',
-    `Foods: ${names.map((n) => JSON.stringify(n)).join(', ')}`,
+    `Foods: ${missingNames.map((n) => JSON.stringify(n)).join(', ')}`,
     '',
     'Return only JSON, keyed by the exact food string given:',
     '{"foods":{"<food>":{"calories":number,"protein_g":number,"carbs_g":number,"fat_g":number}}}',
   ].join('\n');
 
-  let table = {};
-  try {
-    const raw = await callAiText(prompt, {
-      requireJson: true,
-      maxOutputTokens: 700,
-      timeout: 12000,
-    });
-    table = parseNutritionByNameResponse(raw);
-  } catch (error) {
-    console.warn(
-      JSON.stringify({ event: 'nutrition.name_lookup_failed', error: error.message })
-    );
-    return result;
+  if (missingNames.length > 0) {
+    try {
+      const raw = await callAiText(prompt, {
+        requireJson: true,
+        maxOutputTokens: 700,
+        timeout: 12000,
+      });
+      const fetched = parseNutritionByNameResponse(raw);
+      for (const name of missingNames) {
+        if (!Object.hasOwn(fetched, name)) continue;
+        table[name] = fetched[name];
+        if (nutritionNameCache.size >= NUTRITION_NAME_CACHE_LIMIT) {
+          nutritionNameCache.delete(nutritionNameCache.keys().next().value);
+        }
+        nutritionNameCache.set(name, {
+          value: fetched[name],
+          expiresAt: Date.now() + NUTRITION_NAME_CACHE_TTL_MS,
+        });
+      }
+    } catch (error) {
+      console.warn(
+        JSON.stringify({ event: 'nutrition.name_lookup_failed', error: error.message })
+      );
+    }
   }
 
   let filled = 0;
@@ -1285,7 +1311,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   const dataUrl = `data:image/jpeg;base64,${base64Data}`;
 
   // One OpenAI-shaped vision request, since three of the four speak it.
-  const openAiVision = async (url, model, headers) => {
+  const openAiVision = async (url, model, headers, extraBody = {}) => {
     const response = await axios.post(
       url,
       {
@@ -1299,6 +1325,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
         }],
         temperature: 0.4,
         max_tokens: AI_IMAGE_MAX_TOKENS,
+        ...extraBody,
       },
       { headers: { ...headers, 'Content-Type': 'application/json' }, timeout: budget() },
     );
@@ -1368,6 +1395,8 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
         'https://api.deepseek.com/chat/completions',
         process.env.DEEPSEEK_SCANNER_MODEL || 'deepseek-v4-flash-vision-exp',
         { Authorization: `Bearer ${key}` },
+        // DeepSeek enables thinking by default; food scans need a direct answer.
+        { thinking: { type: 'disabled' } },
       ),
     },
     openrouter: {
@@ -1380,12 +1409,8 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
     },
   };
 
-  // Order is configuration, not code. Groq and Gemini lead because both are
-  // fast non-reasoning models on free tiers; DeepSeek backs them up because it
-  // reasons before answering, which is accurate but costs ~20s. Reorder from
-  // the dashboard — AI_IMAGE_PROVIDER_ORDER=deepseek pins a single provider,
-  // which is what DEEPSEEK_STRICT used to do.
-  const order = (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,deepseek,gemini,openrouter')
+  // Use the owner's available provider without spending time on other services.
+  const order = (process.env.AI_IMAGE_PROVIDER_ORDER || 'deepseek')
     .split(',').map(p => p.trim().toLowerCase()).filter(p => providers[p]);
 
   const configured = order.filter(name => {
@@ -1412,7 +1437,15 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
         continue;
       }
       try {
-        const result = await providers[name].run(providers[name].key(), attempt);
+        let result = await providers[name].run(providers[name].key(), attempt);
+        // Scan output must be usable before crediting a provider with success.
+        // Custom image prompts may intentionally request plain text.
+        if (!customPrompt) {
+          result = normalizeAiJsonText(result);
+          if (useV2 && !Array.isArray(JSON.parse(result)?.foods)) {
+            throw new Error('invalid-scan-response: expected foods array');
+          }
+        }
         // Which provider actually answered. Without this the only way to tell
         // is the absence of failure lines above the success, which is an
         // inference, not a fact — and it silently breaks the moment a
@@ -1571,7 +1604,7 @@ async function callAiText(prompt, options = {}) {
   // reordered without a deploy. Order is configuration here, as it is for
   // images — though the two chains are deliberately separate: the coach and
   // planner want a strong writer, the scanner wants speed.
-  const order = (options.providerOrder || process.env.AI_TEXT_PROVIDER_ORDER || 'deepseek,gemini,groq,openrouter')
+  const order = (options.providerOrder || process.env.AI_TEXT_PROVIDER_ORDER || 'deepseek')
     .split(',').map(p => p.trim().toLowerCase()).filter(p => providers[p]);
 
   const configured = order.filter(name => Boolean(providers[name].key()));
@@ -1727,7 +1760,8 @@ app.get('/health', (req, res) => {
       lastError: lastScanError,
     },
     providers: {
-      order: (process.env.AI_IMAGE_PROVIDER_ORDER || 'groq,deepseek,gemini,openrouter').split(',').map(p => p.trim()),
+      deepseekVisionThinking: 'disabled',
+      order: (process.env.AI_IMAGE_PROVIDER_ORDER || 'deepseek').split(',').map(p => p.trim()),
       configured,
       // Any provider reading 'open' is currently being skipped.
       breakers: breakerStates(),
@@ -2563,6 +2597,8 @@ module.exports = {
   normalizeNutrition,
   extractJson,
   stripThink,
+  callAiWithImage,
+  fillMissingNutrition,
   normalizeAiJsonText,
   isSafeId,
   calculateNutrition,

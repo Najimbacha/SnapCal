@@ -95,7 +95,11 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
-      - key: GROQ_API_KEY
+      - key: AI_IMAGE_PROVIDER_ORDER
+        value: deepseek
+      - key: AI_TEXT_PROVIDER_ORDER
+        value: deepseek
+      - key: DEEPSEEK_API_KEY
         sync: false
 
   - type: keyvalue
