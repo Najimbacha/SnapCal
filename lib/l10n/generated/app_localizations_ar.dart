@@ -9,6 +9,25 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
+  String get home_dashboard_upgrade =>
+      'اعرف الجرامات والأهداف اليومية ووجبتك التالية';
+
+  @override
+  String get home_dashboard_planner => 'وجبتك التالية، مخططة حسب أهدافك';
+
+  @override
+  String get home_dashboard_coach => 'نصائح شخصية بناءً على تغذيتك اليوم';
+
+  @override
+  String get home_dashboard_open => 'فتح';
+
+  @override
+  String get home_dashboard_ask => 'اسأل';
+
+  @override
+  String get home_dashboard_liters => 'لتر';
+
+  @override
   String get appTitle => 'سناب كال';
 
   @override

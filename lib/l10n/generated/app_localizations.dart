@@ -102,6 +102,42 @@ abstract class AppLocalizations {
     Locale('fr'),
   ];
 
+  /// No description provided for @home_dashboard_upgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'See grams, daily goals & what to eat next'**
+  String get home_dashboard_upgrade;
+
+  /// No description provided for @home_dashboard_planner.
+  ///
+  /// In en, this message translates to:
+  /// **'Your next meal, planned for your goals'**
+  String get home_dashboard_planner;
+
+  /// No description provided for @home_dashboard_coach.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal advice from today’s nutrition'**
+  String get home_dashboard_coach;
+
+  /// No description provided for @home_dashboard_open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get home_dashboard_open;
+
+  /// No description provided for @home_dashboard_ask.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask'**
+  String get home_dashboard_ask;
+
+  /// No description provided for @home_dashboard_liters.
+  ///
+  /// In en, this message translates to:
+  /// **'L'**
+  String get home_dashboard_liters;
+
   /// The name of the application
   ///
   /// In en, this message translates to:

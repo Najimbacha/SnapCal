@@ -1,4 +1,10 @@
 {
+  "home_dashboard_upgrade": "Consulta gramos, metas diarias y qué comer",
+  "home_dashboard_planner": "Tu próxima comida, según tus objetivos",
+  "home_dashboard_coach": "Consejos personales sobre tu nutrición de hoy",
+  "home_dashboard_open": "Abrir",
+  "home_dashboard_ask": "Preguntar",
+  "home_dashboard_liters": "L",
   "@@locale": "es",
   "appTitle": "SnapCal",
   "common_save": "Guardar",

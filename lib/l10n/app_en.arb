@@ -1,4 +1,10 @@
 {
+  "home_dashboard_upgrade": "See grams, daily goals & what to eat next",
+  "home_dashboard_planner": "Your next meal, planned for your goals",
+  "home_dashboard_coach": "Personal advice from today’s nutrition",
+  "home_dashboard_open": "Open",
+  "home_dashboard_ask": "Ask",
+  "home_dashboard_liters": "L",
   "@@locale": "en",
   "appTitle": "SnapCal",
   "@appTitle": {

@@ -1,4 +1,10 @@
 {
+  "home_dashboard_upgrade": "اعرف الجرامات والأهداف اليومية ووجبتك التالية",
+  "home_dashboard_planner": "وجبتك التالية، مخططة حسب أهدافك",
+  "home_dashboard_coach": "نصائح شخصية بناءً على تغذيتك اليوم",
+  "home_dashboard_open": "فتح",
+  "home_dashboard_ask": "اسأل",
+  "home_dashboard_liters": "لتر",
   "@@locale": "ar",
   "appTitle": "سناب كال",
   "common_save": "حفظ",

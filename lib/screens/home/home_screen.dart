@@ -32,6 +32,7 @@ import '../../widgets/macro_display.dart';
 import '../../widgets/scan_choice_sheet.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/recent_meal_tile.dart';
+import 'widgets/home_nutrition_dashboard.dart';
 import '../../widgets/premium_prompt_modal.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -620,18 +621,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // their dashboard. Gating lives inside the card, not in the ordering.
           _staggeredSlide(
             _itemAnims[2],
-            _MinimalMacroSection(
+            HomeMacroSection(
+              hasMeals: mealCount > 0,
               macros: macros,
               proteinGoal: proteinGoal,
               carbGoal: carbGoal,
               fatGoal: fatGoal,
               isPro: isPro,
+              onUpgrade: () => PremiumConversionService().openPaywall(
+                context,
+                PaywallEntryPoint.macroDetails,
+                featureName: 'home_macros',
+              ),
             ),
           ),
           const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[3],
-            _SecondaryDashboardGrid(
+            HomeWellnessSection(
               waterTotal: waterTotal,
               waterGoal: waterGoal,
               steps: activitySteps,
@@ -640,15 +647,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               caloriesEstimated:
                   activitySummary?.activeCaloriesEstimated ?? true,
               onWaterTap: () => showHydrationSheet(context),
-              onWaterAdd: () => _addWater(ref),
-              onWaterUndo: () => _removeWater(ref),
               onActivityTap: () => showActivityHealthConnectSheet(context),
             ),
           ),
           const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[4],
-            _MinimalToolsSection(
+            HomeToolsSection(
               onPlannerTap: () {
                 if (isPro) {
                   context.push('/planner');

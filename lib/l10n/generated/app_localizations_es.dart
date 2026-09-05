@@ -9,6 +9,26 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get home_dashboard_upgrade =>
+      'Consulta gramos, metas diarias y qué comer';
+
+  @override
+  String get home_dashboard_planner => 'Tu próxima comida, según tus objetivos';
+
+  @override
+  String get home_dashboard_coach =>
+      'Consejos personales sobre tu nutrición de hoy';
+
+  @override
+  String get home_dashboard_open => 'Abrir';
+
+  @override
+  String get home_dashboard_ask => 'Preguntar';
+
+  @override
+  String get home_dashboard_liters => 'L';
+
+  @override
   String get appTitle => 'SnapCal';
 
   @override

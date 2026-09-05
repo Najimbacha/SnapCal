@@ -1,4 +1,10 @@
 {
+  "home_dashboard_upgrade": "Grammes, objectifs et prochain repas",
+  "home_dashboard_planner": "Votre prochain repas, adapté à vos objectifs",
+  "home_dashboard_coach": "Des conseils selon votre nutrition du jour",
+  "home_dashboard_open": "Ouvrir",
+  "home_dashboard_ask": "Demander",
+  "home_dashboard_liters": "L",
   "@@locale": "fr",
   "appTitle": "SnapCal",
   "common_save": "Enregistrer",
