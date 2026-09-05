@@ -70,3 +70,7 @@ GoogleService-Info.plist
 *serviceAccount*.json
 *service-account*.json
 *-firebase-adminsdk-*.json
+
+# Local session handoff notes. References local key paths and env var
+# names -- this repo is public, so it stays out of it.
+HANDOFF.md
