@@ -11,10 +11,10 @@
  *      "SR Legacy" and "Foundation Foods" in JSON are the two worth having.
  *   2. Unzip it.
  *   3. node scripts/import-usda.js --file <path-to.json> --dry-run
- *   4. Same without --dry-run once the numbers look sane.
+ *   4. Same without --dry-run, adding --report <audit.json>.
  *
- * Curated rows and curated aliases are never overwritten. They were chosen by
- * hand and they win; USDA only fills gaps.
+ * Repeat --file for both datasets. Curated aliases stay separate; existing
+ * nutrition changes only through the reviewed usda_curated_mappings.json file.
  */
 
 const fs = require('fs');
@@ -22,7 +22,7 @@ const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DB_PATH = path.join(DATA_DIR, 'nutrition_db.json');
-const ALIASES_PATH = path.join(DATA_DIR, 'food_aliases.json');
+const ALIASES_PATH = path.join(DATA_DIR, 'usda_aliases.json');
 
 // FoodData Central nutrient ids. These are stable across releases.
 const NUTRIENT = { ENERGY_KCAL: 1008, PROTEIN: 1003, CARBS: 1005, FAT: 1004 };
@@ -86,9 +86,10 @@ function shortAlias(description) {
 
   for (const segment of segments.slice(1)) {
     for (const word of segment.split(/\s+/)) {
-      if (NOISE_WORDS.has(word) || word.length < 3) continue;
       if (PREP_WORDS.has(word)) {
         if (!prep.includes(word)) prep.push(word);
+      } else if (NOISE_WORDS.has(word) || word.length < 3) {
+        continue;
       } else if (qualifiers.length < 2 && !qualifiers.includes(word)) {
         qualifiers.push(word);
       }
@@ -108,7 +109,13 @@ function nutrientAmount(food, id) {
   for (const entry of list) {
     const nid = entry?.nutrient?.id ?? entry?.nutrientId;
     if (nid === id) {
-      const amount = Number(entry.amount ?? entry.value);
+      const raw = entry.amount ?? entry.value;
+      if (raw === null || raw === undefined || raw === '') continue;
+      if (typeof raw !== 'number' && typeof raw !== 'string') continue;
+      if (typeof raw === 'string' && !raw.trim()) continue;
+      const unit = entry.nutrient?.unitName;
+      if (unit && unit.toLowerCase() !== (id === 1003 || id === 1004 || id === 1005 ? 'g' : 'kcal')) continue;
+      const amount = Number(raw);
       if (Number.isFinite(amount)) return amount;
     }
   }
@@ -123,28 +130,31 @@ function toRow(food) {
   // whole import dies on one of them partway through.
   if (!food || typeof food !== 'object') return null;
 
-  const calories = nutrientAmount(food, NUTRIENT.ENERGY_KCAL);
+  const energyId = [2048, 1008, 2047].find(id => nutrientAmount(food, id) !== null);
+  const calories = energyId === undefined ? null : nutrientAmount(food, energyId);
   if (calories === null || calories < 0 || calories > 900) return null;
 
-  const protein = nutrientAmount(food, NUTRIENT.PROTEIN) ?? 0;
-  const carbs = nutrientAmount(food, NUTRIENT.CARBS) ?? 0;
-  const fat = nutrientAmount(food, NUTRIENT.FAT) ?? 0;
+  const protein = nutrientAmount(food, NUTRIENT.PROTEIN);
+  const carbs = nutrientAmount(food, NUTRIENT.CARBS);
+  const fat = nutrientAmount(food, NUTRIENT.FAT);
+  if ([protein, carbs, fat].some(v => v === null)) return null;
   if ([protein, carbs, fat].some((v) => v < 0 || v > 100)) return null;
-  if (calories === 0 && protein === 0 && carbs === 0 && fat === 0) return null;
 
   const description = String(food.description || '').trim();
-  if (!description) return null;
+  if (!description || !Number.isSafeInteger(food.fdcId) || food.fdcId <= 0) return null;
 
   return {
     row: {
-      display_name: description.slice(0, 120),
-      calories: Math.round(calories),
-      protein: Math.round(protein * 10) / 10,
-      carbs: Math.round(carbs * 10) / 10,
-      fat: Math.round(fat * 10) / 10,
+      display_name: description,
+      calories,
+      protein,
+      carbs,
+      fat,
       category: String(food.foodCategory?.description || 'usda').toLowerCase().slice(0, 40),
       source: 'usda',
       fdc_id: food.fdcId,
+      dataset: food.dataType || 'SR Legacy',
+      energy_nutrient_id: energyId,
     },
     alias: shortAlias(description),
     full: normalize(description),
@@ -163,85 +173,93 @@ function readFoods(filePath) {
   throw new Error('No food array found in that file.');
 }
 
-function main() {
-  const file = arg('file');
-  if (!file) {
-    console.error('Usage: node scripts/import-usda.js --file <usda.json> [--dry-run] [--limit N]');
-    process.exit(1);
-  }
-  if (!fs.existsSync(file)) {
-    console.error(`Not found: ${file}`);
-    process.exit(1);
-  }
-
-  const limit = Number(arg('limit') || 0);
-  const db = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-  const aliases = JSON.parse(fs.readFileSync(ALIASES_PATH, 'utf8'));
-
-  const curatedIds = new Set(Object.keys(db));
-  const curatedAliases = new Set(Object.keys(aliases));
-
-  const foods = readFoods(file);
-  console.log(`Read ${foods.length} foods from ${path.basename(file)}`);
-
-  let added = 0;
-  let skippedNoData = 0;
-  let skippedNoAlias = 0;
-  let aliasTaken = 0;
-
+function buildImport(existing, foods, mappings = []) {
+  const db = { ...existing };
+  const aliases = Object.create(null);
+  const report = { read: foods.length, skipped: [], duplicateIds: [], collisions: [], updatedExisting: [] };
+  const seen = new Map();
+  const addAlias = (key, id) => {
+    if (!key) return;
+    const ids = aliases[key] ||= [];
+    if (!ids.includes(id)) ids.push(id);
+  };
   for (const food of foods) {
-    if (limit && added >= limit) break;
-
+    if (food && !['SR Legacy', 'Foundation'].includes(food.dataType)) {
+      throw new Error('Unsupported dataset: ' + food.dataType);
+    }
     const parsed = toRow(food);
-    if (!parsed) { skippedNoData += 1; continue; }
-    if (!parsed.alias) { skippedNoAlias += 1; continue; }
-
-    const id = `USDA_${food.fdcId}`;
-    if (curatedIds.has(id)) continue;
-
-    // A curated alias is a hand-made decision and always wins. So does the
-    // first USDA row to claim a key -- SR Legacy is ordered sensibly enough
-    // that the plainer entry tends to come first.
-    const free = !curatedAliases.has(parsed.alias) && !aliases[parsed.alias];
-    if (!free) {
-      aliasTaken += 1;
-      // Still worth storing under its full description: a long, specific
-      // query can find it even when the short key is spoken for.
-      if (!aliases[parsed.full]) {
-        db[id] = parsed.row;
-        aliases[parsed.full] = id;
-        added += 1;
-      }
+    if (!parsed) {
+      report.skipped.push({ fdc_id: food?.fdcId ?? null, description: food?.description ?? null,
+        reason: 'Missing, invalid or incomplete per-100g nutrition or identity' });
       continue;
     }
-
-    db[id] = parsed.row;
-    aliases[parsed.alias] = id;
-    if (parsed.full !== parsed.alias && !aliases[parsed.full]) {
-      aliases[parsed.full] = id;
+    const id = 'USDA_' + food.fdcId;
+    if (seen.has(id)) {
+      if (JSON.stringify(seen.get(id)) !== JSON.stringify(parsed.row)) {
+        throw new Error('Conflicting records for ' + id);
+      }
+      report.duplicateIds.push(id);
+      continue;
     }
-    added += 1;
+    seen.set(id, parsed.row);
+    db[id] = parsed.row;
   }
-
-  console.log('');
-  console.log(`  added                : ${added}`);
-  console.log(`  no usable nutrition  : ${skippedNoData}`);
-  console.log(`  no usable alias      : ${skippedNoAlias}`);
-  console.log(`  short alias taken    : ${aliasTaken} (stored under full description)`);
-  console.log('');
-  console.log(`  foods   : ${curatedIds.size} -> ${Object.keys(db).length}`);
-  console.log(`  aliases : ${curatedAliases.size} -> ${Object.keys(aliases).length}`);
-
-  if (DRY_RUN) {
-    console.log('\nDry run. Nothing written.');
-    return;
+  // Regenerate the index from all imported rows so repeated imports are stable.
+  for (const id of Object.keys(db).sort()) {
+    if (!id.startsWith('USDA_')) continue;
+    const row = db[id];
+    addAlias(normalize(row.display_name), id);
+    addAlias(shortAlias(row.display_name), id);
   }
-
-  fs.writeFileSync(DB_PATH, `${JSON.stringify(db, null, 2)}\n`);
-  fs.writeFileSync(ALIASES_PATH, `${JSON.stringify(aliases, null, 2)}\n`);
-  console.log('\nWritten. Run the tests before committing.');
+  for (const [name, ids] of Object.entries(aliases)) {
+    ids.sort();
+    if (ids.length > 1) report.collisions.push({ name, ids });
+  }
+  for (const mapping of mappings) {
+    const current = db[mapping.id];
+    const source = db['USDA_' + mapping.fdc_id];
+    if (!current || current.display_name !== mapping.expected_name ||
+        !source || source.display_name !== mapping.usda_description) {
+      throw new Error('Reviewed mapping no longer matches: ' + mapping.id);
+    }
+    const updated = { ...current, ...source, display_name: current.display_name,
+      category: current.category, usda_description: source.display_name };
+    if (JSON.stringify(current) !== JSON.stringify(updated)) {
+      report.updatedExisting.push({ id: mapping.id, reason: mapping.reason, before: current, after: updated });
+    }
+    db[mapping.id] = updated;
+  }
+  report.foodsBefore = Object.keys(existing).length;
+  report.foodsAfter = Object.keys(db).length;
+  report.importedRecords = Object.keys(db).filter(id => id.startsWith('USDA_')).length;
+  report.aliasCount = Object.keys(aliases).length;
+  return { db, aliases, report };
 }
 
-module.exports = { shortAlias, toRow, normalize };
+function main() {
+  const files = process.argv.flatMap((value, i, args) => value === '--file' ? [args[i + 1]] : []);
+  if (!files.length || files.some(file => !file || !fs.existsSync(file))) {
+    throw new Error('Supply --file <SR Legacy.json> --file <Foundation.json> [--dry-run] [--report <path>]');
+  }
+  const existing = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+  const mappings = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'usda_curated_mappings.json'), 'utf8'));
+  const result = buildImport(existing, files.flatMap(readFoods), mappings);
+  const summary = { ...result.report, skipped: result.report.skipped.length,
+    collisions: result.report.collisions.length, duplicateIds: result.report.duplicateIds.length };
+  console.log(JSON.stringify(summary, null, 2));
+  if (DRY_RUN) {
+    console.log('Dry run. Nothing written.');
+    return;
+  }
+  const reportPath = arg('report');
+  if (!reportPath) throw new Error('An applied import requires --report <path> for the audit record.');
+  const write = (file, value) => fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n');
+  // Build and validate everything before replacing either runtime file.
+  write(reportPath, { inputs: files.map(file => path.basename(file)), ...result.report });
+  write(DB_PATH, result.db);
+  write(ALIASES_PATH, result.aliases);
+  console.log('Written database, candidate aliases and import report.');
+}
 
+module.exports = { shortAlias, toRow, normalize, buildImport, readFoods };
 if (require.main === module) main();

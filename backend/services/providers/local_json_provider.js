@@ -3,6 +3,7 @@ const path = require('path');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'nutrition_db.json');
 const ALIASES_PATH = path.join(__dirname, '..', '..', 'data', 'food_aliases.json');
+const USDA_ALIASES_PATH = path.join(__dirname, '..', '..', 'data', 'usda_aliases.json');
 
 // Minimum score an inexact candidate must reach before it is accepted. Below
 // this the provider returns null, so the caller falls back to "not in
@@ -42,6 +43,9 @@ const FAT_PREP = new Set([
 let nutritionDb = null;
 let aliasMap = null;
 let aliasIndex = null;
+let importedAliases = {};
+let wordIndex = new Map();
+let databaseStats = null;
 
 function prepClass(words) {
   for (const w of words) {
@@ -58,8 +62,10 @@ function load() {
   try {
     nutritionDb = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     aliasMap = JSON.parse(fs.readFileSync(ALIASES_PATH, 'utf8'));
+    importedAliases = fs.existsSync(USDA_ALIASES_PATH)
+      ? JSON.parse(fs.readFileSync(USDA_ALIASES_PATH, 'utf8')) : {};
     console.log(
-      `nutrition_db loaded: ${Object.keys(nutritionDb).length} foods, ${Object.keys(aliasMap).length} aliases`
+      `nutrition_db loaded: ${Object.keys(nutritionDb).length} foods, ${Object.keys(aliasMap).length} curated aliases, ${Object.keys(importedAliases).length} USDA aliases`
     );
   } catch (err) {
     console.error('Failed to load nutrition database:', err.message);
@@ -70,6 +76,58 @@ function load() {
     const words = String(key).split(/\s+/).filter(Boolean);
     return { key, id, words, prep: prepClass(words) };
   });
+  for (const [key, ids] of Object.entries(importedAliases)) {
+    const words = key.split(/\s+/).filter(Boolean);
+    for (const id of ids) aliasIndex.push({ key, id, words, prep: prepClass(words), imported: true });
+  }
+  wordIndex = new Map();
+  for (const candidate of aliasIndex) {
+    for (const word of new Set(candidate.words)) {
+      if (!wordIndex.has(word)) wordIndex.set(word, []);
+      wordIndex.get(word).push(candidate);
+    }
+  }
+  databaseStats = {
+    foods: Object.keys(nutritionDb).length,
+    usdaFoods: Object.keys(nutritionDb).filter(id => id.startsWith('USDA_')).length,
+    usdaAliases: Object.keys(importedAliases).length,
+  };
+}
+
+function compatible(query, description, curated = false) {
+  const qualifiers = text => normalize(text).replace(/\bfat free\b|\bnonfat\b/g, 'skim');
+  const normalizedQuery = qualifiers(query);
+  const target = qualifiers(description);
+  const states = ['raw', 'fried', 'roasted', 'grilled', 'boiled', 'baked', 'steamed',
+    'poached', 'broiled', 'dried', 'frozen', 'canned', 'smoked', 'breaded', 'battered'];
+  const words = new Set(normalizedQuery.split(' '));
+  const targetWords = new Set(target.split(' '));
+  for (const qualifier of ['extra virgin', 'extra light', 'low fat', 'reduced fat',
+    'fat free', 'whole milk', 'brown rice', 'white rice']) {
+    if (normalizedQuery.includes(qualifier) && !target.includes(qualifier)) {
+      // USDA often uses comma-separated noun-first descriptions.
+      if (!qualifier.split(' ').every(word => targetWords.has(word))) return false;
+    }
+  }
+  for (const state of states) {
+    if (words.has(state) && !targetWords.has(state)) {
+      const conflicting = states.some(other => targetWords.has(other));
+      if (!curated || conflicting || FAT_PREP.has(state)) return false;
+    }
+  }
+  if (words.has('cooked') && targetWords.has('raw')) return false;
+  const skin = text => /skinless|without skin|meat only/.test(text) ? 'without'
+    : /with skin|skin on|meat and skin/.test(text) ? 'with' : null;
+  if (skin(normalize(query)) && skin(normalize(query)) !== skin(target)) return false;
+  for (const qualifier of ['skim', 'nonfat', 'unsweetened', 'sweetened', 'drained']) {
+    if (words.has(qualifier) && !targetWords.has(qualifier)) return false;
+  }
+  // Percentage qualifiers distinguish products such as 1% and 2% milk.
+  const percentages = text => [...text.matchAll(/\d+(?:\.\d+)?\s*%/g)].map(m => m[0].replace(/\s/g, ''));
+  const wanted = percentages(query);
+  const actual = percentages(description);
+  if (wanted.some(value => !actual.includes(value))) return false;
+  return true;
 }
 
 // Keeps letters of ANY script. The previous implementation stripped
@@ -128,56 +186,52 @@ function toResult(id, food) {
 
 function lookup(foodName) {
   load();
-
   if (!foodName || typeof foodName !== 'string') return null;
-
   const normalized = normalize(foodName);
   if (!normalized) return null;
 
-  // 1. Exact alias — the curated answer always wins.
-  const exactId = aliasMap[normalized];
-  if (exactId && nutritionDb[exactId]) {
+  const exactId = aliasMap[foodName.toLowerCase().trim()] || aliasMap[normalized];
+  if (exactId && nutritionDb[exactId] &&
+      compatible(foodName, nutritionDb[exactId].display_name, true)) {
     return toResult(exactId, nutritionDb[exactId]);
   }
-
-  // 2. Best-scoring candidate across the whole index, not the first hit.
-  const queryWords = normalized.split(/\s+/).filter(Boolean);
-  const queryPrep = prepClass(queryWords);
-
-  let best = null;
-  let bestScore = 0;
-  // The best score belonging to a *different* food. Two aliases for the same
-  // row tying is not ambiguity -- it is the row being well aliased.
-  let runnerUp = null;
-  let runnerUpScore = 0;
-  for (const candidate of aliasIndex) {
-    if (!nutritionDb[candidate.id]) continue;
-    const score = scoreCandidate(queryWords, queryPrep, candidate);
-    if (score > bestScore) {
-      if (best && best.id !== candidate.id) {
-        runnerUp = best;
-        runnerUpScore = bestScore;
-      }
-      bestScore = score;
-      best = candidate;
-    } else if (best && candidate.id !== best.id && score > runnerUpScore) {
-      runnerUp = candidate;
-      runnerUpScore = score;
+  const words = normalized.split(/\s+/);
+  const prep = prepClass(words);
+  const exactImported = importedAliases[normalized] || [];
+  if (exactImported.length === 1) {
+    const id = exactImported[0];
+    const row = nutritionDb[id];
+    if (row && normalize(row.display_name) === normalized && compatible(foodName, row.display_name)) {
+      return toResult(id, row);
     }
   }
-
-  if (!best || bestScore < MIN_SCORE) return null;
-
-  if (runnerUp && bestScore - runnerUpScore < AMBIGUITY_MARGIN) {
-    const a = Number(nutritionDb[best.id]?.calories) || 0;
-    const b = Number(nutritionDb[runnerUp.id]?.calories) || 0;
-    const spread = Math.max(a, b) === 0 ? 0 : Math.abs(a - b) / Math.max(a, b);
-    // Close on score AND far apart on energy: a coin toss the user would
-    // notice. Refuse, and let the estimate downstream answer instead -- it is
-    // roughly right, where a confident wrong row is precisely wrong.
-    if (spread > AMBIGUITY_ENERGY_TOLERANCE) return null;
+  const candidates = new Set(words.flatMap(word => wordIndex.get(word) || []));
+  const bestByFood = new Map();
+  for (const candidate of candidates) {
+    const food = nutritionDb[candidate.id];
+    if (!food || !compatible(foodName, food.usda_description || food.display_name)) continue;
+    if (candidate.imported && !sameFoodWords(words, food.display_name)) continue;
+    const score = candidate.key === normalized ? 1 : scoreCandidate(words, prep, candidate);
+    if (score < MIN_SCORE) continue;
+    // Only identical full identities can share a winner; similar calories are not equivalence.
+    const identity = food.fdc_id ? 'USDA_' + food.fdc_id : candidate.id;
+    const previous = bestByFood.get(identity);
+    if (!previous || score > previous.score ||
+        (score === previous.score && food.dataset === 'Foundation' &&
+         nutritionDb[previous.id].dataset !== 'Foundation')) {
+      bestByFood.set(identity, { ...candidate, score });
+    }
   }
-
+  const ranked = selectPreferredSources([...bestByFood.values()], nutritionDb)
+    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  if (!ranked.length) return null;
+  const [best, next] = ranked;
+  if (next && best.score - next.score < AMBIGUITY_MARGIN) {
+    if (best.imported || next.imported) return null;
+    const a = nutritionDb[best.id].calories;
+    const b = nutritionDb[next.id].calories;
+    if (Math.max(a, b) && Math.abs(a - b) / Math.max(a, b) > AMBIGUITY_ENERGY_TOLERANCE) return null;
+  }
   return toResult(best.id, nutritionDb[best.id]);
 }
 
@@ -186,6 +240,27 @@ function getFoodById(id) {
   const food = nutritionDb[id];
   if (!food) return null;
   return toResult(id, food);
+}
+
+function selectPreferredSources(candidates, db) {
+  return candidates.filter(candidate => {
+    const row = db[candidate.id];
+    if (row.dataset !== 'SR Legacy') return true;
+    const description = normalize(row.usda_description || row.display_name);
+    return !candidates.some(other => db[other.id].dataset === 'Foundation' &&
+      other.score >= candidate.score && normalize(db[other.id].display_name) === description);
+  });
+}
+
+const QUERY_MODIFIERS = new Set(['raw', 'cooked', 'fried', 'roasted', 'grilled', 'boiled',
+  'baked', 'steamed', 'poached', 'broiled', 'dried', 'frozen', 'canned', 'smoked',
+  'skinless', 'skin', 'with', 'without', 'and', 'only', 'meat', 'on', 'fat', 'free',
+  'low', 'reduced', 'whole', 'skim', 'nonfat', 'unsweetened', 'sweetened', 'drained']);
+function sameFoodWords(words, description) {
+  const singular = word => word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word;
+  const actual = new Set(normalize(description).split(' ').map(singular));
+  const required = words.filter(word => !QUERY_MODIFIERS.has(word) && !/^\d+$/.test(word));
+  return required.length > 0 && required.every(word => actual.has(singular(word)));
 }
 
 function getAllCategories() {
@@ -197,4 +272,6 @@ function getAllCategories() {
   return [...categories].sort();
 }
 
-module.exports = { lookup, getFoodById, getAllCategories, load, normalize };
+function getDatabaseStats() { load(); return { ...databaseStats }; }
+
+module.exports = { lookup, getFoodById, getAllCategories, load, normalize, compatible, selectPreferredSources, getDatabaseStats };

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "FDB_000003",
+    "fdc_id": 171477,
+    "expected_name": "Chicken breast, roasted",
+    "usda_description": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
+    "reason": "Existing 165 kcal, 31 g protein and 3.6 g fat match USDA roasted breast meat without skin, rounded. Preserve the established default and use source precision."
+  },
+  {
+    "id": "FDB_000421",
+    "fdc_id": 171413,
+    "expected_name": "Olive oil",
+    "usda_description": "Oil, olive, salad or cooking",
+    "reason": "Generic olive oil used for food preparation; identical 884 kcal and 100 g fat. Extra virgin and extra light remain distinct imported records."
+  }
+]

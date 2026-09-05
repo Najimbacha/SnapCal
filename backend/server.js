@@ -1753,6 +1753,7 @@ app.get('/health', (req, res) => {
     uptimeSeconds: Math.round(process.uptime()),
     scan: {
       pipeline: (process.env.SCAN_PIPELINE || SCAN_PIPELINE),
+      database: nutritionProvider.getDatabaseStats(),
       recentAttempts: attempts,
       recentFailures: failures,
       failureRate: Number(failureRate.toFixed(2)),

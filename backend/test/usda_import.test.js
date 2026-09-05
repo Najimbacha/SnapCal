@@ -59,8 +59,9 @@ test('reads energy and the three macros by nutrient id', () => {
   const parsed = toRow(usdaFood({ 1008: 165, 1003: 31.02, 1005: 0, 1004: 3.57 }));
   assert.deepStrictEqual(
     { ...parsed.row, display_name: undefined, category: undefined, fdc_id: undefined },
-    { display_name: undefined, calories: 165, protein: 31, carbs: 0, fat: 3.6,
-      category: undefined, source: 'usda', fdc_id: undefined },
+    { display_name: undefined, calories: 165, protein: 31.02, carbs: 0, fat: 3.57,
+      category: undefined, source: 'usda', fdc_id: undefined,
+      dataset: 'SR Legacy', energy_nutrient_id: 1008 },
   );
 });
 
@@ -76,8 +77,9 @@ test('impossible values are treated as a parsing fault', () => {
   assert.strictEqual(toRow(usdaFood({ 1008: 100, 1003: -5, 1005: 1, 1004: 1 })), null);
 });
 
-test('missing macros default to zero but energy must be real', () => {
-  const parsed = toRow(usdaFood({ 1008: 884, 1004: 100 }, 'Oil, olive, salad or cooking'));
+test('explicit zero macros are valid, missing macros are not guessed', () => {
+  assert.strictEqual(toRow(usdaFood({ 1008: 884, 1004: 100 })), null);
+  const parsed = toRow(usdaFood({ 1008: 884, 1004: 100, 1003: 0, 1005: 0 }, 'Oil, olive, salad or cooking'));
   assert.strictEqual(parsed.row.calories, 884);
   assert.strictEqual(parsed.row.protein, 0);
   assert.strictEqual(parsed.alias, 'oil olive');

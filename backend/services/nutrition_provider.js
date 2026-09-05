@@ -31,4 +31,6 @@ function getProviderName() {
   return PROVIDER_NAMES[PROVIDER] || `Custom (${PROVIDER})`;
 }
 
-module.exports = { lookup, getFoodById, getAllCategories, getProviderName };
+function getDatabaseStats() { return getProvider().getDatabaseStats(); }
+
+module.exports = { lookup, getFoodById, getAllCategories, getProviderName, getDatabaseStats };
