@@ -1304,11 +1304,19 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
     );
     const choice = response.data?.choices?.[0];
     const content = choice?.message?.content;
-    if (content) return stripThink(content);
+    // Strip before testing, not after. A reasoning model that runs out of
+    // budget mid-thought returns content that is entirely <think>...</think>:
+    // non-empty here, empty once stripped. Testing the raw string let that
+    // through as a success, so the provider was credited, no failover ran, and
+    // the empty string reached extractJson -- which is the `json-not-found: `
+    // with nothing after the colon that this looks like in the logs.
+    const cleaned = stripThink(content);
+    if (cleaned) return cleaned;
     // A reasoning model that spends its whole budget thinking returns an
     // empty content with finish_reason 'length'. Name it.
     throw new Error(
       `empty-response (finish_reason=${choice?.finish_reason ?? 'unknown'}, `
+      + `raw_chars=${(content || '').length}, `
       + `reasoning_chars=${(choice?.message?.reasoning_content || '').length})`,
     );
   };
@@ -1345,8 +1353,13 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
         );
         const candidate = response.data?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
-        if (text) return stripThink(text);
-        throw new Error(`empty-response (finishReason=${candidate?.finishReason ?? 'unknown'})`);
+        // Same reason as openAiVision: strip first, then decide.
+        const cleaned = stripThink(text);
+        if (cleaned) return cleaned;
+        throw new Error(
+          `empty-response (finishReason=${candidate?.finishReason ?? 'unknown'}, `
+          + `raw_chars=${(text || '').length})`,
+        );
       },
     },
     deepseek: {
@@ -2549,6 +2562,7 @@ module.exports = {
   app,
   normalizeNutrition,
   extractJson,
+  stripThink,
   normalizeAiJsonText,
   isSafeId,
   calculateNutrition,
