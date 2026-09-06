@@ -72,7 +72,9 @@ test('gauges are evaluated at render time, not at registration', () => {
 
 test('the registry renders a parseable document', () => {
   metrics.scans.inc({ outcome: 'success', provider: 'groq' });
+  metrics.aiTokens.inc({ kind: 'vision', model: 'test-model', type: 'total' }, 123);
   const out = renderMetrics();
+  assert.match(out, /snapcal_ai_tokens_total\{kind="vision",model="test-model",type="total"\} 123/);
   assert.ok(out.endsWith('\n'), 'must end with a newline');
   for (const line of out.split('\n')) {
     if (line === '' || line.startsWith('#')) continue;

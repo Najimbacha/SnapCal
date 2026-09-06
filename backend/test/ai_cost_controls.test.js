@@ -45,11 +45,19 @@ test('capacity does not prevent new paid requests from running', async () => {
 
 test('usage logs contain counts without request or response text', t => {
   const log = t.mock.method(console, 'log', () => {});
-  logAiUsage('text', 'test-model', { usage: { prompt_tokens: 123, completion_tokens: 10, total_tokens: 133, prompt_cache_hit_tokens: 100, secret: 'private' }, choices: [{ message: { content: 'private' } }] });
+  const increments = [];
+  const counter = { inc: (labels, value) => increments.push({ labels, value }) };
+  logAiUsage('text', 'test-model', { usage: { prompt_tokens: 123, completion_tokens: 10, total_tokens: 133, prompt_cache_hit_tokens: 100, secret: 'private' }, choices: [{ message: { content: 'private' } }] }, counter);
   const output = JSON.parse(log.mock.calls[0].arguments[0]);
   assert.equal(output.total_tokens, 133);
   assert.equal(output.prompt_cache_hit_tokens, 100);
   assert.equal(JSON.stringify(output).includes('private'), false);
+  assert.deepEqual(increments, [
+    { labels: { kind: 'text', model: 'test-model', type: 'input' }, value: 123 },
+    { labels: { kind: 'text', model: 'test-model', type: 'output' }, value: 10 },
+    { labels: { kind: 'text', model: 'test-model', type: 'total' }, value: 133 },
+    { labels: { kind: 'text', model: 'test-model', type: 'cache_hit' }, value: 100 },
+  ]);
   logAiUsage('text', 'test-model', {});
   assert.equal(log.mock.callCount(), 1);
 });

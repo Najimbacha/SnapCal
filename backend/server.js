@@ -1339,7 +1339,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
       },
       { headers: { ...headers, 'Content-Type': 'application/json' }, timeout: budget() },
     );
-    logAiUsage('vision', model, response.data);
+    logAiUsage('vision', model, response.data, metrics.aiTokens);
     const choice = response.data?.choices?.[0];
     const content = choice?.message?.content;
     // Strip before testing, not after. A reasoning model that runs out of
@@ -1571,7 +1571,7 @@ async function callAiText(prompt, options = {}) {
         timeout,
       },
     );
-    logAiUsage('text', model, response.data);
+    logAiUsage('text', model, response.data, metrics.aiTokens);
     const content = response.data?.choices?.[0]?.message?.content;
     const cleaned = content ? stripThink(content) : '';
     if (cleaned) return requireJson ? normalizeAiJsonText(cleaned) : cleaned;
@@ -1789,6 +1789,13 @@ app.get('/health', (req, res) => {
     scan: {
       pipeline: (process.env.SCAN_PIPELINE || SCAN_PIPELINE),
       database: nutritionProvider.getDatabaseStats(),
+      costControls: {
+        detectionMaxOutputTokens: AI_IMAGE_DETECTION_MAX_TOKENS,
+        retryLimit: Number(process.env.AI_RETRY_LIMIT) || 2,
+        resultCacheTtlSeconds: SCAN_RESULT_CACHE_TTL_SECONDS,
+        nutritionCacheTtlSeconds: NUTRITION_REDIS_TTL_SECONDS,
+        sharedCacheReady: redisCache.isReady(),
+      },
       recentAttempts: attempts,
       recentFailures: failures,
       failureRate: Number(failureRate.toFixed(2)),

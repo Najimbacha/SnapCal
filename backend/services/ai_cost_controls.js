@@ -18,7 +18,7 @@ function createRequestCoalescer(limit = 100) {
 }
 
 // Log counts supplied by the provider, never prompts, photos, or credentials.
-function logAiUsage(kind, model, data) {
+function logAiUsage(kind, model, data, tokenCounter = null) {
   const usage = data?.usage;
   if (!usage || typeof usage !== 'object') return;
   const counts = {};
@@ -28,6 +28,18 @@ function logAiUsage(kind, model, data) {
   }
   if (Object.keys(counts).length) {
     console.log(JSON.stringify({ event: 'ai.usage', kind, model, ...counts }));
+    if (tokenCounter && typeof tokenCounter.inc === 'function') {
+      const metricTypes = {
+        prompt_tokens: 'input',
+        completion_tokens: 'output',
+        total_tokens: 'total',
+        prompt_cache_hit_tokens: 'cache_hit',
+        prompt_cache_miss_tokens: 'cache_miss',
+      };
+      for (const [key, value] of Object.entries(counts)) {
+        tokenCounter.inc({ kind, model, type: metricTypes[key] }, value);
+      }
+    }
   }
 }
 

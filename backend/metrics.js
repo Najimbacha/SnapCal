@@ -156,6 +156,14 @@ const scans = register(
   ]),
 );
 
+const aiTokens = register(
+  new Counter('snapcal_ai_tokens_total', 'AI tokens reported by providers.', [
+    'kind',
+    'model',
+    'type',
+  ]),
+);
+
 const scanDuration = register(
   new Histogram('snapcal_scan_duration_seconds', 'End-to-end scan latency.', ['outcome']),
 );
@@ -239,6 +247,7 @@ module.exports = {
   renderMetrics,
   metrics: {
     scans,
+    aiTokens,
     scanDuration,
     quotaDenials,
     authFailures,

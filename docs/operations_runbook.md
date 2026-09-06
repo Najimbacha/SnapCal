@@ -46,6 +46,7 @@ scrape_configs:
 | `snapcal_http_requests_total` | counter | method, route, status | Rate and errors, per route |
 | `snapcal_http_request_duration_seconds` | histogram | method, route | Latency, p50/p95/p99 |
 | `snapcal_scans_total` | counter | outcome, provider | Which AI provider is answering, and which is failing |
+| `snapcal_ai_tokens_total` | counter | kind, model, type | Actual provider token usage for cost tracking |
 | `snapcal_scan_duration_seconds` | histogram | outcome | How long a scan actually takes |
 | `snapcal_quota_denials_total` | counter | kind | Free-tier pressure; a proxy for upgrade intent |
 | `snapcal_auth_failures_total` | counter | control | Which control is rejecting, and whether that is normal |
