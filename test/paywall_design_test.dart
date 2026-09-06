@@ -115,6 +115,7 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
       if (capture) {
+        await tester.pump(const Duration(seconds: 3));
         await tester.runAsync(() async {
           final image = await (key.currentContext!.findRenderObject()
                   as RenderRepaintBoundary)
@@ -127,6 +128,11 @@ void main() {
         });
       }
       if (scenario.$5 == 'en') {
+        expect(
+          find.byKey(const ValueKey('paywall-compact-scan-preview')),
+          findsOneWidget,
+        );
+        expect(find.textContaining('248'), findsOneWidget);
         final firstAsset =
             tester
                 .widgetList<Image>(find.byType(Image))

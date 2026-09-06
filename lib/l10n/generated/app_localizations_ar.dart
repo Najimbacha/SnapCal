@@ -15,7 +15,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get purchase_headline => 'اعرف ماذا تأكل بعد ذلك.';
 
   @override
-  String get purchase_preview_title => 'يومك مع برو · معاينة';
+  String get purchase_preview_title => 'شاهد سناب كال برو أثناء العمل';
 
   @override
   String get purchase_preview_advice => 'خطط لعشاء غني بالبروتين.';
@@ -197,7 +197,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get home_sync_prompt => 'أنشئ حساباً لمزامنة تقدمك.';
 
   @override
-  String get log_title => 'السجل اليومي';
+  String get log_title => 'سجل الطعام';
 
   @override
   String get log_subtitle => 'تتبع رحلتك الغذائية';
@@ -227,7 +227,39 @@ class AppLocalizationsAr extends AppLocalizations {
   String get log_return_today => 'العودة إلى اليوم';
 
   @override
-  String get log_add_manually => 'إضافة يدوياً';
+  String get log_add_manually => 'إضافة يدوية';
+
+  @override
+  String get log_daily_balance => 'رصيد اليوم';
+
+  @override
+  String get log_daily_health => 'صحة اليوم';
+
+  @override
+  String get log_scan_meal => 'مسح وجبة';
+
+  @override
+  String log_calories_left(String value) {
+    return '$value متبقية';
+  }
+
+  @override
+  String log_calories_over(String value) {
+    return '$value فوق الهدف';
+  }
+
+  @override
+  String log_add_meal_type(String meal) {
+    return 'إضافة $meal';
+  }
+
+  @override
+  String log_protein_left_today(String value) {
+    return '$value غ بروتين متبقية اليوم';
+  }
+
+  @override
+  String get log_protein_goal_met_today => 'تم تحقيق هدف البروتين اليوم';
 
   @override
   String log_removed_snackbar(String food) {

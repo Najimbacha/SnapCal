@@ -1,32 +1,36 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/theme_colors.dart';
 import '../../../data/models/meal.dart';
 
-/// Swipeable tile for displaying a meal in the log with Elite styling
 class MealListTile extends StatelessWidget {
-  final Meal meal;
-  final bool isPro;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-
   const MealListTile({
     super.key,
     required this.meal,
     required this.isPro,
     required this.onTap,
     required this.onDelete,
+    this.showTime = true,
+    this.showDivider = false,
   });
+
+  final Meal meal;
+  final bool isPro;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final bool showTime;
+  final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
-
     return Dismissible(
       key: Key(meal.id),
       direction: DismissDirection.endToStart,
@@ -35,193 +39,189 @@ class MealListTile extends StatelessWidget {
         onDelete();
       },
       background: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-        ),
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: Icon(LucideIcons.trash2, color: AppColors.error, size: 22),
+        padding: const EdgeInsetsDirectional.only(end: 18),
+        color: AppColors.error.withValues(alpha: 0.08),
+        child: const Icon(LucideIcons.trash2, color: AppColors.error, size: 20),
       ),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          // Matches the metric tiles: same surface, 16px radius, same hairline.
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.045) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color:
-                  isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : const Color(0xFFEDE9E1),
-              width: 1.0,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 76),
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            decoration: BoxDecoration(
+              border:
+                  showDivider
+                      ? Border(
+                        bottom: BorderSide(
+                          color: context.dividerColor.withValues(alpha: 0.5),
+                        ),
+                      )
+                      : null,
             ),
-          ),
-          child: Row(
-            children: [
-              // Icon
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: context.primaryColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  _getMealIcon(meal),
-                  color: context.primaryColor,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            meal.foodName,
-                            style: AppTypography.titleSmall.copyWith(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                              color: context.textPrimaryColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Icon(
-                          LucideIcons.clock,
-                          size: 9,
-                          color: context.textMutedColor,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          meal.formattedTime,
-                          style: AppTypography.labelSmall.copyWith(
-                            color: context.textMutedColor,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 11,
-                          ),
-                        ),
-                        if (meal.portion != null &&
-                            meal.portion!.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            width: 2,
-                            height: 2,
-                            decoration: BoxDecoration(
-                              color: context.textMutedColor.withValues(
-                                alpha: 0.3,
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              meal.portion!,
-                              style: AppTypography.labelSmall.copyWith(
-                                color: context.textMutedColor.withValues(
-                                  alpha: 0.7,
-                                ),
-                                fontWeight: FontWeight.w500,
-                                fontSize: 11,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Calories
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
+            child: Row(
+              children: [
+                _MealThumbnail(meal: meal),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '${meal.calories}',
+                        meal.foodName,
                         style: AppTypography.titleMedium.copyWith(
-                          color: context.primaryColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
+                          color: context.textPrimaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (_detailText.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          _detailText,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: context.textMutedColor,
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '${meal.calories}',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: context.textPrimaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
                         ),
                       ),
-                      const SizedBox(width: 2),
-                      Text(
-                        l10n.settings_kcal_unit,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: context.primaryColor.withValues(alpha: 0.6),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 9,
+                      TextSpan(
+                        text: ' ${l10n.settings_kcal_unit}',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: context.textMutedColor,
+                          fontSize: 10,
                         ),
                       ),
                     ],
                   ),
-                  if (isPro) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        _EliteMacroPill(
-                          color: AppColors.protein,
-                          value: '${meal.macros.protein}',
-                        ),
-                        const SizedBox(width: 4),
-                        _EliteMacroPill(
-                          color: AppColors.carbs,
-                          value: '${meal.macros.carbs}',
-                        ),
-                        const SizedBox(width: 4),
-                        _EliteMacroPill(
-                          color: AppColors.fat,
-                          value: '${meal.macros.fat}',
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ],
+                  maxLines: 1,
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  LucideIcons.chevronRight,
+                  size: 18,
+                  color: context.textMutedColor,
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  IconData _getMealIcon(Meal meal) {
-    final name = meal.foodName.toLowerCase();
+  String get _detailText {
+    final details = <String>[];
+    if (showTime) details.add(meal.formattedTime);
+    final portion = meal.portion?.trim();
+    if (portion != null && portion.isNotEmpty) details.add(portion);
+    if (details.isEmpty && isPro) {
+      details.add(
+        'P ${meal.macros.protein}g  C ${meal.macros.carbs}g  F ${meal.macros.fat}g',
+      );
+    }
+    return details.join('  ·  ');
+  }
+}
+
+class _MealThumbnail extends StatelessWidget {
+  const _MealThumbnail({required this.meal});
+
+  final Meal meal;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUri = meal.imageUri;
+    final isNetwork = imageUri?.startsWith('http') ?? false;
+    final localExists =
+        imageUri != null && !isNetwork && File(imageUri).existsSync();
+
+    Widget fallback() => Container(
+      color: _fallbackColor(meal.foodName),
+      alignment: Alignment.center,
+      child: Icon(
+        _foodIcon(meal.foodName),
+        color: context.primaryColor,
+        size: 22,
+      ),
+    );
+
+    Widget child;
+    if (imageUri == null) {
+      child = fallback();
+    } else if (isNetwork) {
+      child = Image.network(
+        imageUri,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback(),
+      );
+    } else if (localExists) {
+      child = Image.file(
+        File(imageUri),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback(),
+      );
+    } else {
+      child = fallback();
+    }
+
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.cardBorderColor),
+      ),
+      child: ClipRRect(borderRadius: BorderRadius.circular(7), child: child),
+    );
+  }
+
+  Color _fallbackColor(String foodName) {
+    final name = foodName.toLowerCase();
+    if (name.contains('salad') ||
+        name.contains('avocado') ||
+        name.contains('vegetable')) {
+      return const Color(0xFFEAF4ED);
+    }
+    if (name.contains('chicken') ||
+        name.contains('fish') ||
+        name.contains('meat')) {
+      return const Color(0xFFFFF3E6);
+    }
+    if (name.contains('yogurt') || name.contains('milk')) {
+      return const Color(0xFFEDF3F8);
+    }
+    return const Color(0xFFF1F2EE);
+  }
+
+  IconData _foodIcon(String foodName) {
+    final name = foodName.toLowerCase();
     if (name.contains('coffee') || name.contains('tea')) {
       return LucideIcons.coffee;
     }
-    if (name.contains('egg') || name.contains('breakfast')) {
-      return LucideIcons.egg;
-    }
-    if (name.contains('burger') ||
-        name.contains('meat') ||
-        name.contains('beef')) {
-      return LucideIcons.beef;
-    }
+    if (name.contains('egg')) return LucideIcons.egg;
     if (name.contains('apple') ||
         name.contains('fruit') ||
         name.contains('salad')) {
@@ -233,30 +233,6 @@ class MealListTile extends StatelessWidget {
     if (name.contains('fish') || name.contains('shrimp')) {
       return LucideIcons.fish;
     }
-    if (name.contains('cake') ||
-        name.contains('cookie') ||
-        name.contains('sweet')) {
-      return LucideIcons.cake;
-    }
     return LucideIcons.utensils;
-  }
-}
-
-class _EliteMacroPill extends StatelessWidget {
-  final Color color;
-  final String value;
-
-  const _EliteMacroPill({required this.color, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      value,
-      style: AppTypography.labelSmall.copyWith(
-        color: color.withValues(alpha: 0.7),
-        fontSize: 10,
-        fontWeight: FontWeight.w500,
-      ),
-    );
   }
 }

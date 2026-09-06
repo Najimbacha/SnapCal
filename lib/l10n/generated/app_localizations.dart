@@ -117,7 +117,7 @@ abstract class AppLocalizations {
   /// No description provided for @purchase_preview_title.
   ///
   /// In en, this message translates to:
-  /// **'Your day, with Pro · Preview'**
+  /// **'See SnapCal Pro in action'**
   String get purchase_preview_title;
 
   /// No description provided for @purchase_preview_advice.
@@ -435,7 +435,7 @@ abstract class AppLocalizations {
   /// No description provided for @log_title.
   ///
   /// In en, this message translates to:
-  /// **'Daily Log'**
+  /// **'Food Log'**
   String get log_title;
 
   /// No description provided for @log_subtitle.
@@ -495,8 +495,56 @@ abstract class AppLocalizations {
   /// No description provided for @log_add_manually.
   ///
   /// In en, this message translates to:
-  /// **'Add Manually'**
+  /// **'Add manually'**
   String get log_add_manually;
+
+  /// No description provided for @log_daily_balance.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily balance'**
+  String get log_daily_balance;
+
+  /// No description provided for @log_daily_health.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily health'**
+  String get log_daily_health;
+
+  /// No description provided for @log_scan_meal.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan meal'**
+  String get log_scan_meal;
+
+  /// No description provided for @log_calories_left.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} left'**
+  String log_calories_left(String value);
+
+  /// No description provided for @log_calories_over.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} over'**
+  String log_calories_over(String value);
+
+  /// No description provided for @log_add_meal_type.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {meal}'**
+  String log_add_meal_type(String meal);
+
+  /// No description provided for @log_protein_left_today.
+  ///
+  /// In en, this message translates to:
+  /// **'{value}g protein left today'**
+  String log_protein_left_today(String value);
+
+  /// No description provided for @log_protein_goal_met_today.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein goal reached today'**
+  String get log_protein_goal_met_today;
 
   /// No description provided for @log_removed_snackbar.
   ///

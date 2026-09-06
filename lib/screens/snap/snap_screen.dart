@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_typography.dart';
@@ -259,8 +262,10 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     final now = DateTime.now();
     final dateString =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final unknownFood = AppLocalizations.of(context)!.log_unknown_food;
 
     try {
+      final imageUri = await _persistCapturedMealImage(now);
       HapticFeedback.heavyImpact();
       router.go('/');
 
@@ -269,10 +274,8 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
           id: mealNotifier.generateMealId(),
           timestamp: now.millisecondsSinceEpoch,
           dateString: dateString,
-          foodName:
-              name.isEmpty
-                  ? AppLocalizations.of(context)!.log_unknown_food
-                  : name,
+          imageUri: imageUri,
+          foodName: name.isEmpty ? unknownFood : name,
           calories: calories,
           macros: Macros(protein: protein, carbs: carbs, fat: fat),
           portion: portion,
@@ -302,8 +305,10 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     final now = DateTime.now();
     final dateString =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final unknownFood = AppLocalizations.of(context)!.log_unknown_food;
 
     try {
+      final imageUri = await _persistCapturedMealImage(now);
       HapticFeedback.heavyImpact();
       router.go('/');
 
@@ -313,10 +318,8 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             id: mealNotifier.generateMealId(),
             timestamp: DateTime.now().millisecondsSinceEpoch,
             dateString: dateString,
-            foodName:
-                item.foodName.isEmpty
-                    ? AppLocalizations.of(context)!.log_unknown_food
-                    : item.foodName,
+            imageUri: imageUri,
+            foodName: item.foodName.isEmpty ? unknownFood : item.foodName,
             calories: item.calories,
             macros: Macros(
               protein: item.protein,
@@ -349,6 +352,27 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     _isSavingResult = true;
     _savedResultFingerprint = fingerprint;
     return true;
+  }
+
+  Future<String?> _persistCapturedMealImage(DateTime capturedAt) async {
+    final bytes = _controller.capturedImageBytes;
+    if (bytes == null || bytes.isEmpty) return null;
+
+    try {
+      final root = await getApplicationSupportDirectory();
+      final directory = Directory(
+        '${root.path}${Platform.pathSeparator}meal_images',
+      );
+      await directory.create(recursive: true);
+      final file = File(
+        '${directory.path}${Platform.pathSeparator}meal_${capturedAt.millisecondsSinceEpoch}.jpg',
+      );
+      await file.writeAsBytes(bytes, flush: false);
+      return file.path;
+    } catch (error) {
+      debugPrint('Unable to save meal thumbnail: $error');
+      return null;
+    }
   }
 
   String _singleSaveFingerprint({

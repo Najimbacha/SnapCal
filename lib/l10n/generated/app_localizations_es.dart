@@ -15,7 +15,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get purchase_headline => 'Descubre qué comer después.';
 
   @override
-  String get purchase_preview_title => 'Tu día con Pro · Vista previa';
+  String get purchase_preview_title => 'Mira SnapCal Pro en acción';
 
   @override
   String get purchase_preview_advice => 'Planea una cena rica en proteínas.';
@@ -190,7 +190,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Crea una cuenta para sincronizar tu progreso.';
 
   @override
-  String get log_title => 'Registro Diario';
+  String get log_title => 'Diario de comidas';
 
   @override
   String get log_subtitle => 'Sigue tu viaje nutricional';
@@ -220,7 +220,39 @@ class AppLocalizationsEs extends AppLocalizations {
   String get log_return_today => 'Volver a hoy';
 
   @override
-  String get log_add_manually => 'Agregar Manualmente';
+  String get log_add_manually => 'Agregar manualmente';
+
+  @override
+  String get log_daily_balance => 'Balance diario';
+
+  @override
+  String get log_daily_health => 'Salud diaria';
+
+  @override
+  String get log_scan_meal => 'Escanear comida';
+
+  @override
+  String log_calories_left(String value) {
+    return 'Faltan $value';
+  }
+
+  @override
+  String log_calories_over(String value) {
+    return '$value de más';
+  }
+
+  @override
+  String log_add_meal_type(String meal) {
+    return 'Agregar $meal';
+  }
+
+  @override
+  String log_protein_left_today(String value) {
+    return 'Faltan $value g de proteína hoy';
+  }
+
+  @override
+  String get log_protein_goal_met_today => 'Meta de proteína alcanzada hoy';
 
   @override
   String log_removed_snackbar(String food) {

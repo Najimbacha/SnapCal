@@ -121,6 +121,36 @@ service cloud.firestore {
       && noTrustedUserFields();
     }
 
+    // Existing accounts can contain fields written by older app versions.
+    // Updates may change only today's client-owned profile fields, so those
+    // legacy fields can remain without blocking every future profile save.
+    function validPrivateProfileUpdate() {
+      return changedOnly([
+        'age',
+        'height',
+        'weight',
+        'startingWeight',
+        'targetWeight',
+        'targetCalories',
+        'dailyCalorieGoal',
+        'dailyProteinGoal',
+        'dailyCarbGoal',
+        'dailyFatGoal',
+        'gender',
+        'activityLevel',
+        'goalMode',
+        'goalTimelineMonths',
+        'weeklyRateKg',
+        'dietaryPreferences',
+        'dietaryRestriction',
+        'cuisinePreference',
+        'foodDislikes',
+        'medicalNotes',
+        'mealsPerDay',
+        'updatedAt'
+      ]);
+    }
+
     function validAppSettings() {
       return hasOnly([
         'themeMode',
@@ -151,6 +181,34 @@ service cloud.firestore {
         'updatedAt'
       ])
       && noTrustedUserFields();
+    }
+
+    function validAppSettingsUpdate() {
+      return changedOnly([
+        'themeMode',
+        'languageCode',
+        'onboardingComplete',
+        'notificationsEnabled',
+        'mealRemindersEnabled',
+        'dailyMotivationEnabled',
+        'goalAlertsEnabled',
+        'foodRemindersEnabled',
+        'goalSource',
+        'recommendationInsight',
+        'recommendationTip',
+        'recommendationSafetyNote',
+        'fcmToken',
+        'lastFoodReminderDate',
+        'currentStreak',
+        'lastLoggedDate',
+        'lastOpenedDate',
+        'breakfastTime',
+        'lunchTime',
+        'dinnerTime',
+        'weightUnit',
+        'heightUnit',
+        'updatedAt'
+      ]);
     }
 
     function validMeal() {
@@ -213,7 +271,8 @@ service cloud.firestore {
 
       match /private/profile {
         allow read: if isOwner(uid) || isAdmin();
-        allow create, update: if isOwner(uid) && validPrivateProfile();
+        allow create: if isOwner(uid) && validPrivateProfile();
+        allow update: if isOwner(uid) && validPrivateProfileUpdate();
         allow delete: if false;
       }
 
@@ -226,7 +285,7 @@ service cloud.firestore {
         // the rule should decide that, not an exception.
         allow update: if isOwner(uid)
           && resource != null
-          && validAppSettings()
+          && validAppSettingsUpdate()
           && reminderStateUnchanged();
         allow delete: if false;
       }

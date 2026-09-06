@@ -1466,43 +1466,120 @@ class _ScanHeroState extends State<_ScanHero>
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: SizedBox(
+          key: const ValueKey('paywall-compact-scan-preview'),
           height: widget.height,
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              final reduceMotion = MediaQuery.disableAnimationsOf(context);
-              final t = reduceMotion ? 0.5 : _controller.value;
-              return Opacity(
-                opacity:
-                    reduceMotion ? 1 : (0.75 + 0.25 * math.sin(t * math.pi)),
-                child: Transform.scale(
-                  scale: reduceMotion ? 1 : 1 + t * .035,
-                  child: AnimatedSwitcher(
-                    duration:
-                        reduceMotion
-                            ? Duration.zero
-                            : const Duration(milliseconds: 600),
-                    child: Image.asset(
-                      _heroSlides[reduceMotion ? 0 : _index].asset,
-                      key: ValueKey(reduceMotion ? 0 : _index),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: widget.height,
-                      errorBuilder:
-                          (_, _, _) => ColoredBox(
-                            color: palette.surface,
-                            child: Center(
-                              child: Icon(
-                                LucideIcons.utensils,
-                                color: palette.muted,
+          child: LayoutBuilder(
+            builder:
+                (context, _) => AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    final reduceMotion = MediaQuery.disableAnimationsOf(
+                      context,
+                    );
+                    final t = reduceMotion ? 0.82 : _controller.value;
+                    final entrance = _phase(t, 0.00, 0.06);
+                    final exit = 1 - _phase(t, 0.93, 1.00);
+                    final sweep = _phase(t, 0.08, 0.34);
+                    final panelReveal = _phase(t, 0.18, 0.28) * exit;
+                    final totalReveal = _phase(t, 0.40, 0.52) * exit;
+                    final itemReveal = [
+                      for (var i = 0; i < slide.detections.length; i++)
+                        _phase(t, 0.20 + (i * 0.085), 0.31 + (i * 0.085)) *
+                            exit,
+                    ];
+
+                    return Opacity(
+                      opacity: entrance * exit,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Transform.scale(
+                            scale: 1 + (t * 0.025),
+                            child: AnimatedSwitcher(
+                              duration:
+                                  reduceMotion
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 500),
+                              child: Image.asset(
+                                slide.asset,
+                                key: ValueKey(_index),
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: widget.height,
+                                errorBuilder:
+                                    (_, _, _) => ColoredBox(
+                                      color: palette.surface,
+                                      child: Center(
+                                        child: Icon(
+                                          LucideIcons.utensils,
+                                          color: palette.muted,
+                                        ),
+                                      ),
+                                    ),
                               ),
                             ),
                           ),
-                    ),
-                  ),
+                          const Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Color(0x18000000),
+                                    Color(0x00000000),
+                                    Color(0x99000000),
+                                  ],
+                                  stops: [0, 0.38, 1],
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (!reduceMotion && sweep > 0 && sweep < 1)
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: CustomPaint(
+                                  painter: _SweepPainter(
+                                    progress: sweep,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          PositionedDirectional(
+                            start: 8,
+                            top: 8,
+                            child: _CompactScanMark(progress: sweep),
+                          ),
+                          PositionedDirectional(
+                            end: 8,
+                            top: 8,
+                            child: Opacity(
+                              opacity: totalReveal,
+                              child: _CompactCalorieTotal(
+                                kcal: slide.totalKcal,
+                                progress: _phase(t, 0.40, 0.72),
+                              ),
+                            ),
+                          ),
+                          PositionedDirectional(
+                            start: 7,
+                            end: 7,
+                            bottom: 7,
+                            child: Opacity(
+                              opacity: panelReveal,
+                              child: _CompactDetectionPanel(
+                                detections: slide.detections,
+                                l10n: l10n,
+                                reveal: itemReveal,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
           ),
         ),
       );
@@ -1702,6 +1779,192 @@ class _ScanHeroState extends State<_ScanHero>
               ),
         ),
       ),
+    );
+  }
+}
+
+class _CompactScanMark extends StatelessWidget {
+  const _CompactScanMark({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final pulse = math.sin(progress.clamp(0.0, 1.0) * math.pi);
+    return Transform.scale(
+      scale: 1 + (pulse * 0.08),
+      child: Container(
+        width: 25,
+        height: 25,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.46),
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.26 * pulse),
+              blurRadius: 10,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: const Icon(LucideIcons.scanLine, size: 14, color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _CompactCalorieTotal extends StatelessWidget {
+  const _CompactCalorieTotal({required this.kcal, required this.progress});
+
+  final int kcal;
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown =
+        (kcal * Curves.easeOutCubic.transform(progress.clamp(0.0, 1.0)))
+            .round();
+    return Container(
+      height: 25,
+      padding: const EdgeInsetsDirectional.fromSTEB(7, 0, 8, 0),
+      decoration: BoxDecoration(
+        color: const Color(0xE612211B),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.62)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.18),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            LucideIcons.checkCircle2,
+            size: 12,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$shown',
+            textDirection: TextDirection.ltr,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              height: 1,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(width: 2),
+          Text(
+            'kcal',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 8,
+              height: 1,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactDetectionPanel extends StatelessWidget {
+  const _CompactDetectionPanel({
+    required this.detections,
+    required this.l10n,
+    required this.reveal,
+  });
+
+  final List<_Detection> detections;
+  final AppLocalizations l10n;
+  final List<double> reveal;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final numberOnly = constraints.maxWidth < 136;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(7),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.58),
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < detections.length; i++)
+                    Opacity(
+                      opacity: reveal[i].clamp(0.0, 1.0),
+                      child: Transform.translate(
+                        offset: Offset(0, 3 * (1 - reveal[i].clamp(0.0, 1.0))),
+                        child: SizedBox(
+                          height: 17,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 5,
+                                height: 5,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: Text(
+                                  detections[i].label(l10n),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    height: 1,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                numberOnly
+                                    ? detections[i].kcal.toString()
+                                    : '${detections[i].kcal} kcal',
+                                textDirection: TextDirection.ltr,
+                                style: const TextStyle(
+                                  color: Color(0xFFD6F5E7),
+                                  fontSize: 8.5,
+                                  height: 1,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -2248,9 +2511,9 @@ class _ProDayPreview extends StatelessWidget {
         : Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Expanded(flex: 3, child: metrics),
+            Expanded(child: metrics),
             const SizedBox(width: 16),
-            Expanded(flex: 2, child: photo),
+            Expanded(child: photo),
           ],
         );
   }

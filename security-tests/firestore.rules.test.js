@@ -219,6 +219,44 @@ test('profile payload written by SettingsRepository is accepted', async () => {
   ));
 });
 
+test('legacy profile fields do not block approved updates', async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'users/alice/private/profile'), {
+      ...PROFILE_PAYLOAD,
+      legacyProfileField: 'kept but no longer written',
+    });
+  });
+
+  const alice = dbFor('alice');
+  await assertSucceeds(setDoc(
+    doc(alice, 'users/alice/private/profile'),
+    { dailyCalorieGoal: 2200, updatedAt: Date.now() },
+    { merge: true },
+  ));
+  await assertFails(updateDoc(doc(alice, 'users/alice/private/profile'), {
+    legacyProfileField: 'client cannot change this',
+  }));
+});
+
+test('legacy app-setting fields do not block approved updates', async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'users/alice/settings/app'), {
+      ...APP_SETTINGS_PAYLOAD,
+      legacySettingField: true,
+    });
+  });
+
+  const alice = dbFor('alice');
+  await assertSucceeds(setDoc(
+    doc(alice, 'users/alice/settings/app'),
+    { themeMode: 'dark', updatedAt: Date.now() },
+    { merge: true },
+  ));
+  await assertFails(updateDoc(doc(alice, 'users/alice/settings/app'), {
+    legacySettingField: false,
+  }));
+});
+
 test('clients cannot seed the reminder tracking field on create', async () => {
   const alice = dbFor('alice');
   await assertFails(setDoc(doc(alice, 'users/alice/settings/app'), {

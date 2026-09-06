@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_typography.dart';
@@ -116,32 +117,15 @@ class _HorizontalDayCalendarState extends State<HorizontalDayCalendar> {
 
   @override
   Widget build(BuildContext context) {
-    // The strip is scrolled so the selected day sits centre-stage, which means
-    // the first visible cell is usually cut in half. Without a fade that reads
-    // as a layout bug rather than as "there is more this way".
-    return ShaderMask(
-      shaderCallback:
-          (bounds) => const LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            stops: [0.0, 0.045, 0.955, 1.0],
-            colors: [
-              Color(0x00000000),
-              Color(0xFF000000),
-              Color(0xFF000000),
-              Color(0x00000000),
-            ],
-          ).createShader(bounds),
-      blendMode: BlendMode.dstIn,
-      child: SizedBox(
-        height: 56,
-        child: ListView.separated(
+    return SizedBox(
+      height: 76,
+      child: ListView.separated(
         controller: _controller,
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: EdgeInsets.zero,
         itemCount: widget.dailySummaries.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 2),
+        separatorBuilder: (_, _) => const SizedBox.shrink(),
         itemBuilder: (context, index) {
           final summary = widget.dailySummaries[index];
           final locked = widget.isDateLocked?.call(summary.dateString) ?? false;
@@ -157,9 +141,8 @@ class _HorizontalDayCalendarState extends State<HorizontalDayCalendar> {
               }
               widget.onDateSelected(summary.dateString);
             },
-            );
-          },
-        ),
+          );
+        },
       ),
     );
   }
@@ -184,8 +167,8 @@ class _DayCell extends StatelessWidget {
     final date = DateTime.parse(summary.dateString);
     final today = _isToday(date);
     final l10n = AppLocalizations.of(context)!;
-    final dayLabel =
-        today ? l10n.common_today : DateFormat.E(l10n.localeName).format(date);
+    final fullDayLabel = DateFormat.E(l10n.localeName).format(date);
+    final dayLabel = fullDayLabel.isEmpty ? '' : fullDayLabel.substring(0, 1);
 
     return Semantics(
       button: true,
@@ -196,42 +179,73 @@ class _DayCell extends StatelessWidget {
               : DateFormat.yMMMMEEEEd(l10n.localeName).format(date),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
           width: 50,
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          decoration: BoxDecoration(
-            color:
-                selected
-                    ? colorScheme.primary.withValues(alpha: 0.12)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: 2),
               Text(
                 dayLabel,
                 style: AppTypography.labelSmall.copyWith(
                   color:
                       selected
-                          ? colorScheme.primary
-                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  fontSize: 9,
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.72,
+                          ),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 10,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${date.day}',
-                style: AppTypography.titleSmall.copyWith(
-                  color: selected ? colorScheme.primary : colorScheme.onSurface,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  fontSize: 15,
+              const SizedBox(height: 6),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? colorScheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: Text(
+                  '${date.day}',
+                  style: AppTypography.titleSmall.copyWith(
+                    color:
+                        selected
+                            ? colorScheme.onPrimary
+                            : locked
+                            ? colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.42,
+                            )
+                            : colorScheme.onSurface,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 3),
+              SizedBox(
+                height: 13,
+                child:
+                    selected && today
+                        ? Text(
+                          l10n.common_today,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 9,
+                          ),
+                        )
+                        : locked
+                        ? Icon(
+                          LucideIcons.lock,
+                          size: 9,
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.42,
+                          ),
+                        )
+                        : null,
               ),
             ],
           ),

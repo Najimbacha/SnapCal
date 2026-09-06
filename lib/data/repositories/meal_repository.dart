@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -228,10 +229,28 @@ class MealRepository {
         await _indexBox!.put(date, ids);
       }
 
+      await _mealsBox?.delete(id);
       _emitTodaysMeals();
       await _deleteMealFromCloud(id);
+      await _deleteUnusedLocalImage(meal.imageUri);
+      return;
     }
     await _mealsBox?.delete(id);
+    _emitTodaysMeals();
+  }
+
+  Future<void> _deleteUnusedLocalImage(String? imageUri) async {
+    if (imageUri == null || imageUri.startsWith('http')) return;
+    final stillUsed =
+        _mealsBox?.values.any((meal) => meal.imageUri == imageUri) ?? false;
+    if (stillUsed) return;
+
+    try {
+      final file = File(imageUri);
+      if (await file.exists()) await file.delete();
+    } catch (error) {
+      debugPrint('Meal thumbnail cleanup failed: $error');
+    }
   }
 
   /// Sync single meal to Firestore
@@ -248,6 +267,11 @@ class MealRepository {
     // Hive adapter has to be regenerated for this.
     final payload = {
       ...meal.toJson(),
+      // Captured meal photos stay on this phone. Uploading the device's local
+      // file path would not make the image available elsewhere and would leak
+      // a useless path into Firestore. Remote URLs remain syncable.
+      'imageUri':
+          meal.imageUri?.startsWith('http') == true ? meal.imageUri : null,
       'updatedAt': DateTime.now().millisecondsSinceEpoch,
     };
 

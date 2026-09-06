@@ -12,12 +12,16 @@ const _amber = Color(0xFFD6A14F);
 class _Chevron extends StatelessWidget {
   const _Chevron();
   @override
-  Widget build(BuildContext context) => Icon(
-    Directionality.of(context) == TextDirection.rtl
-        ? LucideIcons.chevronLeft
-        : LucideIcons.chevronRight,
-    size: 16,
-  );
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurface;
+    return Icon(
+      Directionality.of(context) == TextDirection.rtl
+          ? LucideIcons.chevronLeft
+          : LucideIcons.chevronRight,
+      size: 16,
+      color: color.withValues(alpha: .78),
+    );
+  }
 }
 
 class _ToolIcon extends StatelessWidget {
@@ -116,8 +120,13 @@ class _Heading extends StatelessWidget {
   const _Heading(this.text);
   final String text;
   @override
-  Widget build(BuildContext context) =>
-      Text(text.toUpperCase(), style: _type(12));
+  Widget build(BuildContext context) => Text(
+    text.toUpperCase(),
+    style: _type(
+      11.5,
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .88),
+    ).copyWith(height: 1.2, fontWeight: FontWeight.w600, letterSpacing: 0),
+  );
 }
 
 class _Surface extends StatelessWidget {
@@ -128,11 +137,11 @@ class _Surface extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: dark ? const Color(0xFF090A09) : const Color(0xFFFAFAFA),
+      color: dark ? const Color(0xFF090A09) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: dark ? const Color(0xFF292B29) : const Color(0xFFDDDFDD),
+          color: dark ? const Color(0xFF292B29) : const Color(0xFFE1E3DF),
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -158,7 +167,7 @@ class _ProBadge extends StatelessWidget {
             Theme.of(context).brightness == Brightness.dark
                 ? _sage
                 : const Color(0xFF42694A),
-      ),
+      ).copyWith(fontWeight: FontWeight.w600, letterSpacing: 0),
     ),
   );
 }
@@ -185,7 +194,7 @@ class _Track extends StatelessWidget {
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
-              ).colorScheme.onSurface.withValues(alpha: .12),
+              ).colorScheme.onSurface.withValues(alpha: .10),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -194,7 +203,7 @@ class _Track extends StatelessWidget {
             child: Container(
               height: 3,
               decoration: BoxDecoration(
-                color: color,
+                color: color.withValues(alpha: .88),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -257,7 +266,7 @@ class HomeMacroSection extends StatelessWidget {
               if (isPro) ...[const SizedBox(width: 10), const _ProBadge()],
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
               final expandedText =
@@ -406,13 +415,13 @@ class HomeWellnessSection extends StatelessWidget {
                       value: water,
                       detail: '',
                       icon: const _GlassIcon(),
-                      color: const Color(0xFF62829E),
+                      color: const Color(0xFF6B8CA6),
                       progress: waterGoal > 0 ? waterTotal / waterGoal : 0,
                       onTap: onWaterTap,
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     child: VerticalDivider(
                       width: 1,
                       thickness: 1,
@@ -468,34 +477,66 @@ class _WellnessMetric extends StatelessWidget {
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
     child: Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (MediaQuery.textScalerOf(context).scale(11) > 15) ...[
-            Align(alignment: AlignmentDirectional.centerStart, child: icon),
-            const SizedBox(height: 4),
-            Text(label, style: _type(11, color: _muted(context))),
-            Text(value, style: _type(15)),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _MetricIconTile(color: color, child: icon),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              label,
+              style: _type(
+                11.5,
+                color: _muted(context),
+              ).copyWith(fontWeight: FontWeight.w500),
+            ),
+            Text(value, style: _type(16).copyWith(fontWeight: FontWeight.w600)),
             Text(
               detail.isEmpty ? ' ' : detail,
-              style: _type(10, color: _muted(context)),
+              style: _type(10.5, color: _muted(context)),
             ),
           ] else
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(width: 24, height: 34, child: Center(child: icon)),
-                const SizedBox(width: 10),
+                _MetricIconTile(color: color, child: icon),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(label, style: _type(11, color: _muted(context))),
-                      Text(value, style: _type(15)),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _type(
+                          11.5,
+                          color: _muted(context),
+                        ).copyWith(fontWeight: FontWeight.w500),
+                      ),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            value,
+                            maxLines: 1,
+                            style: _type(
+                              15,
+                            ).copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
                       Text(
                         detail.isEmpty ? ' ' : detail,
-                        style: _type(10, color: _muted(context)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _type(10.5, color: _muted(context)),
                       ),
                     ],
                   ),
@@ -503,12 +544,34 @@ class _WellnessMetric extends StatelessWidget {
               ],
             ),
           const Spacer(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _Track(value: progress, color: color),
         ],
       ),
     ),
   );
+}
+
+class _MetricIconTile extends StatelessWidget {
+  const _MetricIconTile({required this.color, required this.child});
+
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 38,
+      height: 38,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? .18 : .10),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: child,
+    );
+  }
 }
 
 class _WalkingPainter extends CustomPainter {
@@ -573,7 +636,7 @@ class _GlassPainter extends CustomPainter {
         ..lineTo(16, 28)
         ..lineTo(6, 28)
         ..close(),
-      Paint()..color = const Color(0xFF62829E),
+      Paint()..color = const Color(0xFF6B8CA6).withValues(alpha: .88),
     );
     canvas.drawPath(
       outline,
@@ -601,32 +664,45 @@ class HomeToolsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return _Section(
-      child: Column(
-        children: [
-          _ToolRow(
-            title: l.planner_title,
-            subtitle: l.home_dashboard_planner,
-            action: l.home_dashboard_open,
-            icon: _ToolIcon(
-              coach: false,
-              color: Theme.of(context).colorScheme.onSurface,
+      child: _Surface(
+        child: Column(
+          children: [
+            _ToolRow(
+              title: l.planner_title,
+              subtitle: l.home_dashboard_planner,
+              action: l.home_dashboard_open,
+              icon: _ToolIcon(
+                coach: false,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              accent: _sage,
+              isPro: isPro,
+              onTap: onPlannerTap,
             ),
-            isPro: isPro,
-            onTap: onPlannerTap,
-          ),
-          const SizedBox(height: 8),
-          _ToolRow(
-            title: l.assistant_title,
-            subtitle: l.home_dashboard_coach,
-            action: l.home_dashboard_ask,
-            icon: _ToolIcon(
-              coach: true,
-              color: Theme.of(context).colorScheme.onSurface,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: .09),
+              ),
             ),
-            isPro: isPro,
-            onTap: onCoachTap,
-          ),
-        ],
+            _ToolRow(
+              title: l.assistant_title,
+              subtitle: l.home_dashboard_coach,
+              action: l.home_dashboard_ask,
+              icon: _ToolIcon(
+                coach: true,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              accent: const Color(0xFF8B7FA6),
+              isPro: isPro,
+              onTap: onCoachTap,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -638,29 +714,54 @@ class _ToolRow extends StatelessWidget {
     required this.subtitle,
     required this.action,
     required this.icon,
+    required this.accent,
     required this.isPro,
     required this.onTap,
   });
   final String title, subtitle, action;
   final Widget icon;
+  final Color accent;
   final bool isPro;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => _Surface(
+  Widget build(BuildContext context) => InkWell(
     onTap: onTap,
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          SizedBox(width: 28, height: 30, child: icon),
-          const SizedBox(width: 14),
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: accent.withValues(
+                alpha:
+                    Theme.of(context).brightness == Brightness.dark ? .18 : .10,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: SizedBox(width: 28, height: 30, child: icon),
+          ),
+          const SizedBox(width: 13),
           Expanded(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: _type(13)),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _type(14).copyWith(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle, style: _type(10, color: _muted(context))),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _type(10.5, color: _muted(context)),
+                ),
               ],
             ),
           ),

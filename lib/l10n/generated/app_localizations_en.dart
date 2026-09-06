@@ -15,7 +15,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get purchase_headline => 'Know what to eat next.';
 
   @override
-  String get purchase_preview_title => 'Your day, with Pro · Preview';
+  String get purchase_preview_title => 'See SnapCal Pro in action';
 
   @override
   String get purchase_preview_advice => 'Plan a protein-rich dinner.';
@@ -187,7 +187,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_sync_prompt => 'Create an account to sync your progress.';
 
   @override
-  String get log_title => 'Daily Log';
+  String get log_title => 'Food Log';
 
   @override
   String get log_subtitle => 'Track your nutrition journey';
@@ -217,7 +217,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get log_return_today => 'Return to Today';
 
   @override
-  String get log_add_manually => 'Add Manually';
+  String get log_add_manually => 'Add manually';
+
+  @override
+  String get log_daily_balance => 'Daily balance';
+
+  @override
+  String get log_daily_health => 'Daily health';
+
+  @override
+  String get log_scan_meal => 'Scan meal';
+
+  @override
+  String log_calories_left(String value) {
+    return '$value left';
+  }
+
+  @override
+  String log_calories_over(String value) {
+    return '$value over';
+  }
+
+  @override
+  String log_add_meal_type(String meal) {
+    return 'Add $meal';
+  }
+
+  @override
+  String log_protein_left_today(String value) {
+    return '${value}g protein left today';
+  }
+
+  @override
+  String get log_protein_goal_met_today => 'Protein goal reached today';
 
   @override
   String log_removed_snackbar(String food) {

@@ -117,17 +117,17 @@ class _HeroActionButtonState extends State<HeroActionButton>
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.primary.withValues(
-                          alpha: isDark ? 0.35 : 0.30,
+                          alpha: isDark ? 0.28 : 0.22,
                         ),
-                        blurRadius: 22,
-                        offset: const Offset(0, 6),
+                        blurRadius: 17,
+                        offset: const Offset(0, 5),
                       ),
                       BoxShadow(
                         color: Colors.black.withValues(
-                          alpha: isDark ? 0.30 : 0.14,
+                          alpha: isDark ? 0.24 : 0.10,
                         ),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
+                        blurRadius: 11,
+                        offset: const Offset(0, 5),
                       ),
                     ],
                   ),

@@ -577,6 +577,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return AppPageScaffold(
       title: '',
       padding: EdgeInsets.zero,
+      backgroundColor:
+          Theme.of(context).brightness == Brightness.dark
+              ? Colors.black
+              : const Color(0xFFFBFCFA),
       showHeader: false,
       extendBehindStatusBar: true,
       child: ListView(
@@ -925,72 +929,49 @@ class _MinimalCalorieHero extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? Colors.white : _minimalInk;
     final muted = isDark ? Colors.white54 : _minimalMuted;
-    final track = isDark ? Colors.white.withValues(alpha: 0.10) : _minimalLine;
     final isOverGoal = remaining < 0;
 
-    return Column(
-      children: [
-        SizedBox(
-          width: 168,
-          height: 168,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              TweenAnimationBuilder<double>(
-                duration: const Duration(milliseconds: 900),
-                curve: Curves.easeOutCubic,
-                tween: Tween<double>(begin: 0, end: progress.clamp(0.0, 1.0)),
-                builder: (context, value, child) {
-                  return CircularProgressIndicator(
-                    value: value,
-                    strokeWidth: 7,
-                    strokeCap: StrokeCap.round,
-                    backgroundColor: track,
-                    color: isOverGoal ? AppColors.error : _minimalGreen,
-                  );
-                },
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 22, 24, 10),
+      child: Column(
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              _formatNumber(context, remaining.abs()),
+              style: AppTypography.displayLarge.copyWith(
+                color: ink,
+                fontSize: 54,
+                height: 1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        _formatNumber(context, remaining.abs()),
-                        style: AppTypography.displayLarge.copyWith(
-                          color: ink,
-                          fontSize: 40,
-                          height: 1,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      isOverGoal ? 'kcal over today' : l10n.home_kcal_left,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: muted,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-        if (activityBonus > 0) ...[
-          const SizedBox(height: 12),
-          _ActivityBonusPill(kcal: activityBonus, isDark: isDark),
-          const SizedBox(height: 8),
-        ] else
-          const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Row(
+          const SizedBox(height: 7),
+          Text(
+            isOverGoal ? 'kcal over today' : l10n.home_kcal_left,
+            style: AppTypography.bodyMedium.copyWith(
+              color: muted,
+              fontSize: 14,
+              height: 1.1,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 24),
+          _MinimalCalorieTrack(
+            progress: progress,
+            color: isOverGoal ? AppColors.error : _minimalGreen,
+            isDark: isDark,
+          ),
+          if (activityBonus > 0) ...[
+            const SizedBox(height: 12),
+            _ActivityBonusPill(kcal: activityBonus, isDark: isDark),
+          ],
+          const SizedBox(height: 26),
+          Row(
             children: [
               Expanded(
                 child: _MinimalHeroStat(
@@ -1018,10 +999,72 @@ class _MinimalCalorieHero extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 10),
-        const _MinimalSectionDivider(),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MinimalCalorieTrack extends StatelessWidget {
+  const _MinimalCalorieTrack({
+    required this.progress,
+    required this.color,
+    required this.isDark,
+  });
+
+  final double progress;
+  final Color color;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      value: '${(progress * 100).round()}%',
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeOutCubic,
+        tween: Tween<double>(begin: 0, end: progress.clamp(0.0, 1.0)),
+        builder: (context, value, _) {
+          return SizedBox(
+            height: 8,
+            child: Stack(
+              alignment: AlignmentDirectional.centerStart,
+              children: [
+                Container(
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color:
+                        isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : const Color(0xFFE7E9E6),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                if (value > 0)
+                  FractionallySizedBox(
+                    widthFactor: value,
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -1535,7 +1578,7 @@ class _MinimalMealsSection extends StatelessWidget {
             : l10n.home_view_all;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 8),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
       child: Column(
         children: [
           Row(
@@ -1594,10 +1637,14 @@ class _MinimalSectionLabel extends StatelessWidget {
     return Text(
       text.toUpperCase(),
       style: AppTypography.labelSmall.copyWith(
-        color: isDark ? Colors.white54 : const Color(0xFFB4AFA8),
-        fontSize: 10,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 1,
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.48)
+                : _minimalMuted.withValues(alpha: 0.82),
+        fontSize: 10.5,
+        height: 1.2,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0,
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -1703,20 +1750,35 @@ class _MinimalEmptyMealRow extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF090A09) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDark ? const Color(0xFF292B29) : const Color(0xFFE1E3DF),
+          ),
+        ),
         child: Row(
           children: [
-            Icon(
-              LucideIcons.scanLine,
-              color: isDark ? Colors.white54 : _minimalGreenText,
-              size: 17,
+            SizedBox(
+              width: 24,
+              child: Icon(
+                LucideIcons.scanLine,
+                color:
+                    isDark
+                        ? AppColors.primary.withValues(alpha: 0.86)
+                        : _minimalGreenText,
+                size: 19,
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 AppLocalizations.of(context)!.home_first_meal_cta_title,
                 style: AppTypography.bodyMedium.copyWith(
                   color: isDark ? Colors.white : _minimalInk,
+                  fontSize: 14,
+                  height: 1.2,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0,
                 ),
@@ -4158,68 +4220,35 @@ class _HomeDashboardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return AppSectionCard(
-      padding: const EdgeInsets.all(18),
+    final fill = colorScheme.surfaceContainerHighest;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 22, 24, 10),
       child: Column(
         children: [
-          Row(
-            children: [
-              _SkeletonBox(
-                width: 132,
-                height: 132,
-                radius: 66,
-                color: colorScheme.surfaceContainerHighest,
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  children: [
-                    _SkeletonBox(
-                      width: double.infinity,
-                      height: 24,
-                      color: colorScheme.surfaceContainerHighest,
-                    ),
-                    const SizedBox(height: 12),
-                    _SkeletonBox(
-                      width: double.infinity,
-                      height: 18,
-                      color: colorScheme.surfaceContainerHighest,
-                    ),
-                    const SizedBox(height: 8),
-                    _SkeletonBox(
-                      width: double.infinity,
-                      height: 18,
-                      color: colorScheme.surfaceContainerHighest,
-                    ),
-                    const SizedBox(height: 8),
-                    _SkeletonBox(
-                      width: double.infinity,
-                      height: 18,
-                      color: colorScheme.surfaceContainerHighest,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          _SkeletonBox(width: 164, height: 50, radius: 8, color: fill),
+          const SizedBox(height: 9),
+          _SkeletonBox(width: 72, height: 13, radius: 5, color: fill),
+          const SizedBox(height: 25),
+          _SkeletonBox(
+            width: double.infinity,
+            height: 4,
+            radius: 2,
+            color: fill,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 27),
           Row(
             children: [
-              Expanded(
-                child: _SkeletonBox(
-                  width: double.infinity,
-                  height: 52,
-                  color: colorScheme.surfaceContainerHighest,
+              for (var i = 0; i < 3; i++) ...[
+                if (i > 0) const SizedBox(width: 18),
+                Expanded(
+                  child: _SkeletonBox(
+                    width: double.infinity,
+                    height: 48,
+                    radius: 6,
+                    color: fill,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _SkeletonBox(
-                  width: double.infinity,
-                  height: 52,
-                  color: colorScheme.surfaceContainerHighest,
-                ),
-              ),
+              ],
             ],
           ),
         ],

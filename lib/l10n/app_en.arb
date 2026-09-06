@@ -1,7 +1,7 @@
 {
   "purchase_billed_yearly": "Billed yearly",
   "purchase_headline": "Know what to eat next.",
-  "purchase_preview_title": "Your day, with Pro · Preview",
+  "purchase_preview_title": "See SnapCal Pro in action",
   "purchase_preview_advice": "Plan a protein-rich dinner.",
   "purchase_scan_detail": "Log meals without the daily limit",
   "purchase_planner_title": "Meal plans for your goals",
@@ -93,7 +93,7 @@
   "home_action_log": "Open log",
   "home_action_reports": "See reports",
   "home_sync_prompt": "Create an account to sync your progress.",
-  "log_title": "Daily Log",
+  "log_title": "Food Log",
   "log_subtitle": "Track your nutrition journey",
   "log_entries": "ENTRIES",
   "log_total_kcal": "TOTAL KCAL",
@@ -103,7 +103,43 @@
   "log_track_prompt": "Track your meals to see them here.",
   "log_no_data_prompt": "There is no data for this day.",
   "log_return_today": "Return to Today",
-  "log_add_manually": "Add Manually",
+  "log_add_manually": "Add manually",
+  "log_daily_balance": "Daily balance",
+  "log_daily_health": "Daily health",
+  "log_scan_meal": "Scan meal",
+  "log_calories_left": "{value} left",
+  "@log_calories_left": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "log_calories_over": "{value} over",
+  "@log_calories_over": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "log_add_meal_type": "Add {meal}",
+  "@log_add_meal_type": {
+    "placeholders": {
+      "meal": {
+        "type": "String"
+      }
+    }
+  },
+  "log_protein_left_today": "{value}g protein left today",
+  "@log_protein_left_today": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "log_protein_goal_met_today": "Protein goal reached today",
   "log_removed_snackbar": "{food} removed",
   "@log_removed_snackbar": {
     "placeholders": {
