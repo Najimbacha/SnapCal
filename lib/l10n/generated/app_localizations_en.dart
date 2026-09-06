@@ -9,6 +9,33 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get purchase_billed_yearly => 'Billed yearly';
+
+  @override
+  String get purchase_headline => 'Know what to eat next.';
+
+  @override
+  String get purchase_preview_title => 'Your day, with Pro · Preview';
+
+  @override
+  String get purchase_preview_advice => 'Plan a protein-rich dinner.';
+
+  @override
+  String get purchase_scan_detail => 'Log meals without the daily limit';
+
+  @override
+  String get purchase_planner_title => 'Meal plans for your goals';
+
+  @override
+  String get purchase_planner_detail => 'A full week, plus your grocery list';
+
+  @override
+  String get purchase_coach_title => 'Your personal AI Coach';
+
+  @override
+  String get purchase_coach_detail => 'Macro guidance and daily advice';
+
+  @override
   String get home_dashboard_upgrade =>
       'See grams, daily goals & what to eat next';
 
@@ -3720,7 +3747,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String result_scans_left(int remaining, int total) {
-    return '$remaining of $total scans left today';
+    return '$remaining of $total scans remaining';
   }
 
   @override

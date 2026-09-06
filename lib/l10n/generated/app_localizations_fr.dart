@@ -9,6 +9,33 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get purchase_billed_yearly => 'Facturation annuelle';
+
+  @override
+  String get purchase_headline => 'Sachez quoi manger ensuite.';
+
+  @override
+  String get purchase_preview_title => 'Votre journée avec Pro · Aperçu';
+
+  @override
+  String get purchase_preview_advice => 'Prévoyez un dîner riche en protéines.';
+
+  @override
+  String get purchase_scan_detail => 'Notez vos repas sans limite quotidienne';
+
+  @override
+  String get purchase_planner_title => 'Des repas adaptés à vos objectifs';
+
+  @override
+  String get purchase_planner_detail => 'Une semaine et votre liste de courses';
+
+  @override
+  String get purchase_coach_title => 'Votre coach IA personnel';
+
+  @override
+  String get purchase_coach_detail => 'Des conseils nutritionnels au quotidien';
+
+  @override
   String get home_dashboard_upgrade => 'Grammes, objectifs et prochain repas';
 
   @override
@@ -3793,7 +3820,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String result_scans_left(int remaining, int total) {
-    return 'Il vous reste $remaining scans sur $total aujourd’hui';
+    return 'Il vous reste $remaining scans sur $total';
   }
 
   @override

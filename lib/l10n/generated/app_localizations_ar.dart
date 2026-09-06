@@ -9,6 +9,33 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
+  String get purchase_billed_yearly => 'فوترة سنوية';
+
+  @override
+  String get purchase_headline => 'اعرف ماذا تأكل بعد ذلك.';
+
+  @override
+  String get purchase_preview_title => 'يومك مع برو · معاينة';
+
+  @override
+  String get purchase_preview_advice => 'خطط لعشاء غني بالبروتين.';
+
+  @override
+  String get purchase_scan_detail => 'سجّل وجباتك دون الحد اليومي';
+
+  @override
+  String get purchase_planner_title => 'خطط وجبات تناسب أهدافك';
+
+  @override
+  String get purchase_planner_detail => 'أسبوع كامل مع قائمة التسوق';
+
+  @override
+  String get purchase_coach_title => 'مدربك الشخصي بالذكاء الاصطناعي';
+
+  @override
+  String get purchase_coach_detail => 'إرشادات المغذيات ونصائح يومية';
+
+  @override
   String get home_dashboard_upgrade =>
       'اعرف الجرامات والأهداف اليومية ووجبتك التالية';
 
@@ -3714,7 +3741,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String result_scans_left(int remaining, int total) {
-    return '$remaining من $total عمليات مسح متبقية اليوم';
+    return '$remaining من $total عمليات مسح متبقية';
   }
 
   @override

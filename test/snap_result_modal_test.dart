@@ -25,9 +25,7 @@ void main() {
     bool isPro = false,
   }) {
     return ProviderScope(
-      overrides: [
-        effectiveIsProProvider.overrideWith((ref) => isPro),
-      ],
+      overrides: [effectiveIsProProvider.overrideWith((ref) => isPro)],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -60,11 +58,16 @@ void main() {
     );
 
     expect(find.text('Rice', skipOffstage: false), findsAtLeastNWidgets(1));
-    expect(find.textContaining('5/10', skipOffstage: false), findsAtLeastNWidgets(1));
-    expect(find.text('35 g', skipOffstage: false), findsOneWidget);
+    expect(
+      find.textContaining('5/10', skipOffstage: false),
+      findsAtLeastNWidgets(1),
+    );
+    expect(find.text('35', skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('multi scan renders all foods with summed totals', (tester) async {
+  testWidgets('multi scan renders all foods with summed totals', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       buildSubject(
         isPro: true,
@@ -93,12 +96,14 @@ void main() {
     expect(find.text('Rice', skipOffstage: false), findsOneWidget);
     expect(find.text('Nuts', skipOffstage: false), findsOneWidget);
     expect(
-      find.text('Tap an item to adjust its portion', skipOffstage: false),
-      findsOneWidget,
+      find.byKey(const ValueKey('card-header'), skipOffstage: false),
+      findsNWidgets(2),
     );
   });
 
-  testWidgets('v2 enriched scan shows confidence badge for high confidence', (tester) async {
+  testWidgets('v2 enriched scan shows confidence badge for high confidence', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       buildSubject(
         isPro: true,
@@ -113,13 +118,26 @@ void main() {
           confidence: 0.96,
           nutritionMatchId: 'FDB_000241',
           matched: true,
-          nutritionPer100g: {'calories': 165, 'protein': 31, 'carbs': 0, 'fat': 3.6},
-          nutritionActual: {'calories': 297, 'protein': 56, 'carbs': 0, 'fat': 6.5},
+          nutritionPer100g: {
+            'calories': 165,
+            'protein': 31,
+            'carbs': 0,
+            'fat': 3.6,
+          },
+          nutritionActual: {
+            'calories': 297,
+            'protein': 56,
+            'carbs': 0,
+            'fat': 6.5,
+          },
         ),
       ),
     );
 
-    expect(find.text('Chicken Breast', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(
+      find.text('Chicken Breast', skipOffstage: false),
+      findsAtLeastNWidgets(1),
+    );
     await tester.pump(const Duration(milliseconds: 700));
     expect(find.text('297', skipOffstage: false), findsAtLeastNWidgets(1));
     // The weight is shown on the collapsed row and again in the expanded
@@ -127,7 +145,9 @@ void main() {
     expect(find.text('180 g', skipOffstage: false), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('unmatched food shows rescue chip instead of junk insight', (tester) async {
+  testWidgets('unmatched food shows rescue chip instead of junk insight', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       buildSubject(
         isPro: true,
@@ -147,13 +167,24 @@ void main() {
       ),
     );
 
-    expect(find.text('Unknown Sauce', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(
+      find.text('Unknown Sauce', skipOffstage: false),
+      findsAtLeastNWidgets(1),
+    );
     expect(find.text('Not in database', skipOffstage: false), findsOneWidget);
-    expect(find.text('Not matched \u00b7 tap to fix', skipOffstage: false), findsOneWidget);
-    expect(find.text('Nutrition unavailable', skipOffstage: false), findsNothing);
+    expect(
+      find.text('Not matched \u00b7 tap to fix', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Nutrition unavailable', skipOffstage: false),
+      findsNothing,
+    );
   });
 
-  testWidgets('thousands separator and share context render for multi scan', (tester) async {
+  testWidgets('thousands separator and share context render for multi scan', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       buildSubject(
         isPro: true,
@@ -183,7 +214,7 @@ void main() {
     expect(find.text('1,113', skipOffstage: false), findsAtLeastNWidgets(1));
     expect(find.text('54%', skipOffstage: false), findsOneWidget);
     expect(find.text('46%', skipOffstage: false), findsOneWidget);
-    expect(find.textContaining('Add to log'), findsOneWidget);
+    expect(find.textContaining('Add to Log'), findsOneWidget);
   });
 
   testWidgets('Add Item button adds a placeholder row', (tester) async {
@@ -232,7 +263,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.textContaining('Add to log'));
+    await tester.tap(find.textContaining('Add to Log'));
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(savedName, 'Rice');
@@ -268,7 +299,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.textContaining('Add to log'));
+    await tester.tap(find.textContaining('Add to Log'));
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(saved, isNotNull);
@@ -295,8 +326,8 @@ void main() {
       ),
     );
 
-    await tester.tap(find.textContaining('Add to log'));
-    await tester.tap(find.textContaining('Add to log'), warnIfMissed: false);
+    await tester.tap(find.textContaining('Add to Log'));
+    await tester.tap(find.textContaining('Add to Log'), warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(saveCount, 1);
@@ -308,9 +339,7 @@ void main() {
     await setupTester(tester);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          effectiveIsProProvider.overrideWith((ref) => false),
-        ],
+        overrides: [effectiveIsProProvider.overrideWith((ref) => false)],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -353,17 +382,19 @@ void main() {
     await tester.tap(find.text('Open result'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.textContaining('Add to log'), findsOneWidget);
+    expect(find.textContaining('Add to Log'), findsOneWidget);
 
-    await tester.tap(find.textContaining('Add to log'));
+    await tester.tap(find.textContaining('Add to Log'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
     expect(saved, isTrue);
-    expect(find.textContaining('Add to log'), findsNothing);
+    expect(find.textContaining('Add to Log'), findsNothing);
   });
 
-  testWidgets('free user sees macro shares, never grams or a blur', (tester) async {
+  testWidgets('free user sees macro shares, never grams or a blur', (
+    tester,
+  ) async {
     await setupTester(tester);
     await tester.pumpWidget(
       buildSubject(
@@ -395,7 +426,7 @@ void main() {
     // Values are withheld, never obscured: no blur, no padlock over a figure.
     // The upsell is a separate block that sells the coaching layer.
     expect(
-      find.text('Unlock deeper insights', skipOffstage: false),
+      find.text('Does this fit your day?', skipOffstage: false),
       findsOneWidget,
     );
     expect(find.byIcon(LucideIcons.lock, skipOffstage: false), findsNothing);
@@ -420,7 +451,7 @@ void main() {
     );
 
     expect(
-      find.textContaining('scans left today', skipOffstage: false),
+      find.textContaining('scans remaining', skipOffstage: false),
       findsOneWidget,
     );
   });
@@ -521,7 +552,9 @@ void main() {
     expect(find.text('Rice'), findsAtLeastNWidgets(2));
   });
 
-  testWidgets('back prompts discard confirmation when content exists', (tester) async {
+  testWidgets('back prompts discard confirmation when content exists', (
+    tester,
+  ) async {
     await setupTester(tester);
     await tester.pumpWidget(
       buildSubject(
@@ -537,7 +570,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byIcon(LucideIcons.chevronLeft));
+    await tester.tap(find.byKey(const ValueKey('result-back')));
     await tester.pump();
 
     expect(find.text('Discard scan?'), findsOneWidget);
@@ -546,6 +579,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('Discard scan?'), findsNothing);
-    expect(find.textContaining('Add to log'), findsOneWidget);
+    expect(find.textContaining('Add to Log'), findsOneWidget);
   });
 }

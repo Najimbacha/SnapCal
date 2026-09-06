@@ -5,6 +5,9 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const axios = require('axios');
+const { createRequestCoalescer, logAiUsage } = require('./services/ai_cost_controls');
+const coalesceTextRequest = createRequestCoalescer();
+const coalesceNutritionRequest = createRequestCoalescer();
 const { httpsAgent, httpAgent, agentStats } = require('./http_agents');
 
 // Applied globally rather than per call site: a call that forgets the agent
@@ -960,7 +963,7 @@ async function fillMissingNutrition(result) {
   const gaps = result.items.filter((item) => item.nutrition_source === 'unresolved');
   if (gaps.length === 0) return result;
 
-  const names = [...new Set(gaps.map((item) => item.match_key.toLowerCase().trim()))];
+  const names = [...new Set(gaps.map((item) => item.match_key.toLowerCase().trim()))].sort();
   const table = Object.create(null);
   const missingNames = names.filter((name) => {
     const cached = nutritionNameCache.get(name);
@@ -984,11 +987,11 @@ async function fillMissingNutrition(result) {
 
   if (missingNames.length > 0) {
     try {
-      const raw = await callAiText(prompt, {
+      const raw = await coalesceNutritionRequest('nutrition', prompt, () => callAiText(prompt, {
         requireJson: true,
         maxOutputTokens: 700,
         timeout: 12000,
-      });
+      }));
       const fetched = parseNutritionByNameResponse(raw);
       for (const name of missingNames) {
         if (!Object.hasOwn(fetched, name)) continue;
@@ -1329,6 +1332,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
       },
       { headers: { ...headers, 'Content-Type': 'application/json' }, timeout: budget() },
     );
+    logAiUsage('vision', model, response.data);
     const choice = response.data?.choices?.[0];
     const content = choice?.message?.content;
     // Strip before testing, not after. A reasoning model that runs out of
@@ -1537,6 +1541,7 @@ async function callAiText(prompt, options = {}) {
         timeout,
       },
     );
+    logAiUsage('text', model, response.data);
     const content = response.data?.choices?.[0]?.message?.content;
     const cleaned = content ? stripThink(content) : '';
     if (cleaned) return requireJson ? normalizeAiJsonText(cleaned) : cleaned;
@@ -2034,13 +2039,15 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => 
   }
 
   try {
-    const text = await callAiText(body.prompt, {
+    const textOptions = {
       maxOutputTokens: Math.min(Number(body.maxOutputTokens || 2048), 8192),
       responseMimeType: body.responseMimeType === 'application/json' ? 'application/json' : undefined,
       requireJson: body.responseMimeType === 'application/json',
       temperature: typeof body.temperature === 'number' ? body.temperature : 0.7,
       timeout: Math.min(Number(body.timeoutMs || 25000), 55000),
-    });
+    };
+    const text = await coalesceTextRequest(req.user.uid, [body.prompt, textOptions],
+      () => callAiText(body.prompt, textOptions));
     return res.status(200).json({ text });
   } catch (error) {
     // TEMPORARY DEBUG: the failure chain (which provider failed and why) is

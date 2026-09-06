@@ -28,16 +28,17 @@ import 'package:snapcal/providers/settings_provider.dart';
 // deliberate rather than blown out.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _paperLight = Color(0xFFFBFAF7);
-const _paperDark = Color(0xFF0A0D0C);
+const _paywallSage = Color(0xFF92AF83);
+const _paperLight = Color(0xFFFFFFFF);
+const _paperDark = Color(0xFF000000);
 const _surfaceLight = Color(0xFFFFFFFF);
-const _surfaceDark = Color(0xFF141917);
-const _hairlineLight = Color(0xFFEAE6DE);
+const _surfaceDark = Color(0xFF0D0F0E);
+const _hairlineLight = Color(0xFFDDDFDD);
 const _hairlineDark = Color(0xFF242C28);
 const _inkLight = Color(0xFF16181D);
 const _inkDark = Color(0xFFF1F4F2);
 const _mutedLight = Color(0xFF76766E);
-const _mutedDark = Color(0xFF8B9A94);
+const _mutedDark = Color(0xFFA0A3A1);
 
 /// Resolves the palette once per build instead of threading `isDark` through
 /// every widget in the file.
@@ -53,7 +54,7 @@ class _Palette {
   Color get muted => isDark ? _mutedDark : _mutedLight;
 
   /// Emerald that stays legible as text on the current ground.
-  Color get accentInk => isDark ? AppColors.emeraldLight : AppColors.primaryDark;
+  Color get accentInk => isDark ? _paywallSage : const Color(0xFF47613E);
 
   Color get accentWash =>
       AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.10);
@@ -89,6 +90,10 @@ class _IntroInfo {
 
   const _IntroInfo(this.priceString, this.price);
 }
+
+final paywallOfferingsLoaderProvider = Provider<Future<Offerings?> Function()>(
+  (ref) => SubscriptionService().getOfferings,
+);
 
 class PaywallScreen extends ConsumerStatefulWidget {
   final bool limitReached;
@@ -180,9 +185,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       });
     }
     try {
-      final offerings = await SubscriptionService().getOfferings().timeout(
-        const Duration(seconds: 8),
-      );
+      final offerings = await ref
+          .read(paywallOfferingsLoaderProvider)()
+          .timeout(const Duration(seconds: 8));
       if (!mounted) return;
       setState(() {
         if (offerings?.current != null &&
@@ -340,7 +345,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         // disclosure previously quoted only the renewal price.
         return intro == null
             ? l10n.paywall_disclosure_year(priceString)
-            : l10n.paywall_disclosure_intro_year(intro.priceString, priceString);
+            : l10n.paywall_disclosure_intro_year(
+              intro.priceString,
+              priceString,
+            );
       case PackageType.monthly:
         if (trial != null) {
           return l10n.paywall_disclosure_trial_month(trial.days, priceString);
@@ -378,6 +386,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
   String? _billingCadence(Package package, AppLocalizations l10n) {
     switch (package.packageType) {
+      case PackageType.annual:
+        return l10n.purchase_billed_yearly;
       case PackageType.monthly:
         return l10n.paywall_billing_monthly;
       case PackageType.lifetime:
@@ -671,155 +681,172 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     return PopScope(
       canPop: !_isLoading && !_restoring,
       child: Scaffold(
-      backgroundColor: palette.paper,
-      body: LayoutBuilder(
-        builder: (context, viewport) {
-          // The photography is square, so the hero is sized against the
-          // narrower of the two axes and never allowed to eat the fold.
-          //
-          // Was 0.44 of the viewport (and up to 420pt), which on a normal phone
-          // resolved to ~390pt: the hero owned nearly half the screen and
-          // pushed the headline, the benefits and the plan selector below the
-          // fold. The image sells the product, but it is not the product.
-          //
-          // There is also a floor: the hero has to fit the status-bar inset,
-          // the chrome under it, two bands of label cards and the bottom fade.
-          // Below that the cards get pushed into the fade or on top of the
-          // food. Solving it for a 24% fade gives (inset + 172) / 0.76.
-          final heroFloor = (media.padding.top + 172) / 0.76;
-          final heroHeight = math
-              .max(
-                math.min(
-                  viewport.maxHeight * 0.32,
-                  viewport.maxWidth * 0.70,
-                ),
-                heroFloor,
-              )
-              .clamp(190.0, math.min(340.0, viewport.maxHeight * 0.46))
-              .toDouble();
-          _heroExtent = heroHeight;
-          final dense = viewport.maxHeight < 720;
-          final hPad = viewport.maxWidth < 360 ? 18.0 : 22.0;
+        backgroundColor: palette.paper,
+        body: LayoutBuilder(
+          builder: (context, viewport) {
+            _heroExtent = 240;
+            final dense = viewport.maxHeight < 720;
+            const hPad = 20.0;
 
-          // The dock's height depends on the disclosure text, which changes
-          // with the selected plan and the locale. Re-measure after each build.
-          WidgetsBinding.instance.addPostFrameCallback((_) => _measureDock());
+            // The dock's height depends on the disclosure text, which changes
+            // with the selected plan and the locale. Re-measure after each build.
+            WidgetsBinding.instance.addPostFrameCallback((_) => _measureDock());
 
-          return Stack(
-            children: [
-              ListView(
-                controller: _scrollController,
-                // The dock is measured, not guessed. The old constant
-                // (236/252) under-shot its real height, so the last benefit
-                // row was sliced in half by the CTA and could never be
-                // scrolled clear of it -- which reads as a rendering bug
-                // rather than as "there is more below".
-                padding: EdgeInsets.only(
-                  bottom:
-                      (_dockHeight ?? (dense ? 236.0 : 252.0)) +
-                      (_dockHeight == null ? media.padding.bottom : 0.0) +
-                      16,
-                ),
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
-                children: [
-                  _ScanHero(
-                    height: heroHeight,
-                    palette: palette,
-                    topInset: media.padding.top,
-                    onClose: () {
-                      if (_isLoading) return;
-                      if (context.canPop()) context.pop();
-                    },
+            return Stack(
+              children: [
+                ListView(
+                  controller: _scrollController,
+                  // The dock is measured, not guessed. The old constant
+                  // (236/252) under-shot its real height, so the last benefit
+                  // row was sliced in half by the CTA and could never be
+                  // scrolled clear of it -- which reads as a rendering bug
+                  // rather than as "there is more below".
+                  padding: EdgeInsets.only(
+                    bottom:
+                        (_dockHeight ?? (dense ? 236.0 : 252.0)) +
+                        (_dockHeight == null ? media.padding.bottom : 0.0) +
+                        16,
                   ),
-                  SizedBox(height: dense ? 18 : 26),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: hPad),
-                    child: _buildTitleBlock(context, palette),
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
                   ),
-                  SizedBox(height: dense ? 20 : 26),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: hPad),
-                    child: _BenefitLedger(palette: palette),
-                  ),
-                  ..._buildTrialSection(context, palette, hPad, dense),
-                  SizedBox(height: dense ? 20 : 26),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: hPad),
-                    child: _buildPlans(context, palette, l10n),
-                  ),
-                  if (_purchaseNotice != null) ...[
-                    const SizedBox(height: 16),
+                  children: [
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: hPad),
-                      child: _NoticeBanner(
-                        message: _purchaseNotice!,
-                        palette: palette,
-                        // A warning with nothing to do about it is a dead
-                        // end. Every purchase notice is a state the user can
-                        // reasonably try again from.
-                        onRetry: _isLoading ? null : _handlePurchase,
+                      padding: EdgeInsets.fromLTRB(
+                        hPad,
+                        media.padding.top + 8,
+                        hPad,
+                        0,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            LucideIcons.scanLine,
+                            size: 22,
+                            color: palette.ink,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              l10n.appTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: palette.ink,
+                                fontSize: 19,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip:
+                                MaterialLocalizations.of(
+                                  context,
+                                ).closeButtonTooltip,
+                            onPressed:
+                                (_isLoading || _restoring)
+                                    ? null
+                                    : () {
+                                      if (context.canPop()) context.pop();
+                                    },
+                            icon: Icon(LucideIcons.x, color: palette.ink),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                  if (_offeringsNotice != null && !_loadingOfferings) ...[
                     const SizedBox(height: 16),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: hPad),
-                      child: _NoticeBanner(
-                        message: _offeringsNotice!,
-                        palette: palette,
-                        onRetry: _loadOfferings,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: hPad),
+                      child: _buildTitleBlock(context, palette),
                     ),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: hPad),
+                      child: _ProDayPreview(palette: palette),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: hPad),
+                      child: _BenefitLedger(palette: palette),
+                    ),
+                    ..._buildTrialSection(context, palette, hPad, dense),
+                    SizedBox(height: dense ? 20 : 26),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: hPad),
+                      child: _buildPlans(context, palette, l10n),
+                    ),
+                    if (_purchaseNotice != null) ...[
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: hPad),
+                        child: _NoticeBanner(
+                          message: _purchaseNotice!,
+                          palette: palette,
+                          // A warning with nothing to do about it is a dead
+                          // end. Every purchase notice is a state the user can
+                          // reasonably try again from.
+                          onRetry: _isLoading ? null : _handlePurchase,
+                        ),
+                      ),
+                    ],
+                    if (_offeringsNotice != null && !_loadingOfferings) ...[
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: hPad),
+                        child: _NoticeBanner(
+                          message: _offeringsNotice!,
+                          palette: palette,
+                          onRetry: _loadOfferings,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _CtaDock(
-                  key: _dockKey,
-                  palette: palette,
-                  hPad: hPad,
-                  isLoading: _isLoading,
-                  package: _selectedPackage,
-                  loadingOfferings: _loadingOfferings,
-                  trialDays: _trialFor(_selectedPackage)?.days,
-                  introPriceString: _introFor(_selectedPackage)?.priceString,
-                  planLabel:
-                      _selectedPackage == null
-                          ? null
-                          : _planLabel(_selectedPackage!, l10n),
-                  disclosure: _disclosureFor(_selectedPackage, l10n),
-                  onPurchase: _handlePurchase,
-                  restoring: _restoring,
-                  onRestore: (_isLoading || _restoring) ? null : _handleRestore,
-                  onTerms: () => _openUrl(_termsUrl),
-                  onPrivacy: () => _openUrl(_privacyPolicyUrl),
                 ),
-              ),
-              // Scrolled body text used to run straight through the status bar
-              // clock and icons: the list starts at y=0 and nothing sat behind
-              // the inset. This scrim fades in as the hero scrolls away.
-              if (media.padding.top > 0)
                 Positioned(
-                  top: 0,
                   left: 0,
                   right: 0,
-                  child: IgnorePointer(
-                    child: Opacity(
-                      opacity: _statusBarScrim,
-                      child: Container(
-                        height: media.padding.top,
-                        decoration: BoxDecoration(
-                          color: palette.paper,
-                          border: Border(
-                            bottom: BorderSide(
-                              color: palette.hairline.withValues(
-                                alpha: _statusBarScrim,
+                  bottom: 0,
+                  child: _CtaDock(
+                    key: _dockKey,
+                    palette: palette,
+                    hPad: hPad,
+                    isLoading: _isLoading,
+                    package: _selectedPackage,
+                    loadingOfferings: _loadingOfferings,
+                    trialDays: _trialFor(_selectedPackage)?.days,
+                    introPriceString: _introFor(_selectedPackage)?.priceString,
+                    planLabel:
+                        _selectedPackage == null
+                            ? null
+                            : _planLabel(_selectedPackage!, l10n),
+                    disclosure: _disclosureFor(_selectedPackage, l10n),
+                    onPurchase: _handlePurchase,
+                    restoring: _restoring,
+                    onRestore:
+                        (_isLoading || _restoring) ? null : _handleRestore,
+                    onTerms: () => _openUrl(_termsUrl),
+                    onPrivacy: () => _openUrl(_privacyPolicyUrl),
+                  ),
+                ),
+                // Scrolled body text used to run straight through the status bar
+                // clock and icons: the list starts at y=0 and nothing sat behind
+                // the inset. This scrim fades in as the hero scrolls away.
+                if (media.padding.top > 0)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: _statusBarScrim,
+                        child: Container(
+                          height: media.padding.top,
+                          decoration: BoxDecoration(
+                            color: palette.paper,
+                            border: Border(
+                              bottom: BorderSide(
+                                color: palette.hairline.withValues(
+                                  alpha: _statusBarScrim,
+                                ),
                               ),
                             ),
                           ),
@@ -827,11 +854,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                       ),
                     ),
                   ),
-                ),
-            ],
-          );
-        },
-      ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -877,35 +903,49 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       subtitle = l10n.paywall_upgrade_experience_subtitle;
     }
 
+    final general = title == l10n.paywall_upgrade_experience_title;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Eyebrow(text: l10n.paywall_pro_plan, palette: palette),
-        const SizedBox(height: 14),
-        Text(
-              title,
-              textAlign: TextAlign.center,
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          children: [
+            Text(
+              l10n.appTitle,
               style: TextStyle(
                 color: palette.ink,
-                fontSize: 29,
-                height: 1.12,
-                letterSpacing: -0.7,
-                fontWeight: FontWeight.w700,
+                fontSize: 30,
+                height: 1.2,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0,
               ),
-            )
-            .animate()
-            .fadeIn(duration: 420.ms, delay: 60.ms)
-            .slideY(begin: 0.18, end: 0, duration: 460.ms, curve: Curves.easeOut),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: palette.accentInk),
+              ),
+              child: Text(
+                l10n.macro_pro_label,
+                style: TextStyle(color: palette.accentInk, fontSize: 19),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 10),
         Text(
-          subtitle,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: palette.muted,
-            fontSize: 15,
-            height: 1.45,
-            fontWeight: FontWeight.w500,
+          general ? l10n.purchase_headline : title,
+          style: TextStyle(color: palette.ink, fontSize: 17, height: 1.35),
+        ),
+        if (!general) ...[
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: TextStyle(color: palette.muted, fontSize: 12, height: 1.35),
           ),
-        ).animate().fadeIn(duration: 420.ms, delay: 160.ms),
+        ],
       ],
     );
   }
@@ -1091,7 +1131,8 @@ const _slotRightTop = _ChipSlot(_ChipSide.right, 0);
 const _slotRightLow = _ChipSlot(_ChipSide.right, 1);
 
 /// Hero chrome, for band maths. Must track the widgets themselves.
-const double _heroChromeTop = 8; // close button / readout offset below the inset
+const double _heroChromeTop =
+    8; // close button / readout offset below the inset
 const double _closeButtonSize = 38;
 const double _readoutHeight = 46;
 const double _chromeGap = 10;
@@ -1209,8 +1250,12 @@ class _DetectionGeometry {
     final dir = delta / delta.distance;
 
     // Scale the ray until it meets the card's boundary.
-    final tx = dir.dx.abs() < 1e-6 ? double.infinity : (card.width / 2) / dir.dx.abs();
-    final ty = dir.dy.abs() < 1e-6 ? double.infinity : (card.height / 2) / dir.dy.abs();
+    final tx =
+        dir.dx.abs() < 1e-6 ? double.infinity : (card.width / 2) / dir.dx.abs();
+    final ty =
+        dir.dy.abs() < 1e-6
+            ? double.infinity
+            : (card.height / 2) / dir.dy.abs();
     final t = math.min(tx, ty);
     return (centre + dir * t, dir);
   }
@@ -1265,7 +1310,10 @@ List<_DetectionGeometry> _resolveDetections(
   final leftTop = topInset + _heroChromeTop + _closeButtonSize + _chromeGap;
   final rightTop = topInset + _heroChromeTop + _readoutHeight + _chromeGap;
   final lowest = size.height - fadeHeight - _chipHeight - 6;
-  final bandBottom = math.max(math.max(leftTop, rightTop) + _chipHeight + 8, lowest);
+  final bandBottom = math.max(
+    math.max(leftTop, rightTop) + _chipHeight + 8,
+    lowest,
+  );
 
   Rect rectFor(_ChipSlot slot) => Rect.fromLTWH(
     slot.side == _ChipSide.left
@@ -1362,8 +1410,10 @@ class _ScanHero extends StatefulWidget {
     required this.palette,
     required this.topInset,
     required this.onClose,
+    this.compact = false,
   });
 
+  final bool compact;
   final double height;
   final _Palette palette;
   final double topInset;
@@ -1383,14 +1433,15 @@ class _ScanHeroState extends State<_ScanHero>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: _cycle)
-      ..addStatusListener((status) {
-        if (status != AnimationStatus.completed) return;
-        if (!mounted) return;
-        setState(() => _index = (_index + 1) % _heroSlides.length);
-        _controller.forward(from: 0);
-      })
-      ..forward();
+    _controller =
+        AnimationController(vsync: this, duration: _cycle)
+          ..addStatusListener((status) {
+            if (status != AnimationStatus.completed) return;
+            if (!mounted) return;
+            setState(() => _index = (_index + 1) % _heroSlides.length);
+            _controller.forward(from: 0);
+          })
+          ..forward();
   }
 
   @override
@@ -1411,6 +1462,52 @@ class _ScanHeroState extends State<_ScanHero>
     final l10n = AppLocalizations.of(context)!;
     final slide = _heroSlides[_index];
 
+    if (widget.compact) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          height: widget.height,
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final reduceMotion = MediaQuery.disableAnimationsOf(context);
+              final t = reduceMotion ? 0.5 : _controller.value;
+              return Opacity(
+                opacity:
+                    reduceMotion ? 1 : (0.75 + 0.25 * math.sin(t * math.pi)),
+                child: Transform.scale(
+                  scale: reduceMotion ? 1 : 1 + t * .035,
+                  child: AnimatedSwitcher(
+                    duration:
+                        reduceMotion
+                            ? Duration.zero
+                            : const Duration(milliseconds: 600),
+                    child: Image.asset(
+                      _heroSlides[reduceMotion ? 0 : _index].asset,
+                      key: ValueKey(reduceMotion ? 0 : _index),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: widget.height,
+                      errorBuilder:
+                          (_, _, _) => ColoredBox(
+                            color: palette.surface,
+                            child: Center(
+                              child: Icon(
+                                LucideIcons.utensils,
+                                color: palette.muted,
+                              ),
+                            ),
+                          ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
     return ClipRect(
       // Explicit. The zoomed photograph was painting a sliver of itself past
       // the hero's bottom edge, showing up as a ~10dp band of un-faded image
@@ -1419,183 +1516,190 @@ class _ScanHeroState extends State<_ScanHero>
         height: widget.height,
         width: double.infinity,
         child: LayoutBuilder(
-          builder: (context, constraints) => AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          final t = _controller.value;
-          // Hold the plate still for a beat, sweep, name the food, then leave.
-          final entrance = _phase(t, 0.00, 0.07);
-          final exit = 1 - _phase(t, 0.93, 1.00);
-          final sweep = _phase(t, 0.12, 0.44);
-          final opacity = entrance * exit;
+          builder:
+              (context, constraints) => AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) {
+                  final t = _controller.value;
+                  // Hold the plate still for a beat, sweep, name the food, then leave.
+                  final entrance = _phase(t, 0.00, 0.07);
+                  final exit = 1 - _phase(t, 0.93, 1.00);
+                  final sweep = _phase(t, 0.12, 0.44);
+                  final opacity = entrance * exit;
 
-          final zoom = _heroZoomFrom + (t * (_heroZoomTo - _heroZoomFrom));
-          final geometry = _resolveDetections(
-            slide.detections,
-            Size(constraints.maxWidth, widget.height),
-            zoom,
-            widget.topInset,
-            _heroFadeHeight(widget.height),
-          );
-          final reveal = [
-            for (var i = 0; i < slide.detections.length; i++)
-              _phase(t, 0.26 + (i * 0.075), 0.44 + (i * 0.075)) * exit,
-          ];
+                  final zoom =
+                      _heroZoomFrom + (t * (_heroZoomTo - _heroZoomFrom));
+                  final geometry = _resolveDetections(
+                    slide.detections,
+                    Size(constraints.maxWidth, widget.height),
+                    zoom,
+                    widget.topInset,
+                    _heroFadeHeight(widget.height),
+                  );
+                  final reveal = [
+                    for (var i = 0; i < slide.detections.length; i++)
+                      _phase(t, 0.26 + (i * 0.075), 0.44 + (i * 0.075)) * exit,
+                  ];
 
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              // ── The photograph, breathing ──
-              Opacity(
-                opacity: opacity,
-                child: Transform.scale(
-                  scale: zoom,
-                  child: Image.asset(
-                    slide.asset,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.center,
-                    gaplessPlayback: true,
-                    errorBuilder:
-                        (context, error, stack) =>
-                            ColoredBox(color: palette.accentWash),
-                  ),
-                ),
-              ),
-
-              // ── Dark mode needs the marble knocked back, or it glares ──
-              if (palette.isDark)
-                const Positioned.fill(
-                  child: ColoredBox(color: Color(0x33000000)),
-                ),
-
-              // ── The scan sweep ──
-              if (sweep > 0 && sweep < 1)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: CustomPaint(
-                      painter: _SweepPainter(
-                        progress: sweep,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // ── Detections, landing in the sweep's wake ──
-              //
-              // Leaders underneath, cards on top, so each line vanishes under
-              // the card edge it grows from.
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _DetectionLeaderPainter(
-                      geometry: geometry,
-                      progress: reveal,
-                    ),
-                  ),
-                ),
-              ),
-              for (var i = 0; i < slide.detections.length; i++)
-                if (geometry[i].visible)
-                  Positioned(
-                    left: geometry[i].card.left,
-                    top: geometry[i].card.top,
-                    child: _DetectionChip(
-                      detection: slide.detections[i],
-                      l10n: l10n,
-                      progress: reveal[i],
-                      width: geometry[i].card.width,
-                    ),
-                  ),
-
-              // ── Running total, in the empty marble at the top end ──
-              //
-              // It sat bottom-start until the third detection chip landed on
-              // top of it. The corner opposite the close button is clear in
-              // all three photographs and reads like a scanner's own readout.
-              PositionedDirectional(
-                end: 12,
-                top: widget.topInset + _heroChromeTop,
-                child: Opacity(
-                  opacity: _phase(t, 0.34, 0.48) * exit,
-                  child: _CalorieReadout(
-                    kcal: slide.totalKcal,
-                    progress: _phase(t, 0.34, 0.72),
-                  ),
-                ),
-              ),
-
-              // ── Dissolve into the page rather than cutting ──
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: _heroFadeHeight(widget.height),
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          palette.paper.withValues(alpha: 0),
-                          palette.paper.withValues(alpha: 0.72),
-                          palette.paper,
-                          palette.paper,
-                        ],
-                        // Solid well before the edge: the last stretch is
-                        // flat paper, so the hero meets the page with nothing
-                        // half-visible in between.
-                        stops: const [0, 0.55, 0.88, 1],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // ── Chrome ──
-              PositionedDirectional(
-                start: 12,
-                top: widget.topInset + _heroChromeTop,
-                child: _HeroIconButton(
-                  icon: LucideIcons.x,
-                  onTap: widget.onClose,
-                  semanticLabel: MaterialLocalizations.of(
-                    context,
-                  ).closeButtonTooltip,
-                ),
-              ),
-              // ── Which plate we are on ──
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 12,
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  return Stack(
+                    fit: StackFit.expand,
                     children: [
-                      for (var i = 0; i < _heroSlides.length; i++)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: i == _index ? 16 : 5,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color:
-                                i == _index
-                                    ? AppColors.primary
-                                    : palette.muted.withValues(alpha: 0.30),
-                            borderRadius: BorderRadius.circular(3),
+                      // ── The photograph, breathing ──
+                      Opacity(
+                        opacity: opacity,
+                        child: Transform.scale(
+                          scale: zoom,
+                          child: Image.asset(
+                            slide.asset,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                            gaplessPlayback: true,
+                            errorBuilder:
+                                (context, error, stack) =>
+                                    ColoredBox(color: palette.accentWash),
                           ),
                         ),
+                      ),
+
+                      // ── Dark mode needs the marble knocked back, or it glares ──
+                      if (palette.isDark)
+                        const Positioned.fill(
+                          child: ColoredBox(color: Color(0x33000000)),
+                        ),
+
+                      // ── The scan sweep ──
+                      if (sweep > 0 && sweep < 1)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: CustomPaint(
+                              painter: _SweepPainter(
+                                progress: sweep,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // ── Detections, landing in the sweep's wake ──
+                      //
+                      // Leaders underneath, cards on top, so each line vanishes under
+                      // the card edge it grows from.
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: _DetectionLeaderPainter(
+                              geometry: geometry,
+                              progress: reveal,
+                            ),
+                          ),
+                        ),
+                      ),
+                      for (var i = 0; i < slide.detections.length; i++)
+                        if (geometry[i].visible)
+                          Positioned(
+                            left: geometry[i].card.left,
+                            top: geometry[i].card.top,
+                            child: _DetectionChip(
+                              detection: slide.detections[i],
+                              l10n: l10n,
+                              progress: reveal[i],
+                              width: geometry[i].card.width,
+                            ),
+                          ),
+
+                      // ── Running total, in the empty marble at the top end ──
+                      //
+                      // It sat bottom-start until the third detection chip landed on
+                      // top of it. The corner opposite the close button is clear in
+                      // all three photographs and reads like a scanner's own readout.
+                      PositionedDirectional(
+                        end: 12,
+                        top: widget.topInset + _heroChromeTop,
+                        child: Opacity(
+                          opacity: _phase(t, 0.34, 0.48) * exit,
+                          child: _CalorieReadout(
+                            kcal: slide.totalKcal,
+                            progress: _phase(t, 0.34, 0.72),
+                          ),
+                        ),
+                      ),
+
+                      // ── Dissolve into the page rather than cutting ──
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: _heroFadeHeight(widget.height),
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  palette.paper.withValues(alpha: 0),
+                                  palette.paper.withValues(alpha: 0.72),
+                                  palette.paper,
+                                  palette.paper,
+                                ],
+                                // Solid well before the edge: the last stretch is
+                                // flat paper, so the hero meets the page with nothing
+                                // half-visible in between.
+                                stops: const [0, 0.55, 0.88, 1],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ── Chrome ──
+                      PositionedDirectional(
+                        start: 12,
+                        top: widget.topInset + _heroChromeTop,
+                        child: _HeroIconButton(
+                          icon: LucideIcons.x,
+                          onTap: widget.onClose,
+                          semanticLabel:
+                              MaterialLocalizations.of(
+                                context,
+                              ).closeButtonTooltip,
+                        ),
+                      ),
+                      // ── Which plate we are on ──
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 12,
+                        child: Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (var i = 0; i < _heroSlides.length; i++)
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 3,
+                                  ),
+                                  width: i == _index ? 16 : 5,
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        i == _index
+                                            ? AppColors.primary
+                                            : palette.muted.withValues(
+                                              alpha: 0.30,
+                                            ),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
-                  ),
-                ),
+                  );
+                },
               ),
-            ],
-          );
-        },
-          ),
         ),
       ),
     );
@@ -1689,16 +1793,22 @@ class _DetectionLeaderPainter extends CustomPainter {
 
       // Caret, pointing along the arc's opening tangent.
       final tangent = control - tip;
-      final td =
-          tangent.distance < 0.001
-              ? dir
-              : tangent / tangent.distance;
+      final td = tangent.distance < 0.001 ? dir : tangent / tangent.distance;
       final tn = Offset(-td.dy, td.dx);
       canvas.drawPath(
         Path()
-          ..moveTo(edge.dx + td.dx * _caretLength, edge.dy + td.dy * _caretLength)
-          ..lineTo(edge.dx + tn.dx * _caretHalfWidth, edge.dy + tn.dy * _caretHalfWidth)
-          ..lineTo(edge.dx - tn.dx * _caretHalfWidth, edge.dy - tn.dy * _caretHalfWidth)
+          ..moveTo(
+            edge.dx + td.dx * _caretLength,
+            edge.dy + td.dy * _caretLength,
+          )
+          ..lineTo(
+            edge.dx + tn.dx * _caretHalfWidth,
+            edge.dy + tn.dy * _caretHalfWidth,
+          )
+          ..lineTo(
+            edge.dx - tn.dx * _caretHalfWidth,
+            edge.dy - tn.dy * _caretHalfWidth,
+          )
           ..close(),
         Paint()..color = Colors.black.withValues(alpha: 0.48 * t),
       );
@@ -1861,9 +1971,7 @@ class _DetectionChip extends StatelessWidget {
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.24),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -2056,36 +2164,98 @@ class _HeroIconButton extends StatelessWidget {
 // PAGE FURNITURE
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _Eyebrow extends StatelessWidget {
-  const _Eyebrow({required this.text, required this.palette});
-
-  final String text;
+class _ProDayPreview extends StatelessWidget {
+  const _ProDayPreview({required this.palette});
   final _Palette palette;
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-      decoration: BoxDecoration(
-        color: palette.accentWash,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: palette.accentInk,
-          fontSize: 10.5,
-          height: 1,
-          letterSpacing: 1.4,
-          fontWeight: FontWeight.w700,
+    final l = AppLocalizations.of(context)!;
+    final large = MediaQuery.textScalerOf(context).scale(12) > 17;
+    final metrics = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l.purchase_preview_title.toUpperCase(),
+          style: TextStyle(color: palette.muted, fontSize: 10, height: 1.3),
         ),
-      ),
+        const SizedBox(height: 12),
+        for (final metric in [
+          (l.result_protein, 92, 120, _paywallSage),
+          (l.result_carbs, 168, 230, const Color(0xFF7D9DBC)),
+        ]) ...[
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 12,
+            children: [
+              Text(
+                metric.$1,
+                style: TextStyle(color: palette.ink, fontSize: 12),
+              ),
+              Text(
+                '${metric.$2} / ${metric.$3}g',
+                textDirection: TextDirection.ltr,
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          LinearProgressIndicator(
+            value: metric.$2 / metric.$3,
+            minHeight: 3,
+            borderRadius: BorderRadius.circular(2),
+            color: metric.$4,
+            backgroundColor: palette.hairline,
+          ),
+          const SizedBox(height: 12),
+        ],
+        Divider(height: 1, color: palette.hairline),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              LucideIcons.messagesSquare,
+              size: 17,
+              color: palette.accentInk,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                l.purchase_preview_advice,
+                style: TextStyle(
+                  color: palette.muted,
+                  fontSize: 11,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
+    final photo = _ScanHero(
+      height: large ? 180 : 145,
+      palette: palette,
+      topInset: 0,
+      onClose: () {},
+      compact: true,
+    );
+    return large
+        ? Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [photo, const SizedBox(height: 12), metrics],
+        )
+        : Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(flex: 3, child: metrics),
+            const SizedBox(width: 16),
+            Expanded(flex: 2, child: photo),
+          ],
+        );
   }
 }
 
-/// What you get, as a ledger rather than a sales list: hairline rules, one
-/// line each, the emerald tick doing all the affirming.
 class _BenefitLedger extends StatelessWidget {
   const _BenefitLedger({required this.palette});
 
@@ -2094,73 +2264,61 @@ class _BenefitLedger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final items = <String>[
-      l10n.paywall_benefit_unlimited_scans,
-      l10n.paywall_benefit_ai_guidance,
-      l10n.paywall_benefit_smart_planner,
-      l10n.paywall_benefit_weekly_reports,
-      l10n.paywall_benefit_full_history,
-      // "Ad-free" is gone with the ads. Selling the removal of something the
-      // app no longer does reads as padding at best and as a lie at worst.
+    final items = [
+      (
+        LucideIcons.scanLine,
+        l10n.paywall_benefit_unlimited_scans,
+        l10n.purchase_scan_detail,
+      ),
+      (
+        LucideIcons.calendarDays,
+        l10n.purchase_planner_title,
+        l10n.purchase_planner_detail,
+      ),
+      (
+        LucideIcons.messagesSquare,
+        l10n.purchase_coach_title,
+        l10n.purchase_coach_detail,
+      ),
     ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette.hairline),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Column(
-        children: [
-          for (var i = 0; i < items.length; i++)
-            Container(
-              decoration: BoxDecoration(
-                border:
-                    i == items.length - 1
-                        ? null
-                        : Border(
-                          bottom: BorderSide(
-                            color: palette.hairline.withValues(alpha: 0.7),
-                          ),
+    return Column(
+      children: [
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Icon(item.$1, size: 26, color: palette.ink),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.$2,
+                        style: TextStyle(
+                          color: palette.ink,
+                          fontSize: 15,
+                          height: 1.3,
+                          fontWeight: FontWeight.w600,
                         ),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 13),
-              child: Row(
-                children: [
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: palette.accentWash,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      LucideIcons.check,
-                      size: 13,
-                      color: palette.accentInk,
-                    ),
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Text(
-                      items[i],
-                      style: TextStyle(
-                        color: palette.ink,
-                        fontSize: 14.5,
-                        height: 1.3,
-                        fontWeight: FontWeight.w600,
                       ),
-                    ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.$3,
+                        style: TextStyle(
+                          color: palette.muted,
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ).animate().fadeIn(
-              duration: 340.ms,
-              delay: Duration(milliseconds: 220 + (i * 55)),
+                ),
+              ],
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
@@ -2328,119 +2486,116 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final large = MediaQuery.textScalerOf(context).scale(15) > 18;
+    final title = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: palette.ink,
+                fontSize: 15,
+                height: 1.3,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (badge != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: palette.accentInk),
+                ),
+                child: Text(
+                  badge!,
+                  style: TextStyle(
+                    color: palette.accentInk,
+                    fontSize: 9,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        if (perMonth != null) ...[
+          const SizedBox(height: 4),
+          Text(perMonth!, style: TextStyle(color: palette.muted, fontSize: 12)),
+        ],
+      ],
+    );
+    final amount = Column(
+      crossAxisAlignment:
+          large ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      children: [
+        if (introPrice != null)
+          Text(
+            price,
+            style: TextStyle(
+              color: palette.muted,
+              fontSize: 11,
+              decoration: TextDecoration.lineThrough,
+            ),
+          ),
+        Text(
+          introPrice ?? price,
+          style: TextStyle(
+            color: palette.ink,
+            fontSize: 16,
+            height: 1.25,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (cadence != null)
+          Text(
+            cadence!,
+            style: TextStyle(color: palette.muted, fontSize: 11, height: 1.3),
+          ),
+      ],
+    );
     return Semantics(
       button: true,
       selected: selected,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: selected ? palette.accentWash : palette.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: selected ? AppColors.primary : palette.hairline,
-              width: selected ? 2 : 1,
-            ),
-          ),
-          padding: EdgeInsets.fromLTRB(15, 15, 15, selected ? 14 : 15),
-          child: Row(
-            children: [
-              _Radio(selected: selected, palette: palette),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            label,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: palette.ink,
-                              fontSize: 15.5,
-                              height: 1.2,
-                              fontWeight: FontWeight.w700,
-                            ),
+      child: Material(
+        color: palette.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: selected ? _paywallSage : palette.hairline),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                _Radio(selected: selected, palette: palette),
+                const SizedBox(width: 12),
+                Expanded(
+                  child:
+                      large
+                          ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              title,
+                              const SizedBox(height: 8),
+                              amount,
+                            ],
+                          )
+                          : Row(
+                            children: [
+                              Expanded(child: title),
+                              const SizedBox(width: 8),
+                              Flexible(child: amount),
+                            ],
                           ),
-                        ),
-                        if (badge != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              badge!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9.5,
-                                height: 1,
-                                letterSpacing: 0.6,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (cadence != null || perMonth != null) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        perMonth ?? cadence!,
-                        style: TextStyle(
-                          color: palette.muted,
-                          fontSize: 12.5,
-                          height: 1.25,
-                          fontWeight: FontWeight.w500,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ],
-                  ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (introPrice != null)
-                    Text(
-                      price,
-                      style: TextStyle(
-                        color: palette.muted,
-                        fontSize: 12,
-                        height: 1.2,
-                        decoration: TextDecoration.lineThrough,
-                        decorationColor: palette.muted,
-                        fontWeight: FontWeight.w600,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  Text(
-                    introPrice ?? price,
-                    style: TextStyle(
-                      color: palette.ink,
-                      fontSize: 16,
-                      height: 1.2,
-                      letterSpacing: -0.3,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -2455,25 +2610,30 @@ class _Radio extends StatelessWidget {
   final _Palette palette;
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      width: 21,
-      height: 21,
-      decoration: BoxDecoration(
-        color: selected ? AppColors.primary : Colors.transparent,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: selected ? AppColors.primary : palette.muted.withValues(alpha: 0.5),
-          width: 1.8,
-        ),
+  Widget build(BuildContext context) => Container(
+    width: 21,
+    height: 21,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(
+        color: selected ? _paywallSage : palette.muted,
+        width: 1.5,
       ),
-      child:
-          selected
-              ? const Icon(LucideIcons.check, size: 13, color: Colors.white)
-              : null,
-    );
-  }
+    ),
+    child:
+        selected
+            ? Center(
+              child: Container(
+                width: 11,
+                height: 11,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _paywallSage,
+                ),
+              ),
+            )
+            : null,
+  );
 }
 
 class _PlanSkeleton extends StatelessWidget {
@@ -2492,16 +2652,9 @@ class _PlanSkeleton extends StatelessWidget {
       ),
     );
 
-    return Column(
-      children: [
-        bar(),
-        const SizedBox(height: 10),
-        bar(),
-      ],
-    ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(
-      duration: 700.ms,
-      begin: 0.45,
-    );
+    return Column(children: [bar(), const SizedBox(height: 10), bar()])
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .fadeIn(duration: 700.ms, begin: 0.45);
   }
 }
 
@@ -2521,7 +2674,9 @@ class _NoticeBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: palette.isDark ? 0.14 : 0.09),
+        color: AppColors.warning.withValues(
+          alpha: palette.isDark ? 0.14 : 0.09,
+        ),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.warning.withValues(alpha: 0.34)),
       ),
@@ -2637,10 +2792,10 @@ class _CtaDock extends StatelessWidget {
 
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
         child: Container(
           decoration: BoxDecoration(
-            color: palette.paper.withValues(alpha: 0.90),
+            color: palette.paper,
             border: Border(top: BorderSide(color: palette.hairline)),
           ),
           padding: EdgeInsets.fromLTRB(hPad, 14, hPad, bottomInset + 12),
@@ -2650,7 +2805,11 @@ class _CtaDock extends StatelessWidget {
               _PrimaryCta(
                 label: _ctaLabel(l10n),
                 busy: isLoading,
-                enabled: !isLoading && !loadingOfferings,
+                enabled:
+                    !isLoading &&
+                    !restoring &&
+                    !loadingOfferings &&
+                    package != null,
                 onTap: onPurchase,
               ),
               if (disclosure != null) ...[
@@ -2760,23 +2919,13 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
             opacity: enabled ? 1 : 0.55,
             duration: const Duration(milliseconds: 160),
             child: Container(
-              height: 56,
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               width: double.infinity,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.32),
-                    blurRadius: 22,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+                color: _paywallSage,
+                borderRadius: BorderRadius.circular(8),
               ),
               child:
                   widget.busy
@@ -2790,12 +2939,11 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
                       )
                       : Text(
                         widget.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          letterSpacing: -0.1,
+                          color: Color(0xFF111810),
+                          fontSize: 15,
+                          letterSpacing: 0,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

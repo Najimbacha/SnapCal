@@ -1,4 +1,13 @@
 {
+  "purchase_billed_yearly": "Billed yearly",
+  "purchase_headline": "Know what to eat next.",
+  "purchase_preview_title": "Your day, with Pro · Preview",
+  "purchase_preview_advice": "Plan a protein-rich dinner.",
+  "purchase_scan_detail": "Log meals without the daily limit",
+  "purchase_planner_title": "Meal plans for your goals",
+  "purchase_planner_detail": "A full week, plus your grocery list",
+  "purchase_coach_title": "Your personal AI Coach",
+  "purchase_coach_detail": "Macro guidance and daily advice",
   "home_dashboard_upgrade": "See grams, daily goals & what to eat next",
   "home_dashboard_planner": "Your next meal, planned for your goals",
   "home_dashboard_coach": "Personal advice from today’s nutrition",
@@ -1616,7 +1625,7 @@
   "@result_retake": {
     "description": "SnapCal UI string: result_retake"
   },
-  "result_scans_left": "{remaining} of {total} scans left today",
+  "result_scans_left": "{remaining} of {total} scans remaining",
   "@result_scans_left": {
     "description": "SnapCal UI string: result_scans_left",
     "placeholders": {

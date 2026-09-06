@@ -511,9 +511,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
             // The item's own name, so the sheet says which of four plates on
             // screen is being resized.
             helperText:
-                item.name.trim().isEmpty
-                    ? null
-                    : _capitalize(item.name.trim()),
+                item.name.trim().isEmpty ? null : _capitalize(item.name.trim()),
             initialValue: item.weightG.roundToDouble().clamp(5, 5000),
             unit: 'g',
             min: 5,
@@ -545,33 +543,21 @@ class _ResultModalState extends ConsumerState<ResultModal> {
         if (!didPop) _handleBack();
       },
       child: Scaffold(
-        backgroundColor: d ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        backgroundColor: d ? const Color(0xFF151918) : const Color(0xFFFAFCFB),
         body: SafeArea(
           bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _header(context, l10n, d),
-              _macroStrip(context, showMacros),
-              const SizedBox(height: 14),
               Expanded(
                 child: ListView(
                   physics: const BouncingScrollPhysics(),
                   // The save bar already absorbs the bottom safe-area inset.
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   children: [
-                    if (_items.isNotEmpty) ...[
-                      Text(
-                        l10n.result_tap_to_adjust,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.4,
-                          color: d ? Colors.white38 : const Color(0xFF8E8E93),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
+                    _header(context, l10n, d),
+                    _macroStrip(context, showMacros),
+                    const SizedBox(height: 24),
                     if (_shareBar() != null) ...[
                       _shareBar()!,
                       const SizedBox(height: 12),
@@ -603,7 +589,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                             color: (d ? Colors.white : const Color(0xFFC7C7CC))
                                 .withValues(alpha: 0.3),
                           ),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Center(
                           child: Row(
@@ -649,151 +635,150 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     );
   }
 
-  /// Compact header: the photo is a thumbnail, not a stage. Total height is
-  /// roughly 110px so the item list starts above the fold on every device.
   Widget _header(BuildContext context, AppLocalizations l10n, bool d) {
-    final ink = d ? Colors.white : const Color(0xFF1C1C1E);
-    final muted = d ? Colors.white54 : const Color(0xFF8E8E93);
+    final ink = d ? Colors.white : const Color(0xFF17251F);
+    final muted = d ? Colors.white70 : const Color(0xFF56675D);
+    final pro = ref.watch(effectiveIsProProvider);
     final score = _healthScore;
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 12, 12),
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              GestureDetector(
-                onTap: _handleBack,
-                behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(LucideIcons.chevronLeft, size: 24, color: ink),
+              IconButton(
+                key: const ValueKey('result-back'),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                onPressed: _handleBack,
+                icon: Transform.flip(
+                  flipX: Directionality.of(context) == TextDirection.rtl,
+                  child: const Icon(LucideIcons.arrowLeft, size: 22),
                 ),
               ),
-              const Spacer(),
-              GestureDetector(
-                onTap: _retake,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  height: 36,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: (d ? Colors.white : Colors.black).withValues(
-                        alpha: 0.14,
-                      ),
-                    ),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(LucideIcons.camera, size: 14, color: muted),
-                      const SizedBox(width: 6),
-                      Text(
-                        l10n.result_retake,
-                        style: TextStyle(
-                          color: muted,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+              Expanded(
+                child: Text(
+                  'SnapCal',
+                  style: TextStyle(
+                    color: ink,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
                   ),
                 ),
+              ),
+              if (pro) ...[
+                const Icon(
+                  LucideIcons.sparkles,
+                  size: 15,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  'PRO',
+                  style: TextStyle(
+                    color: ink,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              IconButton(
+                tooltip: l10n.result_retake,
+                onPressed: _retake,
+                icon: const Icon(LucideIcons.camera, size: 21),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: widget.imageBytes == null ? null : _openPhoto,
-                  child: Container(
-                    width: 58,
-                    height: 58,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color:
-                          d ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child:
-                        widget.imageBytes != null
-                            ? Image.memory(
-                              widget.imageBytes!,
-                              fit: BoxFit.cover,
-                              errorBuilder:
-                                  (_, _, _) => const SizedBox.shrink(),
-                            )
-                            : Icon(
-                              LucideIcons.utensils,
-                              size: 22,
-                              color: muted,
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (widget.imageBytes != null) ...[
+                Semantics(
+                  button: true,
+                  label: _title(l10n),
+                  child: InkWell(
+                    onTap: _openPhoto,
+                    borderRadius: BorderRadius.circular(8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.memory(
+                        widget.imageBytes!,
+                        width: 104,
+                        height: 120,
+                        fit: BoxFit.cover,
+                        errorBuilder:
+                            (_, error, stack) => const SizedBox(
+                              width: 104,
+                              height: 120,
+                              child: Icon(LucideIcons.utensils, size: 32),
                             ),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _title(l10n),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: ink,
-                        ),
+                const SizedBox(width: 18),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _title(l10n),
+                      style: TextStyle(
+                        color: muted,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
                       ),
-                      const SizedBox(height: 3),
-                      Row(
+                    ),
+                    const SizedBox(height: 6),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           _CountUp(
                             value: _kcal,
                             style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w800,
                               color: ink,
-                              height: 1.0,
-                              letterSpacing: -1.0,
+                              fontSize: 44,
+                              fontWeight: FontWeight.w700,
+                              height: 1.1,
+                              letterSpacing: 0,
                               fontFeatures: const [
                                 FontFeature.tabularFigures(),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: Text(
-                              score == null
-                                  ? 'kcal'
-                                  : 'kcal · $score/10 ${_healthLabel(l10n, score)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: muted,
-                              ),
-                            ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'kcal',
+                            style: TextStyle(color: muted, fontSize: 15),
                           ),
                         ],
                       ),
+                    ),
+                    if (score != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        '$score/10 ${_healthLabel(l10n, score)}',
+                        style: TextStyle(
+                          color: muted,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -820,10 +805,17 @@ class _ResultModalState extends ConsumerState<ResultModal> {
         proteinGoal: settings?.dailyProteinGoal ?? 0,
         carbGoal: settings?.dailyCarbGoal ?? 0,
         fatGoal: settings?.dailyFatGoal ?? 0,
-        variant: MacroDisplayVariant.rings,
+        variant:
+            showMacros
+                ? MacroDisplayVariant.compact
+                : MacroDisplayVariant.composition,
         showGrams: showMacros,
-        showGoals: showMacros,
-        onUpgradeTap: showMacros ? null : () => _openPaywall(context),
+        showGoals:
+            showMacros &&
+            (settings?.dailyProteinGoal ?? 0) > 0 &&
+            (settings?.dailyCarbGoal ?? 0) > 0 &&
+            (settings?.dailyFatGoal ?? 0) > 0,
+        onUpgradeTap: null,
       ),
     );
   }
@@ -836,9 +828,9 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     double b,
   ) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 10, 16, b + 10),
+      padding: EdgeInsets.fromLTRB(20, 14, 20, b + 12),
       decoration: BoxDecoration(
-        color: d ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        color: d ? const Color(0xFF151918) : const Color(0xFFFAFCFB),
         border: Border(
           top: BorderSide(
             color: (d ? Colors.white : Colors.black).withValues(alpha: 0.08),
@@ -848,95 +840,63 @@ class _ResultModalState extends ConsumerState<ResultModal> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!pro) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  LucideIcons.zap,
-                  size: 12,
-                  color: const Color(
-                    0xFFFFB800,
-                  ).withValues(alpha: _remainingScans > 0 ? 1 : 0.45),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  // The limit comes from ScanGateService, which takes it
-                  // from the server. A second hardcoded 3 here would
-                  // have gone on saying "of 3" after the real
-                  // allowance changed.
-                  l10n.result_scans_left(
-                    _remainingScans,
-                    ScanGateService.freeTierLimit,
-                  ),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: d ? Colors.white54 : const Color(0xFF8E8E93),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 9),
-          ],
           SizedBox(
             width: double.infinity,
-            height: 52,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              transitionBuilder:
-                  (child, anim) => ScaleTransition(scale: anim, child: child),
-              child: DecoratedBox(
-                key: ValueKey(_saving),
-                decoration: BoxDecoration(
-                  color: _saving ? const Color(0xFF34C759) : AppColors.primary,
-                  borderRadius: BorderRadius.circular(14),
+            child: FilledButton(
+              key: const ValueKey('result-save-button'),
+              onPressed: _saving ? null : _save,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.emeraldDark,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppColors.emeraldDark,
+                disabledForegroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(56),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
                 ),
-                child: ElevatedButton(
-                  onPressed: _saving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    shadowColor: Colors.transparent,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _saving ? LucideIcons.check : LucideIcons.bookmarkPlus,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      _saving ? l10n.result_added : l10n.result_add_to_log,
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                  child:
-                      _saving
-                          ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                LucideIcons.check,
-                                size: 20,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                l10n.result_added,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          )
-                          : Text(
-                            _kcal > 0
-                                ? l10n.result_add_to_log_kcal(_fmt(_kcal))
-                                : l10n.result_save_log,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                ),
+                ],
               ),
             ),
           ),
+          if (!pro) ...[
+            const SizedBox(height: 10),
+            Text(
+              l10n.result_scans_left(
+                _remainingScans,
+                ScanGateService.freeTierLimit,
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.4,
+                color: d ? Colors.white70 : const Color(0xFF56675D),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -974,113 +934,54 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     );
   }
 
-  /// The ask, at the moment it lands hardest.
-  ///
-  /// A scan the user just watched succeed is the peak of the session — they
-  /// have a real plate on screen with real numbers against it. So the banner
-  /// leads with this meal rather than a feature list, and shows the macros it
-  /// is talking about. An ambient "unlock deeper insights" card asks for money
-  /// before the user has been shown anything; this one asks right after.
   Widget _upgradeBanner(BuildContext context, AppLocalizations l10n, bool d) {
-    final chips = <(String, int, Color)>[
-      (l10n.result_protein, _p, AppColors.protein),
-      (l10n.result_carbs, _c, AppColors.carbs),
-      (l10n.result_fat, _f, AppColors.fat),
-    ];
-
-    return GestureDetector(
-      onTap: () => _openPaywall(context),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 13, 14, 14),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: d ? 0.12 : 0.06),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.32)),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    gradient: AppColors.premiumGradient,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    LucideIcons.sparkles,
-                    size: 15,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.result_unlock_personal_title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.2,
-                          color: d ? Colors.white : const Color(0xFF1C1C1E),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        l10n.result_unlock_personal_body,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          height: 1.3,
-                          color:
-                              d ? Colors.white60 : const Color(0xFF6E6E73),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  LucideIcons.chevronRight,
-                  size: 18,
-                  color: d ? Colors.white38 : const Color(0xFFC7C7CC),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // The meal's own numbers, so the offer is visibly about this plate.
-            Row(
-              children: [
-                for (var i = 0; i < chips.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 7),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 7),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: chips[i].$3.withValues(alpha: d ? 0.16 : 0.10),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${chips[i].$1} ${chips[i].$2}g',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: d ? Colors.white : const Color(0xFF1C1C1E),
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
+    return Semantics(
+      button: true,
+      child: InkWell(
+        onTap: () => _openPaywall(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          child: Row(
+            children: [
+              const Icon(
+                LucideIcons.sparkles,
+                color: AppColors.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.result_unlock_personal_title,
+                      style: TextStyle(
+                        color: d ? Colors.white : const Color(0xFF17251F),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0,
                       ),
                     ),
-                  ),
-                ],
-              ],
-            ),
-          ],
+                    const SizedBox(height: 5),
+                    Text(
+                      l10n.result_unlock_personal_body,
+                      style: TextStyle(
+                        color: d ? Colors.white70 : const Color(0xFF56675D),
+                        fontSize: 12,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(
+                LucideIcons.chevronRight,
+                size: 20,
+                color: AppColors.primary,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1273,13 +1174,13 @@ class _FoodCardState extends State<_FoodCard>
         padding: const EdgeInsetsDirectional.only(end: 20),
         decoration: BoxDecoration(
           color: const Color(0xFFFF3B30),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: const Icon(LucideIcons.trash2, size: 20, color: Colors.white),
       ),
       onDismissed: (_) => widget.onDelete(),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
@@ -1415,7 +1316,11 @@ class _FoodCardState extends State<_FoodCard>
                                     ),
                                   )
                                 else
-                                  Row(
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 3,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
                                     children: [
                                       Text(
                                         '${_fmt(item.calories)} kcal',
@@ -1425,9 +1330,11 @@ class _FoodCardState extends State<_FoodCard>
                                           color: AppColors.primary,
                                         ),
                                       ),
-                                      if (widget.showMacros) ...[
-                                        const SizedBox(width: 7),
-                                        Flexible(
+                                      if (widget.showMacros)
+                                        ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 120,
+                                          ),
                                           child: Text(
                                             'P${item.protein} · C${item.carbs} · F${item.fat}',
                                             maxLines: 1,
@@ -1442,9 +1349,7 @@ class _FoodCardState extends State<_FoodCard>
                                             ),
                                           ),
                                         ),
-                                      ],
-                                      if (widget.sharePct != null) ...[
-                                        const SizedBox(width: 6),
+                                      if (widget.sharePct != null)
                                         Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 5,
@@ -1467,7 +1372,6 @@ class _FoodCardState extends State<_FoodCard>
                                             ),
                                           ),
                                         ),
-                                      ],
                                     ],
                                   ),
                               ],
@@ -1551,21 +1455,25 @@ class _FoodCardState extends State<_FoodCard>
                                         .withValues(alpha: 0.07),
                                   ),
                                   const SizedBox(height: 14),
-                                  Row(
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 8,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    alignment: WrapAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         l10n.result_portion,
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.8,
+                                          letterSpacing: 0,
                                           color:
                                               d
                                                   ? Colors.white38
                                                   : const Color(0xFF8E8E93),
                                         ),
                                       ),
-                                      const Spacer(),
                                       // Tap the value to type an exact weight.
                                       GestureDetector(
                                         onTap: widget.onWeightType,
@@ -1999,4 +1907,3 @@ class _WtChip extends StatelessWidget {
     );
   }
 }
-

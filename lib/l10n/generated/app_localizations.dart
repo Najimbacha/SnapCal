@@ -102,6 +102,60 @@ abstract class AppLocalizations {
     Locale('fr'),
   ];
 
+  /// No description provided for @purchase_billed_yearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Billed yearly'**
+  String get purchase_billed_yearly;
+
+  /// No description provided for @purchase_headline.
+  ///
+  /// In en, this message translates to:
+  /// **'Know what to eat next.'**
+  String get purchase_headline;
+
+  /// No description provided for @purchase_preview_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your day, with Pro · Preview'**
+  String get purchase_preview_title;
+
+  /// No description provided for @purchase_preview_advice.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan a protein-rich dinner.'**
+  String get purchase_preview_advice;
+
+  /// No description provided for @purchase_scan_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Log meals without the daily limit'**
+  String get purchase_scan_detail;
+
+  /// No description provided for @purchase_planner_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal plans for your goals'**
+  String get purchase_planner_title;
+
+  /// No description provided for @purchase_planner_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'A full week, plus your grocery list'**
+  String get purchase_planner_detail;
+
+  /// No description provided for @purchase_coach_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your personal AI Coach'**
+  String get purchase_coach_title;
+
+  /// No description provided for @purchase_coach_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Macro guidance and daily advice'**
+  String get purchase_coach_detail;
+
   /// No description provided for @home_dashboard_upgrade.
   ///
   /// In en, this message translates to:
@@ -6817,7 +6871,7 @@ abstract class AppLocalizations {
   /// SnapCal UI string: result_scans_left
   ///
   /// In en, this message translates to:
-  /// **'{remaining} of {total} scans left today'**
+  /// **'{remaining} of {total} scans remaining'**
   String result_scans_left(int remaining, int total);
 
   /// SnapCal UI string: result_added

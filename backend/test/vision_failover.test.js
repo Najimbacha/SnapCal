@@ -122,6 +122,20 @@ test('failed nutrition lookups are retried on a later scan', async (t) => {
   assert.equal(post.mock.callCount(), 2);
 });
 
+test('simultaneous nutrition lookups share one call and retain each portion', async (t) => {
+  const name = 'concurrent cache rice';
+  let finish;
+  const post = t.mock.method(axios, 'post', () => new Promise(resolve => { finish = resolve; }));
+  const first = fillMissingNutrition(unresolved(name, 100));
+  const second = fillMissingNutrition(unresolved(name, 250));
+  await Promise.resolve();
+  assert.equal(post.mock.callCount(), 1);
+  finish(reply(JSON.stringify({ foods: { [name]: { calories: 160, protein_g: 10, carbs_g: 30, fat_g: 0 } } })));
+  const results = await Promise.all([first, second]);
+  assert.equal(results[0].totals.calories, 160);
+  assert.equal(results[1].totals.calories, 400);
+});
+
 test('expired nutrition estimates are fetched again', async (t) => {
   const name = 'cache expired food';
   const post = t.mock.method(axios, 'post', async () => reply(JSON.stringify({
