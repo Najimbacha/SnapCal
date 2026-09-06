@@ -280,10 +280,9 @@ Your task is to:
 1. Identify each distinct serving or dish in the photo
 2. Give it a localised display name AND an English match_key
 3. Estimate its weight in grams
-4. Estimate its nutrition PER 100 GRAMS
-5. Assign a confidence score (0.0 to 1.0)
+4. Assign a confidence score (0.0 to 1.0)
 
-Do NOT provide health scores, insights, or alternatives.
+Do NOT provide calories, nutrition, health scores, insights, or alternatives.
 
 Output ONLY a raw JSON object with no markdown formatting, no code blocks, no explanatory text.
 
@@ -294,12 +293,6 @@ Return this exact structure:
       "name": "string",
       "match_key": "string",
       "estimated_weight_g": number,
-      "per_100g": {
-        "calories": number,
-        "protein_g": number,
-        "carbs_g": number,
-        "fat_g": number
-      },
       "confidence": number
     }
   ]
@@ -314,19 +307,8 @@ Rules:
   This field is used to look the food up in a nutrition database, so be literal
   and conventional rather than descriptive.
 - estimated_weight_g is your best estimate of the weight of that item in grams for the portion visible.
-- per_100g describes the food itself, NOT the portion. It must be the same
-  numbers whether the plate holds 50g or 500g. This is the one part of your
-  answer that does not depend on the photo, so give the conventional reference
-  values for that food as prepared.
-- per_100g must be internally consistent: protein_g x 4 + carbs_g x 4 +
-  fat_g x 9 should come within about 10% of calories. Check it before
-  answering. If they disagree, the macros are wrong more often than the
-  calories are.
-- Give per_100g for every item, including foods you are unsure of. An
-  approximate answer is useful; omitting it is not.
-  If you genuinely cannot estimate a weight, omit the field rather than guessing 0.
+- If you genuinely cannot estimate a weight, omit the field rather than guessing 0.
 - confidence is a score from 0.0 (not confident) to 1.0 (very confident)
-- Do NOT include any nutritional information
 - If NOT food at all, return: {"foods": []}`;
 }
 
@@ -947,17 +929,32 @@ function parseNutritionByNameResponse(rawText) {
 /// Second attempt at nutrition, by name alone, for anything the photo pass
 /// left unresolved.
 ///
-/// The vision model is asked for per-100g values alongside the detection, but
-/// a vision model dropping one field of a schema is an ordinary event, and the
-/// cost of it used to be a meal logged as zero calories. This is a plain text
-/// call -- no image, so it is fast and cheap -- asking only "what is in 100g
-/// of X". One call covers every unresolved item in the scan.
+/// The vision pass deliberately returns only names and weights. The local USDA
+/// table supplies nutrition for matches; this small text-only call handles the
+/// uncommon misses. That keeps the expensive vision response short without
+/// turning an unfamiliar food into a zero-calorie meal.
 ///
 /// Best effort throughout: a failure here leaves the item exactly as it was.
 // Bounded, temporary cache of generic food estimates, never photos or user data.
 const nutritionNameCache = new Map();
 const NUTRITION_NAME_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const NUTRITION_NAME_CACHE_LIMIT = 500;
+const NUTRITION_REDIS_TTL_SECONDS = Number(process.env.NUTRITION_CACHE_TTL_SECONDS) || 30 * 24 * 60 * 60;
+
+function nutritionCacheKey(name) {
+  const digest = crypto.createHash('sha256').update(name).digest('hex');
+  return `nutrition-name:v1:${digest}`;
+}
+
+function rememberNutrition(name, value) {
+  if (nutritionNameCache.size >= NUTRITION_NAME_CACHE_LIMIT) {
+    nutritionNameCache.delete(nutritionNameCache.keys().next().value);
+  }
+  nutritionNameCache.set(name, {
+    value,
+    expiresAt: Date.now() + NUTRITION_NAME_CACHE_TTL_MS,
+  });
+}
 
 async function fillMissingNutrition(result) {
   const gaps = result.items.filter((item) => item.nutrition_source === 'unresolved');
@@ -965,15 +962,26 @@ async function fillMissingNutrition(result) {
 
   const names = [...new Set(gaps.map((item) => item.match_key.toLowerCase().trim()))].sort();
   const table = Object.create(null);
-  const missingNames = names.filter((name) => {
+  const missingNames = [];
+  for (const name of names) {
     const cached = nutritionNameCache.get(name);
     if (cached && cached.expiresAt > Date.now()) {
       table[name] = cached.value;
-      return false;
+      continue;
     }
     nutritionNameCache.delete(name);
-    return true;
-  });
+
+    const persisted = normalizePer100g(
+      await redisCache.getJson(nutritionCacheKey(name)),
+    );
+    if (persisted) {
+      table[name] = persisted;
+      rememberNutrition(name, persisted);
+      console.log(JSON.stringify({ event: 'nutrition.cache_hit', source: 'redis' }));
+      continue;
+    }
+    missingNames.push(name);
+  }
   const prompt = [
     'Give typical nutrition per 100 grams for each food listed.',
     'Use conventional reference values for the food as prepared.',
@@ -993,17 +1001,18 @@ async function fillMissingNutrition(result) {
         timeout: 12000,
       }));
       const fetched = parseNutritionByNameResponse(raw);
+      const cacheWrites = [];
       for (const name of missingNames) {
         if (!Object.hasOwn(fetched, name)) continue;
         table[name] = fetched[name];
-        if (nutritionNameCache.size >= NUTRITION_NAME_CACHE_LIMIT) {
-          nutritionNameCache.delete(nutritionNameCache.keys().next().value);
-        }
-        nutritionNameCache.set(name, {
-          value: fetched[name],
-          expiresAt: Date.now() + NUTRITION_NAME_CACHE_TTL_MS,
-        });
+        rememberNutrition(name, fetched[name]);
+        cacheWrites.push(redisCache.setJson(
+          nutritionCacheKey(name),
+          fetched[name],
+          NUTRITION_REDIS_TTL_SECONDS,
+        ));
       }
+      await Promise.all(cacheWrites);
     } catch (error) {
       console.warn(
         JSON.stringify({ event: 'nutrition.name_lookup_failed', error: error.message })
@@ -1281,18 +1290,15 @@ function clampInt(value, min, max) {
   return Math.max(min, Math.min(max, Math.round(parsed)));
 }
 
-// Output budget for image calls.
-//
-// This was 1024 (512 on Gemini). The v2 detector emits a JSON object per food,
-// so a full plate ran past the cap and the reply was cut mid-key — which
-// surfaced two different ways: `json-not-found` when the truncated text still
-// had content, and `empty-deepseek-response` when a reasoning model spent the
-// whole budget before emitting any. Both were the same bug.
+// Legacy/custom image calls can still need a detailed answer. V2 only returns
+// food names, weights and confidence, so giving it the same 4096-token budget
+// is unnecessary spend and makes a runaway response four times more costly.
 const AI_IMAGE_MAX_TOKENS = Number(process.env.AI_IMAGE_MAX_TOKENS) || 4096;
+const AI_IMAGE_DETECTION_MAX_TOKENS = Number(process.env.AI_IMAGE_DETECTION_MAX_TOKENS) || 1536;
 
 async function callAiWithImage(base64Data, language, customPrompt = null, useV2 = false) {
   const systemPrompt = customPrompt || (useV2 ? getV2SystemPrompt(language) : getSystemPrompt(language));
-  const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 3;
+  const maxRetries = Number(process.env.AI_RETRY_LIMIT) || 2;
   const baseDelay = Number(process.env.AI_RETRY_DELAY_MS) || 2000;
 
   // A 20s per-call ceiling was fine while replies were capped at 1024 tokens.
@@ -1312,6 +1318,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   const budget = () => Math.max(1000, Math.min(perCall, deadline - elapsed()));
 
   const dataUrl = `data:image/jpeg;base64,${base64Data}`;
+  const outputTokenBudget = useV2 ? AI_IMAGE_DETECTION_MAX_TOKENS : AI_IMAGE_MAX_TOKENS;
 
   // One OpenAI-shaped vision request, since three of the four speak it.
   const openAiVision = async (url, model, headers, extraBody = {}) => {
@@ -1326,8 +1333,8 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
             { type: 'image_url', image_url: { url: dataUrl } },
           ],
         }],
-        temperature: 0.4,
-        max_tokens: AI_IMAGE_MAX_TOKENS,
+        temperature: useV2 ? 0.2 : 0.4,
+        max_tokens: outputTokenBudget,
         ...extraBody,
       },
       { headers: { ...headers, 'Content-Type': 'application/json' }, timeout: budget() },
@@ -1345,11 +1352,16 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
     if (cleaned) return cleaned;
     // A reasoning model that spends its whole budget thinking returns an
     // empty content with finish_reason 'length'. Name it.
-    throw new Error(
+    const error = new Error(
       `empty-response (finish_reason=${choice?.finish_reason ?? 'unknown'}, `
       + `raw_chars=${(content || '').length}, `
       + `reasoning_chars=${(choice?.message?.reasoning_content || '').length})`,
     );
+    if (String(choice?.finish_reason || '').toLowerCase() === 'length') {
+      error.retryable = false;
+      error.code = 'AI_OUTPUT_LIMIT';
+    }
+    throw error;
   };
 
   // Each entry reports whether it is configured, so an absent key is a skip
@@ -1378,7 +1390,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
                 { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
               ],
             }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: AI_IMAGE_MAX_TOKENS },
+            generationConfig: { temperature: useV2 ? 0.2 : 0.4, maxOutputTokens: outputTokenBudget },
           },
           { headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, timeout: budget() },
         );
@@ -1387,10 +1399,15 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
         // Same reason as openAiVision: strip first, then decide.
         const cleaned = stripThink(text);
         if (cleaned) return cleaned;
-        throw new Error(
+        const error = new Error(
           `empty-response (finishReason=${candidate?.finishReason ?? 'unknown'}, `
           + `raw_chars=${(text || '').length})`,
         );
+        if (String(candidate?.finishReason || '').toUpperCase() === 'MAX_TOKENS') {
+          error.retryable = false;
+          error.code = 'AI_OUTPUT_LIMIT';
+        }
+        throw error;
       },
     },
     deepseek: {
@@ -1428,10 +1445,12 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
   }
 
   const failures = [];
+  const doNotRetry = new Set();
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     for (const name of configured) {
       if (outOfTime()) break;
+      if (doNotRetry.has(name)) continue;
       // A provider that has been failing is skipped outright rather than
       // waited on. Trying it costs this scan its full timeout before falling
       // through, which during an outage is added to every user's scan.
@@ -1467,13 +1486,24 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
           : err.message;
         failures.push(`${name}: ${detail}`);
         metrics.scans.inc({ outcome: 'provider_error', provider: name });
-        recordProviderFailure(name);
+        const status = Number(err.response?.status || 0);
+        const permanentHttpError = status >= 400 && status < 500 && status !== 408 && status !== 429;
+        if (err.retryable === false || permanentHttpError) {
+          doNotRetry.add(name);
+        } else {
+          recordProviderFailure(name);
+        }
         console.error(`${name} vision scan failed (attempt ${attempt}/${maxRetries}):`, detail);
       }
     }
 
     if (outOfTime()) {
       console.error(`Image deadline reached after ${elapsed()}ms, giving up`);
+      break;
+    }
+
+    if (doNotRetry.size === configured.length) {
+      console.error('Every configured image provider returned a non-retryable error; giving up');
       break;
     }
 
@@ -2285,6 +2315,35 @@ function limitScanConcurrency(req, res, next) {
   return next();
 }
 
+const SCAN_RESULT_CACHE_TTL_SECONDS = Number(process.env.SCAN_RESULT_CACHE_TTL_SECONDS) || 6 * 60 * 60;
+
+function resolveScanPipeline(configured, requested, production = NODE_ENV === 'production') {
+  const base = String(configured || 'v1').toLowerCase() === 'v2' ? 'v2' : 'v1';
+  if (production) return base;
+  return String(requested || base).toLowerCase() === 'v2' ? 'v2' : 'v1';
+}
+
+function scanResultCacheKey(uid, imageBytes, language, pipeline) {
+  const digest = crypto.createHash('sha256')
+    .update(String(uid))
+    .update('\0')
+    .update(String(language))
+    .update('\0')
+    .update(String(pipeline))
+    .update('\0')
+    .update(imageBytes)
+    .digest('hex');
+  return `scan-result:v1:${digest}`;
+}
+
+function isCachedScanResult(value) {
+  return Boolean(
+    value
+    && Array.isArray(value.items)
+    && value.totals && typeof value.totals === 'object'
+  );
+}
+
 app.post('/v1/scan', scanLimiter, limitScanConcurrency, authenticateToken, verifyAppCheck, async (req, res) => {
   const scanStartedAt = process.hrtime.bigint();
   const scanSeconds = () => Number(process.hrtime.bigint() - scanStartedAt) / 1e9;
@@ -2312,6 +2371,18 @@ app.post('/v1/scan', scanLimiter, limitScanConcurrency, authenticateToken, verif
   }
 
   const uid = req.user.uid;
+  const cleanScanLanguage = cleanLanguage(language);
+  // Production users cannot select the older, longer and more expensive v1
+  // prompt with a query parameter. The override remains available in tests
+  // and local development for comparisons.
+  const pipeline = resolveScanPipeline(SCAN_PIPELINE, req.query.pipeline);
+  const resultCacheKey = scanResultCacheKey(uid, imageBytes, cleanScanLanguage, pipeline);
+  const cachedResult = await redisCache.getJson(resultCacheKey);
+  if (isCachedScanResult(cachedResult)) {
+    metrics.scans.inc({ outcome: 'cache_hit', provider: 'none' });
+    console.log(JSON.stringify({ event: 'scan.cache_hit', pipeline }));
+    return res.status(200).json(cachedResult);
+  }
 
   // Claim quota transactionally BEFORE calling the model (BUG-011).
   let claim;
@@ -2326,14 +2397,14 @@ app.post('/v1/scan', scanLimiter, limitScanConcurrency, authenticateToken, verif
   }
 
   try {
-    const pipeline = (req.query.pipeline || SCAN_PIPELINE).toLowerCase();
-
     if (pipeline === 'v2') {
-      const raw = await callAiWithImage(image, cleanLanguage(language), null, true);
+      const raw = await callAiWithImage(image, cleanScanLanguage, null, true);
       const detection = JSON.parse(extractJson(raw));
       const foods = Array.isArray(detection?.foods) ? detection.foods : [];
       if (foods.length === 0) {
-        return res.status(200).json({ items: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } });
+        const emptyResult = { items: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } };
+        await redisCache.setJson(resultCacheKey, emptyResult, SCAN_RESULT_CACHE_TTL_SECONDS);
+        return res.status(200).json(emptyResult);
       }
       const result = await fillMissingNutrition(enrichScanResults(foods));
 
@@ -2342,11 +2413,13 @@ app.post('/v1/scan', scanLimiter, limitScanConcurrency, authenticateToken, verif
       const matchedCount = result.items.filter(i => i.matched).length;
       console.error(`Scan v2: ${result.items.length} foods (${matchedCount} matched, ${result.items.length - matchedCount} unmatched)`);
 
-      return res.status(200).json({ items: result.items, totals: result.totals });
+      const responseBody = { items: result.items, totals: result.totals };
+      await redisCache.setJson(resultCacheKey, responseBody, SCAN_RESULT_CACHE_TTL_SECONDS);
+      return res.status(200).json(responseBody);
     }
 
     // v1 pipeline (default)
-    const raw = await callAiWithImage(image, cleanLanguage(language));
+    const raw = await callAiWithImage(image, cleanScanLanguage);
     const nutrition = normalizeNutrition(raw);
     const totals = nutrition.items.reduce((acc, item) => ({
       calories: acc.calories + item.calories,
@@ -2359,7 +2432,9 @@ app.post('/v1/scan', scanLimiter, limitScanConcurrency, authenticateToken, verif
     console.log(JSON.stringify({ event: 'scan.success', pipeline: 'v1', status: 200 }));
     console.error('Scan items:', JSON.stringify(nutrition.items.map(i => ({ food_name: i.food_name, calories: i.calories }))));
 
-    return res.status(200).json({ items: nutrition.items, totals });
+    const responseBody = { items: nutrition.items, totals };
+    await redisCache.setJson(resultCacheKey, responseBody, SCAN_RESULT_CACHE_TTL_SECONDS);
+    return res.status(200).json(responseBody);
   } catch (error) {
     // The quota was consumed up-front; give it back when the scan itself
     // failed so users are not charged for our provider outages.
@@ -2621,6 +2696,9 @@ module.exports = {
   reconcilePer100g,
   parseNutritionByNameResponse,
   recomputeTotals,
+  resolveScanPipeline,
+  scanResultCacheKey,
+  isCachedScanResult,
   setAuthVerifierForTest(verifier) {
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('Test auth verifier is only available in NODE_ENV=test.');

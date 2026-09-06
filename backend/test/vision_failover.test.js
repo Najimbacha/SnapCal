@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const axios = require('axios');
+const redisCache = require('../redis');
 
 process.env.NODE_ENV = 'test';
 const { callAiWithImage, fillMissingNutrition } = require('../server');
@@ -98,6 +99,31 @@ test('DeepSeek thinking setting is not sent to other providers', async (t) => {
   await callAiWithImage('test-image', 'en', null, true);
 });
 
+test('v2 uses the smaller detection budget and lower temperature', async (t) => {
+  process.env.AI_IMAGE_PROVIDER_ORDER = 'deepseek';
+  t.mock.method(axios, 'post', async (_url, body) => {
+    assert.equal(body.max_tokens, 1536);
+    assert.equal(body.temperature, 0.2);
+    return reply(valid);
+  });
+  await callAiWithImage('test-image', 'en', null, true);
+});
+
+test('a token-limit response is not purchased repeatedly', async (t) => {
+  process.env.AI_IMAGE_PROVIDER_ORDER = 'deepseek';
+  process.env.AI_RETRY_LIMIT = '3';
+  const post = t.mock.method(axios, 'post', async () => ({
+    data: {
+      choices: [{
+        finish_reason: 'length',
+        message: { content: '', reasoning_content: 'unfinished' },
+      }],
+    },
+  }));
+  await assert.rejects(callAiWithImage('test-image', 'en', null, true), /finish_reason=length/);
+  assert.equal(post.mock.callCount(), 1);
+});
+
 const unresolved = (name, weight = 100) => ({
   items: [{ match_key: name, weight_g: weight, nutrition_source: 'unresolved', nutrition: null }],
 });
@@ -128,7 +154,7 @@ test('simultaneous nutrition lookups share one call and retain each portion', as
   const post = t.mock.method(axios, 'post', () => new Promise(resolve => { finish = resolve; }));
   const first = fillMissingNutrition(unresolved(name, 100));
   const second = fillMissingNutrition(unresolved(name, 250));
-  await Promise.resolve();
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(post.mock.callCount(), 1);
   finish(reply(JSON.stringify({ foods: { [name]: { calories: 160, protein_g: 10, carbs_g: 30, fat_g: 0 } } })));
   const results = await Promise.all([first, second]);
@@ -146,4 +172,35 @@ test('expired nutrition estimates are fetched again', async (t) => {
   t.mock.method(Date, 'now', () => later);
   await fillMissingNutrition(unresolved(name));
   assert.equal(post.mock.callCount(), 2);
+});
+
+test('persisted nutrition avoids another text-model call after memory loss', async (t) => {
+  const name = 'persisted cache test food';
+  t.mock.method(redisCache, 'getJson', async () => ({
+    calories: 160, protein: 10, carbs: 30, fat: 0,
+  }));
+  const post = t.mock.method(axios, 'post', async () => {
+    throw new Error('the model should not be called');
+  });
+
+  const result = await fillMissingNutrition(unresolved(name, 250));
+  assert.equal(result.totals.calories, 400);
+  assert.equal(post.mock.callCount(), 0);
+});
+
+test('new nutrition estimates are persisted without food names in the key', async (t) => {
+  const name = 'new persistent cache test food';
+  t.mock.method(redisCache, 'getJson', async () => null);
+  const setJson = t.mock.method(redisCache, 'setJson', async () => true);
+  t.mock.method(axios, 'post', async () => reply(JSON.stringify({
+    foods: { [name]: { calories: 160, protein_g: 10, carbs_g: 30, fat_g: 0 } },
+  })));
+
+  await fillMissingNutrition(unresolved(name));
+  assert.equal(setJson.mock.callCount(), 1);
+  const [key, value, ttl] = setJson.mock.calls[0].arguments;
+  assert.ok(key.startsWith('nutrition-name:v1:'));
+  assert.equal(key.includes(name), false);
+  assert.equal(value.calories, 160);
+  assert.equal(ttl, 30 * 24 * 60 * 60);
 });

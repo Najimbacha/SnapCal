@@ -139,10 +139,8 @@ test('reconcilePer100g will not zero out a food whose macros are all zero', () =
 
 // ── The by-name second pass ─────────────────────────────────────────────────
 //
-// The vision model is asked for per-100g alongside the detection, but a model
-// dropping one field of a schema is an ordinary event, and the cost of it was
-// a meal logged as zero calories. These cover the parsing of the text-only
-// retry; the call itself is exercised in production, not here.
+// Vision now returns names and weights only. These cover the text-only lookup
+// used when the local USDA table does not know the detected food.
 
 const { parseNutritionByNameResponse, recomputeTotals } = require('../server');
 

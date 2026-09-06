@@ -99,6 +99,20 @@ services:
         value: deepseek
       - key: AI_TEXT_PROVIDER_ORDER
         value: deepseek
+      # V2 asks vision only for food identity and portion size. Nutrition is
+      # resolved from the local USDA table, making the answer shorter/cheaper.
+      - key: SCAN_PIPELINE
+        value: v2
+      - key: AI_IMAGE_DETECTION_MAX_TOKENS
+        value: "1536"
+      - key: AI_RETRY_LIMIT
+        value: "2"
+      # Reopening the result or resending the same photo should not buy the
+      # same AI answer twice. Only the result is cached; photos are not stored.
+      - key: SCAN_RESULT_CACHE_TTL_SECONDS
+        value: "21600"
+      - key: NUTRITION_CACHE_TTL_SECONDS
+        value: "2592000"
       - key: DEEPSEEK_API_KEY
         sync: false
 

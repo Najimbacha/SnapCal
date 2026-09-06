@@ -88,29 +88,19 @@ test('enrichScanResults handles mixed confidence and multiple items', () => {
   assert.equal(result.totals.calories, expectedTotal);
 });
 
-// This test used to assert the opposite -- that the prompt forbade the model
-// from producing any nutrition. That instruction is why 39% of scans in
-// production logged a meal with zero calories: the curated table has 285 rows,
-// and a miss had nothing to fall back on. The model is now asked for per-100g
-// values, and the table overrides them where it has an answer.
-test('v2 system prompt asks for per-100g nutrition, not portion totals', () => {
+// The USDA table now contains thousands of foods, and unresolved names get a
+// small text-only nutrition lookup. Asking the vision model for the same data
+// on every matched item only lengthens and increases the price of every scan.
+test('v2 system prompt requests detection only, not nutrition', () => {
   const prompt = getV2SystemPrompt('en');
-  assert.ok(!prompt.includes('Do NOT calculate'), 'the old prohibition is gone');
-  assert.ok(prompt.includes('per_100g'));
-  assert.ok(prompt.includes('PER 100 GRAMS'));
-
   const returnJson = prompt.substring(prompt.indexOf('Return'));
-  assert.ok(returnJson.includes('calories'));
-  assert.ok(returnJson.includes('protein_g'));
-  assert.ok(returnJson.includes('carbs_g'));
-  assert.ok(returnJson.includes('fat_g'));
-
-  // Per-100g, not the portion: the weight is estimated separately and the user
-  // can change it, so the nutrition has to be independent of it.
-  assert.ok(prompt.includes('describes the food itself, NOT the portion'));
+  assert.ok(!returnJson.includes('per_100g'));
+  assert.ok(!returnJson.includes('protein_g'));
+  assert.ok(!returnJson.includes('carbs_g'));
+  assert.ok(!returnJson.includes('fat_g'));
 
   // Still the model's job to identify, not to editorialise.
-  assert.ok(prompt.includes('Do NOT provide health scores'));
+  assert.ok(prompt.includes('Do NOT provide calories, nutrition'));
   assert.ok(!returnJson.includes('health_score'));
   assert.ok(!returnJson.includes('insights'));
   assert.ok(!returnJson.includes('alternatives'));
