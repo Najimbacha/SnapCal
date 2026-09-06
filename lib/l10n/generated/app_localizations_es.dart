@@ -4201,4 +4201,236 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get settings_macros_move_note =>
       'Tus macros se ajustan con esto, manteniendo el mismo equilibrio';
+
+  @override
+  String get planner_build_week => 'Crea tu semana';
+
+  @override
+  String planner_step_of(Object step, Object total) {
+    return 'Paso $step de $total';
+  }
+
+  @override
+  String get planner_goal_summary => 'Objetivo diario';
+
+  @override
+  String get planner_edit_goals => 'Editar objetivos';
+
+  @override
+  String get planner_cooking_time => 'Tiempo de cocina';
+
+  @override
+  String get planner_cooking_quick => 'Rápido';
+
+  @override
+  String get planner_cooking_balanced => 'Equilibrado';
+
+  @override
+  String get planner_cooking_enjoy => 'Disfruto cocinar';
+
+  @override
+  String get planner_plan_style => 'Estilo del plan';
+
+  @override
+  String get planner_style_budget => 'Económico';
+
+  @override
+  String get planner_style_protein => 'Alto en proteína';
+
+  @override
+  String get planner_style_simple => 'Ingredientes simples';
+
+  @override
+  String get planner_style_variety => 'Más variedad';
+
+  @override
+  String get planner_food_preferences => 'Preferencias alimentarias';
+
+  @override
+  String get planner_no_restrictions => 'Sin restricciones';
+
+  @override
+  String get planner_foods_avoid => 'Alimentos a evitar';
+
+  @override
+  String get planner_foods_avoid_hint => 'p. ej. champiñones, cacahuetes';
+
+  @override
+  String get planner_choose_cuisines => 'Elige cocinas';
+
+  @override
+  String get planner_cuisine_latin => 'Latina';
+
+  @override
+  String get planner_cuisine_african => 'Africana';
+
+  @override
+  String get planner_cuisine_european => 'Europea';
+
+  @override
+  String get planner_cuisine_surprise => 'Sorpréndeme';
+
+  @override
+  String get planner_shopping_style => 'Estilo de compra';
+
+  @override
+  String get planner_shopping_save => 'Ahorrar dinero';
+
+  @override
+  String get planner_shopping_balanced => 'Equilibrado';
+
+  @override
+  String get planner_shopping_premium => 'Ingredientes premium';
+
+  @override
+  String get planner_use_pantry => 'Usar básicos de despensa';
+
+  @override
+  String get planner_plan_leftovers => 'Planificar sobras';
+
+  @override
+  String get planner_repeat_breakfasts => 'Repetir desayunos fáciles';
+
+  @override
+  String get planner_allergies_respected =>
+      'Siempre respetamos tus alergias y restricciones';
+
+  @override
+  String get planner_creating_body => 'Creando una semana para ti';
+
+  @override
+  String get planner_preferences_checked => 'Preferencias comprobadas';
+
+  @override
+  String get planner_balancing_nutrition => 'Equilibrando la nutrición diaria';
+
+  @override
+  String get planner_choosing_meals => 'Eligiendo comidas prácticas';
+
+  @override
+  String get planner_preparing_grocery => 'Preparando tu lista de compra';
+
+  @override
+  String get planner_generation_leave =>
+      'Puedes salir de esta pantalla. Tu plan seguirá creándose.';
+
+  @override
+  String get planner_cancel_generation => 'Seguir creando en segundo plano';
+
+  @override
+  String get planner_week_contains => 'Esta semana incluye';
+
+  @override
+  String get planner_under_30 => 'Menos de 30 min';
+
+  @override
+  String get planner_smart_leftovers => 'Sobras inteligentes';
+
+  @override
+  String get planner_plan_tab => 'Plan';
+
+  @override
+  String get planner_week_label => 'Semana';
+
+  @override
+  String planner_meals_kcal_summary(Object calories, Object count) {
+    return '$count comidas · $calories kcal';
+  }
+
+  @override
+  String get planner_adjust_day => 'Ajustar día';
+
+  @override
+  String get planner_view_grocery => 'Ver lista de compra';
+
+  @override
+  String get planner_next_meal => 'Siguiente';
+
+  @override
+  String get planner_log_meal => 'Registrar comida';
+
+  @override
+  String get planner_meal_details => 'Detalles de la comida';
+
+  @override
+  String get planner_servings => 'Porciones';
+
+  @override
+  String get planner_preparation => 'Preparación';
+
+  @override
+  String get planner_prep_ingredients => 'Prepara y mide los ingredientes.';
+
+  @override
+  String get planner_prep_cook => 'Cocina todo hasta que esté listo.';
+
+  @override
+  String get planner_prep_combine => 'Combina, sazona y ajusta al gusto.';
+
+  @override
+  String get planner_prep_serve => 'Sirve fresco y disfruta.';
+
+  @override
+  String get planner_swap_meal => 'Cambiar comida';
+
+  @override
+  String get planner_swap_different_cuisine => 'Otra cocina';
+
+  @override
+  String get planner_swap_surprise => 'Sorpréndeme';
+
+  @override
+  String get planner_keep_calories => 'Mantener calorías similares';
+
+  @override
+  String get planner_keep_time => 'Mantener el mismo tiempo';
+
+  @override
+  String get planner_keep_preferences => 'Respetar mis preferencias';
+
+  @override
+  String get planner_only_meal_changes => 'Solo cambiará esta comida';
+
+  @override
+  String get planner_find_replacement => 'Buscar reemplazo';
+
+  @override
+  String planner_grocery_progress(Object checked, Object total) {
+    return '$checked de $total';
+  }
+
+  @override
+  String get planner_filter_all => 'Todo';
+
+  @override
+  String get planner_filter_needed => 'Necesario';
+
+  @override
+  String get planner_filter_checked => 'Marcado';
+
+  @override
+  String get planner_combined_quantities =>
+      'Las cantidades se combinan para toda la semana';
+
+  @override
+  String get planner_clear_checked => 'Borrar marcados';
+
+  @override
+  String get planner_shopping_mode => 'Modo compra';
+
+  @override
+  String get planner_unlock_title => 'Desbloquea la planificación semanal';
+
+  @override
+  String get planner_unlock_body =>
+      'Ve los 7 días, cambia comidas y compra con una lista inteligente.';
+
+  @override
+  String get planner_one_day_preview => 'Tu vista previa de un día';
+
+  @override
+  String get planner_locked_days => '6 días más listos con Pro';
+
+  @override
+  String get planner_unlock_pro => 'Desbloquear con SnapCal Pro';
 }

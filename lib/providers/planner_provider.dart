@@ -31,6 +31,7 @@ class PlannerProvider with ChangeNotifier {
   final Set<String> _loggedPlannedMealIds = {};
   String _prepTimePreference = 'balanced';
   String _budgetPreference = 'standard';
+  String _planningNotes = '';
   late int _syncedCalorieGoal;
   late int _syncedProteinGoal;
   late int _syncedCarbGoal;
@@ -257,6 +258,7 @@ class PlannerProvider with ChangeNotifier {
             userSettings,
             prepTimePreference: _prepTimePreference,
             budgetPreference: _budgetPreference,
+            planningNotes: _planningNotes,
           )
           .timeout(const Duration(seconds: 60));
 
@@ -681,9 +683,11 @@ class PlannerProvider with ChangeNotifier {
   void setPlanningPreferences({
     required String prepTimePreference,
     required String budgetPreference,
+    String planningNotes = '',
   }) {
     _prepTimePreference = prepTimePreference;
     _budgetPreference = budgetPreference;
+    _planningNotes = planningNotes;
   }
 
   void markPlannedMealLogged(String mealId) {
@@ -1856,6 +1860,24 @@ class PlannerProvider with ChangeNotifier {
   Future<void> clearGroceryList() async {
     await _groceryBox?.clear();
     _groceryList = [];
+    notifyListeners();
+  }
+
+  Future<void> removeCheckedGroceryItems() async {
+    final remaining = _groceryList
+        .where((item) => !item.isChecked)
+        .map(
+          (item) => GroceryItem(
+            id: item.id,
+            name: item.name,
+            amount: item.amount,
+            category: item.category,
+          ),
+        )
+        .toList(growable: true);
+    await _groceryBox?.clear();
+    _groceryList = remaining;
+    await _groceryBox?.addAll(_groceryList);
     notifyListeners();
   }
 

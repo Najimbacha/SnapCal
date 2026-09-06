@@ -4152,4 +4152,236 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settings_macros_move_note =>
       'Your macros move with this, keeping the same balance';
+
+  @override
+  String get planner_build_week => 'Build your week';
+
+  @override
+  String planner_step_of(Object step, Object total) {
+    return 'Step $step of $total';
+  }
+
+  @override
+  String get planner_goal_summary => 'Daily goal';
+
+  @override
+  String get planner_edit_goals => 'Edit goals';
+
+  @override
+  String get planner_cooking_time => 'Cooking time';
+
+  @override
+  String get planner_cooking_quick => 'Quick';
+
+  @override
+  String get planner_cooking_balanced => 'Balanced';
+
+  @override
+  String get planner_cooking_enjoy => 'I enjoy cooking';
+
+  @override
+  String get planner_plan_style => 'Plan style';
+
+  @override
+  String get planner_style_budget => 'Budget friendly';
+
+  @override
+  String get planner_style_protein => 'High protein';
+
+  @override
+  String get planner_style_simple => 'Simple ingredients';
+
+  @override
+  String get planner_style_variety => 'More variety';
+
+  @override
+  String get planner_food_preferences => 'Food preferences';
+
+  @override
+  String get planner_no_restrictions => 'No restrictions';
+
+  @override
+  String get planner_foods_avoid => 'Foods to avoid';
+
+  @override
+  String get planner_foods_avoid_hint => 'e.g. mushrooms, peanuts';
+
+  @override
+  String get planner_choose_cuisines => 'Choose cuisines';
+
+  @override
+  String get planner_cuisine_latin => 'Latin';
+
+  @override
+  String get planner_cuisine_african => 'African';
+
+  @override
+  String get planner_cuisine_european => 'European';
+
+  @override
+  String get planner_cuisine_surprise => 'Surprise me';
+
+  @override
+  String get planner_shopping_style => 'Shopping style';
+
+  @override
+  String get planner_shopping_save => 'Save money';
+
+  @override
+  String get planner_shopping_balanced => 'Balanced';
+
+  @override
+  String get planner_shopping_premium => 'Premium ingredients';
+
+  @override
+  String get planner_use_pantry => 'Use pantry staples';
+
+  @override
+  String get planner_plan_leftovers => 'Plan leftovers';
+
+  @override
+  String get planner_repeat_breakfasts => 'Repeat easy breakfasts';
+
+  @override
+  String get planner_allergies_respected =>
+      'Your allergies and restrictions are always respected';
+
+  @override
+  String get planner_creating_body => 'Building a week that fits you';
+
+  @override
+  String get planner_preferences_checked => 'Preferences checked';
+
+  @override
+  String get planner_balancing_nutrition => 'Balancing daily nutrition';
+
+  @override
+  String get planner_choosing_meals => 'Choosing practical meals';
+
+  @override
+  String get planner_preparing_grocery => 'Preparing your grocery list';
+
+  @override
+  String get planner_generation_leave =>
+      'You can leave this screen. Your plan will keep building.';
+
+  @override
+  String get planner_cancel_generation => 'Keep building in background';
+
+  @override
+  String get planner_week_contains => 'This week includes';
+
+  @override
+  String get planner_under_30 => 'Under 30 min';
+
+  @override
+  String get planner_smart_leftovers => 'Smart leftovers';
+
+  @override
+  String get planner_plan_tab => 'Plan';
+
+  @override
+  String get planner_week_label => 'Week';
+
+  @override
+  String planner_meals_kcal_summary(Object calories, Object count) {
+    return '$count meals · $calories kcal';
+  }
+
+  @override
+  String get planner_adjust_day => 'Adjust day';
+
+  @override
+  String get planner_view_grocery => 'View grocery list';
+
+  @override
+  String get planner_next_meal => 'Next';
+
+  @override
+  String get planner_log_meal => 'Log meal';
+
+  @override
+  String get planner_meal_details => 'Meal details';
+
+  @override
+  String get planner_servings => 'Servings';
+
+  @override
+  String get planner_preparation => 'Preparation';
+
+  @override
+  String get planner_prep_ingredients => 'Prepare and measure the ingredients.';
+
+  @override
+  String get planner_prep_cook => 'Cook everything until ready.';
+
+  @override
+  String get planner_prep_combine => 'Combine, season, and adjust to taste.';
+
+  @override
+  String get planner_prep_serve => 'Serve fresh and enjoy.';
+
+  @override
+  String get planner_swap_meal => 'Swap meal';
+
+  @override
+  String get planner_swap_different_cuisine => 'Different cuisine';
+
+  @override
+  String get planner_swap_surprise => 'Surprise me';
+
+  @override
+  String get planner_keep_calories => 'Keep similar calories';
+
+  @override
+  String get planner_keep_time => 'Keep the same prep time';
+
+  @override
+  String get planner_keep_preferences => 'Respect my preferences';
+
+  @override
+  String get planner_only_meal_changes => 'Only this meal will change';
+
+  @override
+  String get planner_find_replacement => 'Find replacement';
+
+  @override
+  String planner_grocery_progress(Object checked, Object total) {
+    return '$checked of $total';
+  }
+
+  @override
+  String get planner_filter_all => 'All';
+
+  @override
+  String get planner_filter_needed => 'Needed';
+
+  @override
+  String get planner_filter_checked => 'Checked';
+
+  @override
+  String get planner_combined_quantities =>
+      'Quantities are combined across the whole week';
+
+  @override
+  String get planner_clear_checked => 'Clear checked';
+
+  @override
+  String get planner_shopping_mode => 'Shopping mode';
+
+  @override
+  String get planner_unlock_title => 'Unlock weekly planning';
+
+  @override
+  String get planner_unlock_body =>
+      'See all 7 days, swap meals, and shop from one smart grocery list.';
+
+  @override
+  String get planner_one_day_preview => 'Your one-day preview';
+
+  @override
+  String get planner_locked_days => '6 more days are ready with Pro';
+
+  @override
+  String get planner_unlock_pro => 'Unlock with SnapCal Pro';
 }

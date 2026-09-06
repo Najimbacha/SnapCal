@@ -7515,6 +7515,450 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your macros move with this, keeping the same balance'**
   String get settings_macros_move_note;
+
+  /// No description provided for @planner_build_week.
+  ///
+  /// In en, this message translates to:
+  /// **'Build your week'**
+  String get planner_build_week;
+
+  /// No description provided for @planner_step_of.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {step} of {total}'**
+  String planner_step_of(Object step, Object total);
+
+  /// No description provided for @planner_goal_summary.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily goal'**
+  String get planner_goal_summary;
+
+  /// No description provided for @planner_edit_goals.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit goals'**
+  String get planner_edit_goals;
+
+  /// No description provided for @planner_cooking_time.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooking time'**
+  String get planner_cooking_time;
+
+  /// No description provided for @planner_cooking_quick.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick'**
+  String get planner_cooking_quick;
+
+  /// No description provided for @planner_cooking_balanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get planner_cooking_balanced;
+
+  /// No description provided for @planner_cooking_enjoy.
+  ///
+  /// In en, this message translates to:
+  /// **'I enjoy cooking'**
+  String get planner_cooking_enjoy;
+
+  /// No description provided for @planner_plan_style.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan style'**
+  String get planner_plan_style;
+
+  /// No description provided for @planner_style_budget.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget friendly'**
+  String get planner_style_budget;
+
+  /// No description provided for @planner_style_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'High protein'**
+  String get planner_style_protein;
+
+  /// No description provided for @planner_style_simple.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple ingredients'**
+  String get planner_style_simple;
+
+  /// No description provided for @planner_style_variety.
+  ///
+  /// In en, this message translates to:
+  /// **'More variety'**
+  String get planner_style_variety;
+
+  /// No description provided for @planner_food_preferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Food preferences'**
+  String get planner_food_preferences;
+
+  /// No description provided for @planner_no_restrictions.
+  ///
+  /// In en, this message translates to:
+  /// **'No restrictions'**
+  String get planner_no_restrictions;
+
+  /// No description provided for @planner_foods_avoid.
+  ///
+  /// In en, this message translates to:
+  /// **'Foods to avoid'**
+  String get planner_foods_avoid;
+
+  /// No description provided for @planner_foods_avoid_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. mushrooms, peanuts'**
+  String get planner_foods_avoid_hint;
+
+  /// No description provided for @planner_choose_cuisines.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose cuisines'**
+  String get planner_choose_cuisines;
+
+  /// No description provided for @planner_cuisine_latin.
+  ///
+  /// In en, this message translates to:
+  /// **'Latin'**
+  String get planner_cuisine_latin;
+
+  /// No description provided for @planner_cuisine_african.
+  ///
+  /// In en, this message translates to:
+  /// **'African'**
+  String get planner_cuisine_african;
+
+  /// No description provided for @planner_cuisine_european.
+  ///
+  /// In en, this message translates to:
+  /// **'European'**
+  String get planner_cuisine_european;
+
+  /// No description provided for @planner_cuisine_surprise.
+  ///
+  /// In en, this message translates to:
+  /// **'Surprise me'**
+  String get planner_cuisine_surprise;
+
+  /// No description provided for @planner_shopping_style.
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping style'**
+  String get planner_shopping_style;
+
+  /// No description provided for @planner_shopping_save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save money'**
+  String get planner_shopping_save;
+
+  /// No description provided for @planner_shopping_balanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get planner_shopping_balanced;
+
+  /// No description provided for @planner_shopping_premium.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium ingredients'**
+  String get planner_shopping_premium;
+
+  /// No description provided for @planner_use_pantry.
+  ///
+  /// In en, this message translates to:
+  /// **'Use pantry staples'**
+  String get planner_use_pantry;
+
+  /// No description provided for @planner_plan_leftovers.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan leftovers'**
+  String get planner_plan_leftovers;
+
+  /// No description provided for @planner_repeat_breakfasts.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat easy breakfasts'**
+  String get planner_repeat_breakfasts;
+
+  /// No description provided for @planner_allergies_respected.
+  ///
+  /// In en, this message translates to:
+  /// **'Your allergies and restrictions are always respected'**
+  String get planner_allergies_respected;
+
+  /// No description provided for @planner_creating_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Building a week that fits you'**
+  String get planner_creating_body;
+
+  /// No description provided for @planner_preferences_checked.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences checked'**
+  String get planner_preferences_checked;
+
+  /// No description provided for @planner_balancing_nutrition.
+  ///
+  /// In en, this message translates to:
+  /// **'Balancing daily nutrition'**
+  String get planner_balancing_nutrition;
+
+  /// No description provided for @planner_choosing_meals.
+  ///
+  /// In en, this message translates to:
+  /// **'Choosing practical meals'**
+  String get planner_choosing_meals;
+
+  /// No description provided for @planner_preparing_grocery.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your grocery list'**
+  String get planner_preparing_grocery;
+
+  /// No description provided for @planner_generation_leave.
+  ///
+  /// In en, this message translates to:
+  /// **'You can leave this screen. Your plan will keep building.'**
+  String get planner_generation_leave;
+
+  /// No description provided for @planner_cancel_generation.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep building in background'**
+  String get planner_cancel_generation;
+
+  /// No description provided for @planner_week_contains.
+  ///
+  /// In en, this message translates to:
+  /// **'This week includes'**
+  String get planner_week_contains;
+
+  /// No description provided for @planner_under_30.
+  ///
+  /// In en, this message translates to:
+  /// **'Under 30 min'**
+  String get planner_under_30;
+
+  /// No description provided for @planner_smart_leftovers.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart leftovers'**
+  String get planner_smart_leftovers;
+
+  /// No description provided for @planner_plan_tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get planner_plan_tab;
+
+  /// No description provided for @planner_week_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get planner_week_label;
+
+  /// No description provided for @planner_meals_kcal_summary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} meals · {calories} kcal'**
+  String planner_meals_kcal_summary(Object calories, Object count);
+
+  /// No description provided for @planner_adjust_day.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust day'**
+  String get planner_adjust_day;
+
+  /// No description provided for @planner_view_grocery.
+  ///
+  /// In en, this message translates to:
+  /// **'View grocery list'**
+  String get planner_view_grocery;
+
+  /// No description provided for @planner_next_meal.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get planner_next_meal;
+
+  /// No description provided for @planner_log_meal.
+  ///
+  /// In en, this message translates to:
+  /// **'Log meal'**
+  String get planner_log_meal;
+
+  /// No description provided for @planner_meal_details.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal details'**
+  String get planner_meal_details;
+
+  /// No description provided for @planner_servings.
+  ///
+  /// In en, this message translates to:
+  /// **'Servings'**
+  String get planner_servings;
+
+  /// No description provided for @planner_preparation.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparation'**
+  String get planner_preparation;
+
+  /// No description provided for @planner_prep_ingredients.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare and measure the ingredients.'**
+  String get planner_prep_ingredients;
+
+  /// No description provided for @planner_prep_cook.
+  ///
+  /// In en, this message translates to:
+  /// **'Cook everything until ready.'**
+  String get planner_prep_cook;
+
+  /// No description provided for @planner_prep_combine.
+  ///
+  /// In en, this message translates to:
+  /// **'Combine, season, and adjust to taste.'**
+  String get planner_prep_combine;
+
+  /// No description provided for @planner_prep_serve.
+  ///
+  /// In en, this message translates to:
+  /// **'Serve fresh and enjoy.'**
+  String get planner_prep_serve;
+
+  /// No description provided for @planner_swap_meal.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap meal'**
+  String get planner_swap_meal;
+
+  /// No description provided for @planner_swap_different_cuisine.
+  ///
+  /// In en, this message translates to:
+  /// **'Different cuisine'**
+  String get planner_swap_different_cuisine;
+
+  /// No description provided for @planner_swap_surprise.
+  ///
+  /// In en, this message translates to:
+  /// **'Surprise me'**
+  String get planner_swap_surprise;
+
+  /// No description provided for @planner_keep_calories.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep similar calories'**
+  String get planner_keep_calories;
+
+  /// No description provided for @planner_keep_time.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the same prep time'**
+  String get planner_keep_time;
+
+  /// No description provided for @planner_keep_preferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Respect my preferences'**
+  String get planner_keep_preferences;
+
+  /// No description provided for @planner_only_meal_changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Only this meal will change'**
+  String get planner_only_meal_changes;
+
+  /// No description provided for @planner_find_replacement.
+  ///
+  /// In en, this message translates to:
+  /// **'Find replacement'**
+  String get planner_find_replacement;
+
+  /// No description provided for @planner_grocery_progress.
+  ///
+  /// In en, this message translates to:
+  /// **'{checked} of {total}'**
+  String planner_grocery_progress(Object checked, Object total);
+
+  /// No description provided for @planner_filter_all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get planner_filter_all;
+
+  /// No description provided for @planner_filter_needed.
+  ///
+  /// In en, this message translates to:
+  /// **'Needed'**
+  String get planner_filter_needed;
+
+  /// No description provided for @planner_filter_checked.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked'**
+  String get planner_filter_checked;
+
+  /// No description provided for @planner_combined_quantities.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantities are combined across the whole week'**
+  String get planner_combined_quantities;
+
+  /// No description provided for @planner_clear_checked.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear checked'**
+  String get planner_clear_checked;
+
+  /// No description provided for @planner_shopping_mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping mode'**
+  String get planner_shopping_mode;
+
+  /// No description provided for @planner_unlock_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock weekly planning'**
+  String get planner_unlock_title;
+
+  /// No description provided for @planner_unlock_body.
+  ///
+  /// In en, this message translates to:
+  /// **'See all 7 days, swap meals, and shop from one smart grocery list.'**
+  String get planner_unlock_body;
+
+  /// No description provided for @planner_one_day_preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Your one-day preview'**
+  String get planner_one_day_preview;
+
+  /// No description provided for @planner_locked_days.
+  ///
+  /// In en, this message translates to:
+  /// **'6 more days are ready with Pro'**
+  String get planner_locked_days;
+
+  /// No description provided for @planner_unlock_pro.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with SnapCal Pro'**
+  String get planner_unlock_pro;
 }
 
 class _AppLocalizationsDelegate

@@ -4232,4 +4232,241 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get settings_macros_move_note =>
       'Vos macros suivent, en conservant le même équilibre';
+
+  @override
+  String get planner_build_week => 'Créez votre semaine';
+
+  @override
+  String planner_step_of(Object step, Object total) {
+    return 'Étape $step sur $total';
+  }
+
+  @override
+  String get planner_goal_summary => 'Objectif quotidien';
+
+  @override
+  String get planner_edit_goals => 'Modifier les objectifs';
+
+  @override
+  String get planner_cooking_time => 'Temps de cuisine';
+
+  @override
+  String get planner_cooking_quick => 'Rapide';
+
+  @override
+  String get planner_cooking_balanced => 'Équilibré';
+
+  @override
+  String get planner_cooking_enjoy => 'J\'aime cuisiner';
+
+  @override
+  String get planner_plan_style => 'Style du plan';
+
+  @override
+  String get planner_style_budget => 'Économique';
+
+  @override
+  String get planner_style_protein => 'Riche en protéines';
+
+  @override
+  String get planner_style_simple => 'Ingrédients simples';
+
+  @override
+  String get planner_style_variety => 'Plus de variété';
+
+  @override
+  String get planner_food_preferences => 'Préférences alimentaires';
+
+  @override
+  String get planner_no_restrictions => 'Aucune restriction';
+
+  @override
+  String get planner_foods_avoid => 'Aliments à éviter';
+
+  @override
+  String get planner_foods_avoid_hint => 'ex. champignons, arachides';
+
+  @override
+  String get planner_choose_cuisines => 'Choisissez les cuisines';
+
+  @override
+  String get planner_cuisine_latin => 'Latine';
+
+  @override
+  String get planner_cuisine_african => 'Africaine';
+
+  @override
+  String get planner_cuisine_european => 'Européenne';
+
+  @override
+  String get planner_cuisine_surprise => 'Surprenez-moi';
+
+  @override
+  String get planner_shopping_style => 'Style d\'achat';
+
+  @override
+  String get planner_shopping_save => 'Économiser';
+
+  @override
+  String get planner_shopping_balanced => 'Équilibré';
+
+  @override
+  String get planner_shopping_premium => 'Ingrédients premium';
+
+  @override
+  String get planner_use_pantry => 'Utiliser les produits du placard';
+
+  @override
+  String get planner_plan_leftovers => 'Planifier les restes';
+
+  @override
+  String get planner_repeat_breakfasts =>
+      'Répéter les petits-déjeuners simples';
+
+  @override
+  String get planner_allergies_respected =>
+      'Vos allergies et restrictions sont toujours respectées';
+
+  @override
+  String get planner_creating_body => 'Une semaine pensée pour vous';
+
+  @override
+  String get planner_preferences_checked => 'Préférences vérifiées';
+
+  @override
+  String get planner_balancing_nutrition =>
+      'Équilibrage nutritionnel quotidien';
+
+  @override
+  String get planner_choosing_meals => 'Choix de repas pratiques';
+
+  @override
+  String get planner_preparing_grocery =>
+      'Préparation de votre liste de courses';
+
+  @override
+  String get planner_generation_leave =>
+      'Vous pouvez quitter cet écran. Votre plan continuera à se créer.';
+
+  @override
+  String get planner_cancel_generation => 'Continuer en arrière-plan';
+
+  @override
+  String get planner_week_contains => 'Cette semaine comprend';
+
+  @override
+  String get planner_under_30 => 'Moins de 30 min';
+
+  @override
+  String get planner_smart_leftovers => 'Restes intelligents';
+
+  @override
+  String get planner_plan_tab => 'Plan';
+
+  @override
+  String get planner_week_label => 'Semaine';
+
+  @override
+  String planner_meals_kcal_summary(Object calories, Object count) {
+    return '$count repas · $calories kcal';
+  }
+
+  @override
+  String get planner_adjust_day => 'Ajuster la journée';
+
+  @override
+  String get planner_view_grocery => 'Voir la liste de courses';
+
+  @override
+  String get planner_next_meal => 'Suivant';
+
+  @override
+  String get planner_log_meal => 'Enregistrer le repas';
+
+  @override
+  String get planner_meal_details => 'Détails du repas';
+
+  @override
+  String get planner_servings => 'Portions';
+
+  @override
+  String get planner_preparation => 'Préparation';
+
+  @override
+  String get planner_prep_ingredients => 'Préparez et mesurez les ingrédients.';
+
+  @override
+  String get planner_prep_cook =>
+      'Faites cuire jusqu\'à ce que tout soit prêt.';
+
+  @override
+  String get planner_prep_combine =>
+      'Assemblez, assaisonnez et ajustez au goût.';
+
+  @override
+  String get planner_prep_serve => 'Servez frais et dégustez.';
+
+  @override
+  String get planner_swap_meal => 'Changer le repas';
+
+  @override
+  String get planner_swap_different_cuisine => 'Autre cuisine';
+
+  @override
+  String get planner_swap_surprise => 'Surprenez-moi';
+
+  @override
+  String get planner_keep_calories => 'Garder des calories similaires';
+
+  @override
+  String get planner_keep_time => 'Garder le même temps de préparation';
+
+  @override
+  String get planner_keep_preferences => 'Respecter mes préférences';
+
+  @override
+  String get planner_only_meal_changes => 'Seul ce repas changera';
+
+  @override
+  String get planner_find_replacement => 'Trouver un remplacement';
+
+  @override
+  String planner_grocery_progress(Object checked, Object total) {
+    return '$checked sur $total';
+  }
+
+  @override
+  String get planner_filter_all => 'Tout';
+
+  @override
+  String get planner_filter_needed => 'Nécessaire';
+
+  @override
+  String get planner_filter_checked => 'Coché';
+
+  @override
+  String get planner_combined_quantities =>
+      'Les quantités sont regroupées pour toute la semaine';
+
+  @override
+  String get planner_clear_checked => 'Effacer les éléments cochés';
+
+  @override
+  String get planner_shopping_mode => 'Mode courses';
+
+  @override
+  String get planner_unlock_title => 'Débloquez la planification hebdomadaire';
+
+  @override
+  String get planner_unlock_body =>
+      'Consultez les 7 jours, changez les repas et utilisez une liste intelligente.';
+
+  @override
+  String get planner_one_day_preview => 'Votre aperçu d\'une journée';
+
+  @override
+  String get planner_locked_days => '6 jours supplémentaires prêts avec Pro';
+
+  @override
+  String get planner_unlock_pro => 'Débloquer avec SnapCal Pro';
 }

@@ -4144,4 +4144,234 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get settings_macros_move_note =>
       'ستتحرك الماكروز مع هذا مع الحفاظ على التوازن نفسه';
+
+  @override
+  String get planner_build_week => 'أنشئ أسبوعك';
+
+  @override
+  String planner_step_of(Object step, Object total) {
+    return 'الخطوة $step من $total';
+  }
+
+  @override
+  String get planner_goal_summary => 'الهدف اليومي';
+
+  @override
+  String get planner_edit_goals => 'تعديل الأهداف';
+
+  @override
+  String get planner_cooking_time => 'وقت الطهي';
+
+  @override
+  String get planner_cooking_quick => 'سريع';
+
+  @override
+  String get planner_cooking_balanced => 'متوازن';
+
+  @override
+  String get planner_cooking_enjoy => 'أستمتع بالطهي';
+
+  @override
+  String get planner_plan_style => 'أسلوب الخطة';
+
+  @override
+  String get planner_style_budget => 'اقتصادية';
+
+  @override
+  String get planner_style_protein => 'غنية بالبروتين';
+
+  @override
+  String get planner_style_simple => 'مكونات بسيطة';
+
+  @override
+  String get planner_style_variety => 'تنوع أكبر';
+
+  @override
+  String get planner_food_preferences => 'تفضيلات الطعام';
+
+  @override
+  String get planner_no_restrictions => 'دون قيود';
+
+  @override
+  String get planner_foods_avoid => 'أطعمة تريد تجنبها';
+
+  @override
+  String get planner_foods_avoid_hint => 'مثال: الفطر، الفول السوداني';
+
+  @override
+  String get planner_choose_cuisines => 'اختر المطابخ';
+
+  @override
+  String get planner_cuisine_latin => 'لاتيني';
+
+  @override
+  String get planner_cuisine_african => 'أفريقي';
+
+  @override
+  String get planner_cuisine_european => 'أوروبي';
+
+  @override
+  String get planner_cuisine_surprise => 'فاجئني';
+
+  @override
+  String get planner_shopping_style => 'أسلوب التسوق';
+
+  @override
+  String get planner_shopping_save => 'توفير المال';
+
+  @override
+  String get planner_shopping_balanced => 'متوازن';
+
+  @override
+  String get planner_shopping_premium => 'مكونات فاخرة';
+
+  @override
+  String get planner_use_pantry => 'استخدم أساسيات المطبخ';
+
+  @override
+  String get planner_plan_leftovers => 'خطط لبقايا الطعام';
+
+  @override
+  String get planner_repeat_breakfasts => 'كرر وجبات الإفطار السهلة';
+
+  @override
+  String get planner_allergies_respected => 'تُراعى حساسيتك وقيودك دائماً';
+
+  @override
+  String get planner_creating_body => 'نبني أسبوعاً يناسبك';
+
+  @override
+  String get planner_preferences_checked => 'تم فحص التفضيلات';
+
+  @override
+  String get planner_balancing_nutrition => 'موازنة التغذية اليومية';
+
+  @override
+  String get planner_choosing_meals => 'اختيار وجبات عملية';
+
+  @override
+  String get planner_preparing_grocery => 'إعداد قائمة التسوق';
+
+  @override
+  String get planner_generation_leave =>
+      'يمكنك مغادرة هذه الشاشة. سيستمر إنشاء خطتك.';
+
+  @override
+  String get planner_cancel_generation => 'تابع الإنشاء في الخلفية';
+
+  @override
+  String get planner_week_contains => 'يتضمن هذا الأسبوع';
+
+  @override
+  String get planner_under_30 => 'أقل من 30 دقيقة';
+
+  @override
+  String get planner_smart_leftovers => 'بقايا ذكية';
+
+  @override
+  String get planner_plan_tab => 'الخطة';
+
+  @override
+  String get planner_week_label => 'الأسبوع';
+
+  @override
+  String planner_meals_kcal_summary(Object calories, Object count) {
+    return '$count وجبات · $calories سعرة';
+  }
+
+  @override
+  String get planner_adjust_day => 'تعديل اليوم';
+
+  @override
+  String get planner_view_grocery => 'عرض قائمة التسوق';
+
+  @override
+  String get planner_next_meal => 'التالي';
+
+  @override
+  String get planner_log_meal => 'تسجيل الوجبة';
+
+  @override
+  String get planner_meal_details => 'تفاصيل الوجبة';
+
+  @override
+  String get planner_servings => 'الحصص';
+
+  @override
+  String get planner_preparation => 'التحضير';
+
+  @override
+  String get planner_prep_ingredients => 'جهز المكونات وقِس الكميات.';
+
+  @override
+  String get planner_prep_cook => 'اطه المكونات حتى تنضج.';
+
+  @override
+  String get planner_prep_combine => 'اخلط وتبّل وعدّل حسب ذوقك.';
+
+  @override
+  String get planner_prep_serve => 'قدّمها طازجة واستمتع.';
+
+  @override
+  String get planner_swap_meal => 'تبديل الوجبة';
+
+  @override
+  String get planner_swap_different_cuisine => 'مطبخ مختلف';
+
+  @override
+  String get planner_swap_surprise => 'فاجئني';
+
+  @override
+  String get planner_keep_calories => 'حافظ على سعرات مشابهة';
+
+  @override
+  String get planner_keep_time => 'حافظ على وقت التحضير';
+
+  @override
+  String get planner_keep_preferences => 'راعِ تفضيلاتي';
+
+  @override
+  String get planner_only_meal_changes => 'ستتغير هذه الوجبة فقط';
+
+  @override
+  String get planner_find_replacement => 'ابحث عن بديل';
+
+  @override
+  String planner_grocery_progress(Object checked, Object total) {
+    return '$checked من $total';
+  }
+
+  @override
+  String get planner_filter_all => 'الكل';
+
+  @override
+  String get planner_filter_needed => 'المطلوب';
+
+  @override
+  String get planner_filter_checked => 'تم اختياره';
+
+  @override
+  String get planner_combined_quantities => 'الكميات مجمعة لكل أيام الأسبوع';
+
+  @override
+  String get planner_clear_checked => 'مسح المحدد';
+
+  @override
+  String get planner_shopping_mode => 'وضع التسوق';
+
+  @override
+  String get planner_unlock_title => 'افتح التخطيط الأسبوعي';
+
+  @override
+  String get planner_unlock_body =>
+      'شاهد الأيام السبعة وبدّل الوجبات وتسوق من قائمة ذكية واحدة.';
+
+  @override
+  String get planner_one_day_preview => 'معاينة ليوم واحد';
+
+  @override
+  String get planner_locked_days => '6 أيام إضافية جاهزة مع Pro';
+
+  @override
+  String get planner_unlock_pro => 'افتح باستخدام SnapCal Pro';
 }

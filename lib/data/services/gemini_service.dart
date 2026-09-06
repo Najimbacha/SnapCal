@@ -320,11 +320,13 @@ User daily targets:
     UserSettings settings, {
     String prepTimePreference = 'balanced',
     String budgetPreference = 'standard',
+    String planningNotes = '',
   }) async {
     final prompt = _buildMealPlanPrompt(
       settings,
       prepTimePreference: prepTimePreference,
       budgetPreference: budgetPreference,
+      planningNotes: planningNotes,
     );
     try {
       final text = await _generateTextViaBackend(
@@ -444,6 +446,7 @@ $intentInstruction$cravingInstruction
     UserSettings settings, {
     String prepTimePreference = 'balanced',
     String budgetPreference = 'standard',
+    String planningNotes = '',
   }) {
     final languageName = languageNames[settings.languageCode] ?? 'English';
     final calorieFloor = settings.gender == 'female' ? 1200 : 1500;
@@ -462,6 +465,8 @@ Rules:
 - Cuisine: ${settings.cuisinePreference}
 - Prep time preference: ${_plannerPrepTimeInstruction(prepTimePreference)}
 - Budget preference: ${_plannerBudgetInstruction(budgetPreference)}
+- Additional planning preferences: ${planningNotes.isEmpty ? 'none' : planningNotes}
+- Avoid these foods: ${(settings.foodDislikes?.trim().isEmpty ?? true) ? 'none' : settings.foodDislikes}
 - Include one short "ai_rationale" sentence for every meal.
 - NEVER below $calorieFloor kcal/day
 - Output ONLY valid JSON
@@ -482,6 +487,8 @@ Keys 0-6 = Day 1 to Day 7. Each day must have exactly ${settings.mealsPerDay} me
         return 'favor meals that take 15 minutes or less';
       case 'batch':
         return 'favor meals that can be batch-prepped or reused efficiently';
+      case 'enjoy':
+        return 'allow enjoyable recipes up to 45 minutes with more hands-on cooking';
       case 'balanced':
       default:
         return 'keep cooking effort practical for everyday use';
