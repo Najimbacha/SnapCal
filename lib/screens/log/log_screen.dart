@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -82,7 +81,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
           ListView(
             key: const ValueKey('food-log-scroll'),
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 196),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 108),
             children: [
               _LogHeader(
                 title: l10n.log_title,
@@ -166,22 +165,6 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                 },
               ),
             ],
-          ),
-          PositionedDirectional(
-            start: 20,
-            end: 20,
-            bottom: 96,
-            child: _LogActionDock(
-              onScan: () {
-                ref.read(selectedDateProvider.notifier).goToToday();
-                context.go('/snap');
-              },
-              onManual:
-                  () => _showNewMealSheet(
-                    dateString: selectedDate,
-                    mealType: _suggestedMealType(),
-                  ),
-            ),
           ),
         ],
       ),
@@ -830,6 +813,7 @@ class _SectionHeading extends StatelessWidget {
           ),
         ),
         TextButton.icon(
+          key: const ValueKey('log-add-manually'),
           onPressed: onAction,
           icon: const Icon(LucideIcons.plus, size: 16),
           label: Text(actionLabel),
@@ -1252,125 +1236,6 @@ class _ProteinInsightTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _LogActionDock extends StatelessWidget {
-  const _LogActionDock({required this.onScan, required this.onManual});
-
-  final VoidCallback onScan;
-  final VoidCallback onManual;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color:
-            context.isDarkMode
-                ? const Color(0xF21B1C19)
-                : Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: context.cardBorderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-              alpha: context.isDarkMode ? 0.22 : 0.08,
-            ),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final showManualLabel = constraints.maxWidth >= 340;
-          return Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: SizedBox(
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    key: const ValueKey('log-scan-meal'),
-                    onPressed: () {
-                      HapticFeedback.mediumImpact();
-                      onScan();
-                    },
-                    icon: const Icon(LucideIcons.scanLine, size: 20),
-                    label: Text(l10n.log_scan_meal),
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      backgroundColor: context.primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      textStyle: AppTypography.titleSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (showManualLabel)
-                Expanded(
-                  flex: 2,
-                  child: SizedBox(
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      key: const ValueKey('log-add-manually'),
-                      onPressed: onManual,
-                      icon: const Icon(LucideIcons.pencil, size: 18),
-                      label: Text(
-                        l10n.log_add_manually,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: context.primaryColor,
-                        side: BorderSide(color: context.primaryColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        textStyle: AppTypography.labelMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              else
-                Tooltip(
-                  message: l10n.log_add_manually,
-                  child: SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: OutlinedButton(
-                      key: const ValueKey('log-add-manually'),
-                      onPressed: onManual,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: context.primaryColor,
-                        side: BorderSide(color: context.primaryColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: EdgeInsets.zero,
-                      ),
-                      child: const Icon(LucideIcons.pencil, size: 18),
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
       ),
     );
   }

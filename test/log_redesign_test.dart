@@ -147,7 +147,12 @@ void main() {
     expect(find.text('Avocado toast and eggs'), findsOneWidget);
     expect(find.text('Chicken rice bowl'), findsOneWidget);
     expect(find.text('Greek yogurt and berries'), findsOneWidget);
-    expect(find.byKey(const ValueKey('log-scan-meal')), findsOneWidget);
+    // The floating scan/pencil dock is gone -- it hovered over the meal rows
+    // and covered "Add Dinner". Scanning is the camera button in the nav bar
+    // and adding by hand is the action on the Meals heading, both of which
+    // were already there.
+    expect(find.byKey(const ValueKey('log-scan-meal')), findsNothing);
+    expect(find.byKey(const ValueKey('log-add-manually')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.drag(
@@ -200,7 +205,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.byKey(const ValueKey('daily-balance-card')), findsOneWidget);
-    expect(find.byKey(const ValueKey('log-scan-meal')), findsOneWidget);
+    expect(find.byKey(const ValueKey('log-scan-meal')), findsNothing);
+    expect(find.byKey(const ValueKey('log-add-manually')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
