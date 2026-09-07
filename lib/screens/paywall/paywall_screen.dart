@@ -1070,6 +1070,12 @@ const double _reticleRadius = 10.5;
 /// gradient cannot disagree about where the usable area ends.
 double _heroFadeHeight(double heroHeight) => math.max(28, heroHeight * 0.12);
 
+/// Two foods a plate, one to each side.
+///
+/// Three meant two of them shared a column, and a food sitting in its own
+/// upper band pushes its label to the lower one -- so the pair swapped and
+/// their leader lines crossed the plate. One food per side cannot cross.
+/// The totals are folded from whatever is listed here, so they follow.
 final List<_HeroSlide> _heroSlides = [
   _HeroSlide(
     asset: 'assets/images/paywall/hero_slide_1.png',
@@ -1087,13 +1093,6 @@ final List<_HeroSlide> _heroSlides = [
         label: (l) => l.paywall_slide_rice,
         portion: (l) => l.paywall_slide_rice_portion,
         kcal: 169,
-      ),
-      _Detection(
-        anchor: const Alignment(-0.22, 0.25),
-        slots: const [_slotLeftLow, _slotLeftTop, _slotRightLow],
-        label: (l) => l.paywall_slide_avocado,
-        portion: (l) => l.paywall_slide_avocado_portion,
-        kcal: 160,
       ),
     ],
   ),
@@ -1113,13 +1112,6 @@ final List<_HeroSlide> _heroSlides = [
         label: (l) => l.paywall_slide_salmon,
         portion: (l) => l.paywall_slide_salmon_portion,
         kcal: 312,
-      ),
-      _Detection(
-        anchor: const Alignment(0.35, 0.23),
-        slots: const [_slotRightLow, _slotLeftLow, _slotRightTop],
-        label: (l) => l.paywall_slide_broccoli,
-        portion: (l) => l.paywall_slide_broccoli_portion,
-        kcal: 35,
       ),
     ],
   ),
