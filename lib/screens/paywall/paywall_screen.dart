@@ -1010,7 +1010,7 @@ class _Detection {
 /// Fixed so the leader geometry is exact: the painter needs the card's rect to
 /// work out which edge the caret belongs on, and an intrinsically sized card
 /// would only be measurable a frame late.
-const double _chipHeight = 40;
+const double _chipHeight = 30; // one line now, not two
 
 /// Card width, as a share of the hero.
 ///
@@ -1018,8 +1018,45 @@ const double _chipHeight = 40;
 /// middle corridor: a dot anchored to the left of a plate landed underneath the
 /// very card naming it. Scaling with the hero keeps that corridor open, and
 /// every [_Detection.anchor] is kept inside it (|x| <= 0.26).
-double _chipWidthFor(double heroWidth) =>
-    (heroWidth * 0.32).clamp(108.0, 134.0);
+/// Text style of a detection label, shared by the pill and the measurer so
+/// they cannot disagree about how wide a name is.
+const TextStyle _chipLabelStyle = TextStyle(
+  color: Color(0xFF1C1917),
+  fontSize: 11.5,
+  height: 1.15,
+  letterSpacing: -0.1,
+  fontWeight: FontWeight.w600,
+);
+const TextStyle _chipKcalStyle = TextStyle(
+  color: Color(0xFF047857),
+  fontSize: 11.5,
+  height: 1.15,
+  letterSpacing: -0.1,
+  fontWeight: FontWeight.w600,
+);
+const double _chipPadH = 11;
+const double _chipGap = 7;
+
+/// How wide this label needs to be, measured rather than assumed.
+///
+/// Every card used to be 32% of the hero whatever it said, so "Rice" got the
+/// same slab as "Grilled Chicken" and sat half empty. The layout reserves
+/// rectangles and the leader lines start from their edges, so the width has to
+/// be known here, not improvised at paint time.
+double _chipWidthForLabel(String label, String kcal, double heroWidth) {
+  double measure(String text, TextStyle style) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    return painter.width;
+  }
+
+  final content =
+      measure(label, _chipLabelStyle) + _chipGap + measure(kcal, _chipKcalStyle);
+  return (content + _chipPadH * 2).clamp(64.0, heroWidth * 0.56);
+}
 
 /// The Ken Burns range. Kept shallow: every extra percent of zoom pushes the
 /// anchors off the food they point at.
@@ -1162,11 +1199,11 @@ List<_DetectionGeometry> _resolveDetections(
   double zoom,
   double topInset,
   double fadeHeight,
+  List<double> chipWidths,
 ) {
   final drawn = math.max(size.width, size.height) * zoom;
   final centre = Offset(size.width / 2, size.height / 2);
   const margin = 12.0;
-  final chipWidth = _chipWidthFor(size.width);
 
   // Markers first, and they never move: each sits on the middle of its food.
   // The cards are what give way.
@@ -1199,15 +1236,15 @@ List<_DetectionGeometry> _resolveDetections(
     lowest,
   );
 
-  Rect rectFor(_ChipSlot slot) => Rect.fromLTWH(
+  Rect rectFor(_ChipSlot slot, int index) => Rect.fromLTWH(
     slot.side == _ChipSide.left
         ? margin
-        : math.max(margin, size.width - chipWidth - margin),
+        : math.max(margin, size.width - chipWidths[index] - margin),
     (slot.row == 0
             ? (slot.side == _ChipSide.left ? leftTop : rightTop)
             : bandBottom)
         .clamp(margin, math.max(margin, size.height - _chipHeight - margin)),
-    chipWidth,
+    chipWidths[index],
     _chipHeight,
   );
 
@@ -1256,7 +1293,7 @@ List<_DetectionGeometry> _resolveDetections(
 
     for (final slot in d.slots) {
       if (taken.contains(slot)) continue;
-      final rect = rectFor(slot);
+      final rect = rectFor(slot, i);
       if (!usable(rect, i)) continue;
       taken.add(slot);
       pick = rect;
@@ -1266,7 +1303,7 @@ List<_DetectionGeometry> _resolveDetections(
     if (pick == null) {
       for (final slot in d.slots) {
         if (taken.contains(slot)) continue;
-        final moved = nudged(rectFor(slot), i);
+        final moved = nudged(rectFor(slot, i), i);
         if (moved == null) continue;
         taken.add(slot);
         pick = moved;
@@ -1369,12 +1406,21 @@ class _ScanHeroState extends State<_ScanHero>
 
                   final zoom =
                       _heroZoomFrom + (t * (_heroZoomTo - _heroZoomFrom));
+                  final chipWidths = [
+                    for (final det in slide.detections)
+                      _chipWidthForLabel(
+                        det.label(l10n),
+                        '${det.kcal} kcal',
+                        constraints.maxWidth,
+                      ),
+                  ];
                   final geometry = _resolveDetections(
                     slide.detections,
                     Size(constraints.maxWidth, widget.height),
                     zoom,
                     widget.topInset,
                     _heroFadeHeight(widget.height),
+                    chipWidths,
                   );
                   final reveal = [
                     for (var i = 0; i < slide.detections.length; i++)
@@ -1464,33 +1510,15 @@ class _ScanHeroState extends State<_ScanHero>
                         ),
                       ),
 
-                      // ── Dissolve into the page rather than cutting ──
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        height: _heroFadeHeight(widget.height),
-                        child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  palette.paper.withValues(alpha: 0),
-                                  palette.paper.withValues(alpha: 0.72),
-                                  palette.paper,
-                                  palette.paper,
-                                ],
-                                // Solid well before the edge: the last stretch is
-                                // flat paper, so the hero meets the page with nothing
-                                // half-visible in between.
-                                stops: const [0, 0.62, 1, 1],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      // The photograph ends where it ends.
+                      //
+                      // There was a gradient here washing the page colour up
+                      // over the bottom of the plate -- 60px of it, then 28 --
+                      // and at any height it read as a smudge rather than a
+                      // transition, because the photo is still busy where the
+                      // wash begins. A clean edge is what a full-bleed image
+                      // does everywhere else. _heroFadeHeight stays as the
+                      // reserve that keeps food labels off the bottom edge.
 
                       // ── Chrome ──
                       PositionedDirectional(
@@ -1755,109 +1783,46 @@ class _DetectionChip extends StatelessWidget {
   Widget build(BuildContext context) {
     if (progress <= 0) return const SizedBox.shrink();
 
+    // A light pill, sized to its words.
+    //
+    // This was a dark slab: a black gradient, a white border, a coloured spine
+    // and two lines, all laid over food photography at a fixed 32% of the hero
+    // whatever it said. Dark chrome fights a bright photograph; light glass
+    // with dark text stays readable on almost anything and lets the picture
+    // through, which is how Lens and Visual Look Up label a photo. The gram
+    // weight goes with the second line -- on a sales screen the calories are
+    // the point and nobody is checking the portion.
     return Opacity(
       opacity: progress.clamp(0.0, 1.0),
       child: Transform.scale(
-        scale: 0.92 + (0.08 * progress),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              width: width,
-              height: _chipHeight,
-              padding: const EdgeInsets.fromLTRB(9, 0, 10, 0),
-              decoration: BoxDecoration(
-                // A touch of vertical gradient so the card has a top edge
-                // rather than reading as a flat grey rectangle.
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.42),
-                    Colors.black.withValues(alpha: 0.56),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+        scale: 0.94 + (0.06 * progress),
+        child: Container(
+          width: width,
+          height: _chipHeight,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: _chipPadH),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.93),
+            borderRadius: BorderRadius.circular(_chipHeight / 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Accent rule rather than a dot: it gives the two lines a
-                  // spine and ties the card to the marker's colour.
-                  Container(
-                    width: 3,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          detection.label(l10n),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11.5,
-                            height: 1.15,
-                            letterSpacing: -0.1,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        // The calories are the point of the label, so they are
-                        // the only coloured thing on it.
-                        RichText(
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '${detection.portion(l10n)}  ',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.66),
-                                  fontSize: 9.5,
-                                  height: 1.1,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              TextSpan(
-                                text: '${detection.kcal}',
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 11,
-                                  height: 1.1,
-                                  fontWeight: FontWeight.w800,
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                ),
-                              ),
-                              TextSpan(
-                                text: ' kcal',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.66),
-                                  fontSize: 9,
-                                  height: 1.1,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            ],
+          ),
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: detection.label(l10n), style: _chipLabelStyle),
+                const TextSpan(text: '  '),
+                TextSpan(text: '${detection.kcal} kcal', style: _chipKcalStyle),
+              ],
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
         ),
       ),
@@ -1865,7 +1830,6 @@ class _DetectionChip extends StatelessWidget {
   }
 }
 
-/// The total, counting up as the plate is read.
 class _CalorieReadout extends StatelessWidget {
   const _CalorieReadout({required this.kcal, required this.progress});
 
@@ -2434,21 +2398,29 @@ class _CtaDock extends StatelessWidget {
               Wrap(
                 alignment: WrapAlignment.center,
                 crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 9,
-                runSpacing: 2,
+                // Spacing, not separators.
+                //
+                // The dots were siblings of the links in this Wrap, so a line
+                // break could fall after one -- "Terms & Conditions · Privacy
+                // policy ·" with nothing following it, and Restore on the line
+                // below. Binding each dot to a neighbour only moves the
+                // dangling mark to the start of the next line. Three labels
+                // this long wrap on a 390pt screen in English and wrap harder
+                // in French and Arabic, so the separator has to go rather than
+                // be repositioned.
+                spacing: 20,
+                runSpacing: 6,
                 children: [
                   _FooterLink(
                     label: l10n.paywall_terms_conditions,
                     onTap: onTerms,
                     palette: palette,
                   ),
-                  _FooterDot(palette: palette),
                   _FooterLink(
                     label: l10n.settings_privacy,
                     onTap: onPrivacy,
                     palette: palette,
                   ),
-                  _FooterDot(palette: palette),
                   _FooterLink(
                     label: l10n.paywall_restore,
                     onTap: onRestore,
@@ -2599,24 +2571,6 @@ class _FooterLink extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-      ),
-    );
-  }
-}
-
-class _FooterDot extends StatelessWidget {
-  const _FooterDot({required this.palette});
-
-  final _Palette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 2.5,
-      height: 2.5,
-      decoration: BoxDecoration(
-        color: palette.muted.withValues(alpha: 0.5),
-        shape: BoxShape.circle,
       ),
     );
   }
