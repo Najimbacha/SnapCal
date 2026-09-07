@@ -1068,7 +1068,7 @@ const double _reticleRadius = 10.5;
 
 /// Height of the hero's bottom dissolve. Shared so card placement and the
 /// gradient cannot disagree about where the usable area ends.
-double _heroFadeHeight(double heroHeight) => math.max(60, heroHeight * 0.24);
+double _heroFadeHeight(double heroHeight) => math.max(28, heroHeight * 0.12);
 
 final List<_HeroSlide> _heroSlides = [
   _HeroSlide(
@@ -1525,7 +1525,7 @@ class _ScanHeroState extends State<_ScanHero>
                                 // Solid well before the edge: the last stretch is
                                 // flat paper, so the hero meets the page with nothing
                                 // half-visible in between.
-                                stops: const [0, 0.55, 0.88, 1],
+                                stops: const [0, 0.62, 1, 1],
                               ),
                             ),
                           ),
@@ -1947,48 +1947,73 @@ class _CalorieReadout extends StatelessWidget {
   Widget build(BuildContext context) {
     final shown = (kcal * Curves.easeOutCubic.transform(progress)).round();
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(13, 9, 15, 10),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.46),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+    // Named, and a different colour from the food labels.
+    //
+    // This was an unlabelled number wearing the same dark glass pill as the
+    // detections, in the same corner family, so it read as a fourth food
+    // rather than as the sum of the other three. Two things fix that: the
+    // word, and not looking like an ingredient. Emerald 700 rather than the
+    // brighter brand green -- white on it measures 5.48:1, where the brand
+    // green manages 2.54:1.
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 7, 13, 9),
+      decoration: BoxDecoration(
+        color: AppColors.primaryDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            AppLocalizations.of(context)!.result_total_calories,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.84),
+              fontSize: 8.5,
+              height: 1.2,
+              letterSpacing: 0.6,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$shown',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 25,
-                  height: 1,
-                  letterSpacing: -0.8,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-              const SizedBox(width: 5),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2.5),
-                child: Text(
-                  'kcal',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.66),
-                    fontSize: 11,
+          const SizedBox(height: 1),
+          // "453 kcal", not "kcal 453". The row mirrors with the layout in
+          // Arabic, but a figure and its Latin unit are one left-to-right run
+          // in any language.
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$shown',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 25,
                     height: 1,
-                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.8,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 5),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2.5),
+                  child: Text(
+                    'kcal',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.78),
+                      fontSize: 11,
+                      height: 1,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
