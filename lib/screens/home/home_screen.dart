@@ -2158,10 +2158,24 @@ class _HeaderProAffordanceState extends ConsumerState<_HeaderProAffordance>
   static const int _maxNudges = 4;
   static const Duration _nudgeGap = Duration(seconds: 6);
 
+  /// How long the badge is allowed to move for.
+  ///
+  /// The nudge was bounded to four pops for a stated reason -- "a badge that
+  /// bounces forever reads as spam" -- but the sheen and the glow were left
+  /// on `repeat()`, so they ran for as long as the home screen was open. With
+  /// a promo that has no end date, which is what production serves, that is
+  /// every session for every free user: two controllers repainting
+  /// continuously, and a device log full of dropped frame buffers.
+  ///
+  /// They now run for the same window the nudges occupy and then settle.
+  static const Duration _settleAfter = Duration(seconds: 24);
+  Timer? _settleTimer;
+
   @override
   void dispose() {
     _tick?.cancel();
     _nudgeTimer?.cancel();
+    _settleTimer?.cancel();
     _entrance.dispose();
     _sheen.dispose();
     _glow.dispose();
@@ -2176,6 +2190,16 @@ class _HeaderProAffordanceState extends ConsumerState<_HeaderProAffordance>
       if (!_entrance.isCompleted && !_entrance.isAnimating) _entrance.forward();
       if (!_sheen.isAnimating) _sheen.repeat();
       if (!_glow.isAnimating) _glow.repeat(reverse: true);
+      // Caught the eye; now leave the user alone. The glow rests at 0, which
+      // is still a soft shadow (alpha 0.26), and the sheen rests at 1, which
+      // parks the highlight past the badge's edge rather than across it.
+      _settleTimer ??= Timer(_settleAfter, () {
+        if (!mounted) return;
+        _sheen.stop();
+        _glow.stop();
+        _sheen.value = 1;
+        _glow.value = 0;
+      });
       _nudgeTimer ??= Timer.periodic(_nudgeGap, (timer) {
         if (!mounted || _nudgesRun >= _maxNudges) {
           timer.cancel();
@@ -2189,6 +2213,8 @@ class _HeaderProAffordanceState extends ConsumerState<_HeaderProAffordance>
       _nudgeTimer?.cancel();
       _nudgeTimer = null;
       _entrance.value = 1;
+      _settleTimer?.cancel();
+      _settleTimer = null;
       if (_sheen.isAnimating) _sheen.stop();
       if (_glow.isAnimating) _glow.stop();
     }
