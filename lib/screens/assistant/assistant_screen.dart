@@ -14,6 +14,17 @@ import '../../data/services/premium_gate_service.dart';
 import '../../data/services/pro_feature_service.dart';
 import 'widgets/coach_overlays.dart';
 
+// The coach was drawn in Zinc and iOS system greys -- #09090B, #18181B,
+// #F2F2F7, #8E8E93 -- while the rest of SnapCal is warm paper and emerald.
+// Cool grey beside warm off-white reads as a different app. These are the
+// tokens the home, log and purchase screens already use.
+Color _coachPaper(bool d) => d ? const Color(0xFF0B0C0B) : const Color(0xFFFBFCFA);
+Color _coachCard(bool d) => d ? const Color(0xFF121412) : Colors.white;
+Color _coachLine(bool d) => d ? const Color(0xFF1F241F) : const Color(0xFFE1E3DF);
+Color _coachInk(bool d) => d ? const Color(0xFFF1F4F2) : const Color(0xFF1C1917);
+Color _coachMuted(bool d) => d ? const Color(0xFF9DA19C) : const Color(0xFF777370);
+Color _coachAccent(bool d) => d ? const Color(0xFF4FB58C) : AppColors.primaryDark;
+
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
   @override
@@ -215,9 +226,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     final d = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: d ? const Color(0xFF09090B) : Colors.white,
+      backgroundColor: _coachPaper(d),
       appBar: AppBar(
-        backgroundColor: d ? const Color(0xFF09090B) : Colors.white,
+        backgroundColor: _coachPaper(d),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: GestureDetector(
@@ -232,13 +243,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
+              border: Border.all(color: _coachLine(d)),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               LucideIcons.chevronLeft,
               size: 20,
-              color: d ? const Color(0xFFA1A1AA) : const Color(0xFF3C3C43),
+              color: _coachMuted(d),
             ),
             ),
           ),
@@ -256,15 +267,19 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            Column(
+            Expanded(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Fajar',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: d ? Colors.white : const Color(0xFF1C1C1E),
+                    color: _coachInk(d),
                   ),
                 ),
                 const SizedBox(height: 1),
@@ -274,25 +289,30 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                       width: 5,
                       height: 5,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF22C55E),
+                        color: AppColors.primaryDark,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text(
+                    Flexible(
+                      child: Text(
                       'AI Nutritionist',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color:
                             d
-                                ? const Color(0xFF71717A)
-                                : const Color(0xFF8E8E93),
+                                ? const Color(0xFF9DA19C)
+                                : const Color(0xFF777370),
+                      ),
                       ),
                     ),
                   ],
                 ),
               ],
+              ),
             ),
           ],
         ),
@@ -307,13 +327,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
+                border: Border.all(color: _coachLine(d)),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 LucideIcons.refreshCw,
                 size: 18,
-                color: d ? const Color(0xFFA1A1AA) : const Color(0xFF8E8E93),
+                color: _coachMuted(d),
               ),
               ),
             ),
@@ -357,50 +377,36 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Column(
                               children: [
-                                const SizedBox(height: 40),
-                                _buildAvatar(80),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 36),
+                                _buildAvatar(64),
+                                const SizedBox(height: 18),
+                                // One heading. There were three stacked --
+                                // "Fajar", "AI Nutrition Coach", "What can I
+                                // help you with?" -- under a header already
+                                // naming him, saying the same thing four ways.
                                 Text(
-                                  'Fajar',
+                                  'What can I help with?',
                                   style: TextStyle(
-                                    fontSize: 22,
+                                    fontSize: 19,
+                                    height: 1.25,
                                     fontWeight: FontWeight.w600,
-                                    color:
-                                        d
-                                            ? Colors.white
-                                            : const Color(0xFF1C1C1E),
+                                    letterSpacing: -0.3,
+                                    color: _coachInk(d),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 7),
                                 Text(
-                                  'AI Nutrition Coach',
+                                  'Ask about a meal, your macros, or what to '
+                                  'eat next.',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color:
-                                        d
-                                            ? const Color(0xFF71717A)
-                                            : const Color(0xFF8E8E93),
+                                    fontSize: 12.5,
+                                    height: 1.45,
+                                    color: _coachMuted(d),
                                   ),
                                 ),
-                                const SizedBox(height: 28),
-                                Text(
-                                  'What can I help you with?',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color:
-                                        d
-                                            ? const Color(0xFFA1A1AA)
-                                            : const Color(0xFF6B7280),
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
+                                const SizedBox(height: 26),
                                 _buildActionGrid(d),
-                                const SizedBox(height: 24),
-                                _buildDivider(d),
-                                const SizedBox(height: 20),
-                                _buildSuggestions(d),
                                 const SizedBox(height: 20),
                               ],
                             ),
@@ -732,166 +738,77 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     );
   }
 
+  /// Four suggestions, each a question someone can actually send.
+  ///
+  /// There were two lists here: a 2x2 grid of one-word emoji tiles ("Food",
+  /// "Calories") and, under an "or ask a question" divider, four full
+  /// sentences. Eight suggestions in two formats, several of them the same
+  /// idea twice. This is one list, phrased the way you would ask it, with the
+  /// app's own line icons instead of emoji -- emoji render differently on
+  /// every Android skin, so their look was never ours to control.
   Widget _buildActionGrid(bool d) {
     final items = [
-      _GridItem(icon: '📷', label: 'Food', query: 'What should I eat today?'),
-      _GridItem(
-        icon: '🔥',
-        label: 'Calories',
-        query: 'How many calories should I eat?',
+      (LucideIcons.utensils, 'What should I eat?', 'What should I eat today?'),
+      (
+        LucideIcons.target,
+        'Am I on track today?',
+        'How am I doing against my goals today?',
       ),
-      _GridItem(icon: '🥗', label: 'Plan', query: 'Create a meal plan for me'),
-      _GridItem(
-        icon: '⚖️',
-        label: 'Weight',
-        query: 'Help me with my weight goal',
+      (
+        LucideIcons.calendarDays,
+        'Plan my week',
+        'Create a meal plan for me',
+      ),
+      (
+        LucideIcons.trendingUp,
+        'Hit my protein',
+        'Suggest a high-protein meal',
       ),
     ];
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children:
-              items.take(2).toList().asMap().entries.map((e) {
-                final item = e.value;
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: e.key == 0 ? 5 : 0,
-                      left: e.key == 1 ? 5 : 0,
-                    ),
-                    child: _ActionGridTile(
-                      item: item,
-                      handleSuggestion: _handleSuggestion,
-                      d: d,
-                    ),
-                  ),
-                );
-              }).toList(),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children:
-              items.skip(2).toList().asMap().entries.map((e) {
-                final item = e.value;
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: e.key == 0 ? 5 : 0,
-                      left: e.key == 1 ? 5 : 0,
-                    ),
-                    child: _ActionGridTile(
-                      item: item,
-                      handleSuggestion: _handleSuggestion,
-                      d: d,
-                    ),
-                  ),
-                );
-              }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDivider(bool d) {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            height: 0.5,
-            color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
           child: Text(
-            'or ask a question',
+            'SUGGESTED',
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: d ? const Color(0xFF52525B) : const Color(0xFFA1A1AA),
+              fontSize: 11,
+              height: 1.2,
+              fontWeight: FontWeight.w600,
+              color: _coachMuted(d),
             ),
           ),
         ),
-        Expanded(
-          child: Container(
-            height: 0.5,
-            color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
+        const SizedBox(height: 10),
+        for (var row = 0; row < 2; row++) ...[
+          if (row > 0) const SizedBox(height: 9),
+          // IntrinsicHeight so a two-line label does not leave its neighbour
+          // short; stretch alone asks for infinite height inside a scroll view.
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var col = 0; col < 2; col++) ...[
+                  if (col > 0) const SizedBox(width: 9),
+                  Expanded(
+                    child: _ActionGridTile(
+                      icon: items[row * 2 + col].$1,
+                      label: items[row * 2 + col].$2,
+                      dark: d,
+                      onTap: () => _handleSuggestion(items[row * 2 + col].$3),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
 
-  Widget _buildSuggestions(bool d) {
-    final suggestions = [
-      'How many calories should I eat?',
-      'Create a meal plan',
-      'Analyze my lunch photo',
-      'Suggest a high-protein breakfast',
-    ];
-
-    return Column(
-      children:
-          suggestions
-              .map(
-                (s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: GestureDetector(
-                    onTap: () => _handleSuggestion(s),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            d
-                                ? const Color(0xFF18181B)
-                                : const Color(0xFFF2F2F7),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color:
-                              d
-                                  ? const Color(0xFF27272A)
-                                  : const Color(0xFFE5E5EA),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            LucideIcons.arrowRight,
-                            size: 14,
-                            color:
-                                d
-                                    ? const Color(0xFF52525B)
-                                    : const Color(0xFFA1A1AA),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              s,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color:
-                                    d
-                                        ? const Color(0xFFA1A1AA)
-                                        : const Color(0xFF6B7280),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-    );
-  }
 
   Widget _buildRichText(String text, bool user, bool d) {
     final color =
@@ -937,10 +854,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       // care of the gesture bar when no keyboard is up.
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
-        color: d ? const Color(0xFF09090B) : Colors.white,
+        color: _coachPaper(d),
         border: Border(
           top: BorderSide(
-            color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
+            color: _coachLine(d),
             width: 0.5,
           ),
         ),
@@ -952,8 +869,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             child: Container(
               constraints: const BoxConstraints(minHeight: 40, maxHeight: 100),
               decoration: BoxDecoration(
-                color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
-                borderRadius: BorderRadius.circular(20),
+                color: _coachCard(d),
+                border: Border.all(color: _coachLine(d)),
+                borderRadius: BorderRadius.circular(22),
               ),
               child: TextField(
                 controller: _ctrl,
@@ -965,7 +883,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                   hintText: 'Message',
                   hintStyle: TextStyle(
                     color:
-                        d ? const Color(0xFF3F3F46) : const Color(0xFF8E8E93),
+                        _coachMuted(d).withValues(alpha: 0.7),
                     fontSize: 15,
                   ),
                   border: InputBorder.none,
@@ -976,7 +894,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                 ),
                 style: TextStyle(
                   fontSize: 15,
-                  color: d ? Colors.white : const Color(0xFF1C1C1E),
+                  color: _coachInk(d),
                 ),
               ),
             ),
@@ -1000,8 +918,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                       _canSend
                           ? AppColors.primaryDark
                           : (d
-                              ? const Color(0xFF27272A)
-                              : const Color(0xFFC7C7CC)),
+                              ? const Color(0xFF1F241F)
+                              : const Color(0xFFD7D3CB)),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(LucideIcons.arrowUp, size: 18, color: Colors.white),
@@ -1015,43 +933,56 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
 }
 
 class _ActionGridTile extends StatelessWidget {
-  final _GridItem item;
-  final void Function(String) handleSuggestion;
-  final bool d;
+  final IconData icon;
+  final String label;
+  final bool dark;
+  final VoidCallback onTap;
 
   const _ActionGridTile({
-    required this.item,
-    required this.handleSuggestion,
-    required this.d,
+    required this.icon,
+    required this.label,
+    required this.dark,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => handleSuggestion(item.query),
-      child: Container(
-        decoration: BoxDecoration(
-          color: d ? const Color(0xFF18181B) : const Color(0xFFF2F2F7),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: d ? const Color(0xFF27272A) : const Color(0xFFE5E5EA),
-            width: 0.5,
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          children: [
-            Text(item.icon, style: const TextStyle(fontSize: 24)),
-            const SizedBox(height: 6),
-            Text(
-              item.label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: d ? const Color(0xFFE4E4E7) : const Color(0xFF3C3C43),
+    return Material(
+      color: _coachCard(dark),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: _coachLine(dark)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: _coachAccent(dark).withValues(alpha: dark ? .18 : .09),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 15, color: _coachAccent(dark)),
               ),
-            ),
-          ],
+              const SizedBox(height: 9),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1.3,
+                  color: _coachInk(dark),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1120,21 +1051,6 @@ class _TypingTextState extends State<_TypingText> {
   }
 }
 
-class _GridItem {
-  final String icon;
-  final String label;
-  final String query;
-
-  const _GridItem({
-    required this.icon,
-    required this.label,
-    required this.query,
-  });
-}
-
-/// The standard "AI is typing" affordance: three dots pulsing in sequence.
-/// Lives for as long as a coach request is in flight, so the wait is never
-/// a silent void.
 class _TypingDots extends StatefulWidget {
   const _TypingDots();
 
