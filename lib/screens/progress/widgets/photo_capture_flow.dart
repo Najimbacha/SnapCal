@@ -40,7 +40,12 @@ class _PhotoCaptureFlowState extends ConsumerState<PhotoCaptureFlow> {
           )
           .timeout(TimeoutPolicy.gallery);
 
+      // The camera and the file check are both awaits, so this screen can be
+      // gone by the time they return. The catch and finally below already
+      // guard; this did not.
+      if (!mounted) return;
       if (file != null && await File(file.path).exists()) {
+        if (!mounted) return;
         setState(() {
           if (isFront) {
             _frontPath = file.path;
