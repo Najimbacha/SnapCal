@@ -320,7 +320,16 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
     ref.invalidate(assistantProvider);
     ref.invalidate(plannerProvider);
 
-    if (context.mounted) context.go('/auth');
+    // Home, not the sign-in wall.
+    //
+    // This sent the user to '/auth' with go(), which replaces the stack, so
+    // there was nothing to go back to -- and AuthScreen has no close. Worse,
+    // main.dart signs the user back in anonymously the moment auth goes null,
+    // and the router only releases '/auth' for a user who is NOT anonymous.
+    // So signing out left you on a login screen you could not leave except by
+    // killing the app. Signing out of a free tier means becoming a guest
+    // again, and a guest belongs in the app.
+    if (context.mounted) context.go('/');
   }
 }
 
@@ -364,7 +373,9 @@ Future<void> confirmAndDeleteAccount(
         ref.invalidate(assistantProvider);
         ref.invalidate(plannerProvider);
 
-        if (context.mounted) context.go('/auth');
+        // Same as sign-out above: a deleted account is signed back in
+        // anonymously, and an anonymous user cannot leave '/auth'.
+        if (context.mounted) context.go('/');
       }
     } catch (e) {
       if (context.mounted) {
