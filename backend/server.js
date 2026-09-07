@@ -1998,60 +1998,19 @@ app.get('/api/premium-status', authenticateToken, verifyAppCheck, async (req, re
 /// what bounds the damage in the meantime: the worst a determined user gets is
 /// MAX_BONUS_SCANS_PER_MONTH free scans, which is roughly what they would get
 /// by watching the ads honestly.
-app.post('/api/scans/bonus', apiLimiter, authenticateToken, verifyAppCheck, async (req, res) => {
-  const uid = req.user.uid;
-  try {
-    const result = await db.runTransaction(async (tx) => {
-      const useRef = usageDoc(uid);
-      const useSnap = await tx.get(useRef);
-      const usage = useSnap.exists ? useSnap.data() : {};
-      const monthKey = currentMonthKey();
-      const current = bonusScansFor(usage, monthKey);
-
-      if (current >= MAX_BONUS_SCANS_PER_MONTH) {
-        return { granted: false, bonusScans: current, monthKey, usage };
-      }
-
-      // Writing monthKey here also rolls the month over for a user whose
-      // first action this month is watching an ad: scansUsed is stamped with
-      // last month's key, so it has to reset alongside the bonus or they
-      // would inherit last month's usage against this month's allowance.
-      const rolledOver = usage.monthKey !== monthKey;
-      tx.set(useRef, {
-        monthKey,
-        bonusScans: current + 1,
-        ...(rolledOver ? { scansUsed: 0, premiumScansUsed: 0 } : {}),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-
-      return {
-        granted: true,
-        bonusScans: current + 1,
-        monthKey,
-        usage: rolledOver ? { monthKey, scansUsed: 0 } : usage,
-      };
-    });
-
-    metrics.firestoreOps.inc({ operation: 'set', collection: 'usage' });
-
-    const scansUsed =
-      result.usage && result.usage.monthKey === result.monthKey
-        ? Number(result.usage.scansUsed || 0)
-        : 0;
-    const scanAllowance = FREE_MONTHLY_SCANS + result.bonusScans;
-
-    return res.status(200).json({
-      granted: result.granted,
-      bonusScans: result.bonusScans,
-      maxBonusScansPerMonth: MAX_BONUS_SCANS_PER_MONTH,
-      scanAllowance,
-      scansRemaining: Math.max(0, scanAllowance - scansUsed),
-    });
-  } catch (error) {
-    console.error('Bonus scan grant failed:', error.message);
-    return safeError(res, 500, 'Could not record the bonus scan.');
-  }
-});
+// The bonus-scan grant endpoint lived here.
+//
+// It added a free scan on any authenticated call -- no proof of anything,
+// just a valid token. It existed for rewarded ads, and the ads were removed
+// from the app entirely, so nothing legitimate called it: the client method
+// that did, ScanGateService.addBonusScans, had no callers either. What was
+// left was an open door handing out paid DeepSeek scans, capped at
+// MAX_BONUS_SCANS_PER_MONTH (10 by default) against a free allowance of 15.
+//
+// bonusScansFor and freeAllowanceFor stay: bonuses already banked in a user's
+// usage document are still honoured. Only the granting stops. If rewarded
+// scans return, this needs server-side proof the ad was watched, not the
+// client's word for it.
 
 app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => {
   const body = req.body || {};
@@ -2466,7 +2425,6 @@ if (process.env.NODE_ENV !== 'production') {
     { method: 'GET', path: '/api/premium-status' },
     { method: 'POST', path: '/api/ai/text' },
     { method: 'POST', path: '/api/ai/image' },
-    { method: 'POST', path: '/api/scans/bonus' },
     { method: 'POST', path: '/api/revenuecat/webhook' },
     { method: 'GET', path: '/api/admin/users/:uid/summary' },
     { method: 'POST', path: '/api/admin/users/:uid/access' },
