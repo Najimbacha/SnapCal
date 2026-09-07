@@ -363,8 +363,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                   decoration: BoxDecoration(
                                     color:
                                         d
-                                            ? const Color(0xFF18181B)
-                                            : const Color(0xFFF2F2F7),
+                                            ? const Color(0xFF121412)
+                                            : Colors.white,
+                                    border: Border.all(color: _coachLine(d)),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: const _TypingDots(),
@@ -434,8 +435,11 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                           decoration: BoxDecoration(
                                             color:
                                                 d
-                                                    ? const Color(0xFF18181B)
-                                                    : const Color(0xFFF2F2F7),
+                                                    ? const Color(0xFF121412)
+                                                    : Colors.white,
+                                            border: Border.all(
+                                              color: _coachLine(d),
+                                            ),
                                             borderRadius: BorderRadius.circular(
                                               16,
                                             ),
@@ -519,10 +523,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                                   color:
                                                       d
                                                           ? const Color(
-                                                            0xFFA1A1AA,
+                                                            0xFF9DA19C,
                                                           )
                                                           : const Color(
-                                                            0xFF6B7280,
+                                                            0xFF777370,
                                                           ),
                                                 ),
                                               ),
@@ -535,17 +539,18 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                             decoration: BoxDecoration(
                                               color:
                                                   user
-                                                      ? (d
-                                                          ? AppColors
-                                                              .primaryDark
-                                                          : AppColors.primary)
+                                                      ? AppColors.primaryDark
                                                       : (d
                                                           ? const Color(
-                                                            0xFF18181B,
+                                                            0xFF121412,
                                                           )
-                                                          : const Color(
-                                                            0xFFF2F2F7,
-                                                          )),
+                                                          : Colors.white),
+                                              border:
+                                                  user
+                                                      ? null
+                                                      : Border.all(
+                                                        color: _coachLine(d),
+                                                      ),
                                               borderRadius: BorderRadius.circular(
                                                 16,
                                               ).copyWith(
@@ -570,10 +575,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                                       color:
                                                           d
                                                               ? const Color(
-                                                                0xFFE4E4E7,
+                                                                0xFFF1F4F2,
                                                               )
                                                               : const Color(
-                                                                0xFF1C1C1E,
+                                                                0xFF1C1917,
                                                               ),
                                                       onComplete: () {
                                                         if (mounted) {
@@ -613,8 +618,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                         decoration: BoxDecoration(
                                           color:
                                               d
-                                                  ? const Color(0xFF27272A)
-                                                  : const Color(0xFFE5E5EA),
+                                                  ? const Color(0xFF1F241F)
+                                                  : const Color(0xFFE1E3DF),
                                           borderRadius: BorderRadius.circular(
                                             8,
                                           ),
@@ -624,8 +629,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                           size: 14,
                                           color:
                                               d
-                                                  ? const Color(0xFFA1A1AA)
-                                                  : const Color(0xFF8E8E93),
+                                                  ? const Color(0xFF9DA19C)
+                                                  : const Color(0xFF777370),
                                         ),
                                       ),
                                     ],
@@ -691,7 +696,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: d ? const Color(0xFFE4E4E7) : const Color(0xFF1C1C1E),
+                  color: _coachInk(d),
                 ),
               ),
             ],
@@ -702,7 +707,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             style: TextStyle(
               fontSize: 13,
               height: 1.35,
-              color: d ? const Color(0xFFA1A1AA) : const Color(0xFF6B7280),
+              color: _coachMuted(d),
             ),
           ),
           const SizedBox(height: 8),
@@ -814,7 +819,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     final color =
         user
             ? Colors.white
-            : (d ? const Color(0xFFE4E4E7) : const Color(0xFF1C1C1E));
+            : (_coachInk(d));
 
     final spans = <InlineSpan>[];
     final regex = RegExp(r'\*\*(.+?)\*\*');
@@ -1089,8 +1094,8 @@ class _TypingDotsState extends State<_TypingDots>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Color.lerp(
-                  isDark ? const Color(0xFF3F3F46) : const Color(0xFFC7C7CC),
-                  isDark ? const Color(0xFFE4E4E7) : const Color(0xFF6B7280),
+                  isDark ? const Color(0xFF3A403A) : const Color(0xFFD7D3CB),
+                  isDark ? const Color(0xFFF1F4F2) : const Color(0xFF777370),
                   wave,
                 ),
               ),
