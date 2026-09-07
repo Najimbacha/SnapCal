@@ -23,7 +23,10 @@ const rateLimit = require('express-rate-limit');
 const MAX_JSON_BODY = process.env.MAX_JSON_BODY || '2mb';
 const MAX_IMAGE_BODY = process.env.MAX_IMAGE_BODY || '14mb';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 3);
+// The free tier is 15 scans a month. The fallback here was 3, so if the env
+// var were ever cleared in Render every user would drop to a fifth of their
+// allowance with nothing in the logs to say why.
+const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 15);
 
 // Bonus scans earned by watching a rewarded ad.
 //

@@ -24,7 +24,15 @@ class ScanGateService {
   static const String _bonusScansKey = 'bonusScansCount';
   static const String _lastPeriodKey = 'scanGate_lastMonth';
   static const String _scanLimitKey = 'freeScanLimit';
-  static const int _defaultFreeTierLimit = 3;
+  /// What a device assumes before the server has told it anything.
+  ///
+  /// This was 3, which is not the policy -- the free tier is 15 a month. A
+  /// phone that cannot reach the backend, or whose App Check attestation
+  /// fails, never learns the real number and silently offered 12 fewer scans
+  /// than the user is entitled to. Guessing high is safe: the server is the
+  /// enforcing copy and refuses a scan past the real allowance regardless of
+  /// what the client believes.
+  static const int _defaultFreeTierLimit = 15;
 
   /// The free monthly allowance, before bonus scans.
   ///
