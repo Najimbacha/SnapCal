@@ -115,7 +115,10 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
       if (capture) {
-        await tester.pump(const Duration(seconds: 3));
+        // Past the rest point (0.92 of an 8.2s reveal), so the captured frame
+        // is the one people actually sit in front of: every label placed and
+        // the total counted, rather than a third of the way through.
+        await tester.pump(const Duration(seconds: 8));
         await tester.runAsync(() async {
           final image = await (key.currentContext!.findRenderObject()
                   as RenderRepaintBoundary)
@@ -153,19 +156,33 @@ void main() {
           isTrue,
           reason: 'the hero should name the calories it detected',
         );
-        final firstAsset =
+        // The hero used to rotate through three photographs and this asserted
+        // that it did. It is one photograph now, scanned once and then held:
+        // the dots were decoration with no swipe and no tap behind them, and a
+        // decision screen that keeps moving asks to be watched rather than
+        // read. So the assertion inverts -- after the reveal has run well past
+        // where it used to loop, the same plate is on screen and its labels
+        // are still there rather than having faded out for a successor.
+        final settledAsset =
             tester
                 .widgetList<Image>(find.byType(Image))
                 .map((i) => i.image)
                 .toList();
         await tester.pump(const Duration(seconds: 9));
         await tester.pump(const Duration(seconds: 1));
-        final nextAsset =
-            tester
-                .widgetList<Image>(find.byType(Image))
-                .map((i) => i.image)
-                .toList();
-        expect(nextAsset, isNot(firstAsset));
+        expect(
+          tester
+              .widgetList<Image>(find.byType(Image))
+              .map((i) => i.image)
+              .toList(),
+          settledAsset,
+          reason: 'the hero should rest on its plate, not cycle',
+        );
+        expect(
+          detectedKcal(),
+          findsOneWidget,
+          reason: 'the scan should hold its labels once it has finished',
+        );
         final scrollableState = tester.state<ScrollableState>(
           find.byType(Scrollable).first,
         );

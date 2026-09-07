@@ -1070,12 +1070,18 @@ const double _reticleRadius = 10.5;
 /// gradient cannot disagree about where the usable area ends.
 double _heroFadeHeight(double heroHeight) => math.max(28, heroHeight * 0.12);
 
-/// Two foods a plate, one to each side.
+/// One plate, two foods, one to each side.
 ///
-/// Three meant two of them shared a column, and a food sitting in its own
-/// upper band pushes its label to the lower one -- so the pair swapped and
-/// their leader lines crossed the plate. One food per side cannot cross.
-/// The totals are folded from whatever is listed here, so they follow.
+/// Two foods because three meant two of them shared a column, and a food
+/// sitting in its own upper band pushes its label to the lower one -- so the
+/// pair swapped and their leader lines crossed. One food per side cannot.
+///
+/// One plate because this paywall is reached by people already using the app,
+/// who know what it looks like; a rotating gallery is an onboarding device.
+/// The carousel also could not be steered -- the dots were decoration, with no
+/// swipe and no tap -- so a photograph you wanted back was gone.
+///
+/// Totals are folded from whatever is listed here, so they follow.
 final List<_HeroSlide> _heroSlides = [
   _HeroSlide(
     asset: 'assets/images/paywall/hero_slide_1.png',
@@ -1093,46 +1099,6 @@ final List<_HeroSlide> _heroSlides = [
         label: (l) => l.paywall_slide_rice,
         portion: (l) => l.paywall_slide_rice_portion,
         kcal: 169,
-      ),
-    ],
-  ),
-  _HeroSlide(
-    asset: 'assets/images/paywall/hero_slide_2.png',
-    detections: [
-      _Detection(
-        anchor: const Alignment(0.21, -0.375),
-        slots: const [_slotRightTop, _slotRightLow],
-        label: (l) => l.paywall_slide_sweet_potato,
-        portion: (l) => l.paywall_slide_sweet_potato_portion,
-        kcal: 118,
-      ),
-      _Detection(
-        anchor: const Alignment(-0.30, 0.09),
-        slots: const [_slotLeftTop, _slotLeftLow],
-        label: (l) => l.paywall_slide_salmon,
-        portion: (l) => l.paywall_slide_salmon_portion,
-        kcal: 312,
-      ),
-    ],
-  ),
-  _HeroSlide(
-    asset: 'assets/images/paywall/hero_slide_3.png',
-    detections: [
-      _Detection(
-        anchor: const Alignment(-0.16, 0.00),
-        slots: const [_slotLeftTop, _slotLeftLow],
-        label: (l) => l.paywall_slide_toast,
-        portion: (l) => l.paywall_slide_toast_portion,
-        kcal: 290,
-      ),
-      _Detection(
-        // The pair's centroid falls in the gap between the two eggs, which
-        // points at the plate. Aim at the near egg's yolk instead.
-        anchor: const Alignment(0.29, 0.21),
-        slots: const [_slotRightTop, _slotRightLow],
-        label: (l) => l.paywall_slide_boiled_eggs,
-        portion: (l) => l.paywall_slide_eggs_portion,
-        kcal: 155,
       ),
     ],
   ),
@@ -1343,21 +1309,23 @@ class _ScanHeroState extends State<_ScanHero>
     with SingleTickerProviderStateMixin {
   static const Duration _cycle = Duration(milliseconds: 8200);
 
+  /// Where the scan comes to rest.
+  ///
+  /// The reveal fades everything back out over the last 7% so the next
+  /// photograph could take over. There is no next photograph now, so the
+  /// animation stops just short of that and holds the finished scan: every
+  /// label placed, the total counted. It plays once and then the screen is
+  /// still, which is the point -- a decision screen that keeps moving is
+  /// asking you to watch it instead of read it.
+  static const double _restPoint = 0.92;
+
   late final AnimationController _controller;
-  int _index = 0;
 
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: _cycle)
-          ..addStatusListener((status) {
-            if (status != AnimationStatus.completed) return;
-            if (!mounted) return;
-            setState(() => _index = (_index + 1) % _heroSlides.length);
-            _controller.forward(from: 0);
-          })
-          ..forward();
+    _controller = AnimationController(vsync: this, duration: _cycle)
+      ..animateTo(_restPoint);
   }
 
   @override
@@ -1376,7 +1344,7 @@ class _ScanHeroState extends State<_ScanHero>
   Widget build(BuildContext context) {
     final palette = widget.palette;
     final l10n = AppLocalizations.of(context)!;
-    final slide = _heroSlides[_index];
+    final slide = _heroSlides.first;
 
 
     return ClipRect(
@@ -1535,37 +1503,6 @@ class _ScanHeroState extends State<_ScanHero>
                               MaterialLocalizations.of(
                                 context,
                               ).closeButtonTooltip,
-                        ),
-                      ),
-                      // ── Which plate we are on ──
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 12,
-                        child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              for (var i = 0; i < _heroSlides.length; i++)
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 3,
-                                  ),
-                                  width: i == _index ? 16 : 5,
-                                  height: 5,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        i == _index
-                                            ? AppColors.primary
-                                            : palette.muted.withValues(
-                                              alpha: 0.30,
-                                            ),
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                ),
-                            ],
-                          ),
                         ),
                       ),
                     ],
