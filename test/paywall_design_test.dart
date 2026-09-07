@@ -128,11 +128,31 @@ void main() {
         });
       }
       if (scenario.$5 == 'en') {
+        // The scan demo now runs full width at the top of the screen instead
+        // of in a compact box beside the macro bars. Same widget, same job --
+        // the key is what changed.
         expect(
-          find.byKey(const ValueKey('paywall-compact-scan-preview')),
+          find.byKey(const ValueKey('paywall-scan-hero')),
           findsOneWidget,
         );
-        expect(find.textContaining('248'), findsOneWidget);
+        // The calorie figure now lives in the hero's detection chip: a
+        // RichText, which find.textContaining ignores unless asked, and one
+        // that fades in partway through the scan and back out before the
+        // slide changes. Wait for it rather than guessing a frame -- the
+        // capture path above has already pumped, so a fixed wait lands in a
+        // different place depending on the mode.
+        Finder detectedKcal() =>
+            find.textContaining('248', findRichText: true);
+        var sawKcal = false;
+        for (var tick = 0; tick < 32 && !sawKcal; tick++) {
+          await tester.pump(const Duration(milliseconds: 250));
+          sawKcal = detectedKcal().evaluate().isNotEmpty;
+        }
+        expect(
+          sawKcal,
+          isTrue,
+          reason: 'the hero should name the calories it detected',
+        );
         final firstAsset =
             tester
                 .widgetList<Image>(find.byType(Image))

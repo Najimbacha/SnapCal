@@ -35,13 +35,22 @@ void main() {
     );
     await tester.pump();
 
-    expect(
-      find.textContaining('You used 3/3 free scans today'),
-      findsOneWidget,
-    );
+    // The allowance is monthly and the server owns the number, so the copy is
+    // parameterised. ScanGateService is uninitialised in a widget test and
+    // falls back to its safe defaults, so assert the shape rather than a
+    // figure -- and assert the old hardcoded "3/3 today" is gone, because
+    // that was wrong from the moment the limit stopped being 3 a day.
+    expect(find.textContaining('free scans this month'), findsOneWidget);
+    expect(find.textContaining('3/3 free scans today'), findsNothing);
+
+    // The headline is now the product name and the entry point's message is
+    // the line under it. The second subtitle ("Upgrade to unlock unlimited
+    // scanning" beneath "You used 15/15 free scans this month") is gone --
+    // it repeated the line above it.
+    expect(find.text('SnapCal Pro'), findsOneWidget);
     expect(
       find.textContaining('Upgrade to unlock unlimited scanning'),
-      findsOneWidget,
+      findsNothing,
     );
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -53,10 +62,7 @@ void main() {
     await tester.pump();
 
     expect(find.textContaining('Unlock unlimited AI coaching'), findsOneWidget);
-    expect(
-      find.textContaining('24/7 personal nutrition guidance'),
-      findsOneWidget,
-    );
+    expect(find.text('SnapCal Pro'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 9));

@@ -129,7 +129,7 @@ abstract class AppLocalizations {
   /// No description provided for @purchase_scan_detail.
   ///
   /// In en, this message translates to:
-  /// **'Log meals without the daily limit'**
+  /// **'Log meals without the monthly limit'**
   String get purchase_scan_detail;
 
   /// No description provided for @purchase_planner_title.
@@ -2268,6 +2268,36 @@ abstract class AppLocalizations {
   /// **'kcal left'**
   String get home_kcal_left;
 
+  /// No description provided for @home_kcal_over.
+  ///
+  /// In en, this message translates to:
+  /// **'kcal over today'**
+  String get home_kcal_over;
+
+  /// No description provided for @home_todays_meals.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s meals'**
+  String get home_todays_meals;
+
+  /// No description provided for @home_open_log.
+  ///
+  /// In en, this message translates to:
+  /// **'Open log'**
+  String get home_open_log;
+
+  /// No description provided for @home_unlock_meal_plan_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock your full meal plan'**
+  String get home_unlock_meal_plan_title;
+
+  /// No description provided for @home_unlock_meal_plan_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunch · Dinner · Smart suggestions'**
+  String get home_unlock_meal_plan_subtitle;
+
   /// No description provided for @assistant_typing.
   ///
   /// In en, this message translates to:
@@ -2393,18 +2423,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You get full access to all Pro features.'**
   String get paywall_trial_today_desc;
-
-  /// No description provided for @paywall_trial_reminder.
-  ///
-  /// In en, this message translates to:
-  /// **'Day {day}'**
-  String paywall_trial_reminder(Object day);
-
-  /// No description provided for @paywall_trial_reminder_desc.
-  ///
-  /// In en, this message translates to:
-  /// **'We send you a reminder that your trial is ending.'**
-  String get paywall_trial_reminder_desc;
 
   /// No description provided for @paywall_trial_end.
   ///
@@ -4611,7 +4629,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywall_scan_limit_subtitle.
   ///
   /// In en, this message translates to:
-  /// **'You used 3/3 free scans today. Unlock unlimited AI food scans and instant calorie breakdowns.'**
+  /// **'You\'ve reached your free scan limit for this month. Unlock unlimited AI food scans and instant calorie breakdowns.'**
   String get paywall_scan_limit_subtitle;
 
   /// No description provided for @paywall_coach_subtitle.
@@ -5433,8 +5451,8 @@ abstract class AppLocalizations {
   /// No description provided for @paywall_free_scans_used_title.
   ///
   /// In en, this message translates to:
-  /// **'You used 3/3 free scans today'**
-  String get paywall_free_scans_used_title;
+  /// **'You used {used}/{limit} free scans this month'**
+  String paywall_free_scans_used_title(int used, int limit);
 
   /// No description provided for @paywall_unlimited_scanning_subtitle.
   ///

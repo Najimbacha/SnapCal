@@ -3,7 +3,7 @@
   "purchase_headline": "Know what to eat next.",
   "purchase_preview_title": "See SnapCal Pro in action",
   "purchase_preview_advice": "Plan a protein-rich dinner.",
-  "purchase_scan_detail": "Log meals without the daily limit",
+  "purchase_scan_detail": "Log meals without the monthly limit",
   "purchase_planner_title": "Meal plans for your goals",
   "purchase_planner_detail": "A full week, plus your grocery list",
   "purchase_coach_title": "Your personal AI Coach",
@@ -513,6 +513,11 @@
   "home_goal_reached": "GOAL",
   "home_completed": "COMPLETED",
   "home_kcal_left": "kcal left",
+  "home_kcal_over": "kcal over today",
+  "home_todays_meals": "Today's meals",
+  "home_open_log": "Open log",
+  "home_unlock_meal_plan_title": "Unlock your full meal plan",
+  "home_unlock_meal_plan_subtitle": "Lunch · Dinner · Smart suggestions",
   "assistant_typing": "Coach is typing...",
   "assistant_retry": "Retry",
   "assistant_speech_not_available": "Speech recognition not available on this device",
@@ -534,8 +539,6 @@
   "paywall_trial_title": "How your trial works",
   "paywall_trial_today": "Today",
   "paywall_trial_today_desc": "You get full access to all Pro features.",
-  "paywall_trial_reminder": "Day {day}",
-  "paywall_trial_reminder_desc": "We send you a reminder that your trial is ending.",
   "paywall_trial_end": "Day {day}",
   "paywall_trial_end_desc": "You are charged. Cancel anytime before this to avoid charges.",
   "paywall_referral_title": "Want it for free?",
@@ -1013,7 +1016,7 @@
   "paywall_cancel_anytime": "Cancel anytime. No commitment.",
   "paywall_terms_conditions": "Terms & Conditions",
   "paywall_trial_7_day": "7-day trial",
-  "paywall_scan_limit_subtitle": "You used 3/3 free scans today. Unlock unlimited AI food scans and instant calorie breakdowns.",
+  "paywall_scan_limit_subtitle": "You've reached your free scan limit for this month. Unlock unlimited AI food scans and instant calorie breakdowns.",
   "paywall_coach_subtitle": "Unlock unlimited coaching, macro guidance, and meal suggestions tailored to your day.",
   "paywall_planner_subtitle": "Unlock full weekly plans, grocery lists, preferences, and AI meal regenerations.",
   "paywall_reports_subtitle": "Unlock deeper analysis, weekly trends, and practical AI suggestions after every {feature}.",
@@ -1265,7 +1268,17 @@
   "paywall_unlock_snapcal_pro": "Unlock SnapCal Pro",
   "paywall_barcode_title": "Unlock Barcode Scanner",
   "paywall_barcode_subtitle": "Instantly log packaged foods by scanning their barcodes",
-  "paywall_free_scans_used_title": "You used 3/3 free scans today",
+  "paywall_free_scans_used_title": "You used {used}/{limit} free scans this month",
+  "@paywall_free_scans_used_title": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "paywall_unlimited_scanning_subtitle": "Upgrade to unlock unlimited scanning",
   "paywall_unlimited_scanning_title": "Unlock Unlimited Scanning",
   "paywall_scan_track_subtitle": "Upgrade to scan and track all your meals",

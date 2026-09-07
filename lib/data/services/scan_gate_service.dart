@@ -339,6 +339,13 @@ class ScanGateService {
     return ok;
   }
 
+  /// The full monthly allowance: the server's free limit plus earned bonuses.
+  ///
+  /// The paywall needs this to state a true number. Reading it here rather
+  /// than hardcoding one keeps the screen honest when FREE_MONTHLY_SCANS
+  /// changes on the server, and counts bonus scans the same way canScan does.
+  int getMonthlyLimit() => _storedFreeLimit() + getBonusScans();
+
   int getRemainingScans(bool isPro) {
     if (isPro) return -1;
     if (!_ready()) return _defaultFreeTierLimit;

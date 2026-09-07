@@ -3,7 +3,7 @@
   "purchase_headline": "اعرف ماذا تأكل بعد ذلك.",
   "purchase_preview_title": "شاهد سناب كال برو أثناء العمل",
   "purchase_preview_advice": "خطط لعشاء غني بالبروتين.",
-  "purchase_scan_detail": "سجّل وجباتك دون الحد اليومي",
+  "purchase_scan_detail": "سجّل وجباتك دون الحد الشهري",
   "purchase_planner_title": "خطط وجبات تناسب أهدافك",
   "purchase_planner_detail": "أسبوع كامل مع قائمة التسوق",
   "purchase_coach_title": "مدربك الشخصي بالذكاء الاصطناعي",
@@ -364,6 +364,11 @@
   "home_goal_reached": "الهدف",
   "home_completed": "اكتمل",
   "home_kcal_left": "سعرة متبقية",
+  "home_kcal_over": "سعرة زائدة اليوم",
+  "home_todays_meals": "وجبات اليوم",
+  "home_open_log": "فتح السجل",
+  "home_unlock_meal_plan_title": "افتح خطة وجباتك الكاملة",
+  "home_unlock_meal_plan_subtitle": "غداء · عشاء · اقتراحات ذكية",
   "assistant_typing": "المدرب يكتب...",
   "assistant_retry": "إعادة المحاولة",
   "assistant_speech_not_available": "التعرف على الصوت غير متاح على هذا الجهاز",
@@ -385,8 +390,6 @@
   "paywall_trial_title": "كيف تعمل الفترة التجريبية",
   "paywall_trial_today": "اليوم",
   "paywall_trial_today_desc": "تحصل على وصول كامل لجميع ميزات برو.",
-  "paywall_trial_reminder": "اليوم {day}",
-  "paywall_trial_reminder_desc": "سنرسل لك تذكيراً بأن الفترة التجريبية تقترب من نهايتها.",
   "paywall_trial_end": "اليوم {day}",
   "paywall_trial_end_desc": "سيتم الخصم. يمكنك الإلغاء في أي وقت قبل ذلك لتجنب الرسوم.",
   "paywall_referral_title": "تريد الحصول عليه مجاناً؟",
@@ -792,7 +795,7 @@
   "paywall_cancel_anytime": "يمكنك الإلغاء في أي وقت. بلا التزام.",
   "paywall_terms_conditions": "الشروط والأحكام",
   "paywall_trial_7_day": "تجربة 7 أيام",
-  "paywall_scan_limit_subtitle": "استخدمت 3 من 3 عمليات مسح مجانية اليوم. افتح مسح طعام غير محدود بالذكاء الاصطناعي وتحليل السعرات فوراً.",
+  "paywall_scan_limit_subtitle": "لقد وصلت إلى حد الفحوصات المجانية لهذا الشهر. افتح مسح طعام غير محدود بالذكاء الاصطناعي وتحليل السعرات فوراً.",
   "paywall_coach_subtitle": "افتح تدريباً غير محدود وإرشاداً للعناصر الغذائية واقتراحات وجبات مناسبة ليومك.",
   "paywall_planner_subtitle": "افتح خططاً أسبوعية كاملة وقوائم مشتريات وتفضيلات وإعادة توليد وجبات بالذكاء الاصطناعي.",
   "paywall_reports_subtitle": "افتح تحليلاً أعمق واتجاهات أسبوعية واقتراحات عملية بالذكاء الاصطناعي بعد كل {feature}.",
@@ -1044,7 +1047,17 @@
   "paywall_unlock_snapcal_pro": "افتح SnapCal Pro",
   "paywall_barcode_title": "افتح ماسح الباركود",
   "paywall_barcode_subtitle": "سجّل الأطعمة المعلبة فورًا عبر مسح الباركود",
-  "paywall_free_scans_used_title": "استخدمت 3/3 من الفحوصات المجانية اليوم",
+  "paywall_free_scans_used_title": "استخدمت {used}/{limit} من الفحوصات المجانية هذا الشهر",
+  "@paywall_free_scans_used_title": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "paywall_unlimited_scanning_subtitle": "قم بالترقية لفتح المسح غير المحدود",
   "paywall_unlimited_scanning_title": "افتح المسح غير المحدود",
   "paywall_scan_track_subtitle": "قم بالترقية لمسح كل وجباتك وتتبعها",

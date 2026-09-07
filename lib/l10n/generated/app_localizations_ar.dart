@@ -21,7 +21,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get purchase_preview_advice => 'خطط لعشاء غني بالبروتين.';
 
   @override
-  String get purchase_scan_detail => 'سجّل وجباتك دون الحد اليومي';
+  String get purchase_scan_detail => 'سجّل وجباتك دون الحد الشهري';
 
   @override
   String get purchase_planner_title => 'خطط وجبات تناسب أهدافك';
@@ -1165,6 +1165,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get home_kcal_left => 'سعرة متبقية';
 
   @override
+  String get home_kcal_over => 'سعرة زائدة اليوم';
+
+  @override
+  String get home_todays_meals => 'وجبات اليوم';
+
+  @override
+  String get home_open_log => 'فتح السجل';
+
+  @override
+  String get home_unlock_meal_plan_title => 'افتح خطة وجباتك الكاملة';
+
+  @override
+  String get home_unlock_meal_plan_subtitle => 'غداء · عشاء · اقتراحات ذكية';
+
+  @override
   String get assistant_typing => 'المدرب يكتب...';
 
   @override
@@ -1230,15 +1245,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get paywall_trial_today_desc => 'تحصل على وصول كامل لجميع ميزات برو.';
-
-  @override
-  String paywall_trial_reminder(Object day) {
-    return 'اليوم $day';
-  }
-
-  @override
-  String get paywall_trial_reminder_desc =>
-      'سنرسل لك تذكيراً بأن الفترة التجريبية تقترب من نهايتها.';
 
   @override
   String paywall_trial_end(Object day) {
@@ -2466,7 +2472,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get paywall_scan_limit_subtitle =>
-      'استخدمت 3 من 3 عمليات مسح مجانية اليوم. افتح مسح طعام غير محدود بالذكاء الاصطناعي وتحليل السعرات فوراً.';
+      'لقد وصلت إلى حد الفحوصات المجانية لهذا الشهر. افتح مسح طعام غير محدود بالذكاء الاصطناعي وتحليل السعرات فوراً.';
 
   @override
   String get paywall_coach_subtitle =>
@@ -2943,8 +2949,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'سجّل الأطعمة المعلبة فورًا عبر مسح الباركود';
 
   @override
-  String get paywall_free_scans_used_title =>
-      'استخدمت 3/3 من الفحوصات المجانية اليوم';
+  String paywall_free_scans_used_title(int used, int limit) {
+    return 'استخدمت $used/$limit من الفحوصات المجانية هذا الشهر';
+  }
 
   @override
   String get paywall_unlimited_scanning_subtitle =>

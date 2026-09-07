@@ -21,7 +21,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get purchase_preview_advice => 'Planea una cena rica en proteínas.';
 
   @override
-  String get purchase_scan_detail => 'Registra comidas sin el límite diario';
+  String get purchase_scan_detail => 'Registra comidas sin el límite mensual';
 
   @override
   String get purchase_planner_title => 'Planes según tus objetivos';
@@ -1174,6 +1174,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get home_kcal_left => 'kcal restantes';
 
   @override
+  String get home_kcal_over => 'kcal de más hoy';
+
+  @override
+  String get home_todays_meals => 'Comidas de hoy';
+
+  @override
+  String get home_open_log => 'Abrir registro';
+
+  @override
+  String get home_unlock_meal_plan_title =>
+      'Desbloquea tu plan de comidas completo';
+
+  @override
+  String get home_unlock_meal_plan_subtitle =>
+      'Almuerzo · Cena · Sugerencias inteligentes';
+
+  @override
   String get assistant_typing => 'El entrenador está escribiendo...';
 
   @override
@@ -1240,15 +1257,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get paywall_trial_today_desc =>
       'Obtienes acceso completo a todas las funciones Pro.';
-
-  @override
-  String paywall_trial_reminder(Object day) {
-    return 'Día $day';
-  }
-
-  @override
-  String get paywall_trial_reminder_desc =>
-      'Te enviaremos un recordatorio de que tu prueba termina.';
 
   @override
   String paywall_trial_end(Object day) {
@@ -2487,7 +2495,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get paywall_scan_limit_subtitle =>
-      'Usaste 3/3 escaneos gratis hoy. Desbloquea escaneos ilimitados con IA y desglose instantáneo de calorías.';
+      'Alcanzaste tu límite de escaneos gratis de este mes. Desbloquea escaneos ilimitados con IA y desglose instantáneo de calorías.';
 
   @override
   String get paywall_coach_subtitle =>
@@ -2967,7 +2975,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Registra alimentos envasados al instante escaneando sus códigos';
 
   @override
-  String get paywall_free_scans_used_title => 'Usaste 3/3 escaneos gratis hoy';
+  String paywall_free_scans_used_title(int used, int limit) {
+    return 'Usaste $used/$limit escaneos gratis este mes';
+  }
 
   @override
   String get paywall_unlimited_scanning_subtitle =>

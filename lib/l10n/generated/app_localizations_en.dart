@@ -21,7 +21,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get purchase_preview_advice => 'Plan a protein-rich dinner.';
 
   @override
-  String get purchase_scan_detail => 'Log meals without the daily limit';
+  String get purchase_scan_detail => 'Log meals without the monthly limit';
 
   @override
   String get purchase_planner_title => 'Meal plans for your goals';
@@ -1164,6 +1164,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_kcal_left => 'kcal left';
 
   @override
+  String get home_kcal_over => 'kcal over today';
+
+  @override
+  String get home_todays_meals => 'Today\'s meals';
+
+  @override
+  String get home_open_log => 'Open log';
+
+  @override
+  String get home_unlock_meal_plan_title => 'Unlock your full meal plan';
+
+  @override
+  String get home_unlock_meal_plan_subtitle =>
+      'Lunch · Dinner · Smart suggestions';
+
+  @override
   String get assistant_typing => 'Coach is typing...';
 
   @override
@@ -1230,15 +1246,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get paywall_trial_today_desc =>
       'You get full access to all Pro features.';
-
-  @override
-  String paywall_trial_reminder(Object day) {
-    return 'Day $day';
-  }
-
-  @override
-  String get paywall_trial_reminder_desc =>
-      'We send you a reminder that your trial is ending.';
 
   @override
   String paywall_trial_end(Object day) {
@@ -2462,7 +2469,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paywall_scan_limit_subtitle =>
-      'You used 3/3 free scans today. Unlock unlimited AI food scans and instant calorie breakdowns.';
+      'You\'ve reached your free scan limit for this month. Unlock unlimited AI food scans and instant calorie breakdowns.';
 
   @override
   String get paywall_coach_subtitle =>
@@ -2937,7 +2944,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Instantly log packaged foods by scanning their barcodes';
 
   @override
-  String get paywall_free_scans_used_title => 'You used 3/3 free scans today';
+  String paywall_free_scans_used_title(int used, int limit) {
+    return 'You used $used/$limit free scans this month';
+  }
 
   @override
   String get paywall_unlimited_scanning_subtitle =>

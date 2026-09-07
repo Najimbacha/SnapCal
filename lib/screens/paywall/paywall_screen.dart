@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/data/services/premium_conversion_service.dart';
+import 'package:snapcal/data/services/scan_gate_service.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/providers/settings_provider.dart';
@@ -384,18 +385,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     }
   }
 
-  String? _billingCadence(Package package, AppLocalizations l10n) {
-    switch (package.packageType) {
-      case PackageType.annual:
-        return l10n.purchase_billed_yearly;
-      case PackageType.monthly:
-        return l10n.paywall_billing_monthly;
-      case PackageType.lifetime:
-        return l10n.paywall_billing_lifetime;
-      default:
-        return null;
-    }
-  }
 
   Package? get _monthlyPackage {
     for (final p in _packages) {
@@ -711,49 +700,22 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
                   children: [
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        hPad,
-                        media.padding.top + 8,
-                        hPad,
-                        0,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            LucideIcons.scanLine,
-                            size: 22,
-                            color: palette.ink,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              l10n.appTitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: palette.ink,
-                                fontSize: 19,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip:
-                                MaterialLocalizations.of(
-                                  context,
-                                ).closeButtonTooltip,
-                            onPressed:
-                                (_isLoading || _restoring)
-                                    ? null
-                                    : () {
-                                      if (context.canPop()) context.pop();
-                                    },
-                            icon: Icon(LucideIcons.x, color: palette.ink),
-                          ),
-                        ],
-                      ),
+                    // The scan, full width and running under the status
+                    // bar. This is the only proof on the screen that the
+                    // product works, and it was rendered in `compact` mode at
+                    // about a third of the width, boxed in beside a second
+                    // set of macro bars that repeated it. The full-size hero
+                    // already draws its own close button and its own fade
+                    // into the page -- the machinery was here all along.
+                    _ScanHero(
+                      height: _heroExtent,
+                      palette: palette,
+                      topInset: media.padding.top,
+                      onClose: () {
+                        if (_isLoading || _restoring) return;
+                        if (context.canPop()) context.pop();
+                      },
                     ),
-                    const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: hPad),
                       child: _buildTitleBlock(context, palette),
@@ -761,14 +723,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     const SizedBox(height: 20),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: hPad),
-                      child: _ProDayPreview(palette: palette),
-                    ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: hPad),
                       child: _BenefitLedger(palette: palette),
                     ),
-                    ..._buildTrialSection(context, palette, hPad, dense),
                     SizedBox(height: dense ? 20 : 26),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: hPad),
@@ -869,103 +825,74 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   Widget _buildTitleBlock(BuildContext context, _Palette palette) {
     final l10n = AppLocalizations.of(context)!;
     String title;
-    String subtitle;
 
     if (widget.featureName == 'barcode') {
       title = l10n.paywall_barcode_title;
-      subtitle = l10n.paywall_barcode_subtitle;
     } else if (widget.limitReached) {
-      title = l10n.paywall_free_scans_used_title;
-      subtitle = l10n.paywall_unlimited_scanning_subtitle;
+      // Real numbers, not a hardcoded "3/3 today". The allowance is monthly and
+      // the server owns it, so the copy asks the same gate that blocked the
+      // scan rather than repeating a figure that has been wrong since the
+      // limit moved off 3.
+      final gate = ScanGateService();
+      final limit = gate.getMonthlyLimit();
+      title = l10n.paywall_free_scans_used_title(
+        gate.getPeriodScanCount(),
+        limit,
+      );
     } else if (widget.entryPoint == PaywallEntryPoint.scanLimit) {
       title = l10n.paywall_unlimited_scanning_title;
-      subtitle = l10n.paywall_scan_track_subtitle;
     } else if (widget.entryPoint == PaywallEntryPoint.aiCoachLimit) {
       title = l10n.paywall_ai_coaching_title;
-      subtitle = l10n.paywall_ai_coaching_subtitle;
     } else if (widget.entryPoint == PaywallEntryPoint.plannerLockedDay ||
         widget.entryPoint == PaywallEntryPoint.plannerPreferences) {
       title = l10n.paywall_smart_planning_title;
-      subtitle = l10n.paywall_smart_planning_subtitle;
     } else if (widget.entryPoint == PaywallEntryPoint.groceryList) {
       title = l10n.paywall_shopping_lists_title;
-      subtitle = l10n.paywall_shopping_lists_subtitle;
     } else if (widget.entryPoint == PaywallEntryPoint.progressPhotoLimit) {
       title = l10n.paywall_progress_journey_title;
-      subtitle = l10n.paywall_progress_journey_subtitle;
     } else if (widget.entryPoint == PaywallEntryPoint.reportInsight ||
         widget.entryPoint == PaywallEntryPoint.macroDetails ||
         widget.entryPoint == PaywallEntryPoint.mealInsight) {
       title = l10n.paywall_analytics_title;
-      subtitle = l10n.paywall_analytics_subtitle;
     } else {
       title = l10n.paywall_upgrade_experience_title;
-      subtitle = l10n.paywall_upgrade_experience_subtitle;
     }
 
     final general = title == l10n.paywall_upgrade_experience_title;
+
+    // One headline -- the product name -- and one line of context under it.
+    //
+    // The headline used to name the three things the benefit list names
+    // directly below it, so the screen introduced itself twice. The entry
+    // point's own message becomes the supporting line, and the second
+    // subtitle goes: "Upgrade to unlock unlimited scanning" under "You used
+    // 15/15 free scans this month" added nothing the reader did not have.
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 10,
-          children: [
-            Text(
-              l10n.appTitle,
-              style: TextStyle(
-                color: palette.ink,
-                fontSize: 30,
-                height: 1.2,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: palette.accentInk),
-              ),
-              child: Text(
-                l10n.macro_pro_label,
-                style: TextStyle(color: palette.accentInk, fontSize: 19),
-              ),
-            ),
-          ],
+        Text(
+          '${l10n.appTitle} Pro',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: palette.ink,
+            fontSize: 25,
+            height: 1.15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.5,
+          ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 7),
         Text(
           general ? l10n.purchase_headline : title,
-          style: TextStyle(color: palette.ink, fontSize: 17, height: 1.35),
-        ),
-        if (!general) ...[
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: TextStyle(color: palette.muted, fontSize: 12, height: 1.35),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: palette.muted,
+            fontSize: 12.5,
+            height: 1.45,
           ),
-        ],
+        ),
       ],
     );
-  }
-
-  /// The trial explainer, rendered only when the store actually offers one.
-  List<Widget> _buildTrialSection(
-    BuildContext context,
-    _Palette palette,
-    double hPad,
-    bool dense,
-  ) {
-    final trial = _trialFor(_selectedPackage);
-    if (trial == null) return const [];
-    return [
-      SizedBox(height: dense ? 20 : 26),
-      Padding(
-        padding: EdgeInsets.symmetric(horizontal: hPad),
-        child: _TrialSpine(days: trial.days, palette: palette),
-      ),
-    ];
   }
 
   Widget _buildPlans(
@@ -992,7 +919,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             label: _planLabel(_packages[i], l10n),
             price: _safePriceString(_packages[i]),
             introPrice: _introFor(_packages[i])?.priceString,
-            cadence: _billingCadence(_packages[i], l10n),
             perMonth:
                 _packages[i].packageType == PackageType.annual
                     ? _monthlyEquivalent(_packages[i])
@@ -1410,10 +1336,8 @@ class _ScanHero extends StatefulWidget {
     required this.palette,
     required this.topInset,
     required this.onClose,
-    this.compact = false,
   });
 
-  final bool compact;
   final double height;
   final _Palette palette;
   final double topInset;
@@ -1462,134 +1386,13 @@ class _ScanHeroState extends State<_ScanHero>
     final l10n = AppLocalizations.of(context)!;
     final slide = _heroSlides[_index];
 
-    if (widget.compact) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          key: const ValueKey('paywall-compact-scan-preview'),
-          height: widget.height,
-          child: LayoutBuilder(
-            builder:
-                (context, _) => AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    final reduceMotion = MediaQuery.disableAnimationsOf(
-                      context,
-                    );
-                    final t = reduceMotion ? 0.82 : _controller.value;
-                    final entrance = _phase(t, 0.00, 0.06);
-                    final exit = 1 - _phase(t, 0.93, 1.00);
-                    final sweep = _phase(t, 0.08, 0.34);
-                    final panelReveal = _phase(t, 0.18, 0.28) * exit;
-                    final totalReveal = _phase(t, 0.40, 0.52) * exit;
-                    final itemReveal = [
-                      for (var i = 0; i < slide.detections.length; i++)
-                        _phase(t, 0.20 + (i * 0.085), 0.31 + (i * 0.085)) *
-                            exit,
-                    ];
-
-                    return Opacity(
-                      opacity: entrance * exit,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Transform.scale(
-                            scale: 1 + (t * 0.025),
-                            child: AnimatedSwitcher(
-                              duration:
-                                  reduceMotion
-                                      ? Duration.zero
-                                      : const Duration(milliseconds: 500),
-                              child: Image.asset(
-                                slide.asset,
-                                key: ValueKey(_index),
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: widget.height,
-                                errorBuilder:
-                                    (_, _, _) => ColoredBox(
-                                      color: palette.surface,
-                                      child: Center(
-                                        child: Icon(
-                                          LucideIcons.utensils,
-                                          color: palette.muted,
-                                        ),
-                                      ),
-                                    ),
-                              ),
-                            ),
-                          ),
-                          const Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Color(0x18000000),
-                                    Color(0x00000000),
-                                    Color(0x99000000),
-                                  ],
-                                  stops: [0, 0.38, 1],
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (!reduceMotion && sweep > 0 && sweep < 1)
-                            Positioned.fill(
-                              child: IgnorePointer(
-                                child: CustomPaint(
-                                  painter: _SweepPainter(
-                                    progress: sweep,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          PositionedDirectional(
-                            start: 8,
-                            top: 8,
-                            child: _CompactScanMark(progress: sweep),
-                          ),
-                          PositionedDirectional(
-                            end: 8,
-                            top: 8,
-                            child: Opacity(
-                              opacity: totalReveal,
-                              child: _CompactCalorieTotal(
-                                kcal: slide.totalKcal,
-                                progress: _phase(t, 0.40, 0.72),
-                              ),
-                            ),
-                          ),
-                          PositionedDirectional(
-                            start: 7,
-                            end: 7,
-                            bottom: 7,
-                            child: Opacity(
-                              opacity: panelReveal,
-                              child: _CompactDetectionPanel(
-                                detections: slide.detections,
-                                l10n: l10n,
-                                reveal: itemReveal,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-          ),
-        ),
-      );
-    }
 
     return ClipRect(
       // Explicit. The zoomed photograph was painting a sliver of itself past
       // the hero's bottom edge, showing up as a ~10dp band of un-faded image
       // below the fade -- the "little space" between the hero and the page.
       child: SizedBox(
+        key: const ValueKey('paywall-scan-hero'),
         height: widget.height,
         width: double.infinity,
         child: LayoutBuilder(
@@ -1783,193 +1586,6 @@ class _ScanHeroState extends State<_ScanHero>
   }
 }
 
-class _CompactScanMark extends StatelessWidget {
-  const _CompactScanMark({required this.progress});
-
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final pulse = math.sin(progress.clamp(0.0, 1.0) * math.pi);
-    return Transform.scale(
-      scale: 1 + (pulse * 0.08),
-      child: Container(
-        width: 25,
-        height: 25,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.46),
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.26 * pulse),
-              blurRadius: 10,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: const Icon(LucideIcons.scanLine, size: 14, color: Colors.white),
-      ),
-    );
-  }
-}
-
-class _CompactCalorieTotal extends StatelessWidget {
-  const _CompactCalorieTotal({required this.kcal, required this.progress});
-
-  final int kcal;
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final shown =
-        (kcal * Curves.easeOutCubic.transform(progress.clamp(0.0, 1.0)))
-            .round();
-    return Container(
-      height: 25,
-      padding: const EdgeInsetsDirectional.fromSTEB(7, 0, 8, 0),
-      decoration: BoxDecoration(
-        color: const Color(0xE612211B),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.62)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.18),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            LucideIcons.checkCircle2,
-            size: 12,
-            color: AppColors.primary,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            '$shown',
-            textDirection: TextDirection.ltr,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              height: 1,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-              fontFeatures: [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(width: 2),
-          Text(
-            'kcal',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
-              fontSize: 8,
-              height: 1,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompactDetectionPanel extends StatelessWidget {
-  const _CompactDetectionPanel({
-    required this.detections,
-    required this.l10n,
-    required this.reveal,
-  });
-
-  final List<_Detection> detections;
-  final AppLocalizations l10n;
-  final List<double> reveal;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final numberOnly = constraints.maxWidth < 136;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(7),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.58),
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < detections.length; i++)
-                    Opacity(
-                      opacity: reveal[i].clamp(0.0, 1.0),
-                      child: Transform.translate(
-                        offset: Offset(0, 3 * (1 - reveal[i].clamp(0.0, 1.0))),
-                        child: SizedBox(
-                          height: 17,
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 5,
-                                height: 5,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Expanded(
-                                child: Text(
-                                  detections[i].label(l10n),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    height: 1,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                numberOnly
-                                    ? detections[i].kcal.toString()
-                                    : '${detections[i].kcal} kcal',
-                                textDirection: TextDirection.ltr,
-                                style: const TextStyle(
-                                  color: Color(0xFFD6F5E7),
-                                  fontSize: 8.5,
-                                  height: 1,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0,
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// A soft emerald band travelling down the plate, with a bright leading edge.
 class _SweepPainter extends CustomPainter {
   _SweepPainter({required this.progress, required this.color});
 
@@ -2427,98 +2043,6 @@ class _HeroIconButton extends StatelessWidget {
 // PAGE FURNITURE
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ProDayPreview extends StatelessWidget {
-  const _ProDayPreview({required this.palette});
-  final _Palette palette;
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final large = MediaQuery.textScalerOf(context).scale(12) > 17;
-    final metrics = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l.purchase_preview_title.toUpperCase(),
-          style: TextStyle(color: palette.muted, fontSize: 10, height: 1.3),
-        ),
-        const SizedBox(height: 12),
-        for (final metric in [
-          (l.result_protein, 92, 120, _paywallSage),
-          (l.result_carbs, 168, 230, const Color(0xFF7D9DBC)),
-        ]) ...[
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            spacing: 12,
-            children: [
-              Text(
-                metric.$1,
-                style: TextStyle(color: palette.ink, fontSize: 12),
-              ),
-              Text(
-                '${metric.$2} / ${metric.$3}g',
-                textDirection: TextDirection.ltr,
-                style: TextStyle(color: palette.muted, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          LinearProgressIndicator(
-            value: metric.$2 / metric.$3,
-            minHeight: 3,
-            borderRadius: BorderRadius.circular(2),
-            color: metric.$4,
-            backgroundColor: palette.hairline,
-          ),
-          const SizedBox(height: 12),
-        ],
-        Divider(height: 1, color: palette.hairline),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              LucideIcons.messagesSquare,
-              size: 17,
-              color: palette.accentInk,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                l.purchase_preview_advice,
-                style: TextStyle(
-                  color: palette.muted,
-                  fontSize: 11,
-                  height: 1.3,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-    final photo = _ScanHero(
-      height: large ? 180 : 145,
-      palette: palette,
-      topInset: 0,
-      onClose: () {},
-      compact: true,
-    );
-    return large
-        ? Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [photo, const SizedBox(height: 12), metrics],
-        )
-        : Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(child: metrics),
-            const SizedBox(width: 16),
-            Expanded(child: photo),
-          ],
-        );
-  }
-}
-
 class _BenefitLedger extends StatelessWidget {
   const _BenefitLedger({required this.palette});
 
@@ -2527,55 +2051,42 @@ class _BenefitLedger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final items = [
-      (
-        LucideIcons.scanLine,
-        l10n.paywall_benefit_unlimited_scans,
-        l10n.purchase_scan_detail,
-      ),
-      (
-        LucideIcons.calendarDays,
-        l10n.purchase_planner_title,
-        l10n.purchase_planner_detail,
-      ),
-      (
-        LucideIcons.messagesSquare,
-        l10n.purchase_coach_title,
-        l10n.purchase_coach_detail,
-      ),
+    // Titles only. Each row used to carry a second sentence underneath --
+    // "Unlimited scans" followed by "Log meals without the daily limit",
+    // which said the same thing again and said it wrongly, since the limit
+    // is monthly. A tick and a phrase is the pattern people already read on
+    // every other subscription screen.
+    final items = <String>[
+      l10n.paywall_benefit_unlimited_scans,
+      l10n.purchase_planner_title,
+      l10n.purchase_coach_title,
     ];
+
     return Column(
       children: [
-        for (final item in items)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+        for (var i = 0; i < items.length; i++)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            decoration:
+                i == items.length - 1
+                    ? null
+                    : BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: palette.hairline),
+                      ),
+                    ),
             child: Row(
               children: [
-                Icon(item.$1, size: 26, color: palette.ink),
-                const SizedBox(width: 16),
+                Icon(LucideIcons.check, size: 16, color: palette.accentInk),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.$2,
-                        style: TextStyle(
-                          color: palette.ink,
-                          fontSize: 15,
-                          height: 1.3,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        item.$3,
-                        style: TextStyle(
-                          color: palette.muted,
-                          fontSize: 12,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    items[i],
+                    style: TextStyle(
+                      color: palette.ink,
+                      fontSize: 13.5,
+                      height: 1.3,
+                    ),
                   ),
                 ),
               ],
@@ -2586,148 +2097,12 @@ class _BenefitLedger extends StatelessWidget {
   }
 }
 
-/// The three dates that matter, on one rail. Shown only when a real free
-/// trial exists on the selected product.
-class _TrialSpine extends StatelessWidget {
-  const _TrialSpine({required this.days, required this.palette});
-
-  final int days;
-  final _Palette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final reminderDay = math.max(1, days - 2);
-
-    final steps = <List<String>>[
-      [l10n.paywall_trial_today, l10n.paywall_trial_today_desc],
-      [
-        l10n.paywall_trial_reminder(reminderDay),
-        l10n.paywall_trial_reminder_desc,
-      ],
-      [l10n.paywall_trial_end(days), l10n.paywall_trial_end_desc],
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette.hairline),
-      ),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.paywall_trial_title,
-            style: TextStyle(
-              color: palette.ink,
-              fontSize: 15.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 16),
-          for (var i = 0; i < steps.length; i++)
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // The rail: solid emerald while the trial is free, fading to
-                  // a hairline at the point money changes hands.
-                  SizedBox(
-                    width: 22,
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 11,
-                          height: 11,
-                          margin: const EdgeInsets.only(top: 3),
-                          decoration: BoxDecoration(
-                            color:
-                                i == steps.length - 1
-                                    ? palette.surface
-                                    : AppColors.primary,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color:
-                                  i == steps.length - 1
-                                      ? palette.muted.withValues(alpha: 0.5)
-                                      : AppColors.primary,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        if (i != steps.length - 1)
-                          Expanded(
-                            child: Container(
-                              width: 2,
-                              margin: const EdgeInsets.symmetric(vertical: 3),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    AppColors.primary,
-                                    i == steps.length - 2
-                                        ? palette.muted.withValues(alpha: 0.4)
-                                        : AppColors.primary,
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        bottom: i == steps.length - 1 ? 14 : 18,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            steps[i][0],
-                            style: TextStyle(
-                              color: palette.ink,
-                              fontSize: 13.5,
-                              height: 1.2,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            steps[i][1],
-                            style: TextStyle(
-                              color: palette.muted,
-                              fontSize: 12.5,
-                              height: 1.4,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 class _PlanCard extends StatelessWidget {
   const _PlanCard({
     required this.palette,
     required this.label,
     required this.price,
     required this.introPrice,
-    required this.cadence,
     required this.perMonth,
     required this.badge,
     required this.selected,
@@ -2741,7 +2116,6 @@ class _PlanCard extends StatelessWidget {
   /// Set when the store returns a discounted first period. [price] then becomes
   /// the struck-through renewal price and this is what the user pays now.
   final String? introPrice;
-  final String? cadence;
   final String? perMonth;
   final String? badge;
   final bool selected;
@@ -2750,46 +2124,14 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final large = MediaQuery.textScalerOf(context).scale(15) > 18;
-    final title = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: palette.ink,
-                fontSize: 15,
-                height: 1.3,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (badge != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: palette.accentInk),
-                ),
-                child: Text(
-                  badge!,
-                  style: TextStyle(
-                    color: palette.accentInk,
-                    fontSize: 9,
-                    height: 1.2,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        if (perMonth != null) ...[
-          const SizedBox(height: 4),
-          Text(perMonth!, style: TextStyle(color: palette.muted, fontSize: 12)),
-        ],
-      ],
+    final title = Text(
+      label,
+      style: TextStyle(
+        color: palette.ink,
+        fontSize: 15,
+        height: 1.3,
+        fontWeight: FontWeight.w600,
+      ),
     );
     final amount = Column(
       crossAxisAlignment:
@@ -2813,21 +2155,24 @@ class _PlanCard extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        if (cadence != null)
+        if (perMonth != null)
           Text(
-            cadence!,
+            perMonth!,
             style: TextStyle(color: palette.muted, fontSize: 11, height: 1.3),
           ),
       ],
     );
-    return Semantics(
+    final card = Semantics(
       button: true,
       selected: selected,
       child: Material(
         color: palette.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: selected ? _paywallSage : palette.hairline),
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: selected ? _paywallSage : palette.hairline,
+            width: selected ? 1.5 : 1,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -2862,6 +2207,37 @@ class _PlanCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (badge == null) return card;
+
+    // The badge straddles the top border rather than sitting inside next to
+    // the plan name, so the discount and the price read as one object.
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(padding: const EdgeInsets.only(top: 7), child: card),
+        PositionedDirectional(
+          end: 13,
+          top: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: palette.accentInk,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Text(
+              badge!,
+              style: TextStyle(
+                color: palette.paper,
+                fontSize: 9,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

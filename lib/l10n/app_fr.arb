@@ -3,7 +3,7 @@
   "purchase_headline": "Sachez quoi manger ensuite.",
   "purchase_preview_title": "Découvrez SnapCal Pro en action",
   "purchase_preview_advice": "Prévoyez un dîner riche en protéines.",
-  "purchase_scan_detail": "Notez vos repas sans limite quotidienne",
+  "purchase_scan_detail": "Notez vos repas sans limite mensuelle",
   "purchase_planner_title": "Des repas adaptés à vos objectifs",
   "purchase_planner_detail": "Une semaine et votre liste de courses",
   "purchase_coach_title": "Votre coach IA personnel",
@@ -360,6 +360,11 @@
   "home_goal_reached": "OBJECTIF",
   "home_completed": "TERMINÉ",
   "home_kcal_left": "kcal restantes",
+  "home_kcal_over": "kcal de trop aujourd'hui",
+  "home_todays_meals": "Repas du jour",
+  "home_open_log": "Ouvrir le journal",
+  "home_unlock_meal_plan_title": "Débloquez votre plan de repas complet",
+  "home_unlock_meal_plan_subtitle": "Déjeuner · Dîner · Suggestions intelligentes",
   "assistant_typing": "Le coach écrit...",
   "assistant_retry": "Réessayer",
   "assistant_speech_not_available": "Reconnaissance vocale indisponible",
@@ -381,8 +386,6 @@
   "paywall_trial_title": "Comment fonctionne votre essai",
   "paywall_trial_today": "Aujourd'hui",
   "paywall_trial_today_desc": "Accès complet à toutes les fonctions Pro.",
-  "paywall_trial_reminder": "Jour {day}",
-  "paywall_trial_reminder_desc": "Nous vous rappelons la fin de l'essai.",
   "paywall_trial_end": "Jour {day}",
   "paywall_trial_end_desc": "Le prélèvement a lieu. Annulez avant pour éviter.",
   "paywall_referral_title": "Voulez-vous la version gratuite ?",
@@ -789,7 +792,7 @@
   "paywall_cancel_anytime": "Annulez à tout moment. Sans engagement.",
   "paywall_terms_conditions": "Conditions générales",
   "paywall_trial_7_day": "Essai de 7 jours",
-  "paywall_scan_limit_subtitle": "Vous avez utilisé 3/3 scans gratuits aujourd'hui. Débloquez les scans alimentaires IA illimités et le détail instantané des calories.",
+  "paywall_scan_limit_subtitle": "Vous avez atteint votre limite de scans gratuits ce mois-ci. Débloquez les scans alimentaires IA illimités et le détail instantané des calories.",
   "paywall_coach_subtitle": "Débloquez le coaching illimité, les conseils de macros et les suggestions de repas adaptées à votre journée.",
   "paywall_planner_subtitle": "Débloquez les plans hebdomadaires complets, listes de courses, préférences et régénérations de repas IA.",
   "paywall_reports_subtitle": "Débloquez des analyses plus poussées, des tendances hebdomadaires et des suggestions IA pratiques après chaque {feature}.",
@@ -1041,7 +1044,17 @@
   "paywall_unlock_snapcal_pro": "Débloquer SnapCal Pro",
   "paywall_barcode_title": "Débloquer le scanner de codes-barres",
   "paywall_barcode_subtitle": "Enregistrez instantanément les aliments emballés en scannant leurs codes-barres",
-  "paywall_free_scans_used_title": "Vous avez utilisé 3/3 scans gratuits aujourd'hui",
+  "paywall_free_scans_used_title": "Vous avez utilisé {used}/{limit} scans gratuits ce mois-ci",
+  "@paywall_free_scans_used_title": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "paywall_unlimited_scanning_subtitle": "Passez à Pro pour débloquer les scans illimités",
   "paywall_unlimited_scanning_title": "Débloquer les scans illimités",
   "paywall_scan_track_subtitle": "Passez à Pro pour scanner et suivre tous vos repas",
