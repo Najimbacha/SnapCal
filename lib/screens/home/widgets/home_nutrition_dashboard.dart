@@ -108,25 +108,51 @@ Color _muted(BuildContext context) =>
 TextStyle _type(double size, {Color? color}) =>
     TextStyle(fontSize: size, height: 1.35, letterSpacing: 0, color: color);
 
+/// The gap above every home section.
+///
+/// Sections own their top spacing and the list between them owns none, so the
+/// rhythm is one number instead of a section padding plus a spacer that had
+/// drifted apart (12 here, 18 for meals, with 2px spacers on top of both).
+const double homeSectionGap = 18;
+
 class _Section extends StatelessWidget {
   const _Section({required this.child});
   final Widget child;
   @override
-  Widget build(BuildContext context) =>
-      Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: child);
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, homeSectionGap, 20, 0),
+    child: child,
+  );
+}
+
+/// The one section heading on the home screen.
+///
+/// There were two: this one at 11.5px and near-full contrast, and the meals
+/// label at 10.5px and faint. Same job, two looks, because they were written
+/// months apart in different files. This is the shared one; home_screen.dart
+/// renders it too.
+class HomeSectionLabel extends StatelessWidget {
+  const HomeSectionLabel(this.text, {super.key});
+  final String text;
+  @override
+  Widget build(BuildContext context) => Text(
+    text.toUpperCase(),
+    style: _type(
+      11,
+      // .55 measured 3.91:1 against the page; .60 clears the 4.5:1 that small
+      // text needs without turning the label into a heading.
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .60),
+    ).copyWith(height: 1.2, fontWeight: FontWeight.w600, letterSpacing: 0),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+  );
 }
 
 class _Heading extends StatelessWidget {
   const _Heading(this.text);
   final String text;
   @override
-  Widget build(BuildContext context) => Text(
-    text.toUpperCase(),
-    style: _type(
-      11.5,
-      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .88),
-    ).copyWith(height: 1.2, fontWeight: FontWeight.w600, letterSpacing: 0),
-  );
+  Widget build(BuildContext context) => HomeSectionLabel(text);
 }
 
 class _Surface extends StatelessWidget {
@@ -139,7 +165,7 @@ class _Surface extends StatelessWidget {
     return Material(
       color: dark ? const Color(0xFF090A09) : Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(
           color: dark ? const Color(0xFF292B29) : const Color(0xFFE1E3DF),
         ),
@@ -337,7 +363,7 @@ class HomeMacroSection extends StatelessWidget {
                                         value,
                                         textAlign: TextAlign.end,
                                         textDirection: TextDirection.ltr,
-                                        style: _type(13),
+                                        style: _type(12),
                                       ),
                                     ),
                                   ],
@@ -477,7 +503,7 @@ class _WellnessMetric extends StatelessWidget {
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -490,14 +516,14 @@ class _WellnessMetric extends StatelessWidget {
             Text(
               label,
               style: _type(
-                11.5,
+                11,
                 color: _muted(context),
               ).copyWith(fontWeight: FontWeight.w500),
             ),
             Text(value, style: _type(16).copyWith(fontWeight: FontWeight.w600)),
             Text(
               detail.isEmpty ? ' ' : detail,
-              style: _type(10.5, color: _muted(context)),
+              style: _type(11, color: _muted(context)),
             ),
           ] else
             Row(
@@ -515,7 +541,7 @@ class _WellnessMetric extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: _type(
-                          11.5,
+                          11,
                           color: _muted(context),
                         ).copyWith(fontWeight: FontWeight.w500),
                       ),
@@ -536,7 +562,7 @@ class _WellnessMetric extends StatelessWidget {
                         detail.isEmpty ? ' ' : detail,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: _type(10.5, color: _muted(context)),
+                        style: _type(11, color: _muted(context)),
                       ),
                     ],
                   ),
@@ -680,7 +706,7 @@ class HomeToolsSection extends StatelessWidget {
               onTap: onPlannerTap,
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Divider(
                 height: 1,
                 thickness: 1,
@@ -727,12 +753,14 @@ class _ToolRow extends StatelessWidget {
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            // Matches _MetricIconTile. These were 42 here and 38 in wellness,
+            // two icon tiles of different sizes on one screen.
+            width: 38,
+            height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: accent.withValues(
@@ -760,7 +788,7 @@ class _ToolRow extends StatelessWidget {
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: _type(10.5, color: _muted(context)),
+                  style: _type(11, color: _muted(context)),
                 ),
               ],
             ),

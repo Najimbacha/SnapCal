@@ -617,7 +617,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   activityBonus: isPro ? activeCalories : 0,
                 ),
           ),
-          const SizedBox(height: 2),
           // Macros sit directly under the calorie hero for every user. The
           // previous order pushed them below water and steps for free users,
           // which made sense while the card was a locked placeholder — it now
@@ -639,7 +638,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
           ),
-          const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[3],
             HomeWellnessSection(
@@ -654,7 +652,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               onActivityTap: () => showActivityHealthConnectSheet(context),
             ),
           ),
-          const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[4],
             HomeToolsSection(
@@ -683,7 +680,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               isPro: isPro,
             ),
           ),
-          const SizedBox(height: 2),
           _staggeredSlide(
             _itemAnims[5],
             _MinimalMealsSection(
@@ -767,7 +763,12 @@ class _HomeInset extends StatelessWidget {
 }
 
 const _minimalInk = Color(0xFF1C1917);
-const _minimalMuted = Color(0xFFA8A29E);
+/// Secondary text on the light ground.
+///
+/// This was #A8A29E, which measures 2.45:1 against the page -- well under the
+/// 4.5:1 that small text needs, and far below the 6.1:1 the wellness and tools
+/// cards were already hitting. Same warm grey, deep enough to read: 4.56:1.
+const _minimalMuted = Color(0xFF777370);
 const _minimalLine = Color(0xFFE8E4DC);
 const _minimalGreen =
     AppColors.primary; // SnapCal emerald — brand progress color
@@ -804,7 +805,10 @@ class _MinimalHomeTopBar extends ConsumerWidget {
     final ink = isDark ? Colors.white : _minimalInk;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
+      // One gutter for the whole screen. The top bar sat at 22 and the hero at
+      // 24 while every section below used 20, so the left edge stepped in and
+      // out three times on the way down.
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
           // Logo/Branding
@@ -837,7 +841,7 @@ class _MinimalHomeTopBar extends ConsumerWidget {
                     isRefreshing
                         ? Padding(
                           key: const ValueKey('refreshing'),
-                          padding: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsetsDirectional.only(start: 8),
                           child: SizedBox(
                             width: 12,
                             height: 12,
@@ -855,8 +859,10 @@ class _MinimalHomeTopBar extends ConsumerWidget {
             ],
           ),
           const Spacer(),
-          // Streak Flame Badge (only if active)
-          if (streak >= 0) ...[
+          // Streak Flame Badge (only if active). This read `>= 0`, which is
+          // every possible streak -- so a brand new account was shown an
+          // orange flame next to a 0 on its first ever screen.
+          if (streak > 0) ...[
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -932,7 +938,7 @@ class _MinimalCalorieHero extends StatelessWidget {
     final isOverGoal = remaining < 0;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 22, 24, 10),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
       child: Column(
         children: [
           FittedBox(
@@ -951,7 +957,7 @@ class _MinimalCalorieHero extends StatelessWidget {
           ),
           const SizedBox(height: 7),
           Text(
-            isOverGoal ? 'kcal over today' : l10n.home_kcal_left,
+            isOverGoal ? l10n.home_kcal_over : l10n.home_kcal_left,
             style: AppTypography.bodyMedium.copyWith(
               color: muted,
               fontSize: 14,
@@ -1135,7 +1141,7 @@ class _MinimalHeroStat extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? Colors.white : _minimalInk;
-    final muted = isDark ? Colors.white54 : const Color(0xFFB4AFA8);
+    final muted = isDark ? Colors.white54 : _minimalMuted;
 
     return Column(
       children: [
@@ -1572,7 +1578,7 @@ class _MinimalMealsSection extends StatelessWidget {
     final hiddenMealCount = math.max(0, meals.length - 3);
     final viewAllLabel =
         meals.isEmpty
-            ? 'Open log'
+            ? l10n.home_open_log
             : hiddenMealCount > 0
             ? '${l10n.home_view_all} (${meals.length})'
             : l10n.home_view_all;
@@ -1583,14 +1589,16 @@ class _MinimalMealsSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: _MinimalSectionLabel(text: 'Today\'s meals')),
+              Expanded(
+                child: _MinimalSectionLabel(text: l10n.home_todays_meals),
+              ),
               TextButton(
                 onPressed: onViewAll,
                 style: TextButton.styleFrom(
                   foregroundColor: _greenInk(isDark),
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 6),
-                  minimumSize: const Size(0, 32),
+                  minimumSize: const Size(0, 48),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
@@ -1632,24 +1640,7 @@ class _MinimalSectionLabel extends StatelessWidget {
   const _MinimalSectionLabel({required this.text});
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Text(
-      text.toUpperCase(),
-      style: AppTypography.labelSmall.copyWith(
-        color:
-            isDark
-                ? Colors.white.withValues(alpha: 0.48)
-                : _minimalMuted.withValues(alpha: 0.82),
-        fontSize: 10.5,
-        height: 1.2,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0,
-      ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
+  Widget build(BuildContext context) => HomeSectionLabel(text);
 }
 
 class _MinimalMealRow extends StatelessWidget {
@@ -1700,7 +1691,9 @@ class _MinimalMealRow extends StatelessWidget {
                     style: AppTypography.bodyMedium.copyWith(
                       color: ink,
                       fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      // w600, matching the planner and coach row titles. This
+                      // was the only 14px row title on the screen set heavier.
+                      fontWeight: FontWeight.w600,
                       letterSpacing: 0,
                     ),
                     maxLines: 1,
@@ -1727,7 +1720,7 @@ class _MinimalMealRow extends StatelessWidget {
               style: AppTypography.bodyMedium.copyWith(
                 color: ink,
                 fontSize: 14,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 letterSpacing: 0,
               ),
             ),
@@ -1753,7 +1746,7 @@ class _MinimalEmptyMealRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF090A09) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isDark ? const Color(0xFF292B29) : const Color(0xFFE1E3DF),
           ),
@@ -1798,6 +1791,7 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const goldColor = Color(0xFFD4AF37);
 
@@ -1856,7 +1850,7 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           gradient: cardBg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: borderColor, width: 1.2),
           boxShadow: shadow,
         ),
@@ -1867,7 +1861,7 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Unlock your full meal plan',
+                    l10n.home_unlock_meal_plan_title,
                     style: AppTypography.bodyMedium.copyWith(
                       color: textColor,
                       fontSize: 13,
@@ -1877,7 +1871,7 @@ class _MinimalUnlockPlanCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Lunch · Dinner · Smart suggestions',
+                    l10n.home_unlock_meal_plan_subtitle,
                     style: AppTypography.labelSmall.copyWith(
                       color: subtitleColor,
                       fontSize: 11,
@@ -4222,7 +4216,7 @@ class _HomeDashboardSkeleton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final fill = colorScheme.surfaceContainerHighest;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 22, 24, 10),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
       child: Column(
         children: [
           _SkeletonBox(width: 164, height: 50, radius: 8, color: fill),
