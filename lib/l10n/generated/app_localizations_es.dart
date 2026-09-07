@@ -543,7 +543,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sync_facebook => 'Continuar con Facebook';
 
   @override
-  String get sync_email => 'Iniciar sesión con Email';
+  String get sync_email => 'Continuar con correo';
 
   @override
   String get sync_skip => 'Omitir por ahora';

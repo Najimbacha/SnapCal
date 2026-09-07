@@ -11,12 +11,18 @@ import '../../providers/auth_notifier_provider.dart';
 import '../../widgets/ui_blocks.dart';
 import '../../l10n/generated/app_localizations.dart';
 
-const _minimalBg = Color(0xFFF9F8F5);
+// Matched to the full sign-in screen, which is matched to the app.
+const _minimalBg = Color(0xFFFBFCFA);
 const _minimalDarkBg = Color(0xFF14130F);
 const _minimalInk = Color(0xFF1C1917);
-const _minimalLine = Color(0xFFE8E4DC);
-const _minimalGreen = Color(0xFF1A3D2B);
-const _minimalGreenText = Color(0xFF16733A);
+const _minimalMuted = Color(0xFF777370);
+
+/// Facebook's own blue. The mark was being painted in SnapCal's green, and a
+/// brand mark repainted is not that brand's mark.
+const _facebookBlue = Color(0xFF1877F2);
+const _minimalLine = Color(0xFFE1E3DF);
+const _minimalGreen = Color(0xFF04543E);
+const _minimalGreenText = AppColors.primaryDark;
 
 class AuthBottomSheet extends ConsumerStatefulWidget {
   const AuthBottomSheet({super.key});
@@ -473,8 +479,12 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet>
                                       'assets/images/google_logo.png',
                                       width: 18,
                                       height: 18,
-                                      cacheWidth: 120,
-                                      cacheHeight: 40,
+                                      // 80x80 source. This asked for 120x40,
+                                      // which resampled a square mark to 3:1
+                                      // and then squeezed it back -- which is
+                                      // what made the G look mangled.
+                                      cacheWidth: 80,
+                                      cacheHeight: 80,
                                     ),
                                     isLoading: _googleLoading,
                                     onTap: _handleGoogle,
@@ -530,7 +540,7 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet>
                                     iconWidget: const FaIcon(
                                       FontAwesomeIcons.facebookF,
                                       size: 14,
-                                      color: _minimalGreenText,
+                                      color: _facebookBlue,
                                     ),
                                     isLoading: _facebookLoading,
                                     onTap: _handleFacebook,
@@ -560,8 +570,8 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet>
                                       size: 14,
                                       color:
                                           isDark
-                                              ? Colors.white
-                                              : _minimalGreenText,
+                                              ? Colors.white70
+                                              : _minimalMuted,
                                     ),
                                     isLoading: false,
                                     onTap:
@@ -606,7 +616,8 @@ class _AuthSocialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDarkMode;
-    final radius = BorderRadius.circular(100);
+    // 12px cards, as everywhere else; these were fully round pills.
+    final radius = BorderRadius.circular(12);
 
     return Material(
       color: Colors.transparent,

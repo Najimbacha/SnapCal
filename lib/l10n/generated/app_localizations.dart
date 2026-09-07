@@ -1089,7 +1089,7 @@ abstract class AppLocalizations {
   /// No description provided for @sync_email.
   ///
   /// In en, this message translates to:
-  /// **'Sign in with Email'**
+  /// **'Continue with email'**
   String get sync_email;
 
   /// No description provided for @sync_skip.

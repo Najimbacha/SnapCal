@@ -13,12 +13,22 @@ import '../../providers/auth_state_provider.dart';
 import '../../widgets/ui_blocks.dart';
 import '../../l10n/generated/app_localizations.dart';
 
-const _minimalBg = Color(0xFFF9F8F5);
-const _minimalDarkBg = Color(0xFF14130F);
+// These were close to the app's colours without being them: #F9F8F5 against
+// the paper the rest of the app uses, a card line two steps off, and two
+// greens -- #1A3D2B and #16733A -- that appear on no other screen. Near-misses
+// read worse than a deliberate difference, because the eye cannot tell whether
+// it is looking at a variation or a mistake.
+const _minimalBg = Color(0xFFFBFCFA);
+const _minimalDarkBg = Color(0xFF0B0C0B);
 const _minimalInk = Color(0xFF1C1917);
-const _minimalLine = Color(0xFFE8E4DC);
-const _minimalGreen = Color(0xFF1A3D2B);
-const _minimalGreenText = Color(0xFF16733A);
+const _minimalMuted = Color(0xFF777370);
+
+/// Facebook's own blue. The mark was being painted in SnapCal's green, and a
+/// brand mark repainted is not that brand's mark.
+const _facebookBlue = Color(0xFF1877F2);
+const _minimalLine = Color(0xFFE1E3DF);
+const _minimalGreen = Color(0xFF04543E);
+const _minimalGreenText = AppColors.primaryDark;
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -452,8 +462,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                       'assets/images/google_logo.png',
                                       width: 20,
                                       height: 20,
-                                      cacheWidth: 120,
-                                      cacheHeight: 40,
+                                      // 80x80 source. This asked for 120x40,
+                                      // which resampled a square mark to 3:1
+                                      // and then squeezed it back -- which is
+                                      // what made the G look mangled.
+                                      cacheWidth: 80,
+                                      cacheHeight: 80,
                                     ),
                                     isLoading: _googleLoading,
                                     onTap: _handleGoogle,
@@ -496,12 +510,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                 ),
                                 const SizedBox(height: 16),
 
-                                // ── Secondary Actions (Facebook & Email) ──
+                                // ── The other two, each on its own line ──
+                                //
+                                // Facebook and email shared a row, so
+                                // "Continue with Facebook" had half the width
+                                // its own label needed and sat cramped against
+                                // its icon. Three stacked choices also match
+                                // the bottom sheet, which already stacks them.
                                 _StaggeredFade(
                                   animation: _staggeredAnims![4],
-                                  child: Row(
+                                  child: Column(
                                     children: [
-                                      Expanded(
+                                      SizedBox(
+                                        width: double.infinity,
                                         child: _AuthSocialButton(
                                           label: l10n.sync_facebook,
                                           backgroundColor: const Color(
@@ -520,15 +541,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                           iconWidget: const FaIcon(
                                             FontAwesomeIcons.facebookF,
                                             size: 16,
-                                            color: _minimalGreenText,
+                                            color: _facebookBlue,
                                           ),
                                           isLoading: _facebookLoading,
                                           onTap: _handleFacebook,
-                                          small: true,
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
+                                      const SizedBox(height: 12),
+                                      SizedBox(
+                                        width: double.infinity,
                                         child: _AuthSocialButton(
                                           label: l10n.sync_email,
                                           backgroundColor:
@@ -552,8 +573,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                             size: 16,
                                             color:
                                                 isDark
-                                                    ? Colors.white
-                                                    : _minimalGreenText,
+                                                    ? Colors.white70
+                                                    : _minimalMuted,
                                           ),
                                           isLoading: false,
                                           onTap:
@@ -561,7 +582,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                                 _showEmailForm = true;
                                                 _isSignUp = false;
                                               }),
-                                          small: true,
                                         ),
                                       ),
                                     ],
@@ -586,7 +606,6 @@ class _AuthSocialButton extends StatelessWidget {
   final Widget iconWidget;
   final bool isLoading;
   final VoidCallback onTap;
-  final bool small;
   final Color? backgroundColor;
   final Color? textColor;
   final Color? borderColor;
@@ -599,13 +618,13 @@ class _AuthSocialButton extends StatelessWidget {
     this.textColor,
     this.borderColor,
     this.isLoading = false,
-    this.small = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDarkMode;
-    final radius = BorderRadius.circular(100);
+    // The app is built from 12px cards; these were fully round pills.
+    final radius = BorderRadius.circular(12);
 
     return Material(
       color: Colors.transparent,
@@ -614,7 +633,7 @@ class _AuthSocialButton extends StatelessWidget {
         borderRadius: radius,
         child: Ink(
           height: 56,
-          padding: EdgeInsets.symmetric(horizontal: small ? 8 : 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color:
                 backgroundColor ??
@@ -642,8 +661,7 @@ class _AuthSocialButton extends StatelessWidget {
                 )
               else ...[
                 iconWidget,
-                if (!small) ...[
-                  const SizedBox(width: 12),
+                const SizedBox(width: 12),
                   Flexible(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -660,24 +678,6 @@ class _AuthSocialButton extends StatelessWidget {
                       ),
                     ),
                   ),
-                ] else ...[
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        style: AppTypography.labelLarge.copyWith(
-                          color:
-                              textColor ??
-                              (isDark ? Colors.white : _minimalInk),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ],
           ),

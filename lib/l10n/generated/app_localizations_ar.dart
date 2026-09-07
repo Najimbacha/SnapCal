@@ -547,7 +547,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sync_facebook => 'المتابعة باستخدام Facebook';
 
   @override
-  String get sync_email => 'تسجيل الدخول بالبريد الإلكتروني';
+  String get sync_email => 'المتابعة بالبريد الإلكتروني';
 
   @override
   String get sync_skip => 'تخطي الآن';
