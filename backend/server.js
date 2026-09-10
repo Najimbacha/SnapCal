@@ -1417,7 +1417,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
       key: () => process.env.DEEPSEEK_API_KEY,
       run: (key) => openAiVision(
         'https://api.deepseek.com/chat/completions',
-        process.env.DEEPSEEK_SCANNER_MODEL || 'deepseek-v4-flash-vision-exp',
+        process.env.DEEPSEEK_SCANNER_MODEL || 'deepseek-flash',
         { Authorization: `Bearer ${key}` },
         // DeepSeek enables thinking by default; food scans need a direct answer.
         { thinking: { type: 'disabled' } },
@@ -1552,7 +1552,7 @@ async function callAiText(prompt, options = {}) {
   };
 
   // One OpenAI-shaped text request; three of the four providers speak it.
-  const openAiText = async (name, url, model, key, extraHeaders) => {
+  const openAiText = async (name, url, model, key, extraHeaders, extraBody) => {
     const response = await axios.post(
       url,
       {
@@ -1564,6 +1564,7 @@ async function callAiText(prompt, options = {}) {
         max_tokens: maxOutputTokens,
         temperature,
         ...(requireJson ? { response_format: { type: 'json_object' } } : {}),
+        ...(extraBody || {}),
       },
       {
         headers: {
@@ -1587,8 +1588,11 @@ async function callAiText(prompt, options = {}) {
       run: (key) => openAiText(
         'deepseek',
         'https://api.deepseek.com/chat/completions',
-        process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat',
+        process.env.DEEPSEEK_TEXT_MODEL || 'deepseek-flash',
         key,
+        undefined,
+        // deepseek-flash thinks by default, and thinking mode ignores temperature.
+        { thinking: { type: 'disabled' } },
       ),
     },
     gemini: {

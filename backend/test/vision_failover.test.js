@@ -99,6 +99,15 @@ test('DeepSeek thinking setting is not sent to other providers', async (t) => {
   await callAiWithImage('test-image', 'en', null, true);
 });
 
+test('scans default to deepseek-flash, not a retired model name', async (t) => {
+  process.env.AI_IMAGE_PROVIDER_ORDER = 'deepseek';
+  t.mock.method(axios, 'post', async (_url, body) => {
+    assert.equal(body.model, 'deepseek-flash');
+    return reply(valid);
+  });
+  await callAiWithImage('test-image', 'en', null, true);
+});
+
 test('v2 uses the smaller detection budget and lower temperature', async (t) => {
   process.env.AI_IMAGE_PROVIDER_ORDER = 'deepseek';
   t.mock.method(axios, 'post', async (_url, body) => {
@@ -203,4 +212,31 @@ test('new nutrition estimates are persisted without food names in the key', asyn
   assert.equal(key.includes(name), false);
   assert.equal(value.calories, 160);
   assert.equal(ttl, 30 * 24 * 60 * 60);
+});
+
+const nutritionReply = (name) => reply(JSON.stringify({
+  foods: { [name]: { calories: 160, protein_g: 10, carbs_g: 30, fat_g: 0 } },
+}));
+
+test('text calls default to deepseek-flash with thinking off', async (t) => {
+  const name = 'text model default food';
+  t.mock.method(axios, 'post', async (url, body) => {
+    assert.equal(url, 'https://api.deepseek.com/chat/completions');
+    assert.equal(body.model, 'deepseek-flash');
+    assert.deepEqual(body.thinking, { type: 'disabled' });
+    return nutritionReply(name);
+  });
+  const result = await fillMissingNutrition(unresolved(name));
+  assert.equal(result.items[0].calories, 160);
+});
+
+test('DeepSeek text thinking setting is not sent to other providers', async (t) => {
+  process.env.AI_TEXT_PROVIDER_ORDER = 'groq';
+  const name = 'text thinking isolation food';
+  t.mock.method(axios, 'post', async (_url, body) => {
+    assert.equal(Object.hasOwn(body, 'thinking'), false);
+    return nutritionReply(name);
+  });
+  const result = await fillMissingNutrition(unresolved(name));
+  assert.equal(result.items[0].calories, 160);
 });
