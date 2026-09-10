@@ -49,6 +49,7 @@ class SessionCleanupService {
     'templates_box',
     'achievements_box',
     'sync_queue_box',
+    'sync_cursor_box',
     'upload_queue_box',
     'activity_box',
   ];
@@ -129,6 +130,10 @@ class SessionCleanupService {
         'free_scans_used_today',
         'promo_paywall_',
         'review_',
+        // SettingsRepository's per-account 'synced recently' marker. Left behind,
+        // signing back in within its interval skipped the settings pull, so an
+        // emptied phone showed default goals and sent the user to onboarding.
+        'settingsCloudSyncAt',
       ];
       final stale =
           prefs

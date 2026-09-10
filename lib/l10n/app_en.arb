@@ -2235,5 +2235,16 @@
   "pro_welcome_subtitle": "Everything in Pro is ready for you.",
   "pro_welcome_cta": "Start exploring",
   "pro_restored_eyebrow": "Welcome back",
-  "pro_restored_title": "Pro restored"
+  "pro_restored_title": "Pro restored",
+  "sync_status_title": "Cloud sync",
+  "sync_signed_in_as": "Signed in as {email}",
+  "sync_status_syncing": "Syncing…",
+  "sync_status_last": "Last synced {time}",
+  "sync_status_never": "Tap to sync now",
+  "sync_status_pending": "{count, plural, =1{1 change waiting to upload} other{{count} changes waiting to upload}}",
+  "sync_status_failed": "Couldn't sync. Tap to try again",
+  "sync_status_done": "Everything is synced",
+  "@sync_signed_in_as": {"placeholders":{"email":{"type":"String"}}},
+  "@sync_status_last": {"placeholders":{"time":{"type":"String"}}},
+  "@sync_status_pending": {"placeholders":{"count":{"type":"int"}}}
 }

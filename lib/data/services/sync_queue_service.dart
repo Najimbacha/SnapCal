@@ -22,6 +22,7 @@ class SyncQueueService with ChangeNotifier {
   bool _initialized = false;
   bool _isFlushing = false;
   static const int _maxAttempts = 12;
+  int _lastOrder = 0;
 
   bool get isFlushing => _isFlushing;
   int get pendingCount => _box?.length ?? 0;
@@ -58,6 +59,7 @@ class SyncQueueService with ChangeNotifier {
     bool merge = true,
   }) async {
     await init();
+    await _supersede(documentPath, keepId: id);
     await _box?.put(id, {
       'id': id,
       'type': 'set',
@@ -66,6 +68,7 @@ class SyncQueueService with ChangeNotifier {
       'merge': merge,
       'attempts': 0,
       'createdAt': DateTime.now().millisecondsSinceEpoch,
+      'order': _nextOrder(),
       'nextRetryAt': 0,
       'lastError': null,
     });
@@ -77,16 +80,84 @@ class SyncQueueService with ChangeNotifier {
     required String documentPath,
   }) async {
     await init();
+    await _supersede(documentPath, keepId: id);
     await _box?.put(id, {
       'id': id,
       'type': 'delete',
       'documentPath': documentPath,
       'attempts': 0,
       'createdAt': DateTime.now().millisecondsSinceEpoch,
+      'order': _nextOrder(),
       'nextRetryAt': 0,
       'lastError': null,
     });
     notifyListeners();
+  }
+
+  /// The newest operation for a document supersedes any older one still
+  /// waiting. Every caller queues a document's whole intended state -- a full
+  /// payload or a delete -- so an older operation has nothing left to add, and
+  /// replaying it after the newer one would undo it: a save queued before a
+  /// delete re-created the document the user had just deleted.
+  Future<void> _supersede(String documentPath, {required String keepId}) async {
+    final box = _box;
+    if (box == null) return;
+    final stale =
+        box.keys.where((key) {
+          if (key == keepId) return false;
+          return _asMap(box.get(key))?['documentPath'] == documentPath;
+        }).toList();
+    if (stale.isNotEmpty) await box.deleteAll(stale);
+  }
+
+  /// Strictly increasing, so two operations queued within the same clock tick
+  /// still replay in the order they were made.
+  int _nextOrder() {
+    final now = DateTime.now().microsecondsSinceEpoch;
+    _lastOrder = now > _lastOrder ? now : _lastOrder + 1;
+    return _lastOrder;
+  }
+
+  /// Whether a change to [documentPath] is still waiting to be sent. A pull
+  /// must not overwrite a local change the cloud has not seen yet.
+  bool hasPendingFor(String documentPath) {
+    final box = _box;
+    if (box == null) return false;
+    return box.values.any(
+      (value) => _asMap(value)?['documentPath'] == documentPath,
+    );
+  }
+
+  /// Operations due now, oldest first.
+  ///
+  /// Hive returns keys in alphabetical order, not the order they were written,
+  /// so walking `box.keys` ran every `...:delete:...` before any
+  /// `...:set:...`. Replay now follows the order the changes were made in.
+  @visibleForTesting
+  List<MapEntry<dynamic, Map<String, dynamic>>> dueOperations(int now) {
+    final box = _box;
+    if (box == null) return const [];
+    final due = <MapEntry<dynamic, Map<String, dynamic>>>[];
+    for (final key in box.keys) {
+      final op = _asMap(box.get(key));
+      if (op == null) continue;
+      if ((op['nextRetryAt'] as int? ?? 0) > now) continue;
+      due.add(MapEntry(key, op));
+    }
+    int orderOf(Map<String, dynamic> op) =>
+        op['order'] as int? ?? (op['createdAt'] as int? ?? 0) * 1000;
+    due.sort((a, b) => orderOf(a.value).compareTo(orderOf(b.value)));
+    return due;
+  }
+
+  /// Whether [key] still holds the operation that was read as [op]. A newer
+  /// change to the same document may have replaced it while [op] was in
+  /// flight, and that newer change must not be deleted or overwritten.
+  bool _isCurrent(Box<dynamic> box, dynamic key, Map<String, dynamic> op) {
+    final current = _asMap(box.get(key));
+    return current != null &&
+        current['order'] == op['order'] &&
+        current['createdAt'] == op['createdAt'];
   }
 
   Future<void> flushDue() async {
@@ -98,25 +169,15 @@ class SyncQueueService with ChangeNotifier {
     _isFlushing = true;
     notifyListeners();
     try {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final entries =
-          box.keys.map((key) => MapEntry(key, _asMap(box.get(key)))).where((
-            entry,
-          ) {
-            final op = entry.value;
-            if (op == null) return false;
-            final nextRetryAt = op['nextRetryAt'] as int? ?? 0;
-            return nextRetryAt <= now;
-          }).toList();
+      final entries = dueOperations(DateTime.now().millisecondsSinceEpoch);
 
       for (final entry in entries) {
         final key = entry.key;
         final op = entry.value;
-        if (op == null) continue;
 
         try {
           await _perform(op).timeout(TimeoutPolicy.firestore);
-          await box.delete(key);
+          if (_isCurrent(box, key, op)) await box.delete(key);
         } catch (error) {
           final failure = AppFailure.fromError(error);
           final attempts = (op['attempts'] as int? ?? 0) + 1;
@@ -140,9 +201,10 @@ class SyncQueueService with ChangeNotifier {
                 ),
               );
             }
-            await box.delete(key);
+            if (_isCurrent(box, key, op)) await box.delete(key);
             continue;
           }
+          if (!_isCurrent(box, key, op)) continue;
           op['attempts'] = attempts;
           op['lastError'] = failure.message;
           op['nextRetryAt'] =

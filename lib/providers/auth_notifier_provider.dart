@@ -12,6 +12,16 @@ import '../core/services/config_service.dart';
 import '../core/services/session_cleanup_service.dart';
 import '../data/services/scan_gate_service.dart';
 import '../data/services/subscription_service.dart';
+import '../data/services/sync_queue_service.dart';
+import 'assistant_provider.dart';
+import 'cloud_sync_provider.dart';
+import 'meal_provider.dart';
+import 'metrics_provider.dart';
+import 'planner_provider.dart';
+import 'repository_providers.dart';
+import 'settings_provider.dart';
+import 'template_provider.dart';
+import 'water_provider.dart';
 
 part 'auth_notifier_provider.g.dart';
 
@@ -53,7 +63,7 @@ class AuthNotifier extends _$AuthNotifier {
   /// and re-verify the new session's entitlement.
   Future<void> _switchAwayFromAnonymous(
     User anonymousUser,
-    AuthCredential credential,
+    Future<void> Function() signIn,
   ) async {
     String? previousUidToken;
     try {
@@ -62,7 +72,7 @@ class AuthNotifier extends _$AuthNotifier {
       debugPrint('Anonymous token fetch failed before link: $e');
     }
 
-    await FirebaseAuth.instance.signInWithCredential(credential);
+    await signIn();
 
     // Quota keys are UID-scoped, so a switch would otherwise hand the user a
     // fresh set of free scans. Carry the anonymous counters across.
@@ -70,6 +80,10 @@ class AuthNotifier extends _$AuthNotifier {
     if (newUid != null) {
       await ScanGateService().migrateScopeTo(newUid);
     }
+
+    // What they logged as a guest is on this phone only, under the identity
+    // just left behind. Carry it into the account, or it is never backed up.
+    unawaited(ref.read(cloudSyncProvider.notifier).uploadAllLocal());
 
     unawaited(
       _reportStrandedEntitlementIfNeeded(anonymousUser.uid, previousUidToken),
@@ -158,11 +172,18 @@ class AuthNotifier extends _$AuthNotifier {
         } on FirebaseAuthException catch (e) {
           if (e.code == 'credential-already-in-use' ||
               e.code == 'email-already-in-use') {
-            await _switchAwayFromAnonymous(anonymousUser!, credential);
+            await _switchAwayFromAnonymous(
+              anonymousUser!,
+              () => FirebaseAuth.instance.signInWithCredential(credential),
+            );
           } else {
             rethrow;
           }
         }
+      } else if (_isDifferentAccount(email: googleUser.email)) {
+        await _signInReplacingAccount(
+          () => FirebaseAuth.instance.signInWithCredential(credential),
+        );
       } else {
         await FirebaseAuth.instance.signInWithCredential(credential);
       }
@@ -194,11 +215,18 @@ class AuthNotifier extends _$AuthNotifier {
               .timeout(TimeoutPolicy.auth);
         } on FirebaseAuthException catch (e) {
           if (e.code == 'credential-already-in-use') {
-            await _switchAwayFromAnonymous(anonymousUser!, credential);
+            await _switchAwayFromAnonymous(
+              anonymousUser!,
+              () => FirebaseAuth.instance.signInWithCredential(credential),
+            );
           } else {
             rethrow;
           }
         }
+      } else if (_isDifferentAccount(providerId: 'facebook.com')) {
+        await _signInReplacingAccount(
+          () => FirebaseAuth.instance.signInWithCredential(credential),
+        );
       } else {
         await FirebaseAuth.instance.signInWithCredential(credential);
       }
@@ -222,16 +250,12 @@ class AuthNotifier extends _$AuthNotifier {
         } on FirebaseAuthException catch (e) {
           if (e.code == 'credential-already-in-use') {
             // Signing into an existing account switches UID; run the same
-            // stranded-entitlement guard as social sign-in.
-            final previousUidToken = await anonymousUser!.getIdToken();
-            await FirebaseAuth.instance.signInWithEmailAndPassword(
-              email: email,
-              password: password,
-            );
-            unawaited(
-              _reportStrandedEntitlementIfNeeded(
-                anonymousUser.uid,
-                previousUidToken,
+            // guards as social sign-in.
+            await _switchAwayFromAnonymous(
+              anonymousUser!,
+              () => FirebaseAuth.instance.signInWithEmailAndPassword(
+                email: email,
+                password: password,
               ),
             );
           } else {
@@ -250,11 +274,105 @@ class AuthNotifier extends _$AuthNotifier {
   Future<void> signInWithEmail(String email, String password) async {
     if (state.isLoading) return;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password)
-          .then((_) {}),
-    );
+    state = await AsyncValue.guard(() async {
+      Future<void> signIn() => FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // This used to sign in directly. From a guest session that moved to the
+      // account's UID with none of the guards the social sign-ins have: the
+      // guest's meals stayed on the phone and never reached the account.
+      final current = FirebaseAuth.instance.currentUser;
+      if (current != null && current.isAnonymous) {
+        await _switchAwayFromAnonymous(current, signIn);
+      } else if (_isDifferentAccount(email: email)) {
+        await _signInReplacingAccount(signIn);
+      } else {
+        await signIn();
+      }
+    });
+  }
+
+  /// Whether signing in would move a signed-in user to a different account.
+  /// Compares email where both sides have one; otherwise whether the current
+  /// account already uses [providerId].
+  bool _isDifferentAccount({String? email, String? providerId}) {
+    final current = FirebaseAuth.instance.currentUser;
+    if (current == null || current.isAnonymous) return false;
+    final currentEmail = current.email;
+    if (email != null && currentEmail != null) {
+      return email.trim().toLowerCase() != currentEmail.toLowerCase();
+    }
+    if (providerId != null) {
+      return !current.providerData.any((p) => p.providerId == providerId);
+    }
+    return true;
+  }
+
+  /// Signing in as someone else while signed in skips [signOut], and with it
+  /// the wipe of this phone: the previous account's meals stayed here and were
+  /// uploaded into the new account when edited. Send what is still queued for
+  /// the current account, clear the phone, then sign in; the new account's
+  /// data arrives with its first sync.
+  Future<void> _signInReplacingAccount(Future<void> Function() signIn) async {
+    await _flushQueueBeforeLeaving();
+    try {
+      await SessionCleanupService().clearLocalUserData().timeout(
+        const Duration(seconds: 15),
+      );
+    } catch (e) {
+      debugPrint('Session cleanup warning: $e');
+    }
+    try {
+      await signIn();
+    } finally {
+      // On failure the current account is still signed in with an emptied
+      // phone; its sync brings the data back.
+      //
+      // Settings come first. Until they arrive the emptied phone reads as a
+      // user who never finished onboarding, and the router sends that user to
+      // onboarding -- where answering again would overwrite the account's
+      // real settings.
+      await _pullSettingsNow();
+      _resetUserState();
+      unawaited(ref.read(cloudSyncProvider.notifier).syncNow());
+    }
+  }
+
+  Future<void> _pullSettingsNow() async {
+    try {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      await repo
+          .syncFromFirestore(force: true)
+          .timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Settings pull after account switch skipped: $e');
+    }
+  }
+
+  /// Anything still queued belongs to the account being left, and the wipe
+  /// that follows clears the queue with everything else.
+  Future<void> _flushQueueBeforeLeaving() async {
+    try {
+      await SyncQueueService().flushDue().timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('Queue flush before leaving the account skipped: $e');
+    }
+  }
+
+  /// Providers rebuild from the boxes the cleanup just emptied; without this
+  /// they keep serving the previous account's data from memory, and a stale
+  /// settings object saved later would write it into the new account.
+  void _resetUserState() {
+    ref.invalidate(settingsProvider);
+    ref.invalidate(todaysMealsProvider);
+    ref.invalidate(mealLogProvider);
+    ref.invalidate(waterProvider);
+    ref.invalidate(bodyMetricsProvider);
+    ref.invalidate(templatesProvider);
+    ref.invalidate(assistantProvider);
+    ref.invalidate(plannerProvider);
   }
 
   Future<void> signOut() async {
@@ -265,6 +383,7 @@ class AuthNotifier extends _$AuthNotifier {
       // account on this device can ever see the previous user's health data
       // (BUG-002). Provider invalidation alone is not enough — providers
       // rebuild from the same encrypted Hive boxes.
+      await _flushQueueBeforeLeaving();
       try {
         await SessionCleanupService().clearLocalUserData().timeout(
           const Duration(seconds: 15),

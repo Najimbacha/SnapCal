@@ -175,9 +175,15 @@ class MealRepository {
   }
 
   Future<void> _saveMealLocalOnly(Meal meal) async {
+    final previous = _mealsBox?.get(meal.id);
     await _mealsBox?.put(meal.id, meal);
 
     if (_indexBox == null) return;
+    // A meal edited on another device may have moved to a different day;
+    // left in the old day's index it would show on both.
+    if (previous != null && previous.dateString != meal.dateString) {
+      await _removeFromIndex(previous.dateString, meal.id);
+    }
     final date = meal.dateString;
     final ids = _indexBox!.get(date) ?? [];
     if (!ids.contains(meal.id)) {
@@ -218,25 +224,30 @@ class MealRepository {
 
   /// Delete a meal
   Future<void> deleteMeal(String id) async {
-    final meal = _mealsBox?.get(id);
-    if (meal != null && _indexBox != null) {
-      final date = meal.dateString;
-      final ids = _indexBox!.get(date) ?? [];
-      ids.remove(id);
-      if (ids.isEmpty) {
-        await _indexBox!.delete(date);
-      } else {
-        await _indexBox!.put(date, ids);
-      }
-
-      await _mealsBox?.delete(id);
-      _emitTodaysMeals();
-      await _deleteMealFromCloud(id);
-      await _deleteUnusedLocalImage(meal.imageUri);
-      return;
-    }
-    await _mealsBox?.delete(id);
+    final meal = await _deleteMealLocalOnly(id);
     _emitTodaysMeals();
+    if (meal == null) return;
+    await _deleteMealFromCloud(id);
+    await _deleteUnusedLocalImage(meal.imageUri);
+  }
+
+  Future<Meal?> _deleteMealLocalOnly(String id) async {
+    final meal = _mealsBox?.get(id);
+    if (meal != null) await _removeFromIndex(meal.dateString, id);
+    await _mealsBox?.delete(id);
+    return meal;
+  }
+
+  Future<void> _removeFromIndex(String date, String id) async {
+    final index = _indexBox;
+    if (index == null) return;
+    final ids = index.get(date) ?? [];
+    if (!ids.remove(id)) return;
+    if (ids.isEmpty) {
+      await index.delete(date);
+    } else {
+      await index.put(date, ids);
+    }
   }
 
   Future<void> _deleteUnusedLocalImage(String? imageUri) async {
@@ -258,22 +269,7 @@ class MealRepository {
     final user = _authClient.currentUser;
     if (user == null) return;
     final path = 'users/${user.uid}/meals/${meal.id}';
-
-    // `updatedAt` is when the record was last WRITTEN; `timestamp` is when the
-    // meal was eaten. Editing a meal from last Tuesday leaves its timestamp in
-    // the past, so only an edit time can drive an incremental pull.
-    //
-    // It lives in the Firestore document only, not on the Meal model, so no
-    // Hive adapter has to be regenerated for this.
-    final payload = {
-      ...meal.toJson(),
-      // Captured meal photos stay on this phone. Uploading the device's local
-      // file path would not make the image available elsewhere and would leak
-      // a useless path into Firestore. Remote URLs remain syncable.
-      'imageUri':
-          meal.imageUri?.startsWith('http') == true ? meal.imageUri : null,
-      'updatedAt': DateTime.now().millisecondsSinceEpoch,
-    };
+    final payload = _cloudPayload(meal);
 
     try {
       await _firestoreClient
@@ -288,6 +284,24 @@ class MealRepository {
         data: payload,
       );
     }
+  }
+
+  Map<String, dynamic> _cloudPayload(Meal meal) {
+    // `updatedAt` is when the record was last WRITTEN; `timestamp` is when the
+    // meal was eaten. Editing a meal from last Tuesday leaves its timestamp in
+    // the past, so only an edit time can drive an incremental pull.
+    //
+    // It lives in the Firestore document only, not on the Meal model, so no
+    // Hive adapter has to be regenerated for this.
+    return {
+      ...meal.toJson(),
+      // Captured meal photos stay on this phone. Uploading the device's local
+      // file path would not make the image available elsewhere and would leak
+      // a useless path into Firestore. Remote URLs remain syncable.
+      'imageUri':
+          meal.imageUri?.startsWith('http') == true ? meal.imageUri : null,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+    };
   }
 
   /// Delete meal from Firestore
@@ -306,6 +320,30 @@ class MealRepository {
       await SyncQueueService().enqueueDelete(
         id: 'meal:delete:${user.uid}:$id',
         documentPath: path,
+      );
+    }
+
+    // The meal document is hard-deleted, which older app versions rely on,
+    // so a deletion leaves nothing for the user's other devices to read.
+    // This tombstone is what tells them the meal is gone.
+    final tombstonePath = 'users/${user.uid}/deletedMeals/$id';
+    final tombstone = {
+      'id': id,
+      'deleted': true,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+    };
+    try {
+      await _firestoreClient
+          .doc(tombstonePath)
+          .set(tombstone)
+          .timeout(TimeoutPolicy.firestore);
+    } catch (e) {
+      debugPrint('Meal tombstone queued: $e');
+      await SyncQueueService().enqueueSet(
+        id: 'meal:tombstone:${user.uid}:$id',
+        documentPath: tombstonePath,
+        data: tombstone,
+        merge: false,
       );
     }
   }
@@ -339,9 +377,15 @@ class MealRepository {
   /// Firestore excludes documents missing a field from a range filter, so an
   /// incremental query would never see them. That full pull happens once per
   /// device, and everything after it is incremental.
-  Future<void> syncFromFirestore() async {
+  Future<void> syncFromFirestore() =>
+      _pullInFlight ??= _pull().whenComplete(() => _pullInFlight = null);
+
+  Future<void>? _pullInFlight;
+
+  Future<void> _pull() async {
     final user = _authClient.currentUser;
     if (user == null) return;
+    await SyncQueueService().init();
 
     try {
       final cursor = _indexBox?.get(_cursorKey(user.uid));
@@ -366,8 +410,7 @@ class MealRepository {
               )
               : collection.where(
                 'updatedAt',
-                isGreaterThan:
-                    lastSyncMs - _cursorOverlap.inMilliseconds,
+                isGreaterThan: lastSyncMs - _cursorOverlap.inMilliseconds,
               );
 
       final snapshot = await query.get().timeout(TimeoutPolicy.firestore);
@@ -378,24 +421,30 @@ class MealRepository {
             : 'MealRepository: incremental sync, ${snapshot.docs.length} docs',
       );
 
+      // Deletions first, so a meal deleted and then restored between two
+      // pulls ends up present. A first pull has nothing to delete.
+      if (lastSyncMs != null) await _applyDeletedMeals(user.uid, lastSyncMs);
+
       for (var doc in snapshot.docs) {
         final cloudMeal = Meal.fromJson(doc.data());
         if (_mealsBox == null) continue;
 
-        if (!_mealsBox!.containsKey(cloudMeal.id)) {
-          // New meal from cloud — add locally
-          await _saveMealLocalOnly(cloudMeal);
-        } else {
-          // Existing meal — update only if cloud has a newer timestamp
-          // (last-saved-wins strategy using timestamp as proxy)
-          final localMeal = _mealsBox!.get(cloudMeal.id);
-          if (localMeal != null && cloudMeal.timestamp > localMeal.timestamp) {
-            debugPrint(
-              'Meal ${cloudMeal.id}: updating local copy with cloud version',
-            );
-            await _saveMealLocalOnly(cloudMeal);
-          }
-        }
+        // A change on this phone the cloud has not received yet is newer than
+        // anything the cloud can say about this meal.
+        if (SyncQueueService().hasPendingFor(doc.reference.path)) continue;
+
+        // The cloud copy wins otherwise. This compared `timestamp` -- when the
+        // meal was eaten -- which an edit does not change, so a meal edited on
+        // one phone never updated on another. Every write here is either
+        // uploaded straight away or queued, so the cloud is the newer copy.
+        //
+        // Photos are never uploaded, so a cloud copy has no local image path;
+        // keep this phone's photo rather than blanking it.
+        final local = _mealsBox!.get(cloudMeal.id);
+        final keepPhoto = cloudMeal.imageUri == null && local?.imageUri != null;
+        await _saveMealLocalOnly(
+          keepPhoto ? cloudMeal.copyWith(imageUri: local!.imageUri) : cloudMeal,
+        );
       }
 
       // Advance the cursor only after the whole page has been applied, and
@@ -429,6 +478,69 @@ class MealRepository {
       // The cursor is deliberately NOT advanced here: a failed sync must retry
       // the same range next launch rather than stepping over it.
       debugPrint('Meal Pull Error: $e');
+    }
+  }
+
+  /// Removes meals the user deleted on another device since the last pull.
+  ///
+  /// A failure here must not stop the meals themselves from syncing, so it is
+  /// logged and skipped; that also keeps an app released ahead of the rules
+  /// for this collection from losing meal sync altogether.
+  Future<void> _applyDeletedMeals(String uid, int lastSyncMs) async {
+    try {
+      final tombstones = await _firestoreClient
+          .collection('users')
+          .doc(uid)
+          .collection('deletedMeals')
+          .where(
+            'updatedAt',
+            isGreaterThan: lastSyncMs - _cursorOverlap.inMilliseconds,
+          )
+          .get()
+          .timeout(TimeoutPolicy.firestore);
+      for (final doc in tombstones.docs) {
+        if (_mealsBox?.containsKey(doc.id) != true) continue;
+        if (SyncQueueService().hasPendingFor('users/$uid/meals/${doc.id}')) {
+          continue;
+        }
+        final meal = await _deleteMealLocalOnly(doc.id);
+        await _deleteUnusedLocalImage(meal?.imageUri);
+      }
+    } catch (e) {
+      debugPrint('Deleted-meal pull skipped: $e');
+    }
+  }
+
+  /// Uploads every meal on this phone to the signed-in account, in batches:
+  /// how a guest's meals reach an account they have just signed in to.
+  Future<void> pushAllLocal() async {
+    final user = _authClient.currentUser;
+    final box = _mealsBox;
+    if (user == null || box == null || box.isEmpty) return;
+    final meals = box.values.toList();
+    const batchLimit = 400;
+    for (var i = 0; i < meals.length; i += batchLimit) {
+      final end = i + batchLimit < meals.length ? i + batchLimit : meals.length;
+      final chunk = meals.sublist(i, end);
+      final batch = _firestoreClient.batch();
+      for (final meal in chunk) {
+        batch.set(
+          _firestoreClient.doc('users/${user.uid}/meals/${meal.id}'),
+          _cloudPayload(meal),
+        );
+      }
+      try {
+        await batch.commit().timeout(TimeoutPolicy.firestore);
+      } catch (e) {
+        debugPrint('Meal upload queued: $e');
+        for (final meal in chunk) {
+          await SyncQueueService().enqueueSet(
+            id: 'meal:set:${user.uid}:${meal.id}',
+            documentPath: 'users/${user.uid}/meals/${meal.id}',
+            data: _cloudPayload(meal),
+          );
+        }
+      }
     }
   }
 

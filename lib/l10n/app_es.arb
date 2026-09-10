@@ -1554,5 +1554,13 @@
   "pro_welcome_subtitle": "Todo lo de Pro ya está listo para ti.",
   "pro_welcome_cta": "Empezar a explorar",
   "pro_restored_eyebrow": "Bienvenido de nuevo",
-  "pro_restored_title": "Pro restaurado"
+  "pro_restored_title": "Pro restaurado",
+  "sync_status_title": "Sincronización en la nube",
+  "sync_signed_in_as": "Sesión iniciada como {email}",
+  "sync_status_syncing": "Sincronizando…",
+  "sync_status_last": "Última sincronización: {time}",
+  "sync_status_never": "Toca para sincronizar ahora",
+  "sync_status_pending": "{count, plural, =1{1 cambio pendiente de subir} other{{count} cambios pendientes de subir}}",
+  "sync_status_failed": "No se pudo sincronizar. Toca para reintentar",
+  "sync_status_done": "Todo está sincronizado"
 }

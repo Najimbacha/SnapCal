@@ -8013,6 +8013,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pro restored'**
   String get pro_restored_title;
+
+  /// No description provided for @sync_status_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud sync'**
+  String get sync_status_title;
+
+  /// No description provided for @sync_signed_in_as.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {email}'**
+  String sync_signed_in_as(String email);
+
+  /// No description provided for @sync_status_syncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing…'**
+  String get sync_status_syncing;
+
+  /// No description provided for @sync_status_last.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced {time}'**
+  String sync_status_last(String time);
+
+  /// No description provided for @sync_status_never.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to sync now'**
+  String get sync_status_never;
+
+  /// No description provided for @sync_status_pending.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change waiting to upload} other{{count} changes waiting to upload}}'**
+  String sync_status_pending(int count);
+
+  /// No description provided for @sync_status_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sync. Tap to try again'**
+  String get sync_status_failed;
+
+  /// No description provided for @sync_status_done.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is synced'**
+  String get sync_status_done;
 }
 
 class _AppLocalizationsDelegate

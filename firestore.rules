@@ -248,6 +248,49 @@ service cloud.firestore {
       && (!('nutritionPer100g' in request.resource.data.keys()) || request.resource.data.nutritionPer100g == null || request.resource.data.nutritionPer100g is map);
     }
 
+    // Records synced by the app's CloudRecordSync. Each document carries its
+    // own id, `updatedAt` for incremental pulls, and `deleted`. A delete is a
+    // tombstone holding nothing else, so a device that was offline can still
+    // learn of it; a live record may hold only [fields] besides those three.
+    function validSyncedRecord(recordId, fields) {
+      return request.resource.data.id == recordId
+        && request.resource.data.updatedAt is int
+        && (
+          (request.resource.data.deleted == true
+            && hasOnly(['id', 'deleted', 'updatedAt']))
+          || (request.resource.data.deleted == false
+            && hasOnly(fields.concat(['id', 'deleted', 'updatedAt'])))
+        );
+    }
+
+    function isTombstone() {
+      return request.resource.data.deleted == true;
+    }
+
+    function validWaterLog() {
+      return isTombstone()
+        || (request.resource.data.dateString is string
+          && request.resource.data.amountMl is int
+          && request.resource.data.timestamp is int);
+    }
+
+    function validBodyMetric() {
+      return isTombstone()
+        || (request.resource.data.date is int
+          && request.resource.data.weight is number
+          && (!('bodyFat' in request.resource.data.keys()) || request.resource.data.bodyFat == null || request.resource.data.bodyFat is number)
+          && (!('note' in request.resource.data.keys()) || request.resource.data.note == null || request.resource.data.note is string));
+    }
+
+    function validMealTemplate() {
+      return isTombstone()
+        || (request.resource.data.name is string
+          && request.resource.data.emoji is string
+          && request.resource.data.items is list
+          && request.resource.data.createdAt is int
+          && request.resource.data.usageCount is int);
+    }
+
     function validDailyLog() {
       return hasOnly(['userEditableEntries', 'createdAt', 'updatedAt'])
         && !request.resource.data.keys().hasAny(['serverComputedTotals']);
@@ -294,6 +337,43 @@ service cloud.firestore {
       match /meals/{mealId} {
         allow read: if isOwner(uid) || isAdmin();
         allow create, update: if isOwner(uid) && validMeal() && request.resource.data.id == mealId;
+        allow delete: if isOwner(uid);
+      }
+
+      // Tombstones for deleted meals. Meal documents themselves are still
+      // hard-deleted, which older app versions rely on; this collection is how
+      // a user's other devices learn that a meal is gone.
+      match /deletedMeals/{mealId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid)
+          && hasOnly(['id', 'deleted', 'updatedAt'])
+          && request.resource.data.id == mealId
+          && request.resource.data.deleted == true
+          && request.resource.data.updatedAt is int;
+        allow delete: if isOwner(uid);
+      }
+
+      match /waterLogs/{recordId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid)
+          && validSyncedRecord(recordId, ['dateString', 'amountMl', 'timestamp'])
+          && validWaterLog();
+        allow delete: if isOwner(uid);
+      }
+
+      match /bodyMetrics/{recordId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid)
+          && validSyncedRecord(recordId, ['date', 'weight', 'bodyFat', 'note'])
+          && validBodyMetric();
+        allow delete: if isOwner(uid);
+      }
+
+      match /mealTemplates/{recordId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid)
+          && validSyncedRecord(recordId, ['name', 'emoji', 'items', 'createdAt', 'usageCount'])
+          && validMealTemplate();
         allow delete: if isOwner(uid);
       }
 

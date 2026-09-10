@@ -110,6 +110,20 @@ class Templates extends _$Templates {
     return count < 3;
   }
 
+  /// Applies templates changed on the user's other devices.
+  Future<bool> pullFromCloud() async {
+    await future;
+    final changed = await _repo.pullFromCloud();
+    if (changed) state = AsyncData(_repo.getAll());
+    return changed;
+  }
+
+  /// Uploads every template on this phone to the signed-in account.
+  Future<void> pushAllLocal() async {
+    await future;
+    await _repo.pushAllLocal();
+  }
+
   Future<void> clear() async {
     await _repo.clear();
     state = const AsyncData([]);

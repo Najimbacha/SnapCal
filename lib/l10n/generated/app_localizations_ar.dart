@@ -4399,4 +4399,40 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pro_restored_title => 'تمت استعادة Pro';
+
+  @override
+  String get sync_status_title => 'المزامنة السحابية';
+
+  @override
+  String sync_signed_in_as(String email) {
+    return 'تم تسجيل الدخول باسم $email';
+  }
+
+  @override
+  String get sync_status_syncing => 'جارٍ المزامنة…';
+
+  @override
+  String sync_status_last(String time) {
+    return 'آخر مزامنة: $time';
+  }
+
+  @override
+  String get sync_status_never => 'اضغط للمزامنة الآن';
+
+  @override
+  String sync_status_pending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count تغييرات بانتظار الرفع',
+      one: 'تغيير واحد بانتظار الرفع',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sync_status_failed => 'تعذّرت المزامنة. اضغط لإعادة المحاولة';
+
+  @override
+  String get sync_status_done => 'تمت مزامنة كل شيء';
 }

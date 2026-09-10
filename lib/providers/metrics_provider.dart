@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/body_metric.dart';
+import '../data/services/cloud_record_sync.dart';
 import '../core/services/security_service.dart';
 
 part 'metrics_provider.g.dart';
@@ -9,6 +13,46 @@ part 'metrics_provider.g.dart';
 class BodyMetrics extends _$BodyMetrics {
   static const String _boxName = 'body_metrics_box';
   Box<BodyMetric>? _box;
+  final CloudRecordSync _cloud = CloudRecordSync('bodyMetrics');
+
+  /// Progress-photo paths are files on this phone, so like meal photos they
+  /// are not uploaded; the weight history itself is.
+  @visibleForTesting
+  static Map<String, dynamic> toCloud(BodyMetric metric) => {
+    'date': metric.date.millisecondsSinceEpoch,
+    'weight': metric.weight,
+    'bodyFat': metric.bodyFat,
+    'note': metric.note,
+  };
+
+  @visibleForTesting
+  static BodyMetric? fromCloud(
+    String id,
+    Map<String, dynamic> data, {
+    BodyMetric? local,
+  }) {
+    final date = data['date'];
+    final weight = data['weight'];
+    if (date is! num || weight is! num) return null;
+    return BodyMetric(
+      id: id,
+      date: DateTime.fromMillisecondsSinceEpoch(date.toInt()),
+      weight: weight.toDouble(),
+      bodyFat: (data['bodyFat'] as num?)?.toDouble(),
+      note: data['note'] as String?,
+      photoFrontPath: local?.photoFrontPath,
+      photoSidePath: local?.photoSidePath,
+    );
+  }
+
+  dynamic _keyForId(String id) {
+    final box = _box;
+    if (box == null) return null;
+    for (final key in box.keys) {
+      if (box.get(key)?.id == id) return key;
+    }
+    return null;
+  }
 
   @override
   Future<List<BodyMetric>> build() async {
@@ -60,6 +104,58 @@ class BodyMetrics extends _$BodyMetrics {
     final metric = BodyMetric(date: date ?? DateTime.now(), weight: weightKg);
     await _box!.add(metric);
     ref.invalidateSelf();
+    unawaited(
+      _cloud
+          .push(metric.id, toCloud(metric))
+          .catchError((Object e) => debugPrint('Weight sync failed: $e')),
+    );
+  }
+
+  /// Applies weigh-ins recorded on the user's other devices. Returns whether
+  /// anything on this phone changed.
+  Future<bool> pullFromCloud() async {
+    await future;
+    final box = _box;
+    if (box == null) return false;
+    final changed = await _cloud.pull(
+      upsert: (id, data) async {
+        final key = _keyForId(id);
+        final local = key == null ? null : box.get(key);
+        final metric = fromCloud(id, data, local: local);
+        if (metric == null) return false;
+        if (local != null &&
+            local.date == metric.date &&
+            local.weight == metric.weight &&
+            local.bodyFat == metric.bodyFat &&
+            local.note == metric.note) {
+          return false;
+        }
+        if (key == null) {
+          await box.add(metric);
+        } else {
+          await box.put(key, metric);
+        }
+        return true;
+      },
+      delete: (id) async {
+        final key = _keyForId(id);
+        if (key == null) return false;
+        await box.delete(key);
+        return true;
+      },
+    );
+    if (changed) ref.invalidateSelf();
+    return changed;
+  }
+
+  /// Uploads every weigh-in on this phone to the signed-in account.
+  Future<void> pushAllLocal() async {
+    await future;
+    final box = _box;
+    if (box == null) return;
+    await _cloud.pushAll({
+      for (final metric in box.values) metric.id: toCloud(metric),
+    });
   }
 
   Future<void> logProgressPhoto(String filePath) async {

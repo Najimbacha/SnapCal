@@ -1,3 +1,4 @@
+import 'package:snapcal/providers/cloud_sync_provider.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -153,6 +154,11 @@ class AppTree extends ConsumerWidget {
         );
       }
     });
+
+    // Keeps what the user logs in step with their account; see
+    // CloudSyncNotifier. Listening (not watching) builds it without
+    // rebuilding the app every time a sync starts or finishes.
+    ref.listen(cloudSyncProvider, (_, _) {});
 
     final router = ref.watch(routerProvider);
 

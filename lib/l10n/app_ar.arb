@@ -1557,5 +1557,13 @@
   "pro_welcome_subtitle": "كل ميزات Pro جاهزة لك.",
   "pro_welcome_cta": "ابدأ الاستكشاف",
   "pro_restored_eyebrow": "مرحباً بعودتك",
-  "pro_restored_title": "تمت استعادة Pro"
+  "pro_restored_title": "تمت استعادة Pro",
+  "sync_status_title": "المزامنة السحابية",
+  "sync_signed_in_as": "تم تسجيل الدخول باسم {email}",
+  "sync_status_syncing": "جارٍ المزامنة…",
+  "sync_status_last": "آخر مزامنة: {time}",
+  "sync_status_never": "اضغط للمزامنة الآن",
+  "sync_status_pending": "{count, plural, =1{تغيير واحد بانتظار الرفع} other{{count} تغييرات بانتظار الرفع}}",
+  "sync_status_failed": "تعذّرت المزامنة. اضغط لإعادة المحاولة",
+  "sync_status_done": "تمت مزامنة كل شيء"
 }

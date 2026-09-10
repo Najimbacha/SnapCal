@@ -1,9 +1,12 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
+import '../../data/services/sync_queue_service.dart';
 import '../../providers/auth_state_provider.dart';
+import '../../providers/cloud_sync_provider.dart';
 import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/models/user_settings.dart';
@@ -61,26 +64,96 @@ class DataSyncScreen extends ConsumerWidget {
                   );
                 },
               ),
-              SettingsRow(
-                icon: LucideIcons.cloud,
-                title: l10n.settings_data_sync_title,
-                value: l10n.settings_cloud_sync_desc,
-                onTap:
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => SyncDataScreen(
-                              onSkip: () => Navigator.pop(context),
-                              onAuthSuccess: () => Navigator.pop(context),
-                            ),
-                      ),
-                    ),
-              ),
+              const _CloudSyncRow(),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A guest is offered the sign-in screen; a signed-in user sees what has
+/// synced, and taps to sync now.
+///
+/// This row used to open the sign-in screen for everyone. A signed-in user who
+/// picked a different account there switched accounts without the sign-out
+/// wipe, so one person's meals stayed on the phone and were uploaded into the
+/// other person's account when edited.
+class _CloudSyncRow extends ConsumerWidget {
+  const _CloudSyncRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final user = ref.watch(authStateProvider).valueOrNull;
+
+    if (user == null || user.isAnonymous) {
+      return SettingsRow(
+        icon: LucideIcons.cloud,
+        title: l10n.settings_data_sync_title,
+        value: l10n.settings_cloud_sync_desc,
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (_) => SyncDataScreen(
+                      onSkip: () => Navigator.pop(context),
+                      onAuthSuccess: () => Navigator.pop(context),
+                    ),
+              ),
+            ),
+      );
+    }
+
+    final sync = ref.watch(cloudSyncProvider);
+    final locale = Localizations.localeOf(context).toString();
+    final email = user.email;
+
+    return ListenableBuilder(
+      listenable: SyncQueueService(),
+      builder: (context, _) {
+        final pending = SyncQueueService().pendingCount;
+        final lastSyncedAt = sync.lastSyncedAt;
+        final String status;
+        if (sync.isSyncing) {
+          status = l10n.sync_status_syncing;
+        } else if (sync.phase == CloudSyncPhase.failed) {
+          status = l10n.sync_status_failed;
+        } else if (pending > 0) {
+          status = l10n.sync_status_pending(pending);
+        } else if (lastSyncedAt != null) {
+          status = l10n.sync_status_last(
+            DateFormat.MMMd(locale).add_jm().format(lastSyncedAt),
+          );
+        } else {
+          status = l10n.sync_status_never;
+        }
+
+        return SettingsRow(
+          icon: LucideIcons.cloud,
+          title: l10n.sync_status_title,
+          subtitle: email == null ? null : l10n.sync_signed_in_as(email),
+          value: status,
+          onTap:
+              sync.isSyncing
+                  ? null
+                  : () async {
+                    final ok = await ref
+                        .read(cloudSyncProvider.notifier)
+                        .syncNow(manual: true);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          ok ? l10n.sync_status_done : l10n.sync_status_failed,
+                        ),
+                      ),
+                    );
+                  },
+        );
+      },
     );
   }
 }

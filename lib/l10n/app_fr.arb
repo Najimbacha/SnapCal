@@ -1554,5 +1554,13 @@
   "pro_welcome_subtitle": "Toutes les fonctions Pro sont prêtes pour vous.",
   "pro_welcome_cta": "Commencer à explorer",
   "pro_restored_eyebrow": "Bon retour",
-  "pro_restored_title": "Pro restauré"
+  "pro_restored_title": "Pro restauré",
+  "sync_status_title": "Synchronisation cloud",
+  "sync_signed_in_as": "Connecté en tant que {email}",
+  "sync_status_syncing": "Synchronisation…",
+  "sync_status_last": "Dernière synchronisation : {time}",
+  "sync_status_never": "Touchez pour synchroniser",
+  "sync_status_pending": "{count, plural, =1{1 modification en attente d’envoi} other{{count} modifications en attente d’envoi}}",
+  "sync_status_failed": "Échec de la synchronisation. Touchez pour réessayer",
+  "sync_status_done": "Tout est synchronisé"
 }

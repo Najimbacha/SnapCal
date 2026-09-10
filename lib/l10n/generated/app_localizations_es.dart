@@ -4461,4 +4461,41 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get pro_restored_title => 'Pro restaurado';
+
+  @override
+  String get sync_status_title => 'Sincronización en la nube';
+
+  @override
+  String sync_signed_in_as(String email) {
+    return 'Sesión iniciada como $email';
+  }
+
+  @override
+  String get sync_status_syncing => 'Sincronizando…';
+
+  @override
+  String sync_status_last(String time) {
+    return 'Última sincronización: $time';
+  }
+
+  @override
+  String get sync_status_never => 'Toca para sincronizar ahora';
+
+  @override
+  String sync_status_pending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cambios pendientes de subir',
+      one: '1 cambio pendiente de subir',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sync_status_failed =>
+      'No se pudo sincronizar. Toca para reintentar';
+
+  @override
+  String get sync_status_done => 'Todo está sincronizado';
 }
