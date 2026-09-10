@@ -101,6 +101,12 @@ services:
       # every user to the code default.
       - key: FREE_MONTHLY_SCANS
         value: 15
+      # Every AI text request a free user makes -- coach, planner, insights --
+      # draws on this daily budget, so AI cost stays bounded whatever the app
+      # sends. The coach's own limit (FREE_DAILY_AI_MESSAGES, default 1) sits
+      # inside it.
+      - key: FREE_DAILY_AI_REQUESTS
+        value: "30"
       - key: AI_IMAGE_PROVIDER_ORDER
         value: deepseek
       - key: AI_TEXT_PROVIDER_ORDER

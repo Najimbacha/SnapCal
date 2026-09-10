@@ -37,6 +37,10 @@ const FREE_MONTHLY_SCANS = Number(process.env.FREE_MONTHLY_SCANS || 15);
 // be worth.
 const MAX_BONUS_SCANS_PER_MONTH = Number(process.env.MAX_BONUS_SCANS_PER_MONTH || 10);
 const FREE_DAILY_AI_MESSAGES = Number(process.env.FREE_DAILY_AI_MESSAGES || 1);
+// Every AI text request a free user makes -- coach, planner, insights --
+// draws on this, so cost stays bounded whatever the app sends. The coach's
+// own limit above sits inside it.
+const FREE_DAILY_AI_REQUESTS = Number(process.env.FREE_DAILY_AI_REQUESTS || 30);
 // Fail closed: App Check is ON unless explicitly disabled. A misspelled or
 // unset variable must never silently disable the control (BUG-006).
 const REQUIRE_APP_CHECK = process.env.REQUIRE_APP_CHECK !== 'false';
@@ -79,7 +83,36 @@ const SCAN_PIPELINE = (process.env.SCAN_PIPELINE || 'v1').toLowerCase();
 const nutritionProvider = require('./services/nutrition_provider');
 const unmatchedFoodLogger = require('./services/unmatched_food_logger');
 
-const app = express();
+// Express 4 does not pass a rejected promise from an async handler to the
+// error middleware. The rejection goes unhandled and, on Node 15+, takes the
+// whole process down -- every scan in flight with it. /api/premium-status,
+// called on every launch, could do that on a single Firestore hiccup. Each
+// handler is wrapped as it is registered, so those errors reach next() and
+// the error middleware answers with a 500 like any other failure.
+function forwardAsyncErrors(router) {
+  const wrap = (handler) => {
+    // Error middleware (arity 4) and mounted routers/apps are left alone.
+    if (typeof handler !== 'function' || handler.length === 4) return handler;
+    if (typeof handler.handle === 'function') return handler;
+    return function asyncSafe(req, res, next) {
+      try {
+        const result = handler.call(this, req, res, next);
+        if (result && typeof result.catch === 'function') result.catch(next);
+        return result;
+      } catch (error) {
+        return next(error);
+      }
+    };
+  };
+  for (const method of ['use', 'all', 'get', 'post', 'put', 'patch', 'delete']) {
+    const register = router[method].bind(router);
+    router[method] = (...args) =>
+      register(...args.map((arg) => (Array.isArray(arg) ? arg.map(wrap) : wrap(arg))));
+  }
+  return router;
+}
+
+const app = forwardAsyncErrors(express());
 const db = admin.firestore();
 let authVerifierForTest = null;
 
@@ -162,12 +195,13 @@ if (redisCache.getClient()) {
 /// it (the /api mount) fall back to a hash of the bearer token, which is
 /// per-user and unforgeable — a caller cannot claim someone else's bucket
 /// without their token. Unauthenticated callers still bucket by IP.
+// The verified user once authenticateToken has run, the address before.
+//
+// This used to fall back to a hash of the bearer token, and the limiters ran
+// before the token was verified -- so a client refreshing its token, which
+// yields a new string, got a fresh allowance every time.
 function identityKey(req) {
   if (req.user && req.user.uid) return `uid:${req.user.uid}`;
-  const match = (req.headers.authorization || '').match(/^Bearer (.+)$/);
-  if (match) {
-    return `tok:${crypto.createHash('sha256').update(match[1]).digest('hex').slice(0, 32)}`;
-  }
   return `ip:${req.ip}`;
 }
 
@@ -187,6 +221,17 @@ const apiLimiter = makeLimiter({
   prefix: 'rl:api:',
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.API_RATE_LIMIT || 120),
+  message: { error: 'Too many requests. Please try again later.' },
+});
+
+// Per address, before authentication. Generous on purpose: one mobile
+// carrier's NAT can put many real users behind a single address. It stops
+// floods; the per-user limits, applied after the token is verified, are the
+// ones that bound what any one account can do.
+const ipLimiter = makeLimiter({
+  prefix: 'rl:ip:',
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.IP_RATE_LIMIT || 1000),
   message: { error: 'Too many requests. Please try again later.' },
 });
 
@@ -456,12 +501,15 @@ function currentDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Claims one free AI coach message, transactionally.
+// Claims one free AI text request, transactionally, and for the coach one of
+// its daily messages too.
 //
-// The client counts these too (PremiumGateService), but a client-side counter
-// is cleared by reinstalling, so the ceiling was effectively unlimited. This is
-// the enforcing copy. Throws a 402 when a free user is out for the day.
-async function claimAiMessageQuota(uid) {
+// The client counts coach messages as well (PremiumGateService), but a client
+// counter is cleared by reinstalling, so this is the enforcing copy. Every
+// request is counted against FREE_DAILY_AI_REQUESTS whatever its purpose: the
+// purpose is the app's word, so it may only add the coach's stricter limit,
+// never skip counting. Throws a 402 carrying `kind` when a limit is reached.
+async function claimAiTextQuota(uid, { coach = false } = {}) {
   return db.runTransaction(async (tx) => {
     const subRef = subscriptionDoc(uid);
     const useRef = usageDoc(uid);
@@ -474,20 +522,48 @@ async function claimAiMessageQuota(uid) {
 
     const usage = useSnap.exists ? useSnap.data() : {};
     const dayKey = currentDayKey();
-    const used = usage.aiDayKey === dayKey ? Number(usage.aiMessagesUsed || 0) : 0;
+    const sameDay = usage.aiDayKey === dayKey;
+    const requestsUsed = sameDay ? Number(usage.aiRequestsUsed || 0) : 0;
+    const coachUsed = sameDay ? Number(usage.aiMessagesUsed || 0) : 0;
 
-    if (used >= FREE_DAILY_AI_MESSAGES) {
-      throw Object.assign(new Error('ai-quota-exceeded'), { code: 402 });
+    if (requestsUsed >= FREE_DAILY_AI_REQUESTS) {
+      throw Object.assign(new Error('ai-quota-exceeded'), { code: 402, kind: 'ai_daily' });
+    }
+    if (coach && coachUsed >= FREE_DAILY_AI_MESSAGES) {
+      throw Object.assign(new Error('ai-coach-quota-exceeded'), { code: 402, kind: 'ai_coach' });
     }
 
     tx.set(useRef, {
       aiDayKey: dayKey,
-      aiMessagesUsed: used + 1,
+      aiRequestsUsed: requestsUsed + 1,
+      aiMessagesUsed: coachUsed + (coach ? 1 : 0),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    return { isPremium: false };
+    return { isPremium: false, dayKey, coach };
   });
+}
+
+// Best-effort refund when the AI call fails after a successful claim, so a
+// provider outage does not use up a free user's allowance.
+async function refundAiTextQuota(uid, claim) {
+  if (!claim || claim.isPremium) return;
+  try {
+    await db.runTransaction(async (tx) => {
+      const useRef = usageDoc(uid);
+      const useSnap = await tx.get(useRef);
+      const usage = useSnap.exists ? useSnap.data() : {};
+      if (usage.aiDayKey !== claim.dayKey) return;
+      const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+      const requestsUsed = Number(usage.aiRequestsUsed || 0);
+      if (requestsUsed > 0) update.aiRequestsUsed = requestsUsed - 1;
+      const coachUsed = Number(usage.aiMessagesUsed || 0);
+      if (claim.coach && coachUsed > 0) update.aiMessagesUsed = coachUsed - 1;
+      tx.set(useRef, update, { merge: true });
+    });
+  } catch (error) {
+    console.error('AI quota refund failed:', error.message);
+  }
 }
 
 // How long a RevenueCat REST verification is trusted before we ask again.
@@ -1853,9 +1929,12 @@ app.get('/metrics', (req, res) => {
   return res.status(200).send(renderMetrics());
 });
 
-app.use('/api', apiLimiter);
+// The RevenueCat webhook is exempt: many purchases arrive from few addresses,
+// and it has its own limiter and secret.
+app.use(['/api', '/v1'], (req, res, next) =>
+  (req.path.startsWith('/revenuecat/') ? next() : ipLimiter(req, res, next)));
 
-app.post('/api/food-scans', scanLimiter, authenticateToken, verifyAppCheck, async (req, res) => {
+app.post('/api/food-scans', authenticateToken, verifyAppCheck, scanLimiter, async (req, res) => {
   const uid = req.user.uid;
   const { scanId, fileName, contentType, inputSource = 'camera', language = 'en' } = req.body || {};
 
@@ -1904,7 +1983,7 @@ app.post('/api/food-scans', scanLimiter, authenticateToken, verifyAppCheck, asyn
   }
 });
 
-app.post('/api/food-scans/:scanId/process', scanLimiter, authenticateToken, verifyAppCheck, async (req, res) => {
+app.post('/api/food-scans/:scanId/process', authenticateToken, verifyAppCheck, scanLimiter, async (req, res) => {
   const uid = req.user.uid;
   const { scanId } = req.params;
   if (!isSafeId(scanId)) return safeError(res, 404, 'Scan not found.');
@@ -1968,7 +2047,7 @@ app.post('/api/food-scans/:scanId/process', scanLimiter, authenticateToken, veri
   }
 });
 
-app.delete('/api/food-scans/:scanId', authenticateToken, verifyAppCheck, async (req, res) => {
+app.delete('/api/food-scans/:scanId', authenticateToken, verifyAppCheck, apiLimiter, async (req, res) => {
   const uid = req.user.uid;
   const { scanId } = req.params;
   if (!isSafeId(scanId)) return safeError(res, 404, 'Scan not found.');
@@ -1986,7 +2065,7 @@ app.delete('/api/food-scans/:scanId', authenticateToken, verifyAppCheck, async (
   return res.status(204).send();
 });
 
-app.get('/api/premium-status', authenticateToken, verifyAppCheck, async (req, res) => {
+app.get('/api/premium-status', authenticateToken, verifyAppCheck, apiLimiter, async (req, res) => {
   const status = await getPremiumStatus(req.user.uid);
   return res.status(200).json(status);
 });
@@ -2019,26 +2098,27 @@ app.get('/api/premium-status', authenticateToken, verifyAppCheck, async (req, re
 // scans return, this needs server-side proof the ad was watched, not the
 // client's word for it.
 
-app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => {
+app.post('/api/ai/text', authenticateToken, verifyAppCheck, apiLimiter, async (req, res) => {
   const body = req.body || {};
   if (!assertPlainObject(body) || typeof body.prompt !== 'string' || body.prompt.length < 1 || body.prompt.length > 12000) {
     return safeError(res, 400, 'Invalid AI request.');
   }
 
-  // Only the coach is rate-limited. This endpoint also serves planner,
-  // insight and report generation, which are free-tier features -- gating the
-  // whole endpoint would break them.
-  if (body.purpose === 'coach') {
-    try {
-      await claimAiMessageQuota(req.user.uid);
-    } catch (error) {
-      if (error.code === 402) {
-        metrics.quotaDenials.inc({ kind: 'ai_coach' });
-        return safeError(res, 402, 'Daily AI coach limit reached. Upgrade to Pro for unlimited coaching.');
-      }
-      console.error('AI quota claim failed:', error.message);
-      return safeError(res, 500, 'AI request failed.');
+  // This used to count only requests labelled 'coach' -- a label the app sets
+  // -- so anything unlabelled, the coach's own chat included, was unlimited.
+  // Every request is counted now; the label only adds the coach's limit.
+  let claim;
+  try {
+    claim = await claimAiTextQuota(req.user.uid, { coach: body.purpose === 'coach' });
+  } catch (error) {
+    if (error.code === 402) {
+      metrics.quotaDenials.inc({ kind: error.kind || 'ai_daily' });
+      return safeError(res, 402, error.kind === 'ai_coach'
+        ? 'Daily AI coach limit reached. Upgrade to Pro for unlimited coaching.'
+        : 'Daily AI limit reached. Upgrade to Pro for unlimited AI features.');
     }
+    console.error('AI quota claim failed:', error.message);
+    return safeError(res, 500, 'AI request failed.');
   }
 
   try {
@@ -2053,27 +2133,45 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, async (req, res) => 
       () => callAiText(body.prompt, textOptions));
     return res.status(200).json({ text });
   } catch (error) {
-    // TEMPORARY DEBUG: the failure chain (which provider failed and why) is
-    // included in the response so the client logcat names the root cause.
-    // Remove once the coach's provider config is verified.
+    // The provider's failure is not the user's: give the request back. The
+    // reason stays in the server log -- it used to be sent to the client too.
+    await refundAiTextQuota(req.user.uid, claim);
     console.error('AI text request failed:', error.message);
-    return res.status(500).json({
-      error: 'AI request failed.',
-      detail: String(error.message || 'unknown').slice(0, 400),
-    });
+    return safeError(res, 500, 'AI request failed.');
   }
 });
 
-app.post('/api/ai/image', authenticateToken, verifyAppCheck, async (req, res) => {
+app.post('/api/ai/image', authenticateToken, verifyAppCheck, scanLimiter, async (req, res) => {
   const body = req.body || {};
-  if (!assertPlainObject(body) || typeof body.prompt !== 'string' || typeof body.image !== 'string') {
+  if (!assertPlainObject(body)
+    || typeof body.prompt !== 'string' || body.prompt.length > 12000
+    || typeof body.image !== 'string' || body.image.length === 0) {
     return safeError(res, 400, 'Invalid AI image request.');
+  }
+  if (Buffer.from(body.image, 'base64').length > MAX_IMAGE_BYTES) {
+    return safeError(res, 413, 'Image too large (max 10 MB).');
+  }
+
+  // An image analysis costs what a scan costs, so it draws on the same monthly
+  // allowance. It used to draw on nothing: any signed-in account, a guest made
+  // on the spot included, could send unlimited photos to the paid model.
+  let claim;
+  try {
+    claim = await claimScanQuotaForScan(req.user.uid);
+  } catch (error) {
+    if (error.code === 402) {
+      metrics.quotaDenials.inc({ kind: 'scan' });
+      return safeError(res, 402, 'Scan limit reached.');
+    }
+    console.error('Image quota claim failed:', error.message);
+    return safeError(res, 500, 'AI image request failed.');
   }
 
   try {
     const text = await callAiWithImage(body.image, cleanLanguage(body.language || 'en'), body.prompt);
     return res.status(200).json({ text });
   } catch (error) {
+    await refundScanQuota(req.user.uid, claim.monthKey);
     console.error('AI image request failed:', error.message);
     return safeError(res, 500, 'AI image request failed.');
   }
@@ -2202,7 +2300,7 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
   }
 });
 
-app.get('/api/admin/users/:uid/summary', authenticateToken, verifyAppCheck, requireFreshAuth, requireAdmin, async (req, res) => {
+app.get('/api/admin/users/:uid/summary', authenticateToken, verifyAppCheck, apiLimiter, requireFreshAuth, requireAdmin, async (req, res) => {
   const targetUid = req.params.uid;
   if (!isSafeId(targetUid)) return safeError(res, 404, 'User not found.');
 
@@ -2225,7 +2323,7 @@ app.get('/api/admin/users/:uid/summary', authenticateToken, verifyAppCheck, requ
   });
 });
 
-app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, requireFreshAuth, requireAdmin, async (req, res) => {
+app.post('/api/admin/users/:uid/access', authenticateToken, verifyAppCheck, apiLimiter, requireFreshAuth, requireAdmin, async (req, res) => {
   const targetUid = req.params.uid;
   const { isActive, entitlementId = 'pro', productId = 'manual_grant', reason } = req.body || {};
   if (!isSafeId(targetUid) || typeof isActive !== 'boolean' || typeof reason !== 'string' || reason.trim().length < 5) {
@@ -2317,7 +2415,7 @@ function isCachedScanResult(value) {
   );
 }
 
-app.post('/v1/scan', scanLimiter, limitScanConcurrency, authenticateToken, verifyAppCheck, async (req, res) => {
+app.post('/v1/scan', limitScanConcurrency, authenticateToken, verifyAppCheck, scanLimiter, async (req, res) => {
   const scanStartedAt = process.hrtime.bigint();
   const scanSeconds = () => Number(process.hrtime.bigint() - scanStartedAt) / 1e9;
   const { image, language = 'en' } = req.body || {};
@@ -2487,15 +2585,8 @@ if (NODE_ENV !== 'production') {
   );
 }
 
-app.use((err, req, res, next) => {
-  if (err?.type === 'entity.too.large') {
-    return safeError(res, 413, 'Request body too large.');
-  }
-  console.error('Unhandled server error:', err.stack || err.message);
-  return safeError(res, 500, 'Internal server error.');
-});
 
-app.post('/api/notifications/food-reminder/register', authenticateToken, verifyAppCheck, async (req, res) => {
+app.post('/api/notifications/food-reminder/register', authenticateToken, verifyAppCheck, apiLimiter, async (req, res) => {
   const { fcmToken, enabled } = req.body || {};
   const uid = req.user.uid;
 
@@ -2571,6 +2662,18 @@ app.post(
   },
 );
 
+// After every route. Error middleware only sees errors from what was
+// registered before it; the food-reminder routes used to sit below this and
+// fell through to Express's default handler.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  if (err?.type === 'entity.too.large') {
+    return safeError(res, 413, 'Request body too large.');
+  }
+  console.error('Unhandled server error:', err.stack || err.message);
+  return safeError(res, 500, 'Internal server error.');
+});
+
 /// Stops accepting work, lets in-flight requests finish, then exits.
 ///
 /// Without this, every deploy and every scale-down kills whatever was in
@@ -2615,6 +2718,13 @@ function installGracefulShutdown(server) {
 
 if (require.main === module) {
   const port = process.env.PORT || 3000;
+
+  // forwardAsyncErrors should leave nothing unhandled; this is the net under
+  // it. Log and keep serving -- exiting would fail every scan in flight over
+  // one request's error.
+  process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled promise rejection:', reason?.stack || reason);
+  });
 
   // No scheduler here, ever. The reminder cron runs in worker.js as a single
   // replica; running it inside an autoscaled API meant one notification per
@@ -2671,6 +2781,8 @@ module.exports = {
   resolveScanPipeline,
   scanResultCacheKey,
   isCachedScanResult,
+  forwardAsyncErrors,
+  identityKey,
   setAuthVerifierForTest(verifier) {
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('Test auth verifier is only available in NODE_ENV=test.');

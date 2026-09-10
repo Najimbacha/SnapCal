@@ -18,12 +18,17 @@ import 'widgets/coach_overlays.dart';
 // #F2F2F7, #8E8E93 -- while the rest of SnapCal is warm paper and emerald.
 // Cool grey beside warm off-white reads as a different app. These are the
 // tokens the home, log and purchase screens already use.
-Color _coachPaper(bool d) => d ? const Color(0xFF0B0C0B) : const Color(0xFFFBFCFA);
+Color _coachPaper(bool d) =>
+    d ? const Color(0xFF0B0C0B) : const Color(0xFFFBFCFA);
 Color _coachCard(bool d) => d ? const Color(0xFF121412) : Colors.white;
-Color _coachLine(bool d) => d ? const Color(0xFF1F241F) : const Color(0xFFE1E3DF);
-Color _coachInk(bool d) => d ? const Color(0xFFF1F4F2) : const Color(0xFF1C1917);
-Color _coachMuted(bool d) => d ? const Color(0xFF9DA19C) : const Color(0xFF777370);
-Color _coachAccent(bool d) => d ? const Color(0xFF4FB58C) : AppColors.primaryDark;
+Color _coachLine(bool d) =>
+    d ? const Color(0xFF1F241F) : const Color(0xFFE1E3DF);
+Color _coachInk(bool d) =>
+    d ? const Color(0xFFF1F4F2) : const Color(0xFF1C1917);
+Color _coachMuted(bool d) =>
+    d ? const Color(0xFF9DA19C) : const Color(0xFF777370);
+Color _coachAccent(bool d) =>
+    d ? const Color(0xFF4FB58C) : AppColors.primaryDark;
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
@@ -126,9 +131,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         prior.removeLast();
       }
       final history = <Map<String, String>>[
-        for (final m in prior.length > _historyTurns
-            ? prior.sublist(prior.length - _historyTurns)
-            : prior)
+        for (final m
+            in prior.length > _historyTurns
+                ? prior.sublist(prior.length - _historyTurns)
+                : prior)
           if (m is Map && m['content'] is String)
             {'type': '${m['type']}', 'content': m['content'] as String},
       ];
@@ -148,7 +154,12 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         _messages.clear();
         _typedIndices.clear();
       }
-      if (error != null || result == null || result.isEmpty) {
+      if (statusCode == 402) {
+        // The server says today's free coach message is used -- which it
+        // knows even after a reinstall reset this phone's own count. Show the
+        // upgrade card, not an error bubble inviting a retry.
+        _limitReached = true;
+      } else if (error != null || result == null || result.isEmpty) {
         debugPrint(
           'AI coach request failed'
           '${statusCode != null ? ' (HTTP $statusCode)' : ''}: $error',
@@ -166,6 +177,11 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       }
     });
 
+    // Bring this phone's count in line with the server's, so the lock
+    // survives a restart.
+    if (statusCode == 402 && !PremiumGateService().hasReachedAiLimit(false)) {
+      await PremiumGateService().incrementAiMessages();
+    }
     if (!unlimited && access.isFree && error == null && result!.isNotEmpty) {
       await PremiumGateService().incrementAiMessages();
       if (mounted && PremiumGateService().hasReachedAiLimit(false)) {
@@ -240,17 +256,17 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             padding: const EdgeInsetsDirectional.only(start: 16),
             alignment: Alignment.center,
             child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              border: Border.all(color: _coachLine(d)),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              LucideIcons.chevronLeft,
-              size: 20,
-              color: _coachMuted(d),
-            ),
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                border: Border.all(color: _coachLine(d)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                LucideIcons.chevronLeft,
+                size: 20,
+                color: _coachMuted(d),
+              ),
             ),
           ),
         ),
@@ -269,49 +285,49 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Fajar',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: _coachInk(d),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Fajar',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _coachInk(d),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 1),
-                Row(
-                  children: [
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primaryDark,
-                        shape: BoxShape.circle,
+                  const SizedBox(height: 1),
+                  Row(
+                    children: [
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryDark,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                      'AI Nutritionist',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color:
-                            d
-                                ? const Color(0xFF9DA19C)
-                                : const Color(0xFF777370),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'AI Nutritionist',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color:
+                                d
+                                    ? const Color(0xFF9DA19C)
+                                    : const Color(0xFF777370),
+                          ),
+                        ),
                       ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -324,17 +340,17 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               padding: const EdgeInsetsDirectional.only(end: 16),
               alignment: Alignment.center,
               child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                border: Border.all(color: _coachLine(d)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                LucideIcons.refreshCw,
-                size: 18,
-                color: _coachMuted(d),
-              ),
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  border: Border.all(color: _coachLine(d)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  LucideIcons.refreshCw,
+                  size: 18,
+                  color: _coachMuted(d),
+                ),
               ),
             ),
           ),
@@ -704,11 +720,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           const SizedBox(height: 4),
           Text(
             detail,
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.35,
-              color: _coachMuted(d),
-            ),
+            style: TextStyle(fontSize: 13, height: 1.35, color: _coachMuted(d)),
           ),
           const SizedBox(height: 8),
           GestureDetector(
@@ -720,20 +732,20 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Row(
                 children: [
-                Icon(
-                  LucideIcons.refreshCw,
-                  size: 12,
-                  color: d ? AppColors.primary : AppColors.primaryDark,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Retry',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
+                  Icon(
+                    LucideIcons.refreshCw,
+                    size: 12,
                     color: d ? AppColors.primary : AppColors.primaryDark,
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Retry',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: d ? AppColors.primary : AppColors.primaryDark,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -759,16 +771,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         'Am I on track today?',
         'How am I doing against my goals today?',
       ),
-      (
-        LucideIcons.calendarDays,
-        'Plan my week',
-        'Create a meal plan for me',
-      ),
-      (
-        LucideIcons.trendingUp,
-        'Hit my protein',
-        'Suggest a high-protein meal',
-      ),
+      (LucideIcons.calendarDays, 'Plan my week', 'Create a meal plan for me'),
+      (LucideIcons.trendingUp, 'Hit my protein', 'Suggest a high-protein meal'),
     ];
 
     return Column(
@@ -814,12 +818,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     );
   }
 
-
   Widget _buildRichText(String text, bool user, bool d) {
-    final color =
-        user
-            ? Colors.white
-            : (_coachInk(d));
+    final color = user ? Colors.white : (_coachInk(d));
 
     final spans = <InlineSpan>[];
     final regex = RegExp(r'\*\*(.+?)\*\*');
@@ -860,12 +860,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
         color: _coachPaper(d),
-        border: Border(
-          top: BorderSide(
-            color: _coachLine(d),
-            width: 0.5,
-          ),
-        ),
+        border: Border(top: BorderSide(color: _coachLine(d), width: 0.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -887,8 +882,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                 decoration: InputDecoration(
                   hintText: 'Message',
                   hintStyle: TextStyle(
-                    color:
-                        _coachMuted(d).withValues(alpha: 0.7),
+                    color: _coachMuted(d).withValues(alpha: 0.7),
                     fontSize: 15,
                   ),
                   border: InputBorder.none,
@@ -897,10 +891,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                     vertical: 10,
                   ),
                 ),
-                style: TextStyle(
-                  fontSize: 15,
-                  color: _coachInk(d),
-                ),
+                style: TextStyle(fontSize: 15, color: _coachInk(d)),
               ),
             ),
           ),

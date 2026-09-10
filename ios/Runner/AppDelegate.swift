@@ -12,5 +12,22 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    // Android answers this in MainActivity. With no handler here, iOS fell
+    // back to UTC and scheduled every reminder at the wrong hour.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SnapCalTimeZone") {
+      let channel = FlutterMethodChannel(
+        name: "snapcal/timezone",
+        binaryMessenger: registrar.messenger()
+      )
+      channel.setMethodCallHandler { call, result in
+        switch call.method {
+        case "getLocalTimeZone":
+          result(TimeZone.current.identifier)
+        default:
+          result(FlutterMethodNotImplemented)
+        }
+      }
+    }
   }
 }

@@ -71,7 +71,10 @@ class Assistant extends _$Assistant {
       history: history,
     );
 
-    return _aiService.generateText(prompt);
+    // Labelled so the server counts it against the free coach allowance. The
+    // chat went out unlabelled, so only this phone's own counter -- reset by a
+    // reinstall -- ever limited it.
+    return _aiService.generateText(prompt, purpose: 'coach');
   }
 
   Future<String> analyzeImage(String base64Image, String prompt) async {

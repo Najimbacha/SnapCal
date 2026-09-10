@@ -144,8 +144,14 @@ class AIService {
   };
 
   /// Generate text-only response — Gemini first, Groq as fallback
-  Future<String> generateText(String prompt) async {
-    return _generateTextViaBackend(prompt, maxOutputTokens: 1024);
+  /// [purpose] tells the backend which allowance the request draws on; the
+  /// coach passes `'coach'`, which counts against the free daily coach limit.
+  Future<String> generateText(String prompt, {String? purpose}) async {
+    return _generateTextViaBackend(
+      prompt,
+      maxOutputTokens: 1024,
+      purpose: purpose,
+    );
   }
 
   Future<String> _generateTextViaBackend(
@@ -153,6 +159,7 @@ class AIService {
     int maxOutputTokens = 2048,
     String? responseMimeType,
     Duration timeout = const Duration(seconds: 25),
+    String? purpose,
   }) async {
     final endpoint = '${ConfigService().backendProxyUrl}/api/ai/text';
     final response = await _dio.post(
@@ -167,6 +174,7 @@ class AIService {
         'maxOutputTokens': maxOutputTokens,
         if (responseMimeType != null) 'responseMimeType': responseMimeType,
         'timeoutMs': timeout.inMilliseconds,
+        if (purpose != null) 'purpose': purpose,
       },
     );
     final text = response.data is Map ? response.data['text'] as String? : null;

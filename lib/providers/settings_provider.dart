@@ -135,23 +135,45 @@ class Settings extends _$Settings {
     UserSettings settings,
     SettingsRepository repo,
   ) {
-    final today = app_date.DateUtils.getTodayString();
+    final repaired = repairStreak(
+      settings,
+      today: app_date.DateUtils.getTodayString(),
+    );
+    if (!identical(repaired, settings)) unawaited(repo.saveSettings(repaired));
+    return repaired;
+  }
+
+  /// A streak survives only while the last logged day is today or yesterday.
+  /// Returns [settings] itself when there is nothing to repair.
+  @visibleForTesting
+  static UserSettings repairStreak(
+    UserSettings settings, {
+    required String today,
+  }) {
     final yesterday = app_date.DateUtils.getPreviousDay(today);
     final lastLogged = settings.lastLoggedDate;
-    if (lastLogged != null && lastLogged != today && lastLogged != yesterday) {
-      if (settings.currentStreak > 0) {
-        final repaired = settings.copyWith(currentStreak: 0);
-        unawaited(repo.saveSettings(repaired));
-        return repaired;
-      }
+    if (lastLogged != null &&
+        lastLogged != today &&
+        lastLogged != yesterday &&
+        settings.currentStreak > 0) {
+      return settings.copyWith(currentStreak: 0);
     }
     return settings;
   }
 
   void _onLifecycleChanged() {
-    if (AppLifecycleService().isResumed) {
-      updateLastOpenedDate();
+    if (!AppLifecycleService().isResumed) return;
+    final s = _data;
+    if (s == null) return;
+    final today = app_date.DateUtils.getTodayString();
+    // The streak is re-checked on resume as well as at launch: an app left
+    // open across a missed day kept showing the broken streak until it was
+    // restarted. One save for both changes, so neither overwrites the other.
+    var next = repairStreak(s, today: today);
+    if (next.lastOpenedDate != today) {
+      next = next.copyWith(lastOpenedDate: today);
     }
+    if (!identical(next, s)) unawaited(_updateSettings(next));
   }
 
   UserSettings? get _data => state.valueOrNull;

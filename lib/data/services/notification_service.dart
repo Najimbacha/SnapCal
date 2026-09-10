@@ -238,7 +238,7 @@ class NotificationService {
     if (_timeZoneInitialized) return;
     tz_data.initializeTimeZones();
     final timeZoneName = await _getLocalTimeZoneName();
-    final location = _resolveLocation(timeZoneName);
+    final location = resolveLocation(timeZoneName);
     tz.setLocalLocation(location);
     _timeZoneInitialized = true;
   }
@@ -254,16 +254,35 @@ class NotificationService {
     }
   }
 
-  tz.Location _resolveLocation(String? timeZoneName) {
+  /// The zone reminders are scheduled in.
+  ///
+  /// The platform's zone name when there is one. Without it -- iOS had no
+  /// handler for the channel at all -- this fell straight back to UTC, so an
+  /// 8:00 breakfast reminder arrived at 8:00 UTC. Now it picks a zone whose
+  /// current offset matches the phone's clock, which also covers half-hour
+  /// offsets such as India's; UTC is left for when nothing matches.
+  @visibleForTesting
+  static tz.Location resolveLocation(
+    String? timeZoneName, {
+    Duration? utcOffset,
+  }) {
     if (timeZoneName != null &&
         tz.timeZoneDatabase.locations.containsKey(timeZoneName)) {
       return tz.getLocation(timeZoneName);
     }
 
+    final offset = utcOffset ?? DateTime.now().timeZoneOffset;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    for (final location in tz.timeZoneDatabase.locations.values) {
+      if (location.timeZone(nowMs).offset == offset) return location;
+    }
+
     debugPrint(
       '⚠️ NotificationService: Falling back to UTC timezone for notifications',
     );
-    return tz.getLocation('UTC');
+    // tz.UTC, not getLocation('UTC'): the bundled database has no location
+    // by that name, so the old fallback threw instead of falling back.
+    return tz.UTC;
   }
 
   /// Show an instant notification for goal completion

@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/water_log.dart';
+import '../data/repositories/water_repository.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import 'repository_providers.dart';
 
@@ -35,27 +36,36 @@ class Water extends _$Water {
         timestamp: DateTime.now().millisecondsSinceEpoch,
       ),
     );
-    final total = repo.getTotalWater(todayStr);
-    state = AsyncData(state.valueOrNull!.copyWith(todayTotal: total));
+    _publishTodayTotal(repo);
   }
 
   Future<void> removeWater(int ml) async {
     final repo = await ref.read(waterRepositoryProvider.future);
     await repo.removeLastLog();
-    final todayStr = app_date.DateUtils.getTodayString();
-    final total = repo.getTotalWater(todayStr);
-    state = AsyncData(state.valueOrNull!.copyWith(todayTotal: total));
+    _publishTodayTotal(repo);
   }
 
   Future<void> resetToday() async {
     final repo = await ref.read(waterRepositoryProvider.future);
-    final todayStr = app_date.DateUtils.getTodayString();
-    await repo.clearLogsForDate(todayStr);
-    state = AsyncData(state.valueOrNull!.copyWith(todayTotal: 0));
+    await repo.clearLogsForDate(app_date.DateUtils.getTodayString());
+    _publishTodayTotal(repo);
   }
 
   Future<void> setGoal(int goal) async {
-    state = AsyncData(state.valueOrNull!.copyWith(goal: goal));
+    state = AsyncData(_current.copyWith(goal: goal));
+  }
+
+  /// The current state, or an empty day when the first load never produced
+  /// one. These actions force-unwrapped `state.valueOrNull` and crashed on
+  /// the tap that logged water whenever that load had failed.
+  WaterState get _current =>
+      state.valueOrNull ?? const WaterState(todayTotal: 0);
+
+  /// The total always comes from the repository, which is what was just
+  /// written to, not from whatever state happened to be loaded.
+  void _publishTodayTotal(WaterRepository repo) {
+    final total = repo.getTotalWater(app_date.DateUtils.getTodayString());
+    state = AsyncData(_current.copyWith(todayTotal: total));
   }
 
   Future<int> getTotalForDate(String date) async {
