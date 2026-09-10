@@ -41,7 +41,7 @@ test('only complete scan-shaped values are accepted from cache', () => {
 test('saved scan results do not survive a change to the scan logic', () => {
   const photo = Buffer.from('photo-a');
   const current = scanResultCacheKey('user-a', photo, 'en', 'v2');
-  assert.equal(current, scanResultCacheKey('user-a', photo, 'en', 'v2', 3));
-  assert.notEqual(current, scanResultCacheKey('user-a', photo, 'en', 'v2', 2));
-  assert.notEqual(current, scanResultCacheKey('user-a', photo, 'en', 'v2', 4));
+  assert.equal(current, scanResultCacheKey('user-a', photo, 'en', 'v2', 4));
+  assert.notEqual(current, scanResultCacheKey('user-a', photo, 'en', 'v2', 3));
+  assert.notEqual(current, scanResultCacheKey('user-a', photo, 'en', 'v2', 5));
 });

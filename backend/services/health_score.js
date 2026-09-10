@@ -22,6 +22,10 @@ const BASE = 6;
 const KIND_RULES = [
   // Order matters: the first kind whose words appear in the name wins, so
   // "apple pie" is a sweet before it is a fruit.
+  //
+  // Diet first: a diet or zero-sugar drink shares the soda's name but not its
+  // sugar, and was being scored as a sugary drink.
+  { kind: 'diet', words: ['diet', 'zero', 'zero sugar', 'sugar free', 'sugarfree', 'no sugar'] },
   {
     kind: 'sweet',
     words: ['soda', 'cola', 'soft drink', 'energy drink', 'lemonade', 'milkshake',
@@ -139,6 +143,7 @@ function healthScoreFor({ per100g, category = null, name = '' } = {}) {
     case 'produce': score += 2; break;
     case 'legumes': score += 1; break;
     case 'nuts': score += 3; break;
+    case 'diet': cap = 5; break;
     case 'juice': cap = 5; break;
     case 'fried': cap = 4; break;
     case 'processed': cap = 4; break;

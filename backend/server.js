@@ -352,6 +352,8 @@ Rules:
 - A dish cooked as one (e.g. biryani, kabsa, mandi, fried rice, curry, stew, pasta in sauce) is also ONE item, named for the dish (e.g. "chicken mandi", "chicken biryani").
 - Separately prepared foods are separate items, even on the same plate: grilled chicken, rice and fries on one plate = three items; a burger NEXT TO fries = two items; a burger by itself = one item.
 - match_key names exactly ONE food or ONE dish. Never join foods with "with" or "and" (not "grilled chicken with rice"): list them as separate items, or use the dish's own name. A dish whose own name contains "and" is fine (e.g. "fish and chips", "mac and cheese").
+- Read any visible label on cans, bottles and packets. If it says DIET, ZERO, LIGHT, SUGAR FREE or NO SUGAR, include that in both name and match_key. In match_key name the kind of product, not the brand: a Diet Pepsi can is name "Diet Pepsi", match_key "diet cola"; a flavoured soda goes by its flavour (e.g. "orange soda").
+- Food on a plate is cooked and ready to eat: rice, pasta and grains are cooked, and their weight is their cooked weight.
 - match_key is the food's common ENGLISH name, lowercase, no punctuation, no brand.
   Include the preparation when it changes how the food is cooked
   (e.g. "fried chicken", "grilled chicken breast", "boiled egg", "white rice").
@@ -2409,7 +2411,7 @@ function resolveScanPipeline(configured, requested, production = NODE_ENV === 'p
 // version they were made with, so an update stops reusing them at once. They
 // used to outlive a deploy by up to six hours: the grilled-chicken-and-rice
 // fix went live and the same photo still came back as 550 g of plain chicken.
-const SCAN_LOGIC_VERSION = 3;
+const SCAN_LOGIC_VERSION = 4;
 
 function scanResultCacheKey(uid, imageBytes, language, pipeline, logicVersion = SCAN_LOGIC_VERSION) {
   const digest = crypto.createHash('sha256')

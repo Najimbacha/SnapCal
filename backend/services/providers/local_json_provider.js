@@ -130,6 +130,46 @@ function compatible(query, description, curated = false) {
   return true;
 }
 
+// Food in a photo is on a plate, ready to eat. The table also holds dry mixes,
+// unprepared packets, powders and uncooked grains: "yellow rice" found "Yellow
+// rice with seasoning, dry packet mix, unprepared" at 343 kcal/100 g, about
+// twice cooked rice, and 300 g of it came to 1,029 kcal. Rows like that answer
+// a question no photo asks, so they are skipped -- unless the name asks for
+// them ("dry pasta", "milk powder", "raw lentils").
+const NOT_READY = /\b(unprepared|uncooked|dry mix|packet mix|dry packet|powder|powdered|dehydrated|concentrate|concentrated)\b/;
+const MADE_READY = /\b(prepared|reconstituted|cooked)\b|\bfrom concentrate\b/;
+const COOKED_STAPLES = /\b(rice|pasta|macaroni|spaghetti|noodle|noodles|oat|oats|barley|bulgur|couscous|quinoa|millet|lentil|lentils|bean|beans|chickpea|chickpeas|split peas)\b/;
+const ASKS_FOR_UNCOOKED = /\b(raw|dry|dried|uncooked|unprepared|powder|mix|concentrate)\b/;
+
+function servedAsEaten(query, food) {
+  if (ASKS_FOR_UNCOOKED.test(normalize(query))) return true;
+  const text = normalize(food.usda_description || food.display_name);
+  // "unprepared" contains "prepared" and "uncooked" contains "cooked".
+  const positive = text.replace(/\b(unprepared|uncooked)\b/g, ' ');
+  if (NOT_READY.test(text) && !MADE_READY.test(positive)) return false;
+  // Grains and dried pulses are cooked before anyone eats them; nuts and
+  // vegetables are not, so only these lose their raw and dry rows.
+  if (COOKED_STAPLES.test(text) && /\b(raw|dry)\b/.test(text) && !/\bcooked\b/.test(positive)) {
+    return false;
+  }
+  return true;
+}
+
+// "Rice and vermicelli mix, chicken flavor" contains no chicken. A name asking
+// for a food that a row only borrows as a flavour is not asking for that row:
+// "chicken with rice" matched it at 136 kcal/100 g, with a fraction of the
+// protein a plate of chicken and rice carries.
+const FLAVOUR_WORDS = new Set(['flavor', 'flavored', 'flavour', 'flavoured']);
+
+function onlyFlavouredWith(queryWords, description) {
+  if (queryWords.some((word) => FLAVOUR_WORDS.has(word))) return false;
+  const words = normalize(description).split(' ');
+  return words.some((word, index) =>
+    FLAVOUR_WORDS.has(words[index + 1]) &&
+    !QUERY_MODIFIERS.has(word) &&
+    queryWords.includes(word));
+}
+
 // Keeps letters of ANY script. The previous implementation stripped
 // [^a-z0-9\s], which deleted Arabic entirely and reduced every Arabic food
 // name to an empty string — an unconditional lookup miss.
@@ -193,7 +233,8 @@ function lookup(foodName) {
 
   const exactId = aliasMap[foodName.toLowerCase().trim()] || aliasMap[normalized];
   if (exactId && nutritionDb[exactId] &&
-      compatible(foodName, nutritionDb[exactId].display_name, true)) {
+      compatible(foodName, nutritionDb[exactId].display_name, true) &&
+      servedAsEaten(foodName, nutritionDb[exactId])) {
     return toResult(exactId, nutritionDb[exactId]);
   }
   const words = normalized.split(/\s+/);
@@ -211,6 +252,8 @@ function lookup(foodName) {
   for (const candidate of candidates) {
     const food = nutritionDb[candidate.id];
     if (!food || !compatible(foodName, food.usda_description || food.display_name)) continue;
+    if (!servedAsEaten(foodName, food)) continue;
+    if (onlyFlavouredWith(words, food.usda_description || food.display_name)) continue;
     if (candidate.imported && !sameFoodWords(words, food.display_name)) continue;
     if (candidate.key !== normalized &&
         namesAnotherFood(words, [...candidate.words, ...normalize(food.display_name).split(' ')])) {

@@ -738,5 +738,20 @@
   "poke": "FDB_000583",
   "poke bowl, salmon": "FDB_000583",
   "acai bowl": "FDB_000584",
-  "acai": "FDB_000584"
+  "acai": "FDB_000584",
+  "pepsi": "FDB_000446",
+  "pepsi cola": "FDB_000446",
+  "regular pepsi": "FDB_000446",
+  "diet pepsi": "FDB_000447",
+  "pepsi diet": "FDB_000447",
+  "pepsi max": "FDB_000447",
+  "pepsi zero": "FDB_000447",
+  "pepsi zero sugar": "FDB_000447",
+  "coke zero": "FDB_000447",
+  "coca cola zero": "FDB_000447",
+  "coca cola zero sugar": "FDB_000447",
+  "zero sugar cola": "FDB_000447",
+  "cola zero": "FDB_000447",
+  "sugar free cola": "FDB_000447",
+  "diet soda": "FDB_000447"
 }
