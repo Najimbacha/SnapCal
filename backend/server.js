@@ -2398,7 +2398,12 @@ function limitScanConcurrency(req, res, next) {
   return next();
 }
 
-const SCAN_RESULT_CACHE_TTL_SECONDS = Number(process.env.SCAN_RESULT_CACHE_TTL_SECONDS) || 6 * 60 * 60;
+// A photo scanned again within this window is answered from the saved result:
+// no AI call and no scan charged. Seven days, up from six hours, so a user
+// who picks the same gallery photo later in the week costs nothing. Safe to
+// keep this long because SCAN_LOGIC_VERSION retires results from older logic,
+// and the cache drops the least recently used entries when it fills.
+const SCAN_RESULT_CACHE_TTL_SECONDS = Number(process.env.SCAN_RESULT_CACHE_TTL_SECONDS) || 7 * 24 * 60 * 60;
 
 function resolveScanPipeline(configured, requested, production = NODE_ENV === 'production') {
   const base = String(configured || 'v1').toLowerCase() === 'v2' ? 'v2' : 'v1';

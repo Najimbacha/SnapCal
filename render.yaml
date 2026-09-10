@@ -121,8 +121,9 @@ services:
         value: "2"
       # Reopening the result or resending the same photo should not buy the
       # same AI answer twice. Only the result is cached; photos are not stored.
+      # Seven days: results from older scan logic are retired by version.
       - key: SCAN_RESULT_CACHE_TTL_SECONDS
-        value: "21600"
+        value: "604800"
       - key: NUTRITION_CACHE_TTL_SECONDS
         value: "2592000"
       - key: DEEPSEEK_API_KEY
