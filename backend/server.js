@@ -2404,7 +2404,14 @@ function resolveScanPipeline(configured, requested, production = NODE_ENV === 'p
   return String(requested || base).toLowerCase() === 'v2' ? 'v2' : 'v1';
 }
 
-function scanResultCacheKey(uid, imageBytes, language, pipeline) {
+// Raise this whenever a change alters what a scan returns -- the prompt, the
+// food matching, the nutrition or the health score. Saved results carry the
+// version they were made with, so an update stops reusing them at once. They
+// used to outlive a deploy by up to six hours: the grilled-chicken-and-rice
+// fix went live and the same photo still came back as 550 g of plain chicken.
+const SCAN_LOGIC_VERSION = 3;
+
+function scanResultCacheKey(uid, imageBytes, language, pipeline, logicVersion = SCAN_LOGIC_VERSION) {
   const digest = crypto.createHash('sha256')
     .update(String(uid))
     .update('\0')
@@ -2414,7 +2421,7 @@ function scanResultCacheKey(uid, imageBytes, language, pipeline) {
     .update('\0')
     .update(imageBytes)
     .digest('hex');
-  return `scan-result:v1:${digest}`;
+  return `scan-result:v${logicVersion}:${digest}`;
 }
 
 function isCachedScanResult(value) {

@@ -35,3 +35,13 @@ test('only complete scan-shaped values are accepted from cache', () => {
   assert.equal(isCachedScanResult({ totals: {} }), false);
   assert.equal(isCachedScanResult(null), false);
 });
+
+// A scan fix went live and the same photo still returned the old, wrong
+// result for up to six hours. Saved results are tied to the scan logic now.
+test('saved scan results do not survive a change to the scan logic', () => {
+  const photo = Buffer.from('photo-a');
+  const current = scanResultCacheKey('user-a', photo, 'en', 'v2');
+  assert.equal(current, scanResultCacheKey('user-a', photo, 'en', 'v2', 3));
+  assert.notEqual(current, scanResultCacheKey('user-a', photo, 'en', 'v2', 2));
+  assert.notEqual(current, scanResultCacheKey('user-a', photo, 'en', 'v2', 4));
+});
