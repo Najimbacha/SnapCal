@@ -175,6 +175,7 @@ function toResult(id, food) {
   return {
     id,
     displayName: food.display_name,
+    category: food.category || null,
     per100g: {
       calories: food.calories,
       protein: food.protein,

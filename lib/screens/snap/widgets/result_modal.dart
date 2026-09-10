@@ -217,12 +217,21 @@ class _ResultModalState extends ConsumerState<ResultModal> {
   int get _c => _items.fold(0, (s, i) => s + i.carbs);
   int get _f => _items.fold(0, (s, i) => s + i.fat);
 
+  /// The meal's score, weighted by calories. A plain average let a wedge of
+  /// lemon count as much as the plate of fries beside it; a meal is mostly
+  /// what most of its energy is.
   int? get _healthScore {
-    final scored = _items.where((i) => i.matched && i.per100g != null).toList();
+    final scored =
+        _items
+            .where((i) => i.matched && i.per100g != null && i.calories > 0)
+            .toList();
     if (scored.isEmpty) return null;
-    return (scored.fold<int>(0, (s, i) => s + i.healthScore) / scored.length)
-        .round()
-        .clamp(1, 10);
+    final calories = scored.fold<int>(0, (s, i) => s + i.calories);
+    final weighted = scored.fold<double>(
+      0,
+      (s, i) => s + i.healthScore * i.calories,
+    );
+    return (weighted / calories).round().clamp(1, 10);
   }
 
   int? _sharePctOf(_Item item) {

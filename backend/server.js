@@ -82,6 +82,7 @@ initializeFirebaseAdmin();
 const SCAN_PIPELINE = (process.env.SCAN_PIPELINE || 'v1').toLowerCase();
 const nutritionProvider = require('./services/nutrition_provider');
 const unmatchedFoodLogger = require('./services/unmatched_food_logger');
+const { healthScoreFor } = require('./services/health_score');
 
 // Express 4 does not pass a rejected promise from an async handler to the
 // error middleware. The rejection goes unhandled and, on Node 15+, takes the
@@ -1114,6 +1115,7 @@ async function fillMissingNutrition(result) {
     item.fat = actual.fat;
     item.nutrition = { per100g, actual };
     item.nutrition_source = 'ai_estimate_by_name';
+    item.health_score = healthScoreFor({ per100g, name: item.match_key });
     item.insights = [];
     const check = reconcileNutrition(actual);
     item.nutrition_flag = check.ok ? 'ok' : 'inconsistent';
@@ -1206,7 +1208,13 @@ function enrichScanResults(foods) {
       item.protein = actual.protein;
       item.carbs = actual.carbs;
       item.fat = actual.fat;
-      item.health_score = 5;
+      // Every item used to be given a flat 5, so every meal read "5/10 Okay"
+      // whatever was on the plate.
+      item.health_score = healthScoreFor({
+        per100g,
+        category: matched ? matched.category : null,
+        name: lookupName,
+      });
       item.insights = [];
       item.alternatives = [];
       item.nutrition = {
@@ -1249,7 +1257,7 @@ function enrichScanResults(foods) {
       item.protein = null;
       item.carbs = null;
       item.fat = null;
-      item.health_score = 5;
+      item.health_score = null;
       item.insights = ['Nutrition unavailable'];
       item.alternatives = [];
       item.nutrition = null;
