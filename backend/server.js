@@ -348,7 +348,9 @@ Return this exact structure:
 
 Rules:
 - Treat an assembled/composite dish as ONE single item (e.g. burger, cheeseburger, sandwich, sub, taco, wrap, pizza, hot dog, burrito). Do NOT list its components (bun, patty, lettuce, toppings, sauce) separately.
-- Only create more than one entry when the photo clearly shows separate, side-by-side servings (e.g. a burger NEXT TO fries = two items; a burger by itself = one item).
+- A dish cooked as one (e.g. biryani, kabsa, mandi, fried rice, curry, stew, pasta in sauce) is also ONE item, named for the dish (e.g. "chicken mandi", "chicken biryani").
+- Separately prepared foods are separate items, even on the same plate: grilled chicken, rice and fries on one plate = three items; a burger NEXT TO fries = two items; a burger by itself = one item.
+- match_key names exactly ONE food or ONE dish. Never join foods with "with" or "and" (not "grilled chicken with rice"): list them as separate items, or use the dish's own name. A dish whose own name contains "and" is fine (e.g. "fish and chips", "mac and cheese").
 - match_key is the food's common ENGLISH name, lowercase, no punctuation, no brand.
   Include the preparation when it changes how the food is cooked
   (e.g. "fried chicken", "grilled chicken breast", "boiled egg", "white rice").

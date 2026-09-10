@@ -211,6 +211,10 @@ function lookup(foodName) {
     const food = nutritionDb[candidate.id];
     if (!food || !compatible(foodName, food.usda_description || food.display_name)) continue;
     if (candidate.imported && !sameFoodWords(words, food.display_name)) continue;
+    if (candidate.key !== normalized &&
+        namesAnotherFood(words, [...candidate.words, ...normalize(food.display_name).split(' ')])) {
+      continue;
+    }
     const score = candidate.key === normalized ? 1 : scoreCandidate(words, prep, candidate);
     if (score < MIN_SCORE) continue;
     // Only identical full identities can share a winner; similar calories are not equivalence.
@@ -256,6 +260,38 @@ const QUERY_MODIFIERS = new Set(['raw', 'cooked', 'fried', 'roasted', 'grilled',
   'baked', 'steamed', 'poached', 'broiled', 'dried', 'frozen', 'canned', 'smoked',
   'skinless', 'skin', 'with', 'without', 'and', 'only', 'meat', 'on', 'fat', 'free',
   'low', 'reduced', 'whole', 'skim', 'nonfat', 'unsweetened', 'sweetened', 'drained']);
+// Words that join two foods into one name: "grilled chicken with rice".
+const DISH_CONNECTORS = new Set(['with', 'and', 'plus', 'served', 'over', 'side', 'topped']);
+
+function singularWord(word) {
+  return word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word;
+}
+
+// Whether a word is, on its own, the name of a food in the table.
+function isFoodWord(word) {
+  const one = singularWord(word);
+  return Boolean(aliasMap[word] || aliasMap[one] || importedAliases[word] || importedAliases[one]);
+}
+
+// Whether [queryWords] join in a second food that [candidateWords] lack.
+//
+// "grilled chicken with rice" shares both words of the curated "grilled
+// chicken" alias, and that scored well enough to match: a plate of chicken and
+// rice came back as 550 g of plain chicken -- 176 g of protein and no
+// carbohydrate at all. A name that joins foods describes a composite dish, and
+// a row holding only one of them is not an answer for it; with no match the
+// dish is estimated as a whole instead. Only joined names are judged, so a
+// plain "beef burger" still finds the burger.
+function namesAnotherFood(queryWords, candidateWords) {
+  if (!queryWords.some((word) => DISH_CONNECTORS.has(word))) return false;
+  const have = new Set(candidateWords.map(singularWord));
+  return queryWords.some((word) =>
+    !DISH_CONNECTORS.has(word) &&
+    !QUERY_MODIFIERS.has(word) &&
+    !have.has(singularWord(word)) &&
+    isFoodWord(word));
+}
+
 function sameFoodWords(words, description) {
   const singular = word => word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word;
   const actual = new Set(normalize(description).split(' ').map(singular));
