@@ -124,6 +124,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   /// late-arriving entitlement below cannot both pop the route.
   bool _closed = false;
 
+  // Whether this paywall started a purchase. Pro arriving without one is an
+  // existing subscription being recognised late, so it is welcomed back
+  // rather than congratulated on a purchase it did not just make.
+  bool _purchaseStarted = false;
+
   /// Restore is in flight. Separate from [_isLoading] on purpose: sharing one
   /// flag put a spinner inside the *Subscribe* button while a restore ran, so
   /// tapping "Restore Purchases" looked like a payment being processed.
@@ -441,20 +446,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     setState(() {
       _isLoading = true;
       _purchaseNotice = null;
+      _purchaseStarted = true;
     });
 
     final messenger = ScaffoldMessenger.of(context);
     final subService = SubscriptionService();
-    final l10n = AppLocalizations.of(context)!;
 
     final result = await subService.purchasePackageDetailed(_selectedPackage!);
     if (!mounted) return;
-    _handleSubscriptionResult(
-      result,
-      messenger: messenger,
-      successMessage: l10n.premium_welcome,
-      isRestore: false,
-    );
+    _handleSubscriptionResult(result, messenger: messenger, isRestore: false);
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -464,23 +464,16 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     setState(() => _restoring = true);
     final messenger = ScaffoldMessenger.of(context);
     final subService = SubscriptionService();
-    final l10n = AppLocalizations.of(context)!;
 
     final result = await subService.restorePurchasesDetailed();
     if (!mounted) return;
-    _handleSubscriptionResult(
-      result,
-      messenger: messenger,
-      successMessage: l10n.premium_restore_success,
-      isRestore: true,
-    );
+    _handleSubscriptionResult(result, messenger: messenger, isRestore: true);
     if (mounted) setState(() => _restoring = false);
   }
 
   void _handleSubscriptionResult(
     SubscriptionResult result, {
     required ScaffoldMessengerState messenger,
-    required String successMessage,
     required bool isRestore,
   }) {
     switch (result.status) {
@@ -490,15 +483,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         // immediately after the purchase succeeded. Refresh in place instead.
         unawaited(ref.read(settingsProvider.notifier).refreshProStatus());
         _closed = true;
-        if (mounted && context.canPop()) {
-          context.pop();
-        }
-        _showPurchaseSnackBar(
-          messenger,
-          successMessage,
-          backgroundColor: AppColors.primary,
-          icon: LucideIcons.sparkles,
-        );
+        // `go`, not `pop`. A successful test purchase left the user on the
+        // paywall with only a toast; replacing the whole stack means nothing
+        // underneath can be left showing, however the paywall was opened.
+        context.go('/pro-welcome', extra: {'restore': isRestore});
         return;
       case SubscriptionStatus.pending:
         final message = _purchaseCopy(
@@ -646,17 +634,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     // someone who has already paid ends up buying twice, or writing in to say
     // nothing happened.
     //
-    // Guarded by _closed so this and the success path cannot both pop.
+    // Guarded by _closed so this and the success path cannot both navigate.
     ref.listen<bool>(effectiveIsProProvider, (previous, isPro) {
       if (!isPro || _closed || !mounted) return;
       _closed = true;
-      _showPurchaseSnackBar(
-        ScaffoldMessenger.of(context),
-        l10n.premium_welcome,
-        backgroundColor: AppColors.primary,
-        icon: LucideIcons.sparkles,
-      );
-      if (context.canPop()) context.pop();
+      context.go('/pro-welcome', extra: {'restore': !_purchaseStarted});
     });
 
     // Hold the screen while a purchase is in flight.

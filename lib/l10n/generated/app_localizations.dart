@@ -7977,6 +7977,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unlock with SnapCal Pro'**
   String get planner_unlock_pro;
+
+  /// No description provided for @pro_welcome_eyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re all set'**
+  String get pro_welcome_eyebrow;
+
+  /// No description provided for @pro_welcome_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to SnapCal Pro'**
+  String get pro_welcome_title;
+
+  /// No description provided for @pro_welcome_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in Pro is ready for you.'**
+  String get pro_welcome_subtitle;
+
+  /// No description provided for @pro_welcome_cta.
+  ///
+  /// In en, this message translates to:
+  /// **'Start exploring'**
+  String get pro_welcome_cta;
+
+  /// No description provided for @pro_restored_eyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back'**
+  String get pro_restored_eyebrow;
+
+  /// No description provided for @pro_restored_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro restored'**
+  String get pro_restored_title;
 }
 
 class _AppLocalizationsDelegate

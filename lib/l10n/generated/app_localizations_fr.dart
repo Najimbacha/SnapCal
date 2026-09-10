@@ -4478,4 +4478,23 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planner_unlock_pro => 'Débloquer avec SnapCal Pro';
+
+  @override
+  String get pro_welcome_eyebrow => 'Tout est prêt';
+
+  @override
+  String get pro_welcome_title => 'Bienvenue sur SnapCal Pro';
+
+  @override
+  String get pro_welcome_subtitle =>
+      'Toutes les fonctions Pro sont prêtes pour vous.';
+
+  @override
+  String get pro_welcome_cta => 'Commencer à explorer';
+
+  @override
+  String get pro_restored_eyebrow => 'Bon retour';
+
+  @override
+  String get pro_restored_title => 'Pro restauré';
 }

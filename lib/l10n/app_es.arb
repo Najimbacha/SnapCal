@@ -1548,5 +1548,11 @@
   "planner_unlock_body": "Ve los 7 días, cambia comidas y compra con una lista inteligente.",
   "planner_one_day_preview": "Tu vista previa de un día",
   "planner_locked_days": "6 días más listos con Pro",
-  "planner_unlock_pro": "Desbloquear con SnapCal Pro"
+  "planner_unlock_pro": "Desbloquear con SnapCal Pro",
+  "pro_welcome_eyebrow": "Todo listo",
+  "pro_welcome_title": "Bienvenido a SnapCal Pro",
+  "pro_welcome_subtitle": "Todo lo de Pro ya está listo para ti.",
+  "pro_welcome_cta": "Empezar a explorar",
+  "pro_restored_eyebrow": "Bienvenido de nuevo",
+  "pro_restored_title": "Pro restaurado"
 }

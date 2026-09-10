@@ -27,6 +27,7 @@ import 'providers/auth_state_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/planner/meal_planner_screen.dart';
 import 'screens/paywall/paywall_screen.dart';
+import 'screens/paywall/pro_welcome_screen.dart';
 import 'data/services/premium_conversion_service.dart';
 import 'screens/onboarding/onboarding_flow_screen.dart';
 import 'screens/progress/progress_screen.dart';
@@ -154,6 +155,19 @@ GoRouter router(RouterRef ref) {
               limitReached: limitReached,
               entryPoint: entryPoint,
               featureName: featureName,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/pro-welcome',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return _sharedAxisPage(
+            state,
+            ProWelcomeScreen(
+              isRestore: extra?['restore'] as bool? ?? false,
+              onContinue: () => context.go('/'),
             ),
           );
         },

@@ -1551,5 +1551,11 @@
   "planner_unlock_body": "شاهد الأيام السبعة وبدّل الوجبات وتسوق من قائمة ذكية واحدة.",
   "planner_one_day_preview": "معاينة ليوم واحد",
   "planner_locked_days": "6 أيام إضافية جاهزة مع Pro",
-  "planner_unlock_pro": "افتح باستخدام SnapCal Pro"
+  "planner_unlock_pro": "افتح باستخدام SnapCal Pro",
+  "pro_welcome_eyebrow": "كل شيء جاهز",
+  "pro_welcome_title": "مرحباً بك في SnapCal Pro",
+  "pro_welcome_subtitle": "كل ميزات Pro جاهزة لك.",
+  "pro_welcome_cta": "ابدأ الاستكشاف",
+  "pro_restored_eyebrow": "مرحباً بعودتك",
+  "pro_restored_title": "تمت استعادة Pro"
 }

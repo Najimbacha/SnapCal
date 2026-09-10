@@ -2229,5 +2229,11 @@
   "planner_unlock_body": "See all 7 days, swap meals, and shop from one smart grocery list.",
   "planner_one_day_preview": "Your one-day preview",
   "planner_locked_days": "6 more days are ready with Pro",
-  "planner_unlock_pro": "Unlock with SnapCal Pro"
+  "planner_unlock_pro": "Unlock with SnapCal Pro",
+  "pro_welcome_eyebrow": "You're all set",
+  "pro_welcome_title": "Welcome to SnapCal Pro",
+  "pro_welcome_subtitle": "Everything in Pro is ready for you.",
+  "pro_welcome_cta": "Start exploring",
+  "pro_restored_eyebrow": "Welcome back",
+  "pro_restored_title": "Pro restored"
 }
