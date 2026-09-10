@@ -2411,7 +2411,7 @@ function resolveScanPipeline(configured, requested, production = NODE_ENV === 'p
 // version they were made with, so an update stops reusing them at once. They
 // used to outlive a deploy by up to six hours: the grilled-chicken-and-rice
 // fix went live and the same photo still came back as 550 g of plain chicken.
-const SCAN_LOGIC_VERSION = 4;
+const SCAN_LOGIC_VERSION = 5;
 
 function scanResultCacheKey(uid, imageBytes, language, pipeline, logicVersion = SCAN_LOGIC_VERSION) {
   const digest = crypto.createHash('sha256')

@@ -141,15 +141,37 @@ const MADE_READY = /\b(prepared|reconstituted|cooked)\b|\bfrom concentrate\b/;
 const COOKED_STAPLES = /\b(rice|pasta|macaroni|spaghetti|noodle|noodles|oat|oats|barley|bulgur|couscous|quinoa|millet|lentil|lentils|bean|beans|chickpea|chickpeas|split peas)\b/;
 const ASKS_FOR_UNCOOKED = /\b(raw|dry|dried|uncooked|unprepared|powder|mix|concentrate)\b/;
 
+// Meat, poultry, fish, eggs and potatoes are eaten cooked too, and cooking
+// drives water out: raw chicken breast is about 120 kcal/100 g, cooked about
+// 165, so a raw row runs a quarter to a third low on a cooked plate.
+// Vegetables, fruit and nuts are often eaten raw, and keep their raw rows.
+const EATEN_COOKED_CATEGORIES = new Set([
+  'beef products', 'lamb, veal, and game products', 'poultry products',
+  'pork products', 'finfish and shellfish products',
+  'sausages and luncheon meats', 'meats', 'seafood',
+]);
+const EATEN_COOKED_FOODS = /\b(egg|eggs|potato|potatoes)\b/;
+
+// Dishes that are served raw on purpose keep their raw rows.
+const RAW_DISHES = /\b(sushi|sashimi|nigiri|tartare|tartar|ceviche|carpaccio|poke|crudo|oyster|oysters)\b/;
+
 function servedAsEaten(query, food) {
-  if (ASKS_FOR_UNCOOKED.test(normalize(query))) return true;
+  const asked = normalize(query);
+  if (ASKS_FOR_UNCOOKED.test(asked) || RAW_DISHES.test(asked)) return true;
   const text = normalize(food.usda_description || food.display_name);
   // "unprepared" contains "prepared" and "uncooked" contains "cooked".
   const positive = text.replace(/\b(unprepared|uncooked)\b/g, ' ');
   if (NOT_READY.test(text) && !MADE_READY.test(positive)) return false;
-  // Grains and dried pulses are cooked before anyone eats them; nuts and
-  // vegetables are not, so only these lose their raw and dry rows.
-  if (COOKED_STAPLES.test(text) && /\b(raw|dry)\b/.test(text) && !/\bcooked\b/.test(positive)) {
+  const uncooked = !/\bcooked\b/.test(positive);
+  // Grains and dried pulses lose both their raw and their dry rows.
+  if (uncooked && COOKED_STAPLES.test(text) && /\b(raw|dry)\b/.test(text)) {
+    return false;
+  }
+  // Meat, fish, eggs and potatoes lose their raw rows only: "dry" there means
+  // cured, and dry salami is eaten as it is.
+  if (uncooked && /\braw\b/.test(text) &&
+      (EATEN_COOKED_CATEGORIES.has(String(food.category || '').toLowerCase()) ||
+       EATEN_COOKED_FOODS.test(text))) {
     return false;
   }
   return true;

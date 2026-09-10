@@ -60,3 +60,26 @@ test('a diet drink is not scored as a sugary one', () => {
   assert.ok(diet >= 5, `diet cola ${diet}`);
   assert.ok(regular <= 2, `cola ${regular}`);
 });
+
+// Cooking drives water out of meat, fish, eggs and potatoes: a raw row runs a
+// quarter to a third low on a cooked plate. Those foods resolve to a cooked
+// row or to none, whatever name the scan uses.
+test('meat, fish, eggs and potatoes never resolve to a raw row', () => {
+  for (const name of [
+    'chicken', 'chicken breast', 'beef', 'steak', 'ground beef', 'ground lamb',
+    'lamb', 'pork', 'salmon', 'cod', 'shrimp', 'egg', 'eggs', 'potato',
+    'russet potatoes', 'sweet potato', 'turkey', 'duck', 'chicken liver',
+  ]) {
+    const match = provider.lookup(name);
+    assert.ok(!match || !/\braw\b/i.test(match.displayName), `${name} matched ${match && match.displayName}`);
+  }
+  assert.match(provider.lookup('ground lamb').displayName, /cooked/i);
+});
+
+test('fruit, vegetables, nuts and raw dishes keep their raw rows', () => {
+  for (const name of ['banana', 'apple', 'tomato', 'cucumber', 'almonds']) {
+    assert.match(provider.lookup(name).displayName, /\braw\b/i, name);
+  }
+  assert.ok(provider.lookup('sashimi'), 'sashimi');
+  assert.ok(provider.lookup('sushi'), 'sushi');
+});
