@@ -203,7 +203,7 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
         final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
+        if (_isSignedIn(user)) {
           widget.onAuthSuccess?.call();
         } else if (ref.read(authNotifierProvider).hasError) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -229,7 +229,7 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
         final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
+        if (_isSignedIn(user)) {
           widget.onAuthSuccess?.call();
         } else if (ref.read(authNotifierProvider).hasError) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -245,10 +245,22 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
     }
   }
 
-  void _handleEmailSignIn() {
+  Future<void> _handleEmailSignIn() async {
     HapticFeedback.mediumImpact();
-    AuthModal.show(context);
+    // The email sheet closes itself after signing in. Nothing told this screen,
+    // so someone who had just signed in was left looking at its sign-in
+    // buttons, and tapping sync again brought them straight back here.
+    await AuthModal.show(context);
+    if (!mounted) return;
+    if (_isSignedIn(FirebaseAuth.instance.currentUser)) {
+      widget.onAuthSuccess?.call();
+    }
   }
+
+  /// A guest session is a signed-in Firebase user too; only a real account
+  /// counts. Checking for any user closed this screen as though sign-in had
+  /// worked when Google or Facebook sign-in was cancelled.
+  bool _isSignedIn(User? user) => user != null && !user.isAnonymous;
 
   @override
   Widget build(BuildContext context) {

@@ -160,7 +160,7 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet>
     try {
       await authNotifier.signInWithFacebook();
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) _onAuthSuccess();
+      if (user != null && !user.isAnonymous) _onAuthSuccess();
     } catch (e) {
       _showStyledSnackBar(_friendlyError(e));
     } finally {
@@ -186,7 +186,7 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet>
         );
       }
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) _onAuthSuccess();
+      if (user != null && !user.isAnonymous) _onAuthSuccess();
     } catch (e) {
       _showStyledSnackBar(_friendlyError(e));
     } finally {

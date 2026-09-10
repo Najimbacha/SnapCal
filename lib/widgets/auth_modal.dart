@@ -8,8 +8,13 @@ class AuthModal extends StatelessWidget {
   const AuthModal({super.key, String? title, String? subtitle});
 
   /// Show auth — displays the modern, premium half-screen AuthBottomSheet modal.
-  static void show(BuildContext context, {String? title, String? subtitle}) {
-    showModalBottomSheet(
+  /// Completes when the sheet closes, whether or not the user signed in.
+  static Future<void> show(
+    BuildContext context, {
+    String? title,
+    String? subtitle,
+  }) {
+    return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
