@@ -4534,4 +4534,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get sync_status_done => 'Tout est synchronisé';
+
+  @override
+  String get update_available_title => 'Mise à jour disponible';
+
+  @override
+  String get update_available_message =>
+      'Une nouvelle version de SnapCal est disponible, avec des corrections et des améliorations.';
+
+  @override
+  String get update_now => 'Mettre à jour';
+
+  @override
+  String get update_later => 'Plus tard';
 }

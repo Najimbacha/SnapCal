@@ -1562,5 +1562,9 @@
   "sync_status_never": "Touchez pour synchroniser",
   "sync_status_pending": "{count, plural, =1{1 modification en attente d’envoi} other{{count} modifications en attente d’envoi}}",
   "sync_status_failed": "Échec de la synchronisation. Touchez pour réessayer",
-  "sync_status_done": "Tout est synchronisé"
+  "sync_status_done": "Tout est synchronisé",
+  "update_available_title": "Mise à jour disponible",
+  "update_available_message": "Une nouvelle version de SnapCal est disponible, avec des corrections et des améliorations.",
+  "update_now": "Mettre à jour",
+  "update_later": "Plus tard"
 }

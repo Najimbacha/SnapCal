@@ -8061,6 +8061,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Everything is synced'**
   String get sync_status_done;
+
+  /// No description provided for @update_available_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available'**
+  String get update_available_title;
+
+  /// No description provided for @update_available_message.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version of SnapCal is ready, with fixes and improvements.'**
+  String get update_available_message;
+
+  /// No description provided for @update_now.
+  ///
+  /// In en, this message translates to:
+  /// **'Update now'**
+  String get update_now;
+
+  /// No description provided for @update_later.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get update_later;
 }
 
 class _AppLocalizationsDelegate

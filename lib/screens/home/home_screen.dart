@@ -1,3 +1,4 @@
+import 'package:snapcal/data/services/force_update_service.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -476,6 +477,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Future<void> _maybePromptUpgrade() async {
     if (!mounted) return;
 
+    // A waiting update comes first: it is the one thing worth asking about,
+    // and two prompts back to back is one too many.
+    if (await ForceUpdateService().checkAndPrompt(context)) return;
+    if (!mounted) return;
+
     final todaysMealsAsync = ref.read(todaysMealsProvider);
     final hasAiMeal = (todaysMealsAsync.valueOrNull ?? []).any(
       (m) => m.scanSource == 'ai_scan',
@@ -631,11 +637,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               carbGoal: carbGoal,
               fatGoal: fatGoal,
               isPro: isPro,
-              onUpgrade: () => PremiumConversionService().openPaywall(
-                context,
-                PaywallEntryPoint.macroDetails,
-                featureName: 'home_macros',
-              ),
+              onUpgrade:
+                  () => PremiumConversionService().openPaywall(
+                    context,
+                    PaywallEntryPoint.macroDetails,
+                    featureName: 'home_macros',
+                  ),
             ),
           ),
           _staggeredSlide(
@@ -763,6 +770,7 @@ class _HomeInset extends StatelessWidget {
 }
 
 const _minimalInk = Color(0xFF1C1917);
+
 /// Secondary text on the light ground.
 ///
 /// This was #A8A29E, which measures 2.45:1 against the page -- well under the
@@ -1264,22 +1272,22 @@ class _MinimalMacroSection extends StatelessWidget {
             _MacroEmptyPrompt(text: l10n.home_macro_empty)
           else
             MacroDisplay(
-            macros: macros,
-            proteinGoal: proteinGoal,
-            carbGoal: carbGoal,
-            fatGoal: fatGoal,
-            variant: MacroDisplayVariant.rings,
-            showGrams: showGrams,
-            showGoals: showGrams,
-            onUpgradeTap:
-                showGrams
-                    ? null
-                    : () => PremiumConversionService().openPaywall(
-                      context,
-                      PaywallEntryPoint.macroDetails,
-                      featureName: 'home_macros',
-                    ),
-          ),
+              macros: macros,
+              proteinGoal: proteinGoal,
+              carbGoal: carbGoal,
+              fatGoal: fatGoal,
+              variant: MacroDisplayVariant.rings,
+              showGrams: showGrams,
+              showGoals: showGrams,
+              onUpgradeTap:
+                  showGrams
+                      ? null
+                      : () => PremiumConversionService().openPaywall(
+                        context,
+                        PaywallEntryPoint.macroDetails,
+                        featureName: 'home_macros',
+                      ),
+            ),
           const SizedBox(height: 14),
           const _MinimalSectionDivider(),
         ],
@@ -1369,25 +1377,25 @@ class _MinimalToolsSection extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              Expanded(
-                child: _PremiumBentoCard(
-                  icon: LucideIcons.calendarDays,
-                  title: l10n.planner_title,
-                  subtitle: l10n.planner_generate,
-                  isPro: isPro,
-                  onTap: onPlannerTap,
+                Expanded(
+                  child: _PremiumBentoCard(
+                    icon: LucideIcons.calendarDays,
+                    title: l10n.planner_title,
+                    subtitle: l10n.planner_generate,
+                    isPro: isPro,
+                    onTap: onPlannerTap,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _PremiumBentoCard(
-                  icon: LucideIcons.sparkles,
-                  title: l10n.assistant_title,
-                  subtitle: l10n.assistant_home_subtitle,
-                  isPro: isPro,
-                  onTap: onCoachTap,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _PremiumBentoCard(
+                    icon: LucideIcons.sparkles,
+                    title: l10n.assistant_title,
+                    subtitle: l10n.assistant_home_subtitle,
+                    isPro: isPro,
+                    onTap: onCoachTap,
+                  ),
                 ),
-              ),
               ],
             ),
           ),
@@ -1449,10 +1457,7 @@ class _PremiumBentoCard extends StatelessWidget {
                       AppColors.primary.withValues(alpha: 0.22),
                       AppColors.primary.withValues(alpha: 0.05),
                     ]
-                    : [
-                      const Color(0xFFD9F2E7),
-                      const Color(0xFFF4FBF8),
-                    ],
+                    : [const Color(0xFFD9F2E7), const Color(0xFFF4FBF8)],
             stops: const [0.0, 0.85],
           ),
           border: Border.all(
@@ -2277,8 +2282,7 @@ class _HeaderProAffordanceState extends ConsumerState<_HeaderProAffordance>
     Duration? remaining,
   ) {
     final l10n = AppLocalizations.of(context)!;
-    final urgent =
-        remaining != null && remaining <= const Duration(hours: 1);
+    final urgent = remaining != null && remaining <= const Duration(hours: 1);
     // Says "SAVE 76%", the same words and the same number the paywall uses.
     // "76% OFF" would imply 76% off the annual list price, which is not what
     // the comparison measures — it is the saving against paying monthly.
@@ -2298,10 +2302,7 @@ class _HeaderProAffordanceState extends ConsumerState<_HeaderProAffordance>
           opacity: _entrance.value.clamp(0.0, 1.0),
           child: Transform.rotate(
             angle: tilt,
-            child: Transform.scale(
-              scale: (0.9 + 0.1 * t) * pop,
-              child: child,
-            ),
+            child: Transform.scale(scale: (0.9 + 0.1 * t) * pop, child: child),
           ),
         );
       },
@@ -2344,11 +2345,7 @@ class _HeaderProAffordanceState extends ConsumerState<_HeaderProAffordance>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      LucideIcons.zap,
-                      size: 12,
-                      color: Colors.white,
-                    ),
+                    const Icon(LucideIcons.zap, size: 12, color: Colors.white),
                     const SizedBox(width: 5),
                     Text(
                       label,
@@ -3148,7 +3145,8 @@ class _WellnessCard extends StatelessWidget {
                         TextSpan(
                           text: _formatNumber(context, value),
                           style: AppTypography.titleLarge.copyWith(
-                            color: value > 0 ? ink : ink.withValues(alpha: 0.32),
+                            color:
+                                value > 0 ? ink : ink.withValues(alpha: 0.32),
                             fontSize: 22,
                             height: 1,
                             fontWeight: FontWeight.w800,
@@ -3186,9 +3184,10 @@ class _WellnessCard extends StatelessWidget {
                               ? accent.withValues(alpha: isDark ? 0.9 : 0.85)
                               : muted,
                       fontSize: 10.5,
-                      fontWeight: trailingStat != null
-                          ? FontWeight.w700
-                          : FontWeight.w600,
+                      fontWeight:
+                          trailingStat != null
+                              ? FontWeight.w700
+                              : FontWeight.w600,
                       letterSpacing: 0,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),

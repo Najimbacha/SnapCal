@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'force_update_service.dart';
 import 'notification_service.dart';
 
 /// Top-level background message handler (required by firebase_messaging).
@@ -236,6 +237,16 @@ class FcmService {
     return message.data['type'] == 'food_reminder';
   }
 
+  /// A "please update" notification: tapping it opens the store. It used to
+  /// open the app and nothing more, leaving people to find the update.
+  bool _isAppUpdate(RemoteMessage message) {
+    return message.data['type'] == 'app_update';
+  }
+
+  void _openStoreFor(RemoteMessage message) {
+    unawaited(ForceUpdateService().openStore(url: message.data['url']));
+  }
+
   // ── Message handling ──────────────────────────────────────────────────────
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
@@ -275,6 +286,7 @@ class FcmService {
         if (_isFoodReminder(message)) {
           onFoodReminderTapped?.call();
         }
+        if (_isAppUpdate(message)) _openStoreFor(message);
       }
     } catch (e) {
       debugPrint('⚠️ FcmService: getInitialMessage() failed: $e');
@@ -289,6 +301,7 @@ class FcmService {
     if (_isFoodReminder(message)) {
       onFoodReminderTapped?.call();
     }
+    if (_isAppUpdate(message)) _openStoreFor(message);
   }
 
   /// Show a local notification when the app is in the foreground
@@ -321,6 +334,10 @@ class FcmService {
             presentSound: true,
           ),
         ),
+        // Shown by the app itself while it is open, so the tap comes back
+        // through NotificationService, which needs to know what this was.
+        payload:
+            _isAppUpdate(message) ? NotificationService.appUpdatePayload : null,
       );
     } catch (e) {
       debugPrint('⚠️ FcmService: local notification display failed: $e');

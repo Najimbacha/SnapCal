@@ -1565,5 +1565,9 @@
   "sync_status_never": "اضغط للمزامنة الآن",
   "sync_status_pending": "{count, plural, =1{تغيير واحد بانتظار الرفع} other{{count} تغييرات بانتظار الرفع}}",
   "sync_status_failed": "تعذّرت المزامنة. اضغط لإعادة المحاولة",
-  "sync_status_done": "تمت مزامنة كل شيء"
+  "sync_status_done": "تمت مزامنة كل شيء",
+  "update_available_title": "يتوفر تحديث",
+  "update_available_message": "إصدار جديد من SnapCal متاح، مع إصلاحات وتحسينات.",
+  "update_now": "حدّث الآن",
+  "update_later": "لاحقاً"
 }

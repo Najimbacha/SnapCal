@@ -1,3 +1,4 @@
+import 'force_update_service.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -24,6 +25,9 @@ class NotificationService {
   static const int _dailyMotivationScheduleDays = 14;
   static const String _androidNotificationIcon = 'ic_stat_notification';
   static const String _foodReminderPayload = 'food_reminder';
+
+  /// Payload of a "please update" notification shown while the app is open.
+  static const String appUpdatePayload = 'app_update';
   static const String foodReminderChannelId = 'food_scan_reminders_v1';
   static const String foodReminderChannelName = 'Food Scan Reminders';
   static const String foodReminderChannelDesc =
@@ -65,6 +69,8 @@ class NotificationService {
         onDidReceiveNotificationResponse: (details) {
           if (details.payload == _foodReminderPayload) {
             onFoodReminderTapped?.call();
+          } else if (details.payload == appUpdatePayload) {
+            ForceUpdateService().openStore();
           }
         },
       );

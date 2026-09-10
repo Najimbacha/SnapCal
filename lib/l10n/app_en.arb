@@ -2246,5 +2246,9 @@
   "sync_status_done": "Everything is synced",
   "@sync_signed_in_as": {"placeholders":{"email":{"type":"String"}}},
   "@sync_status_last": {"placeholders":{"time":{"type":"String"}}},
-  "@sync_status_pending": {"placeholders":{"count":{"type":"int"}}}
+  "@sync_status_pending": {"placeholders":{"count":{"type":"int"}}},
+  "update_available_title": "Update available",
+  "update_available_message": "A new version of SnapCal is ready, with fixes and improvements.",
+  "update_now": "Update now",
+  "update_later": "Later"
 }

@@ -4435,4 +4435,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get sync_status_done => 'تمت مزامنة كل شيء';
+
+  @override
+  String get update_available_title => 'يتوفر تحديث';
+
+  @override
+  String get update_available_message =>
+      'إصدار جديد من SnapCal متاح، مع إصلاحات وتحسينات.';
+
+  @override
+  String get update_now => 'حدّث الآن';
+
+  @override
+  String get update_later => 'لاحقاً';
 }

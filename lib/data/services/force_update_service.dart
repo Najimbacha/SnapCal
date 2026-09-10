@@ -1,11 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/config_service.dart';
 import '../../widgets/update_available_modal.dart';
-
-enum UpdateStatus { upToDate, available }
 
 class _Version implements Comparable<_Version> {
   final int major;
@@ -31,19 +30,34 @@ class _Version implements Comparable<_Version> {
     return patch.compareTo(other.patch);
   }
 
-  bool operator <(_Version other) => compareTo(other) < 0;
   bool operator >(_Version other) => compareTo(other) > 0;
 
   @override
   String toString() => '$major.$minor.$patch';
 }
 
+/// Tells people on an old version that a new one is out, and takes them to
+/// the store to get it.
+///
+/// Driven from Firebase Remote Config: set `latest_version` to the version
+/// just released (for example "1.0.25") and everyone below it sees the prompt
+/// on their next launch. `update_prompt_title` and `update_prompt_message`
+/// replace the built-in wording, and `update_url` where the button goes --
+/// needed on iOS, which has no built-in store page. Nothing called this
+/// before, so setting `latest_version` did nothing.
 class ForceUpdateService {
   static final ForceUpdateService _instance = ForceUpdateService._internal();
   factory ForceUpdateService() => _instance;
   ForceUpdateService._internal();
 
-  static const String _skipVersionPrefix = 'force_update_skip_version_';
+  static const String androidStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.snapcal.snapcal';
+
+  /// "Later" holds the prompt off for this long. It used to hide it for good
+  /// for that version, so one tap meant never hearing about it again.
+  static const Duration snoozeFor = Duration(days: 3);
+
+  static const String _snoozedAtKey = 'update_prompt_snoozed_at';
 
   SharedPreferences? _prefs;
   String? _installedVersion;
@@ -61,62 +75,97 @@ class ForceUpdateService {
     }
   }
 
-  Future<void> checkAndPrompt(BuildContext context) async {
+  /// Shows the update prompt when a newer version is out. Returns whether it
+  /// was shown, so other launch-time prompts can stand down.
+  Future<bool> checkAndPrompt(BuildContext context) async {
     if (!_initialized) await init();
-    if (!_initialized || _installedVersion == null) return;
+    final installed = _installedVersion;
+    if (!_initialized || installed == null) return false;
 
-    final status = _checkStatus();
-    if (status == UpdateStatus.upToDate) return;
-
-    final latestVersion = ConfigService().latestVersion;
-    if (_isVersionSkipped(latestVersion)) return;
-    if (!context.mounted) return;
-
-    await _showUpdateModal(context);
-  }
-
-  UpdateStatus _checkStatus() {
     final config = ConfigService();
-    final latest = config.latestVersion;
-    if (latest.isEmpty) return UpdateStatus.upToDate;
-
-    final installed = _Version.parse(_installedVersion!);
-    final latestV = _Version.parse(latest);
-
-    if (latestV > installed) return UpdateStatus.available;
-    return UpdateStatus.upToDate;
-  }
-
-  Future<void> openPlayStore() async {
-    final url = ConfigService().updateUrl;
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      debugPrint('⚠️ ForceUpdateService: failed to open store: $e');
+    if (!isNewer(config.latestVersion, installed)) return false;
+    if (isSnoozed(_prefs?.getInt(_snoozedAtKey), DateTime.now())) return false;
+    // With no store to send them to -- iOS, until update_url is set -- say
+    // nothing rather than offer a button that goes nowhere.
+    if (storeUri(configured: config.updateUrl, isAndroid: _isAndroid) == null) {
+      return false;
     }
-  }
-
-  void skipVersion(String version) {
-    final key = '$_skipVersionPrefix$version';
-    _prefs?.setBool(key, true);
-  }
-
-  bool _isVersionSkipped(String version) {
-    return _prefs?.getBool('$_skipVersionPrefix$version') ?? false;
-  }
-
-  Future<void> _showUpdateModal(BuildContext context) async {
-    final config = ConfigService();
-    final latestVersion = config.latestVersion;
+    if (!context.mounted) return false;
 
     await UpdateAvailableModal.show(
       context,
       title: config.updatePromptTitle,
       message: config.updatePromptMessage,
-      onUpdate: openPlayStore,
-      onDismiss: () => skipVersion(latestVersion),
+      onUpdate: openStore,
+      onDismiss: _snooze,
     );
+    return true;
+  }
+
+  /// Opens SnapCal's store page. [url] is a link a notification carried; it
+  /// is used only when it points at an app store.
+  Future<bool> openStore({String? url}) async {
+    final uri = storeUri(
+      preferred: url,
+      configured: ConfigService().updateUrl,
+      isAndroid: _isAndroid,
+    );
+    if (uri == null) return false;
+    try {
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('⚠️ ForceUpdateService: failed to open store: $e');
+      return false;
+    }
+  }
+
+  void _snooze() {
+    _prefs?.setInt(_snoozedAtKey, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  static bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
+
+  @visibleForTesting
+  static bool isNewer(String latest, String installed) {
+    if (latest.trim().isEmpty) return false;
+    return _Version.parse(latest) > _Version.parse(installed);
+  }
+
+  @visibleForTesting
+  static bool isSnoozed(int? snoozedAtMs, DateTime now) {
+    if (snoozedAtMs == null) return false;
+    final snoozedAt = DateTime.fromMillisecondsSinceEpoch(snoozedAtMs);
+    return now.difference(snoozedAt) < snoozeFor;
+  }
+
+  /// The store link to open, or null when there is none to use.
+  ///
+  /// Only app-store links are accepted, so a notification cannot send people
+  /// anywhere else. The notification's own link wins, then Remote Config,
+  /// then SnapCal's Google Play page on Android.
+  @visibleForTesting
+  static Uri? storeUri({
+    String? preferred,
+    String? configured,
+    required bool isAndroid,
+  }) {
+    for (final candidate in [preferred, configured]) {
+      final uri = _storeLink(candidate);
+      if (uri != null) return uri;
+    }
+    return isAndroid ? Uri.parse(androidStoreUrl) : null;
+  }
+
+  static Uri? _storeLink(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+    final uri = Uri.tryParse(text);
+    if (uri == null) return null;
+    if (uri.scheme == 'market' || uri.scheme == 'itms-apps') return uri;
+    if (uri.scheme == 'https' &&
+        (uri.host == 'play.google.com' || uri.host == 'apps.apple.com')) {
+      return uri;
+    }
+    return null;
   }
 }
