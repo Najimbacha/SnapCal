@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/meal.dart';
 import '../data/repositories/assistant_repository.dart';
@@ -14,6 +15,14 @@ part 'assistant_provider.g.dart';
 class Assistant extends _$Assistant {
   AssistantRepository? _repo;
   final AIService _aiService = AIService();
+
+  /// The backend refuses a prompt over 12,000 characters, and the past turns
+  /// ride inside it. A few long answers took a conversation over the limit,
+  /// after which every message -- and every retry of it -- failed.
+  static const int maxPromptChars = 11000;
+  static const int maxTurnChars = 700;
+  static const int maxQueryChars = 2000;
+  static const int maxMealNames = 30;
 
   @override
   FutureOr<void> build() {}
@@ -41,41 +50,76 @@ class Assistant extends _$Assistant {
     int sum(int Function(Meal) pick) =>
         meals.fold<int>(0, (total, m) => total + pick(m));
 
-    final prompt = AssistantService().buildCoachPrompt(
-      currentCalories: sum((m) => m.calories),
-      targetCalories: settings?.dailyCalorieGoal ?? 2000,
-      currentMacros: {
-        'protein': sum((m) => m.macros.protein),
-        'carbs': sum((m) => m.macros.carbs),
-        'fat': sum((m) => m.macros.fat),
-      },
-      targetMacros: {
-        'protein': settings?.dailyProteinGoal ?? 50,
-        'carbs': settings?.dailyCarbGoal ?? 250,
-        'fat': settings?.dailyFatGoal ?? 65,
-      },
-      mealNames: meals.map((m) => m.foodName).toList(),
-      dietaryRestriction: settings?.dietaryRestriction ?? 'none',
-      userQuery: query.isEmpty ? null : query,
-      language: settings?.languageCode ?? 'en',
-      age: settings?.age,
-      gender: settings?.gender,
-      height: settings?.height,
-      // UserSettings carries no current weight — it lives with the weight log —
-      // so the coach is told the target and left to ask if it needs the rest.
-      targetWeight: settings?.targetWeight,
-      goalMode: settings?.goalMode,
-      activityLevel: settings?.activityLevel,
-      foodDislikes: settings?.foodDislikes,
-      medicalNotes: settings?.medicalNotes,
-      history: history,
-    );
+    final names = meals.map((m) => m.foodName).toList();
+    final recentNames =
+        names.length > maxMealNames
+            ? names.sublist(names.length - maxMealNames)
+            : names;
+
+    String prompt(List<Map<String, String>> turns) =>
+        AssistantService().buildCoachPrompt(
+          currentCalories: sum((m) => m.calories),
+          targetCalories: settings?.dailyCalorieGoal ?? 2000,
+          currentMacros: {
+            'protein': sum((m) => m.macros.protein),
+            'carbs': sum((m) => m.macros.carbs),
+            'fat': sum((m) => m.macros.fat),
+          },
+          targetMacros: {
+            'protein': settings?.dailyProteinGoal ?? 50,
+            'carbs': settings?.dailyCarbGoal ?? 250,
+            'fat': settings?.dailyFatGoal ?? 65,
+          },
+          mealNames: recentNames,
+          dietaryRestriction: settings?.dietaryRestriction ?? 'none',
+          userQuery: query.isEmpty ? null : clip(query, maxQueryChars),
+          language: settings?.languageCode ?? 'en',
+          age: settings?.age,
+          gender: settings?.gender,
+          height: settings?.height,
+          // UserSettings carries no current weight — it lives with the weight
+          // log — so the coach is told the target and left to ask if it needs
+          // the rest.
+          targetWeight: settings?.targetWeight,
+          goalMode: settings?.goalMode,
+          activityLevel: settings?.activityLevel,
+          foodDislikes: settings?.foodDislikes,
+          medicalNotes: settings?.medicalNotes,
+          history: turns,
+        );
+
+    final turns = fitHistory(history, (t) => prompt(t).length);
 
     // Labelled so the server counts it against the free coach allowance. The
     // chat went out unlabelled, so only this phone's own counter -- reset by a
     // reinstall -- ever limited it.
-    return _aiService.generateText(prompt, purpose: 'coach');
+    return _aiService.generateText(prompt(turns), purpose: 'coach');
   }
+
+  /// The past turns that fit: each one clipped, then the oldest dropped until
+  /// the whole prompt is under [maxChars].
+  @visibleForTesting
+  static List<Map<String, String>> fitHistory(
+    List<Map<String, String>> history,
+    int Function(List<Map<String, String>> turns) promptLength, {
+    int maxChars = maxPromptChars,
+  }) {
+    var turns = [
+      for (final m in history)
+        {
+          'type': m['type'] ?? 'user',
+          'content': clip(m['content'] ?? '', maxTurnChars),
+        },
+    ];
+    while (turns.isNotEmpty && promptLength(turns) > maxChars) {
+      turns = turns.sublist(1);
+    }
+    return turns;
+  }
+
+  @visibleForTesting
+  static String clip(String text, int max) =>
+      text.length <= max ? text : '${text.substring(0, max)}…';
 
   Future<String> analyzeImage(String base64Image, String prompt) async {
     final bytes = Uri.tryParse(base64Image)?.data?.contentAsBytes();

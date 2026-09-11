@@ -1647,5 +1647,7 @@
   "planner_week_ended_title": "Le plan de cette semaine est terminé",
   "planner_week_ended_body": "Planifiez une nouvelle semaine pour garder le cap.",
   "planner_week_ended_action": "Planifier ma nouvelle semaine",
-  "planner_skip_light": "À sauter ou très léger"
+  "planner_skip_light": "À sauter ou très léger",
+  "coach_input_hint": "Posez n'importe quelle question à votre coach…",
+  "coach_input_locked": "Passez à Pro pour continuer…"
 }

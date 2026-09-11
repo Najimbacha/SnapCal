@@ -4731,4 +4731,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get planner_skip_light => 'تخطَّها أو اجعلها خفيفة جداً';
+
+  @override
+  String get coach_input_hint => 'اسأل مدربك أي شيء…';
+
+  @override
+  String get coach_input_locked => 'قم بالترقية للمتابعة…';
 }

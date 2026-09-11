@@ -4841,4 +4841,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planner_skip_light => 'À sauter ou très léger';
+
+  @override
+  String get coach_input_hint =>
+      'Posez n\'importe quelle question à votre coach…';
+
+  @override
+  String get coach_input_locked => 'Passez à Pro pour continuer…';
 }

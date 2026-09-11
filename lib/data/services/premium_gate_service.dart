@@ -172,8 +172,12 @@ class PremiumGateService {
 
   // --- Message/Scan Tracking ---
 
-  int getAiMessagesUsed() =>
-      _prefs.getInt(scopedPrefKey(_aiMessagesUsedKey)) ?? 0;
+  int getAiMessagesUsed() {
+    // The day's count was reset only when the app started, so a free user
+    // who kept it open past midnight stayed locked out until they closed it.
+    if (_initialized) _resetDailyCountsIfNeeded();
+    return _prefs.getInt(scopedPrefKey(_aiMessagesUsedKey)) ?? 0;
+  }
 
   Future<void> incrementAiMessages() async {
     final current = getAiMessagesUsed();

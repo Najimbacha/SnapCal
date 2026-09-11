@@ -1650,5 +1650,7 @@
   "planner_week_ended_title": "انتهت خطة هذا الأسبوع",
   "planner_week_ended_body": "خطط لأسبوع جديد لتبقى وجباتك على المسار.",
   "planner_week_ended_action": "خطط أسبوعي الجديد",
-  "planner_skip_light": "تخطَّها أو اجعلها خفيفة جداً"
+  "planner_skip_light": "تخطَّها أو اجعلها خفيفة جداً",
+  "coach_input_hint": "اسأل مدربك أي شيء…",
+  "coach_input_locked": "قم بالترقية للمتابعة…"
 }

@@ -2347,5 +2347,7 @@
   "planner_week_ended_title": "This week's plan has ended",
   "planner_week_ended_body": "Plan a fresh week to keep your meals on track.",
   "planner_week_ended_action": "Plan my new week",
-  "planner_skip_light": "Skip or keep very light"
+  "planner_skip_light": "Skip or keep very light",
+  "coach_input_hint": "Ask your coach anything…",
+  "coach_input_locked": "Upgrade to continue…"
 }

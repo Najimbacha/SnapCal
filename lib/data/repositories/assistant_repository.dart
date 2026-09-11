@@ -138,10 +138,48 @@ class AssistantRepository {
     await _box?.put('chat_history', jsonEncode(jsonList));
   }
 
+  static const String _coachChatKey = 'coach_chat';
+  static const int _coachChatLimit = 60;
+
+  /// The coach conversation, oldest first, as {'type', 'content'} maps.
+  ///
+  /// Nothing saved the conversation, so leaving the coach screen threw it
+  /// away. It is wiped with the rest of this box on sign-out.
+  List<Map<String, String>> getCoachChat() {
+    final data = _box?.get(_coachChatKey);
+    if (data is! String) return const [];
+    try {
+      final list = jsonDecode(data);
+      if (list is! List) return const [];
+      return [
+        for (final entry in list)
+          if (entry is Map &&
+              entry['content'] is String &&
+              (entry['type'] == 'user' || entry['type'] == 'assistant'))
+            {
+              'type': entry['type'] as String,
+              'content': entry['content'] as String,
+            },
+      ];
+    } catch (e) {
+      return const [];
+    }
+  }
+
+  /// Saves the latest [_coachChatLimit] messages.
+  Future<void> saveCoachChat(List<Map<String, String>> messages) async {
+    final recent =
+        messages.length > _coachChatLimit
+            ? messages.sublist(messages.length - _coachChatLimit)
+            : messages;
+    await _box?.put(_coachChatKey, jsonEncode(recent));
+  }
+
   /// Clear all cache and history
   Future<void> clearCache() async {
     await _box?.delete('cached_recommendations');
     await _box?.delete('last_calorie_snapshot');
     await _box?.delete('chat_history');
+    await _box?.delete(_coachChatKey);
   }
 }

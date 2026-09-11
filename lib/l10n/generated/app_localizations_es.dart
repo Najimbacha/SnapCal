@@ -4804,4 +4804,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planner_skip_light => 'Sáltala o hazla muy ligera';
+
+  @override
+  String get coach_input_hint => 'Pregúntale lo que quieras a tu coach…';
+
+  @override
+  String get coach_input_locked => 'Mejora a Pro para continuar…';
 }

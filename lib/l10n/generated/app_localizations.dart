@@ -8571,6 +8571,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skip or keep very light'**
   String get planner_skip_light;
+
+  /// No description provided for @coach_input_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask your coach anything…'**
+  String get coach_input_hint;
+
+  /// No description provided for @coach_input_locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to continue…'**
+  String get coach_input_locked;
 }
 
 class _AppLocalizationsDelegate

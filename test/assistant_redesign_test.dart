@@ -5,7 +5,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:snapcal/data/repositories/assistant_repository.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import 'package:snapcal/providers/repository_providers.dart';
 import 'package:snapcal/screens/assistant/assistant_screen.dart';
 
 /// Renders the coach screen the way `paywall_design_test` renders the paywall.
@@ -47,6 +49,13 @@ void main() {
       final key = GlobalKey();
       await tester.pumpWidget(
         ProviderScope(
+          // The screen restores the saved conversation; an unopened store
+          // has none, and never reaches for the device's encryption key.
+          overrides: [
+            assistantRepositoryProvider.overrideWith(
+              (ref) async => AssistantRepository(),
+            ),
+          ],
           child: MaterialApp(
             locale: Locale(scenario.$5),
             localizationsDelegates: AppLocalizations.localizationsDelegates,

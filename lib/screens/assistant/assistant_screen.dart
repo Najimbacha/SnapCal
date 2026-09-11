@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers/assistant_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../data/services/assistant_service.dart';
 import '../../data/services/premium_gate_service.dart';
@@ -62,10 +65,64 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   void initState() {
     super.initState();
     _ctrl.addListener(_onCtrlChanged);
+    unawaited(_restoreChat());
   }
 
   void _onCtrlChanged() {
     if (mounted) setState(() {});
+  }
+
+  /// Brings back the conversation from last time. Nothing saved it, so
+  /// leaving the coach screen lost everything that had been said.
+  Future<void> _restoreChat() async {
+    try {
+      final repo = await ref.read(assistantRepositoryProvider.future);
+      final saved = repo.getCoachChat();
+      if (!mounted || saved.isEmpty || _messages.isNotEmpty) return;
+      setState(() {
+        _messages.addAll(saved);
+        // Already read: no typing animation replaying through the history.
+        _typedIndices.addAll(List.generate(saved.length, (i) => i));
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scroll.hasClients) {
+          _scroll.jumpTo(_scroll.position.maxScrollExtent);
+        }
+      });
+    } catch (e) {
+      debugPrint('Coach chat could not be restored: $e');
+    }
+  }
+
+  Future<void> _saveChat() async {
+    try {
+      final repo = await ref.read(assistantRepositoryProvider.future);
+      await repo.saveCoachChat([
+        for (final m in _messages)
+          if (m is Map &&
+              m['content'] is String &&
+              m['content'] != _errorMsg &&
+              (m['type'] == 'user' || m['type'] == 'assistant'))
+            {'type': m['type'] as String, 'content': m['content'] as String},
+      ]);
+    } catch (e) {
+      debugPrint('Coach chat could not be saved: $e');
+    }
+  }
+
+  /// A fresh conversation, cleared here and nowhere else.
+  ///
+  /// This asked the model for a greeting before clearing -- a paid request
+  /// for "hello", and for a free user the day's one coach message, after
+  /// which the chat could not even be cleared.
+  void _newChat() {
+    if (_isLoading) return;
+    setState(() {
+      _messages.clear();
+      _typedIndices.clear();
+      _lastQuery = null;
+    });
+    unawaited(_saveChat());
   }
 
   @override
@@ -77,12 +134,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     super.dispose();
   }
 
-  Future<void> _fetch({
-    String? query,
-    bool clear = false,
-    bool force = false,
-    bool echoUser = true,
-  }) async {
+  Future<void> _fetch({String? query, bool echoUser = true}) async {
     if (!mounted) return;
 
     // The coach was never gated: CoachLockedOverlay existed but was imported
@@ -150,10 +202,6 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
 
     setState(() {
       _isLoading = false;
-      if (clear || force) {
-        _messages.clear();
-        _typedIndices.clear();
-      }
       if (statusCode == 402) {
         // The server says today's free coach message is used -- which it
         // knows even after a reinstall reset this phone's own count. Show the
@@ -176,6 +224,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         _messages.add({'type': 'assistant', 'content': result});
       }
     });
+    unawaited(_saveChat());
 
     // Bring this phone's count in line with the server's, so the lock
     // survives a restart.
@@ -334,7 +383,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         ),
         actions: [
           GestureDetector(
-            onTap: () => _fetch(clear: true, force: true),
+            onTap: _newChat,
             behavior: HitTestBehavior.opaque,
             child: Container(
               padding: const EdgeInsetsDirectional.only(end: 16),
@@ -878,9 +927,14 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                 focusNode: _focus,
                 onSubmitted: (_) => _submit(),
                 textInputAction: TextInputAction.send,
-                maxLines: null,
+                // It grew without end, took any length -- a long paste went
+                // over what the server accepts and failed with no reason
+                // given -- and said "Message" in English in every language.
+                minLines: 1,
+                maxLines: 5,
+                inputFormatters: [LengthLimitingTextInputFormatter(1000)],
                 decoration: InputDecoration(
-                  hintText: 'Message',
+                  hintText: AppLocalizations.of(context)!.coach_input_hint,
                   hintStyle: TextStyle(
                     color: _coachMuted(d).withValues(alpha: 0.7),
                     fontSize: 15,

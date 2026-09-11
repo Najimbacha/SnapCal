@@ -4752,4 +4752,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planner_skip_light => 'Skip or keep very light';
+
+  @override
+  String get coach_input_hint => 'Ask your coach anything…';
+
+  @override
+  String get coach_input_locked => 'Upgrade to continue…';
 }

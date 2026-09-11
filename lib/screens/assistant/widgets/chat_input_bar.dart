@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../widgets/app_icon.dart';
 
@@ -134,6 +135,11 @@ class ChatInputBar extends StatelessWidget {
                           enabled: enabled,
                           minLines: 1,
                           maxLines: 5,
+                          // A long paste went over what the server accepts,
+                          // and the message failed with no reason given.
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(1000),
+                          ],
                           textCapitalization: TextCapitalization.sentences,
                           textInputAction: TextInputAction.send,
                           cursorColor: AppColors.homeCoachAccent,
@@ -146,8 +152,12 @@ class ChatInputBar extends StatelessWidget {
                           decoration: InputDecoration(
                             hintText:
                                 enabled
-                                    ? 'Ask your coach anything…'
-                                    : 'Upgrade to continue…',
+                                    ? AppLocalizations.of(
+                                      context,
+                                    )!.coach_input_hint
+                                    : AppLocalizations.of(
+                                      context,
+                                    )!.coach_input_locked,
                             hintStyle: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
