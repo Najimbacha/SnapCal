@@ -34,6 +34,10 @@ class LogScreen extends ConsumerStatefulWidget {
 }
 
 class _LogScreenState extends ConsumerState<LogScreen> {
+  /// Meals swiped away whose Undo is still on screen: hidden from the list,
+  /// not yet deleted.
+  final Set<String> _pendingDeletes = {};
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -60,7 +64,10 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       settings: settings,
       water: water,
     );
-    final groups = _groupMeals(context, selectedDateMeals);
+    final groups = _groupMeals(
+      context,
+      selectedDateMeals.where((m) => !_pendingDeletes.contains(m.id)).toList(),
+    );
     final isToday = app_date.DateUtils.isToday(selectedDate);
     final proteinRemaining = math.max(
       selectedSummary.proteinGoal - selectedSummary.protein,
@@ -133,7 +140,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                         mealType: groups[index].key,
                       ),
                   onEdit: _showEditMealSheet,
-                  onDelete: _deleteMeal,
+                  onDelete: _deleteWithUndo,
                 ),
                 if (index != groups.length - 1) const SizedBox(height: 12),
               ],
@@ -274,6 +281,37 @@ class _LogScreenState extends ConsumerState<LogScreen> {
   Future<void> _deleteMeal(Meal meal) async {
     await ref.read(mealLogProvider.notifier).deleteMeal(meal.id);
     if (mounted) setState(() {});
+  }
+
+  /// A swipe deleted the meal on the spot, with no way back from a slip of
+  /// the thumb. The meal now leaves the list at once and is deleted when the
+  /// Undo snackbar goes: undone in time, it was never deleted at all -- nor
+  /// synced as deleted to the user's other devices.
+  void _deleteWithUndo(Meal meal) {
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final mealLog = ref.read(mealLogProvider.notifier);
+    setState(() => _pendingDeletes.add(meal.id));
+
+    // A second swipe closes the first snackbar, which deletes its meal.
+    messenger.hideCurrentSnackBar();
+    messenger
+        .showSnackBar(
+          SnackBar(
+            content: Text(l10n.log_meal_deleted),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(label: l10n.result_undo, onPressed: () {}),
+          ),
+        )
+        .closed
+        .then((reason) async {
+          if (reason != SnackBarClosedReason.action) {
+            await mealLog.deleteMeal(meal.id);
+          }
+          _pendingDeletes.remove(meal.id);
+          if (mounted) setState(() {});
+        });
   }
 
   List<_MealGroupData> _groupMeals(BuildContext context, List<Meal> meals) {

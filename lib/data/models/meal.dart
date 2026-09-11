@@ -149,6 +149,10 @@ class Meal extends HiveObject {
     double? weightG,
     String? nutritionMatchId,
     Map<String, dynamic>? nutritionPer100g,
+    // Drops the per-100g and match a scan left behind, for when the user's
+    // own numbers replace the scan's. The weight stays: it is still the
+    // portion, and now scales the corrected figures.
+    bool clearNutritionBasis = false,
   }) {
     return Meal(
       id: id ?? this.id,
@@ -169,8 +173,14 @@ class Meal extends HiveObject {
       originalCalories: originalCalories ?? this.originalCalories,
       userCorrected: userCorrected ?? this.userCorrected,
       weightG: weightG ?? this.weightG,
-      nutritionMatchId: nutritionMatchId ?? this.nutritionMatchId,
-      nutritionPer100g: nutritionPer100g ?? this.nutritionPer100g,
+      nutritionMatchId:
+          clearNutritionBasis
+              ? null
+              : nutritionMatchId ?? this.nutritionMatchId,
+      nutritionPer100g:
+          clearNutritionBasis
+              ? null
+              : nutritionPer100g ?? this.nutritionPer100g,
     );
   }
 

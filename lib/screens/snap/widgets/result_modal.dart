@@ -405,17 +405,24 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     widget.onCancel();
   }
 
+  /// Items with nutrition behind them: a curated match or the model's own
+  /// estimate. Zero is a real answer among these -- water, black coffee, a
+  /// diet drink -- and is saved like any other.
+  List<_Item> get _savable =>
+      _items.where((i) => i.matched && i.per100g != null).toList();
+
   Future<void> _save() async {
     if (_items.isEmpty || _saving) return;
 
-    // Never log a meal worth nothing.
+    // Never log a meal made of nothing.
     //
-    // 39% of scans in the database are a meal called "Food item" with zero
-    // calories and zero macros, saved without a murmur. A zero does not mean
-    // "I ate nothing" -- it silently subtracts from the only figure this app
-    // exists to show, and it is worse than no entry at all. If every source
-    // failed, ask rather than write.
-    if (_kcal <= 0) {
+    // 39% of scans in the database were a meal called "Food item" with zero
+    // calories and zero macros, saved without a murmur: items with no
+    // nutrition at all. Those are what is refused, and left out when saved
+    // beside real ones. A matched zero is not one of them -- refusing on the
+    // total turned away a correctly scanned glass of water as "not matched".
+    final savable = _savable;
+    if (savable.isEmpty) {
       final l10n = AppLocalizations.of(context)!;
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -424,9 +431,6 @@ class _ResultModalState extends ConsumerState<ResultModal> {
           duration: const Duration(seconds: 3),
         ),
       );
-      // Open the first empty item so the fix is one tap away, not a hunt.
-      final idx = _items.indexWhere((i) => i.calories <= 0);
-      if (idx >= 0) await _typeWeight(idx);
       return;
     }
     setState(() => _saving = true);
@@ -438,7 +442,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     // single-item callback carries only name, calories and macros, so the
     // most common scan was saved without its weight, per-100g or confidence.
     if (widget.onSaveAll == null) {
-      final i = _items.first;
+      final i = savable.first;
       widget.onSave(
         i.name,
         i.calories,
@@ -449,7 +453,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
       );
     } else {
       widget.onSaveAll!(
-        _items
+        savable
             .map(
               (i) => NutritionResult(
                 foodName: i.name,

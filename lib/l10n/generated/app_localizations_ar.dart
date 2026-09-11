@@ -4661,4 +4661,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get snap_open_settings => 'فتح الإعدادات';
+
+  @override
+  String get log_meal_deleted => 'تم حذف الوجبة';
 }

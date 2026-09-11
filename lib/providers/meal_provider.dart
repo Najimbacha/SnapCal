@@ -8,13 +8,18 @@ import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/gemini_service.dart';
 import '../data/services/promotional_paywall_service.dart';
 import 'repository_providers.dart';
+import 'current_day_provider.dart';
 import 'settings_provider.dart';
 
 part 'meal_provider.g.dart';
 
 /// Stream provider for today's meals
+///
+/// Rebuilt when the day changes: the repository only emits on writes, so
+/// without this Home stayed on yesterday's meals until something was logged.
 @Riverpod(keepAlive: true)
 Stream<List<Meal>> todaysMeals(TodaysMealsRef ref) async* {
+  ref.watch(currentDayProvider);
   final repo = await ref.watch(mealRepositoryProvider.future);
   yield repo.getTodaysMeals();
   yield* repo.todaysMealsStream;
@@ -24,12 +29,19 @@ Stream<List<Meal>> todaysMeals(TodaysMealsRef ref) async* {
 @Riverpod(keepAlive: true)
 class SelectedDate extends _$SelectedDate {
   @override
-  String build() => app_date.DateUtils.getTodayString();
+  String build() {
+    // A diary left on today moves on with the day; one the user took back to
+    // an earlier date stays there.
+    ref.listen(currentDayProvider, (previous, next) {
+      if (previous != null && state == previous) state = next;
+    });
+    return ref.read(currentDayProvider);
+  }
 
   void select(String date) => state = date;
   void goToPreviousDay() => state = app_date.DateUtils.getPreviousDay(state);
   void goToNextDay() => state = app_date.DateUtils.getNextDay(state);
-  void goToToday() => state = app_date.DateUtils.getTodayString();
+  void goToToday() => state = ref.read(currentDayProvider);
 }
 
 @Riverpod(keepAlive: true)

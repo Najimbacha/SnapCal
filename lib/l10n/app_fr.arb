@@ -1626,5 +1626,6 @@
   "snap_camera_slow": "L'appareil photo met plus de temps que d'habitude à démarrer.",
   "snap_camera_permission": "SnapCal a besoin de l'appareil photo pour scanner vos repas. Autorisez-le dans les réglages du téléphone.",
   "snap_camera_unavailable": "L'appareil photo n'a pas pu démarrer. Veuillez réessayer.",
-  "snap_open_settings": "Ouvrir les réglages"
+  "snap_open_settings": "Ouvrir les réglages",
+  "log_meal_deleted": "Repas supprimé"
 }

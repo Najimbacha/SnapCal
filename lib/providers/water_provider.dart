@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/water_log.dart';
 import '../data/repositories/water_repository.dart';
 import '../core/utils/date_utils.dart' as app_date;
+import 'current_day_provider.dart';
 import 'repository_providers.dart';
 
 part 'water_provider.g.dart';
@@ -20,8 +21,10 @@ class WaterState {
 class Water extends _$Water {
   @override
   Future<WaterState> build() async {
+    // Rebuilt when the day changes, so the morning starts at zero rather than
+    // at last night's total.
+    final todayStr = ref.watch(currentDayProvider);
     final repo = await ref.watch(waterRepositoryProvider.future);
-    final todayStr = app_date.DateUtils.getTodayString();
     final total = repo.getTotalWater(todayStr);
     return WaterState(todayTotal: total, goal: 2500);
   }
@@ -39,9 +42,12 @@ class Water extends _$Water {
     _publishTodayTotal(repo);
   }
 
+  /// Takes back today's most recent glass. Only today's: this removed the
+  /// latest log of any day, so "−" on a fresh morning, at zero, deleted last
+  /// night's water instead.
   Future<void> removeWater(int ml) async {
     final repo = await ref.read(waterRepositoryProvider.future);
-    await repo.removeLastLog();
+    await repo.removeLastLog(dateString: app_date.DateUtils.getTodayString());
     _publishTodayTotal(repo);
   }
 

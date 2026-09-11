@@ -2324,5 +2324,6 @@
   "snap_camera_slow": "The camera is taking longer than usual to start.",
   "snap_camera_permission": "SnapCal needs camera access to scan food. Allow it in your phone's settings.",
   "snap_camera_unavailable": "The camera couldn't start. Please try again.",
-  "snap_open_settings": "Open settings"
+  "snap_open_settings": "Open settings",
+  "log_meal_deleted": "Meal deleted"
 }

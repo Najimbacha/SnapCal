@@ -1626,5 +1626,6 @@
   "snap_camera_slow": "La cámara está tardando más de lo normal en iniciarse.",
   "snap_camera_permission": "SnapCal necesita acceso a la cámara para escanear comida. Permítelo en los ajustes de tu teléfono.",
   "snap_camera_unavailable": "No se pudo iniciar la cámara. Inténtalo de nuevo.",
-  "snap_open_settings": "Abrir ajustes"
+  "snap_open_settings": "Abrir ajustes",
+  "log_meal_deleted": "Comida eliminada"
 }

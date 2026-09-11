@@ -8445,6 +8445,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open settings'**
   String get snap_open_settings;
+
+  /// No description provided for @log_meal_deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal deleted'**
+  String get log_meal_deleted;
 }
 
 class _AppLocalizationsDelegate

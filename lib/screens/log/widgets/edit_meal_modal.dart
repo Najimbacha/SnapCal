@@ -81,28 +81,42 @@ class _EditMealModalState extends State<EditMealModal> {
   }
 
   void _handleSave() {
-    final updatedMeal = widget.meal.copyWith(
+    final name = _nameController.text.trim();
+    final calories = int.tryParse(_caloriesController.text.trim()) ?? 0;
+    final macros = widget.meal.macros.copyWith(
+      protein: int.tryParse(_proteinController.text) ?? 0,
+      carbs: int.tryParse(_carbsController.text) ?? 0,
+      fat: int.tryParse(_fatController.text) ?? 0,
+    );
+    // A correction replaces the scan's numbers. The planner rebuilds meals
+    // from per-100g and weight, and went on using the AI's figures after the
+    // user had fixed them.
+    final old = widget.meal;
+    final corrected =
+        !widget.isNew &&
+        (calories != old.calories ||
+            macros.protein != old.macros.protein ||
+            macros.carbs != old.macros.carbs ||
+            macros.fat != old.macros.fat);
+    final updatedMeal = old.copyWith(
       foodName:
-          _nameController.text.isEmpty
-              ? AppLocalizations.of(context)!.log_unknown_food
-              : _nameController.text,
-      calories: int.tryParse(_caloriesController.text) ?? 0,
+          name.isEmpty ? AppLocalizations.of(context)!.log_unknown_food : name,
+      calories: calories,
       portion: _portionController.text,
       mealType: _mealType,
-      macros: widget.meal.macros.copyWith(
-        protein: int.tryParse(_proteinController.text) ?? 0,
-        carbs: int.tryParse(_carbsController.text) ?? 0,
-        fat: int.tryParse(_fatController.text) ?? 0,
-      ),
+      macros: macros,
+      userCorrected: corrected ? true : null,
+      clearNutritionBasis: corrected,
     );
     widget.onSave(updatedMeal);
   }
 
-  bool get _canSave {
-    if (!widget.isNew) return true;
-    return _nameController.text.trim().isNotEmpty &&
-        (int.tryParse(_caloriesController.text) ?? 0) > 0;
-  }
+  /// A name and a calorie figure -- and zero is a figure: water, black coffee
+  /// and diet drinks are real entries. Editing is held to the same rule, so a
+  /// cleared field cannot turn a meal into "Unknown food, 0 kcal".
+  bool get _canSave =>
+      _nameController.text.trim().isNotEmpty &&
+      int.tryParse(_caloriesController.text.trim()) != null;
 
   @override
   Widget build(BuildContext context) {

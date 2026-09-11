@@ -130,11 +130,14 @@ class WaterRepository {
     _inBackground(_cloud.push(_recordId(log), toCloud(log)));
   }
 
-  /// Remove the most recent water log
-  Future<void> removeLastLog() async {
+  /// Remove the most recent water log, of [dateString] when given.
+  Future<void> removeLastLog({String? dateString}) async {
     if (_waterBox == null || _waterBox!.isEmpty) return;
 
-    final logs = _waterBox!.values.toList();
+    final logs =
+        _waterBox!.values
+            .where((log) => dateString == null || log.dateString == dateString)
+            .toList();
     logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     if (logs.isNotEmpty) {

@@ -4766,4 +4766,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get snap_open_settings => 'Ouvrir les réglages';
+
+  @override
+  String get log_meal_deleted => 'Repas supprimé';
 }

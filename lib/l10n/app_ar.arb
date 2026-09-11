@@ -1629,5 +1629,6 @@
   "snap_camera_slow": "تستغرق الكاميرا وقتاً أطول من المعتاد لتبدأ.",
   "snap_camera_permission": "يحتاج SnapCal إلى الكاميرا لمسح الطعام. اسمح بذلك من إعدادات هاتفك.",
   "snap_camera_unavailable": "تعذّر تشغيل الكاميرا. حاول مرة أخرى.",
-  "snap_open_settings": "فتح الإعدادات"
+  "snap_open_settings": "فتح الإعدادات",
+  "log_meal_deleted": "تم حذف الوجبة"
 }
