@@ -467,12 +467,18 @@ class _FoodScanHeroCardState extends State<FoodScanHeroCard>
           ),
         ),
         const SizedBox(width: 10),
-        Text(
-          l10n.onboarding_scan_scanning,
-          style: TextStyle(
-            color: context.textSecondaryColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
+        // Flexible: on a narrow phone, or in a longer language, the line ran
+        // off the card's edge.
+        Flexible(
+          child: Text(
+            l10n.onboarding_scan_scanning,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: context.textSecondaryColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ],

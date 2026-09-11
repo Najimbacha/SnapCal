@@ -190,7 +190,17 @@ class CalorieOnboardingService {
     if (deltaKg < -0.01) goalMode = 'cut';
     if (deltaKg > 0.01) goalMode = 'bulk';
 
-    var adjustment = rawAdjustment;
+    // The pace the user chose, when there is one. It was passed in and never
+    // read: the rate came from a timeline rounded up to whole months, so every
+    // plan ran slower than chosen -- "0.5 kg a week" came out as 0.39, and
+    // the plan's finish date disagreed with the one the pace step had shown.
+    final chosenRate = input.selectedWeeklyRateKg;
+    final useChosenRate =
+        chosenRate != null && chosenRate > 0 && goalMode != 'maintain';
+    var adjustment =
+        useChosenRate
+            ? (goalMode == 'cut' ? -1 : 1) * chosenRate * 7700 / 7
+            : rawAdjustment;
     var paceAdjusted = false;
     var safetyNote = '';
 
@@ -222,7 +232,12 @@ class CalorieOnboardingService {
 
     final roundedCalories = (targetCalories / 25).round() * 25;
     final calorieDelta = roundedCalories - tdee;
-    final weeklyRateKg = ((calorieDelta * 7) / 7700).abs();
+    // Rounding the calories to a friendly 25 moves the rate by a hundredth or
+    // two; an unadjusted plan still runs at the pace that was chosen.
+    final weeklyRateKg =
+        useChosenRate && !paceAdjusted
+            ? chosenRate
+            : ((calorieDelta * 7) / 7700).abs();
     final macroSplit = _buildMacros(goalMode, roundedCalories);
 
     return _ComputedPlan(

@@ -8451,6 +8451,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Meal deleted'**
   String get log_meal_deleted;
+
+  /// No description provided for @onboarding_step_of.
+  ///
+  /// In en, this message translates to:
+  /// **'STEP {current} OF {total}'**
+  String onboarding_step_of(int current, int total);
+
+  /// No description provided for @onboarding_welcome_headline.
+  ///
+  /// In en, this message translates to:
+  /// **'Snap your food.\nKnow your calories.'**
+  String get onboarding_welcome_headline;
+
+  /// No description provided for @onboarding_feat_scan.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo calorie scan'**
+  String get onboarding_feat_scan;
+
+  /// No description provided for @onboarding_goal_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll build your daily calorie plan around it.'**
+  String get onboarding_goal_sub;
+
+  /// No description provided for @onboarding_profile_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'This is how we work out what your body needs each day.'**
+  String get onboarding_profile_sub;
+
+  /// No description provided for @onboarding_body_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Your body'**
+  String get onboarding_body_label;
+
+  /// No description provided for @onboarding_unit_metric.
+  ///
+  /// In en, this message translates to:
+  /// **'Metric'**
+  String get onboarding_unit_metric;
+
+  /// No description provided for @onboarding_unit_imperial.
+  ///
+  /// In en, this message translates to:
+  /// **'Imperial'**
+  String get onboarding_unit_imperial;
+
+  /// No description provided for @onboarding_profile_privacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Only used to work out your plan. You can change it anytime in Settings.'**
+  String get onboarding_profile_privacy;
+
+  /// No description provided for @onboarding_pace_sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a target weight and how fast you want to get there.'**
+  String get onboarding_pace_sub;
+
+  /// No description provided for @onboarding_pace_how_fast.
+  ///
+  /// In en, this message translates to:
+  /// **'How fast?'**
+  String get onboarding_pace_how_fast;
+
+  /// No description provided for @onboarding_pace_recommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get onboarding_pace_recommended;
+
+  /// No description provided for @onboarding_pace_difference.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} from today'**
+  String onboarding_pace_difference(String amount);
+
+  /// No description provided for @onboarding_activity_moderate.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get onboarding_activity_moderate;
+
+  /// No description provided for @onboarding_activity_moderate_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'3-5 days of exercise per week'**
+  String get onboarding_activity_moderate_desc;
 }
 
 class _AppLocalizationsDelegate

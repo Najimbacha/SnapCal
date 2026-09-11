@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:snapcal/widgets/app_icon.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_colors.dart';
@@ -12,6 +11,7 @@ import '../../providers/metrics_provider.dart';
 import 'onboarding_draft.dart';
 import 'onboarding_components.dart';
 import 'onboarding_pace_calculator.dart';
+import 'onboarding_ui.dart';
 import 'welcome_step.dart';
 import 'goal_step.dart';
 import 'profile_step.dart';
@@ -29,36 +29,25 @@ class OnboardingFlowScreen extends ConsumerStatefulWidget {
 
 class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   int _stepIndex = 0;
-  late OnboardingDraft _draft;
+  OnboardingDraft _draft = const OnboardingDraft();
   bool _isCompleting = false;
   final GlobalKey<ProfileStepState> _profileKey = GlobalKey<ProfileStepState>();
   final GlobalKey<PaceStepState> _paceKey = GlobalKey<PaceStepState>();
 
-  @override
-  void initState() {
-    super.initState();
-    _draft = const OnboardingDraft();
-  }
+  bool get _needsPace => _draft.needsPaceStep;
 
-  /// The last step index depends on whether pace screen is needed
-  int get _lastStep =>
-      _draft.goalType == GoalType.loseWeight ||
-              _draft.goalType == GoalType.buildMuscle
-          ? 5
-          : 4;
+  /// Welcome(0), goal(1), profile(2), pace(3, weight goals only), activity,
+  /// then the plan.
+  int get _lastStep => _needsPace ? 5 : 4;
 
-  /// The index where activity lives (after pace or after profile)
-  int get _activityStep =>
-      _draft.goalType == GoalType.loseWeight ||
-              _draft.goalType == GoalType.buildMuscle
-          ? 4
-          : 3;
-
-  bool get _showBack => _stepIndex > 0 && _stepIndex < _lastStep;
-
-  bool get _showProgress => _stepIndex > 0 && _stepIndex < _lastStep;
+  int get _activityStep => _needsPace ? 4 : 3;
 
   bool get _isLastStep => _stepIndex == _lastStep;
+
+  bool get _isQuestion => _stepIndex > 0 && !_isLastStep;
+
+  /// Questions asked: goal, profile, pace when it applies, activity.
+  int get _questionCount => _needsPace ? 4 : 3;
 
   bool get _canAdvance {
     switch (_stepIndex) {
@@ -69,10 +58,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       case 2:
         return true; // validation happens on tap via ProfileStep
       case 3:
-        if (_draft.goalType == GoalType.loseWeight ||
-            _draft.goalType == GoalType.buildMuscle) {
-          return true; // validation happens on tap via PaceStep
-        }
+        if (_needsPace) return true; // validation happens on tap via PaceStep
         return _draft.activityLevel != null;
       case 4:
         return _draft.activityLevel != null;
@@ -85,29 +71,24 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     HapticFeedback.mediumImpact();
     FocusScope.of(context).unfocus();
 
-    // Profile step → validate, then advance to next screen
     if (_stepIndex == 2) {
       if (!_profileKey.currentState!.validateAndSubmit()) {
-        setState(() {}); // show validation errors
+        setState(() {});
         return;
       }
       setState(() => _stepIndex++);
       return;
     }
 
-    // Pace step → validate, then advance to activity
-    if (_stepIndex == 3 &&
-        (_draft.goalType == GoalType.loseWeight ||
-            _draft.goalType == GoalType.buildMuscle)) {
+    if (_stepIndex == 3 && _needsPace) {
       if (!_paceKey.currentState!.validateAndSubmit()) {
-        setState(() {}); // show validation errors
+        setState(() {});
         return;
       }
       setState(() => _stepIndex++);
       return;
     }
 
-    // Activity step → compute recommendation
     if (_stepIndex == _activityStep) {
       _computeRecommendation();
       return;
@@ -116,6 +97,45 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     setState(() => _stepIndex++);
   }
 
+  OnboardingProfileInput _profileInput() {
+    final selectedRate =
+        _needsPace && _draft.pace != null
+            ? OnboardingPaceCalculator.weeklyRateKgFor(
+              _draft.goalType!,
+              _draft.pace!,
+            )
+            : null;
+    return OnboardingProfileInput(
+      age: _draft.age!,
+      gender: _draft.sex!.serviceValue,
+      heightCm: _draft.heightCm!,
+      currentWeightKg: _draft.currentWeightKg!,
+      goalWeightKg: _draft.goalType!.resolveGoalWeightKg(
+        currentWeightKg: _draft.currentWeightKg!,
+        targetWeightKg: _draft.targetWeightKg,
+      ),
+      timelineMonths:
+          selectedRate != null
+              ? OnboardingPaceCalculator.deriveTimelineMonths(
+                _draft.weightDeltaKg,
+                selectedRate,
+              )
+              : 1,
+      activityLevel: _draft.activityLevel!.serviceValue,
+      weightUnit:
+          _draft.measurementSystem == MeasurementSystem.metric ? 'kg' : 'lb',
+      heightUnit:
+          _draft.measurementSystem == MeasurementSystem.metric ? 'cm' : 'in',
+      selectedWeeklyRateKg: selectedRate,
+    );
+  }
+
+  /// The plan is worked out on the phone, from the answers.
+  ///
+  /// An AI call used to follow it in the background, for a line of insight
+  /// and a tip that no screen showed. It cost a request against the user's
+  /// daily allowance on their first minute in the app, and when it finished
+  /// after "Adjust" it put the old answers' plan back over the new one.
   void _computeRecommendation() {
     if (_draft.age == null ||
         _draft.sex == null ||
@@ -127,49 +147,8 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
 
     final languageCode =
         ref.read(settingsProvider).valueOrNull?.languageCode ?? 'en';
-
-    final needsPace =
-        _draft.goalType == GoalType.loseWeight ||
-        _draft.goalType == GoalType.buildMuscle;
-    final timelineMonths =
-        needsPace && _draft.pace != null
-            ? OnboardingPaceCalculator.deriveTimelineMonths(
-              _draft.weightDeltaKg,
-              OnboardingPaceCalculator.weeklyRateKgFor(
-                _draft.goalType!,
-                _draft.pace!,
-              ),
-            )
-            : 1;
-
-    final selectedWeeklyRateKg =
-        needsPace && _draft.pace != null
-            ? OnboardingPaceCalculator.weeklyRateKgFor(
-              _draft.goalType!,
-              _draft.pace!,
-            )
-            : null;
-
-    final profile = OnboardingProfileInput(
-      age: _draft.age!,
-      gender: _draft.sex!.serviceValue,
-      heightCm: _draft.heightCm!,
-      currentWeightKg: _draft.currentWeightKg!,
-      goalWeightKg: _draft.goalType!.resolveGoalWeightKg(
-        currentWeightKg: _draft.currentWeightKg!,
-        targetWeightKg: _draft.targetWeightKg,
-      ),
-      timelineMonths: timelineMonths,
-      activityLevel: _draft.activityLevel!.serviceValue,
-      weightUnit:
-          _draft.measurementSystem == MeasurementSystem.metric ? 'kg' : 'lb',
-      heightUnit:
-          _draft.measurementSystem == MeasurementSystem.metric ? 'cm' : 'in',
-      selectedWeeklyRateKg: selectedWeeklyRateKg,
-    );
-
     final recommendation = CalorieOnboardingService().computeBasePlan(
-      profile,
+      _profileInput(),
       languageCode: languageCode,
     );
 
@@ -177,25 +156,6 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       _draft = _draft.copyWith(recommendation: recommendation);
       _stepIndex = _lastStep;
     });
-
-    // AI-enhanced layer in the background (parity with legacy flow): swaps in
-    // better insights/notes before the user finishes, without blocking UI.
-    _enhanceWithAI(profile);
-  }
-
-  Future<void> _enhanceWithAI(OnboardingProfileInput profile) async {
-    try {
-      final languageCode =
-          ref.read(settingsProvider).valueOrNull?.languageCode ?? 'en';
-      final aiRecommendation = await CalorieOnboardingService()
-          .buildRecommendation(profile, languageCode: languageCode);
-      if (!mounted) return;
-      setState(() {
-        _draft = _draft.copyWith(recommendation: aiRecommendation);
-      });
-    } catch (e) {
-      debugPrint('OnboardingFlow: AI enhancement failed (using local): $e');
-    }
   }
 
   Future<void> _handleFinish() async {
@@ -206,52 +166,9 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     final settings = ref.read(settingsProvider.notifier);
     final metrics = ref.read(bodyMetricsProvider.notifier);
 
-    final needsPace =
-        _draft.goalType == GoalType.loseWeight ||
-        _draft.goalType == GoalType.buildMuscle;
-    final timelineMonths =
-        needsPace && _draft.pace != null
-            ? OnboardingPaceCalculator.deriveTimelineMonths(
-              _draft.weightDeltaKg,
-              OnboardingPaceCalculator.weeklyRateKgFor(
-                _draft.goalType!,
-                _draft.pace!,
-              ),
-            )
-            : 1;
-
-    final finishNeedsPace =
-        _draft.goalType == GoalType.loseWeight ||
-        _draft.goalType == GoalType.buildMuscle;
-    final finishSelectedRate =
-        finishNeedsPace && _draft.pace != null
-            ? OnboardingPaceCalculator.weeklyRateKgFor(
-              _draft.goalType!,
-              _draft.pace!,
-            )
-            : null;
-
-    final profile = OnboardingProfileInput(
-      age: _draft.age!,
-      gender: _draft.sex!.serviceValue,
-      heightCm: _draft.heightCm!,
-      currentWeightKg: _draft.currentWeightKg!,
-      goalWeightKg: _draft.goalType!.resolveGoalWeightKg(
-        currentWeightKg: _draft.currentWeightKg!,
-        targetWeightKg: _draft.targetWeightKg,
-      ),
-      timelineMonths: timelineMonths,
-      activityLevel: _draft.activityLevel!.serviceValue,
-      weightUnit:
-          _draft.measurementSystem == MeasurementSystem.metric ? 'kg' : 'lb',
-      heightUnit:
-          _draft.measurementSystem == MeasurementSystem.metric ? 'cm' : 'in',
-      selectedWeeklyRateKg: finishSelectedRate,
-    );
-
     try {
       await settings.completeOnboarding(
-        profile: profile,
+        profile: _profileInput(),
         recommendation: _draft.recommendation!,
       );
       await metrics.logWeight(_draft.currentWeightKg!);
@@ -274,14 +191,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
 
   void _handleAdjust() {
     HapticFeedback.lightImpact();
-    final needsPace =
-        _draft.goalType == GoalType.loseWeight ||
-        _draft.goalType == GoalType.buildMuscle;
-    if (needsPace) {
-      setState(() => _stepIndex = 3);
-    } else {
-      setState(() => _stepIndex = _activityStep);
-    }
+    setState(() => _stepIndex = _needsPace ? 3 : _activityStep);
   }
 
   void _handleBack() {
@@ -290,145 +200,125 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     setState(() => _stepIndex--);
   }
 
+  (String, String?)? _headerFor(AppLocalizations l10n) {
+    if (!_isQuestion) return null;
+    if (_stepIndex == 1) {
+      return (l10n.onboarding_goal_title, l10n.onboarding_goal_sub);
+    }
+    if (_stepIndex == 2) {
+      return (l10n.onboarding_profile_title, l10n.onboarding_profile_sub);
+    }
+    if (_stepIndex == 3 && _needsPace) {
+      return (l10n.onboarding_pace_title, l10n.onboarding_pace_sub);
+    }
+    return (l10n.onboarding_activity_title, l10n.onboarding_activity_body);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isDark = context.isDarkMode;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    final header = _headerFor(l10n);
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: context.backgroundColor,
-      body: Stack(
-        children: [
-          const _OnboardingBackdrop(),
-          SafeArea(
-            child: Column(
+    final content =
+        header == null
+            ? _buildStep()
+            : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top bar
-                if (_showBack || _showProgress)
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      top: 10,
-                      bottom: 8,
-                      left: 22,
-                      right: 22,
+                const SizedBox(height: 10),
+                OnbHeader(
+                  eyebrow: l10n.onboarding_step_of(_stepIndex, _questionCount),
+                  title: header.$1,
+                  subtitle: header.$2,
+                ),
+                const SizedBox(height: 24),
+                _buildStep(),
+                const SizedBox(height: 16),
+              ],
+            );
+
+    // Android's back button used to leave onboarding altogether -- and with
+    // it every answer given so far. It now steps back, like the arrow.
+    return PopScope(
+      canPop: _stepIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        backgroundColor: context.backgroundColor,
+        body: Stack(
+          children: [
+            const Positioned.fill(child: _OnboardingBackdrop()),
+            SafeArea(
+              child: Column(
+                children: [
+                  if (_isQuestion)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                      child: Row(
+                        children: [
+                          OnbBackButton(onTap: _handleBack),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: OnbProgress(
+                              count: _questionCount,
+                              current: _stepIndex,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        if (_showBack)
-                          GestureDetector(
-                            onTap: _handleBack,
-                            behavior: HitTestBehavior.opaque,
-                            child: Container(
-                              // 44, not 36: this is the only way back out of
-                              // a step, and missing it reads as being stuck.
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? Colors.white.withValues(alpha: 0.055)
-                                        : Colors.white.withValues(alpha: 0.86),
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(
-                                  color: context.cardBorderColor.withValues(
-                                    alpha: isDark ? 0.75 : 1.0,
-                                  ),
+                  Expanded(
+                    child: StepPageTransition(
+                      child: KeyedSubtree(
+                        key: ValueKey('step$_stepIndex'),
+                        child: _StepScroll(
+                          center: header == null,
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 520),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: isDark ? 0.18 : 0.04,
-                                    ),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                AppSymbols.chevronLeft,
-                                size: 18,
-                                color: context.textPrimaryColor,
+                                child: content,
                               ),
                             ),
                           ),
-                        if (_showBack) const SizedBox(width: 14),
-                        if (_showProgress)
-                          Expanded(
-                            child: _ProgressRail(fraction: _progressFraction),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                // Step content
-                Expanded(
-                  child: StepPageTransition(
-                    child: Center(
-                      key: ValueKey('step$_stepIndex'),
-                      child: Container(
-                        width: double.infinity,
-                        constraints: const BoxConstraints(maxWidth: 520),
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: _StepContentFrame(
-                          scrollable: true,
-                          child: _buildStep(),
                         ),
                       ),
                     ),
                   ),
-                ),
-
-                // Bottom button area (hidden on welcome and result screens)
-                if (_stepIndex > 0 && !_isLastStep)
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      24,
-                      12,
-                      24,
-                      ((keyboardOpen ? 12 : bottomPadding + 16).clamp(
-                        16,
-                        48,
-                      )).toDouble(),
+                  if (_isQuestion)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        10,
+                        24,
+                        ((keyboardOpen ? 12 : bottomPadding + 14).clamp(
+                          16,
+                          48,
+                        )).toDouble(),
+                      ),
+                      child: OnbPrimaryButton(
+                        key: const ValueKey('onboarding-continue'),
+                        label: l10n.onboarding_continue,
+                        onTap: _canAdvance ? _handleNext : null,
+                      ),
                     ),
-                    child: PrimaryButton(
-                      text: _getButtonLabel(l10n),
-                      onTap: _canAdvance ? _handleNext : null,
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  double get _progressFraction {
-    if (!_showProgress) return 0.0;
-    final needsPace =
-        _draft.goalType == GoalType.loseWeight ||
-        _draft.goalType == GoalType.buildMuscle;
-    final denominator = needsPace ? 5.0 : 4.0;
-    if (_stepIndex == _lastStep) return 0.0;
-    if (!needsPace && _stepIndex > 2) {
-      // welcome(0) goal(1) profile(2) activity(3) → progress skips pace
-      return (_stepIndex - 1) / denominator;
-    }
-    return _stepIndex / denominator;
-  }
-
-  String _getButtonLabel(AppLocalizations l10n) {
-    return l10n.onboarding_continue;
-  }
-
   Widget _buildStep() {
-    final needsPace =
-        _draft.goalType == GoalType.loseWeight ||
-        _draft.goalType == GoalType.buildMuscle;
-
     switch (_stepIndex) {
       case 0:
         return WelcomeStep(onGetStarted: _handleNext);
@@ -436,8 +326,13 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         return GoalStep(
           selected: _draft.goalType,
           onChanged:
-              (goal) =>
-                  setState(() => _draft = _draft.copyWith(goalType: goal)),
+              (goal) => setState(
+                () =>
+                    _draft = _draft.copyWith(
+                      goalType: goal,
+                      clearRecommendation: true,
+                    ),
+              ),
         );
       case 2:
         return ProfileStep(
@@ -446,47 +341,69 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
           onChanged: (draft) => setState(() => _draft = draft),
         );
       case 3:
-        if (needsPace) {
+        if (_needsPace) {
           return PaceStep(
             key: _paceKey,
             draft: _draft,
             onChanged: (draft) => setState(() => _draft = draft),
-            onSkip: _handleNext,
           );
         }
-        return ActivityStep(
-          selected: _draft.activityLevel,
-          onChanged:
-              (level) => setState(
-                () => _draft = _draft.copyWith(activityLevel: level),
-              ),
-        );
+        return _activity();
       case 4:
-        if (needsPace) {
-          return ActivityStep(
-            selected: _draft.activityLevel,
-            onChanged:
-                (level) => setState(
-                  () => _draft = _draft.copyWith(activityLevel: level),
-                ),
-          );
-        }
-        return PlanResultStep(
-          draft: _draft,
-          onStart: _handleFinish,
-          onAdjust: _handleAdjust,
-          completing: _isCompleting,
-        );
+        if (_needsPace) return _activity();
+        return _plan();
       case 5:
-        return PlanResultStep(
-          draft: _draft,
-          onStart: _handleFinish,
-          onAdjust: _handleAdjust,
-          completing: _isCompleting,
-        );
+        return _plan();
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  Widget _activity() => ActivityStep(
+    selected: _draft.activityLevel,
+    onChanged:
+        (level) => setState(
+          () =>
+              _draft = _draft.copyWith(
+                activityLevel: level,
+                clearRecommendation: true,
+              ),
+        ),
+  );
+
+  Widget _plan() => PlanResultStep(
+    draft: _draft,
+    onStart: _handleFinish,
+    onAdjust: _handleAdjust,
+    completing: _isCompleting,
+  );
+}
+
+/// Scrolls a step, and centres the ones without a header (welcome, plan)
+/// when they are shorter than the screen.
+class _StepScroll extends StatelessWidget {
+  const _StepScroll({required this.child, required this.center});
+
+  final Widget child;
+  final bool center;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Align(
+              alignment: center ? Alignment.center : Alignment.topCenter,
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -497,132 +414,34 @@ class _OnboardingBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = context.isDarkMode;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors:
-              isDark
-                  ? [
-                    context.surfaceColor,
-                    context.surfaceColor,
-                    context.backgroundColor,
-                  ]
-                  : [
-                    context.surfaceColor,
-                    context.surfaceColor,
-                    context.backgroundColor,
-                  ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+    Widget glow(Color color, double alpha, double size) => IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [color.withValues(alpha: alpha), color.withValues(alpha: 0)],
+          ),
         ),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(-0.75, -0.95),
-                  radius: 0.9,
-                  colors: [
-                    AppColors.sky.withValues(alpha: isDark ? 0.22 : 0.14),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0.85, -0.28),
-                  radius: 0.8,
-                  colors: [
-                    AppColors.tertiarySeed.withValues(
-                      alpha: isDark ? 0.16 : 0.10,
-                    ),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
-  }
-}
 
-class _StepContentFrame extends StatelessWidget {
-  final Widget child;
-  final bool scrollable;
-
-  const _StepContentFrame({required this.child, required this.scrollable});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!scrollable) return child;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: child,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ProgressRail extends StatelessWidget {
-  final double fraction;
-
-  const _ProgressRail({required this.fraction});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = context.isDarkMode;
-
-    return Container(
-      height: 9,
-      padding: const EdgeInsets.all(1.5),
-      decoration: BoxDecoration(
-        color:
-            isDark
-                ? Colors.white.withValues(alpha: 0.075)
-                : Colors.white.withValues(alpha: 0.86),
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(
-          color: context.cardBorderColor.withValues(alpha: isDark ? 0.65 : 1.0),
+    return Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        Positioned.fill(child: ColoredBox(color: context.backgroundColor)),
+        Positioned(
+          top: -140,
+          right: -110,
+          child: glow(AppColors.primary, isDark ? 0.22 : 0.16, 360),
         ),
-      ),
-      child: FractionallySizedBox(
-        // Directional, not left. Arabic is a supported locale, and with a
-        // hard "left" the header mirrors while the progress fill does not,
-        // so the bar appears to drain backwards as you advance.
-        alignment: AlignmentDirectional.centerStart,
-        widthFactor: fraction.clamp(0.0, 1.0),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: AppColors.primaryGradient,
-            borderRadius: BorderRadius.circular(99),
-            boxShadow: [
-              BoxShadow(
-                color: context.primaryColor.withValues(
-                  alpha: isDark ? 0.28 : 0.18,
-                ),
-                blurRadius: 12,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
+        Positioned(
+          top: 280,
+          left: -150,
+          child: glow(AppColors.tertiarySeed, isDark ? 0.10 : 0.07, 320),
         ),
-      ),
+      ],
     );
   }
 }

@@ -1,27 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:snapcal/widgets/app_icon.dart';
-import '../../l10n/generated/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_colors.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'onboarding_components.dart';
-import 'onboarding_draft.dart';
 import 'onboarding_conversions.dart';
+import 'onboarding_draft.dart';
 import 'onboarding_pace_calculator.dart';
+import 'onboarding_ui.dart';
 import 'onboarding_validation.dart';
 
 class PaceStep extends StatefulWidget {
   final OnboardingDraft draft;
   final ValueChanged<OnboardingDraft> onChanged;
-  final VoidCallback onSkip;
 
-  const PaceStep({
-    super.key,
-    required this.draft,
-    required this.onChanged,
-    required this.onSkip,
-  });
+  const PaceStep({super.key, required this.draft, required this.onChanged});
 
   @override
   State<PaceStep> createState() => PaceStepState();
@@ -47,7 +42,7 @@ class PaceStepState extends State<PaceStep> {
 
   void _emitChange() {
     final l10n = AppLocalizations.of(context)!;
-    final hasError = _validateInputs(l10n: l10n, showErrors: _triedSubmit);
+    _validateInputs(l10n: l10n, showErrors: _triedSubmit);
     widget.onChanged(
       widget.draft.copyWith(
         targetWeightKg: _targetKg,
@@ -55,9 +50,7 @@ class PaceStepState extends State<PaceStep> {
         clearRecommendation: true,
       ),
     );
-    if (!hasError && _selectedPace != null) {
-      setState(() {});
-    }
+    setState(() {});
   }
 
   String? _validateErr(OnboardingValidationError? err, AppLocalizations l10n) {
@@ -69,8 +62,6 @@ class PaceStepState extends State<PaceStep> {
         return l10n.onboarding_error_target_higher;
       case OnboardingValidationError.targetRange:
         return l10n.onboarding_error_goal_weight;
-      case OnboardingValidationError.targetExtreme:
-        return l10n.onboarding_error_generic;
       default:
         return l10n.onboarding_error_generic;
     }
@@ -102,8 +93,8 @@ class PaceStepState extends State<PaceStep> {
         if (rangeErr != null) {
           if (showErrors) _targetError = _validateErr(rangeErr, l10n);
           hasError = true;
-        } else {
-          if (showErrors) _targetError = null;
+        } else if (showErrors) {
+          _targetError = null;
         }
       }
     } else {
@@ -114,8 +105,8 @@ class PaceStepState extends State<PaceStep> {
     if (_selectedPace == null) {
       if (showErrors) _paceError = l10n.onboarding_pace_error_pace_required;
       hasError = true;
-    } else {
-      if (showErrors) _paceError = null;
+    } else if (showErrors) {
+      _paceError = null;
     }
 
     if (showErrors) setState(() {});
@@ -127,114 +118,190 @@ class PaceStepState extends State<PaceStep> {
     return !_validateInputs(l10n: l10n, showErrors: true);
   }
 
+  void _selectPace(Pace p) {
+    setState(() {
+      _selectedPace = p;
+      _paceError = null;
+    });
+    _emitChange();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final goal = widget.draft.goalType;
     final system = widget.draft.measurementSystem;
+    final unit = OnboardingPaceCalculator.weeklyRateUnit(system);
+    final paces = <(Pace, String, String)>[
+      (Pace.gentle, l10n.onboarding_pace_gentle, l10n.onboarding_pace_gentle_desc),
+      (
+        Pace.balanced,
+        l10n.onboarding_pace_balanced,
+        l10n.onboarding_pace_balanced_desc,
+      ),
+      (Pace.faster, l10n.onboarding_pace_faster, l10n.onboarding_pace_faster_desc),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 4),
-        Text(
-          l10n.onboarding_pace_title,
-          style: TextStyle(
-            color: context.textPrimaryColor,
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            height: 1.08,
-          ),
-        ),
-        const SizedBox(height: 22),
-        _buildTargetPicker(system),
+        _buildTargetCard(system, l10n),
         if (_targetError != null && _triedSubmit)
+          OnbErrorText(text: _targetError!),
+        const SizedBox(height: 24),
+        OnbSectionLabel(text: l10n.onboarding_pace_how_fast),
+        const SizedBox(height: 10),
+        for (final (pace, label, description) in paces)
           Padding(
-            padding: const EdgeInsets.only(left: 2, top: 6),
-            child: Text(
-              _targetError!,
-              style: const TextStyle(
-                color: AppColors.dangerRed,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+            padding: const EdgeInsets.only(bottom: 10),
+            child: OnbChoiceTile(
+              title: label,
+              subtitle: description,
+              badge:
+                  pace == Pace.balanced ? l10n.onboarding_pace_recommended : null,
+              footer: _RatePill(
+                text: l10n.onboarding_pace_weekly_rate(
+                  OnboardingPaceCalculator.formatWeeklyRateValue(
+                    goal == null
+                        ? 0
+                        : OnboardingPaceCalculator.weeklyRateKgFor(goal, pace),
+                    system,
+                  ),
+                  unit,
+                ),
+                selected: _selectedPace == pace,
               ),
+              selected: _selectedPace == pace,
+              onTap: () => _selectPace(pace),
             ),
           ),
-        const SizedBox(height: 20),
-        // Pace cards
-        _PaceCard(
-          label: l10n.onboarding_pace_gentle,
-          subtitle: l10n.onboarding_pace_gentle_desc,
-          pace: Pace.gentle,
-          goal: goal,
-          system: system,
-          selected: _selectedPace == Pace.gentle,
-          onTap: () => _selectPace(Pace.gentle),
-        ),
-        const SizedBox(height: 12),
-        _PaceCard(
-          label: l10n.onboarding_pace_balanced,
-          subtitle: l10n.onboarding_pace_balanced_desc,
-          pace: Pace.balanced,
-          goal: goal,
-          system: system,
-          selected: _selectedPace == Pace.balanced,
-          onTap: () => _selectPace(Pace.balanced),
-        ),
-        const SizedBox(height: 12),
-        _PaceCard(
-          label: l10n.onboarding_pace_faster,
-          subtitle: l10n.onboarding_pace_faster_desc,
-          pace: Pace.faster,
-          goal: goal,
-          system: system,
-          selected: _selectedPace == Pace.faster,
-          onTap: () => _selectPace(Pace.faster),
-        ),
-        if (_paceError != null && _triedSubmit)
-          Padding(
-            padding: const EdgeInsets.only(left: 2, top: 6),
-            child: Text(
-              _paceError!,
-              style: const TextStyle(
-                color: AppColors.dangerRed,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        // Estimated date summary (only when valid)
+        if (_paceError != null && _triedSubmit) OnbErrorText(text: _paceError!),
         if (_isValid && widget.draft.currentWeightKg != null && goal != null)
-          _buildDateSummary(
-            goal,
-            _targetKg,
-            widget.draft.currentWeightKg!,
-            system,
-          ),
+          _buildDateSummary(goal, widget.draft.currentWeightKg!, l10n),
       ],
     );
   }
 
-  void _selectPace(Pace p) {
-    HapticFeedback.selectionClick();
-    setState(() {
-      _selectedPace = p;
-      _paceError = null;
-      _triedSubmit = true;
-    });
-    _emitChange();
-  }
-
-  Widget _buildTargetPicker(MeasurementSystem system) {
+  Widget _buildTargetCard(MeasurementSystem system, AppLocalizations l10n) {
     final values = _targetDisplayValues(system);
     final value = _targetDisplayValue(system, values);
+    final index = values.indexOf(value);
+    final unit = system == MeasurementSystem.metric ? 'kg' : 'lb';
+    final currentKg = widget.draft.currentWeightKg;
+    final current =
+        currentKg == null
+            ? null
+            : system == MeasurementSystem.metric
+            ? currentKg.round()
+            : OnboardingConversions.kgToLb(currentKg).round();
+    final difference = current == null ? null : value - current;
+    final isDark = context.isDarkMode;
 
-    return AppleValuePickerRow(
-      rowKey: const Key('onboarding_target_weight_row'),
-      label: AppLocalizations.of(context)!.onboarding_pace_target_weight,
-      value: system == MeasurementSystem.metric ? '$value kg' : '$value lb',
-      onTap: () => _pickTargetWeight(system, values, value),
+    return Container(
+      key: const Key('onboarding_target_weight_row'),
+      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color:
+              _targetError != null && _triedSubmit
+                  ? AppColors.dangerRed
+                  : context.cardBorderColor,
+          width: 1.4,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _pickTargetWeight(system, values, value),
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.onboarding_pace_target_weight,
+                    style: TextStyle(
+                      color: context.textSecondaryColor,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$value',
+                          style: TextStyle(
+                            color: context.textPrimaryColor,
+                            fontSize: 38,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' $unit',
+                          style: TextStyle(
+                            color: context.textSecondaryColor,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (difference != null && difference != 0)
+                    Text(
+                      l10n.onboarding_pace_difference(
+                        '${difference > 0 ? '+' : '−'}${difference.abs()} $unit',
+                      ),
+                      style: TextStyle(
+                        color: context.primaryColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          _StepperButton(
+            icon: AppSymbols.minus,
+            enabled: index > 0,
+            onTap: () => _stepTarget(values, index - 1, system),
+          ),
+          const SizedBox(width: 8),
+          _StepperButton(
+            icon: AppSymbols.plus,
+            enabled: index >= 0 && index < values.length - 1,
+            onTap: () => _stepTarget(values, index + 1, system),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _stepTarget(List<int> values, int index, MeasurementSystem system) {
+    if (index < 0 || index >= values.length) return;
+    HapticFeedback.selectionClick();
+    final selected = values[index];
+    setState(() {
+      _targetKg =
+          system == MeasurementSystem.metric
+              ? selected.toDouble()
+              : OnboardingConversions.lbToKg(selected.toDouble());
+      _targetError = null;
+    });
+    _emitChange();
   }
 
   Future<void> _pickTargetWeight(
@@ -303,7 +370,6 @@ class PaceStepState extends State<PaceStep> {
     if (system == MeasurementSystem.metric) {
       return values.map((value) => value.round()).toList();
     }
-
     return values
         .map((value) => OnboardingConversions.kgToLb(value).round())
         .toSet()
@@ -316,8 +382,7 @@ class PaceStepState extends State<PaceStep> {
         system == MeasurementSystem.metric
             ? _targetKg.round()
             : OnboardingConversions.kgToLb(_targetKg).round();
-    if (values.contains(display)) return display;
-    if (values.isEmpty) return display;
+    if (values.contains(display) || values.isEmpty) return display;
     return values.reduce(
       (best, value) =>
           (value - display).abs() < (best - display).abs() ? value : best,
@@ -326,45 +391,60 @@ class PaceStepState extends State<PaceStep> {
 
   Widget _buildDateSummary(
     GoalType goal,
-    double targetKg,
     double currentKg,
-    MeasurementSystem system,
+    AppLocalizations l10n,
   ) {
-    final l10n = AppLocalizations.of(context)!;
     final rate = OnboardingPaceCalculator.weeklyRateKgFor(goal, _selectedPace!);
     final date = OnboardingPaceCalculator.estimatedTargetDate(
       currentKg,
-      targetKg,
+      _targetKg,
       rate,
     );
-    final formatted = DateFormat.yMMMMd().format(date);
+    final formatted = DateFormat.yMMMd(
+      Localizations.localeOf(context).toString(),
+    ).format(date);
+    final accent = context.primaryColor;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.only(top: 6),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: context.primaryColor.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: context.primaryColor.withValues(alpha: 0.1),
+          gradient: LinearGradient(
+            colors: [
+              accent.withValues(alpha: context.isDarkMode ? 0.22 : 0.14),
+              accent.withValues(alpha: context.isDarkMode ? 0.10 : 0.05),
+            ],
           ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: accent.withValues(alpha: 0.22)),
         ),
         child: Row(
           children: [
-            Icon(AppSymbols.calendar, size: 16, color: context.primaryColor),
-            const SizedBox(width: 10),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                AppSymbols.calendarCheck,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
-                l10n.onboarding_pace_target_date(formatted),
+                l10n.onboarding_result_reach_by(formatted),
                 style: TextStyle(
-                  color: context.textSecondaryColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
+                  color: context.textPrimaryColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -374,190 +454,73 @@ class PaceStepState extends State<PaceStep> {
   }
 }
 
-class _PaceCard extends StatelessWidget {
-  final String label;
-  final String subtitle;
-  final Pace pace;
-  final GoalType? goal;
-  final MeasurementSystem system;
-  final bool selected;
-  final VoidCallback onTap;
+class _RatePill extends StatelessWidget {
+  const _RatePill({required this.text, required this.selected});
 
-  const _PaceCard({
-    required this.label,
-    required this.subtitle,
-    required this.pace,
-    required this.goal,
-    required this.system,
-    required this.selected,
-    required this.onTap,
-  });
+  final String text;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.isDarkMode;
-    final accent = context.primaryColor;
-    final rateKg =
-        goal != null
-            ? OnboardingPaceCalculator.weeklyRateKgFor(goal!, pace)
-            : 0.0;
-    final rateValue = OnboardingPaceCalculator.formatWeeklyRateValue(
-      rateKg,
-      system,
-    );
-    final unit = OnboardingPaceCalculator.weeklyRateUnit(system);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        height: 82,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color:
-              selected
-                  ? accent.withValues(alpha: isDark ? 0.12 : 0.07)
-                  : (isDark
-                      ? Colors.white.withValues(alpha: 0.045)
-                      : Colors.white.withValues(alpha: 0.9)),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color:
-                selected
-                    ? accent.withValues(alpha: 0.76)
-                    : context.cardBorderColor,
-            width: selected ? 1.5 : 1.0,
-          ),
-          boxShadow:
-              selected
-                  ? [
-                    BoxShadow(
-                      color: accent.withValues(alpha: isDark ? 0.20 : 0.12),
-                      blurRadius: 28,
-                      offset: const Offset(0, 12),
-                    ),
-                  ]
-                  : [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: isDark ? 0.10 : 0.025,
-                      ),
-                      blurRadius: 14,
-                      offset: const Offset(0, 7),
-                    ),
-                  ],
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 108),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color:
+            selected
+                ? context.primaryColor.withValues(alpha: 0.12)
+                : (context.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.05)),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: selected ? context.primaryColor : context.textSecondaryColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
         ),
-        child: Stack(
-          children: [
-            if (selected)
-              PositionedDirectional(
-                start: 0,
-                top: 16,
-                bottom: 16,
-                child: Container(
-                  width: 3,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          color: context.textPrimaryColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          color: context.textSecondaryColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          height: 1.24,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Rate pill
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 104),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        selected
-                            ? accent.withValues(alpha: 0.12)
-                            : (isDark
-                                ? Colors.white.withValues(alpha: 0.04)
-                                : Colors.black.withValues(alpha: 0.025)),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(
-                      color:
-                          selected
-                              ? accent.withValues(alpha: 0.3)
-                              : context.cardBorderColor,
-                    ),
-                  ),
-                  child: Text(
-                    AppLocalizations.of(
-                      context,
-                    )!.onboarding_pace_weekly_rate(rateValue, unit),
-                    style: TextStyle(
-                      color: selected ? accent : context.textSecondaryColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Selection radio
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: selected ? AppColors.primaryGradient : null,
-                    color: selected ? null : Colors.transparent,
-                    border: Border.all(
-                      color:
-                          selected
-                              ? Colors.transparent
-                              : context.textMutedColor,
-                      width: selected ? 0 : 1.5,
-                    ),
-                  ),
-                  child:
-                      selected
-                          ? Icon(
-                            AppSymbols.check,
-                            size: 14,
-                            color: isDark ? Colors.black : Colors.white,
-                          )
-                          : null,
-                ),
-              ],
-            ),
-          ],
+      ),
+    );
+  }
+}
+
+class _StepperButton extends StatelessWidget {
+  const _StepperButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.primaryColor;
+    return InkResponse(
+      onTap: enabled ? onTap : null,
+      radius: 26,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color:
+              enabled
+                  ? accent.withValues(alpha: 0.12)
+                  : (context.isDarkMode
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.04)),
+        ),
+        child: Icon(
+          icon,
+          size: 22,
+          color: enabled ? accent : context.textMutedColor,
         ),
       ),
     );

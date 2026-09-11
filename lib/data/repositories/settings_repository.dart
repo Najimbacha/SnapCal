@@ -117,14 +117,34 @@ class SettingsRepository {
   }
 
   /// Save user settings (Local + Cloud)
-  Future<void> saveSettings(UserSettings settings) async {
+  Future<void> saveSettings(
+    UserSettings settings, {
+    bool waitForCloud = true,
+  }) async {
     // 1. Save to Local Hive
     await _settingsBox?.put(AppConstants.settingsKey, settings);
 
     // 2. Push to Stream
     _settingsController.add(settings);
 
-    // 3. Sync to Firestore if logged in
+    // 3. Sync to Firestore if logged in. A caller that must not wait on the
+    // network -- finishing onboarding -- lets it run on: on a weak connection
+    // the write took its full timeout, and "Start plan" spun for eight
+    // seconds with the plan already saved on the phone. A failure still lands
+    // in the sync queue, exactly as when it is awaited.
+    final cloud = _pushToCloud(settings);
+    if (waitForCloud) {
+      await cloud;
+    } else {
+      unawaited(
+        cloud.catchError(
+          (Object e) => debugPrint('Settings cloud sync failed: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _pushToCloud(UserSettings settings) async {
     final user = _authClient.currentUser;
     if (user != null) {
       final appSettingsPath = 'users/${user.uid}/settings/app';

@@ -205,6 +205,10 @@ class AppSymbols {
   static const utensilsCrossed = Symbols.restaurant;
   static const video = Symbols.videocam;
   static const wallet = Symbols.wallet;
+  static const male = Symbols.male;
+  static const female = Symbols.female;
+  static const run = Symbols.directions_run;
+  static const balance = Symbols.balance;
   static const wand2 = Symbols.auto_awesome;
   static const wheat = Symbols.grain;
   static const wifiOff = Symbols.wifi_off;

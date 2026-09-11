@@ -1627,5 +1627,20 @@
   "snap_camera_permission": "SnapCal a besoin de l'appareil photo pour scanner vos repas. Autorisez-le dans les réglages du téléphone.",
   "snap_camera_unavailable": "L'appareil photo n'a pas pu démarrer. Veuillez réessayer.",
   "snap_open_settings": "Ouvrir les réglages",
-  "log_meal_deleted": "Repas supprimé"
+  "log_meal_deleted": "Repas supprimé",
+  "onboarding_step_of": "ÉTAPE {current} SUR {total}",
+  "onboarding_welcome_headline": "Photographiez votre repas.\nConnaissez vos calories.",
+  "onboarding_feat_scan": "Calories en photo",
+  "onboarding_goal_sub": "Nous construirons votre plan calorique quotidien autour de lui.",
+  "onboarding_profile_sub": "Cela nous permet de calculer les besoins quotidiens de votre corps.",
+  "onboarding_body_label": "Votre corps",
+  "onboarding_unit_metric": "Métrique",
+  "onboarding_unit_imperial": "Impérial",
+  "onboarding_profile_privacy": "Utilisé uniquement pour calculer votre plan. Modifiable à tout moment dans les Réglages.",
+  "onboarding_pace_sub": "Choisissez votre poids cible et votre rythme.",
+  "onboarding_pace_how_fast": "À quel rythme ?",
+  "onboarding_pace_recommended": "Recommandé",
+  "onboarding_pace_difference": "{amount} par rapport à aujourd'hui",
+  "onboarding_activity_moderate": "Actif",
+  "onboarding_activity_moderate_desc": "3-5 jours d'exercice par semaine"
 }

@@ -4732,4 +4732,59 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get log_meal_deleted => 'Comida eliminada';
+
+  @override
+  String onboarding_step_of(int current, int total) {
+    return 'PASO $current DE $total';
+  }
+
+  @override
+  String get onboarding_welcome_headline =>
+      'Fotografía tu comida.\nConoce tus calorías.';
+
+  @override
+  String get onboarding_feat_scan => 'Calorías con una foto';
+
+  @override
+  String get onboarding_goal_sub =>
+      'Crearemos tu plan diario de calorías en torno a él.';
+
+  @override
+  String get onboarding_profile_sub =>
+      'Así calculamos lo que tu cuerpo necesita cada día.';
+
+  @override
+  String get onboarding_body_label => 'Tu cuerpo';
+
+  @override
+  String get onboarding_unit_metric => 'Métrico';
+
+  @override
+  String get onboarding_unit_imperial => 'Imperial';
+
+  @override
+  String get onboarding_profile_privacy =>
+      'Solo se usa para calcular tu plan. Puedes cambiarlo cuando quieras en Ajustes.';
+
+  @override
+  String get onboarding_pace_sub =>
+      'Elige tu peso objetivo y a qué ritmo quieres llegar.';
+
+  @override
+  String get onboarding_pace_how_fast => '¿A qué ritmo?';
+
+  @override
+  String get onboarding_pace_recommended => 'Recomendado';
+
+  @override
+  String onboarding_pace_difference(String amount) {
+    return '$amount desde hoy';
+  }
+
+  @override
+  String get onboarding_activity_moderate => 'Activo';
+
+  @override
+  String get onboarding_activity_moderate_desc =>
+      '3-5 días de ejercicio por semana';
 }

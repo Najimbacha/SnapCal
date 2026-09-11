@@ -187,10 +187,13 @@ class Settings extends _$Settings {
     return false;
   }
 
-  Future<void> _updateSettings(UserSettings updated) async {
+  Future<void> _updateSettings(
+    UserSettings updated, {
+    bool waitForCloud = true,
+  }) async {
     state = AsyncData(updated);
     final repo = await ref.read(settingsRepositoryProvider.future);
-    await repo.saveSettings(updated);
+    await repo.saveSettings(updated, waitForCloud: waitForCloud);
     _syncNotifications(updated);
   }
 
@@ -680,7 +683,9 @@ class Settings extends _$Settings {
       recommendationSafetyNote: recommendation.safetyNote,
       onboardingComplete: true,
     );
-    await _updateSettings(updated);
+    // Saved on the phone, the plan is ready: the cloud copy follows in the
+    // background rather than holding the user on "Start plan".
+    await _updateSettings(updated, waitForCloud: false);
   }
 
   Future<void> setThemeMode(String mode) async {

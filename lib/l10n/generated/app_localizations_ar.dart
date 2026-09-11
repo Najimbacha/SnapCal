@@ -4664,4 +4664,54 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get log_meal_deleted => 'تم حذف الوجبة';
+
+  @override
+  String onboarding_step_of(int current, int total) {
+    return 'الخطوة $current من $total';
+  }
+
+  @override
+  String get onboarding_welcome_headline => 'صوّر طعامك.\nواعرف سعراته.';
+
+  @override
+  String get onboarding_feat_scan => 'السعرات من صورة';
+
+  @override
+  String get onboarding_goal_sub => 'سنبني خطة سعراتك اليومية حوله.';
+
+  @override
+  String get onboarding_profile_sub => 'هكذا نحسب ما يحتاجه جسمك كل يوم.';
+
+  @override
+  String get onboarding_body_label => 'جسمك';
+
+  @override
+  String get onboarding_unit_metric => 'متري';
+
+  @override
+  String get onboarding_unit_imperial => 'إمبراطوري';
+
+  @override
+  String get onboarding_profile_privacy =>
+      'يُستخدم فقط لحساب خطتك. يمكنك تغييره في أي وقت من الإعدادات.';
+
+  @override
+  String get onboarding_pace_sub => 'حدد وزنك المستهدف ومدى سرعة الوصول إليه.';
+
+  @override
+  String get onboarding_pace_how_fast => 'بأي سرعة؟';
+
+  @override
+  String get onboarding_pace_recommended => 'موصى به';
+
+  @override
+  String onboarding_pace_difference(String amount) {
+    return '$amount عن اليوم';
+  }
+
+  @override
+  String get onboarding_activity_moderate => 'نشط';
+
+  @override
+  String get onboarding_activity_moderate_desc => '3-5 أيام تمارين أسبوعيًا';
 }

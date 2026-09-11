@@ -663,7 +663,7 @@ void main() {
       await tester.tap(find.text('Imperial'));
       await tester.pumpAndSettle();
 
-      expect(find.text('5 ft 7 in'), findsOneWidget);
+      expect(find.text('5′ 7″'), findsOneWidget);
       expect(find.text('165 lb'), findsOneWidget);
     });
 
@@ -746,7 +746,6 @@ void main() {
               currentWeightKg: 80,
             ),
             onChanged: (_) {},
-            onSkip: () {},
           ),
         ),
       );
@@ -766,7 +765,6 @@ void main() {
               currentWeightKg: 80,
             ),
             onChanged: (_) {},
-            onSkip: () {},
           ),
         ),
       );
@@ -784,7 +782,6 @@ void main() {
               currentWeightKg: 80,
             ),
             onChanged: (_) {},
-            onSkip: () {},
           ),
         ),
       );
@@ -835,7 +832,6 @@ void main() {
                 currentWeightKg: 80,
               ),
               onChanged: (_) {},
-              onSkip: () {},
             ),
           ),
         );

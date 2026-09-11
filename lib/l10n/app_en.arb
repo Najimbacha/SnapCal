@@ -2325,5 +2325,22 @@
   "snap_camera_permission": "SnapCal needs camera access to scan food. Allow it in your phone's settings.",
   "snap_camera_unavailable": "The camera couldn't start. Please try again.",
   "snap_open_settings": "Open settings",
-  "log_meal_deleted": "Meal deleted"
+  "log_meal_deleted": "Meal deleted",
+  "onboarding_step_of": "STEP {current} OF {total}",
+  "onboarding_welcome_headline": "Snap your food.\nKnow your calories.",
+  "onboarding_feat_scan": "Photo calorie scan",
+  "onboarding_goal_sub": "We'll build your daily calorie plan around it.",
+  "onboarding_profile_sub": "This is how we work out what your body needs each day.",
+  "onboarding_body_label": "Your body",
+  "onboarding_unit_metric": "Metric",
+  "onboarding_unit_imperial": "Imperial",
+  "onboarding_profile_privacy": "Only used to work out your plan. You can change it anytime in Settings.",
+  "onboarding_pace_sub": "Set a target weight and how fast you want to get there.",
+  "onboarding_pace_how_fast": "How fast?",
+  "onboarding_pace_recommended": "Recommended",
+  "onboarding_pace_difference": "{amount} from today",
+  "onboarding_activity_moderate": "Active",
+  "onboarding_activity_moderate_desc": "3-5 days of exercise per week",
+  "@onboarding_step_of": {"placeholders":{"current":{"type":"int"},"total":{"type":"int"}}},
+  "@onboarding_pace_difference": {"placeholders":{"amount":{"type":"String"}}}
 }

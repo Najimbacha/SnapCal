@@ -1,364 +1,204 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:snapcal/widgets/app_icon.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../l10n/generated/app_localizations.dart';
+
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/theme_colors.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers/auth_state_provider.dart';
+import 'onboarding_ui.dart';
 import 'welcome_scan_demo.dart';
 
-class WelcomeStep extends ConsumerStatefulWidget {
+/// The first screen.
+///
+/// The words and the button used to stay hidden until the demo scan had
+/// played out: a blank lower half for the first two seconds, and no way to
+/// sign in meanwhile. Everything is on screen from the start now; the demo
+/// plays above it.
+class WelcomeStep extends ConsumerWidget {
   final VoidCallback onGetStarted;
 
   const WelcomeStep({super.key, required this.onGetStarted});
 
   @override
-  ConsumerState<WelcomeStep> createState() => _WelcomeStepState();
-}
-
-class _WelcomeStepState extends ConsumerState<WelcomeStep>
-    with SingleTickerProviderStateMixin {
-  bool _scanComplete = false;
-  late AnimationController _textCtrl;
-  late Animation<double> _textFade;
-  Animation<Offset>? _textSlide;
-
-  @override
-  void initState() {
-    super.initState();
-    _textCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _textFade = CurvedAnimation(parent: _textCtrl, curve: Curves.easeOut);
-    _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.035),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _textCtrl, curve: Curves.easeOutCubic));
-  }
-
-  @override
-  void dispose() {
-    _textCtrl.dispose();
-    super.dispose();
-  }
-
-  void _onScanComplete() {
-    if (mounted) {
-      setState(() => _scanComplete = true);
-      _textCtrl.forward();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final reduceMotion = AppMotion.reduceMotion(context);
+    final lines = l10n.onboarding_welcome_headline.split('\n');
+
+    Widget enter(Widget child, int delayMs) {
+      if (reduceMotion) return child;
+      return child
+          .animate(delay: delayMs.ms)
+          .fadeIn(duration: 450.ms, curve: AppMotion.entranceCurve)
+          .slideY(
+            begin: 0.08,
+            end: 0,
+            duration: 450.ms,
+            curve: AppMotion.entranceCurve,
+          );
+    }
 
     return Column(
       children: [
-        const SizedBox(height: 4),
-        WelcomeScanDemo(onScanComplete: _onScanComplete),
-        const SizedBox(height: 22),
-        // Title and CTA — fade in only after scan completes
-        SlideTransition(
-          position: _textSlide ?? const AlwaysStoppedAnimation(Offset.zero),
-          child: FadeTransition(
-            opacity: _textFade,
-            child: Column(
+        const SizedBox(height: 8),
+        enter(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  AppSymbols.scan,
+                  size: 18,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 9),
+              Text(
+                'SnapCal',
+                style: TextStyle(
+                  color: context.textPrimaryColor,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+          0,
+        ),
+        const SizedBox(height: 18),
+        enter(WelcomeScanDemo(onScanComplete: () {}), 80),
+        const SizedBox(height: 26),
+        enter(
+          Text.rich(
+            TextSpan(
               children: [
-                ShaderMask(
-                  shaderCallback:
-                      (bounds) => LinearGradient(
-                        colors:
-                            context.isDarkMode
-                                ? [
-                                  Colors.white,
-                                  context.primaryColor.withValues(alpha: 0.7),
-                                ]
-                                : [
-                                  context.textPrimaryColor,
-                                  context.primaryColor.withValues(alpha: 0.6),
-                                ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                  child: Text(
-                    l10n.onboarding_welcome_title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      height: 1.08,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Text(
-                    l10n.onboarding_welcome_body,
+                for (var i = 0; i < lines.length; i++)
+                  TextSpan(
+                    text: i < lines.length - 1 ? '${lines[i]}\n' : lines[i],
                     style: TextStyle(
-                      color: context.textSecondaryColor.withValues(alpha: 0.92),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      height: 1.42,
+                      color:
+                          lines.length > 1 && i == lines.length - 1
+                              ? context.primaryColor
+                              : context.textPrimaryColor,
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity,
-                  height: 58,
-                  child: _ScanButton(
-                    enabled: _scanComplete,
-                    text: l10n.onboarding_get_started,
-                    onTap: widget.onGetStarted,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Consumer(
-                  builder: (context, ref, _) {
-                    if (!ref.watch(isAnonymousProvider)) {
-                      return const SizedBox.shrink();
-                    }
-                    return _AuthLinkButton(
-                      text: l10n.onboarding_already_account,
-                      onTap: () => context.push('/auth'),
-                    );
-                  },
-                ),
               ],
             ),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              height: 1.14,
+              letterSpacing: -0.8,
+            ),
           ),
+          160,
         ),
+        const SizedBox(height: 10),
+        enter(
+          Text(
+            l10n.onboarding_welcome_body,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: context.textSecondaryColor,
+              fontSize: 15.5,
+              height: 1.42,
+            ),
+          ),
+          220,
+        ),
+        const SizedBox(height: 18),
+        enter(
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _Feature(icon: AppSymbols.camera, label: l10n.onboarding_feat_scan),
+              _Feature(
+                icon: AppSymbols.target,
+                label: l10n.onboarding_feature_target,
+              ),
+              _Feature(
+                icon: AppSymbols.protein,
+                label: l10n.onboarding_feature_macros,
+              ),
+            ],
+          ),
+          280,
+        ),
+        const SizedBox(height: 26),
+        enter(
+          OnbPrimaryButton(
+            key: const ValueKey('onboarding-get-started'),
+            label: l10n.onboarding_get_started,
+            onTap: onGetStarted,
+          ),
+          340,
+        ),
+        if (ref.watch(isAnonymousProvider)) ...[
+          const SizedBox(height: 6),
+          TextButton(
+            onPressed: () => context.push('/auth'),
+            child: Text(
+              l10n.onboarding_already_account,
+              style: TextStyle(
+                color: context.textSecondaryColor,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
       ],
     );
   }
 }
 
-class _AuthLinkButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onTap;
+class _Feature extends StatelessWidget {
+  const _Feature({required this.icon, required this.label});
 
-  const _AuthLinkButton({required this.text, required this.onTap});
+  final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.isDarkMode;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.055)
-                  : Colors.white.withValues(alpha: 0.70),
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.white.withValues(alpha: 0.95),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.04),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: context.primaryColor.withValues(
+          alpha: context.isDarkMode ? 0.16 : 0.09,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              AppSymbols.userCircle2,
-              size: 16,
-              color: context.primaryColor.withValues(alpha: 0.9),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              text,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: context.primaryColor),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
               style: TextStyle(
-                color: context.textPrimaryColor.withValues(alpha: 0.82),
-                fontSize: 14,
+                color: context.textPrimaryColor,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: 6),
-            Icon(
-              AppSymbols.chevronRight,
-              size: 15,
-              color: context.textMutedColor,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ScanButton extends StatefulWidget {
-  final bool enabled;
-  final String text;
-  final VoidCallback onTap;
-
-  const _ScanButton({
-    required this.enabled,
-    required this.text,
-    required this.onTap,
-  });
-
-  @override
-  State<_ScanButton> createState() => _ScanButtonState();
-}
-
-class _ScanButtonState extends State<_ScanButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _scaleCtrl;
-  late Animation<double> _scaleAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _scaleCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-      lowerBound: 0.985,
-      upperBound: 1.0,
-    )..value = 1.0;
-    _scaleAnim = CurvedAnimation(parent: _scaleCtrl, curve: Curves.easeOut);
-  }
-
-  @override
-  void dispose() {
-    _scaleCtrl.dispose();
-    super.dispose();
-  }
-
-  void _onTapDown(TapDownDetails _) {
-    if (widget.enabled) _scaleCtrl.reverse();
-  }
-
-  void _onTapUp(TapUpDetails _) {
-    if (widget.enabled) {
-      _scaleCtrl.forward();
-      widget.onTap();
-    }
-  }
-
-  void _onTapCancel() {
-    if (widget.enabled) _scaleCtrl.forward();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = context.isDarkMode;
-    return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: _onTapCancel,
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          height: 58,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color:
-                widget.enabled
-                    ? null
-                    : (isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.06)),
-            gradient: widget.enabled ? AppColors.primaryGradient : null,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color:
-                  widget.enabled
-                      ? Colors.white.withValues(alpha: isDark ? 0.16 : 0.22)
-                      : Colors.transparent,
-            ),
-            boxShadow:
-                widget.enabled
-                    ? [
-                      BoxShadow(
-                        color: context.primaryColor.withValues(
-                          alpha: isDark ? 0.34 : 0.24,
-                        ),
-                        blurRadius: 28,
-                        offset: const Offset(0, 12),
-                      ),
-                      BoxShadow(
-                        color: AppColors.tertiarySeed.withValues(
-                          alpha: isDark ? 0.20 : 0.14,
-                        ),
-                        blurRadius: 32,
-                        offset: const Offset(10, 14),
-                      ),
-                    ]
-                    : null,
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: Stack(
-              children: [
-                if (widget.enabled)
-                  Positioned(
-                    top: 0,
-                    left: 18,
-                    right: 18,
-                    height: 1,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.55),
-                      ),
-                    ),
-                  ),
-                Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.text,
-                        style: TextStyle(
-                          color:
-                              widget.enabled
-                                  ? Colors.white
-                                  : (isDark
-                                      ? Colors.white.withValues(alpha: 0.25)
-                                      : Colors.black.withValues(alpha: 0.2)),
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(width: 9),
-                      Icon(
-                        AppSymbols.arrowRight,
-                        color:
-                            widget.enabled
-                                ? Colors.white
-                                : (isDark
-                                    ? Colors.white.withValues(alpha: 0.25)
-                                    : Colors.black.withValues(alpha: 0.2)),
-                        size: 19,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        ],
       ),
     );
   }

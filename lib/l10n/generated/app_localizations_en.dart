@@ -4680,4 +4680,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get log_meal_deleted => 'Meal deleted';
+
+  @override
+  String onboarding_step_of(int current, int total) {
+    return 'STEP $current OF $total';
+  }
+
+  @override
+  String get onboarding_welcome_headline =>
+      'Snap your food.\nKnow your calories.';
+
+  @override
+  String get onboarding_feat_scan => 'Photo calorie scan';
+
+  @override
+  String get onboarding_goal_sub =>
+      'We\'ll build your daily calorie plan around it.';
+
+  @override
+  String get onboarding_profile_sub =>
+      'This is how we work out what your body needs each day.';
+
+  @override
+  String get onboarding_body_label => 'Your body';
+
+  @override
+  String get onboarding_unit_metric => 'Metric';
+
+  @override
+  String get onboarding_unit_imperial => 'Imperial';
+
+  @override
+  String get onboarding_profile_privacy =>
+      'Only used to work out your plan. You can change it anytime in Settings.';
+
+  @override
+  String get onboarding_pace_sub =>
+      'Set a target weight and how fast you want to get there.';
+
+  @override
+  String get onboarding_pace_how_fast => 'How fast?';
+
+  @override
+  String get onboarding_pace_recommended => 'Recommended';
+
+  @override
+  String onboarding_pace_difference(String amount) {
+    return '$amount from today';
+  }
+
+  @override
+  String get onboarding_activity_moderate => 'Active';
+
+  @override
+  String get onboarding_activity_moderate_desc =>
+      '3-5 days of exercise per week';
 }

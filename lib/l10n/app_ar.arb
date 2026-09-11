@@ -1630,5 +1630,20 @@
   "snap_camera_permission": "يحتاج SnapCal إلى الكاميرا لمسح الطعام. اسمح بذلك من إعدادات هاتفك.",
   "snap_camera_unavailable": "تعذّر تشغيل الكاميرا. حاول مرة أخرى.",
   "snap_open_settings": "فتح الإعدادات",
-  "log_meal_deleted": "تم حذف الوجبة"
+  "log_meal_deleted": "تم حذف الوجبة",
+  "onboarding_step_of": "الخطوة {current} من {total}",
+  "onboarding_welcome_headline": "صوّر طعامك.\nواعرف سعراته.",
+  "onboarding_feat_scan": "السعرات من صورة",
+  "onboarding_goal_sub": "سنبني خطة سعراتك اليومية حوله.",
+  "onboarding_profile_sub": "هكذا نحسب ما يحتاجه جسمك كل يوم.",
+  "onboarding_body_label": "جسمك",
+  "onboarding_unit_metric": "متري",
+  "onboarding_unit_imperial": "إمبراطوري",
+  "onboarding_profile_privacy": "يُستخدم فقط لحساب خطتك. يمكنك تغييره في أي وقت من الإعدادات.",
+  "onboarding_pace_sub": "حدد وزنك المستهدف ومدى سرعة الوصول إليه.",
+  "onboarding_pace_how_fast": "بأي سرعة؟",
+  "onboarding_pace_recommended": "موصى به",
+  "onboarding_pace_difference": "{amount} عن اليوم",
+  "onboarding_activity_moderate": "نشط",
+  "onboarding_activity_moderate_desc": "3-5 أيام تمارين أسبوعيًا"
 }
