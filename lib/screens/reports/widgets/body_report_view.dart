@@ -2,17 +2,34 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
+import '../../../data/models/body_metric.dart';
 import '../../../providers/metrics_provider.dart';
+import '../../../providers/settings_provider.dart';
 import '../../../widgets/async_state_widgets.dart';
 import '../../../widgets/ui_blocks.dart';
 import '../../settings/widgets/weight_entry_modal.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+
+/// Weight shown in the user's own unit. It was always "kg", whatever unit
+/// they had chosen.
+class _WeightUnit {
+  const _WeightUnit(this.imperial);
+
+  final bool imperial;
+
+  String get label => imperial ? 'lb' : 'kg';
+
+  double fromKg(double kg) => imperial ? kg * 2.20462 : kg;
+
+  String format(double kg) => fromKg(kg).toStringAsFixed(1);
+}
 
 class BodyReportView extends StatelessWidget {
   const BodyReportView({super.key});
@@ -22,14 +39,15 @@ class BodyReportView extends StatelessWidget {
     return Consumer(
       builder: (context, ref, _) {
         final metricsAsync = ref.watch(bodyMetricsProvider);
-        final metricsProvider = metricsAsync.valueOrNull ?? [];
+        final settings = ref.watch(settingsProvider).valueOrNull;
+        final unit = _WeightUnit(settings?.weightUnit == 'lb');
+        final metrics = metricsAsync.valueOrNull ?? const <BodyMetric>[];
         if (metricsAsync.isLoading) {
           return const Padding(
             padding: EdgeInsets.only(top: 16),
             child: AppSectionSkeleton(rows: 3),
           );
         }
-        final metrics = metricsProvider;
         if (metrics.isEmpty) {
           return Center(
             child: AppEmptyState(
@@ -48,12 +66,22 @@ class BodyReportView extends StatelessWidget {
           );
         }
 
+        final l10n = AppLocalizations.of(context)!;
+        final dateFormat = DateFormat.yMMMd(l10n.localeName);
         final current = ref.read(bodyMetricsProvider.notifier).currentWeight;
         final start = ref.read(bodyMetricsProvider.notifier).startingWeight;
-        final change = current != null && start != null ? current - start : 0;
+        final change =
+            current != null && start != null ? current - start : 0.0;
+        // Good news is green for the user's own goal: gaining was painted as
+        // a warning even for someone building muscle.
+        final onTrack = switch (settings?.goalMode) {
+          'bulk' => change >= 0,
+          'cut' => change <= 0,
+          _ => change.abs() <= 1.0,
+        };
 
         return SingleChildScrollView(
-          padding: EdgeInsets.only(top: 16, bottom: 40),
+          padding: const EdgeInsets.only(top: 16, bottom: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -61,9 +89,9 @@ class BodyReportView extends StatelessWidget {
                 children: [
                   Expanded(
                     child: MetricTile(
-                      label:
-                          AppLocalizations.of(context)!.report_weight_current,
-                      value: '${current?.toStringAsFixed(1) ?? '--'} kg',
+                      label: l10n.report_weight_current,
+                      value:
+                          '${current == null ? '--' : unit.format(current)} ${unit.label}',
                       accent: AppColors.primary,
                       icon: LucideIcons.scale,
                     ),
@@ -71,10 +99,10 @@ class BodyReportView extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: MetricTile(
-                      label: AppLocalizations.of(context)!.report_weight_change,
+                      label: l10n.report_weight_change,
                       value:
-                          '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)} kg',
-                      accent: change <= 0 ? AppColors.protein : AppColors.fat,
+                          '${change > 0 ? '+' : ''}${unit.format(change)} ${unit.label}',
+                      accent: onTrack ? AppColors.protein : AppColors.fat,
                       icon:
                           change <= 0
                               ? LucideIcons.trendingDown
@@ -108,13 +136,13 @@ class BodyReportView extends StatelessWidget {
                       ),
                     ),
                     title: Text(
-                      AppLocalizations.of(context)!.report_progress_timeline,
+                      l10n.report_progress_timeline,
                       style: AppTypography.titleMedium.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     subtitle: Text(
-                      AppLocalizations.of(context)!.report_progress_gallery,
+                      l10n.report_progress_gallery,
                       style: AppTypography.bodySmall.copyWith(
                         color: context.textSecondaryColor,
                       ),
@@ -133,14 +161,11 @@ class BodyReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SectionLabel(
-                      title:
-                          AppLocalizations.of(context)!.report_weight_analytics,
-                    ),
+                    SectionLabel(title: l10n.report_weight_analytics),
                     const SizedBox(height: 16),
                     SizedBox(
                       height: 220,
-                      child: _WeightChart(metrics: metrics),
+                      child: _WeightChart(metrics: metrics, unit: unit),
                     ),
                   ],
                 ),
@@ -151,10 +176,7 @@ class BodyReportView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SectionLabel(
-                      title:
-                          AppLocalizations.of(context)!.report_recent_history,
-                    ),
+                    SectionLabel(title: l10n.report_recent_history),
                     const SizedBox(height: 16),
                     ...metrics
                         .take(5)
@@ -191,7 +213,7 @@ class BodyReportView extends StatelessWidget {
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Text(
-                                    '${metric.date.day}/${metric.date.month}/${metric.date.year}',
+                                    dateFormat.format(metric.date),
                                     style: AppTypography.labelLarge.copyWith(
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -201,7 +223,7 @@ class BodyReportView extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      '${metric.weight.toStringAsFixed(1)} kg',
+                                      '${unit.format(metric.weight)} ${unit.label}',
                                       style: AppTypography.labelLarge.copyWith(
                                         color: AppColors.primary,
                                         fontWeight: FontWeight.w900,
@@ -209,9 +231,7 @@ class BodyReportView extends StatelessWidget {
                                     ),
                                     if (metric.bodyFat != null)
                                       Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        )!.report_body_fat_pct(
+                                        l10n.report_body_fat_pct(
                                           metric.bodyFat!.toStringAsFixed(1),
                                         ),
                                         style: AppTypography.bodySmall.copyWith(
@@ -237,9 +257,10 @@ class BodyReportView extends StatelessWidget {
 }
 
 class _WeightChart extends StatelessWidget {
-  final List<dynamic> metrics;
+  final List<BodyMetric> metrics;
+  final _WeightUnit unit;
 
-  const _WeightChart({required this.metrics});
+  const _WeightChart({required this.metrics, required this.unit});
 
   @override
   Widget build(BuildContext context) {
@@ -249,7 +270,12 @@ class _WeightChart extends StatelessWidget {
         series
             .asMap()
             .entries
-            .map((entry) => FlSpot(entry.key.toDouble(), entry.value.weight))
+            .map(
+              (entry) => FlSpot(
+                entry.key.toDouble(),
+                unit.fromKg(entry.value.weight),
+              ),
+            )
             .toList();
 
     if (spots.isEmpty) return const SizedBox.shrink();
@@ -279,7 +305,7 @@ class _WeightChart extends StatelessWidget {
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 return LineTooltipItem(
-                  '${spot.y.toStringAsFixed(1)} kg',
+                  '${spot.y.toStringAsFixed(1)} ${unit.label}',
                   AppTypography.labelLarge.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.bold,

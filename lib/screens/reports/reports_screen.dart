@@ -111,11 +111,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
         streak: settingsVal?.currentStreak ?? 0,
       );
     } catch (e) {
+      // The raw exception meant nothing to the user; it belongs in the log.
+      debugPrint('PDF report failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${AppLocalizations.of(context)!.report_failed}: $e'),
-          ),
+          SnackBar(content: Text(AppLocalizations.of(context)!.report_failed)),
         );
       }
     } finally {
@@ -294,14 +294,18 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
             Expanded(
               child: _staggeredSlide(
                 _itemAnims[1],
-                const TabBarView(
-                  physics: BouncingScrollPhysics(),
+                TabBarView(
+                  physics: const BouncingScrollPhysics(),
                   children: [
+                    // The period picker changed its own label and nothing
+                    // else; the report now covers the days it names.
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4),
-                      child: NutritionReportView(),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: NutritionReportView(
+                        days: _timeRange == 'Weekly' ? 7 : 30,
+                      ),
                     ),
-                    Padding(
+                    const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 4),
                       child: BodyReportView(),
                     ),

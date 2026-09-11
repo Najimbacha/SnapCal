@@ -33,7 +33,6 @@ import 'screens/onboarding/onboarding_flow_screen.dart';
 import 'screens/progress/progress_screen.dart';
 import 'widgets/hero_action_button.dart';
 import 'screens/achievements/achievements_screen.dart';
-import 'screens/insights/weekly_wrap_screen.dart';
 import 'screens/settings/fcm_debug_screen.dart';
 
 part 'router.g.dart';
@@ -193,12 +192,6 @@ GoRouter router(RouterRef ref) {
         pageBuilder:
             (context, state) =>
                 _sharedAxisPage(state, const AchievementsScreen()),
-      ),
-      GoRoute(
-        path: '/insights',
-        pageBuilder:
-            (context, state) =>
-                _sharedAxisPage(state, const WeeklyWrapScreen()),
       ),
       GoRoute(
         path: '/activity',

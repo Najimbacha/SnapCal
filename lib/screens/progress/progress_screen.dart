@@ -227,7 +227,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
     return Center(
       child: AppEmptyState(
         icon: LucideIcons.image,
-        title: l10n.report_no_weight_title,
+        title: l10n.progress_no_photos_title,
         body: l10n.progress_take_photos_desc,
         actionLabel:
             canAdd ? l10n.progress_tap_to_snap : l10n.planner_upgrade_pro,

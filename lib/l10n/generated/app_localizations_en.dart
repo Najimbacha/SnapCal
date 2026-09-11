@@ -971,7 +971,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_monthly_audit => 'Monthly Audit';
 
   @override
-  String get report_failed => 'Failed to generate report';
+  String get report_failed => 'Couldn’t create your report. Please try again.';
 
   @override
   String get paywall_welcome => 'Welcome to SnapCal Pro! 🎉';
@@ -1843,6 +1843,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get report_no_weight_title => 'No weight entries yet';
+
+  @override
+  String get report_no_meals_title => 'No meals logged in this period';
+
+  @override
+  String get report_no_meals_body =>
+      'Log your meals and your averages, calorie trend and macros will appear here.';
+
+  @override
+  String get progress_no_photos_title => 'No progress photos yet';
 
   @override
   String get report_no_weight_body =>

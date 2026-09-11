@@ -1893,7 +1893,7 @@ abstract class AppLocalizations {
   /// No description provided for @report_failed.
   ///
   /// In en, this message translates to:
-  /// **'Failed to generate report'**
+  /// **'Couldn’t create your report. Please try again.'**
   String get report_failed;
 
   /// No description provided for @paywall_welcome.
@@ -3473,6 +3473,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No weight entries yet'**
   String get report_no_weight_title;
+
+  /// No description provided for @report_no_meals_title.
+  ///
+  /// In en, this message translates to:
+  /// **'No meals logged in this period'**
+  String get report_no_meals_title;
+
+  /// No description provided for @report_no_meals_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Log your meals and your averages, calorie trend and macros will appear here.'**
+  String get report_no_meals_body;
+
+  /// No description provided for @progress_no_photos_title.
+  ///
+  /// In en, this message translates to:
+  /// **'No progress photos yet'**
+  String get progress_no_photos_title;
 
   /// No description provided for @report_no_weight_body.
   ///

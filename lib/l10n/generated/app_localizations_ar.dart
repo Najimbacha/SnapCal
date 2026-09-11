@@ -971,7 +971,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get report_monthly_audit => 'تدقيق شهري';
 
   @override
-  String get report_failed => 'فشل في إنشاء التقرير';
+  String get report_failed => 'تعذّر إنشاء تقريرك. يرجى المحاولة مرة أخرى.';
 
   @override
   String get paywall_welcome => 'مرحباً بك في سناب كال برو! 🎉';
@@ -1850,6 +1850,16 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get report_no_weight_title => 'لا توجد سجلات وزن بعد';
+
+  @override
+  String get report_no_meals_title => 'لا توجد وجبات مسجلة في هذه الفترة';
+
+  @override
+  String get report_no_meals_body =>
+      'سجّل وجباتك وستظهر هنا متوسطاتك واتجاه السعرات والعناصر الغذائية.';
+
+  @override
+  String get progress_no_photos_title => 'لا توجد صور تقدّم بعد';
 
   @override
   String get report_no_weight_body =>
