@@ -86,10 +86,19 @@ class PremiumPromptModal {
   /// The offering the paywall sells from (`offerings.current`), so the sheet
   /// and the paywall always quote the same prices.
   static Future<ProOfferSummary?> _loadOffer() async {
+    final subscriptions = SubscriptionService();
+    final deadline = DateTime.now().add(_offerWait);
     try {
-      final offerings = await SubscriptionService().getOfferings().timeout(
-        _offerWait,
-      );
+      // On a cold start RevenueCat finishes configuring after Home has built,
+      // and until it has, getOfferings() answers null at once. Wait for it
+      // inside the same budget rather than open the sheet without prices.
+      while (!subscriptions.isConfigured && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+      final left = deadline.difference(DateTime.now());
+      if (!subscriptions.isConfigured || left <= Duration.zero) return null;
+
+      final offerings = await subscriptions.getOfferings().timeout(left);
       final offering = offerings?.current;
       if (offering == null) return null;
 
