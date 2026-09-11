@@ -488,14 +488,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
 
     if (hasAiMeal) {
-      final l10n = AppLocalizations.of(context)!;
       await PremiumPromptModal.show(
         context,
         ref,
-        title: l10n.aha_prompt_title,
-        subtitle: l10n.aha_prompt_subtitle,
-        buttonText: l10n.aha_prompt_btn,
-        icon: LucideIcons.sparkles,
         entryPoint: PaywallEntryPoint.homeAha,
         featureName: 'first_ai_scan',
         hasCompletedValueAction: true,

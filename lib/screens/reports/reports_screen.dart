@@ -55,14 +55,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 2000), () {
         if (mounted) {
-          final l10n = AppLocalizations.of(context)!;
           PremiumPromptModal.show(
             context,
             ref,
-            title: l10n.report_prompt_title,
-            subtitle: l10n.report_prompt_subtitle,
-            buttonText: l10n.report_prompt_btn,
-            icon: LucideIcons.fileBarChart,
             entryPoint: PaywallEntryPoint.reportInsight,
             featureName: 'weekly_report',
             hasCompletedValueAction: false,

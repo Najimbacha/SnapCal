@@ -1,19 +1,22 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'premium_prompt_card.dart';
-import '../data/services/premium_conversion_service.dart';
-import '../providers/settings_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/models/promo_offer.dart';
+import '../data/services/premium_conversion_service.dart';
+import '../data/services/scan_gate_service.dart';
+import '../data/services/subscription_service.dart';
+import '../providers/settings_provider.dart';
+import 'pro_offer_sheet.dart';
+
 class PremiumPromptModal {
+  /// How long to wait for the store's prices before showing the sheet
+  /// without them. The prompt fires a moment after a screen opens; holding it
+  /// longer would land it on whatever the user has moved on to.
+  static const Duration _offerWait = Duration(seconds: 4);
+
   static Future<void> show(
     BuildContext context,
     WidgetRef ref, {
-    required String title,
-    required String subtitle,
-    required String buttonText,
-    required IconData icon,
     PaywallEntryPoint entryPoint = PaywallEntryPoint.homeAha,
     String? featureName,
     bool hasCompletedValueAction = true,
@@ -42,6 +45,11 @@ class PremiumPromptModal {
     }
     if (!access.isFree) return;
 
+    // Read the offer before deciding, so the sheet opens with its prices
+    // rather than filling them in after it appears.
+    final offer = await _loadOffer();
+    if (!context.mounted) return;
+
     final conversion = PremiumConversionService();
     final canShow = await conversion.maybeShowAhaPrompt(
       context,
@@ -53,37 +61,49 @@ class PremiumPromptModal {
 
     if (!canShow || !context.mounted) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder:
-          (dialogContext) => Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: PremiumPromptCard(
-                style: PremiumPromptStyle.glass,
-                title: title,
-                subtitle: subtitle,
-                buttonText: buttonText,
-                icon: icon,
-                onTap: () {
-                  Navigator.pop(dialogContext);
-                  conversion.openPaywall(
-                    context,
-                    entryPoint,
-                    featureName: featureName,
-                  );
-                },
-                onDismiss: () {
-                  conversion.recordPromptDismissed(
-                    entryPoint,
-                    featureName: featureName,
-                  );
-                  Navigator.pop(dialogContext);
-                },
-              ),
-            ),
+    final scans = ScanGateService();
+    final used = scans.getPeriodScanCount();
+
+    await ProOfferSheet.show(
+      context,
+      offer: offer,
+      // "You've used 0 of 15" sells nothing: the meter appears once some of
+      // the month's free scans have actually gone.
+      scansUsed: used > 0 ? used : null,
+      scanLimit: scans.getMonthlyLimit(),
+      onUpgrade: () {
+        if (!context.mounted) return;
+        conversion.openPaywall(context, entryPoint, featureName: featureName);
+      },
+      onDismiss:
+          () => conversion.recordPromptDismissed(
+            entryPoint,
+            featureName: featureName,
           ),
     );
+  }
+
+  /// The offering the paywall sells from (`offerings.current`), so the sheet
+  /// and the paywall always quote the same prices.
+  static Future<ProOfferSummary?> _loadOffer() async {
+    try {
+      final offerings = await SubscriptionService().getOfferings().timeout(
+        _offerWait,
+      );
+      final offering = offerings?.current;
+      if (offering == null) return null;
+
+      // A dashboard campaign, if one is running and not yet over.
+      var campaign = PromoOffer.fromMetadata(
+        offering.identifier,
+        offering.metadata,
+      );
+      if (campaign != null && !campaign.isLiveAt(DateTime.now())) {
+        campaign = null;
+      }
+      return ProOfferSummary.fromOffering(offering, promo: campaign);
+    } catch (_) {
+      return null;
+    }
   }
 }
