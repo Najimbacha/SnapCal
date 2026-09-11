@@ -3283,6 +3283,66 @@ class AppLocalizationsEs extends AppLocalizations {
       'Error al iniciar sesión con Facebook';
 
   @override
+  String get auth_err_network =>
+      'Sin conexión a internet. Revisa tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get auth_err_wrong_credentials =>
+      'El correo y la contraseña no coinciden. Revísalos e inténtalo de nuevo.';
+
+  @override
+  String get auth_err_email_in_use =>
+      'Ya existe una cuenta con este correo. Inicia sesión.';
+
+  @override
+  String get auth_err_weak_password =>
+      'Elige una contraseña más segura, de al menos 8 caracteres.';
+
+  @override
+  String get auth_err_invalid_email =>
+      'Introduce un correo electrónico válido.';
+
+  @override
+  String get auth_err_too_many =>
+      'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+
+  @override
+  String get auth_err_other_provider =>
+      'Este correo ya está registrado de otra forma. Usa la opción que elegiste antes: Google, Facebook o correo.';
+
+  @override
+  String get auth_err_disabled => 'Esta cuenta ha sido desactivada.';
+
+  @override
+  String get auth_err_unavailable =>
+      'Esta forma de iniciar sesión no está disponible en este teléfono.';
+
+  @override
+  String get auth_err_unknown =>
+      'No se pudo iniciar sesión. Inténtalo de nuevo.';
+
+  @override
+  String get auth_email_required => 'Introduce tu correo electrónico.';
+
+  @override
+  String get auth_password_required => 'Introduce tu contraseña.';
+
+  @override
+  String get auth_password_too_short => 'Usa al menos 8 caracteres.';
+
+  @override
+  String get auth_forgot_password => '¿Olvidaste tu contraseña?';
+
+  @override
+  String auth_reset_sent(String email) {
+    return 'Si existe una cuenta para $email, le hemos enviado un enlace para restablecer la contraseña.';
+  }
+
+  @override
+  String get auth_reset_enter_email =>
+      'Escribe tu correo arriba y vuelve a tocar «¿Olvidaste tu contraseña?».';
+
+  @override
   String auth_google_sign_in_failed_code(String code) {
     return 'Error al iniciar sesión con Google ($code). Inténtalo de nuevo.';
   }

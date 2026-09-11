@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/auth/auth_errors.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
@@ -104,35 +105,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     );
   }
 
-  String _friendlyError(Object e) {
-    final msg = e.toString();
-    if (msg.contains('network') ||
-        msg.contains('timeout') ||
-        msg.contains('SocketException')) {
-      return 'Connection error. Please check your internet and try again.';
-    }
-    if (msg.contains('wrong-password') ||
-        msg.contains('invalid-email') ||
-        msg.contains('user-not-found') ||
-        msg.contains('invalid-credential')) {
-      return 'Invalid email or password. Please try again.';
-    }
-    if (msg.contains('too-many-requests') || msg.contains('rate-limit')) {
-      return 'Too many attempts. Please wait a moment and try again.';
-    }
-    if (msg.contains('email-already-in-use')) {
-      return 'An account with this email already exists.';
-    }
-    if (msg.contains('weak-password')) {
-      return 'Password is too weak. Use at least 8 characters with a mix of letters and numbers.';
-    }
-    return 'Something went wrong. Please try again.';
+  void _showAuthError(Object e) {
+    if (!mounted) return;
+    final message = authErrorMessage(AppLocalizations.of(context)!, e);
+    if (message != null) _showStyledSnackBar(message);
   }
 
   void _onAuthSuccess() {
     if (!mounted) return;
     HapticFeedback.heavyImpact();
-    context.go('/settings');
+    context.go('/');
   }
 
   Future<void> _handleGoogle() async {
@@ -144,13 +126,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     try {
       await authNotifier.signInWithGoogle();
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null && !user.isAnonymous) {
-        _onAuthSuccess();
-      } else if (ref.read(authNotifierProvider).hasError) {
-        _showStyledSnackBar('Sign in failed. Please try again.');
-      }
+      if (user != null && !user.isAnonymous) _onAuthSuccess();
     } catch (e) {
-      _showStyledSnackBar(_friendlyError(e));
+      _showAuthError(e);
     } finally {
       if (mounted) setState(() => _googleLoading = false);
     }
@@ -163,9 +141,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     try {
       await authNotifier.signInWithFacebook();
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) _onAuthSuccess();
+      if (user != null && !user.isAnonymous) _onAuthSuccess();
     } catch (e) {
-      _showStyledSnackBar(_friendlyError(e));
+      _showAuthError(e);
     } finally {
       if (mounted) setState(() => _facebookLoading = false);
     }
@@ -189,9 +167,36 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         );
       }
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) _onAuthSuccess();
+      if (user != null && !user.isAnonymous) _onAuthSuccess();
     } catch (e) {
-      _showStyledSnackBar(_friendlyError(e));
+      _showAuthError(e);
+    } finally {
+      if (mounted) setState(() => _emailLoading = false);
+    }
+  }
+
+  /// There was no way back into an account whose password was forgotten.
+  Future<void> _handleForgotPassword() async {
+    final l10n = AppLocalizations.of(context)!;
+    final email = _emailController.text.trim();
+    if (!looksLikeEmail(email)) {
+      _showStyledSnackBar(l10n.auth_reset_enter_email);
+      return;
+    }
+    setState(() => _emailLoading = true);
+    try {
+      await ref
+          .read(authNotifierProvider.notifier)
+          .sendPasswordResetEmail(email);
+      _showStyledSnackBar(l10n.auth_reset_sent(email), isError: false);
+    } catch (e) {
+      // "No such account" gets the same answer as success: saying otherwise
+      // would tell anyone which addresses have an account.
+      if (authProblemOf(e) == AuthProblem.wrongCredentials) {
+        _showStyledSnackBar(l10n.auth_reset_sent(email), isError: false);
+      } else {
+        _showAuthError(e);
+      }
     } finally {
       if (mounted) setState(() => _emailLoading = false);
     }
@@ -211,7 +216,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         !_facebookLoading &&
         !_emailLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/settings');
+        if (mounted) context.go('/');
       });
     }
 
@@ -309,6 +314,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                       controller: _emailController,
                                       hint: l10n.auth_hint_email,
                                       keyboardType: TextInputType.emailAddress,
+                                      validator: (v) => validateEmail(l10n, v),
                                     ),
                                   ),
                                   const SizedBox(height: 16),
@@ -324,18 +330,34 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                             () =>
                                                 _showPassword = !_showPassword,
                                           ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Password is required';
-                                        }
-                                        if (value.length < 8) {
-                                          return 'Password must be at least 8 characters';
-                                        }
-                                        return null;
-                                      },
+                                      validator:
+                                          (value) => validatePassword(
+                                            l10n,
+                                            value,
+                                            isSignUp: _isSignUp,
+                                          ),
                                     ),
                                   ),
                                   const SizedBox(height: 24),
+
+                                  if (!_isSignUp)
+                                    Align(
+                                      alignment: AlignmentDirectional.centerEnd,
+                                      child: TextButton(
+                                        onPressed:
+                                            _emailLoading
+                                                ? null
+                                                : _handleForgotPassword,
+                                        child: Text(
+                                          l10n.auth_forgot_password,
+                                          style: AppTypography.bodyMedium
+                                              .copyWith(
+                                                color: _minimalGreenText,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
                                   _StaggeredFade(
                                     animation: _staggeredAnims![7],
                                     child: AppScaleTap(
@@ -662,22 +684,21 @@ class _AuthSocialButton extends StatelessWidget {
               else ...[
                 iconWidget,
                 const SizedBox(width: 12),
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        style: AppTypography.titleSmall.copyWith(
-                          color:
-                              textColor ??
-                              (isDark ? Colors.white : _minimalInk),
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.2,
-                        ),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: AppTypography.titleSmall.copyWith(
+                        color:
+                            textColor ?? (isDark ? Colors.white : _minimalInk),
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
                       ),
                     ),
                   ),
+                ),
               ],
             ],
           ),

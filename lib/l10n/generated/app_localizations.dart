@@ -5952,6 +5952,102 @@ abstract class AppLocalizations {
   /// **'Facebook Sign-In failed'**
   String get auth_facebook_sign_in_failed;
 
+  /// No description provided for @auth_err_network.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection. Check your connection and try again.'**
+  String get auth_err_network;
+
+  /// No description provided for @auth_err_wrong_credentials.
+  ///
+  /// In en, this message translates to:
+  /// **'That email and password don’t match. Check them and try again.'**
+  String get auth_err_wrong_credentials;
+
+  /// No description provided for @auth_err_email_in_use.
+  ///
+  /// In en, this message translates to:
+  /// **'An account with this email already exists. Log in instead.'**
+  String get auth_err_email_in_use;
+
+  /// No description provided for @auth_err_weak_password.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a stronger password, at least 8 characters.'**
+  String get auth_err_weak_password;
+
+  /// No description provided for @auth_err_invalid_email.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address.'**
+  String get auth_err_invalid_email;
+
+  /// No description provided for @auth_err_too_many.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Wait a few minutes and try again.'**
+  String get auth_err_too_many;
+
+  /// No description provided for @auth_err_other_provider.
+  ///
+  /// In en, this message translates to:
+  /// **'This email is already signed up another way. Use the option you chose before: Google, Facebook or email.'**
+  String get auth_err_other_provider;
+
+  /// No description provided for @auth_err_disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has been disabled.'**
+  String get auth_err_disabled;
+
+  /// No description provided for @auth_err_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This sign-in option isn’t available on this phone.'**
+  String get auth_err_unavailable;
+
+  /// No description provided for @auth_err_unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t sign you in. Please try again.'**
+  String get auth_err_unknown;
+
+  /// No description provided for @auth_email_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email address.'**
+  String get auth_email_required;
+
+  /// No description provided for @auth_password_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password.'**
+  String get auth_password_required;
+
+  /// No description provided for @auth_password_too_short.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at least 8 characters.'**
+  String get auth_password_too_short;
+
+  /// No description provided for @auth_forgot_password.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get auth_forgot_password;
+
+  /// No description provided for @auth_reset_sent.
+  ///
+  /// In en, this message translates to:
+  /// **'If an account exists for {email}, we’ve sent it a link to reset the password.'**
+  String auth_reset_sent(String email);
+
+  /// No description provided for @auth_reset_enter_email.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your email above, then tap “Forgot password?” again.'**
+  String get auth_reset_enter_email;
+
   /// No description provided for @auth_google_sign_in_failed_code.
   ///
   /// In en, this message translates to:

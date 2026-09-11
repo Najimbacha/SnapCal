@@ -3242,6 +3242,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get auth_facebook_sign_in_failed => 'Facebook Sign-In failed';
 
   @override
+  String get auth_err_network =>
+      'No internet connection. Check your connection and try again.';
+
+  @override
+  String get auth_err_wrong_credentials =>
+      'That email and password don’t match. Check them and try again.';
+
+  @override
+  String get auth_err_email_in_use =>
+      'An account with this email already exists. Log in instead.';
+
+  @override
+  String get auth_err_weak_password =>
+      'Choose a stronger password, at least 8 characters.';
+
+  @override
+  String get auth_err_invalid_email => 'Enter a valid email address.';
+
+  @override
+  String get auth_err_too_many =>
+      'Too many attempts. Wait a few minutes and try again.';
+
+  @override
+  String get auth_err_other_provider =>
+      'This email is already signed up another way. Use the option you chose before: Google, Facebook or email.';
+
+  @override
+  String get auth_err_disabled => 'This account has been disabled.';
+
+  @override
+  String get auth_err_unavailable =>
+      'This sign-in option isn’t available on this phone.';
+
+  @override
+  String get auth_err_unknown => 'Couldn’t sign you in. Please try again.';
+
+  @override
+  String get auth_email_required => 'Enter your email address.';
+
+  @override
+  String get auth_password_required => 'Enter your password.';
+
+  @override
+  String get auth_password_too_short => 'Use at least 8 characters.';
+
+  @override
+  String get auth_forgot_password => 'Forgot password?';
+
+  @override
+  String auth_reset_sent(String email) {
+    return 'If an account exists for $email, we’ve sent it a link to reset the password.';
+  }
+
+  @override
+  String get auth_reset_enter_email =>
+      'Type your email above, then tap “Forgot password?” again.';
+
+  @override
   String auth_google_sign_in_failed_code(String code) {
     return 'Google Sign-In failed ($code). Please try again.';
   }

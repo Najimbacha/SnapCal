@@ -3238,6 +3238,64 @@ class AppLocalizationsAr extends AppLocalizations {
   String get auth_facebook_sign_in_failed => 'فشل تسجيل الدخول عبر Facebook';
 
   @override
+  String get auth_err_network =>
+      'لا يوجد اتصال بالإنترنت. تحقق من الاتصال وحاول مرة أخرى.';
+
+  @override
+  String get auth_err_wrong_credentials =>
+      'البريد الإلكتروني وكلمة المرور غير متطابقين. تحقق منهما وحاول مرة أخرى.';
+
+  @override
+  String get auth_err_email_in_use =>
+      'يوجد حساب بهذا البريد الإلكتروني بالفعل. سجّل الدخول بدلاً من ذلك.';
+
+  @override
+  String get auth_err_weak_password =>
+      'اختر كلمة مرور أقوى، من 8 أحرف على الأقل.';
+
+  @override
+  String get auth_err_invalid_email => 'أدخل بريدًا إلكترونيًا صالحًا.';
+
+  @override
+  String get auth_err_too_many =>
+      'محاولات كثيرة جدًا. انتظر بضع دقائق وحاول مرة أخرى.';
+
+  @override
+  String get auth_err_other_provider =>
+      'هذا البريد مسجّل بطريقة أخرى. استخدم الخيار الذي اخترته من قبل: Google أو Facebook أو البريد الإلكتروني.';
+
+  @override
+  String get auth_err_disabled => 'تم تعطيل هذا الحساب.';
+
+  @override
+  String get auth_err_unavailable =>
+      'خيار تسجيل الدخول هذا غير متاح على هذا الهاتف.';
+
+  @override
+  String get auth_err_unknown => 'تعذّر تسجيل دخولك. يرجى المحاولة مرة أخرى.';
+
+  @override
+  String get auth_email_required => 'أدخل بريدك الإلكتروني.';
+
+  @override
+  String get auth_password_required => 'أدخل كلمة المرور.';
+
+  @override
+  String get auth_password_too_short => 'استخدم 8 أحرف على الأقل.';
+
+  @override
+  String get auth_forgot_password => 'هل نسيت كلمة المرور؟';
+
+  @override
+  String auth_reset_sent(String email) {
+    return 'إذا كان هناك حساب مرتبط بـ $email، فقد أرسلنا إليه رابطًا لإعادة تعيين كلمة المرور.';
+  }
+
+  @override
+  String get auth_reset_enter_email =>
+      'اكتب بريدك الإلكتروني أعلاه، ثم اضغط «هل نسيت كلمة المرور؟» مرة أخرى.';
+
+  @override
   String auth_google_sign_in_failed_code(String code) {
     return 'فشل تسجيل الدخول عبر Google ($code). يرجى المحاولة مرة أخرى.';
   }

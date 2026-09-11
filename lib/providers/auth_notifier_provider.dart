@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../core/auth/auth_errors.dart';
 import '../core/network/api_client.dart';
 import '../core/resilience/timeout_policy.dart';
 import '../core/services/config_service.dart';
@@ -74,6 +75,12 @@ class AuthNotifier extends _$AuthNotifier {
 
     await signIn();
 
+    // The account's settings first, before anything navigates. Until they
+    // arrive the phone still holds the guest's, and a guest who had not
+    // finished onboarding was routed back into it -- where answering again
+    // would overwrite the account's real plan.
+    await _pullSettingsNow();
+
     // Quota keys are UID-scoped, so a switch would otherwise hand the user a
     // fresh set of free scans. Carry the anonymous counters across.
     final newUid = FirebaseAuth.instance.currentUser?.uid;
@@ -125,6 +132,35 @@ class AuthNotifier extends _$AuthNotifier {
     }
   }
 
+  /// Runs a sign-in step and passes its failure on.
+  ///
+  /// These were wrapped in AsyncValue.guard, which catches everything, so the
+  /// screens' error handling never ran: a wrong password, an address already
+  /// registered, a lost connection all ended with nothing on screen, and a
+  /// screen that checked only for "a user" treated failure as success.
+  Future<void> _run(Future<void> Function() action) async {
+    if (state.isLoading) return;
+    state = const AsyncLoading();
+    try {
+      await action();
+      state = const AsyncData(null);
+    } catch (e, stack) {
+      state = AsyncError(e, stack);
+      rethrow;
+    }
+  }
+
+  /// Starts a guest session when there is no session at all.
+  ///
+  /// The app signs in as a guest when it first opens. Without a connection
+  /// that fails, and nothing tried again until the next launch -- while
+  /// scanning and sync, which need a session, failed with it. Called again
+  /// when the connection returns.
+  Future<void> ensureGuestSession() async {
+    if (FirebaseAuth.instance.currentUser != null) return;
+    await signInAnonymously();
+  }
+
   Future<void> signInAnonymously() async {
     if (state.isLoading) return;
     state = const AsyncLoading();
@@ -134,9 +170,7 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   Future<void> signInWithGoogle() async {
-    if (state.isLoading) return;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    await _run(() async {
       await _ensureGoogleInitialized().timeout(TimeoutPolicy.auth);
 
       if (!_googleSignIn.supportsAuthenticate()) {
@@ -191,13 +225,13 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   Future<void> signInWithFacebook() async {
-    if (state.isLoading) return;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    await _run(() async {
       final result = await FacebookAuth.instance.login().timeout(
         TimeoutPolicy.socialAuth,
       );
 
+      // Backing out is not a failure; it was reported as one.
+      if (result.status == LoginStatus.cancelled) throw const AuthCancelled();
       if (result.status != LoginStatus.success) {
         throw Exception(result.message ?? 'Facebook sign-in failed');
       }
@@ -234,9 +268,7 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   Future<void> registerWithEmail(String email, String password) async {
-    if (state.isLoading) return;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    await _run(() async {
       final anonymousUser = FirebaseAuth.instance.currentUser;
       if (anonymousUser?.isAnonymous == true) {
         final credential = EmailAuthProvider.credential(
@@ -272,9 +304,7 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   Future<void> signInWithEmail(String email, String password) async {
-    if (state.isLoading) return;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    await _run(() async {
       Future<void> signIn() => FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -446,9 +476,7 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
-    if (state.isLoading) return;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
+    await _run(
       () => FirebaseAuth.instance.sendPasswordResetEmail(email: email),
     );
   }

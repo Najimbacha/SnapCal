@@ -3305,6 +3305,64 @@ class AppLocalizationsFr extends AppLocalizations {
   String get auth_facebook_sign_in_failed => 'Échec de la connexion Facebook';
 
   @override
+  String get auth_err_network =>
+      'Pas de connexion internet. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get auth_err_wrong_credentials =>
+      'L’e-mail et le mot de passe ne correspondent pas. Vérifiez-les et réessayez.';
+
+  @override
+  String get auth_err_email_in_use =>
+      'Un compte existe déjà avec cet e-mail. Connectez-vous plutôt.';
+
+  @override
+  String get auth_err_weak_password =>
+      'Choisissez un mot de passe plus sûr, d’au moins 8 caractères.';
+
+  @override
+  String get auth_err_invalid_email => 'Saisissez une adresse e-mail valide.';
+
+  @override
+  String get auth_err_too_many =>
+      'Trop de tentatives. Patientez quelques minutes et réessayez.';
+
+  @override
+  String get auth_err_other_provider =>
+      'Cet e-mail est déjà inscrit autrement. Utilisez l’option choisie la première fois : Google, Facebook ou e-mail.';
+
+  @override
+  String get auth_err_disabled => 'Ce compte a été désactivé.';
+
+  @override
+  String get auth_err_unavailable =>
+      'Cette option de connexion n’est pas disponible sur ce téléphone.';
+
+  @override
+  String get auth_err_unknown => 'Connexion impossible. Veuillez réessayer.';
+
+  @override
+  String get auth_email_required => 'Saisissez votre adresse e-mail.';
+
+  @override
+  String get auth_password_required => 'Saisissez votre mot de passe.';
+
+  @override
+  String get auth_password_too_short => 'Utilisez au moins 8 caractères.';
+
+  @override
+  String get auth_forgot_password => 'Mot de passe oublié ?';
+
+  @override
+  String auth_reset_sent(String email) {
+    return 'Si un compte existe pour $email, nous lui avons envoyé un lien pour réinitialiser le mot de passe.';
+  }
+
+  @override
+  String get auth_reset_enter_email =>
+      'Saisissez votre e-mail ci-dessus, puis touchez à nouveau « Mot de passe oublié ? ».';
+
+  @override
   String auth_google_sign_in_failed_code(String code) {
     return 'Échec de la connexion Google ($code). Veuillez réessayer.';
   }

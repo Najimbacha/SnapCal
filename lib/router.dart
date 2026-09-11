@@ -64,8 +64,17 @@ class _RouterNotifier extends ChangeNotifier {
         !loggingIn) {
       return '/onboarding';
     }
+    // Signed in from onboarding's "I already have an account": home, where
+    // a returning user belongs -- not Settings.
     if (loggingIn && auth != null && !auth.isAnonymous) {
-      return '/settings';
+      return '/';
+    }
+    // An account that has already done onboarding has no business in it.
+    // Its settings can arrive a moment after sign-in; this lets them move
+    // the user on instead of leaving them to answer again and overwrite
+    // the account's plan.
+    if (onboarding && settings != null && settings.onboardingComplete) {
+      return '/';
     }
     return null;
   }

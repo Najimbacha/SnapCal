@@ -1,5 +1,8 @@
 import 'package:snapcal/providers/cloud_sync_provider.dart';
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'providers/connectivity_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -153,6 +156,18 @@ class AppTree extends ConsumerWidget {
           () => ref.read(authNotifierProvider.notifier).signInAnonymously(),
         );
       }
+    });
+
+    // No session at all -- a first launch without internet -- used to stay
+    // that way until the next launch. Try again when the connection returns.
+    ref.listen(connectivityProvider, (_, next) {
+      final results = next.valueOrNull;
+      if (results == null ||
+          results.every((r) => r == ConnectivityResult.none)) {
+        return;
+      }
+      if (FirebaseAuth.instance.currentUser != null) return;
+      unawaited(ref.read(authNotifierProvider.notifier).ensureGuestSession());
     });
 
     // Keeps what the user logs in step with their account; see

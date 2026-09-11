@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/auth/auth_errors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../providers/auth_notifier_provider.dart';
@@ -200,20 +201,11 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
 
     try {
       await ref.read(authNotifierProvider.notifier).signInWithGoogle();
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        final user = FirebaseAuth.instance.currentUser;
-        if (_isSignedIn(user)) {
-          widget.onAuthSuccess?.call();
-        } else if (ref.read(authNotifierProvider).hasError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.auth_google_sign_in_failed),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
+      if (mounted && _isSignedIn(FirebaseAuth.instance.currentUser)) {
+        widget.onAuthSuccess?.call();
       }
+    } catch (e) {
+      _showAuthError(e);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -226,20 +218,11 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
 
     try {
       await ref.read(authNotifierProvider.notifier).signInWithFacebook();
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        final user = FirebaseAuth.instance.currentUser;
-        if (_isSignedIn(user)) {
-          widget.onAuthSuccess?.call();
-        } else if (ref.read(authNotifierProvider).hasError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.auth_facebook_sign_in_failed),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
+      if (mounted && _isSignedIn(FirebaseAuth.instance.currentUser)) {
+        widget.onAuthSuccess?.call();
       }
+    } catch (e) {
+      _showAuthError(e);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -255,6 +238,17 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
     if (_isSignedIn(FirebaseAuth.instance.currentUser)) {
       widget.onAuthSuccess?.call();
     }
+  }
+
+  /// What went wrong, in the user's language; nothing for a cancel, which
+  /// was reported as a failure.
+  void _showAuthError(Object e) {
+    if (!mounted) return;
+    final message = authErrorMessage(AppLocalizations.of(context)!, e);
+    if (message == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+    );
   }
 
   /// A guest session is a signed-in Firebase user too; only a real account
