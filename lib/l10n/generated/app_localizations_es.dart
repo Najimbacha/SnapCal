@@ -4511,4 +4511,155 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get update_later => 'Más tarde';
+
+  @override
+  String get settings_rate_app => 'Valorar SnapCal';
+
+  @override
+  String get settings_send_feedback => 'Enviar comentarios';
+
+  @override
+  String get feedback_email_subject => 'Comentarios sobre SnapCal';
+
+  @override
+  String feedback_email_copied(String email) {
+    return 'No se encontró una app de correo. Copiamos nuestra dirección: $email';
+  }
+
+  @override
+  String get pro_offer_title => 'Desbloquea SnapCal Pro';
+
+  @override
+  String get pro_offer_subtitle => 'Escanea cada comida, sin límites.';
+
+  @override
+  String pro_offer_scans_used(int used, int limit) {
+    return 'Has usado $used de $limit escaneos gratis este mes';
+  }
+
+  @override
+  String pro_offer_days_free(int days) {
+    return '$days días gratis';
+  }
+
+  @override
+  String get pro_offer_first_year => 'primer año';
+
+  @override
+  String get pro_offer_year => '/ año';
+
+  @override
+  String get pro_offer_month => '/ mes';
+
+  @override
+  String pro_offer_per_year(String price) {
+    return '$price/año';
+  }
+
+  @override
+  String pro_offer_per_month(String price) {
+    return '$price/mes';
+  }
+
+  @override
+  String pro_offer_approx_month(String price) {
+    return '≈ $price/mes';
+  }
+
+  @override
+  String pro_offer_claim(String percent) {
+    return 'Obtén un $percent% de descuento';
+  }
+
+  @override
+  String get pro_offer_get_pro => 'Obtener SnapCal Pro';
+
+  @override
+  String get pro_offer_not_now => 'Ahora no';
+
+  @override
+  String pro_offer_ends_on(String date) {
+    return 'La oferta termina el $date';
+  }
+
+  @override
+  String get pro_offer_brand => 'SNAPCAL PRO';
+
+  @override
+  String pro_offer_big_percent(String percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get pro_offer_off => 'DTO.';
+
+  @override
+  String get pro_offer_off_first_year => 'en tu primer año de SnapCal Pro';
+
+  @override
+  String get pro_offer_off_yearly => 'pagando anualmente';
+
+  @override
+  String get pro_offer_paying_monthly => 'Pagando mensual durante un año';
+
+  @override
+  String get pro_offer_with_offer => 'Con esta oferta';
+
+  @override
+  String pro_offer_you_save(String amount) {
+    return 'Ahorras $amount';
+  }
+
+  @override
+  String pro_offer_per_day(String price) {
+    return 'Solo $price al día';
+  }
+
+  @override
+  String get pro_offer_compare_title => 'Lo que obtienes';
+
+  @override
+  String get pro_offer_free => 'Gratis';
+
+  @override
+  String get pro_offer_pro => 'PRO';
+
+  @override
+  String get pro_offer_row_scans => 'Escaneos con foto';
+
+  @override
+  String get pro_offer_row_coach => 'Coach IA';
+
+  @override
+  String get pro_offer_row_planner => 'Planificador';
+
+  @override
+  String get pro_offer_row_reports => 'Informes semanales';
+
+  @override
+  String get pro_offer_row_history => 'Historial de comidas';
+
+  @override
+  String pro_offer_scans_month(int count) {
+    return '$count/mes';
+  }
+
+  @override
+  String get pro_offer_unlimited => 'Ilimitado';
+
+  @override
+  String get pro_offer_limited => 'Limitado';
+
+  @override
+  String pro_offer_days(int count) {
+    return '$count días';
+  }
+
+  @override
+  String get pro_offer_full => 'Completo';
+
+  @override
+  String pro_offer_cta_intro(String intro, String price) {
+    return '$intro el primer año, luego $price/año';
+  }
 }

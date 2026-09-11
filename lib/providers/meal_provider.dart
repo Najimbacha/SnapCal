@@ -1,3 +1,4 @@
+import '../data/services/app_review_service.dart';
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
@@ -75,6 +76,10 @@ class MealLog extends _$MealLog {
     unawaited(
       PromotionalPaywallService.instance().recordSuccessfulMealScanOrLog(),
     );
+
+    // And the review prompt's (5 logged meals across 3 days). The service
+    // was complete but nothing fed it, so it could never ask.
+    unawaited(AppReviewService.instance().recordSuccessfulMealScanOrLog());
   }
 
   Future<void> updateMeal(Meal meal) async {

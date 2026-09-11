@@ -8085,6 +8085,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Later'**
   String get update_later;
+
+  /// No description provided for @settings_rate_app.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate SnapCal'**
+  String get settings_rate_app;
+
+  /// No description provided for @settings_send_feedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get settings_send_feedback;
+
+  /// No description provided for @feedback_email_subject.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal feedback'**
+  String get feedback_email_subject;
+
+  /// No description provided for @feedback_email_copied.
+  ///
+  /// In en, this message translates to:
+  /// **'No email app found. Our address was copied: {email}'**
+  String feedback_email_copied(String email);
+
+  /// No description provided for @pro_offer_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock SnapCal Pro'**
+  String get pro_offer_title;
+
+  /// No description provided for @pro_offer_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan every meal, with no limits.'**
+  String get pro_offer_subtitle;
+
+  /// No description provided for @pro_offer_scans_used.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve used {used} of {limit} free scans this month'**
+  String pro_offer_scans_used(int used, int limit);
+
+  /// No description provided for @pro_offer_days_free.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days free'**
+  String pro_offer_days_free(int days);
+
+  /// No description provided for @pro_offer_first_year.
+  ///
+  /// In en, this message translates to:
+  /// **'first year'**
+  String get pro_offer_first_year;
+
+  /// No description provided for @pro_offer_year.
+  ///
+  /// In en, this message translates to:
+  /// **'/ year'**
+  String get pro_offer_year;
+
+  /// No description provided for @pro_offer_month.
+  ///
+  /// In en, this message translates to:
+  /// **'/ month'**
+  String get pro_offer_month;
+
+  /// No description provided for @pro_offer_per_year.
+  ///
+  /// In en, this message translates to:
+  /// **'{price}/year'**
+  String pro_offer_per_year(String price);
+
+  /// No description provided for @pro_offer_per_month.
+  ///
+  /// In en, this message translates to:
+  /// **'{price}/month'**
+  String pro_offer_per_month(String price);
+
+  /// No description provided for @pro_offer_approx_month.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ {price}/month'**
+  String pro_offer_approx_month(String price);
+
+  /// No description provided for @pro_offer_claim.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim {percent}% off'**
+  String pro_offer_claim(String percent);
+
+  /// No description provided for @pro_offer_get_pro.
+  ///
+  /// In en, this message translates to:
+  /// **'Get SnapCal Pro'**
+  String get pro_offer_get_pro;
+
+  /// No description provided for @pro_offer_not_now.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get pro_offer_not_now;
+
+  /// No description provided for @pro_offer_ends_on.
+  ///
+  /// In en, this message translates to:
+  /// **'Offer ends {date}'**
+  String pro_offer_ends_on(String date);
+
+  /// No description provided for @pro_offer_brand.
+  ///
+  /// In en, this message translates to:
+  /// **'SNAPCAL PRO'**
+  String get pro_offer_brand;
+
+  /// No description provided for @pro_offer_big_percent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%'**
+  String pro_offer_big_percent(String percent);
+
+  /// No description provided for @pro_offer_off.
+  ///
+  /// In en, this message translates to:
+  /// **'OFF'**
+  String get pro_offer_off;
+
+  /// No description provided for @pro_offer_off_first_year.
+  ///
+  /// In en, this message translates to:
+  /// **'your first year of SnapCal Pro'**
+  String get pro_offer_off_first_year;
+
+  /// No description provided for @pro_offer_off_yearly.
+  ///
+  /// In en, this message translates to:
+  /// **'when you pay yearly'**
+  String get pro_offer_off_yearly;
+
+  /// No description provided for @pro_offer_paying_monthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Paying monthly for a year'**
+  String get pro_offer_paying_monthly;
+
+  /// No description provided for @pro_offer_with_offer.
+  ///
+  /// In en, this message translates to:
+  /// **'With this offer'**
+  String get pro_offer_with_offer;
+
+  /// No description provided for @pro_offer_you_save.
+  ///
+  /// In en, this message translates to:
+  /// **'You save {amount}'**
+  String pro_offer_you_save(String amount);
+
+  /// No description provided for @pro_offer_per_day.
+  ///
+  /// In en, this message translates to:
+  /// **'Just {price} a day'**
+  String pro_offer_per_day(String price);
+
+  /// No description provided for @pro_offer_compare_title.
+  ///
+  /// In en, this message translates to:
+  /// **'What you get'**
+  String get pro_offer_compare_title;
+
+  /// No description provided for @pro_offer_free.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get pro_offer_free;
+
+  /// No description provided for @pro_offer_pro.
+  ///
+  /// In en, this message translates to:
+  /// **'PRO'**
+  String get pro_offer_pro;
+
+  /// No description provided for @pro_offer_row_scans.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo scans'**
+  String get pro_offer_row_scans;
+
+  /// No description provided for @pro_offer_row_coach.
+  ///
+  /// In en, this message translates to:
+  /// **'AI coach'**
+  String get pro_offer_row_coach;
+
+  /// No description provided for @pro_offer_row_planner.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal planner'**
+  String get pro_offer_row_planner;
+
+  /// No description provided for @pro_offer_row_reports.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly reports'**
+  String get pro_offer_row_reports;
+
+  /// No description provided for @pro_offer_row_history.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal history'**
+  String get pro_offer_row_history;
+
+  /// No description provided for @pro_offer_scans_month.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}/month'**
+  String pro_offer_scans_month(int count);
+
+  /// No description provided for @pro_offer_unlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited'**
+  String get pro_offer_unlimited;
+
+  /// No description provided for @pro_offer_limited.
+  ///
+  /// In en, this message translates to:
+  /// **'Limited'**
+  String get pro_offer_limited;
+
+  /// No description provided for @pro_offer_days.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days'**
+  String pro_offer_days(int count);
+
+  /// No description provided for @pro_offer_full.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get pro_offer_full;
+
+  /// No description provided for @pro_offer_cta_intro.
+  ///
+  /// In en, this message translates to:
+  /// **'{intro} for the first year, then {price}/year'**
+  String pro_offer_cta_intro(String intro, String price);
 }
 
 class _AppLocalizationsDelegate

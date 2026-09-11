@@ -1,4 +1,6 @@
-﻿import 'package:flutter/foundation.dart';
+import '../../data/services/feedback_service.dart';
+import '../../data/services/app_review_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -149,6 +151,19 @@ class SettingsScreen extends ConsumerWidget {
                 icon: LucideIcons.info,
                 title: l10n.settings_about,
                 onTap: () => context.push('/settings/about'),
+              ),
+              // Google Play only: there is no App Store listing to open yet.
+              if (defaultTargetPlatform == TargetPlatform.android)
+                SettingsRow(
+                  icon: LucideIcons.star,
+                  title: l10n.settings_rate_app,
+                  onTap:
+                      () => AppReviewService.instance().openStoreRatingPage(),
+                ),
+              SettingsRow(
+                icon: LucideIcons.mail,
+                title: l10n.settings_send_feedback,
+                onTap: () => FeedbackService.send(context),
               ),
             ],
           ),

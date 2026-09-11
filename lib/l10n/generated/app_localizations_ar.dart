@@ -4448,4 +4448,155 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get update_later => 'لاحقاً';
+
+  @override
+  String get settings_rate_app => 'قيّم SnapCal';
+
+  @override
+  String get settings_send_feedback => 'أرسل ملاحظاتك';
+
+  @override
+  String get feedback_email_subject => 'ملاحظات حول SnapCal';
+
+  @override
+  String feedback_email_copied(String email) {
+    return 'لم يتم العثور على تطبيق بريد. تم نسخ عنواننا: $email';
+  }
+
+  @override
+  String get pro_offer_title => 'افتح SnapCal Pro';
+
+  @override
+  String get pro_offer_subtitle => 'امسح كل وجبة بلا حدود.';
+
+  @override
+  String pro_offer_scans_used(int used, int limit) {
+    return 'استخدمت $used من $limit عمليات مسح مجانية هذا الشهر';
+  }
+
+  @override
+  String pro_offer_days_free(int days) {
+    return '$days أيام مجاناً';
+  }
+
+  @override
+  String get pro_offer_first_year => 'السنة الأولى';
+
+  @override
+  String get pro_offer_year => '/ سنة';
+
+  @override
+  String get pro_offer_month => '/ شهر';
+
+  @override
+  String pro_offer_per_year(String price) {
+    return '$price سنوياً';
+  }
+
+  @override
+  String pro_offer_per_month(String price) {
+    return '$price شهرياً';
+  }
+
+  @override
+  String pro_offer_approx_month(String price) {
+    return '≈ $price شهرياً';
+  }
+
+  @override
+  String pro_offer_claim(String percent) {
+    return 'احصل على خصم $percent%';
+  }
+
+  @override
+  String get pro_offer_get_pro => 'احصل على SnapCal Pro';
+
+  @override
+  String get pro_offer_not_now => 'ليس الآن';
+
+  @override
+  String pro_offer_ends_on(String date) {
+    return 'ينتهي العرض في $date';
+  }
+
+  @override
+  String get pro_offer_brand => 'SNAPCAL PRO';
+
+  @override
+  String pro_offer_big_percent(String percent) {
+    return '$percent٪';
+  }
+
+  @override
+  String get pro_offer_off => 'خصم';
+
+  @override
+  String get pro_offer_off_first_year => 'على سنتك الأولى في SnapCal Pro';
+
+  @override
+  String get pro_offer_off_yearly => 'عند الدفع سنوياً';
+
+  @override
+  String get pro_offer_paying_monthly => 'الدفع شهرياً لمدة سنة';
+
+  @override
+  String get pro_offer_with_offer => 'مع هذا العرض';
+
+  @override
+  String pro_offer_you_save(String amount) {
+    return 'توفّر $amount';
+  }
+
+  @override
+  String pro_offer_per_day(String price) {
+    return 'فقط $price يومياً';
+  }
+
+  @override
+  String get pro_offer_compare_title => 'ما تحصل عليه';
+
+  @override
+  String get pro_offer_free => 'مجاني';
+
+  @override
+  String get pro_offer_pro => 'PRO';
+
+  @override
+  String get pro_offer_row_scans => 'المسح بالصور';
+
+  @override
+  String get pro_offer_row_coach => 'المدرب الذكي';
+
+  @override
+  String get pro_offer_row_planner => 'مخطط الوجبات';
+
+  @override
+  String get pro_offer_row_reports => 'تقارير أسبوعية';
+
+  @override
+  String get pro_offer_row_history => 'سجل الوجبات';
+
+  @override
+  String pro_offer_scans_month(int count) {
+    return '$count شهرياً';
+  }
+
+  @override
+  String get pro_offer_unlimited => 'غير محدود';
+
+  @override
+  String get pro_offer_limited => 'محدود';
+
+  @override
+  String pro_offer_days(int count) {
+    return '$count يوماً';
+  }
+
+  @override
+  String get pro_offer_full => 'كامل';
+
+  @override
+  String pro_offer_cta_intro(String intro, String price) {
+    return '$intro للسنة الأولى، ثم $price سنوياً';
+  }
 }

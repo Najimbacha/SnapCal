@@ -1,3 +1,5 @@
+import 'package:snapcal/data/services/app_review_service.dart';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -291,6 +293,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
       );
 
       _controller.reset();
+      _askForReviewSoon();
     } finally {
       _isSavingResult = false;
     }
@@ -340,9 +343,23 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
       }
 
       _controller.reset();
+      _askForReviewSoon();
     } finally {
       _isSavingResult = false;
     }
+  }
+
+  /// The user has just seen a scan work and is back on home with the meal
+  /// saved: the moment to ask. AppReviewService decides whether Google Play's
+  /// review sheet is actually requested -- enough use, not too soon, never
+  /// twice for one version -- and Google decides whether it appears.
+  void _askForReviewSoon() {
+    unawaited(
+      Future<void>.delayed(
+        const Duration(milliseconds: 1500),
+        AppReviewService.instance().requestReviewIfEligible,
+      ),
+    );
   }
 
   bool _beginResultSave(String fingerprint) {
@@ -730,7 +747,6 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
                 onManualEntry: _showManualInputModal,
               ),
             ),
-
         ],
       ),
     );
