@@ -1146,6 +1146,66 @@ abstract class AppLocalizations {
   /// **'Meal reminders'**
   String get notif_meal_reminders_channel;
 
+  /// No description provided for @notif_prompt_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a nudge at mealtimes'**
+  String get notif_prompt_title;
+
+  /// No description provided for @notif_prompt_body.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal can remind you to log breakfast, lunch and dinner. You can change this any time in Settings.'**
+  String get notif_prompt_body;
+
+  /// No description provided for @notif_prompt_allow.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on reminders'**
+  String get notif_prompt_allow;
+
+  /// No description provided for @notif_prompt_later.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get notif_prompt_later;
+
+  /// No description provided for @notif_blocked_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off for SnapCal'**
+  String get notif_blocked_title;
+
+  /// No description provided for @notif_blocked_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your phone is blocking them, so reminders can’t reach you. Tap to turn them on.'**
+  String get notif_blocked_body;
+
+  /// No description provided for @notif_food_reminders_channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Food scan reminders'**
+  String get notif_food_reminders_channel;
+
+  /// No description provided for @notif_food_reminders_channel_description.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders to scan your meals'**
+  String get notif_food_reminders_channel_description;
+
+  /// No description provided for @notif_updates_channel.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal updates'**
+  String get notif_updates_channel;
+
+  /// No description provided for @notif_updates_channel_description.
+  ///
+  /// In en, this message translates to:
+  /// **'News and app updates from SnapCal'**
+  String get notif_updates_channel_description;
+
   /// No description provided for @notif_meal_reminders_channel_description.
   ///
   /// In en, this message translates to:

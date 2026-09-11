@@ -575,6 +575,42 @@ class AppLocalizationsEs extends AppLocalizations {
   String get notif_meal_reminders_channel => 'Recordatorios de comidas';
 
   @override
+  String get notif_prompt_title => 'Un recordatorio a la hora de comer';
+
+  @override
+  String get notif_prompt_body =>
+      'SnapCal puede recordarte registrar el desayuno, la comida y la cena. Puedes cambiarlo cuando quieras en Ajustes.';
+
+  @override
+  String get notif_prompt_allow => 'Activar recordatorios';
+
+  @override
+  String get notif_prompt_later => 'Ahora no';
+
+  @override
+  String get notif_blocked_title =>
+      'Las notificaciones de SnapCal están desactivadas';
+
+  @override
+  String get notif_blocked_body =>
+      'Tu teléfono las está bloqueando, así que los recordatorios no te llegan. Toca para activarlas.';
+
+  @override
+  String get notif_food_reminders_channel =>
+      'Recordatorios para escanear comidas';
+
+  @override
+  String get notif_food_reminders_channel_description =>
+      'Recordatorios para escanear tus comidas';
+
+  @override
+  String get notif_updates_channel => 'Novedades de SnapCal';
+
+  @override
+  String get notif_updates_channel_description =>
+      'Noticias y actualizaciones de SnapCal';
+
+  @override
   String get notif_meal_reminders_channel_description =>
       'Recordatorios para registrar tu nutrición diaria.';
 

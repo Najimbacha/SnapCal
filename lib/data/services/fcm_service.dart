@@ -26,8 +26,7 @@ class FcmService {
   static const String _topicAllUsers = 'snapcal_all_users';
   static const String _topicFoodReminders = 'food_scan_reminders';
   static const String _channelId = 'fcm_notifications_v1';
-  static const String _channelName = 'SnapCal Updates';
-  static const String _channelDesc = 'Push notifications from SnapCal';
+  static const String _broadcastsKey = 'fcm_broadcasts_enabled';
 
   /// Callback invoked when a food reminder notification is tapped.
   VoidCallback? onFoodReminderTapped;
@@ -63,7 +62,7 @@ class FcmService {
       // 1. Create the FCM notification channel on Android.
       await _createNotificationChannel();
 
-      // 2. Request notification permission.
+      // 2. Read the notification permission (asked for after onboarding).
       await _requestPermission();
 
       // 3. Get the current FCM token & store it.
@@ -72,13 +71,18 @@ class FcmService {
       // 4. Listen for token refreshes.
       _messaging!.onTokenRefresh.listen(_onTokenRefresh);
 
-      // 5. Subscribe to the global all-users topic.
-      await _subscribeToAllUsers();
+      // 5. The all-users topic, only while notifications are on in Settings.
+      if (_prefs?.getBool(_broadcastsKey) ?? true) {
+        await _subscribeToAllUsers();
+      } else {
+        await unsubscribeFromTopic(_topicAllUsers);
+      }
 
       // 6. Configure foreground message handler.
-      if (_permissionGranted) {
-        FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-      }
+      // Always listened for. Permission granted after launch -- which is now
+      // the normal case -- left foreground messages unhandled until the next
+      // start.
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
       // 7. Listen for notification taps that open the app from background.
       FirebaseMessaging.onMessageOpenedApp.listen(handleNotificationOpenedApp);
@@ -104,6 +108,7 @@ class FcmService {
 
   Future<void> _createNotificationChannel() async {
     try {
+      final l10n = NotificationService.deviceLocalizations();
       final plugin = FlutterLocalNotificationsPlugin();
       final androidPlugin =
           plugin
@@ -115,8 +120,8 @@ class FcmService {
         await androidPlugin.createNotificationChannel(
           AndroidNotificationChannel(
             _channelId,
-            _channelName,
-            description: _channelDesc,
+            l10n.notif_updates_channel,
+            description: l10n.notif_updates_channel_description,
             importance: Importance.high,
             playSound: true,
             enableVibration: true,
@@ -135,15 +140,9 @@ class FcmService {
   Future<void> _requestPermission() async {
     if (_messaging == null) return;
     try {
-      final settings = await _messaging!.requestPermission(
-        alert: true,
-        announcement: false,
-        badge: true,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
-        sound: true,
-      );
+      // Reads the permission; it no longer asks. Asking at launch, before
+      // the user knew why, is what made so many say no.
+      final settings = await _messaging!.getNotificationSettings();
       _permissionGranted =
           settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional;
@@ -223,6 +222,26 @@ class FcmService {
 
   Future<void> unsubscribeAllUsers() async {
     await unsubscribeFromTopic(_topicAllUsers);
+  }
+
+  /// Follows the Notifications switch in Settings. Turning it off cancelled
+  /// the app's own reminders but left the phone subscribed to announcements
+  /// sent to every user, so those kept arriving.
+  Future<void> setBroadcastsEnabled(bool enabled) async {
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      if (_prefs!.getBool(_broadcastsKey) == enabled) return;
+      await _prefs!.setBool(_broadcastsKey, enabled);
+      // Before init, the saved choice is applied when init subscribes.
+      if (_messaging == null) return;
+      if (enabled) {
+        await _subscribeToAllUsers();
+      } else {
+        await unsubscribeFromTopic(_topicAllUsers);
+      }
+    } catch (e) {
+      debugPrint('⚠️ FcmService: broadcast preference failed: $e');
+    }
   }
 
   Future<void> subscribeToFoodReminders() async {
@@ -311,6 +330,7 @@ class FcmService {
     final data = message.data;
     final title = notification?.title ?? data['title'] ?? 'SnapCal';
     final body = notification?.body ?? data['body'] ?? '';
+    final l10n = NotificationService.deviceLocalizations();
 
     try {
       final plugin = FlutterLocalNotificationsPlugin();
@@ -321,8 +341,8 @@ class FcmService {
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             _channelId,
-            _channelName,
-            channelDescription: _channelDesc,
+            l10n.notif_updates_channel,
+            channelDescription: l10n.notif_updates_channel_description,
             importance: Importance.high,
             priority: Priority.high,
             icon: 'ic_stat_notification',

@@ -1,5 +1,6 @@
 import 'force_update_service.dart';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class NotificationService {
   static NotificationService? customInstance;
@@ -29,9 +31,6 @@ class NotificationService {
   /// Payload of a "please update" notification shown while the app is open.
   static const String appUpdatePayload = 'app_update';
   static const String foodReminderChannelId = 'food_scan_reminders_v1';
-  static const String foodReminderChannelName = 'Food Scan Reminders';
-  static const String foodReminderChannelDesc =
-      'Gentle reminders to scan your meals.';
   static const MethodChannel _timeZoneChannel = MethodChannel(
     'snapcal/timezone',
   );
@@ -39,6 +38,17 @@ class NotificationService {
   bool _timeZoneInitialized = false;
   Future<void>? _timeZoneInitFuture;
   Future<void>? _initFuture;
+
+  /// Strings in the phone's own language. Channel names are shown in the
+  /// phone's notification settings, which are in that language; they were
+  /// English for everyone.
+  static AppLocalizations deviceLocalizations() {
+    final code = ui.PlatformDispatcher.instance.locale.languageCode;
+    final supported = AppLocalizations.supportedLocales.any(
+      (l) => l.languageCode == code,
+    );
+    return lookupAppLocalizations(ui.Locale(supported ? code : 'en'));
+  }
 
   Future<void> init() async {
     _initFuture ??= _initSafely();
@@ -54,9 +64,10 @@ class NotificationService {
 
       const DarwinInitializationSettings initializationSettingsIOS =
           DarwinInitializationSettings(
-            requestAlertPermission: true,
-            requestBadgePermission: true,
-            requestSoundPermission: true,
+            // Asked for after onboarding, with a reason, instead.
+            requestAlertPermission: false,
+            requestBadgePermission: false,
+            requestSoundPermission: false,
           );
 
       const InitializationSettings settings = InitializationSettings(
@@ -75,14 +86,27 @@ class NotificationService {
         },
       );
 
-      // Request permissions for Android 13+
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        await _notificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >()
-            ?.requestNotificationsPermission();
-      }
+      // No permission request here. It fired the moment the app first
+      // opened, before the user knew what SnapCal was; many said no, and
+      // Android stops asking after that. NotificationPermissionPrompt asks
+      // once, after onboarding, and says why.
+      //
+      // The food reminder channel is created up front, named in the phone's
+      // language, so a reminder pushed while the app is closed lands in it
+      // rather than in the default channel.
+      final l10n = deviceLocalizations();
+      await _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(
+            AndroidNotificationChannel(
+              foodReminderChannelId,
+              l10n.notif_food_reminders_channel,
+              description: l10n.notif_food_reminders_channel_description,
+              importance: Importance.high,
+            ),
+          );
     } catch (e, stack) {
       debugPrint('⚠️ NotificationService: init failed: $e');
       debugPrint(stack.toString());
@@ -98,6 +122,7 @@ class NotificationService {
     required String channelDescription,
     required int hour,
     required int minute,
+    bool startTomorrow = false,
   }) async {
     await _ensureTimeZoneInitialized();
 
@@ -111,7 +136,8 @@ class NotificationService {
       minute,
     );
 
-    if (scheduledDate.isBefore(now)) {
+    // A meal already logged today skips today's reminder for it.
+    if (scheduledDate.isBefore(now) || startTomorrow) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
@@ -291,42 +317,13 @@ class NotificationService {
     return tz.UTC;
   }
 
-  /// Show an instant notification for goal completion
-  Future<void> showGoalAlert({
-    required String title,
-    required String body,
-    required String channelName,
-    required String channelDescription,
-  }) async {
-    await _notificationsPlugin.show(
-      id: 999, // Goal alert ID
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          'goal_alerts_v2',
-          channelName,
-          channelDescription: channelDescription,
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: _androidNotificationIcon,
-          color: AppColors.primary,
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-    );
-  }
-
   /// Show a food scan reminder notification (for foreground display)
   Future<void> showFoodReminderNotification({
     required String title,
     required String body,
   }) async {
     try {
+      final l10n = deviceLocalizations();
       await _notificationsPlugin.show(
         id: DateTime.now().millisecondsSinceEpoch.remainder(1 << 31),
         title: title,
@@ -334,8 +331,8 @@ class NotificationService {
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             foodReminderChannelId,
-            foodReminderChannelName,
-            channelDescription: foodReminderChannelDesc,
+            l10n.notif_food_reminders_channel,
+            channelDescription: l10n.notif_food_reminders_channel_description,
             importance: Importance.high,
             priority: Priority.high,
             icon: _androidNotificationIcon,

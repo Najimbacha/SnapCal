@@ -2673,7 +2673,7 @@ if (NODE_ENV !== 'production') {
 
 
 app.post('/api/notifications/food-reminder/register', authenticateToken, verifyAppCheck, apiLimiter, async (req, res) => {
-  const { fcmToken, enabled } = req.body || {};
+  const { fcmToken, enabled, utcOffsetMinutes } = req.body || {};
   const uid = req.user.uid;
 
   if (typeof enabled !== 'boolean') {
@@ -2687,6 +2687,12 @@ app.post('/api/notifications/food-reminder/register', authenticateToken, verifyA
       fcmToken: fcmToken || null,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
+    // The user's clock, so reminders go out at their local time rather than
+    // the server's. Written here, by the server, because the settings rules
+    // accept only a fixed list of fields from the app.
+    if (Number.isInteger(utcOffsetMinutes) && utcOffsetMinutes >= -720 && utcOffsetMinutes <= 840) {
+      payload.reminderUtcOffsetMinutes = utcOffsetMinutes;
+    }
 
     // The reminder fan-out is a range query on serverReminderSentOn, and
     // Firestore excludes documents that lack the field entirely from a range

@@ -95,12 +95,13 @@ class MealLog extends _$MealLog {
     // was complete but nothing fed it, so it could never ask.
     unawaited(AppReviewService.instance().recordSuccessfulMealScanOrLog());
 
+    // A meal logged before its reminder moves that reminder to tomorrow.
+    unawaited(ref.read(settingsProvider.notifier).skipMealReminderFor(meal));
+
     // After an off-plan meal, the rest of that day's planned meals are
     // resized to what the day has left. The planner could do this all
     // along; nothing asked it to.
-    unawaited(
-      _rebalancePlanAfter(meal, repo.getMealsByDate(meal.dateString)),
-    );
+    unawaited(_rebalancePlanAfter(meal, repo.getMealsByDate(meal.dateString)));
   }
 
   Future<void> _rebalancePlanAfter(Meal meal, List<Meal> mealsForDate) async {

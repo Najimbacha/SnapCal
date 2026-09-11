@@ -319,7 +319,7 @@ platform. It runs as an external cron calling the trigger endpoint instead —
 which is what that endpoint was built for.
 
 Set `SCHEDULER_SECRET` on the service to a long random string, then create
-three jobs at any free cron provider (cron-job.org, GitHub Actions on a
+one job at any free cron provider (cron-job.org, GitHub Actions on a
 schedule, or similar):
 
 ```
@@ -327,7 +327,11 @@ POST https://<your-service>.onrender.com/api/notifications/food-reminder/trigger
 Header: X-Scheduler-Secret: <the same secret>
 ```
 
-Schedule them for 07:00, 12:00 and 19:00 in the users' timezone. The endpoint
+Run it every hour, on the hour. Each run reminds the users for whom it is
+now between 12:00 and 20:59 on their own clock and who have neither been
+reminded nor opened the app that day, so each user gets at most one reminder
+a day, around noon their time, in their language. The app reports its UTC
+offset when it registers for reminders. The endpoint
 compares the secret in constant time and is admin-only for human callers, so
 the URL leaking is not by itself an exposure.
 

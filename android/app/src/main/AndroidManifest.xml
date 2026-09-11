@@ -66,6 +66,20 @@
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_stat_notification" />
 
+        <!-- Scheduled notifications (meal reminders, daily motivation).
+             The notification plugin stopped declaring these itself in v16;
+             without them a scheduled reminder is set and never shown, and
+             every reminder is lost when the phone restarts. -->
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
         <!-- Home Screen Widget -->
         <receiver android:name="com.snapcal.snapcal.SnapCalWidgetProvider" android:exported="true">
             <intent-filter>

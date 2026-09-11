@@ -567,6 +567,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notif_meal_reminders_channel => 'Meal reminders';
 
   @override
+  String get notif_prompt_title => 'Get a nudge at mealtimes';
+
+  @override
+  String get notif_prompt_body =>
+      'SnapCal can remind you to log breakfast, lunch and dinner. You can change this any time in Settings.';
+
+  @override
+  String get notif_prompt_allow => 'Turn on reminders';
+
+  @override
+  String get notif_prompt_later => 'Not now';
+
+  @override
+  String get notif_blocked_title => 'Notifications are off for SnapCal';
+
+  @override
+  String get notif_blocked_body =>
+      'Your phone is blocking them, so reminders can’t reach you. Tap to turn them on.';
+
+  @override
+  String get notif_food_reminders_channel => 'Food scan reminders';
+
+  @override
+  String get notif_food_reminders_channel_description =>
+      'Reminders to scan your meals';
+
+  @override
+  String get notif_updates_channel => 'SnapCal updates';
+
+  @override
+  String get notif_updates_channel_description =>
+      'News and app updates from SnapCal';
+
+  @override
   String get notif_meal_reminders_channel_description =>
       'Reminders to log your daily nutrition.';
 

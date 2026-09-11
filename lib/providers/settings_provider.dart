@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../core/utils/pref_scoping.dart';
+import '../data/models/meal.dart';
 import '../data/models/user_settings.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/services/scan_gate_service.dart';
@@ -217,6 +220,7 @@ class Settings extends _$Settings {
   }
 
   Future<void> _performNotificationSync(UserSettings s) async {
+    unawaited(FcmService().setBroadcastsEnabled(s.notificationsEnabled));
     if (!s.notificationsEnabled) {
       await _notificationService.cancelAll();
       return;
@@ -241,6 +245,112 @@ class Settings extends _$Settings {
         await repo.saveSettings(updated);
         state = AsyncData(updated);
       }
+      await _registerFoodReminders(enabled: true, onlyIfChanged: true);
+    }
+  }
+
+  static const _registrationKey = 'food_reminder_registration';
+
+  /// Tells the server where to send food reminders, and on what clock.
+  ///
+  /// The server sends at the user's local time, so it needs their UTC offset,
+  /// which moves with daylight saving and travel. Sent whenever the token or
+  /// offset differs from the last successful registration, not only when the
+  /// switch is flipped: a refreshed token used to leave the server sending to
+  /// a dead one.
+  Future<void> _registerFoodReminders({
+    required bool enabled,
+    bool onlyIfChanged = false,
+  }) async {
+    final token = FcmService().cachedToken;
+    final offset = DateTime.now().timeZoneOffset.inMinutes;
+    final signature = '$enabled|$token|$offset';
+    SharedPreferences? prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+      if (onlyIfChanged &&
+          prefs.getString(scopedPrefKey(_registrationKey)) == signature) {
+        return;
+      }
+    } catch (_) {}
+    try {
+      await ApiClient.dio.post(
+        '${ConfigService().backendProxyUrl}/api/notifications/food-reminder/register',
+        data: {
+          'fcmToken': token,
+          'enabled': enabled,
+          'utcOffsetMinutes': offset,
+        },
+      );
+      await prefs?.setString(scopedPrefKey(_registrationKey), signature);
+    } catch (e) {
+      debugPrint('❌ Settings: Reminder registration failed: $e');
+    }
+  }
+
+  static const _mealReminderSkipKey = 'meal_reminder_skipped';
+  static const _mealReminderIds = {'breakfast': 1, 'lunch': 2, 'dinner': 3};
+
+  /// Which meal reminder a newly logged meal makes redundant today: the one
+  /// for that meal, if it has not gone off yet.
+  @visibleForTesting
+  static int? mealReminderToSkip({
+    required Meal meal,
+    required UserSettings settings,
+    required DateTime now,
+  }) {
+    if (!settings.notificationsEnabled || !settings.mealRemindersEnabled) {
+      return null;
+    }
+    if (meal.dateString != app_date.DateUtils.getDateString(now)) return null;
+    final id = _mealReminderIds[meal.mealType?.toLowerCase()];
+    if (id == null) return null;
+    final time = switch (id) {
+      1 => settings.breakfastTime,
+      2 => settings.lunchTime,
+      _ => settings.dinnerTime,
+    };
+    final parts = time.split(':');
+    final hour = int.tryParse(parts.first);
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) : 0;
+    if (hour == null || minute == null) return null;
+    if (now.hour * 60 + now.minute >= hour * 60 + minute) return null;
+    return id;
+  }
+
+  /// Moves a meal's reminder to tomorrow once that meal is logged. "Time for
+  /// lunch" used to arrive with lunch already in the diary.
+  Future<void> skipMealReminderFor(Meal meal) async {
+    final s = _data;
+    if (s == null) return;
+    final id = mealReminderToSkip(meal: meal, settings: s, now: DateTime.now());
+    if (id == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        scopedPrefKey('${_mealReminderSkipKey}_$id'),
+        app_date.DateUtils.getTodayString(),
+      );
+    } catch (_) {
+      return;
+    }
+    await _scheduleReminders(s);
+  }
+
+  /// Reminder ids skipped for today. Kept on disk because every settings save
+  /// reschedules all reminders, and would otherwise restore today's.
+  Future<Set<int>> _skippedMealReminderIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final today = app_date.DateUtils.getTodayString();
+      return {
+        for (final id in _mealReminderIds.values)
+          if (prefs.getString(scopedPrefKey('${_mealReminderSkipKey}_$id')) ==
+              today)
+            id,
+      };
+    } catch (_) {
+      return const {};
     }
   }
 
@@ -258,6 +368,7 @@ class Settings extends _$Settings {
       2: _getNotifString(lang, 'lunch_body'),
       3: _getNotifString(lang, 'dinner_body'),
     };
+    final skipped = await _skippedMealReminderIds();
     for (final entry in times.entries) {
       final parts = entry.value.split(':');
       if (parts.length == 2) {
@@ -271,6 +382,7 @@ class Settings extends _$Settings {
           channelDescription: l10n.notif_meal_reminders_channel_description,
           hour: hour,
           minute: minute,
+          startTomorrow: skipped.contains(entry.key),
         );
       }
     }
@@ -367,14 +479,6 @@ class Settings extends _$Settings {
         return l10n.notif_dinner_title;
       case 'dinner_body':
         return l10n.notif_dinner_body;
-      case 'goal_calories_title':
-        return l10n.notif_goal_calories_title;
-      case 'goal_calories_body':
-        return l10n.notif_goal_calories_body('{goal}');
-      case 'goal_protein_title':
-        return l10n.notif_goal_protein_title;
-      case 'goal_protein_body':
-        return l10n.notif_goal_protein_body('{goal}');
       default:
         return '';
     }
@@ -414,11 +518,6 @@ class Settings extends _$Settings {
     await _updateSettings(current.copyWith(dailyMotivationEnabled: enabled));
   }
 
-  Future<void> toggleGoalAlerts(bool enabled) async {
-    final current = _data ?? UserSettings.defaults();
-    await _updateSettings(current.copyWith(goalAlertsEnabled: enabled));
-  }
-
   Future<void> toggleFoodReminders(bool enabled) async {
     final current = _data ?? UserSettings.defaults();
     final fcm = FcmService();
@@ -431,50 +530,7 @@ class Settings extends _$Settings {
       await _updateSettings(updated.copyWith(fcmToken: null));
       await fcm.unsubscribeFromFoodReminders();
     }
-    try {
-      await ApiClient.dio.post(
-        '${ConfigService().backendProxyUrl}/api/notifications/food-reminder/register',
-        data: {'fcmToken': fcm.cachedToken, 'enabled': enabled},
-      );
-    } catch (e) {
-      debugPrint('❌ Settings: Reminder registration failed: $e');
-    }
-  }
-
-  Future<void> triggerCalorieGoalAlert(int goal) async {
-    final s = _data;
-    if (s == null || !s.notificationsEnabled || !s.goalAlertsEnabled) return;
-    final lang = s.languageCode ?? 'en';
-    final title = _getNotifString(lang, 'goal_calories_title');
-    final body = _getNotifString(
-      lang,
-      'goal_calories_body',
-    ).replaceAll('{goal}', goal.toString());
-    final l10n = _localizationsFor(lang);
-    await _notificationService.showGoalAlert(
-      title: title,
-      body: body,
-      channelName: l10n.notif_goal_alerts_channel,
-      channelDescription: l10n.notif_goal_alerts_channel_description,
-    );
-  }
-
-  Future<void> triggerProteinGoalAlert(int goal) async {
-    final s = _data;
-    if (s == null || !s.notificationsEnabled || !s.goalAlertsEnabled) return;
-    final lang = s.languageCode ?? 'en';
-    final title = _getNotifString(lang, 'goal_protein_title');
-    final body = _getNotifString(
-      lang,
-      'goal_protein_body',
-    ).replaceAll('{goal}', goal.toString());
-    final l10n = _localizationsFor(lang);
-    await _notificationService.showGoalAlert(
-      title: title,
-      body: body,
-      channelName: l10n.notif_goal_alerts_channel,
-      channelDescription: l10n.notif_goal_alerts_channel_description,
-    );
+    await _registerFoodReminders(enabled: enabled);
   }
 
   Future<void> updateReminderTimes({

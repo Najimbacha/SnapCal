@@ -11,51 +11,121 @@ const PAGE_SIZE = Number(process.env.REMINDER_PAGE_SIZE || 500);
 const MAX_USERS_PER_RUN = Number(process.env.REMINDER_MAX_PER_RUN || 50000);
 const FCM_BATCH = 500; // Firebase's per-multicast ceiling.
 
-function todayKey() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
+// One reminder a day, sent at the first run that finds the user between
+// these local hours, and only if they have not opened the app that day. With
+// the trigger running hourly, that is about noon wherever they are.
+//
+// This used to work on the server's clock alone. The server runs on UTC, so
+// each user got a reminder at the first run after UTC midnight -- "Good
+// morning" in the evening for much of the world -- and always in English.
+const WINDOW_START_HOUR = 12;
+const WINDOW_END_HOUR = 20; // the last hour a reminder may go out, inclusive
+const MIN_OFFSET_MINUTES = -12 * 60;
+const MAX_OFFSET_MINUTES = 14 * 60;
+
+function dateKeyUtc(date) {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
-function getTimeOfDay() {
-  const hour = new Date().getHours();
+function todayKey(now = new Date()) {
+  return dateKeyUtc(now);
+}
+
+/// The user's offset from UTC, as the app last reported it. Older app versions
+/// never sent one; they are treated as UTC, which is what everyone was before.
+function userOffsetMinutes(data) {
+  const raw = data && data.reminderUtcOffsetMinutes;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return 0;
+  return Math.max(MIN_OFFSET_MINUTES, Math.min(MAX_OFFSET_MINUTES, Math.round(raw)));
+}
+
+/// The date and hour on the user's own clock.
+function localClock(now, offsetMinutes) {
+  const local = new Date(now.getTime() + offsetMinutes * 60000);
+  return { date: dateKeyUtc(local), hour: local.getUTCHours() };
+}
+
+function getTimeOfDay(hour = new Date().getHours()) {
   if (hour < 10) return 'morning';
   if (hour < 16) return 'lunch';
   return 'evening';
 }
 
-function buildNotificationBody(timeOfDay, streak) {
-  if (streak > 0) {
-    return {
-      title: `\u{1F525} Keep your ${streak} day streak alive`,
+// The app's four languages. Everyone was sent the English.
+const COPY = {
+  en: {
+    streak: (n) => ({
+      title: `\u{1F525} Keep your ${n} day streak alive`,
       body: 'Scan your next meal and keep the momentum going.',
-    };
-  }
+    }),
+    morning: { title: 'Good morning ☀️', body: 'Scan your breakfast and start tracking your day.' },
+    lunch: { title: 'What did you eat today?', body: 'Open the app and scan your meal.' },
+    evening: { title: "Don't forget your food log.", body: 'Scan your dinner to complete your day.' },
+    fallback: { title: 'Time to scan your food', body: 'Open SnapCal and log your meal.' },
+  },
+  es: {
+    streak: (n) => ({
+      title: `\u{1F525} Mantén tu racha de ${n} días`,
+      body: 'Escanea tu próxima comida y sigue así.',
+    }),
+    morning: { title: 'Buenos días ☀️', body: 'Escanea tu desayuno y empieza a registrar tu día.' },
+    lunch: { title: '¿Qué has comido hoy?', body: 'Abre la app y escanea tu comida.' },
+    evening: { title: 'No olvides tu registro de comidas.', body: 'Escanea tu cena para completar el día.' },
+    fallback: { title: 'Hora de escanear tu comida', body: 'Abre SnapCal y registra tu comida.' },
+  },
+  fr: {
+    streak: (n) => ({
+      title: `\u{1F525} Gardez votre série de ${n} jours`,
+      body: 'Scannez votre prochain repas et gardez le rythme.',
+    }),
+    morning: { title: 'Bonjour ☀️', body: 'Scannez votre petit-déjeuner et commencez à suivre votre journée.' },
+    lunch: { title: "Qu'avez-vous mangé aujourd'hui ?", body: "Ouvrez l'app et scannez votre repas." },
+    evening: { title: "N'oubliez pas votre journal alimentaire.", body: 'Scannez votre dîner pour compléter votre journée.' },
+    fallback: { title: 'Il est temps de scanner votre repas', body: 'Ouvrez SnapCal et enregistrez votre repas.' },
+  },
+  ar: {
+    streak: (n) => ({
+      title: `\u{1F525} حافظ على سلسلة ${n} يومًا`,
+      body: 'امسح وجبتك التالية وواصل التقدم.',
+    }),
+    morning: { title: 'صباح الخير ☀️', body: 'امسح فطورك وابدأ تتبع يومك.' },
+    lunch: { title: 'ماذا أكلت اليوم؟', body: 'افتح التطبيق وامسح وجبتك.' },
+    evening: { title: 'لا تنسَ سجل طعامك.', body: 'امسح عشاءك لتكمل يومك.' },
+    fallback: { title: 'حان وقت مسح طعامك', body: 'افتح SnapCal وسجّل وجبتك.' },
+  },
+};
 
-  switch (timeOfDay) {
-    case 'morning':
-      return {
-        title: 'Good morning ☀️',
-        body: 'Scan your breakfast and start tracking your day.',
-      };
-    case 'lunch':
-      return {
-        title: 'What did you eat today?',
-        body: 'Open the app and scan your meal.',
-      };
-    case 'evening':
-      return {
-        title: "Don't forget your food log.",
-        body: 'Scan your dinner to complete your day.',
-      };
-    default:
-      return {
-        title: 'Time to scan your food',
-        body: 'Open SnapCal and log your meal.',
-      };
-  }
+function reminderLanguage(code) {
+  return Object.prototype.hasOwnProperty.call(COPY, code) ? code : 'en';
+}
+
+function buildNotificationBody(timeOfDay, streak, language = 'en') {
+  const copy = COPY[reminderLanguage(language)];
+  if (streak > 0) return copy.streak(streak);
+  return copy[timeOfDay] || copy.fallback;
+}
+
+/// Whether one settings document is due a reminder now, judged on the user's
+/// own clock, and in which words.
+function reminderDecision(data, now = new Date()) {
+  if (!data || data.foodRemindersEnabled !== true) return { due: false };
+  if (data.notificationsEnabled === false) return { due: false };
+  if (!data.fcmToken) return { due: false };
+  const clock = localClock(now, userOffsetMinutes(data));
+  // Already reminded today, on their calendar.
+  if ((data.serverReminderSentOn || '') >= clock.date) return { due: false };
+  // Someone who already opened the app today does not need nagging.
+  if ((data.lastOpenedDate || '') === clock.date) return { due: false };
+  if (clock.hour < WINDOW_START_HOUR || clock.hour > WINDOW_END_HOUR) return { due: false };
+  return {
+    due: true,
+    localDate: clock.date,
+    timeOfDay: getTimeOfDay(clock.hour),
+    language: reminderLanguage(data.languageCode),
+  };
 }
 
 // Users who are actually due a reminder.
@@ -82,8 +152,11 @@ function buildNotificationBody(timeOfDay, streak) {
 // A field no shipped client knows about needs no such rule: old apps never
 // send it, so they can never clear it, and their writes keep working untouched.
 // `lastFoodReminderDate` survives as a legacy field that nothing reads.
-async function* eligibleUserPages() {
-  const today = todayKey();
+async function* eligibleUserPages(now = new Date()) {
+  // The latest calendar date anywhere on Earth right now. Anyone last reminded
+  // before it may be due somewhere in their own day; the exact test, on the
+  // user's clock, is reminderDecision() below.
+  const latestDate = dateKeyUtc(new Date(now.getTime() + MAX_OFFSET_MINUTES * 60000));
   let cursor = null;
   let seen = 0;
 
@@ -91,7 +164,7 @@ async function* eligibleUserPages() {
     let query = db
       .collectionGroup('settings')
       .where('foodRemindersEnabled', '==', true)
-      .where('serverReminderSentOn', '<', today)
+      .where('serverReminderSentOn', '<', latestDate)
       .orderBy('serverReminderSentOn')
       .orderBy('__name__')
       .limit(PAGE_SIZE);
@@ -108,10 +181,8 @@ async function* eligibleUserPages() {
       if (doc.id !== 'app') continue;
 
       const data = doc.data() || {};
-      if (data.notificationsEnabled === false) continue;
-      // Someone who already opened the app today does not need nagging.
-      if ((data.lastOpenedDate || '') === today) continue;
-      if (!data.fcmToken) continue;
+      const decision = reminderDecision(data, now);
+      if (!decision.due) continue;
 
       const uid = doc.ref.parent.parent && doc.ref.parent.parent.id;
       if (!uid) continue;
@@ -121,6 +192,9 @@ async function* eligibleUserPages() {
         fcmToken: data.fcmToken,
         streak: typeof data.currentStreak === 'number' ? data.currentStreak : 0,
         ref: doc.ref,
+        localDate: decision.localDate,
+        timeOfDay: decision.timeOfDay,
+        language: decision.language,
       });
     }
 
@@ -138,13 +212,13 @@ async function* eligibleUserPages() {
 // Sends one multicast per 500 tokens instead of one request per user, and
 // prunes tokens the device has invalidated - without that, an uninstalled app
 // is retried three times a day forever.
-async function sendBatch(users, timeOfDay) {
+async function sendBatch(users) {
   if (users.length === 0) return { sent: 0, pruned: 0 };
 
   // Streak wording differs per user, so group by the message they receive.
   const groups = new Map();
   for (const user of users) {
-    const notification = buildNotificationBody(timeOfDay, user.streak);
+    const notification = buildNotificationBody(user.timeOfDay, user.streak, user.language);
     const key = `${notification.title}|${notification.body}`;
     if (!groups.has(key)) groups.set(key, { notification, members: [] });
     groups.get(key).members.push(user);
@@ -152,8 +226,6 @@ async function sendBatch(users, timeOfDay) {
 
   let sent = 0;
   let pruned = 0;
-  const today = todayKey();
-
   for (const { notification, members } of groups.values()) {
     for (let i = 0; i < members.length; i += FCM_BATCH) {
       const slice = members.slice(i, i + FCM_BATCH);
@@ -211,7 +283,7 @@ async function sendBatch(users, timeOfDay) {
           writer.set(
             member.ref,
             {
-              serverReminderSentOn: today,
+              serverReminderSentOn: member.localDate,
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             },
             { merge: true },
@@ -239,19 +311,18 @@ async function sendBatch(users, timeOfDay) {
   return { sent, pruned };
 }
 
-async function processReminders() {
-  const timeOfDay = getTimeOfDay();
+async function processReminders(now = new Date()) {
   const startedAt = Date.now();
-  console.log(`FoodReminder: processing ${timeOfDay} reminders...`);
+  console.log('FoodReminder: processing reminders due on each user\'s clock...');
 
   let total = 0;
   let sent = 0;
   let pruned = 0;
 
   try {
-    for await (const page of eligibleUserPages()) {
+    for await (const page of eligibleUserPages(now)) {
       total += page.length;
-      const result = await sendBatch(page, timeOfDay);
+      const result = await sendBatch(page);
       sent += result.sent;
       pruned += result.pruned;
     }
@@ -259,7 +330,6 @@ async function processReminders() {
     console.log(
       JSON.stringify({
         event: 'reminder.run',
-        timeOfDay,
         eligible: total,
         sent,
         prunedTokens: pruned,
@@ -279,4 +349,7 @@ module.exports = {
   getTimeOfDay,
   buildNotificationBody,
   eligibleUserPages,
+  reminderDecision,
+  localClock,
+  userOffsetMinutes,
 };

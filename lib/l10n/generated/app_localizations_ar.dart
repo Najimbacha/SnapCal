@@ -577,6 +577,39 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notif_meal_reminders_channel => 'تذكير الوجبات';
 
   @override
+  String get notif_prompt_title => 'تذكير في أوقات الوجبات';
+
+  @override
+  String get notif_prompt_body =>
+      'يمكن لـ SnapCal تذكيرك بتسجيل الفطور والغداء والعشاء. يمكنك تغيير ذلك في أي وقت من الإعدادات.';
+
+  @override
+  String get notif_prompt_allow => 'تفعيل التذكيرات';
+
+  @override
+  String get notif_prompt_later => 'ليس الآن';
+
+  @override
+  String get notif_blocked_title => 'إشعارات SnapCal متوقفة';
+
+  @override
+  String get notif_blocked_body =>
+      'هاتفك يحظرها، لذلك لا تصلك التذكيرات. اضغط لتفعيلها.';
+
+  @override
+  String get notif_food_reminders_channel => 'تذكيرات مسح الطعام';
+
+  @override
+  String get notif_food_reminders_channel_description => 'تذكيرات لمسح وجباتك';
+
+  @override
+  String get notif_updates_channel => 'تحديثات SnapCal';
+
+  @override
+  String get notif_updates_channel_description =>
+      'أخبار وتحديثات التطبيق من SnapCal';
+
+  @override
   String get notif_meal_reminders_channel_description =>
       'تذكيرات لتسجيل تغذيتك اليومية.';
 

@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../widgets/notification_permission_prompt.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/meal.dart';
@@ -480,6 +481,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // A waiting update comes first: it is the one thing worth asking about,
     // and two prompts back to back is one too many.
     if (await ForceUpdateService().checkAndPrompt(context)) return;
+    if (!mounted) return;
+
+    // Reminders need permission, asked here once with a reason rather than
+    // cold at first launch. One prompt per visit, so it goes before upsells.
+    if (await NotificationPermissionPrompt.maybeShow(context)) return;
     if (!mounted) return;
 
     final todaysMealsAsync = ref.read(todaysMealsProvider);
