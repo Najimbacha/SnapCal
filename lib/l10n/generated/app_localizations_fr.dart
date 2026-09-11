@@ -4824,4 +4824,21 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get onboarding_activity_moderate_desc =>
       '3-5 jours d\'exercice par semaine';
+
+  @override
+  String get planner_regen_limit =>
+      'Vous pouvez renouveler votre plan 3 fois par semaine. Réessayez dans quelques jours.';
+
+  @override
+  String get planner_week_ended_title => 'Le plan de cette semaine est terminé';
+
+  @override
+  String get planner_week_ended_body =>
+      'Planifiez une nouvelle semaine pour garder le cap.';
+
+  @override
+  String get planner_week_ended_action => 'Planifier ma nouvelle semaine';
+
+  @override
+  String get planner_skip_light => 'À sauter ou très léger';
 }

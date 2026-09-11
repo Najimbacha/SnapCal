@@ -7,34 +7,24 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import 'package:snapcal/widgets/app_icon.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_colors.dart';
+import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/grocery_item.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/meal_plan.dart';
 import '../../data/models/user_settings.dart';
 import '../../data/services/connectivity_service.dart';
-import '../../data/services/gemini_service.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/planner_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import 'meal_planner_setup.dart';
 import 'meal_planner_widgets.dart';
-
-final plannerNotifierProvider = ChangeNotifierProvider<PlannerProvider>((ref) {
-  final settings =
-      ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults();
-  final planner = PlannerProvider(AIService(), settings);
-  ref.listen<AsyncValue<UserSettings>>(settingsProvider, (previous, next) {
-    final updated = next.valueOrNull;
-    if (updated == null || previous?.valueOrNull == updated) return;
-    planner.updateSettings(updated);
-  });
-  return planner;
-});
 
 enum _PlannerTab { plan, grocery }
 
@@ -62,6 +52,12 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     final planner = ref.watch(plannerNotifierProvider);
     final settings =
         ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
+    // Which planned meals are in today's diary. Read from the diary, not
+    // kept in memory, so the tick survives a restart and goes if the entry
+    // is deleted.
+    final loggedToday =
+        ref.watch(todaysMealsProvider).valueOrNull?.map((m) => m.id).toSet() ??
+        const <String>{};
 
     ref.listen<PlannerProvider>(plannerNotifierProvider, (_, next) {
       final error = next.error;
@@ -110,6 +106,19 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
             : _buildFreePreviewPlan(settings, context);
     final selectedIndex = _resolveSelectedIndex(plan, access.isPro);
     final meals = plan.weeklyMeals[selectedIndex] ?? const <Meal>[];
+    // And the viewed day's own diary: a meal logged on the day it was
+    // planned for keeps its tick when that day is looked back on.
+    final planDate = app_date.DateUtils.getDateString(
+      plan.startDate.add(Duration(days: selectedIndex)),
+    );
+    final loggedOnPlanDay =
+        ref
+            .watch(mealRepositoryProvider)
+            .valueOrNull
+            ?.getMealsByDate(planDate)
+            .map((m) => m.id)
+            .toSet() ??
+        const <String>{};
 
     return AppPageScaffold(
       title: '',
@@ -191,6 +200,8 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                         settings: settings,
                         planner: planner,
                         isPro: access.isPro,
+                        loggedToday: loggedToday,
+                        loggedOnPlanDay: loggedOnPlanDay,
                       )
                       : _buildGroceryTab(
                         key: ValueKey(
@@ -229,8 +240,12 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     required UserSettings settings,
     required PlannerProvider planner,
     required bool isPro,
+    required Set<String> loggedToday,
+    required Set<String> loggedOnPlanDay,
   }) {
     final date = plan.startDate.add(Duration(days: dayIndex));
+    final today = app_date.DateUtils.getTodayString();
+    final planDate = app_date.DateUtils.getDateString(date);
     final totalCalories = meals.fold<int>(
       0,
       (sum, meal) => sum + meal.calories,
@@ -246,6 +261,14 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
             padding: const EdgeInsets.only(bottom: 12),
             child: PlannerPreviewLabel(),
           ),
+        // A finished week used to stay on screen with nothing to say so, its
+        // dates in the past and no day marked as today.
+        if (isPro && planner.isCurrentPlanExpired) ...[
+          _WeekEndedCard(
+            onPlanNewWeek: () => setState(() => _editingSetup = true),
+          ),
+          const SizedBox(height: 16),
+        ],
         PlannerDayHeading(
           date: date,
           mealCount: meals.length,
@@ -271,7 +294,13 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         else
           ...List.generate(meals.length, (index) {
             final meal = meals[index];
-            final isLogged = planner.loggedPlannedMealIds.contains(meal.id);
+            final isLogged =
+                loggedToday.contains(
+                  PlannerProvider.logIdFor(meal.id, today),
+                ) ||
+                loggedOnPlanDay.contains(
+                  PlannerProvider.logIdFor(meal.id, planDate),
+                );
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: PlannerMealRow(
@@ -295,6 +324,14 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
           PlannerNotice(
             message: planner.fallbackNotice!,
             onDismiss: planner.clearFallbackNotice,
+          ),
+        ],
+        if (planner.rebalanceNotice != null &&
+            dayIndex == planner.currentPlanTodayIndex) ...[
+          const SizedBox(height: 12),
+          PlannerNotice(
+            message: planner.rebalanceNotice!,
+            onDismiss: planner.clearRebalanceNotice,
           ),
         ],
       ],
@@ -375,15 +412,36 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     unawaited(_planner.generateWeeklyPlan());
   }
 
+  /// Logs a planned meal as eaten now, today.
+  ///
+  /// It kept the plan's own day and hour, so Wednesday's lunch logged on a
+  /// Monday went into Wednesday's diary. The id is one per planned meal per
+  /// day, so logging it again updates the entry rather than adding another.
   Future<void> _logPlannedMeal(Meal meal) async {
     HapticFeedback.mediumImpact();
-    final logged = meal.copyWith(scanSource: 'meal_planner');
-    await ref.read(mealLogProvider.notifier).addMeal(logged);
-    _planner.markPlannedMealLogged(meal.id);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final mealLog = ref.read(mealLogProvider.notifier);
+    final planner = _planner;
+    final now = DateTime.now();
+    final today = app_date.DateUtils.getDateString(now);
+    final logged = meal.copyWith(
+      id: PlannerProvider.logIdFor(meal.id, today),
+      dateString: today,
+      timestamp: now.millisecondsSinceEpoch,
+      scanSource: 'meal_planner',
+    );
+    try {
+      await mealLog.addMeal(logged, mealDate: today);
+    } catch (e) {
+      debugPrint('Logging planned meal failed: $e');
+      messenger.showSnackBar(SnackBar(content: Text(l10n.meal_save_failed)));
+      return;
+    }
+    planner.markPlannedMealLogged(meal.id);
+    messenger.showSnackBar(
       SnackBar(
-        content: Text(AppLocalizations.of(context)!.result_save_success),
+        content: Text(l10n.result_save_success),
         backgroundColor: AppColors.success,
       ),
     );
@@ -430,8 +488,13 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       context: context,
       barrierDismissible: false,
       builder:
-          (_) => PlannerWorkingDialog(
-            label: AppLocalizations.of(context)!.planner_swap_loading,
+          (_) => PopScope(
+            // Back closed this box, and when the swap finished the pop meant
+            // for it closed whatever was underneath -- the planner itself.
+            canPop: false,
+            child: PlannerWorkingDialog(
+              label: AppLocalizations.of(context)!.planner_swap_loading,
+            ),
           ),
     );
     await _planner.swapMeal(
@@ -454,16 +517,35 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     if (error != null) _planner.clearError();
   }
 
+  void _showRegenLimit() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.planner_regen_limit),
+      ),
+    );
+  }
+
   void _confirmRegenerateWeek() {
+    final planner = _planner;
+    final replacingLivePlan =
+        planner.currentPlan != null && !planner.isCurrentPlanExpired;
+    if (replacingLivePlan && !planner.canRegenerate) {
+      _showRegenLimit();
+      return;
+    }
     _showRegenerateDialog(
       body: AppLocalizations.of(context)!.planner_setup_body,
-      onConfirm: _planner.generateWeeklyPlan,
+      onConfirm: planner.generateWeeklyPlan,
     );
   }
 
   void _confirmRegenerateDay(int dayIndex) {
     final plan = _planner.currentPlan;
     if (plan == null) return;
+    if (!_planner.canRegenerate) {
+      _showRegenLimit();
+      return;
+    }
     final date = plan.startDate.add(Duration(days: dayIndex));
     _showRegenerateDialog(
       body: AppLocalizations.of(context)!.planner_regenerate_body(
@@ -511,6 +593,65 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       context,
       PaywallEntryPoint.plannerLockedDay,
       featureName: 'meal_planner',
+    );
+  }
+}
+
+class _WeekEndedCard extends StatelessWidget {
+  const _WeekEndedCard({required this.onPlanNewWeek});
+
+  final VoidCallback onPlanNewWeek;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final accent = context.primaryColor;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: context.isDarkMode ? 0.16 : 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(AppSymbols.calendarCheck, size: 20, color: accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.planner_week_ended_title,
+                  style: TextStyle(
+                    color: context.textPrimaryColor,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.planner_week_ended_body,
+            style: TextStyle(
+              color: context.textSecondaryColor,
+              fontSize: 13.5,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              key: const ValueKey('planner-new-week'),
+              onPressed: onPlanNewWeek,
+              child: Text(l10n.planner_week_ended_action),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

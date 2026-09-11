@@ -8541,6 +8541,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'3-5 days of exercise per week'**
   String get onboarding_activity_moderate_desc;
+
+  /// No description provided for @planner_regen_limit.
+  ///
+  /// In en, this message translates to:
+  /// **'You can refresh your plan 3 times a week. Try again in a few days.'**
+  String get planner_regen_limit;
+
+  /// No description provided for @planner_week_ended_title.
+  ///
+  /// In en, this message translates to:
+  /// **'This week\'s plan has ended'**
+  String get planner_week_ended_title;
+
+  /// No description provided for @planner_week_ended_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan a fresh week to keep your meals on track.'**
+  String get planner_week_ended_body;
+
+  /// No description provided for @planner_week_ended_action.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my new week'**
+  String get planner_week_ended_action;
+
+  /// No description provided for @planner_skip_light.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip or keep very light'**
+  String get planner_skip_light;
 }
 
 class _AppLocalizationsDelegate

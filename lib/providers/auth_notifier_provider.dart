@@ -373,6 +373,7 @@ class AuthNotifier extends _$AuthNotifier {
     ref.invalidate(templatesProvider);
     ref.invalidate(assistantProvider);
     ref.invalidate(plannerProvider);
+    ref.invalidate(plannerNotifierProvider);
   }
 
   Future<void> signOut() async {

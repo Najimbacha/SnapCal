@@ -1645,5 +1645,10 @@
   "onboarding_pace_recommended": "موصى به",
   "onboarding_pace_difference": "{amount} عن اليوم",
   "onboarding_activity_moderate": "نشط",
-  "onboarding_activity_moderate_desc": "3-5 أيام تمارين أسبوعيًا"
+  "onboarding_activity_moderate_desc": "3-5 أيام تمارين أسبوعيًا",
+  "planner_regen_limit": "يمكنك تحديث خطتك 3 مرات في الأسبوع. حاول مرة أخرى بعد بضعة أيام.",
+  "planner_week_ended_title": "انتهت خطة هذا الأسبوع",
+  "planner_week_ended_body": "خطط لأسبوع جديد لتبقى وجباتك على المسار.",
+  "planner_week_ended_action": "خطط أسبوعي الجديد",
+  "planner_skip_light": "تخطَّها أو اجعلها خفيفة جداً"
 }

@@ -4714,4 +4714,21 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get onboarding_activity_moderate_desc => '3-5 أيام تمارين أسبوعيًا';
+
+  @override
+  String get planner_regen_limit =>
+      'يمكنك تحديث خطتك 3 مرات في الأسبوع. حاول مرة أخرى بعد بضعة أيام.';
+
+  @override
+  String get planner_week_ended_title => 'انتهت خطة هذا الأسبوع';
+
+  @override
+  String get planner_week_ended_body =>
+      'خطط لأسبوع جديد لتبقى وجباتك على المسار.';
+
+  @override
+  String get planner_week_ended_action => 'خطط أسبوعي الجديد';
+
+  @override
+  String get planner_skip_light => 'تخطَّها أو اجعلها خفيفة جداً';
 }

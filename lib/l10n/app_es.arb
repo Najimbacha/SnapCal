@@ -1642,5 +1642,10 @@
   "onboarding_pace_recommended": "Recomendado",
   "onboarding_pace_difference": "{amount} desde hoy",
   "onboarding_activity_moderate": "Activo",
-  "onboarding_activity_moderate_desc": "3-5 días de ejercicio por semana"
+  "onboarding_activity_moderate_desc": "3-5 días de ejercicio por semana",
+  "planner_regen_limit": "Puedes renovar tu plan 3 veces por semana. Inténtalo de nuevo en unos días.",
+  "planner_week_ended_title": "El plan de esta semana ha terminado",
+  "planner_week_ended_body": "Planifica una nueva semana para seguir con tus comidas.",
+  "planner_week_ended_action": "Planificar mi nueva semana",
+  "planner_skip_light": "Sáltala o hazla muy ligera"
 }

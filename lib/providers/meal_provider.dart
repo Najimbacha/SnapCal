@@ -1,4 +1,5 @@
 import '../data/services/app_review_service.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
@@ -7,6 +8,7 @@ import '../core/services/app_lifecycle_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/gemini_service.dart';
 import '../data/services/promotional_paywall_service.dart';
+import 'planner_provider.dart';
 import 'repository_providers.dart';
 import 'current_day_provider.dart';
 import 'settings_provider.dart';
@@ -92,6 +94,27 @@ class MealLog extends _$MealLog {
     // And the review prompt's (5 logged meals across 3 days). The service
     // was complete but nothing fed it, so it could never ask.
     unawaited(AppReviewService.instance().recordSuccessfulMealScanOrLog());
+
+    // After an off-plan meal, the rest of that day's planned meals are
+    // resized to what the day has left. The planner could do this all
+    // along; nothing asked it to.
+    unawaited(
+      _rebalancePlanAfter(meal, repo.getMealsByDate(meal.dateString)),
+    );
+  }
+
+  Future<void> _rebalancePlanAfter(Meal meal, List<Meal> mealsForDate) async {
+    try {
+      if (!ref.read(proAccessProvider).isPro) return;
+      await ref
+          .read(plannerNotifierProvider)
+          .rebalanceAfterMealLog(
+            loggedMeal: meal,
+            loggedMealsForDate: mealsForDate,
+          );
+    } catch (e) {
+      debugPrint('Planner rebalance skipped: $e');
+    }
   }
 
   Future<void> updateMeal(Meal meal) async {

@@ -2342,5 +2342,10 @@
   "onboarding_activity_moderate": "Active",
   "onboarding_activity_moderate_desc": "3-5 days of exercise per week",
   "@onboarding_step_of": {"placeholders":{"current":{"type":"int"},"total":{"type":"int"}}},
-  "@onboarding_pace_difference": {"placeholders":{"amount":{"type":"String"}}}
+  "@onboarding_pace_difference": {"placeholders":{"amount":{"type":"String"}}},
+  "planner_regen_limit": "You can refresh your plan 3 times a week. Try again in a few days.",
+  "planner_week_ended_title": "This week's plan has ended",
+  "planner_week_ended_body": "Plan a fresh week to keep your meals on track.",
+  "planner_week_ended_action": "Plan my new week",
+  "planner_skip_light": "Skip or keep very light"
 }

@@ -2,7 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/grocery_item.dart';
 import '../data/models/meal.dart';
 import '../data/models/meal_plan.dart';
@@ -13,8 +15,28 @@ import '../l10n/generated/app_localizations.dart';
 import '../planner/planner_conversion.dart';
 import '../planner/planner_math.dart';
 import '../planner/planner_models.dart';
+import '../core/utils/pref_scoping.dart';
+import 'settings_provider.dart';
 
 part 'planner_provider.g.dart';
+
+/// The planner the screens use, following settings as they change.
+///
+/// Lives here rather than in the planner screen so that signing out can
+/// reset it. Sign-out invalidated the placeholder [plannerProvider] instead,
+/// and this one went on showing the previous account's plan and grocery list
+/// from memory, over boxes the sign-out had already deleted.
+final plannerNotifierProvider = ChangeNotifierProvider<PlannerProvider>((ref) {
+  final settings =
+      ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults();
+  final planner = PlannerProvider(AIService(), settings);
+  ref.listen<AsyncValue<UserSettings>>(settingsProvider, (previous, next) {
+    final updated = next.valueOrNull;
+    if (updated == null || previous?.valueOrNull == updated) return;
+    planner.updateSettings(updated);
+  });
+  return planner;
+});
 
 class PlannerProvider with ChangeNotifier {
   static const String _planBoxName = 'meal_plan_box';
@@ -66,8 +88,15 @@ class PlannerProvider with ChangeNotifier {
   bool get isRebalancing => _isRebalancing;
   String? _error;
   String? get error => _error;
-  int _regenCountThisWeek = 0;
-  int get regenCountThisWeek => _regenCountThisWeek;
+  /// When the plan was last refreshed by AI -- a day, or a week that was
+  /// still running -- kept on the phone. The count lived in memory, so the
+  /// weekly limit reset whenever the app restarted, and a week refresh reset
+  /// it outright.
+  List<int> _regenLog = [];
+  static const int maxRegenPerWeek = 3;
+  static const Duration _regenWindow = Duration(days: 7);
+  static const String _regenLogKey = 'planner_regen_log';
+  int get regenCountThisWeek => regensWithin(_regenLog, DateTime.now()).length;
   String get _languageCode {
     final code = _userSettings.languageCode ?? '';
     return AppLocalizations.supportedLocales.any(
@@ -132,7 +161,28 @@ class PlannerProvider with ChangeNotifier {
 
   PlannerProvider(this._aiService, this._userSettings) {
     _captureNutritionGoals(_userSettings);
-    _init();
+    _ready = _init();
+  }
+
+  /// Completes once the saved plan is loaded. A rebalance after a meal log
+  /// can arrive before the planner screen has opened this session, and it
+  /// used to find no plan yet and quietly do nothing.
+  late final Future<void> _ready;
+
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  /// Signing out disposes the planner; an AI request still running would
+  /// otherwise report back into it and throw.
+  @override
+  void notifyListeners() {
+    if (_disposed) return;
+    super.notifyListeners();
   }
 
   bool _hasNutritionGoalChange(UserSettings settings) {
@@ -218,6 +268,7 @@ class PlannerProvider with ChangeNotifier {
       }
 
       _loadData();
+      await _loadRegenLog();
       _uiState =
           _currentPlan == null
               ? const AsyncUiState.empty()
@@ -243,6 +294,14 @@ class PlannerProvider with ChangeNotifier {
 
   Future<void> generateWeeklyPlan() async {
     if (_isGenerating) return;
+    // Replacing a week still running is a refresh and counts against the
+    // limit; a first plan, or one after the last has ended, does not.
+    final replacingLivePlan = _currentPlan != null && !isCurrentPlanExpired;
+    if (replacingLivePlan && !canRegenerate) {
+      _error = _l10n.planner_regen_limit;
+      notifyListeners();
+      return;
+    }
     _isGenerating = true;
     _uiState =
         _currentPlan == null
@@ -262,6 +321,13 @@ class PlannerProvider with ChangeNotifier {
           )
           .timeout(const Duration(seconds: 60));
 
+      if (result == null && _currentPlan != null) {
+        // The AI came back empty. The plan the user already has beats a
+        // generic template, which is what used to replace it, grocery list
+        // and all.
+        _fallbackNotice = _l10n.error_generic;
+        return;
+      }
       final finalResult = result ?? buildFallbackPlan(userSettings);
       if (result == null) {
         _fallbackNotice = _l10n.error_generic;
@@ -278,7 +344,7 @@ class PlannerProvider with ChangeNotifier {
                 ? finalResult.groceryList
                 : _buildGroceriesFromPlan(_currentPlan!);
         await _groceryBox?.addAll(_groceryList);
-        _regenCountThisWeek = 0;
+        if (replacingLivePlan) await _recordRegen();
       } else {
         throw Exception('API returned empty meal plan');
       }
@@ -311,7 +377,6 @@ class PlannerProvider with ChangeNotifier {
                 ? fallback.groceryList
                 : _buildGroceriesFromPlan(_currentPlan!);
         await _groceryBox?.addAll(_groceryList);
-        _regenCountThisWeek = 0;
         _fallbackNotice = errorMsg;
       } else if (_currentPlan == null) {
         _error = errorMsg;
@@ -335,6 +400,11 @@ class PlannerProvider with ChangeNotifier {
     if (_currentPlan == null) return;
 
     if (_isRegenerating) return;
+    if (!canRegenerate) {
+      _error = _l10n.planner_regen_limit;
+      notifyListeners();
+      return;
+    }
     _isRegenerating = true;
     _uiState = const AsyncUiState.refreshing();
     _error = null;
@@ -363,8 +433,12 @@ class PlannerProvider with ChangeNotifier {
 
         // Remove old grocery items that belong to the regenerated day,
         // then merge new items (deduplicated by name).
+        // ...but not those another day still uses.
+        final stillUsed = _planIngredientNames();
         _groceryList.removeWhere(
-          (g) => oldDayIngredients.contains(g.name.toLowerCase()),
+          (g) =>
+              oldDayIngredients.contains(g.name.toLowerCase()) &&
+              !groceryStillNeeded(g.name, stillUsed),
         );
         await _groceryBox?.clear();
         await _groceryBox?.addAll(_groceryList);
@@ -383,7 +457,7 @@ class PlannerProvider with ChangeNotifier {
           }
         }
 
-        _regenCountThisWeek++;
+        await _recordRegen();
       } else {
         throw Exception('API returned empty day regeneration');
       }
@@ -463,18 +537,24 @@ class PlannerProvider with ChangeNotifier {
         await _planBox?.put('current', _currentPlan!);
 
         // Update grocery list
+        // An empty name matched every item on the list.
         final oldIngredients =
             mealToSwap.ingredients
                 ?.map((i) => _parseIngredient(i).$1.toLowerCase())
+                .where((i) => i.isNotEmpty)
                 .toSet() ??
             {};
 
-        // Remove grocery list items matching old ingredients
+        // Remove the old meal's items -- only those no other meal still
+        // uses. An ingredient shared across the week (olive oil, rice) used
+        // to leave the list with the one meal swapped out.
+        final stillUsed = _planIngredientNames();
         _groceryList.removeWhere((g) {
           final gName = g.name.toLowerCase();
           return oldIngredients.any(
-            (oi) => gName.contains(oi) || oi.contains(gName),
-          );
+                (oi) => gName.contains(oi) || oi.contains(gName),
+              ) &&
+              !groceryStillNeeded(g.name, stillUsed);
         });
 
         // Add new ingredients
@@ -501,7 +581,6 @@ class PlannerProvider with ChangeNotifier {
         await _groceryBox?.clear();
         await _groceryBox?.addAll(_groceryList);
 
-        _regenCountThisWeek++;
       } else {
         _error = _l10n.error_generic;
       }
@@ -699,8 +778,9 @@ class PlannerProvider with ChangeNotifier {
     required Meal loggedMeal,
     required List<Meal> loggedMealsForDate,
   }) async {
-    if (_currentPlan == null || _isRebalancing) return;
     if (loggedMeal.scanSource == 'meal_planner') return;
+    await _ready;
+    if (_disposed || _currentPlan == null || _isRebalancing) return;
 
     final dayIndex = _dayIndexForDateString(loggedMeal.dateString);
     if (dayIndex == null) return;
@@ -708,10 +788,15 @@ class PlannerProvider with ChangeNotifier {
     final dayMeals = List<Meal>.from(_currentPlan!.weeklyMeals[dayIndex] ?? []);
     if (dayMeals.isEmpty) return;
 
+    // Logged by the diary's own record, which outlives a restart, as well as
+    // by this session's taps -- or a meal already eaten could be resized.
+    final loggedIds = loggedMealsForDate.map((m) => m.id).toSet();
     final remainingIndexes = <int>[];
     for (var i = 0; i < dayMeals.length; i++) {
       final meal = dayMeals[i];
-      final isLogged = _loggedPlannedMealIds.contains(meal.id);
+      final isLogged =
+          _loggedPlannedMealIds.contains(meal.id) ||
+          loggedIds.contains(logIdFor(meal.id, loggedMeal.dateString));
       final isAfterLoggedMeal = meal.timestamp > loggedMeal.timestamp;
       if (!isLogged && isAfterLoggedMeal) remainingIndexes.add(i);
     }
@@ -803,7 +888,7 @@ class PlannerProvider with ChangeNotifier {
       for (final meal in fitted)
         meal.copyWith(
           portion:
-              meal.calories == 0 ? 'Skip or keep very light' : meal.portion,
+              meal.calories == 0 ? _l10n.planner_skip_light : meal.portion,
           aiRationale: _rebalanceRationale(meal.calories, meal.macros.protein),
           scanSource: 'meal_planner_rebalanced',
         ),
@@ -1833,9 +1918,76 @@ class PlannerProvider with ChangeNotifier {
   DateTime _dateOnly(DateTime date) =>
       DateTime(date.year, date.month, date.day);
 
-  bool get canRegenerate {
-    const maxRegenPerWeek = 3;
-    return _userSettings.isPro && _regenCountThisWeek < maxRegenPerWeek;
+  /// Only the weekly limit. Who may use the planner at all is decided by
+  /// the screens, from the app's one Pro status; a second check here, on the
+  /// planner's own copy of the settings, could only disagree with it.
+  bool get canRegenerate => regenCountThisWeek < maxRegenPerWeek;
+
+  /// The refreshes still inside the rolling week.
+  @visibleForTesting
+  static List<int> regensWithin(List<int> log, DateTime now) {
+    final cutoff = now.subtract(_regenWindow).millisecondsSinceEpoch;
+    return log.where((t) => t > cutoff).toList();
+  }
+
+  Future<void> _loadRegenLog() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(scopedPrefKey(_regenLogKey)) ?? const [];
+      _regenLog = regensWithin(
+        raw.map(int.tryParse).whereType<int>().toList(),
+        DateTime.now(),
+      );
+    } catch (e) {
+      debugPrint('Planner: regeneration log unavailable: $e');
+    }
+  }
+
+  Future<void> _recordRegen() async {
+    final now = DateTime.now();
+    _regenLog = [...regensWithin(_regenLog, now), now.millisecondsSinceEpoch];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        scopedPrefKey(_regenLogKey),
+        _regenLog.map((t) => '$t').toList(),
+      );
+    } catch (e) {
+      debugPrint('Planner: could not save regeneration log: $e');
+    }
+  }
+
+  /// The diary id of a planned meal logged on [date]: one per planned meal
+  /// per day, so logging it twice updates the entry rather than adding a
+  /// second, and the planner can tell from the diary that it is done.
+  static String logIdFor(String plannedMealId, String date) =>
+      'planned_${plannedMealId}_$date';
+
+  /// Whether a grocery item is still used by some meal in the plan, by the
+  /// same loose name match the list is pruned with.
+  @visibleForTesting
+  static bool groceryStillNeeded(
+    String groceryName,
+    Set<String> planIngredients,
+  ) {
+    final name = groceryName.toLowerCase();
+    return planIngredients.any(
+      (ingredient) =>
+          ingredient == name ||
+          ingredient.contains(name) ||
+          name.contains(ingredient),
+    );
+  }
+
+  Set<String> _planIngredientNames() {
+    final plan = _currentPlan;
+    if (plan == null) return {};
+    return plan.weeklyMeals.values
+        .expand((meals) => meals)
+        .expand((meal) => meal.ingredients ?? const <String>[])
+        .map((ingredient) => _parseIngredient(ingredient).$1.toLowerCase())
+        .where((name) => name.isNotEmpty)
+        .toSet();
   }
 
   Future<void> toggleGroceryItem(String id) async {
@@ -1949,7 +2101,7 @@ class PlannerProvider with ChangeNotifier {
     _currentPlan = null;
     _groceryList = [];
     _loggedPlannedMealIds.clear();
-    _regenCountThisWeek = 0;
+    _regenLog = [];
     _error = null;
     _fallbackNotice = null;
     notifyListeners();

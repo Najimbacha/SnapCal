@@ -319,6 +319,7 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
     ref.invalidate(bodyMetricsProvider);
     ref.invalidate(assistantProvider);
     ref.invalidate(plannerProvider);
+    ref.invalidate(plannerNotifierProvider);
 
     // Home, not the sign-in wall.
     //
@@ -372,6 +373,7 @@ Future<void> confirmAndDeleteAccount(
         ref.invalidate(bodyMetricsProvider);
         ref.invalidate(assistantProvider);
         ref.invalidate(plannerProvider);
+        ref.invalidate(plannerNotifierProvider);
 
         // Same as sign-out above: a deleted account is signed back in
         // anonymously, and an anonymous user cannot leave '/auth'.
