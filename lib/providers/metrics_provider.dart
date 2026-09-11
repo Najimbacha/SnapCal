@@ -99,9 +99,14 @@ class BodyMetrics extends _$BodyMetrics {
     double weightKg, {
     DateTime? date,
     double? heightCm,
+    double? bodyFat,
   }) async {
     if (_box == null) return;
-    final metric = BodyMetric(date: date ?? DateTime.now(), weight: weightKg);
+    final metric = BodyMetric(
+      date: date ?? DateTime.now(),
+      weight: weightKg,
+      bodyFat: bodyFat,
+    );
     await _box!.add(metric);
     ref.invalidateSelf();
     unawaited(

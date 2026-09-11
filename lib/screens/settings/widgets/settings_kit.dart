@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -137,6 +137,7 @@ void showSettingsNameDialog(
   String currentName,
 ) {
   final l10n = AppLocalizations.of(context)!;
+  final messenger = ScaffoldMessenger.of(context);
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
@@ -147,10 +148,18 @@ void showSettingsNameDialog(
           subtitle: l10n.settings_how_to_call,
           initialValue: currentName,
           hintText: l10n.settings_set_name,
-          onSave:
-              (name) => ref
-                  .read(authNotifierProvider.notifier)
-                  .updateDisplayName(name),
+          // A failed rename used to vanish without a word.
+          onSave: (name) async {
+            await ref
+                .read(authNotifierProvider.notifier)
+                .updateDisplayName(name);
+            if (!context.mounted) return;
+            if (ref.read(authNotifierProvider).hasError) {
+              messenger.showSnackBar(
+                SnackBar(content: Text(l10n.settings_name_failed)),
+              );
+            }
+          },
         ),
   );
 }
@@ -397,8 +406,10 @@ void showUnitSelector(
             const SizedBox(height: 12),
             SettingsSelectionSheet(
               title: AppLocalizations.of(context)!.settings_height_unit,
-              options: ['cm', 'ft'],
-              currentValue: settings.heightUnit ?? 'cm',
+              // Heights are kept in inches for imperial users. "ft" was
+              // offered here, and nothing else in the app understood it.
+              options: ['cm', 'in'],
+              currentValue: isImperialHeight(settings.heightUnit) ? 'in' : 'cm',
               onSelect:
                   (value) => ref
                       .read(settingsProvider.notifier)
@@ -600,8 +611,7 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
     return 1;
   }
 
-  double? get _value =>
-      double.tryParse(_controller.text.replaceAll(',', '.'));
+  double? get _value => double.tryParse(_controller.text.replaceAll(',', '.'));
 
   bool get _isValid {
     final value = _value;
@@ -730,10 +740,7 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
                     ],
                   ),
                 ),
-                _StepButton(
-                  icon: LucideIcons.plus,
-                  onTap: () => _nudge(_step),
-                ),
+                _StepButton(icon: LucideIcons.plus, onTap: () => _nudge(_step)),
               ],
             ),
 
@@ -1591,6 +1598,7 @@ String localizeUnit(BuildContext context, String unit) {
     case 'cm':
       return l10n.settings_unit_cm;
     case 'in':
+    case 'ft':
       return l10n.settings_unit_in;
     default:
       return unit;
@@ -1619,4 +1627,32 @@ String localizeOption(BuildContext context, String option) {
     return l10n.settings_grams_unit;
   }
   return option;
+}
+
+/// A number as typed, with either decimal mark: "70,5" is how French,
+/// Spanish and Arabic keyboards write 70.5.
+double? parseDecimalInput(String text) =>
+    double.tryParse(text.trim().replaceAll(',', '.'));
+
+/// Whether a stored height unit means feet and inches. Imperial heights are
+/// kept in inches; "ft" is what an older units picker saved.
+bool isImperialHeight(String? unit) => unit == 'in' || unit == 'ft';
+
+/// How much is left toward [target], in the goal's own direction. Zero or
+/// less means reached or passed: it used to be the plain distance, so going
+/// past a weight-loss goal read as "2 kg left to reach target".
+double weightLeftToGoal({
+  required double start,
+  required double current,
+  required double target,
+}) => target < start ? current - target : target - current;
+
+/// A stored "19:30" as this phone tells the time: "7:30 PM" on a 12-hour
+/// phone, in the app's language.
+String formatReminderTime(BuildContext context, String hhmm) {
+  final parts = hhmm.split(':');
+  final hour = int.tryParse(parts.first);
+  final minute = parts.length > 1 ? int.tryParse(parts[1]) : 0;
+  if (hour == null || minute == null) return hhmm;
+  return TimeOfDay(hour: hour, minute: minute).format(context);
 }

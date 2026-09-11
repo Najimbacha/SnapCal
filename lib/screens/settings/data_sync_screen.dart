@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,43 +32,79 @@ class DataSyncScreen extends ConsumerWidget {
         children: [
           SettingsSection(
             title: l10n.settings_data_sync_title, // "Data & Sync"
-            children: [
-              SettingsRow(
-                icon: LucideIcons.download,
-                title: l10n.settings_export_data,
-                value: l10n.settings_export_desc,
-                onTap: () async {
-                  final settingsVal = ref.read(settingsProvider).valueOrNull;
-                  final authUser = ref.read(authStateProvider).valueOrNull;
-
-                  if (!ref.read(effectiveIsProProvider)) {
-                    PremiumConversionService().openPaywall(
-                      context,
-                      PaywallEntryPoint.reportInsight,
-                      featureName: 'pdf_export',
-                    );
-                    return;
-                  }
-
-                  final userName =
-                      authUser?.displayName ??
-                      authUser?.email?.split('@').first ??
-                      'Valued User';
-
-                  final repo = await ref.read(mealRepositoryProvider.future);
-                  await ReportPdfService.generateAndShareReport(
-                    userName: userName,
-                    meals: repo.getAllMeals(),
-                    settings: settingsVal ?? UserSettings.defaults(),
-                    streak: settingsVal?.currentStreak ?? 0,
-                  );
-                },
-              ),
-              const _CloudSyncRow(),
-            ],
+            children: [const _ExportRow(), const _CloudSyncRow()],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The PDF export. It had no busy state and no error handling: a failure
+/// said nothing, and a second tap started a second report.
+class _ExportRow extends ConsumerStatefulWidget {
+  const _ExportRow();
+
+  @override
+  ConsumerState<_ExportRow> createState() => _ExportRowState();
+}
+
+class _ExportRowState extends ConsumerState<_ExportRow> {
+  bool _busy = false;
+
+  Future<void> _export() async {
+    if (_busy) return;
+    if (!ref.read(effectiveIsProProvider)) {
+      PremiumConversionService().openPaywall(
+        context,
+        PaywallEntryPoint.reportInsight,
+        featureName: 'pdf_export',
+      );
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final settingsVal = ref.read(settingsProvider).valueOrNull;
+    final authUser = ref.read(authStateProvider).valueOrNull;
+    final name = authUser?.displayName?.trim();
+    final userName =
+        (name != null && name.isNotEmpty)
+            ? name
+            : authUser?.email?.split('@').first ?? l10n.report_guest_user;
+
+    setState(() => _busy = true);
+    try {
+      final repo = await ref.read(mealRepositoryProvider.future);
+      await ReportPdfService.generateAndShareReport(
+        userName: userName,
+        meals: repo.getAllMeals(),
+        settings: settingsVal ?? UserSettings.defaults(),
+        streak: settingsVal?.currentStreak ?? 0,
+      );
+    } catch (e) {
+      debugPrint('PDF export failed: $e');
+      messenger.showSnackBar(SnackBar(content: Text(l10n.report_failed)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SettingsRow(
+      icon: LucideIcons.download,
+      title: l10n.settings_export_data,
+      value: l10n.settings_export_desc,
+      trailing:
+          _busy
+              ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : null,
+      onTap: _busy ? null : _export,
     );
   }
 }

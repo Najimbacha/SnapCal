@@ -123,7 +123,10 @@ class PreferencesScreen extends ConsumerWidget {
                               SettingsRow(
                                 icon: LucideIcons.egg,
                                 title: l10n.settings_breakfast_time,
-                                value: settings.breakfastTime,
+                                value: formatReminderTime(
+                                  context,
+                                  settings.breakfastTime,
+                                ),
                                 onTap:
                                     () => selectTime(
                                       context,
@@ -135,7 +138,10 @@ class PreferencesScreen extends ConsumerWidget {
                               SettingsRow(
                                 icon: LucideIcons.utensils,
                                 title: l10n.settings_lunch_time,
-                                value: settings.lunchTime,
+                                value: formatReminderTime(
+                                  context,
+                                  settings.lunchTime,
+                                ),
                                 onTap:
                                     () => selectTime(
                                       context,
@@ -147,7 +153,10 @@ class PreferencesScreen extends ConsumerWidget {
                               SettingsRow(
                                 icon: LucideIcons.moon,
                                 title: l10n.settings_dinner_time,
-                                value: settings.dinnerTime,
+                                value: formatReminderTime(
+                                  context,
+                                  settings.dinnerTime,
+                                ),
                                 onTap:
                                     () => selectTime(
                                       context,

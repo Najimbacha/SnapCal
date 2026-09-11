@@ -398,23 +398,51 @@ class AuthNotifier extends _$AuthNotifier {
     });
   }
 
+  /// Deletes the account on the server -- every record, photo and scan, then
+  /// the login -- and only then clears this phone.
+  ///
+  /// This deleted the Firebase login from the phone and nothing else: the
+  /// data stayed in the cloud. Firebase also refuses that call unless the
+  /// user signed in within the last few minutes, so it usually failed -- and
+  /// failed quietly, caught into state while the caller went home as if the
+  /// account were gone. It now throws, and the caller says so.
   Future<void> deleteAccount() async {
-    if (state.isLoading) return;
+    if (state.isLoading) {
+      throw StateError('Another account action is still running.');
+    }
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) await user.delete().timeout(TimeoutPolicy.auth);
-      // The Firebase user is gone; nothing of theirs may remain on disk.
-      // Clears every box, deletes the box files and removes the encryption
-      // key from secure storage.
+    try {
+      // Anything still queued goes up first, so the server deletes it too
+      // rather than it arriving after the account is gone.
       try {
-        await SessionCleanupService()
-            .clearLocalUserData(wipeSecurityKeys: true)
-            .timeout(const Duration(seconds: 20));
+        await _flushQueueBeforeLeaving();
       } catch (e) {
-        debugPrint('Post-deletion cleanup warning: $e');
+        debugPrint('Pre-deletion flush skipped: $e');
       }
-    });
+      await ApiClient.dio
+          .delete<void>('${ConfigService().backendProxyUrl}/api/account')
+          .timeout(const Duration(seconds: 90));
+    } catch (e, stack) {
+      state = AsyncError(e, stack);
+      rethrow;
+    }
+    // The account is gone; nothing of theirs may remain on disk. Clears
+    // every box, deletes the box files and removes the encryption key.
+    try {
+      await SessionCleanupService()
+          .clearLocalUserData(wipeSecurityKeys: true)
+          .timeout(const Duration(seconds: 20));
+    } catch (e) {
+      debugPrint('Post-deletion cleanup warning: $e');
+    }
+    unawaited(_googleSignIn.signOut());
+    unawaited(FacebookAuth.instance.logOut());
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (e) {
+      debugPrint('Sign-out after deletion: $e');
+    }
+    state = const AsyncData(null);
   }
 
   Future<void> sendPasswordResetEmail(String email) async {

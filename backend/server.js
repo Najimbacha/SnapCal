@@ -113,6 +113,8 @@ function forwardAsyncErrors(router) {
   return router;
 }
 
+const path = require('node:path');
+
 const app = forwardAsyncErrors(express());
 const db = admin.firestore();
 let authVerifierForTest = null;
@@ -1812,6 +1814,14 @@ app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'SnapCal Backend' });
 });
 
+// The Terms of Service the app links to. Served from here because the address
+// the app used, snapcal.app/terms, never existed: the link opened nothing.
+const TERMS_PATH = path.join(__dirname, 'legal', 'terms.html');
+app.get('/terms', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600');
+  return res.sendFile(TERMS_PATH);
+});
+
 // Rolling record of recent scan outcomes.
 //
 // The previous /health returned a hardcoded 'ok'. It proved Node was running,
@@ -2074,6 +2084,58 @@ app.delete('/api/food-scans/:scanId', authenticateToken, verifyAppCheck, apiLimi
   }
   await ref.delete();
   await userDoc(uid).collection('uploads').doc(scanId).delete().catch(() => {});
+  return res.status(204).send();
+});
+
+// Account deletion.
+//
+// The app deleted only the Firebase login, from the phone. Everything the
+// account had written -- meals, weigh-ins, settings, scans, progress photos --
+// stayed in Firestore and Storage, where the rules rightly refuse a client
+// delete of the root documents. And Firebase refuses a client-side delete
+// unless the user signed in within the last few minutes, so most attempts
+// failed before reaching even that.
+//
+// Data first, login last: if a step fails, the user can still sign in and try
+// again, rather than being left with data that no login can reach.
+const STORAGE_BUCKET =
+  process.env.FIREBASE_STORAGE_BUCKET || 'snapcal-ef333.firebasestorage.app';
+
+function defaultAccountDeletion() {
+  return {
+    async deleteFiles(uid) {
+      const bucket = admin.storage().bucket(STORAGE_BUCKET);
+      // Progress photos and legacy scans live under users/{uid}/, current
+      // scans under scans/{uid}/.
+      for (const prefix of [`users/${uid}/`, `scans/${uid}/`]) {
+        await bucket.deleteFiles({ prefix, force: true });
+      }
+    },
+    deleteData(uid) {
+      return db.recursiveDelete(userDoc(uid));
+    },
+    async deleteLogin(uid) {
+      try {
+        await admin.auth().deleteUser(uid);
+      } catch (error) {
+        if (error.code !== 'auth/user-not-found') throw error;
+      }
+    },
+  };
+}
+
+let accountDeletionForTest = null;
+
+async function deleteUserAccount(uid, steps) {
+  await steps.deleteFiles(uid);
+  await steps.deleteData(uid);
+  await steps.deleteLogin(uid);
+}
+
+app.delete('/api/account', authenticateToken, verifyAppCheck, apiLimiter, requireFreshAuth, async (req, res) => {
+  const uid = req.user.uid;
+  await deleteUserAccount(uid, accountDeletionForTest || defaultAccountDeletion());
+  console.log('Account deleted:', uid);
   return res.status(204).send();
 });
 
@@ -2807,6 +2869,12 @@ module.exports = {
   isCachedScanResult,
   forwardAsyncErrors,
   identityKey,
+  setAccountDeletionForTest(steps) {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('Test account deletion is only available in NODE_ENV=test.');
+    }
+    accountDeletionForTest = steps;
+  },
   setAuthVerifierForTest(verifier) {
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('Test auth verifier is only available in NODE_ENV=test.');

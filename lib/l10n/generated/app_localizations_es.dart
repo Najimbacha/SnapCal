@@ -984,6 +984,29 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo crear tu informe. Inténtalo de nuevo.';
 
   @override
+  String get settings_restore_desc =>
+      '¿Ya pagaste? Recupera Pro en este teléfono';
+
+  @override
+  String get settings_delete_failed =>
+      'No se pudo eliminar tu cuenta. Revisa tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get settings_deleting_account => 'Eliminando tu cuenta…';
+
+  @override
+  String get settings_account_deleted =>
+      'Tu cuenta y tus datos se han eliminado.';
+
+  @override
+  String get settings_delete_subscription_note =>
+      'Esto no cancela tu suscripción a SnapCal Pro. Cancélala en Google Play para que no se te cobre.';
+
+  @override
+  String get settings_name_failed =>
+      'No se pudo actualizar tu nombre. Inténtalo de nuevo.';
+
+  @override
   String get paywall_welcome => '¡Bienvenido a SnapCal Pro! 🎉';
 
   @override

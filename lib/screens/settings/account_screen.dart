@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -47,12 +50,16 @@ class AccountScreen extends ConsumerWidget {
                         isPro
                             ? l10n.settings_pro_active
                             : l10n.settings_manage_plan,
+                    // A Pro user was shown the buy screen again. What they
+                    // need is the plan they already have, in the store.
                     onTap:
-                        () => PremiumConversionService().openPaywall(
-                          context,
-                          PaywallEntryPoint.settings,
-                          featureName: 'subscription',
-                        ),
+                        isPro
+                            ? manageSubscription
+                            : () => PremiumConversionService().openPaywall(
+                              context,
+                              PaywallEntryPoint.settings,
+                              featureName: 'subscription',
+                            ),
                   );
                 },
               ),
@@ -81,7 +88,8 @@ class AccountScreen extends ConsumerWidget {
               SettingsRow(
                 icon: LucideIcons.refreshCw,
                 title: l10n.paywall_restore,
-                value: l10n.premium_restore_success,
+                // This said "Purchases Restored!" before anything was tapped.
+                value: l10n.settings_restore_desc,
                 onTap: () => _handleRestore(context, ref),
               ),
             ],
@@ -334,60 +342,107 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
   }
 }
 
+/// Opens the store's page for the subscription the user already has.
+Future<void> manageSubscription() async {
+  final url = await SubscriptionService().subscriptionManagementUrl();
+  await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+}
+
 Future<void> confirmAndDeleteAccount(
   BuildContext context,
   WidgetRef ref,
 ) async {
+  final isPro = ref.read(effectiveIsProProvider);
   final confirmed = await showDialog<bool>(
     context: context,
-    builder:
-        (context) => AlertDialog(
-          title: Text(AppLocalizations.of(context)!.common_delete_account),
-          content: Text(
-            AppLocalizations.of(context)!.common_delete_account_confirm,
+    builder: (context) {
+      final l10n = AppLocalizations.of(context)!;
+      return AlertDialog(
+        title: Text(l10n.common_delete_account),
+        // Deleting the account leaves a store subscription running, and
+        // charging, until it is cancelled there.
+        content: Text(
+          isPro
+              ? '${l10n.common_delete_account_confirm}\n\n${l10n.settings_delete_subscription_note}'
+              : l10n.common_delete_account_confirm,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.common_cancel),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(AppLocalizations.of(context)!.common_cancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
-              child: Text(
-                AppLocalizations.of(context)!.common_delete_permanently,
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(l10n.common_delete_permanently),
+          ),
+        ],
+      );
+    },
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final l10n = AppLocalizations.of(context)!;
+  final messenger = ScaffoldMessenger.of(context);
+  final navigator = Navigator.of(context, rootNavigator: true);
+
+  // The server deletes everything, which can take up to a minute while the
+  // free server wakes. The screen used to sit still after "Delete".
+  unawaited(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder:
+          (context) => PopScope(
+            canPop: false,
+            child: AlertDialog(
+              content: Row(
+                children: [
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(child: Text(l10n.settings_deleting_account)),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+    ),
   );
 
-  if (confirmed == true && context.mounted) {
-    try {
-      await ref.read(authNotifierProvider.notifier).deleteAccount();
-
-      if (context.mounted) {
-        ref.invalidate(settingsProvider);
-        ref.invalidate(mealLogProvider);
-        ref.invalidate(waterProvider);
-        ref.invalidate(bodyMetricsProvider);
-        ref.invalidate(assistantProvider);
-        ref.invalidate(plannerProvider);
-        ref.invalidate(plannerNotifierProvider);
-
-        // Same as sign-out above: a deleted account is signed back in
-        // anonymously, and an anonymous user cannot leave '/auth'.
-        if (context.mounted) context.go('/');
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
+  try {
+    await ref.read(authNotifierProvider.notifier).deleteAccount();
+  } catch (e) {
+    // This used to go home as though the account were gone, whatever
+    // had happened.
+    debugPrint('Account deletion failed: $e');
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(l10n.settings_delete_failed),
+        backgroundColor: AppColors.error,
+      ),
+    );
+    return;
   }
+
+  navigator.pop();
+  if (context.mounted) {
+    ref.invalidate(settingsProvider);
+    ref.invalidate(mealLogProvider);
+    ref.invalidate(waterProvider);
+    ref.invalidate(bodyMetricsProvider);
+    ref.invalidate(assistantProvider);
+    ref.invalidate(plannerProvider);
+    ref.invalidate(plannerNotifierProvider);
+  }
+  messenger.showSnackBar(
+    SnackBar(content: Text(l10n.settings_account_deleted)),
+  );
+  // Same as sign-out above: a deleted account is signed back in
+  // anonymously, and an anonymous user cannot leave '/auth'.
+  if (context.mounted) context.go('/');
 }

@@ -108,6 +108,26 @@ class SubscriptionService {
   }
 
   bool get isConfigured => _configured;
+
+  /// Where the user manages the plan they already have: RevenueCat's link for
+  /// their store, or the store's own subscriptions page when that is unknown.
+  Future<String> subscriptionManagementUrl() async {
+    final fallback =
+        defaultTargetPlatform == TargetPlatform.iOS
+            ? 'https://apps.apple.com/account/subscriptions'
+            : 'https://play.google.com/store/account/subscriptions?package=com.snapcal.snapcal';
+    if (!_configured) return fallback;
+    try {
+      final info = await Purchases.getCustomerInfo().timeout(
+        const Duration(seconds: 5),
+      );
+      return info.managementURL ?? fallback;
+    } catch (e) {
+      debugPrint('Subscription management link unavailable: $e');
+      return fallback;
+    }
+  }
+
   bool get isPurchaseInFlight => _purchaseInFlight;
   bool get isRestoreInFlight => _restoreInFlight;
 
@@ -358,8 +378,10 @@ class SubscriptionService {
         await Future<void>.delayed(step);
       }
       if (!_configured) {
-        debugPrint('🏷️ Promo: RevenueCat did not configure within 15s — '
-            'skipping (check the API key and network)');
+        debugPrint(
+          '🏷️ Promo: RevenueCat did not configure within 15s — '
+          'skipping (check the API key and network)',
+        );
         return null;
       }
       debugPrint('🏷️ Promo: RevenueCat ready, reading offerings');
@@ -368,18 +390,17 @@ class SubscriptionService {
     final offerings = await getOfferings();
     final offering = offerings?.current ?? _currentOffering;
     if (offering == null) {
-      debugPrint('🏷️ Promo: no current offering — check RevenueCat is '
-          'configured and an offering is marked current');
+      debugPrint(
+        '🏷️ Promo: no current offering — check RevenueCat is '
+        'configured and an offering is marked current',
+      );
       return null;
     }
 
     // A dashboard campaign wins, because it can carry a deadline. Otherwise
     // fall back to the Play Console offer on the plan itself, derived from the
     // prices rather than typed anywhere.
-    var offer = PromoOffer.fromMetadata(
-      offering.identifier,
-      offering.metadata,
-    );
+    var offer = PromoOffer.fromMetadata(offering.identifier, offering.metadata);
 
     if (offer == null) {
       // Resolve by package TYPE, not by the offering's `annual`/`monthly`
@@ -400,18 +421,22 @@ class SubscriptionService {
         monthly: byType(PackageType.monthly) ?? offering.monthly,
       );
       if (offer != null) {
-        debugPrint('🏷️ Promo: derived ${offer.percentOff}% from live prices '
-            '(annual=${byType(PackageType.annual)?.storeProduct.identifier}, '
-            'monthly=${byType(PackageType.monthly)?.storeProduct.identifier})');
+        debugPrint(
+          '🏷️ Promo: derived ${offer.percentOff}% from live prices '
+          '(annual=${byType(PackageType.annual)?.storeProduct.identifier}, '
+          'monthly=${byType(PackageType.monthly)?.storeProduct.identifier})',
+        );
       }
     }
 
     if (offer == null) {
       // Says which offering was read and what it carried, so a campaign put on
       // the wrong offering is one log line away instead of a guess.
-      debugPrint('🏷️ Promo: offering "${offering.identifier}" carries no '
-          'discount — no metadata (got: ${offering.metadata}) and no '
-          'discounted pricing phase on its packages');
+      debugPrint(
+        '🏷️ Promo: offering "${offering.identifier}" carries no '
+        'discount — no metadata (got: ${offering.metadata}) and no '
+        'discounted pricing phase on its packages',
+      );
       return null;
     }
 

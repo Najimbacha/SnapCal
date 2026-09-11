@@ -3,11 +3,13 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
+import '../../../core/nutrition/plan_math.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/body_metric.dart';
 import '../../../providers/metrics_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/ui_blocks.dart';
+import 'settings_kit.dart';
 
 const _settingsBgLight = Color(0xFFF9F8F5);
 const _settingsBgDark = Color(0xFF14130F);
@@ -36,7 +38,11 @@ class WeightEntryModal extends ConsumerStatefulWidget {
 }
 
 class _WeightEntryModalState extends ConsumerState<WeightEntryModal> {
+  static const _minBodyFat = 3;
+  static const _maxBodyFat = 70;
+
   late final TextEditingController _weightController;
+  String? _error;
   late final TextEditingController _bodyFatController;
 
   @override
@@ -68,17 +74,50 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal> {
   }
 
   void _save() {
-    final rawWeight = double.tryParse(_weightController.text);
-    if (rawWeight == null || rawWeight <= 0) return;
+    final l10n = AppLocalizations.of(context)!;
+    final imperial = ref.read(settingsProvider).valueOrNull?.weightUnit == 'lb';
+    final perKg = imperial ? 2.20462 : 1.0;
+    final minWeight = PlanLimits.minWeightKg * perKg;
+    final maxWeight = PlanLimits.maxWeightKg * perKg;
 
-    final settings = ref.read(settingsProvider).valueOrNull;
-    double weightInKg = rawWeight;
-    if (settings?.weightUnit == 'lb') {
-      weightInKg = rawWeight / 2.20462;
+    // A comma is how French, Spanish and Arabic keyboards write a decimal:
+    // "70,5" was rejected, and the button then did nothing at all. Any
+    // positive number was accepted otherwise, 5000 kg included.
+    final weight = parseDecimalInput(_weightController.text);
+    if (weight == null || weight < minWeight || weight > maxWeight) {
+      setState(
+        () =>
+            _error = l10n.settings_value_out_of_range(
+              minWeight.toStringAsFixed(0),
+              maxWeight.toStringAsFixed(0),
+            ),
+      );
+      return;
     }
 
-    ref.read(bodyMetricsProvider.notifier).logWeight(weightInKg);
+    final fatText = _bodyFatController.text.trim();
+    final bodyFat = fatText.isEmpty ? null : parseDecimalInput(fatText);
+    if (fatText.isNotEmpty &&
+        (bodyFat == null || bodyFat < _minBodyFat || bodyFat > _maxBodyFat)) {
+      setState(
+        () =>
+            _error = l10n.settings_value_out_of_range(
+              '$_minBodyFat',
+              '$_maxBodyFat',
+            ),
+      );
+      return;
+    }
+
+    // Body fat was asked for, prefilled, and then thrown away.
+    ref
+        .read(bodyMetricsProvider.notifier)
+        .logWeight(weight / perKg, bodyFat: bodyFat);
     Navigator.pop(context);
+  }
+
+  void _clearError(String _) {
+    if (_error != null) setState(() => _error = null);
   }
 
   @override
@@ -126,7 +165,7 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal> {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          AppLocalizations.of(context)!.settings_body_profile,
+                          AppLocalizations.of(context)!.report_log_weight,
                           style: AppTypography.heading3.copyWith(
                             color: _settingsText(context),
                           ),
@@ -137,17 +176,19 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal> {
                     TextField(
                       controller: _weightController,
                       autofocus: true, // Auto-focus for better UX
+                      onChanged: _clearError,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
                       decoration: InputDecoration(
                         hintText: AppLocalizations.of(context)!.weight_hint,
-                        suffixText: weightUnit,
+                        suffixText: localizeUnit(context, weightUnit),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _bodyFatController,
+                      onChanged: _clearError,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -156,6 +197,16 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal> {
                         suffixText: '%',
                       ),
                     ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        _error!,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: const Color(0xFFE05A47),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

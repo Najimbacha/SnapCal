@@ -44,6 +44,7 @@ class _FakeBodyMetrics extends BodyMetrics {
     double weightKg, {
     DateTime? date,
     double? heightCm,
+    double? bodyFat,
   }) async {
     weights.add(weightKg);
   }

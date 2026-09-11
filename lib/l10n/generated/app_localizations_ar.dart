@@ -974,6 +974,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get report_failed => 'تعذّر إنشاء تقريرك. يرجى المحاولة مرة أخرى.';
 
   @override
+  String get settings_restore_desc => 'دفعت من قبل؟ استعد Pro على هذا الهاتف';
+
+  @override
+  String get settings_delete_failed =>
+      'تعذّر حذف حسابك. تحقق من الاتصال وحاول مرة أخرى.';
+
+  @override
+  String get settings_deleting_account => 'جارٍ حذف حسابك…';
+
+  @override
+  String get settings_account_deleted => 'تم حذف حسابك وبياناتك.';
+
+  @override
+  String get settings_delete_subscription_note =>
+      'هذا لا يلغي اشتراكك في SnapCal Pro. ألغِه من Google Play لإيقاف الدفع.';
+
+  @override
+  String get settings_name_failed =>
+      'تعذّر تحديث اسمك. يرجى المحاولة مرة أخرى.';
+
+  @override
   String get paywall_welcome => 'مرحباً بك في سناب كال برو! 🎉';
 
   @override

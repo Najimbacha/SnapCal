@@ -974,6 +974,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_failed => 'Couldn’t create your report. Please try again.';
 
   @override
+  String get settings_restore_desc =>
+      'Already paid? Get Pro back on this phone';
+
+  @override
+  String get settings_delete_failed =>
+      'Couldn’t delete your account. Check your connection and try again.';
+
+  @override
+  String get settings_deleting_account => 'Deleting your account…';
+
+  @override
+  String get settings_account_deleted =>
+      'Your account and data have been deleted.';
+
+  @override
+  String get settings_delete_subscription_note =>
+      'This does not cancel your SnapCal Pro subscription. Cancel it in Google Play to stop being charged.';
+
+  @override
+  String get settings_name_failed =>
+      'Couldn’t update your name. Please try again.';
+
+  @override
   String get paywall_welcome => 'Welcome to SnapCal Pro! 🎉';
 
   @override

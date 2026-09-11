@@ -75,7 +75,7 @@ class BodyProfileScreen extends ConsumerWidget {
                                 await notifier.updateBodyProfile(
                                   age: value,
                                   currentWeightKg: weight,
-                                    );
+                                );
                               },
                             ),
                       ),
@@ -100,41 +100,45 @@ class BodyProfileScreen extends ConsumerWidget {
               ),
               Consumer(
                 builder: (context, ref, _) {
-                  final height =
-                      ref.watch(settingsProvider).valueOrNull?.height;
-                  final heightUnit =
-                      ref.watch(settingsProvider).valueOrNull?.heightUnit ??
-                      'cm';
-                  double? displayHeight = height;
-                  if (displayHeight != null && heightUnit == 'in') {
-                    displayHeight = displayHeight / 2.54;
+                  final settings = ref.watch(settingsProvider).valueOrNull;
+                  final height = settings?.height;
+                  // Imperial heights are edited in inches. The units picker
+                  // used to save "ft", which this screen then read as
+                  // centimetres: "170 FT", and edits were saved as cm.
+                  final imperial = isImperialHeight(settings?.heightUnit);
+                  final inches =
+                      height == null ? null : (height / 2.54).round();
+                  final String shown;
+                  if (height == null) {
+                    shown = l10n.settings_set_height;
+                  } else if (inches != null && imperial) {
+                    shown = '${inches ~/ 12}′ ${inches % 12}″';
+                  } else {
+                    shown = '${height.round()} ${localizeUnit(context, 'cm')}';
                   }
                   return SettingsRow(
                     icon: LucideIcons.ruler,
                     title: l10n.settings_height,
-                    value:
-                        displayHeight != null
-                            ? '${displayHeight.round()} ${localizeUnit(context, heightUnit)}'
-                            : l10n.settings_set_height,
+                    value: shown,
                     onTap:
                         () => showSettingsNumberDialog(
                           context,
                           title: l10n.settings_height,
                           currentValue:
-                              displayHeight?.round() ??
-                              (heightUnit == 'in' ? 67 : 170),
-                          unit: heightUnit,
+                              (imperial ? inches : height?.round()) ??
+                              (imperial ? 67 : 170),
+                          unit: imperial ? 'in' : 'cm',
                           min:
-                              heightUnit == 'in'
+                              imperial
                                   ? (PlanLimits.minHeightCm / 2.54).round()
                                   : PlanLimits.minHeightCm.round(),
                           max:
-                              heightUnit == 'in'
+                              imperial
                                   ? (PlanLimits.maxHeightCm / 2.54).round()
                                   : PlanLimits.maxHeightCm.round(),
                           onSave: (value) async {
-                            double cm = value.toDouble();
-                            if (heightUnit == 'in') cm = value * 2.54;
+                            final cm =
+                                imperial ? value * 2.54 : value.toDouble();
                             final notifier = ref.read(
                               settingsProvider.notifier,
                             );
@@ -282,6 +286,9 @@ class _WeightProgressBar extends StatelessWidget {
         final settings = ref.watch(settingsProvider).valueOrNull;
         final unit = settings?.weightUnit ?? 'kg';
         final startWeightKg = settings?.startingWeight;
+        // Watched, so a new weigh-in moves the bar. Read alone, it waited
+        // for the next settings change.
+        ref.watch(bodyMetricsProvider);
         final currentWeightKg =
             ref.read(bodyMetricsProvider.notifier).currentWeight ??
             startWeightKg;
@@ -317,8 +324,12 @@ class _WeightProgressBar extends StatelessWidget {
           progress = progress.clamp(0.0, 1.0);
         }
 
-        final leftToGoal = (currentWeight - targetWeight).abs();
         final isLoss = targetWeight < startWeight;
+        final leftToGoal = weightLeftToGoal(
+          start: startWeight,
+          current: currentWeight,
+          target: targetWeight,
+        );
 
         final l10n = AppLocalizations.of(context)!;
         return SettingsSurface(
@@ -397,7 +408,7 @@ class _WeightProgressBar extends StatelessWidget {
                   ),
                 ],
               ),
-              if (leftToGoal > 0.05) ...[
+              if (diffTotal > 0.01) ...[
                 const SizedBox(height: 12),
                 Divider(
                   height: 1,

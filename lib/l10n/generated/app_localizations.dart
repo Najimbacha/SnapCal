@@ -1896,6 +1896,42 @@ abstract class AppLocalizations {
   /// **'Couldn’t create your report. Please try again.'**
   String get report_failed;
 
+  /// No description provided for @settings_restore_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Already paid? Get Pro back on this phone'**
+  String get settings_restore_desc;
+
+  /// No description provided for @settings_delete_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t delete your account. Check your connection and try again.'**
+  String get settings_delete_failed;
+
+  /// No description provided for @settings_deleting_account.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting your account…'**
+  String get settings_deleting_account;
+
+  /// No description provided for @settings_account_deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account and data have been deleted.'**
+  String get settings_account_deleted;
+
+  /// No description provided for @settings_delete_subscription_note.
+  ///
+  /// In en, this message translates to:
+  /// **'This does not cancel your SnapCal Pro subscription. Cancel it in Google Play to stop being charged.'**
+  String get settings_delete_subscription_note;
+
+  /// No description provided for @settings_name_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t update your name. Please try again.'**
+  String get settings_name_failed;
+
   /// No description provided for @paywall_welcome.
   ///
   /// In en, this message translates to:

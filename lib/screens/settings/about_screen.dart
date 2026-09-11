@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/services/config_service.dart';
+import '../../data/services/feedback_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -147,7 +149,10 @@ class AboutScreen extends StatelessWidget {
                       subtitle: l10n.settings_terms_desc,
                       onTap:
                           () => launchUrl(
-                            Uri.parse('https://snapcal.app/terms'),
+                            // snapcal.app never existed; the server hosts the terms.
+                            Uri.parse(
+                              '${ConfigService().backendProxyUrl}/terms',
+                            ),
                             mode: LaunchMode.externalApplication,
                           ),
                     ),
@@ -326,10 +331,10 @@ class _FollowUsSection extends StatelessWidget {
                 icon: LucideIcons.mail,
                 iconColor: AppColors.primary,
                 title: l10n.about_email_us,
-                subtitle: 'iamnajimbacha@gmail.com',
+                subtitle: FeedbackService.supportEmail,
                 onTap:
                     () => launchUrl(
-                      Uri.parse('mailto:iamnajimbacha@gmail.com'),
+                      Uri.parse('mailto:${FeedbackService.supportEmail}'),
                       mode: LaunchMode.externalApplication,
                     ),
                 isDark: isDark,
