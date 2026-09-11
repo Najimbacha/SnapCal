@@ -1,4 +1,3 @@
-import 'package:snapcal/data/services/app_review_service.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -9,16 +8,21 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart'
+    show openAppSettings;
 import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_typography.dart';
+import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
+import '../../data/services/app_review_service.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/gemini_service.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../log/widgets/edit_meal_modal.dart';
 import 'snap_controller.dart';
 import 'widgets/analyzing_overlay.dart';
 import 'widgets/barcode_scanner_view.dart';
@@ -29,6 +33,8 @@ import '../../data/services/camera_service.dart';
 import '../../router.dart';
 
 enum SnapInitialMode { food, barcode }
+
+enum _ProblemChoice { primary, manual }
 
 class SnapScreen extends ConsumerStatefulWidget {
   final SnapInitialMode initialMode;
@@ -123,6 +129,15 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     }
   }
 
+  /// Whether this screen is the one on show and wants the photo camera.
+  ///
+  /// It lives on in the tab stack while Home or the diary is open, and a
+  /// result or the paywall can sit on top of it. Starting the camera from
+  /// there switched the hardware -- and the phone's camera-in-use dot -- on
+  /// behind a screen that never used it, every time the app came back.
+  bool get _cameraWanted =>
+      mounted && _isTickerActive && !_controller.isScanningBarcode;
+
   @override
   void dispose() {
     routeObserver.unsubscribe(this);
@@ -137,7 +152,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _controller.initializeCamera();
+      if (_cameraWanted) _controller.initializeCamera();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       CameraService().stop();
@@ -151,8 +166,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
 
   @override
   void didPopNext() {
-    _controller.initializeCamera();
+    if (_cameraWanted) _controller.initializeCamera();
   }
+
+  UserSettings get _settings =>
+      ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults();
 
   void _showPaywall() {
     PremiumConversionService().openPaywall(
@@ -160,6 +178,51 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
       PaywallEntryPoint.scanLimit,
       limitReached: true,
       featureName: 'scan',
+    );
+  }
+
+  void _capture() {
+    _controller.captureAndAnalyze(
+      mealProvider: ref.read(mealLogProvider.notifier),
+      settingsProvider: _settings,
+      isPro: ref.read(effectiveIsProProvider),
+      connectivity: ConnectivityService(),
+      onShowPaywall: _showPaywall,
+      onShowResult: _showResultModal,
+      onProblem: _showScanProblem,
+    );
+  }
+
+  void _pickFromGallery() {
+    _controller.pickFromGallery(
+      mealProvider: ref.read(mealLogProvider.notifier),
+      settingsProvider: _settings,
+      isPro: ref.read(effectiveIsProProvider),
+      connectivity: ConnectivityService(),
+      onShowPaywall: _showPaywall,
+      onShowResult: _showResultModal,
+      onProblem: _showScanProblem,
+    );
+  }
+
+  void _retryLastScan() {
+    _controller.retryLastScan(
+      mealProvider: ref.read(mealLogProvider.notifier),
+      settingsProvider: _settings,
+      isPro: ref.read(effectiveIsProProvider),
+      connectivity: ConnectivityService(),
+      onShowPaywall: _showPaywall,
+      onShowResult: _showResultModal,
+      onProblem: _showScanProblem,
+    );
+  }
+
+  void _onBarcodeDetected(String code) {
+    _controller.handleBarcodeDetected(
+      code,
+      connectivity: ConnectivityService(),
+      onShowResult: _showResultModal,
+      onProblem: _showScanProblem,
     );
   }
 
@@ -182,8 +245,18 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
               result:
                   results != null && results.length == 1 ? results.first : null,
               results: results != null && results.length > 1 ? results : null,
-              onSave: _saveMeal,
-              onSaveAll: _saveMultipleMeals,
+              onSave:
+                  (name, calories, protein, carbs, fat, portion) => _saveMeals([
+                    NutritionResult(
+                      foodName: name,
+                      portion: portion ?? '',
+                      calories: calories,
+                      protein: protein,
+                      carbs: carbs,
+                      fat: fat,
+                    ),
+                  ]),
+              onSaveAll: _saveMeals,
               onCancel: _controller.reset,
             ),
           );
@@ -204,118 +277,174 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     );
   }
 
-  void _showManualInputModal() {
+  /// Says why a scan produced nothing, and offers the two ways forward: the
+  /// same attempt again, or the manual form.
+  Future<void> _showScanProblem(ScanProblem problem) async {
     if (!mounted) return;
-    _isSavingResult = false;
-    _savedResultFingerprint = null;
-    Navigator.of(context, rootNavigator: true).push(
-      PageRouteBuilder(
-        opaque: true,
-        barrierDismissible: false,
-        barrierColor: Colors.black.withValues(alpha: 0.3),
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return FadeTransition(
-            opacity: animation,
-            child: ResultModal(
-              imageBytes: _controller.capturedImageBytes,
-              result: null,
-              onSave: _saveMeal,
-              onSaveAll: _saveMultipleMeals,
-              onCancel: _controller.reset,
-            ),
-          );
-        },
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.08),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
+    final l10n = AppLocalizations.of(context)!;
+    final fromBarcode = _controller.lastAttemptWasBarcode;
+    final canResend =
+        !fromBarcode &&
+        _controller.canRetryLastPhoto &&
+        (problem == ScanProblem.offline ||
+            problem == ScanProblem.slow ||
+            problem == ScanProblem.failed);
+
+    final (IconData icon, String title, String body) = switch (problem) {
+      ScanProblem.offline => (
+        LucideIcons.wifiOff,
+        l10n.scan_problem_offline_title,
+        l10n.scan_problem_offline_body,
       ),
+      ScanProblem.slow => (
+        LucideIcons.hourglass,
+        l10n.scan_problem_slow_title,
+        l10n.scan_problem_slow_body,
+      ),
+      ScanProblem.failed => (
+        LucideIcons.alertCircle,
+        l10n.scan_problem_failed_title,
+        l10n.scan_problem_failed_body,
+      ),
+      ScanProblem.noFood => (
+        LucideIcons.utensilsCrossed,
+        l10n.scan_problem_no_food_title,
+        l10n.scan_problem_no_food_body,
+      ),
+      ScanProblem.unreadableImage => (
+        LucideIcons.imageOff,
+        l10n.scan_problem_image_title,
+        l10n.scan_problem_image_body,
+      ),
+      ScanProblem.barcodeNotFound => (
+        LucideIcons.scanLine,
+        l10n.scan_problem_barcode_title,
+        l10n.scan_problem_barcode_body,
+      ),
+    };
+
+    final String primaryLabel;
+    if (fromBarcode) {
+      primaryLabel = l10n.scan_problem_scan_again;
+    } else if (canResend) {
+      primaryLabel = l10n.common_try_again;
+    } else if (problem == ScanProblem.noFood ||
+        problem == ScanProblem.unreadableImage) {
+      primaryLabel = l10n.result_retake;
+    } else {
+      primaryLabel = l10n.scan_problem_dismiss;
+    }
+
+    final choice = await showModalBottomSheet<_ProblemChoice>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (sheetContext) => _ScanProblemSheet(
+            icon: icon,
+            title: title,
+            body: body,
+            primaryLabel: primaryLabel,
+            manualLabel: l10n.log_add_manually,
+            onPrimary: () => Navigator.pop(sheetContext, _ProblemChoice.primary),
+            onManual: () => Navigator.pop(sheetContext, _ProblemChoice.manual),
+          ),
     );
-  }
+    if (!mounted) return;
 
-  Future<void> _saveMeal(
-    String name,
-    int calories,
-    int protein,
-    int carbs,
-    int fat,
-    String? portion,
-  ) async {
-    final fingerprint = _singleSaveFingerprint(
-      name: name,
-      calories: calories,
-      protein: protein,
-      carbs: carbs,
-      fat: fat,
-      portion: portion,
-    );
-    if (!_beginResultSave(fingerprint)) return;
-
-    final mealNotifier = ref.read(mealLogProvider.notifier);
-    final router = GoRouter.of(context);
-    final now = DateTime.now();
-    final dateString =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final unknownFood = AppLocalizations.of(context)!.log_unknown_food;
-
-    try {
-      final imageUri = await _persistCapturedMealImage(now);
-      HapticFeedback.heavyImpact();
-      router.go('/');
-
-      await mealNotifier.addMeal(
-        Meal(
-          id: mealNotifier.generateMealId(),
-          timestamp: now.millisecondsSinceEpoch,
-          dateString: dateString,
-          imageUri: imageUri,
-          foodName: name.isEmpty ? unknownFood : name,
-          calories: calories,
-          macros: Macros(protein: protein, carbs: carbs, fat: fat),
-          portion: portion,
-          // Was a hardcoded 0.82 on every meal ever saved, alongside a fixed
-          // sentence claiming the numbers were "estimated from the photo,
-          // visible portion size, and macro balance" -- written even onto the
-          // 382 meals where nothing was estimated at all. The field is
-          // nullable; an honest blank beats an invented score.
-          scanConfidence: null,
-          scanSource: 'ai_scan',
-          originalCalories: calories,
-        ),
-      );
-
-      _controller.reset();
-      _askForReviewSoon();
-    } finally {
-      _isSavingResult = false;
+    switch (choice) {
+      case _ProblemChoice.primary:
+        if (fromBarcode) {
+          _controller.isScanningBarcode = true;
+        } else if (canResend) {
+          _retryLastScan();
+        }
+      case _ProblemChoice.manual:
+        _controller.reset();
+        await _openManualEntry();
+      case null:
+        break;
     }
   }
 
-  Future<void> _saveMultipleMeals(List<NutritionResult> selectedItems) async {
-    final fingerprint = _multiSaveFingerprint(selectedItems);
+  /// "Add manually" on the waiting screen: stop waiting on the scan, and go
+  /// to the form instead.
+  void _manualInsteadOfWaiting() {
+    _controller.cancelScan();
+    _openManualEntry();
+  }
+
+  /// The diary's own manual form, for when a scan is not the way in: no
+  /// signal, a failed scan, a product not in the database, or by choice.
+  Future<void> _openManualEntry() async {
+    if (!mounted) return;
+    final now = DateTime.now();
+    final draft = Meal(
+      id: 'new',
+      timestamp: now.millisecondsSinceEpoch,
+      dateString: app_date.DateUtils.getDateString(now),
+      foodName: '',
+      calories: 0,
+      macros: Macros.empty(),
+      mealType: app_date.DateUtils.suggestedMealType(now),
+      portion: '',
+    );
+
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (modalContext) => EditMealModal(
+            meal: draft,
+            isNew: true,
+            onSave: (meal) {
+              Navigator.of(modalContext).pop();
+              _saveManualMeal(meal);
+            },
+            onDelete: () => Navigator.of(modalContext).pop(),
+            onCancel: () => Navigator.of(modalContext).pop(),
+          ),
+    );
+  }
+
+  Future<void> _saveManualMeal(Meal draft) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    final mealNotifier = ref.read(mealLogProvider.notifier);
+    final meal = draft.copyWith(id: mealNotifier.generateMealId());
+
+    HapticFeedback.heavyImpact();
+    router.go('/');
+    try {
+      await mealNotifier.addMeal(meal, mealDate: meal.dateString);
+    } catch (error) {
+      debugPrint('Saving manual meal failed: $error');
+      messenger.showSnackBar(SnackBar(content: Text(l10n.meal_save_failed)));
+    }
+  }
+
+  Future<void> _saveMeals(List<NutritionResult> items) async {
+    final fingerprint = _saveFingerprint(items);
     if (!_beginResultSave(fingerprint)) return;
 
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
     final mealNotifier = ref.read(mealLogProvider.notifier);
     final router = GoRouter.of(context);
     final now = DateTime.now();
-    final dateString =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final unknownFood = AppLocalizations.of(context)!.log_unknown_food;
+    final dateString = app_date.DateUtils.getDateString(now);
+    final unknownFood = l10n.log_unknown_food;
 
     try {
       final imageUri = await _persistCapturedMealImage(now);
       HapticFeedback.heavyImpact();
       router.go('/');
 
-      for (final item in selectedItems) {
+      for (final item in items) {
         await mealNotifier.addMeal(
           Meal(
             id: mealNotifier.generateMealId(),
@@ -330,8 +459,9 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
               fat: item.fat,
             ),
             portion: item.portion,
-            // The real value when the detector gave one, nothing when it
-            // did not. See the note on the single-item path above.
+            // The detector's own value when it gave one, and nothing when it
+            // did not: this used to be a hardcoded 0.82 on every meal, beside
+            // a sentence claiming an estimate that never happened.
             scanConfidence: item.confidence,
             scanSource: 'ai_scan',
             originalCalories: item.calories,
@@ -344,6 +474,12 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
 
       _controller.reset();
       _askForReviewSoon();
+    } catch (error) {
+      // Home is already showing; without a word here the meal would simply
+      // not be there.
+      debugPrint('Saving scanned meal failed: $error');
+      _savedResultFingerprint = null;
+      messenger.showSnackBar(SnackBar(content: Text(l10n.meal_save_failed)));
     } finally {
       _isSavingResult = false;
     }
@@ -392,31 +528,9 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     }
   }
 
-  String _singleSaveFingerprint({
-    required String name,
-    required int calories,
-    required int protein,
-    required int carbs,
-    required int fat,
-    required String? portion,
-  }) {
+  String _saveFingerprint(List<NutritionResult> items) {
     final imageKey = _controller.capturedImageBytes?.length ?? 0;
     return [
-      'single',
-      imageKey,
-      name.trim().toLowerCase(),
-      calories,
-      protein,
-      carbs,
-      fat,
-      portion?.trim().toLowerCase() ?? '',
-    ].join('|');
-  }
-
-  String _multiSaveFingerprint(List<NutritionResult> items) {
-    final imageKey = _controller.capturedImageBytes?.length ?? 0;
-    return [
-      'multi',
       imageKey,
       ...items.map(
         (item) => [
@@ -433,6 +547,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final topSafe = MediaQuery.of(context).padding.top;
     final bottomSafe = MediaQuery.of(context).padding.bottom;
     const previewH = 16.0;
@@ -443,18 +558,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     if (_controller.isScanningBarcode) {
       cameraContent.add(
         BarcodeScannerView(
-          onBarcodeDetected:
-              (code) => _controller.handleBarcodeDetected(
-                code,
-                context: context,
-                settingsProvider:
-                    ref.read(settingsProvider).valueOrNull ??
-                    UserSettings.defaults(),
-                connectivity: ConnectivityService(),
-                onShowPaywall: _showPaywall,
-                onShowResult: _showResultModal,
-                onShowManualInput: _showManualInputModal,
-              ),
+          onBarcodeDetected: _onBarcodeDetected,
           onCancel: () => context.go('/'),
         ),
       );
@@ -484,14 +588,24 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
                   : const _CameraShimmerSkeleton(),
         ),
       );
-    } else if (_controller.errorMessage != null) {
+    } else if (_controller.cameraProblem != null) {
+      final problem = _controller.cameraProblem!;
+      final needsPermission = problem == CameraProblem.permission;
       cameraContent.add(
         _StatePanel(
           icon: LucideIcons.cameraOff,
-          title: AppLocalizations.of(context)!.error_camera,
-          body: _controller.errorMessage!,
-          actionLabel: AppLocalizations.of(context)!.assistant_retry,
-          onAction: _controller.initializeCamera,
+          title: l10n.error_camera,
+          body: switch (problem) {
+            CameraProblem.slow => l10n.snap_camera_slow,
+            CameraProblem.permission => l10n.snap_camera_permission,
+            CameraProblem.unavailable => l10n.snap_camera_unavailable,
+          },
+          actionLabel:
+              needsPermission ? l10n.snap_open_settings : l10n.assistant_retry,
+          onAction:
+              needsPermission
+                  ? () => unawaited(openAppSettings())
+                  : _controller.initializeCamera,
         ),
       );
     } else {
@@ -605,7 +719,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
                     ),
                   ),
                   if (_controller.isInitialized &&
-                      _controller.errorMessage == null)
+                      _controller.cameraProblem == null)
                     GestureDetector(
                       onTap: _controller.toggleFlash,
                       child: Container(
@@ -647,60 +761,35 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
                       // Gallery
                       Expanded(
                         child: GestureDetector(
-                          onTap:
-                              () => _controller.pickFromGallery(
-                                context: context,
-                                mealProvider: ref.read(
-                                  mealLogProvider.notifier,
-                                ),
-                                settingsProvider:
-                                    ref.read(settingsProvider).valueOrNull ??
-                                    UserSettings.defaults(),
-                                isPro: ref.read(effectiveIsProProvider),
-                                connectivity: ConnectivityService(),
-                                onShowPaywall: _showPaywall,
-                                onShowResult: _showResultModal,
-                                onShowManualInput: _showManualInputModal,
-                              ),
-                          child: const _BottomIcon(
+                          onTap: _pickFromGallery,
+                          child: _BottomIcon(
                             icon: LucideIcons.image,
-                            label: 'Gallery',
+                            label: l10n.snap_gallery,
                           ),
                         ),
                       ),
                       // Shutter
                       ShutterButton(
-                        onPressed:
-                            () => _controller.captureAndAnalyze(
-                              context: context,
-                              mealProvider: ref.read(mealLogProvider.notifier),
-                              settingsProvider:
-                                  ref.read(settingsProvider).valueOrNull ??
-                                  UserSettings.defaults(),
-                              isPro: ref.read(effectiveIsProProvider),
-                              connectivity: ConnectivityService(),
-                              onShowPaywall: _showPaywall,
-                              onShowResult: _showResultModal,
-                              onShowManualInput: _showManualInputModal,
-                            ),
+                        onPressed: _capture,
                         isLoading: _controller.isCapturing,
                       ),
                       // Barcode
                       Expanded(
                         child: GestureDetector(
                           onTap: () => _controller.isScanningBarcode = true,
-                          child: const _BottomIcon(
+                          child: _BottomIcon(
                             icon: LucideIcons.scanLine,
-                            label: 'Barcode',
+                            label: l10n.snap_barcode,
                           ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Manual search escape hatch (Case D)
+                  // The way in without a photo: the same manual form the
+                  // diary uses, where calories can actually be typed.
                   GestureDetector(
-                    onTap: _showManualInputModal,
+                    onTap: _openManualEntry,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -714,18 +803,18 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
                           width: 0.5,
                         ),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            LucideIcons.type,
+                          const Icon(
+                            LucideIcons.pencil,
                             color: Colors.white70,
                             size: 14,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text(
-                            'Type Ingredient',
-                            style: TextStyle(
+                            l10n.log_add_manually,
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -744,10 +833,126 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             Positioned.fill(
               child: AnalyzingOverlay(
                 controller: _controller,
-                onManualEntry: _showManualInputModal,
+                onManualEntry: _manualInsteadOfWaiting,
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _ScanProblemSheet extends StatelessWidget {
+  const _ScanProblemSheet({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.primaryLabel,
+    required this.manualLabel,
+    required this.onPrimary,
+    required this.onManual,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final String primaryLabel;
+  final String manualLabel;
+  final VoidCallback onPrimary;
+  final VoidCallback onManual;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final surface = dark ? const Color(0xFF1C1B1E) : const Color(0xFFFCFCFA);
+    final ink = dark ? Colors.white : const Color(0xFF17251F);
+    final muted = dark ? Colors.white70 : const Color(0xFF56675D);
+    final accent = theme.colorScheme.primary;
+    final buttonShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+    );
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 34,
+              height: 4,
+              decoration: BoxDecoration(
+                color: (dark ? Colors.white : Colors.black).withValues(
+                  alpha: 0.12,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 26, color: accent),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: AppTypography.titleLarge.copyWith(
+                color: ink,
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(
+                color: muted,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                key: const ValueKey('scan-problem-primary'),
+                onPressed: onPrimary,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  shape: buttonShape,
+                ),
+                child: Text(primaryLabel),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const ValueKey('scan-problem-manual'),
+                onPressed: onManual,
+                icon: const Icon(LucideIcons.pencil, size: 16),
+                label: Text(manualLabel),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  shape: buttonShape,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

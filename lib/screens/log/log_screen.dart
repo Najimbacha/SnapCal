@@ -328,13 +328,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     return 'Snack';
   }
 
-  String _suggestedMealType() {
-    final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 11) return 'Breakfast';
-    if (hour >= 11 && hour < 16) return 'Lunch';
-    if (hour >= 18 && hour < 23) return 'Dinner';
-    return 'Snack';
-  }
+  String _suggestedMealType() => app_date.DateUtils.suggestedMealType();
 
   List<DailySummary> _buildDailySummaries({required bool isPro}) {
     final now = DateTime.now();

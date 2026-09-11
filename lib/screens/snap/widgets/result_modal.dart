@@ -60,6 +60,7 @@ class _Item {
     this.per100g,
     this.healthScore = 5,
     this.insights = const [],
+    this.matchId,
   }) : uid = uid ?? _uidSeed++;
 
   final int uid;
@@ -70,6 +71,10 @@ class _Item {
   Map<String, dynamic>? per100g;
   int healthScore;
   List<String> insights;
+
+  /// The nutrition table row the server matched, carried through to the
+  /// saved meal.
+  final String? matchId;
 
   int get calories => _calc('calories');
   int get protein => _calc('protein');
@@ -126,6 +131,7 @@ class _Item {
       per100g: per100g,
       healthScore: r.healthScore,
       insights: r.insights,
+      matchId: r.nutritionMatchId,
     );
   }
 
@@ -147,6 +153,7 @@ class _Item {
     per100g: per100g,
     healthScore: healthScore,
     insights: insights,
+    matchId: matchId,
   );
 }
 
@@ -427,7 +434,10 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     // Brief pause so the success checkmark is perceived before routing home.
     await Future.delayed(const Duration(milliseconds: 420));
     if (!mounted) return;
-    if (_items.length == 1 || widget.onSaveAll == null) {
+    // One food goes the same way as several when the caller can take it: the
+    // single-item callback carries only name, calories and macros, so the
+    // most common scan was saved without its weight, per-100g or confidence.
+    if (widget.onSaveAll == null) {
       final i = _items.first;
       widget.onSave(
         i.name,
@@ -451,6 +461,8 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                 healthScore: i.healthScore,
                 insights: i.insights,
                 weightG: i.weightG,
+                confidence: i.confidence,
+                nutritionMatchId: i.matchId,
                 matched: i.matched,
                 nutritionPer100g: i.per100g,
                 nutritionActual:

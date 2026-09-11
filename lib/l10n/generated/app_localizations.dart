@@ -8331,6 +8331,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{intro} for the first year, then {price}/year'**
   String pro_offer_cta_intro(String intro, String price);
+
+  /// No description provided for @scan_problem_offline_title.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection'**
+  String get scan_problem_offline_title;
+
+  /// No description provided for @scan_problem_offline_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to the internet and try again.'**
+  String get scan_problem_offline_body;
+
+  /// No description provided for @scan_problem_slow_title.
+  ///
+  /// In en, this message translates to:
+  /// **'This is taking too long'**
+  String get scan_problem_slow_title;
+
+  /// No description provided for @scan_problem_slow_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your connection may be slow. Check it and try again.'**
+  String get scan_problem_slow_body;
+
+  /// No description provided for @scan_problem_failed_title.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t analyze this photo'**
+  String get scan_problem_failed_title;
+
+  /// No description provided for @scan_problem_failed_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong on our side. Try again, or add the meal manually.'**
+  String get scan_problem_failed_body;
+
+  /// No description provided for @scan_problem_no_food_title.
+  ///
+  /// In en, this message translates to:
+  /// **'No food found'**
+  String get scan_problem_no_food_title;
+
+  /// No description provided for @scan_problem_no_food_body.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t spot any food in this photo. Retake it with the food filling the frame, or add it manually.'**
+  String get scan_problem_no_food_body;
+
+  /// No description provided for @scan_problem_image_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t use this photo'**
+  String get scan_problem_image_title;
+
+  /// No description provided for @scan_problem_image_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different photo, or add the meal manually.'**
+  String get scan_problem_image_body;
+
+  /// No description provided for @scan_problem_barcode_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Product not found'**
+  String get scan_problem_barcode_title;
+
+  /// No description provided for @scan_problem_barcode_body.
+  ///
+  /// In en, this message translates to:
+  /// **'This barcode isn\'t in our database yet. Scan it again, or add the food manually.'**
+  String get scan_problem_barcode_body;
+
+  /// No description provided for @scan_problem_scan_again.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan again'**
+  String get scan_problem_scan_again;
+
+  /// No description provided for @scan_problem_dismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get scan_problem_dismiss;
+
+  /// No description provided for @meal_save_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your meal. Please try again.'**
+  String get meal_save_failed;
+
+  /// No description provided for @snap_camera_slow.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera is taking longer than usual to start.'**
+  String get snap_camera_slow;
+
+  /// No description provided for @snap_camera_permission.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal needs camera access to scan food. Allow it in your phone\'s settings.'**
+  String get snap_camera_permission;
+
+  /// No description provided for @snap_camera_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera couldn\'t start. Please try again.'**
+  String get snap_camera_unavailable;
+
+  /// No description provided for @snap_open_settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get snap_open_settings;
 }
 
 class _AppLocalizationsDelegate

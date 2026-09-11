@@ -4662,4 +4662,71 @@ class AppLocalizationsEs extends AppLocalizations {
   String pro_offer_cta_intro(String intro, String price) {
     return '$intro el primer año, luego $price/año';
   }
+
+  @override
+  String get scan_problem_offline_title => 'Sin conexión a internet';
+
+  @override
+  String get scan_problem_offline_body =>
+      'Conéctate a internet e inténtalo de nuevo.';
+
+  @override
+  String get scan_problem_slow_title => 'Está tardando demasiado';
+
+  @override
+  String get scan_problem_slow_body =>
+      'Puede que tu conexión sea lenta. Compruébala e inténtalo de nuevo.';
+
+  @override
+  String get scan_problem_failed_title => 'No pudimos analizar esta foto';
+
+  @override
+  String get scan_problem_failed_body =>
+      'Algo salió mal por nuestra parte. Inténtalo de nuevo o añade la comida manualmente.';
+
+  @override
+  String get scan_problem_no_food_title => 'No se encontró comida';
+
+  @override
+  String get scan_problem_no_food_body =>
+      'No vimos comida en esta foto. Vuelve a tomarla con la comida llenando el encuadre, o añádela manualmente.';
+
+  @override
+  String get scan_problem_image_title => 'No se puede usar esta foto';
+
+  @override
+  String get scan_problem_image_body =>
+      'Prueba con otra foto o añade la comida manualmente.';
+
+  @override
+  String get scan_problem_barcode_title => 'Producto no encontrado';
+
+  @override
+  String get scan_problem_barcode_body =>
+      'Este código de barras aún no está en nuestra base de datos. Escanéalo de nuevo o añade el alimento manualmente.';
+
+  @override
+  String get scan_problem_scan_again => 'Escanear de nuevo';
+
+  @override
+  String get scan_problem_dismiss => 'OK';
+
+  @override
+  String get meal_save_failed =>
+      'No se pudo guardar tu comida. Inténtalo de nuevo.';
+
+  @override
+  String get snap_camera_slow =>
+      'La cámara está tardando más de lo normal en iniciarse.';
+
+  @override
+  String get snap_camera_permission =>
+      'SnapCal necesita acceso a la cámara para escanear comida. Permítelo en los ajustes de tu teléfono.';
+
+  @override
+  String get snap_camera_unavailable =>
+      'No se pudo iniciar la cámara. Inténtalo de nuevo.';
+
+  @override
+  String get snap_open_settings => 'Abrir ajustes';
 }

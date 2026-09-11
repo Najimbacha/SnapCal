@@ -4699,4 +4699,71 @@ class AppLocalizationsFr extends AppLocalizations {
   String pro_offer_cta_intro(String intro, String price) {
     return '$intro la première année, puis $price/an';
   }
+
+  @override
+  String get scan_problem_offline_title => 'Pas de connexion internet';
+
+  @override
+  String get scan_problem_offline_body =>
+      'Connectez-vous à internet et réessayez.';
+
+  @override
+  String get scan_problem_slow_title => 'Cela prend trop de temps';
+
+  @override
+  String get scan_problem_slow_body =>
+      'Votre connexion est peut-être lente. Vérifiez-la et réessayez.';
+
+  @override
+  String get scan_problem_failed_title => 'Impossible d\'analyser cette photo';
+
+  @override
+  String get scan_problem_failed_body =>
+      'Un problème est survenu de notre côté. Réessayez ou ajoutez le repas manuellement.';
+
+  @override
+  String get scan_problem_no_food_title => 'Aucun aliment trouvé';
+
+  @override
+  String get scan_problem_no_food_body =>
+      'Nous n\'avons repéré aucun aliment sur cette photo. Reprenez-la avec le plat bien cadré, ou ajoutez-le manuellement.';
+
+  @override
+  String get scan_problem_image_title => 'Impossible d\'utiliser cette photo';
+
+  @override
+  String get scan_problem_image_body =>
+      'Essayez une autre photo ou ajoutez le repas manuellement.';
+
+  @override
+  String get scan_problem_barcode_title => 'Produit introuvable';
+
+  @override
+  String get scan_problem_barcode_body =>
+      'Ce code-barres n\'est pas encore dans notre base. Scannez-le à nouveau ou ajoutez l\'aliment manuellement.';
+
+  @override
+  String get scan_problem_scan_again => 'Scanner à nouveau';
+
+  @override
+  String get scan_problem_dismiss => 'OK';
+
+  @override
+  String get meal_save_failed =>
+      'Impossible d\'enregistrer votre repas. Veuillez réessayer.';
+
+  @override
+  String get snap_camera_slow =>
+      'L\'appareil photo met plus de temps que d\'habitude à démarrer.';
+
+  @override
+  String get snap_camera_permission =>
+      'SnapCal a besoin de l\'appareil photo pour scanner vos repas. Autorisez-le dans les réglages du téléphone.';
+
+  @override
+  String get snap_camera_unavailable =>
+      'L\'appareil photo n\'a pas pu démarrer. Veuillez réessayer.';
+
+  @override
+  String get snap_open_settings => 'Ouvrir les réglages';
 }

@@ -15,6 +15,16 @@ class DateUtils {
     return getDateString(DateTime.now());
   }
 
+  /// The meal a new entry most likely is, by the time of day. The gap before
+  /// dinner, like the small hours, reads as a snack.
+  static String suggestedMealType([DateTime? at]) {
+    final hour = (at ?? DateTime.now()).hour;
+    if (hour >= 5 && hour < 11) return 'Breakfast';
+    if (hour >= 11 && hour < 16) return 'Lunch';
+    if (hour >= 18 && hour < 23) return 'Dinner';
+    return 'Snack';
+  }
+
   /// Parse date string to DateTime.
   ///
   /// Stored date strings come from Hive (`Meal.dateString`) and can be

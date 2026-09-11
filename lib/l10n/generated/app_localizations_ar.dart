@@ -4599,4 +4599,66 @@ class AppLocalizationsAr extends AppLocalizations {
   String pro_offer_cta_intro(String intro, String price) {
     return '$intro للسنة الأولى، ثم $price سنوياً';
   }
+
+  @override
+  String get scan_problem_offline_title => 'لا يوجد اتصال بالإنترنت';
+
+  @override
+  String get scan_problem_offline_body => 'اتصل بالإنترنت ثم حاول مرة أخرى.';
+
+  @override
+  String get scan_problem_slow_title => 'يستغرق هذا وقتاً طويلاً';
+
+  @override
+  String get scan_problem_slow_body =>
+      'قد يكون اتصالك بطيئاً. تحقق منه ثم حاول مرة أخرى.';
+
+  @override
+  String get scan_problem_failed_title => 'تعذّر تحليل هذه الصورة';
+
+  @override
+  String get scan_problem_failed_body =>
+      'حدث خطأ من جهتنا. حاول مرة أخرى أو أضف الوجبة يدوياً.';
+
+  @override
+  String get scan_problem_no_food_title => 'لم يتم العثور على طعام';
+
+  @override
+  String get scan_problem_no_food_body =>
+      'لم نجد طعاماً في هذه الصورة. التقطها مجدداً بحيث يملأ الطعام الإطار، أو أضفه يدوياً.';
+
+  @override
+  String get scan_problem_image_title => 'لا يمكن استخدام هذه الصورة';
+
+  @override
+  String get scan_problem_image_body => 'جرّب صورة أخرى أو أضف الوجبة يدوياً.';
+
+  @override
+  String get scan_problem_barcode_title => 'المنتج غير موجود';
+
+  @override
+  String get scan_problem_barcode_body =>
+      'هذا الباركود غير موجود في قاعدة بياناتنا بعد. امسحه مرة أخرى أو أضف الطعام يدوياً.';
+
+  @override
+  String get scan_problem_scan_again => 'امسح مرة أخرى';
+
+  @override
+  String get scan_problem_dismiss => 'حسناً';
+
+  @override
+  String get meal_save_failed => 'تعذّر حفظ وجبتك. حاول مرة أخرى.';
+
+  @override
+  String get snap_camera_slow => 'تستغرق الكاميرا وقتاً أطول من المعتاد لتبدأ.';
+
+  @override
+  String get snap_camera_permission =>
+      'يحتاج SnapCal إلى الكاميرا لمسح الطعام. اسمح بذلك من إعدادات هاتفك.';
+
+  @override
+  String get snap_camera_unavailable => 'تعذّر تشغيل الكاميرا. حاول مرة أخرى.';
+
+  @override
+  String get snap_open_settings => 'فتح الإعدادات';
 }

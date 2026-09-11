@@ -4611,4 +4611,70 @@ class AppLocalizationsEn extends AppLocalizations {
   String pro_offer_cta_intro(String intro, String price) {
     return '$intro for the first year, then $price/year';
   }
+
+  @override
+  String get scan_problem_offline_title => 'No internet connection';
+
+  @override
+  String get scan_problem_offline_body =>
+      'Connect to the internet and try again.';
+
+  @override
+  String get scan_problem_slow_title => 'This is taking too long';
+
+  @override
+  String get scan_problem_slow_body =>
+      'Your connection may be slow. Check it and try again.';
+
+  @override
+  String get scan_problem_failed_title => 'We couldn\'t analyze this photo';
+
+  @override
+  String get scan_problem_failed_body =>
+      'Something went wrong on our side. Try again, or add the meal manually.';
+
+  @override
+  String get scan_problem_no_food_title => 'No food found';
+
+  @override
+  String get scan_problem_no_food_body =>
+      'We couldn\'t spot any food in this photo. Retake it with the food filling the frame, or add it manually.';
+
+  @override
+  String get scan_problem_image_title => 'Can\'t use this photo';
+
+  @override
+  String get scan_problem_image_body =>
+      'Try a different photo, or add the meal manually.';
+
+  @override
+  String get scan_problem_barcode_title => 'Product not found';
+
+  @override
+  String get scan_problem_barcode_body =>
+      'This barcode isn\'t in our database yet. Scan it again, or add the food manually.';
+
+  @override
+  String get scan_problem_scan_again => 'Scan again';
+
+  @override
+  String get scan_problem_dismiss => 'OK';
+
+  @override
+  String get meal_save_failed => 'Couldn\'t save your meal. Please try again.';
+
+  @override
+  String get snap_camera_slow =>
+      'The camera is taking longer than usual to start.';
+
+  @override
+  String get snap_camera_permission =>
+      'SnapCal needs camera access to scan food. Allow it in your phone\'s settings.';
+
+  @override
+  String get snap_camera_unavailable =>
+      'The camera couldn\'t start. Please try again.';
+
+  @override
+  String get snap_open_settings => 'Open settings';
 }
