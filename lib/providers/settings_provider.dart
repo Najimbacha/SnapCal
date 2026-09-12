@@ -744,6 +744,12 @@ class Settings extends _$Settings {
     await _updateSettings(updated, waitForCloud: false);
   }
 
+  /// The daily water target in millilitres; 0 means "from my weight".
+  Future<void> setWaterGoal(int ml) async {
+    final current = _data ?? UserSettings.defaults();
+    await _updateSettings(current.copyWith(waterGoalMl: ml.clamp(0, 6000)));
+  }
+
   Future<void> setThemeMode(String mode) async {
     final current = _data ?? UserSettings.defaults();
     await _updateSettings(current.copyWith(themeMode: mode));

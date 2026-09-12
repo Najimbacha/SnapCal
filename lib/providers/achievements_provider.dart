@@ -1,7 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:collection/collection.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../core/utils/date_utils.dart' as app_date;
 import '../data/models/achievement.dart';
+import '../data/models/meal.dart';
+import '../data/models/user_settings.dart';
+import '../data/services/transformation_video_service.dart';
+import 'metrics_provider.dart';
+import 'repository_providers.dart';
+import 'settings_provider.dart';
 
 part 'achievements_provider.g.dart';
 
@@ -146,6 +154,102 @@ class AchievementDefs {
   ];
 }
 
+/// What the badges are measured against, worked out from what is logged.
+///
+/// Nothing ever called [Achievements.checkAchievements], so every badge sat
+/// at zero for every user, for good.
+class AchievementStats {
+  const AchievementStats({
+    required this.totalMealsLogged,
+    required this.currentStreak,
+    required this.waterGoalDays,
+    required this.calorieGoalStreak,
+    required this.photosLogged,
+    required this.hasGeneratedVideo,
+    required this.hitMacrosToday,
+    required this.perfectWeekDays,
+  });
+
+  final int totalMealsLogged;
+  final int currentStreak;
+  final int waterGoalDays;
+  final int calorieGoalStreak;
+  final int photosLogged;
+  final bool hasGeneratedVideo;
+  final bool hitMacrosToday;
+  final int perfectWeekDays;
+
+  /// Within a tenth of the target counts as hitting it: nobody lands on a
+  /// calorie goal exactly, and a badge that needs them to is never won.
+  static bool _withinTenth(num value, num target) =>
+      target > 0 && value >= target * 0.9 && value <= target * 1.1;
+
+  static AchievementStats from({
+    required List<Meal> meals,
+    required Map<String, int> waterByDate,
+    required int waterGoalMl,
+    required UserSettings settings,
+    required int photosLogged,
+    required bool hasGeneratedVideo,
+    required DateTime today,
+  }) {
+    final caloriesByDate = <String, int>{};
+    final proteinByDate = <String, int>{};
+    final carbsByDate = <String, int>{};
+    final fatByDate = <String, int>{};
+    for (final meal in meals) {
+      final date = meal.dateString;
+      caloriesByDate[date] = (caloriesByDate[date] ?? 0) + meal.calories;
+      proteinByDate[date] = (proteinByDate[date] ?? 0) + meal.macros.protein;
+      carbsByDate[date] = (carbsByDate[date] ?? 0) + meal.macros.carbs;
+      fatByDate[date] = (fatByDate[date] ?? 0) + meal.macros.fat;
+    }
+
+    String dayAt(int daysAgo) => app_date.DateUtils.getDateString(
+      DateTime(today.year, today.month, today.day - daysAgo),
+    );
+
+    bool hitCalories(String date) =>
+        _withinTenth(caloriesByDate[date] ?? 0, settings.dailyCalorieGoal);
+    bool hitWater(String date) =>
+        waterGoalMl > 0 && (waterByDate[date] ?? 0) >= waterGoalMl;
+
+    // Today counts once it is met, but a day still in progress must not break
+    // a streak that yesterday earned.
+    var streak = 0;
+    for (var i = hitCalories(dayAt(0)) ? 0 : 1; i < 365; i++) {
+      if (!hitCalories(dayAt(i))) break;
+      streak++;
+    }
+
+    var perfectWeekDays = 0;
+    for (var i = 0; i < 7; i++) {
+      final date = dayAt(i);
+      if (hitCalories(date) && hitWater(date)) perfectWeekDays++;
+    }
+
+    final todayKey = dayAt(0);
+    final hitMacrosToday =
+        _withinTenth(proteinByDate[todayKey] ?? 0, settings.dailyProteinGoal) &&
+        _withinTenth(carbsByDate[todayKey] ?? 0, settings.dailyCarbGoal) &&
+        _withinTenth(fatByDate[todayKey] ?? 0, settings.dailyFatGoal);
+
+    return AchievementStats(
+      totalMealsLogged: meals.length,
+      currentStreak: settings.currentStreak,
+      waterGoalDays:
+          waterGoalMl <= 0
+              ? 0
+              : waterByDate.values.where((ml) => ml >= waterGoalMl).length,
+      calorieGoalStreak: streak,
+      photosLogged: photosLogged,
+      hasGeneratedVideo: hasGeneratedVideo,
+      hitMacrosToday: hitMacrosToday,
+      perfectWeekDays: perfectWeekDays,
+    );
+  }
+}
+
 @Riverpod(keepAlive: true)
 class Achievements extends _$Achievements {
   Box<Achievement>? _box;
@@ -220,6 +324,40 @@ class Achievements extends _$Achievements {
       await _box!.put(entry.key, achievement);
     }
     state = AsyncData(_box!.values.toList());
+  }
+
+  /// Measures every badge against what is logged, and unlocks what is due.
+  Future<void> refreshAchievements() async {
+    try {
+      await future;
+      if (_box == null) return;
+      final mealRepo = await ref.read(mealRepositoryProvider.future);
+      final waterRepo = await ref.read(waterRepositoryProvider.future);
+      final settings = await ref.read(settingsProvider.future);
+      final metrics = await ref.read(bodyMetricsProvider.future);
+      final stats = AchievementStats.from(
+        meals: mealRepo.getAllMeals(),
+        waterByDate: waterRepo.totalsByDate(),
+        waterGoalMl: settings.effectiveWaterGoalMl,
+        settings: settings,
+        photosLogged: metrics.where((m) => m.photoFrontPath != null).length,
+        hasGeneratedVideo:
+            await TransformationVideoService.journeyVideoGenerated(),
+        today: DateTime.now(),
+      );
+      await checkAchievements(
+        totalMealsLogged: stats.totalMealsLogged,
+        currentStreak: stats.currentStreak,
+        waterGoalDays: stats.waterGoalDays,
+        calorieGoalStreak: stats.calorieGoalStreak,
+        photosLogged: stats.photosLogged,
+        hasGeneratedVideo: stats.hasGeneratedVideo,
+        hitMacrosToday: stats.hitMacrosToday,
+        perfectWeekDays: stats.perfectWeekDays,
+      );
+    } catch (e) {
+      debugPrint('Achievement refresh skipped: $e');
+    }
   }
 
   Future<void> clear() async {

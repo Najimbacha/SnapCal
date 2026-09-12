@@ -4352,6 +4352,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settings_group_adjust => 'Ajuster';
 
   @override
+  String get settings_group_daily_targets => 'Objectifs quotidiens';
+
+  @override
+  String get settings_water_goal => 'Eau';
+
+  @override
+  String get settings_step_goal => 'Pas';
+
+  @override
+  String get settings_unit_ml => 'ml';
+
+  @override
+  String get settings_unit_steps => 'pas';
+
+  @override
   String get settings_sex => 'Sexe';
 
   @override

@@ -1620,6 +1620,12 @@ String localizeOption(BuildContext context, String option) {
   if (normalized == 'yrs') {
     return l10n.settings_age_unit;
   }
+  if (normalized == 'ml') {
+    return l10n.settings_unit_ml;
+  }
+  if (normalized == 'steps') {
+    return l10n.settings_unit_steps;
+  }
   if (normalized == 'kcal') {
     return l10n.settings_kcal_unit;
   }

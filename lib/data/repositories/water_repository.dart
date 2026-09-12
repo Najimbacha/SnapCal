@@ -124,6 +124,18 @@ class WaterRepository {
     return logs.fold(0, (sum, log) => sum + log.amountMl);
   }
 
+  /// Millilitres per day, for every day on this phone. Feeds the hydration
+  /// badges, which had no way to count a day.
+  Map<String, int> totalsByDate() {
+    final box = _waterBox;
+    if (box == null) return const {};
+    final totals = <String, int>{};
+    for (final log in box.values) {
+      totals[log.dateString] = (totals[log.dateString] ?? 0) + log.amountMl;
+    }
+    return totals;
+  }
+
   /// Add water entry
   Future<void> addWater(WaterLog log) async {
     await _waterBox?.add(log);
@@ -151,20 +163,6 @@ class WaterRepository {
         _inBackground(_cloud.remove(_recordId(latest)));
       }
     }
-  }
-
-  /// Get water logs for the last 7 days
-  List<WaterLog> getWeeklyWater() {
-    if (_waterBox == null) return [];
-    final now = DateTime.now();
-    final weekAgo = now.subtract(const Duration(days: 7));
-    return _waterBox!.values
-        .where(
-          (log) => DateTime.fromMillisecondsSinceEpoch(
-            log.timestamp,
-          ).isAfter(weekAgo),
-        )
-        .toList();
   }
 
   /// Clear all logs for a specific date

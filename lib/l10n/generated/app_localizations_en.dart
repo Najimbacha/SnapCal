@@ -4269,6 +4269,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_group_adjust => 'Adjust';
 
   @override
+  String get settings_group_daily_targets => 'Daily targets';
+
+  @override
+  String get settings_water_goal => 'Water';
+
+  @override
+  String get settings_step_goal => 'Steps';
+
+  @override
+  String get settings_unit_ml => 'ml';
+
+  @override
+  String get settings_unit_steps => 'steps';
+
+  @override
   String get settings_sex => 'Sex';
 
   @override

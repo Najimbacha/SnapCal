@@ -1,4 +1,6 @@
 import 'package:snapcal/data/services/force_update_service.dart';
+import '../../data/repositories/activity_repository.dart';
+import '../../providers/achievements_provider.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -464,6 +466,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       _animController.value = 1.0;
     }
 
+    // Badges are worked out from what is already logged. Nothing ever asked
+    // for them, so not one of them could unlock.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ref.read(achievementsProvider.notifier).refreshAchievements());
+    });
+
     // Smart Premium Encouragement (Aha Moment)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 1500), _maybePromptUpgrade);
@@ -560,9 +568,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     final activitySummary = ref.watch(activityProvider).valueOrNull;
     final activitySteps = activitySummary?.steps ?? 0;
-    // ActivitySummary carries no step goal and no source provides one; the
-    // app-wide constant is the single source of truth until a real goal exists.
-    final activityStepGoal = 10000;
+    // The goal the user set, from the activity store. Every screen used to
+    // hardcode 10,000.
+    final activityStepGoal =
+        ref.watch(stepGoalProvider).valueOrNull ??
+        ActivityRepository.defaultStepGoal;
     final activeCalories = activitySummary?.activeCalories.round() ?? 0;
 
     final waterState = ref.watch(waterProvider).valueOrNull;
@@ -657,7 +667,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               caloriesEstimated:
                   activitySummary?.activeCaloriesEstimated ?? true,
               onWaterTap: () => showHydrationSheet(context),
-              onActivityTap: () => showActivityHealthConnectSheet(context),
+              // Connected already: the full activity screen, which nothing
+              // in the app could open. Otherwise the sheet that connects it.
+              onActivityTap:
+                  () =>
+                      (activitySummary?.healthConnected ?? false)
+                          ? context.push('/activity')
+                          : showActivityHealthConnectSheet(context),
             ),
           ),
           _staggeredSlide(

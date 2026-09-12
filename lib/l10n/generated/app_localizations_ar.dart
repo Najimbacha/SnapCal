@@ -4256,6 +4256,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_group_adjust => 'تعديل';
 
   @override
+  String get settings_group_daily_targets => 'الأهداف اليومية';
+
+  @override
+  String get settings_water_goal => 'الماء';
+
+  @override
+  String get settings_step_goal => 'الخطوات';
+
+  @override
+  String get settings_unit_ml => 'مل';
+
+  @override
+  String get settings_unit_steps => 'خطوة';
+
+  @override
   String get settings_sex => 'الجنس';
 
   @override

@@ -1,4 +1,5 @@
 import '../data/services/app_review_service.dart';
+import 'achievements_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -94,6 +95,8 @@ class MealLog extends _$MealLog {
     // And the review prompt's (5 logged meals across 3 days). The service
     // was complete but nothing fed it, so it could never ask.
     unawaited(AppReviewService.instance().recordSuccessfulMealScanOrLog());
+
+    unawaited(ref.read(achievementsProvider.notifier).refreshAchievements());
 
     // A meal logged before its reminder moves that reminder to tomorrow.
     unawaited(ref.read(settingsProvider.notifier).skipMealReminderFor(meal));

@@ -8,6 +8,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/user_settings.dart';
 import '../../data/services/premium_conversion_service.dart';
+import '../../data/repositories/activity_repository.dart';
+import '../../providers/activity_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 
@@ -43,6 +45,8 @@ class NutritionGoalsScreen extends ConsumerWidget {
           _GoalSourceSelector(settings: settings),
           const SizedBox(height: 24),
           _AdjustSection(settings: settings, isPro: isPro),
+          const SizedBox(height: 24),
+          const _DailyTargetsSection(),
         ],
       ),
     );
@@ -405,9 +409,7 @@ class _SourceTab extends StatelessWidget {
               fontSize: 13.5,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color:
-                  selected
-                      ? const Color(0xFFECFDF5)
-                      : settingsSubtext(context),
+                  selected ? const Color(0xFFECFDF5) : settingsSubtext(context),
             ),
           ),
         ),
@@ -571,6 +573,63 @@ class _ProChip extends StatelessWidget {
           letterSpacing: 0.5,
         ),
       ),
+    );
+  }
+}
+
+/// Water and steps: the two daily targets that are not nutrition, and the
+/// two that had no setting at all -- water was fixed at 2,500 ml and steps
+/// at 10,000, for everyone.
+class _DailyTargetsSection extends ConsumerWidget {
+  const _DailyTargetsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = ref.watch(settingsProvider).valueOrNull;
+    final waterGoal = settings?.effectiveWaterGoalMl ?? 2500;
+    final stepGoal =
+        ref.watch(stepGoalProvider).valueOrNull ??
+        ActivityRepository.defaultStepGoal;
+
+    return SettingsSection(
+      title: l10n.settings_group_daily_targets,
+      children: [
+        SettingsRow(
+          icon: LucideIcons.droplet,
+          title: l10n.settings_water_goal,
+          value: '$waterGoal ${l10n.settings_unit_ml}',
+          onTap:
+              () => showSettingsNumberDialog(
+                context,
+                title: l10n.settings_water_goal,
+                currentValue: waterGoal,
+                unit: 'ml',
+                min: 1000,
+                max: 6000,
+                step: 100,
+                onSave:
+                    (value) =>
+                        ref.read(settingsProvider.notifier).setWaterGoal(value),
+              ),
+        ),
+        SettingsRow(
+          icon: LucideIcons.activity,
+          title: l10n.settings_step_goal,
+          value: '$stepGoal ${l10n.settings_unit_steps}',
+          onTap:
+              () => showSettingsNumberDialog(
+                context,
+                title: l10n.settings_step_goal,
+                currentValue: stepGoal,
+                unit: 'steps',
+                min: 2000,
+                max: 30000,
+                step: 500,
+                onSave: (value) => setStepGoal(ref, value),
+              ),
+        ),
+      ],
     );
   }
 }

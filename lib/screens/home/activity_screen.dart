@@ -10,6 +10,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../data/models/activity_summary.dart';
 import '../../data/services/premium_conversion_service.dart';
+import '../../data/repositories/activity_repository.dart';
 import '../../providers/activity_provider.dart' as ap;
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
@@ -39,7 +40,9 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     final activityVal = activityAsync.valueOrNull;
     final steps = activityVal?.steps ?? 0;
     final isPro = ref.watch(effectiveIsProProvider);
-    final stepGoal = 10000;
+    final stepGoal =
+        ref.watch(ap.stepGoalProvider).valueOrNull ??
+        ActivityRepository.defaultStepGoal;
     final progress = (steps / math.max(stepGoal, 1)).clamp(0.0, 1.0);
     final l10n = AppLocalizations.of(context)!;
 

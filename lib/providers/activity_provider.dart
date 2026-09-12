@@ -1,4 +1,6 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../data/repositories/activity_repository.dart';
 import '../data/services/health_connect_service.dart';
 import '../core/services/app_lifecycle_service.dart';
 
@@ -120,4 +122,19 @@ class Activity extends _$Activity {
       ),
     );
   }
+}
+
+/// The daily step goal, saved on the phone.
+///
+/// Every screen hardcoded 10,000 while the activity store kept a goal that
+/// could be set -- and was already tested -- with nothing reading it.
+final _activityRepository = ActivityRepository();
+
+final stepGoalProvider = FutureProvider<int>(
+  (ref) => _activityRepository.getStepGoal(),
+);
+
+Future<void> setStepGoal(WidgetRef ref, int goal) async {
+  await _activityRepository.setStepGoal(goal);
+  ref.invalidate(stepGoalProvider);
 }

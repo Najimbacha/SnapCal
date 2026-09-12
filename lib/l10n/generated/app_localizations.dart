@@ -7708,6 +7708,36 @@ abstract class AppLocalizations {
   /// **'Adjust'**
   String get settings_group_adjust;
 
+  /// No description provided for @settings_group_daily_targets.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily targets'**
+  String get settings_group_daily_targets;
+
+  /// No description provided for @settings_water_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Water'**
+  String get settings_water_goal;
+
+  /// No description provided for @settings_step_goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get settings_step_goal;
+
+  /// No description provided for @settings_unit_ml.
+  ///
+  /// In en, this message translates to:
+  /// **'ml'**
+  String get settings_unit_ml;
+
+  /// No description provided for @settings_unit_steps.
+  ///
+  /// In en, this message translates to:
+  /// **'steps'**
+  String get settings_unit_steps;
+
   /// No description provided for @settings_sex.
   ///
   /// In en, this message translates to:

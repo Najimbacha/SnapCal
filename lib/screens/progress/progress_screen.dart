@@ -104,6 +104,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
       final videoPath = await TransformationVideoService().generateVideo(paths);
 
       if (videoPath != null) {
+        await TransformationVideoService.markJourneyVideoGenerated();
         if (!mounted) return;
         final l10n = AppLocalizations.of(context)!;
         await SharePlus.instance.share(

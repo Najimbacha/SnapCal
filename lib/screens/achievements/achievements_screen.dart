@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -10,11 +12,27 @@ import 'package:snapcal/providers/achievements_provider.dart';
 import 'package:snapcal/widgets/app_page_scaffold.dart';
 import 'widgets/badge_card.dart';
 
-class AchievementsScreen extends ConsumerWidget {
+class AchievementsScreen extends ConsumerStatefulWidget {
   const AchievementsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AchievementsScreen> createState() => _AchievementsScreenState();
+}
+
+class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ref.read(achievementsProvider.notifier).refreshAchievements());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Watched, not read once: a badge unlocked while this screen is open now
+    // appears, and the counts are not stuck at zero before the box opens.
+    ref.watch(achievementsProvider);
     final achievementsNotifier = ref.read(achievementsProvider.notifier);
     final l10n = AppLocalizations.of(context)!;
 

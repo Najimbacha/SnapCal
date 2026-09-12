@@ -15,6 +15,8 @@ import '../../providers/auth_notifier_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/water_provider.dart';
+import '../../providers/achievements_provider.dart';
+import '../../providers/activity_provider.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/metrics_provider.dart';
 import '../../providers/planner_provider.dart';
@@ -328,6 +330,8 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
     ref.invalidate(assistantProvider);
     ref.invalidate(plannerProvider);
     ref.invalidate(plannerNotifierProvider);
+    ref.invalidate(achievementsProvider);
+    ref.invalidate(stepGoalProvider);
 
     // Home, not the sign-in wall.
     //
@@ -438,6 +442,8 @@ Future<void> confirmAndDeleteAccount(
     ref.invalidate(assistantProvider);
     ref.invalidate(plannerProvider);
     ref.invalidate(plannerNotifierProvider);
+    ref.invalidate(achievementsProvider);
+    ref.invalidate(stepGoalProvider);
   }
   messenger.showSnackBar(
     SnackBar(content: Text(l10n.settings_account_deleted)),

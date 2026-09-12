@@ -1,10 +1,34 @@
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/utils/pref_scoping.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 class TransformationVideoService {
+  static const _videoMadeKey = 'journey_video_generated';
+
+  /// Whether this user has ever made a journey video. The badge for it had
+  /// nothing to read.
+  static Future<bool> journeyVideoGenerated() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(scopedPrefKey(_videoMadeKey)) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> markJourneyVideoGenerated() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(scopedPrefKey(_videoMadeKey), true);
+    } catch (_) {
+      // No preferences on this platform: the badge simply stays locked.
+    }
+  }
+
   static final TransformationVideoService _instance =
       TransformationVideoService._internal();
   factory TransformationVideoService() => _instance;

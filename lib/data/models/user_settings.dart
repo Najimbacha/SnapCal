@@ -27,6 +27,15 @@ String _deviceLanguageOrEnglish() {
   return shipped ? code : 'en';
 }
 
+/// A daily water target worked out from body weight: about 35 ml per kilo,
+/// kept inside what a person can sensibly drink. 2,500 ml when no weight is
+/// known -- which is what every user used to get, whatever they weighed.
+int waterGoalForWeightKg(double? weightKg) {
+  if (weightKg == null || weightKg <= 0) return 2500;
+  final rounded = ((weightKg * 35) / 50).round() * 50;
+  return rounded.clamp(1500, 4000);
+}
+
 /// User settings and goals
 @HiveType(typeId: 2)
 class UserSettings extends HiveObject {
@@ -166,6 +175,16 @@ class UserSettings extends HiveObject {
   @HiveField(40)
   final String goalSource;
 
+  /// The daily water target in millilitres, or 0 for "work it out from my
+  /// weight". It was a constant 2,500 ml for everyone, with nothing in the
+  /// app able to change it.
+  ///
+  /// Kept on the phone only: the settings document the app is allowed to
+  /// write is a fixed list of fields in the security rules, and adding one
+  /// there means deploying new rules before any app version can save.
+  @HiveField(41)
+  final int waterGoalMl;
+
   UserSettings({
     required this.dailyCalorieGoal,
     required this.dailyProteinGoal,
@@ -207,8 +226,13 @@ class UserSettings extends HiveObject {
     this.lastFoodReminderDate,
     this.fcmToken,
     this.goalSource = 'profile',
+    this.waterGoalMl = 0,
     String? languageCode,
   }) : languageCode = languageCode ?? _deviceLanguageOrEnglish();
+
+  /// The water target actually used: the one chosen, or one from body weight.
+  int get effectiveWaterGoalMl =>
+      waterGoalMl > 0 ? waterGoalMl : waterGoalForWeightKg(startingWeight);
 
   UserSettings copyWith({
     int? dailyCalorieGoal,
@@ -252,6 +276,7 @@ class UserSettings extends HiveObject {
     String? lastFoodReminderDate,
     String? fcmToken,
     String? goalSource,
+    int? waterGoalMl,
     // `copyWith(lastLoggedDate: null)` cannot clear the field — the `??`
     // below reads it as "leave unchanged". Pass this to actually clear it.
     bool clearLastLoggedDate = false,
@@ -302,6 +327,7 @@ class UserSettings extends HiveObject {
       lastFoodReminderDate: lastFoodReminderDate ?? this.lastFoodReminderDate,
       fcmToken: fcmToken ?? this.fcmToken,
       goalSource: goalSource ?? this.goalSource,
+      waterGoalMl: waterGoalMl ?? this.waterGoalMl,
     );
   }
 
@@ -348,6 +374,7 @@ class UserSettings extends HiveObject {
       'lastFoodReminderDate': lastFoodReminderDate,
       'fcmToken': fcmToken,
       'goalSource': goalSource,
+      'waterGoalMl': waterGoalMl,
     };
   }
 
@@ -408,6 +435,7 @@ class UserSettings extends HiveObject {
       lastFoodReminderDate: json['lastFoodReminderDate'] as String?,
       fcmToken: json['fcmToken'] as String?,
       goalSource: json['goalSource'] as String? ?? 'profile',
+      waterGoalMl: (json['waterGoalMl'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -456,6 +484,7 @@ class UserSettings extends HiveObject {
       lastFoodReminderDate: null,
       fcmToken: null,
       goalSource: 'profile',
+      waterGoalMl: 0,
     );
   }
 }

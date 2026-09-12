@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/water_log.dart';
 import '../data/repositories/water_repository.dart';
 import '../core/utils/date_utils.dart' as app_date;
+import 'achievements_provider.dart';
 import 'current_day_provider.dart';
+import 'settings_provider.dart';
 import 'repository_providers.dart';
 
 part 'water_provider.g.dart';
@@ -26,7 +30,15 @@ class Water extends _$Water {
     final todayStr = ref.watch(currentDayProvider);
     final repo = await ref.watch(waterRepositoryProvider.future);
     final total = repo.getTotalWater(todayStr);
-    return WaterState(todayTotal: total, goal: 2500);
+    // The goal was a constant here, unchangeable and the same for everyone.
+    //
+    // Selected, not the whole settings object: every meal log saves
+    // settings (the streak), and watching all of it rebuilt this provider
+    // and re-read the day on each one.
+    final goal = ref.watch(
+      settingsProvider.select((s) => s.valueOrNull?.effectiveWaterGoalMl),
+    );
+    return WaterState(todayTotal: total, goal: goal ?? 2500);
   }
 
   Future<void> addWater(int ml) async {
@@ -40,6 +52,7 @@ class Water extends _$Water {
       ),
     );
     _publishTodayTotal(repo);
+    unawaited(ref.read(achievementsProvider.notifier).refreshAchievements());
   }
 
   /// Takes back today's most recent glass. Only today's: this removed the
@@ -57,8 +70,10 @@ class Water extends _$Water {
     _publishTodayTotal(repo);
   }
 
+  /// Saves the goal. It only ever lived in memory, so it was back to the
+  /// default on the next launch -- and nothing called this at all.
   Future<void> setGoal(int goal) async {
-    state = AsyncData(_current.copyWith(goal: goal));
+    await ref.read(settingsProvider.notifier).setWaterGoal(goal);
   }
 
   /// The current state, or an empty day when the first load never produced
@@ -72,23 +87,5 @@ class Water extends _$Water {
   void _publishTodayTotal(WaterRepository repo) {
     final total = repo.getTotalWater(app_date.DateUtils.getTodayString());
     state = AsyncData(_current.copyWith(todayTotal: total));
-  }
-
-  Future<int> getTotalForDate(String date) async {
-    final repo = await ref.read(waterRepositoryProvider.future);
-    return repo.getTotalWater(date);
-  }
-
-  Future<Map<String, int>> getTotalsForRange(
-    DateTime start,
-    DateTime end,
-  ) async {
-    final repo = await ref.read(waterRepositoryProvider.future);
-    final logs = repo.getWeeklyWater();
-    final map = <String, int>{};
-    for (final log in logs) {
-      map[log.dateString] = (map[log.dateString] ?? 0) + log.amountMl;
-    }
-    return map;
   }
 }
