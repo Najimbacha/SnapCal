@@ -3,6 +3,14 @@ import '../models/activity_summary.dart';
 import '../services/activity_service.dart';
 import '../services/health_connect_service.dart';
 
+/// How many steps were taken on one day.
+class DailySteps {
+  const DailySteps({required this.date, required this.steps});
+
+  final DateTime date;
+  final int steps;
+}
+
 class ActivityRepository {
   ActivityRepository({HealthConnectService? service})
     : _service = service ?? HealthConnectService();
@@ -14,6 +22,10 @@ class ActivityRepository {
   static const String _lastSyncedAtKey = 'last_synced_at';
   static const String _stepGoalKey = 'step_goal';
   static const int defaultStepGoal = 10000;
+
+  /// How far back a streak is counted. It scanned a year, one Health Connect
+  /// query per day, for a number shown beside today's steps.
+  static const int maxStreakDays = 90;
   static const double caloriesPerStep = 0.04;
 
   HealthConnectService get service => _service;
@@ -127,6 +139,30 @@ class ActivityRepository {
     );
   }
 
+  /// Steps for each of the last seven days, oldest first.
+  ///
+  /// [fetchSummary] is the whole picture for a single day and it scans for the
+  /// streak; a week of those is hundreds of Health Connect queries to draw one
+  /// bar chart.
+  Future<List<DailySteps>> weeklySteps({DateTime? today}) async {
+    final now = today ?? DateTime.now();
+    final days = <DailySteps>[];
+    for (var i = 6; i >= 0; i--) {
+      final start = DateTime(now.year, now.month, now.day - i);
+      final end =
+          _sameDay(start, now)
+              ? now
+              : DateTime(start.year, start.month, start.day + 1);
+      days.add(
+        DailySteps(
+          date: start,
+          steps: await _service.getStepsForDateRange(start, end),
+        ),
+      );
+    }
+    return days;
+  }
+
   Future<List<ActivitySummary>> fetchLast7Days() async {
     final now = DateTime.now();
     final summaries = <ActivitySummary>[];
@@ -180,7 +216,7 @@ class ActivityRepository {
     final today = DateTime.now();
     var streak = 0;
 
-    for (int i = 0; i < 365; i++) {
+    for (int i = 0; i < maxStreakDays; i++) {
       final date = DateTime(
         today.year,
         today.month,

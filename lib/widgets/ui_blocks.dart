@@ -205,12 +205,17 @@ class MetricTile extends StatelessWidget {
                 child: Icon(icon, color: accent, size: 18),
               ),
               if (hint != null)
-                Text(
-                  hint!,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: accent.withValues(alpha: 0.7),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 10,
+                Flexible(
+                  child: Text(
+                    hint!,
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: accent.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10,
+                    ),
                   ),
                 ),
             ],

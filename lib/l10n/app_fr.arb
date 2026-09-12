@@ -1130,12 +1130,13 @@
   "@activity_steps_goal": {
     "placeholders": {
       "steps": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       }
     }
   },
   "activity_unlock_pro_title": "Débloquer les fonctions Pro d'activité",
-  "activity_unlock_pro_subtitle": "Passez à Pro pour débloquer l'ajustement dynamique de l'objectif calorique par les pas, les séries hebdomadaires, les calories d'entraînement manuel, le score d'activité et les insights.",
+  "activity_unlock_pro_subtitle": "Voyez votre semaine : pas quotidiens, votre série, vos séances depuis Health Connect et un objectif calorique qui s’adapte à votre activité.",
   "activity_manual_workouts": "Entraînements manuels",
   "activity_no_manual_workouts": "Aucun entraînement manuel enregistré aujourd'hui.",
   "activity_default_workout": "Entraînement",
@@ -1147,7 +1148,8 @@
   "@activity_insight_goal_met": {
     "placeholders": {
       "steps": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       }
     }
   },
@@ -1155,7 +1157,8 @@
   "@activity_insight_goal_gap": {
     "placeholders": {
       "steps": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       }
     }
   },
@@ -1219,6 +1222,17 @@
   "activity_calorie_estimate_disclaimer": "Les calories sont estimées à partir des pas et peuvent ne pas être exactes.",
   "activity_estimated_calories": "Calories estimées",
   "activity_step_streak": "Série de pas",
+  "activity_not_connected_title": "Connectez Health Connect",
+  "activity_not_connected_body": "SnapCal lit vos pas depuis Health Connect. Il n’y écrit jamais rien.",
+  "activity_connect": "Connecter",
+  "activity_calories_estimated_hint": "Estimées",
+  "activity_calories_measured_hint": "Mesurées",
+  "activity_this_week": "Cette semaine",
+  "activity_avg_per_day": "Moyenne par jour",
+  "activity_best_day": "Meilleur jour",
+  "activity_days_goal_met": "Jours atteints",
+  "activity_no_workout_today": "Pas de séance aujourd’hui",
+  "activity_workout_minutes": "{minutes} min",
   "activity_workout_calories": "Calories d'entraînement",
   "activity_score": "Score d'activité",
   "log_health_title": "Santé SnapCal",

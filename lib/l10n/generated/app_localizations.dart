@@ -5853,7 +5853,7 @@ abstract class AppLocalizations {
   /// No description provided for @activity_unlock_pro_subtitle.
   ///
   /// In en, this message translates to:
-  /// **'Go Pro to unlock dynamic calorie goal adjustment from steps, weekly streaks, manual workout calories, activity score, and insights.'**
+  /// **'See your week: daily steps, your streak, workouts from Health Connect, and a calorie target that adjusts to how much you move.'**
   String get activity_unlock_pro_subtitle;
 
   /// No description provided for @activity_manual_workouts.
@@ -6101,6 +6101,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Step streak'**
   String get activity_step_streak;
+
+  /// No description provided for @activity_not_connected_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect Health Connect'**
+  String get activity_not_connected_title;
+
+  /// No description provided for @activity_not_connected_body.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal reads your steps from Health Connect. It never writes anything back.'**
+  String get activity_not_connected_body;
+
+  /// No description provided for @activity_connect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get activity_connect;
+
+  /// No description provided for @activity_calories_estimated_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated'**
+  String get activity_calories_estimated_hint;
+
+  /// No description provided for @activity_calories_measured_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Measured'**
+  String get activity_calories_measured_hint;
+
+  /// No description provided for @activity_this_week.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get activity_this_week;
+
+  /// No description provided for @activity_avg_per_day.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily average'**
+  String get activity_avg_per_day;
+
+  /// No description provided for @activity_best_day.
+  ///
+  /// In en, this message translates to:
+  /// **'Best day'**
+  String get activity_best_day;
+
+  /// No description provided for @activity_days_goal_met.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal days'**
+  String get activity_days_goal_met;
+
+  /// No description provided for @activity_no_workout_today.
+  ///
+  /// In en, this message translates to:
+  /// **'No workout today'**
+  String get activity_no_workout_today;
+
+  /// No description provided for @activity_workout_minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String activity_workout_minutes(int minutes);
 
   /// No description provided for @activity_workout_calories.
   ///

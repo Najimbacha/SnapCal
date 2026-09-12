@@ -3173,7 +3173,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String activity_steps_goal(int steps) {
-    return 'Goal: $steps steps';
+    final intl.NumberFormat stepsNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String stepsString = stepsNumberFormat.format(steps);
+
+    return 'Goal: $stepsString steps';
   }
 
   @override
@@ -3181,7 +3185,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get activity_unlock_pro_subtitle =>
-      'Go Pro to unlock dynamic calorie goal adjustment from steps, weekly streaks, manual workout calories, activity score, and insights.';
+      'See your week: daily steps, your streak, workouts from Health Connect, and a calorie target that adjusts to how much you move.';
 
   @override
   String get activity_manual_workouts => 'Manual workouts';
@@ -3206,12 +3210,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String activity_insight_goal_met(int steps) {
-    return 'You averaged $steps steps this week and are meeting your step goal.';
+    final intl.NumberFormat stepsNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String stepsString = stepsNumberFormat.format(steps);
+
+    return 'You averaged $stepsString steps this week and are meeting your step goal.';
   }
 
   @override
   String activity_insight_goal_gap(int steps) {
-    return 'You averaged $steps steps this week. A short walk can help close the gap.';
+    final intl.NumberFormat stepsNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String stepsString = stepsNumberFormat.format(steps);
+
+    return 'You averaged $stepsString steps this week. A short walk can help close the gap.';
   }
 
   @override
@@ -3330,6 +3342,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get activity_step_streak => 'Step streak';
+
+  @override
+  String get activity_not_connected_title => 'Connect Health Connect';
+
+  @override
+  String get activity_not_connected_body =>
+      'SnapCal reads your steps from Health Connect. It never writes anything back.';
+
+  @override
+  String get activity_connect => 'Connect';
+
+  @override
+  String get activity_calories_estimated_hint => 'Estimated';
+
+  @override
+  String get activity_calories_measured_hint => 'Measured';
+
+  @override
+  String get activity_this_week => 'This week';
+
+  @override
+  String get activity_avg_per_day => 'Daily average';
+
+  @override
+  String get activity_best_day => 'Best day';
+
+  @override
+  String get activity_days_goal_met => 'Goal days';
+
+  @override
+  String get activity_no_workout_today => 'No workout today';
+
+  @override
+  String activity_workout_minutes(int minutes) {
+    return '$minutes min';
+  }
 
   @override
   String get activity_workout_calories => 'Workout calories';

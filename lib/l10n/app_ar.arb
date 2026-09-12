@@ -1133,12 +1133,13 @@
   "@activity_steps_goal": {
     "placeholders": {
       "steps": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       }
     }
   },
   "activity_unlock_pro_title": "افتح ميزات النشاط الاحترافية",
-  "activity_unlock_pro_subtitle": "قم بالترقية لفتح تعديل هدف السعرات من الخطوات، والسلاسل الأسبوعية، وسعرات التمارين اليدوية، ودرجة النشاط، والرؤى.",
+  "activity_unlock_pro_subtitle": "شاهد أسبوعك: الخطوات اليومية، وسلسلتك، والتمارين من Health Connect، وهدف سعرات يتكيف مع حركتك.",
   "activity_manual_workouts": "تمارين يدوية",
   "activity_no_manual_workouts": "لا توجد تمارين يدوية مسجلة اليوم.",
   "activity_default_workout": "تمرين",
@@ -1150,7 +1151,8 @@
   "@activity_insight_goal_met": {
     "placeholders": {
       "steps": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       }
     }
   },
@@ -1158,7 +1160,8 @@
   "@activity_insight_goal_gap": {
     "placeholders": {
       "steps": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       }
     }
   },
@@ -1222,6 +1225,17 @@
   "activity_calorie_estimate_disclaimer": "السعرات مقدّرة من الخطوات وقد لا تكون دقيقة تمامًا.",
   "activity_estimated_calories": "السعرات المقدّرة",
   "activity_step_streak": "سلسلة الخطوات",
+  "activity_not_connected_title": "اربط Health Connect",
+  "activity_not_connected_body": "يقرأ SnapCal خطواتك من Health Connect ولا يكتب فيه أي شيء.",
+  "activity_connect": "ربط",
+  "activity_calories_estimated_hint": "تقديرية",
+  "activity_calories_measured_hint": "مقيسة",
+  "activity_this_week": "هذا الأسبوع",
+  "activity_avg_per_day": "المتوسط اليومي",
+  "activity_best_day": "أفضل يوم",
+  "activity_days_goal_met": "أيام تحقيق الهدف",
+  "activity_no_workout_today": "لا تمرين اليوم",
+  "activity_workout_minutes": "{minutes} دقيقة",
   "activity_workout_calories": "سعرات التمارين",
   "activity_score": "درجة النشاط",
   "log_health_title": "صحة SnapCal",

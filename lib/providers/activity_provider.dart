@@ -138,3 +138,20 @@ Future<void> setStepGoal(WidgetRef ref, int goal) async {
   await _activityRepository.setStepGoal(goal);
   ref.invalidate(stepGoalProvider);
 }
+
+/// The last seven days of steps, for the week chart.
+///
+/// The chart used to be drawn from a week of zeros -- `ActivitySummary.empty`
+/// for each day -- and shown to Pro users as their history.
+final activityWeekProvider = FutureProvider<List<DailySteps>>((ref) async {
+  final summary = ref.watch(activityProvider).valueOrNull;
+  if (summary?.healthConnected != true) return const <DailySteps>[];
+  return _activityRepository.weeklySteps();
+});
+
+/// Days in a row the step goal has been met. It was hardcoded to zero.
+final stepStreakProvider = FutureProvider<int>((ref) async {
+  final summary = ref.watch(activityProvider).valueOrNull;
+  if (summary?.healthConnected != true) return 0;
+  return _activityRepository.getStepStreak();
+});

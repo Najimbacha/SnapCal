@@ -3170,7 +3170,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String activity_steps_goal(int steps) {
-    return 'الهدف: $steps خطوة';
+    final intl.NumberFormat stepsNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String stepsString = stepsNumberFormat.format(steps);
+
+    return 'الهدف: $stepsString خطوة';
   }
 
   @override
@@ -3178,7 +3182,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get activity_unlock_pro_subtitle =>
-      'قم بالترقية لفتح تعديل هدف السعرات من الخطوات، والسلاسل الأسبوعية، وسعرات التمارين اليدوية، ودرجة النشاط، والرؤى.';
+      'شاهد أسبوعك: الخطوات اليومية، وسلسلتك، والتمارين من Health Connect، وهدف سعرات يتكيف مع حركتك.';
 
   @override
   String get activity_manual_workouts => 'تمارين يدوية';
@@ -3203,12 +3207,20 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String activity_insight_goal_met(int steps) {
-    return 'بلغ متوسط خطواتك $steps خطوة هذا الأسبوع وأنت تحقق هدف الخطوات.';
+    final intl.NumberFormat stepsNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String stepsString = stepsNumberFormat.format(steps);
+
+    return 'بلغ متوسط خطواتك $stepsString خطوة هذا الأسبوع وأنت تحقق هدف الخطوات.';
   }
 
   @override
   String activity_insight_goal_gap(int steps) {
-    return 'بلغ متوسط خطواتك $steps خطوة هذا الأسبوع. يمكن لمشي قصير أن يساعدك على سد الفجوة.';
+    final intl.NumberFormat stepsNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String stepsString = stepsNumberFormat.format(steps);
+
+    return 'بلغ متوسط خطواتك $stepsString خطوة هذا الأسبوع. يمكن لمشي قصير أن يساعدك على سد الفجوة.';
   }
 
   @override
@@ -3326,6 +3338,42 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get activity_step_streak => 'سلسلة الخطوات';
+
+  @override
+  String get activity_not_connected_title => 'اربط Health Connect';
+
+  @override
+  String get activity_not_connected_body =>
+      'يقرأ SnapCal خطواتك من Health Connect ولا يكتب فيه أي شيء.';
+
+  @override
+  String get activity_connect => 'ربط';
+
+  @override
+  String get activity_calories_estimated_hint => 'تقديرية';
+
+  @override
+  String get activity_calories_measured_hint => 'مقيسة';
+
+  @override
+  String get activity_this_week => 'هذا الأسبوع';
+
+  @override
+  String get activity_avg_per_day => 'المتوسط اليومي';
+
+  @override
+  String get activity_best_day => 'أفضل يوم';
+
+  @override
+  String get activity_days_goal_met => 'أيام تحقيق الهدف';
+
+  @override
+  String get activity_no_workout_today => 'لا تمرين اليوم';
+
+  @override
+  String activity_workout_minutes(int minutes) {
+    return '$minutes دقيقة';
+  }
 
   @override
   String get activity_workout_calories => 'سعرات التمارين';

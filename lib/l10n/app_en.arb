@@ -1354,12 +1354,13 @@
   "@activity_steps_goal": {
     "placeholders": {
       "steps": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       }
     }
   },
   "activity_unlock_pro_title": "Unlock Pro activity features",
-  "activity_unlock_pro_subtitle": "Go Pro to unlock dynamic calorie goal adjustment from steps, weekly streaks, manual workout calories, activity score, and insights.",
+  "activity_unlock_pro_subtitle": "See your week: daily steps, your streak, workouts from Health Connect, and a calorie target that adjusts to how much you move.",
   "activity_manual_workouts": "Manual workouts",
   "activity_no_manual_workouts": "No manual workouts logged today.",
   "activity_default_workout": "Workout",
@@ -1371,7 +1372,8 @@
   "@activity_insight_goal_met": {
     "placeholders": {
       "steps": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       }
     }
   },
@@ -1379,7 +1381,8 @@
   "@activity_insight_goal_gap": {
     "placeholders": {
       "steps": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       }
     }
   },
@@ -1444,6 +1447,18 @@
   "activity_calorie_estimate_disclaimer": "Calories are estimated from steps and may not be exact.",
   "activity_estimated_calories": "Estimated calories",
   "activity_step_streak": "Step streak",
+  "activity_not_connected_title": "Connect Health Connect",
+  "activity_not_connected_body": "SnapCal reads your steps from Health Connect. It never writes anything back.",
+  "activity_connect": "Connect",
+  "activity_calories_estimated_hint": "Estimated",
+  "activity_calories_measured_hint": "Measured",
+  "activity_this_week": "This week",
+  "activity_avg_per_day": "Daily average",
+  "activity_best_day": "Best day",
+  "activity_days_goal_met": "Goal days",
+  "activity_no_workout_today": "No workout today",
+  "activity_workout_minutes": "{minutes} min",
+  "@activity_workout_minutes": {"placeholders": {"minutes": {"type": "int"}}},
   "activity_workout_calories": "Workout calories",
   "activity_score": "Activity score",
   "log_health_title": "SnapCal Health",
