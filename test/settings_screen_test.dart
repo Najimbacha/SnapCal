@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:snapcal/widgets/premium_prompt_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -84,29 +85,31 @@ Widget _host({
 }
 
 void main() {
-  testWidgets('guest root hides sign-out zone and shows upgrade card', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      _host(
-        overrides: [
-          authStateProvider.overrideWith((ref) => Stream.value(null)),
-        ],
-        child: const SettingsScreen(),
-      ),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'guest root hides sign-out zone and keeps a plain subscription entry',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          overrides: [
+            authStateProvider.overrideWith((ref) => Stream.value(null)),
+          ],
+          child: const SettingsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    // SettingsSection uppercases its title, so these are the l10n values
-    // settings_core_config / settings_data_security / settings_information as
-    // they render. They were renamed when Settings was split into sub-screens
-    // and this expectation kept the old copy.
-    expect(find.text('YOU'), findsOneWidget);
-    expect(find.text('YOUR DATA'), findsOneWidget);
-    expect(find.text('ABOUT'), findsOneWidget);
-    expect(find.text('Sign Out'), findsNothing);
+      // SettingsSection uppercases its title, so these are the l10n values
+      // settings_core_config / settings_data_security / settings_information as
+      // they render. They were renamed when Settings was split into sub-screens
+      // and this expectation kept the old copy.
+      expect(find.text('YOU'), findsOneWidget);
+      expect(find.text('YOUR DATA'), findsOneWidget);
+      expect(find.text('ABOUT'), findsOneWidget);
+      expect(find.text('Sign Out'), findsNothing);
     expect(find.text('SnapCal Pro'), findsOneWidget);
-  });
+    expect(find.byType(PremiumPromptCard), findsNothing);
+    },
+  );
 
   testWidgets('member root shows live values and the destructive zone', (
     tester,

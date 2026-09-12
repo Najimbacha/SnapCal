@@ -39,6 +39,10 @@ void main() {
     ('dark', 390.0, 844.0, 1.0, 'en', true),
     ('small', 320.0, 640.0, 1.0, 'en', false),
     ('arabic', 390.0, 844.0, 1.0, 'ar', false),
+    ('short-large', 320.0, 568.0, 2.0, 'en', false),
+    ('landscape', 640.0, 360.0, 2.0, 'ar', true),
+    ('spanish', 360.0, 640.0, 1.5, 'es', false),
+    ('french', 320.0, 568.0, 2.0, 'fr', true),
   ]) {
     testWidgets('coach ${scenario.$1}', (tester) async {
       tester.view.physicalSize = Size(scenario.$2, scenario.$3);

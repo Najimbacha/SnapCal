@@ -10,7 +10,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../data/repositories/activity_repository.dart';
-import '../../data/services/premium_conversion_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart' as ap;
 import '../../providers/settings_provider.dart';
@@ -18,7 +17,6 @@ import '../../screens/settings/widgets/settings_kit.dart';
 import '../../widgets/activity_ring_gauge.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/async_state_widgets.dart';
-import '../../widgets/premium_prompt_card.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/activity_health_connect_sheet.dart';
 
@@ -56,7 +54,7 @@ class ActivityScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             const _TodayMetrics(),
             const SizedBox(height: 28),
-            if (isPro) const _WeekSection() else const _WeekTeaser(),
+            if (isPro) const _WeekSection(),
           ],
         ],
       ),
@@ -623,30 +621,6 @@ class _InsightCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// What Pro adds here, named rather than mocked up. The old screen showed a
-/// chart of zeros to free users and called it a preview.
-class _WeekTeaser extends ConsumerWidget {
-  const _WeekTeaser();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    return PremiumPromptCard(
-      title: l10n.activity_unlock_pro_title,
-      subtitle: l10n.activity_unlock_pro_subtitle,
-      buttonText: l10n.home_go_pro,
-      icon: LucideIcons.lineChart,
-      style: PremiumPromptStyle.glass,
-      onTap:
-          () => PremiumConversionService().openPaywall(
-            context,
-            PaywallEntryPoint.homeAha,
-            featureName: 'activity_insights',
-          ),
     );
   }
 }

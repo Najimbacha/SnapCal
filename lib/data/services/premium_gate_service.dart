@@ -12,6 +12,7 @@ class PremiumGateService {
 
   late SharedPreferences _prefs;
   bool _initialized = false;
+  bool get isInitialized => _initialized;
 
   // Storage Keys (always read through scopedPrefKey so they are namespaced by
   // the signed-in UID — account switching must not inherit quota state).

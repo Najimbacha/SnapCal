@@ -197,7 +197,6 @@ class _HealthMetricDetailScreenState
                               isDark: isDark,
                               isPro: data.isPro,
                               onLockedTap: _openHistoryPaywall,
-                              onUpgradeTap: _openHistoryPaywall,
                             ),
                           ],
                         ],
@@ -1165,7 +1164,6 @@ class _MetricPointList extends StatelessWidget {
   final bool isDark;
   final bool isPro;
   final VoidCallback onLockedTap;
-  final VoidCallback onUpgradeTap;
 
   const _MetricPointList({
     required this.data,
@@ -1173,15 +1171,11 @@ class _MetricPointList extends StatelessWidget {
     required this.isDark,
     required this.isPro,
     required this.onLockedTap,
-    required this.onUpgradeTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final reversed = data.points.reversed.toList();
-    // Find the index of the first locked row (oldest shown)
-    final firstLockedIndex = reversed.indexWhere((p) => p.locked);
-    final hasLockedRows = firstLockedIndex >= 0;
 
     final rows = List.generate(reversed.length, (index) {
       final point = reversed[index];
@@ -1369,18 +1363,7 @@ class _MetricPointList extends StatelessWidget {
       );
     });
 
-    return Column(
-      children: [
-        ...rows,
-        // ── Upgrade cliff banner (free users only, when there are locked rows) ──
-        if (!isPro && hasLockedRows)
-          _UpgradeCliffBanner(
-            accent: accent,
-            isDark: isDark,
-            onTap: onUpgradeTap,
-          ),
-      ],
-    );
+    return Column(children: [...rows]);
   }
 }
 
@@ -1665,83 +1648,4 @@ bool _isMacroMetric(LogMetricType type) {
   return type == LogMetricType.protein ||
       type == LogMetricType.carbs ||
       type == LogMetricType.fat;
-}
-
-class _UpgradeCliffBanner extends StatelessWidget {
-  final Color accent;
-  final bool isDark;
-  final VoidCallback onTap;
-
-  const _UpgradeCliffBanner({
-    required this.accent,
-    required this.isDark,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-    final onSurface = theme.colorScheme.onSurface;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              primary.withValues(alpha: 0.14),
-              primary.withValues(alpha: 0.06),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: primary.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: primary.withValues(alpha: 0.16),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(LucideIcons.lock, color: primary, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(
-                      context,
-                    )!.log_metric_full_history_locked,
-                    style: TextStyle(
-                      fontFamily: 'Outfit',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    AppLocalizations.of(
-                      context,
-                    )!.log_metric_full_history_upgrade,
-                    style: TextStyle(fontSize: 12, color: primary),
-                  ),
-                ],
-              ),
-            ),
-            Icon(LucideIcons.chevronRight, color: primary, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
 }

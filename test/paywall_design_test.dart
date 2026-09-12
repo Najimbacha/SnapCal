@@ -68,6 +68,10 @@ void main() {
     ('small', 320.0, 640.0, 1.0, 'en', true),
     ('large-text', 320.0, 740.0, 1.6, 'en', true),
     ('arabic', 390.0, 844.0, 1.0, 'ar', true),
+    ('short-large', 320.0, 568.0, 2.0, 'en', false),
+    ('landscape', 640.0, 360.0, 2.0, 'ar', true),
+    ('spanish', 360.0, 640.0, 1.5, 'es', false),
+    ('french', 320.0, 568.0, 2.0, 'fr', true),
   ]) {
     testWidgets('paywall ${scenario.$1}', (tester) async {
       tester.view.physicalSize = Size(scenario.$2, scenario.$3);
@@ -134,18 +138,14 @@ void main() {
         // The scan demo now runs full width at the top of the screen instead
         // of in a compact box beside the macro bars. Same widget, same job --
         // the key is what changed.
-        expect(
-          find.byKey(const ValueKey('paywall-scan-hero')),
-          findsOneWidget,
-        );
+        expect(find.byKey(const ValueKey('paywall-scan-hero')), findsOneWidget);
         // The calorie figure now lives in the hero's detection chip: a
         // RichText, which find.textContaining ignores unless asked, and one
         // that fades in partway through the scan and back out before the
         // slide changes. Wait for it rather than guessing a frame -- the
         // capture path above has already pumped, so a fixed wait lands in a
         // different place depending on the mode.
-        Finder detectedKcal() =>
-            find.textContaining('248', findRichText: true);
+        Finder detectedKcal() => find.textContaining('248', findRichText: true);
         var sawKcal = false;
         for (var tick = 0; tick < 32 && !sawKcal; tick++) {
           await tester.pump(const Duration(milliseconds: 250));
@@ -186,12 +186,24 @@ void main() {
         final scrollableState = tester.state<ScrollableState>(
           find.byType(Scrollable).first,
         );
+        scrollableState.position.jumpTo(0);
+        await tester.pump();
+        await tester.scrollUntilVisible(
+          find.text('Monthly'),
+          120,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await Scrollable.ensureVisible(
+          tester.element(find.text('Monthly')),
+          alignment: 0.15,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Monthly'));
+        await tester.pump(const Duration(milliseconds: 300));
         scrollableState.position.jumpTo(
           scrollableState.position.maxScrollExtent,
         );
         await tester.pump();
-        await tester.tap(find.text('Monthly'));
-        await tester.pump(const Duration(milliseconds: 300));
         expect(find.textContaining('Start Monthly'), findsOneWidget);
         expect(find.textContaining('Start Free Trial'), findsNothing);
         expect(tester.takeException(), isNull);

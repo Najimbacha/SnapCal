@@ -102,6 +102,18 @@ abstract class AppLocalizations {
     Locale('fr'),
   ];
 
+  /// No description provided for @coach_allowance_used.
+  ///
+  /// In en, this message translates to:
+  /// **'Your free message is used. More messages are available after the daily reset.'**
+  String get coach_allowance_used;
+
+  /// No description provided for @planner_unlock_week.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock full week'**
+  String get planner_unlock_week;
+
   /// No description provided for @purchase_billed_yearly.
   ///
   /// In en, this message translates to:
@@ -1601,12 +1613,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dinner Reminder'**
   String get settings_dinner_time;
-
-  /// No description provided for @planner_unlock_week.
-  ///
-  /// In en, this message translates to:
-  /// **'Unlock full week'**
-  String get planner_unlock_week;
 
   /// No description provided for @planner_upgrade_pro.
   ///

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:snapcal/widgets/premium_prompt_card.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -151,6 +152,7 @@ void main() {
       // instead and the render is unaffected. A normal run loads no fonts and
       // must be clean -- that is the run CI sees.
       if (!capture) expect(tester.takeException(), isNull);
+      expect(find.byType(PremiumPromptCard), findsNothing);
 
       if (locale == 'en' && connected) {
         expect(find.text('6842'), findsOneWidget);

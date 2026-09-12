@@ -63,65 +63,67 @@ class PlannerTopBar extends StatelessWidget {
               ],
             ),
           ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                tooltip: l10n.planner_tab_grocery,
-                onPressed: onGrocery,
-                icon: const Icon(LucideIcons.shoppingBag, size: 21),
-              ),
-              if (groceryCount > 0 && isPro)
-                PositionedDirectional(
-                  end: 2,
-                  top: 1,
-                  child: Container(
-                    constraints: const BoxConstraints(
-                      minWidth: 17,
-                      minHeight: 17,
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: context.primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      groceryCount > 99 ? '99+' : '$groceryCount',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: Colors.white,
-                        fontSize: 9,
+          if (isPro)
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  tooltip: l10n.planner_tab_grocery,
+                  onPressed: onGrocery,
+                  icon: const Icon(LucideIcons.shoppingBag, size: 21),
+                ),
+                if (groceryCount > 0 && isPro)
+                  PositionedDirectional(
+                    end: 2,
+                    top: 1,
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 17,
+                        minHeight: 17,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: context.primaryColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        groceryCount > 99 ? '99+' : '$groceryCount',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: Colors.white,
+                          fontSize: 9,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
-          ),
-          PopupMenuButton<String>(
-            tooltip: l10n.planner_meal_preferences,
-            icon: const Icon(LucideIcons.moreVertical, size: 21),
-            onSelected: (value) {
-              if (value == 'preferences') onPreferences();
-              if (value == 'regenerate') onRegenerate();
-            },
-            itemBuilder:
-                (_) => [
-                  PopupMenuItem(
-                    value: 'preferences',
-                    child: _MenuLabel(
-                      icon: LucideIcons.slidersHorizontal,
-                      label: l10n.planner_meal_preferences,
+              ],
+            ),
+          if (isPro)
+            PopupMenuButton<String>(
+              tooltip: l10n.planner_meal_preferences,
+              icon: const Icon(LucideIcons.moreVertical, size: 21),
+              onSelected: (value) {
+                if (value == 'preferences') onPreferences();
+                if (value == 'regenerate') onRegenerate();
+              },
+              itemBuilder:
+                  (_) => [
+                    PopupMenuItem(
+                      value: 'preferences',
+                      child: _MenuLabel(
+                        icon: LucideIcons.slidersHorizontal,
+                        label: l10n.planner_meal_preferences,
+                      ),
                     ),
-                  ),
-                  PopupMenuItem(
-                    value: 'regenerate',
-                    child: _MenuLabel(
-                      icon: LucideIcons.refreshCw,
-                      label: l10n.planner_regenerate,
+                    PopupMenuItem(
+                      value: 'regenerate',
+                      child: _MenuLabel(
+                        icon: LucideIcons.refreshCw,
+                        label: l10n.planner_regenerate,
+                      ),
                     ),
-                  ),
-                ],
-          ),
+                  ],
+            ),
         ],
       ),
     );
@@ -307,11 +309,13 @@ class PlannerPreviewLabel extends StatelessWidget {
       children: [
         Icon(LucideIcons.eye, size: 15, color: context.primaryColor),
         const SizedBox(width: 7),
-        Text(
-          AppLocalizations.of(context)!.planner_one_day_preview,
-          style: AppTypography.labelMedium.copyWith(
-            color: context.primaryColor,
-            fontWeight: FontWeight.w800,
+        Expanded(
+          child: Text(
+            AppLocalizations.of(context)!.planner_one_day_preview,
+            style: AppTypography.labelMedium.copyWith(
+              color: context.primaryColor,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
@@ -503,31 +507,55 @@ class PlannerMealRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        if (isNext) ...[
-                          Text(
-                            l10n.planner_next_meal.toUpperCase(),
-                            style: AppTypography.labelSmall.copyWith(
-                              color: context.primaryColor,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
+                    if (MediaQuery.textScalerOf(context).scale(9) <= 11)
+                      Row(
+                        children: [
+                          if (isNext) ...[
+                            Text(
+                              l10n.planner_next_meal.toUpperCase(),
+                              style: AppTypography.labelSmall.copyWith(
+                                color: context.primaryColor,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Flexible(
+                            child: Text(
+                              meal.mealType ?? l10n.planner_meal,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.labelSmall.copyWith(
+                                color: context.textMutedColor,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 6),
                         ],
-                        Flexible(
-                          child: Text(
+                      )
+                    else
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 2,
+                        children: [
+                          if (isNext) ...[
+                            Text(
+                              l10n.planner_next_meal.toUpperCase(),
+                              style: AppTypography.labelSmall.copyWith(
+                                color: context.primaryColor,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                          Text(
                             meal.mealType ?? l10n.planner_meal,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                             style: AppTypography.labelSmall.copyWith(
                               color: context.textMutedColor,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                     const SizedBox(height: 3),
                     Text(
                       meal.foodName,
@@ -615,6 +643,21 @@ class PlannerBottomActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    if (!isPro) {
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+          child: FilledButton(
+            onPressed: onGrocery,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+            child: Text(l10n.planner_unlock_week, textAlign: TextAlign.center),
+          ),
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
       decoration: BoxDecoration(
@@ -1221,53 +1264,60 @@ class _PlannerMealDetailScreenState extends State<PlannerMealDetailScreen> {
             ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-          decoration: BoxDecoration(
-            color: context.backgroundColor,
-            border: Border(top: BorderSide(color: context.dividerColor)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    widget.onSwap();
-                  },
-                  icon: Icon(
-                    widget.isPro ? LucideIcons.repeat2 : LucideIcons.lock,
-                    size: 17,
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+      bottomNavigationBar:
+          !widget.isPro
+              ? null
+              : SafeArea(
+                top: false,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+                  decoration: BoxDecoration(
+                    color: context.backgroundColor,
+                    border: Border(
+                      top: BorderSide(color: context.dividerColor),
                     ),
                   ),
-                  label: Text(l10n.planner_swap_meal),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: widget.isPro ? _log : null,
-                  icon: const Icon(LucideIcons.plus, size: 17),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            widget.onSwap();
+                          },
+                          icon: Icon(
+                            widget.isPro
+                                ? LucideIcons.repeat2
+                                : LucideIcons.lock,
+                            size: 17,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          label: Text(l10n.planner_swap_meal),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: widget.isPro ? _log : null,
+                          icon: const Icon(LucideIcons.plus, size: 17),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          label: Text(l10n.planner_log_meal),
+                        ),
+                      ),
+                    ],
                   ),
-                  label: Text(l10n.planner_log_meal),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),

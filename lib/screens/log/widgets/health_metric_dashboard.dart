@@ -9,7 +9,6 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/ui_blocks.dart';
 import '../models/log_metric_models.dart';
-import '../../../data/services/premium_conversion_service.dart';
 import '../../../providers/settings_provider.dart';
 
 enum HealthMetricChartStyle { bars, line }
@@ -222,13 +221,7 @@ class HealthMetricCard extends StatelessWidget {
             context,
             isDark: isDark,
             cardColor: cardColor,
-            onTap: () {
-              PremiumConversionService().openPaywall(
-                context,
-                PaywallEntryPoint.macroDetails,
-                featureName: 'macro_metrics',
-              );
-            },
+            onTap: onTap,
             children: [
               _label(context, isDark: isDark, accent: accent, muted: true),
               const Spacer(),
@@ -241,7 +234,7 @@ class HealthMetricCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    (AppLocalizations.of(context)?.common_unlock ?? 'Unlock'),
+                    AppLocalizations.of(context)?.macro_pro_label ?? 'Pro',
                     style: AppTypography.labelSmall.copyWith(
                       color: scheme.primary,
                       fontWeight: FontWeight.w700,
@@ -252,12 +245,7 @@ class HealthMetricCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              _Track(
-                progress: 0,
-                accent: accent,
-                isDark: isDark,
-                dashed: true,
-              ),
+              _Track(progress: 0, accent: accent, isDark: isDark, dashed: true),
               const SizedBox(height: 10),
             ],
           );
@@ -284,7 +272,9 @@ class HealthMetricCard extends StatelessWidget {
                       // An empty day stays quiet; display weight is reserved
                       // for numbers the user actually earned.
                       color:
-                          hasData ? textColor : textColor.withValues(alpha: 0.32),
+                          hasData
+                              ? textColor
+                              : textColor.withValues(alpha: 0.32),
                       fontWeight: FontWeight.w700,
                       fontSize: 27,
                       height: 1.0,

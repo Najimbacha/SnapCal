@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'analytics_service.dart';
 import 'premium_gate_service.dart';
+import 'app_prompt_session_coordinator.dart';
 
 enum PaywallEntryPoint {
   scanLimit,
@@ -39,27 +40,42 @@ class PremiumConversionService {
     PaywallEntryPoint entryPoint, {
     String? featureName,
     bool limitReached = false,
+    bool automatic = false,
   }) async {
+    final session = AppPromptSessionCoordinator();
+    if (automatic && !session.reservePromotion()) return;
     final source = entryPoint.analyticsName;
-    await _gate.recordCtaClicked(source);
+    if (!automatic) {
+      session.markPaywallOpened();
+      await _gate.recordCtaClicked(source);
+    }
     _analytics.logEvent(
       'paywall_opened',
       parameters: {
         'entry_point': source,
+        'automatic': automatic,
         if (featureName != null) 'feature_name': featureName,
         if (limitReached) 'limit_reached': true,
       },
     );
 
-    if (!context.mounted) return;
-    context.push(
-      '/paywall',
-      extra: {
-        'entryPoint': source,
-        if (featureName != null) 'featureName': featureName,
-        if (limitReached) 'limitReached': true,
-      },
-    );
+    if (!context.mounted) {
+      if (automatic) session.releasePromotion();
+      return;
+    }
+    try {
+      await context.push(
+        '/paywall',
+        extra: {
+          'entryPoint': source,
+          'automatic': automatic,
+          if (featureName != null) 'featureName': featureName,
+          if (limitReached) 'limitReached': true,
+        },
+      );
+    } finally {
+      if (automatic) session.releasePromotion();
+    }
   }
 
   Future<void> recordPromptSeen(

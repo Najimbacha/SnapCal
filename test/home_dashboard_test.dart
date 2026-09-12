@@ -102,10 +102,11 @@ void main() {
       if (scenario.$5 == 'en') {
         expect(find.text(scenario.$2 ? '127 / 140g' : '13%'), findsOneWidget);
         if (!scenario.$2) {
-          await tester.tap(
+          expect(
             find.text('See grams, daily goals & what to eat next'),
+            findsNothing,
           );
-          expect(upgrades, 1);
+          expect(upgrades, 0);
         }
         for (final title in [
           'Hydration',

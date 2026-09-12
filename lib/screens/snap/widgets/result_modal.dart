@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/meal.dart';
 import '../../../data/services/gemini_service.dart';
-import '../../../data/services/premium_conversion_service.dart';
 import '../../../data/services/pro_feature_service.dart';
 import '../../../data/services/scan_gate_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -486,14 +485,6 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     Navigator.of(context).pop();
   }
 
-  void _openPaywall(BuildContext context) {
-    PremiumConversionService().openPaywall(
-      context,
-      PaywallEntryPoint.macroDetails,
-      featureName: 'scan_result_macros',
-    );
-  }
-
   Color _accentFor(_Item i) {
     if (!i.matched || i.per100g == null) return AppColors.primary;
     final p = i.protein;
@@ -645,10 +636,6 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                         ),
                       ),
                     ),
-                    if (!pro) ...[
-                      const SizedBox(height: 16),
-                      _upgradeBanner(context, l10n, d),
-                    ],
                   ],
                 ),
               ),
@@ -954,59 +941,6 @@ class _ResultModalState extends ConsumerState<ResultModal> {
               segments[j],
             ],
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _upgradeBanner(BuildContext context, AppLocalizations l10n, bool d) {
-    return Semantics(
-      button: true,
-      child: InkWell(
-        onTap: () => _openPaywall(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          child: Row(
-            children: [
-              const Icon(
-                LucideIcons.sparkles,
-                color: AppColors.primary,
-                size: 24,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.result_unlock_personal_title,
-                      style: TextStyle(
-                        color: d ? Colors.white : const Color(0xFF17251F),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      l10n.result_unlock_personal_body,
-                      style: TextStyle(
-                        color: d ? Colors.white70 : const Color(0xFF56675D),
-                        fontSize: 12,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Icon(
-                LucideIcons.chevronRight,
-                size: 20,
-                color: AppColors.primary,
-              ),
-            ],
-          ),
         ),
       ),
     );

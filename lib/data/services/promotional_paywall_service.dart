@@ -20,7 +20,8 @@ class RevenueCatPromotionalPaywallGateway
   final SubscriptionService _subscription;
 
   @override
-  bool get purchaseInFlight => _subscription.isPurchaseInFlight;
+  bool get purchaseInFlight =>
+      _subscription.isPurchaseInFlight || _subscription.isRestoreInFlight;
 
   @override
   Future<bool> hasActivePremiumEntitlement() {
@@ -190,7 +191,11 @@ class PromotionalPaywallService {
     if (activePremium) return false;
 
     final hasOffering = await _subscriptionGateway.hasValidCurrentOffering();
-    if (!hasOffering) return false;
+    if (!hasOffering ||
+        _subscriptionGateway.purchaseInFlight ||
+        !_session.canShowPromotionalPaywall) {
+      return false;
+    }
 
     _analytics.logEvent('promo_paywall_eligible');
     return true;

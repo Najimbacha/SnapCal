@@ -15,7 +15,7 @@ import '../../providers/settings_provider.dart';
 import '../../data/services/assistant_service.dart';
 import '../../data/services/premium_gate_service.dart';
 import '../../data/services/pro_feature_service.dart';
-import 'widgets/coach_overlays.dart';
+import '../../data/services/premium_conversion_service.dart';
 
 // The coach was drawn in Zinc and iOS system greys -- #09090B, #18181B,
 // #F2F2F7, #8E8E93 -- while the rest of SnapCal is warm paper and emerald.
@@ -55,6 +55,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   /// [CoachLockedOverlay] below. The counter and the ceiling live in
   /// [PremiumGateService]; the server enforces the same limit independently.
   bool _limitReached = false;
+  Timer? _quotaTimer;
 
   /// Sentinel content for a failed request, rendered as an error bubble with
   /// a retry affordance instead of hanging on the typing indicator forever.
@@ -66,6 +67,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     super.initState();
     _ctrl.addListener(_onCtrlChanged);
     unawaited(_restoreChat());
+    _quotaTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted &&
+          _limitReached &&
+          !PremiumGateService().hasReachedAiLimit(false)) {
+        setState(() => _limitReached = false);
+      }
+    });
   }
 
   void _onCtrlChanged() {
@@ -127,6 +135,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
 
   @override
   void dispose() {
+    _quotaTimer?.cancel();
     _ctrl.removeListener(_onCtrlChanged);
     _ctrl.dispose();
     _scroll.dispose();
@@ -141,10 +150,17 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     // nowhere, and the counters in PremiumGateService were never called, so
     // every free user had unlimited AI messages.
     final access = ref.read(proAccessProvider);
+    if (access.isUnknown) return;
     final unlimited = access.can(ProFeature.unlimitedAiCoach);
     if (!unlimited && access.isFree) {
       if (PremiumGateService().hasReachedAiLimit(false)) {
         setState(() => _limitReached = true);
+        _focus.unfocus();
+        await PremiumConversionService().openPaywall(
+          context,
+          PaywallEntryPoint.aiCoachLimit,
+          featureName: 'ai_coach',
+        );
         return;
       }
     }
@@ -289,6 +305,12 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   @override
   Widget build(BuildContext context) {
     final d = Theme.of(context).brightness == Brightness.dark;
+    final access = ref.watch(proAccessProvider);
+    // Recompute from the quota when rebuilding, including after a purchase.
+    _limitReached =
+        access.isFree &&
+        PremiumGateService().isInitialized &&
+        PremiumGateService().hasReachedAiLimit(false);
 
     return Scaffold(
       backgroundColor: _coachPaper(d),
@@ -709,9 +731,6 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               ],
             ),
           ),
-          // The daily-limit wall. Only ever shown to a user we know
-          // is on the free tier.
-          if (_limitReached) const Positioned.fill(child: CoachLockedOverlay()),
         ],
       ),
     );
@@ -899,6 +918,45 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   }
 
   Widget _buildInputBar(bool d) {
+    if (_limitReached && ref.read(proAccessProvider).isFree) {
+      return SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .25,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.coach_allowance_used,
+                  textAlign: TextAlign.center,
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (!PremiumGateService().hasReachedAiLimit(false)) {
+                      setState(() => _limitReached = false);
+                      return;
+                    }
+                    PremiumConversionService().openPaywall(
+                      context,
+                      PaywallEntryPoint.aiCoachLimit,
+                      featureName: 'ai_coach',
+                    );
+                  },
+                  child: Text(
+                    AppLocalizations.of(context)!.coach_limit_btn,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Container(
       // No viewInsets here. Scaffold.resizeToAvoidBottomInset defaults to true,
       // so the body has already been shrunk by the keyboard; adding the inset

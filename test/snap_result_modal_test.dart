@@ -422,12 +422,14 @@ void main() {
     expect(find.text('10%', skipOffstage: false), findsAtLeastNWidgets(1));
     expect(find.text('85%', skipOffstage: false), findsAtLeastNWidgets(1));
     expect(find.text('5%', skipOffstage: false), findsAtLeastNWidgets(1));
+    final l10n = AppLocalizations.of(tester.element(find.byType(ResultModal)))!;
+    expect(find.text(l10n.result_unlock_personal_title), findsNothing);
 
     // Values are withheld, never obscured: no blur, no padlock over a figure.
-    // The upsell is a separate block that sells the coaching layer.
+    // Saving a scan is not interrupted by a coaching promotion.
     expect(
       find.text('Does this fit your day?', skipOffstage: false),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.byIcon(LucideIcons.lock, skipOffstage: false), findsNothing);
   });

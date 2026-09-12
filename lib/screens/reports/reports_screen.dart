@@ -22,7 +22,6 @@ import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/async_state_widgets.dart';
-import '../../widgets/premium_prompt_card.dart';
 import '../../widgets/ui_blocks.dart';
 import '../settings/widgets/weight_entry_modal.dart';
 import 'stats_data.dart';
@@ -215,21 +214,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         SectionLabel(title: l10n.stats_weight_title),
         const SizedBox(height: 10),
         _WeightCard(trend: trend, settings: settings, days: _days),
-        if (!isPro) ...[
-          const SizedBox(height: 22),
-          PremiumPromptCard(
-            icon: LucideIcons.lineChart,
-            title: l10n.stats_pro_title,
-            subtitle: l10n.stats_pro_subtitle,
-            buttonText: l10n.stats_pro_button,
-            onTap:
-                () => PremiumConversionService().openPaywall(
-                  context,
-                  PaywallEntryPoint.reportInsight,
-                  featureName: 'stats_screen',
-                ),
-          ),
-        ],
       ],
     );
   }

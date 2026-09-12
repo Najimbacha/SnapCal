@@ -155,22 +155,14 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                         : () => context.push('/log/metric/water'),
                 onStepsTap: () => context.push('/log/metric/steps'),
               ),
-              const SizedBox(height: 10),
-              _ProteinInsightTile(
-                proteinRemaining: proteinRemaining,
-                showUpgrade: proAccess.isFree,
-                onTap: () {
-                  if (proAccess.isPro) {
-                    context.push('/assistant');
-                  } else if (proAccess.isFree) {
-                    PremiumConversionService().openPaywall(
-                      context,
-                      PaywallEntryPoint.macroDetails,
-                      featureName: 'log_protein_insight',
-                    );
-                  }
-                },
-              ),
+              if (proAccess.isPro) ...[
+                const SizedBox(height: 10),
+                _ProteinInsightTile(
+                  proteinRemaining: proteinRemaining,
+                  showUpgrade: false,
+                  onTap: () => context.push('/assistant'),
+                ),
+              ],
             ],
           ),
         ],

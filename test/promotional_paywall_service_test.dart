@@ -65,6 +65,55 @@ Future<bool> _canShow(PromotionalPaywallService service) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test(
+    'a voluntary paywall suppresses automatic offers for the session',
+    () async {
+      SharedPreferences.setMockInitialValues(_eligibleState());
+      final service = await _service(gateway: _FakePromoGateway());
+      AppPromptSessionCoordinator().markPaywallOpened();
+      expect(await _canShow(service), isFalse);
+    },
+  );
+
+  test('a promotion reservation prevents simultaneous presentations', () {
+    final session = AppPromptSessionCoordinator()..resetForTesting();
+    expect(session.reservePromotion(), isTrue);
+    expect(session.reservePromotion(), isFalse);
+    session.releasePromotion();
+    expect(session.reservePromotion(), isTrue);
+    session.markPromotionalPaywallShown();
+    session.releasePromotion();
+    expect(session.reservePromotion(), isFalse);
+  });
+
+  test(
+    'dismissal persists the full seven-day cooldown across sessions',
+    () async {
+      SharedPreferences.setMockInitialValues(_eligibleState());
+      final service = await _service(gateway: _FakePromoGateway());
+      await service.recordPromotionalPaywallDismissed();
+      final sixDays = await _service(
+        gateway: _FakePromoGateway(),
+        now: DateTime(2026, 6, 9, 12),
+      );
+      expect(await _canShow(sixDays), isFalse);
+      final sevenDays = await _service(
+        gateway: _FakePromoGateway(),
+        now: DateTime(2026, 6, 10, 12),
+      );
+      expect(await _canShow(sevenDays), isTrue);
+    },
+  );
+
+  test('competing prompts and completed purchases suppress offers', () {
+    final session = AppPromptSessionCoordinator()..resetForTesting();
+    session.suppressAutomaticOffers();
+    expect(session.canShowPromotionalPaywall, isFalse);
+    session.resetForTesting();
+    session.markSubscriptionPurchased();
+    expect(session.canShowPromotionalPaywall, isFalse);
+  });
+
   test('Premium user never sees promotional paywall', () async {
     SharedPreferences.setMockInitialValues(_eligibleState());
     final service = await _service(gateway: _FakePromoGateway(isPremium: true));

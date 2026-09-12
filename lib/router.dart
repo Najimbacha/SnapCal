@@ -163,6 +163,7 @@ GoRouter router(RouterRef ref) {
               limitReached: limitReached,
               entryPoint: entryPoint,
               featureName: featureName,
+              automatic: extra?['automatic'] as bool? ?? false,
             ),
           );
         },

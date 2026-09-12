@@ -14,7 +14,6 @@ import '../../providers/auth_state_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/auth_modal.dart';
-import '../../widgets/premium_prompt_card.dart';
 import '../../widgets/ui_blocks.dart';
 import '../home/widgets/activity_health_connect_sheet.dart';
 import 'account_screen.dart';
@@ -73,14 +72,10 @@ class SettingsScreen extends ConsumerWidget {
           ),
           if (!isPro) ...[
             const SizedBox(height: 20),
-            PremiumPromptCard(
+            SettingsRow(
               title: 'SnapCal Pro',
-              subtitle: l10n.settings_upgrade_desc,
-              // "Upgrade to Pro" was wide enough to force the subtitle into
-              // an awkward two-line wrap beside it. Same words as the header.
-              buttonText: l10n.home_go_pro,
+              value: l10n.settings_manage_plan,
               icon: LucideIcons.sparkles,
-              style: PremiumPromptStyle.mini,
               onTap:
                   () => PremiumConversionService().openPaywall(
                     context,

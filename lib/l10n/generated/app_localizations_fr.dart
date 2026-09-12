@@ -9,6 +9,13 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get coach_allowance_used =>
+      'Votre message gratuit a été utilisé. D’autres messages seront disponibles après la réinitialisation quotidienne.';
+
+  @override
+  String get planner_unlock_week => 'Débloquer la semaine complète';
+
+  @override
   String get purchase_billed_yearly => 'Facturation annuelle';
 
   @override
@@ -829,9 +836,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settings_dinner_time => 'Rappel dîner';
-
-  @override
-  String get planner_unlock_week => 'Débloquer la semaine complète';
 
   @override
   String get planner_upgrade_pro => 'Passer à Pro';

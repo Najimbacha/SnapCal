@@ -13,6 +13,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/data/services/premium_conversion_service.dart';
+import 'package:snapcal/data/services/app_prompt_session_coordinator.dart';
+import 'package:snapcal/data/services/promotional_paywall_service.dart';
 import 'package:snapcal/data/services/scan_gate_service.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -100,12 +102,14 @@ class PaywallScreen extends ConsumerStatefulWidget {
   final bool limitReached;
   final PaywallEntryPoint entryPoint;
   final String? featureName;
+  final bool automatic;
 
   const PaywallScreen({
     super.key,
     this.limitReached = false,
     this.entryPoint = PaywallEntryPoint.settings,
     this.featureName,
+    this.automatic = false,
   });
 
   @override
@@ -143,10 +147,21 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   /// 0 while the hero still covers the status bar, 1 once it has scrolled
   /// away. Drives the scrim that stops body text drawing through the clock.
   double _statusBarScrim = 0;
+  bool _promotionPresented = false;
 
   @override
   void initState() {
     super.initState();
+    AppPromptSessionCoordinator().markPaywallOpened();
+    if (widget.automatic) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _promotionPresented = true;
+        unawaited(
+          PromotionalPaywallService.instance().recordPromotionalPaywallShown(),
+        );
+      });
+    }
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureDock());
     _loadOfferings();
@@ -154,6 +169,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
   @override
   void dispose() {
+    if (_promotionPresented && !_closed) {
+      unawaited(
+        PromotionalPaywallService.instance()
+            .recordPromotionalPaywallDismissed(),
+      );
+    }
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -389,7 +410,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         return l10n.paywall_pro_plan;
     }
   }
-
 
   Package? get _monthlyPackage {
     for (final p in _packages) {
@@ -658,6 +678,29 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             _heroExtent = 240;
             final dense = viewport.maxHeight < 720;
             const hPad = 20.0;
+            final inlineDock =
+                viewport.maxHeight < 600 ||
+                MediaQuery.textScalerOf(context).scale(14) > 19;
+            final dock = _CtaDock(
+              key: _dockKey,
+              palette: palette,
+              hPad: hPad,
+              isLoading: _isLoading,
+              package: _selectedPackage,
+              loadingOfferings: _loadingOfferings,
+              trialDays: _trialFor(_selectedPackage)?.days,
+              introPriceString: _introFor(_selectedPackage)?.priceString,
+              planLabel:
+                  _selectedPackage == null
+                      ? null
+                      : _planLabel(_selectedPackage!, l10n),
+              disclosure: _disclosureFor(_selectedPackage, l10n),
+              onPurchase: _handlePurchase,
+              restoring: _restoring,
+              onRestore: (_isLoading || _restoring) ? null : _handleRestore,
+              onTerms: () => _openUrl(_termsUrl),
+              onPrivacy: () => _openUrl(_privacyPolicyUrl),
+            );
 
             // The dock's height depends on the disclosure text, which changes
             // with the selected plan and the locale. Re-measure after each build.
@@ -674,9 +717,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   // rather than as "there is more below".
                   padding: EdgeInsets.only(
                     bottom:
-                        (_dockHeight ?? (dense ? 236.0 : 252.0)) +
-                        (_dockHeight == null ? media.padding.bottom : 0.0) +
-                        16,
+                        inlineDock
+                            ? 16
+                            : (_dockHeight ?? (dense ? 236.0 : 252.0)) +
+                                (_dockHeight == null
+                                    ? media.padding.bottom
+                                    : 0.0) +
+                                16,
                   ),
                   physics: const BouncingScrollPhysics(
                     parent: AlwaysScrollableScrollPhysics(),
@@ -737,34 +784,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                         ),
                       ),
                     ],
+                    if (inlineDock) dock,
                   ],
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: _CtaDock(
-                    key: _dockKey,
-                    palette: palette,
-                    hPad: hPad,
-                    isLoading: _isLoading,
-                    package: _selectedPackage,
-                    loadingOfferings: _loadingOfferings,
-                    trialDays: _trialFor(_selectedPackage)?.days,
-                    introPriceString: _introFor(_selectedPackage)?.priceString,
-                    planLabel:
-                        _selectedPackage == null
-                            ? null
-                            : _planLabel(_selectedPackage!, l10n),
-                    disclosure: _disclosureFor(_selectedPackage, l10n),
-                    onPurchase: _handlePurchase,
-                    restoring: _restoring,
-                    onRestore:
-                        (_isLoading || _restoring) ? null : _handleRestore,
-                    onTerms: () => _openUrl(_termsUrl),
-                    onPrivacy: () => _openUrl(_privacyPolicyUrl),
-                  ),
-                ),
+                if (!inlineDock)
+                  Positioned(left: 0, right: 0, bottom: 0, child: dock),
                 // Scrolled body text used to run straight through the status bar
                 // clock and icons: the list starts at y=0 and nothing sat behind
                 // the inset. This scrim fades in as the hero scrolls away.
@@ -867,11 +891,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         Text(
           general ? l10n.purchase_headline : title,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: palette.muted,
-            fontSize: 12.5,
-            height: 1.45,
-          ),
+          style: TextStyle(color: palette.muted, fontSize: 12.5, height: 1.45),
         ),
       ],
     );
@@ -1036,7 +1056,9 @@ double _chipWidthForLabel(String label, String kcal, double heroWidth) {
   }
 
   final content =
-      measure(label, _chipLabelStyle) + _chipGap + measure(kcal, _chipKcalStyle);
+      measure(label, _chipLabelStyle) +
+      _chipGap +
+      measure(kcal, _chipKcalStyle);
   return (content + _chipPadH * 2).clamp(64.0, heroWidth * 0.56);
 }
 
@@ -1364,7 +1386,6 @@ class _ScanHeroState extends State<_ScanHero>
     final palette = widget.palette;
     final l10n = AppLocalizations.of(context)!;
     final slide = _heroSlides.first;
-
 
     return ClipRect(
       // Explicit. The zoomed photograph was painting a sliver of itself past

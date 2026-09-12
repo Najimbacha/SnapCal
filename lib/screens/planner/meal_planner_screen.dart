@@ -162,31 +162,33 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                     : _openPaywall,
             onRegenerate: access.isPro ? _confirmRegenerateWeek : _openPaywall,
           ),
-          PlannerTabs(
-            grocerySelected: _tab == _PlannerTab.grocery,
-            onPlan: () => setState(() => _tab = _PlannerTab.plan),
-            onGrocery: () {
-              if (!access.isPro) {
-                _openPaywall();
-                return;
-              }
-              setState(() => _tab = _PlannerTab.grocery);
-            },
-          ),
-          WeekNavigator(plan: plan),
-          PlannerDayStrip(
-            plan: plan,
-            selectedIndex: selectedIndex,
-            lockedAfterIndex: access.isPro ? null : 0,
-            onSelected: (index) {
-              if (!access.isPro && index > 0) {
-                _openPaywall();
-                return;
-              }
-              HapticFeedback.selectionClick();
-              setState(() => _selectedDayIndex = index);
-            },
-          ),
+          if (access.isPro)
+            PlannerTabs(
+              grocerySelected: _tab == _PlannerTab.grocery,
+              onPlan: () => setState(() => _tab = _PlannerTab.plan),
+              onGrocery: () {
+                if (!access.isPro) {
+                  _openPaywall();
+                  return;
+                }
+                setState(() => _tab = _PlannerTab.grocery);
+              },
+            ),
+          if (access.isPro) WeekNavigator(plan: plan),
+          if (access.isPro)
+            PlannerDayStrip(
+              plan: plan,
+              selectedIndex: selectedIndex,
+              lockedAfterIndex: access.isPro ? null : 0,
+              onSelected: (index) {
+                if (!access.isPro && index > 0) {
+                  _openPaywall();
+                  return;
+                }
+                HapticFeedback.selectionClick();
+                setState(() => _selectedDayIndex = index);
+              },
+            ),
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
@@ -315,10 +317,6 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
               ),
             );
           }),
-        if (!isPro) ...[
-          const SizedBox(height: 6),
-          PlannerLockedWeekCard(onUpgrade: _openPaywall),
-        ],
         if (planner.fallbackNotice != null) ...[
           const SizedBox(height: 12),
           PlannerNotice(

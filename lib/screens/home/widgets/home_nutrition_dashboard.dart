@@ -156,9 +156,8 @@ class _Heading extends StatelessWidget {
 }
 
 class _Surface extends StatelessWidget {
-  const _Surface({required this.child, this.onTap});
+  const _Surface({required this.child});
   final Widget child;
-  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
@@ -171,7 +170,7 @@ class _Surface extends StatelessWidget {
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(onTap: onTap, child: child),
+      child: child,
     );
   }
 }
@@ -288,7 +287,7 @@ class HomeMacroSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              _Heading(l.home_section_macros_today),
+              Expanded(child: _Heading(l.home_section_macros_today)),
               if (isPro) ...[const SizedBox(width: 10), const _ProBadge()],
             ],
           ),
@@ -373,29 +372,6 @@ class HomeMacroSection extends StatelessWidget {
               );
             },
           ),
-          if (!isPro) ...[
-            const SizedBox(height: 8),
-            _Surface(
-              onTap: onUpgrade,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    const _ProBadge(),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(l.home_dashboard_upgrade, style: _type(11)),
-                    ),
-                    const SizedBox(width: 8),
-                    const _Chevron(),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -696,7 +672,7 @@ class HomeToolsSection extends StatelessWidget {
             _ToolRow(
               title: l.planner_title,
               subtitle: l.home_dashboard_planner,
-              action: l.home_dashboard_open,
+              showProBadge: true,
               icon: _ToolIcon(
                 coach: false,
                 color: Theme.of(context).colorScheme.onSurface,
@@ -718,7 +694,6 @@ class HomeToolsSection extends StatelessWidget {
             _ToolRow(
               title: l.assistant_title,
               subtitle: l.home_dashboard_coach,
-              action: l.home_dashboard_ask,
               icon: _ToolIcon(
                 coach: true,
                 color: Theme.of(context).colorScheme.onSurface,
@@ -738,13 +713,14 @@ class _ToolRow extends StatelessWidget {
   const _ToolRow({
     required this.title,
     required this.subtitle,
-    required this.action,
+    this.showProBadge = false,
     required this.icon,
     required this.accent,
     required this.isPro,
     required this.onTap,
   });
-  final String title, subtitle, action;
+  final String title, subtitle;
+  final bool showProBadge;
   final Widget icon;
   final Color accent;
   final bool isPro;
@@ -779,34 +755,15 @@ class _ToolRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: _type(14).copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _type(11, color: _muted(context)),
-                ),
+                Text(subtitle, style: _type(11, color: _muted(context))),
               ],
             ),
           ),
           const SizedBox(width: 10),
-          if (isPro)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: Theme.of(context).dividerColor.withValues(alpha: .3),
-                ),
-              ),
-              child: Text(action, style: _type(12)),
-            )
-          else
-            const _ProBadge(),
+          if (showProBadge && !isPro) const _ProBadge(),
           const SizedBox(width: 8),
           const _Chevron(),
         ],

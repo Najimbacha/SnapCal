@@ -24,6 +24,7 @@ import 'widgets/activity_health_connect_sheet.dart';
 import '../log/widgets/hydration_sheet.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../data/services/promotional_paywall_service.dart';
+import '../../data/services/app_prompt_session_coordinator.dart';
 import '../../data/services/pro_feature_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
@@ -37,7 +38,6 @@ import '../../widgets/scan_choice_sheet.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/recent_meal_tile.dart';
 import 'widgets/home_nutrition_dashboard.dart';
-import '../../widgets/premium_prompt_modal.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -53,6 +53,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   late final AnimationController _animController;
   late final List<Animation<double>> _itemAnims;
+  Timer? _upgradePromptTimer;
 
   List<MealSlot>? _currentMealPlan;
   String? _lastRestriction;
@@ -474,43 +475,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     // Smart Premium Encouragement (Aha Moment)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 1500), _maybePromptUpgrade);
+      if (!mounted) return;
+      _upgradePromptTimer = Timer(
+        const Duration(milliseconds: 1500),
+        _maybePromptUpgrade,
+      );
     });
   }
 
-  /// Runs the two upgrade prompts, in priority order, once Pro status is known.
-  ///
-  /// `PremiumPromptModal.show` settles the status itself before deciding, so a
-  /// paying user is never shown either of these — which is what used to happen
-  /// when this fired 1.5s after init, before settings had loaded.
+  /// Offers are evaluated only on an unobstructed Home route.
   Future<void> _maybePromptUpgrade() async {
-    if (!mounted) return;
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
 
     // A waiting update comes first: it is the one thing worth asking about,
     // and two prompts back to back is one too many.
-    if (await ForceUpdateService().checkAndPrompt(context)) return;
+    if (await ForceUpdateService().checkAndPrompt(context)) {
+      AppPromptSessionCoordinator().suppressAutomaticOffers();
+      return;
+    }
     if (!mounted) return;
 
     // Reminders need permission, asked here once with a reason rather than
     // cold at first launch. One prompt per visit, so it goes before upsells.
-    if (await NotificationPermissionPrompt.maybeShow(context)) return;
-    if (!mounted) return;
-
-    final todaysMealsAsync = ref.read(todaysMealsProvider);
-    final hasAiMeal = (todaysMealsAsync.valueOrNull ?? []).any(
-      (m) => m.scanSource == 'ai_scan',
-    );
-
-    if (hasAiMeal) {
-      await PremiumPromptModal.show(
-        context,
-        ref,
-        entryPoint: PaywallEntryPoint.homeAha,
-        featureName: 'first_ai_scan',
-        hasCompletedValueAction: true,
-      );
+    if (await NotificationPermissionPrompt.maybeShow(context)) {
+      AppPromptSessionCoordinator().suppressAutomaticOffers();
       return;
     }
+    if (!mounted) return;
 
     // The promotional paywall: the well-throttled upsell for engaged users
     // (4 opens, 2 distinct days, 3 logged meals, 7-day cooldown, 3 lifetime
@@ -526,19 +517,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       onboardingComplete: settings?.onboardingComplete ?? false,
       homeLoaded: true,
     );
-    if (!eligible || !mounted) return;
-
-    await promo.recordPromotionalPaywallShown();
-    if (!mounted) return;
+    if (!eligible ||
+        !mounted ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        !ref.read(proAccessProvider).isFree) {
+      return;
+    }
     await PremiumConversionService().openPaywall(
       context,
       PaywallEntryPoint.homeAha,
       featureName: 'promotional',
+      automatic: true,
     );
   }
 
   @override
   void dispose() {
+    _upgradePromptTimer?.cancel();
     _animController.dispose();
     super.dispose();
   }
@@ -679,28 +674,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           _staggeredSlide(
             _itemAnims[4],
             HomeToolsSection(
-              onPlannerTap: () {
-                if (isPro) {
-                  context.push('/planner');
-                } else {
-                  PremiumConversionService().openPaywall(
-                    context,
-                    PaywallEntryPoint.plannerLockedDay,
-                    featureName: 'meal_planner',
-                  );
-                }
-              },
-              onCoachTap: () {
-                if (isPro) {
-                  context.push('/assistant');
-                } else {
-                  PremiumConversionService().openPaywall(
-                    context,
-                    PaywallEntryPoint.aiCoachLimit,
-                    featureName: 'ai_coach',
-                  );
-                }
-              },
+              onPlannerTap: () => context.push('/planner'),
+              onCoachTap: () => context.push('/assistant'),
               isPro: isPro,
             ),
           ),
@@ -836,58 +811,65 @@ class _MinimalHomeTopBar extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
-          // Logo/Branding
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // App icon
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(7),
+          // Branding flexes so controls remain reachable at large text sizes.
+          Expanded(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // App icon
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.asset('assets/icon/icon.png', fit: BoxFit.cover),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: Image.asset('assets/icon/icon.png', fit: BoxFit.cover),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'SnapCal',
-                style: AppTypography.titleMedium.copyWith(
-                  color: ink,
-                  fontSize: 22, // Increased for premium presence
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.8,
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'SnapCal',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: ink,
+                      fontSize: 22, // Increased for premium presence
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.8,
+                    ),
+                  ),
                 ),
-              ),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child:
-                    isRefreshing
-                        ? Padding(
-                          key: const ValueKey('refreshing'),
-                          padding: const EdgeInsetsDirectional.only(start: 8),
-                          child: SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.0,
-                              color:
-                                  isDark
-                                      ? Colors.white70
-                                      : Theme.of(context).colorScheme.primary,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child:
+                      isRefreshing
+                          ? Padding(
+                            key: const ValueKey('refreshing'),
+                            padding: const EdgeInsetsDirectional.only(start: 8),
+                            child: SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.0,
+                                color:
+                                    isDark
+                                        ? Colors.white70
+                                        : Theme.of(context).colorScheme.primary,
+                              ),
                             ),
-                          ),
-                        )
-                        : const SizedBox.shrink(key: ValueKey('idle')),
-              ),
-            ],
+                          )
+                          : const SizedBox.shrink(key: ValueKey('idle')),
+                ),
+              ],
+            ),
           ),
-          const Spacer(),
           // Streak Flame Badge (only if active). This read `>= 0`, which is
           // every possible streak -- so a brand new account was shown an
           // orange flame next to a 0 on its first ever screen.
-          if (streak > 0) ...[
+          if (streak > 0 &&
+              MediaQuery.sizeOf(context).width >= 380 &&
+              MediaQuery.textScalerOf(context).scale(12) < 18) ...[
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -906,12 +888,18 @@ class _MinimalHomeTopBar extends ConsumerWidget {
             const SizedBox(width: 14),
           ],
           // Pro badge, or the live offer when a campaign is running.
-          _HeaderProAffordance(
-            isPro: isPro,
-            onProTap: onProTap,
-            onSettingsTap: onSettingsTap,
-          ),
-          const SizedBox(width: 14),
+          if (ref.watch(proAccessProvider).isFree)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: TextButton(
+                onPressed: onProTap,
+                child: Text(
+                  AppLocalizations.of(context)!.pro_offer_get_pro,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          const SizedBox(width: 4),
           // Settings button
           GestureDetector(
             onTap: onSettingsTap,
@@ -1642,14 +1630,6 @@ class _MinimalMealsSection extends StatelessWidget {
             ...meals
                 .take(3)
                 .map((meal) => _MinimalMealRow(meal: meal, onTap: onViewAll)),
-          if (!isPro) ...[
-            // No placeholder meal rows. "Lunch" and "Dinner" were hardcoded
-            // and rendered even for a user who had logged nothing, so a new
-            // free account saw two meals it never created sitting under its own
-            // empty state. One honest upgrade card is the whole upsell here.
-            const SizedBox(height: 14),
-            _MinimalUnlockPlanCard(onTap: onProTap),
-          ],
         ],
       ),
     );
