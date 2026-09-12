@@ -35,6 +35,7 @@ class NotificationPermissionPrompt {
       final allow = await showModalBottomSheet<bool>(
         context: context,
         backgroundColor: Colors.transparent,
+        isScrollControlled: true,
         builder: (_) => const _PromptSheet(),
       );
       if (allow == true) await Permission.notification.request();
@@ -64,71 +65,75 @@ class _PromptSheet extends StatelessWidget {
         24,
         16 + MediaQuery.of(context).padding.bottom,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: scheme.onSurface.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(2),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: scheme.onSurface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
+            const SizedBox(height: 24),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.notifications_active_outlined,
+                color: AppColors.primary,
+                size: 30,
+              ),
             ),
-            child: const Icon(
-              Icons.notifications_active_outlined,
-              color: AppColors.primary,
-              size: 30,
+            const SizedBox(height: 18),
+            Text(
+              l10n.notif_prompt_title,
+              textAlign: TextAlign.center,
+              style: AppTypography.heading3.copyWith(color: scheme.onSurface),
             ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            l10n.notif_prompt_title,
-            textAlign: TextAlign.center,
-            style: AppTypography.heading3.copyWith(color: scheme.onSurface),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            l10n.notif_prompt_body,
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyMedium.copyWith(
-              color: scheme.onSurface.withValues(alpha: 0.7),
-              height: 1.45,
+            const SizedBox(height: 8),
+            Text(
+              l10n.notif_prompt_body,
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.7),
+                height: 1.45,
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(l10n.notif_prompt_allow),
+              ),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                l10n.notif_prompt_later,
+                style: TextStyle(
+                  color: scheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
-              child: Text(l10n.notif_prompt_allow),
             ),
-          ),
-          const SizedBox(height: 4),
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              l10n.notif_prompt_later,
-              style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.6)),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
