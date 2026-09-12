@@ -2305,9 +2305,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Desbloquea una mirada más profunda sobre por qué algunos días superaron el objetivo y cómo mejorar la próxima semana.';
 
   @override
-  String get report_prompt_btn => 'Desbloquear reporte semanal';
-
-  @override
   String get scan_overlay_scanning => 'ESCANEO DE VISIÓN DE IA';
 
   @override
@@ -2323,13 +2320,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get scan_wait_longer =>
       'Está tardando más de lo normal: tu resultado sigue en camino.';
-
-  @override
-  String get report_card_title => 'INFORME DE PROGRESO SEMANAL';
-
-  @override
-  String get report_card_subtitle =>
-      'Mira por qué algunos días superaron el objetivo y recibe sugerencias personalizadas para corregirlo.';
 
   @override
   String get startup_launch_issue => 'Hubo un problema al iniciar';
@@ -5010,4 +5000,106 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coach_input_locked => 'Mejora a Pro para continuar…';
+
+  @override
+  String get stats_range_7 => 'Últimos 7 días';
+
+  @override
+  String get stats_range_30 => 'Últimos 30 días';
+
+  @override
+  String get stats_avg_per_day => 'Calorías al día, en promedio';
+
+  @override
+  String stats_under_target(int amount) {
+    final intl.NumberFormat amountNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String amountString = amountNumberFormat.format(amount);
+
+    return '$amountString por debajo de tu objetivo';
+  }
+
+  @override
+  String stats_over_target(int amount) {
+    final intl.NumberFormat amountNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String amountString = amountNumberFormat.format(amount);
+
+    return '$amountString por encima de tu objetivo';
+  }
+
+  @override
+  String get stats_on_target => 'En tu objetivo';
+
+  @override
+  String stats_logged_days(int logged, int days) {
+    return 'Registrado en $logged de $days días';
+  }
+
+  @override
+  String get stats_no_data_title => 'Nada registrado en este periodo';
+
+  @override
+  String get stats_no_data_body =>
+      'Escanea o añade una comida y aquí verás tus promedios, gráfico y macros.';
+
+  @override
+  String get stats_target_line => 'Objetivo';
+
+  @override
+  String get stats_days_logged_label => 'Días registrados';
+
+  @override
+  String get stats_streak_label => 'Racha';
+
+  @override
+  String stats_streak_days(int count) {
+    return '$count seguidos';
+  }
+
+  @override
+  String get stats_macros_title => 'Macros frente al objetivo';
+
+  @override
+  String stats_macro_of_target(int value, int target) {
+    final intl.NumberFormat valueNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String valueString = valueNumberFormat.format(value);
+    final intl.NumberFormat targetNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String targetString = targetNumberFormat.format(target);
+
+    return '$valueString g de $targetString g';
+  }
+
+  @override
+  String get stats_weight_title => 'Peso';
+
+  @override
+  String stats_weight_since(int days) {
+    return 'En $days días';
+  }
+
+  @override
+  String get stats_weight_one_entry =>
+      'Solo un pesaje hasta ahora: añade otro para ver la tendencia.';
+
+  @override
+  String get stats_chart_hint => 'Toca un día para ver su total';
+
+  @override
+  String get stats_pro_range_locked => 'Los 30 días son de Pro';
+
+  @override
+  String get stats_export => 'Compartir como PDF';
+
+  @override
+  String get stats_pro_title => 'VE UN MES COMPLETO';
+
+  @override
+  String get stats_pro_subtitle =>
+      'Pro abre la vista de 30 días y te permite compartir tus datos en PDF.';
+
+  @override
+  String get stats_pro_button => 'Desbloquear 30 días';
 }

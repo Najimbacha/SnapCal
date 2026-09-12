@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snapcal/data/models/meal.dart';
-import 'package:snapcal/screens/reports/widgets/nutrition_report_view.dart';
+import 'package:snapcal/screens/reports/stats_data.dart';
 
 Meal _meal(String date, int kcal, {int p = 0, int c = 0, int f = 0}) => Meal(
   id: '$date-$kcal',

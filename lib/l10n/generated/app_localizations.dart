@@ -4266,12 +4266,6 @@ abstract class AppLocalizations {
   /// **'Unlock a deeper look at why some days went over target and how to improve next week.'**
   String get report_prompt_subtitle;
 
-  /// No description provided for @report_prompt_btn.
-  ///
-  /// In en, this message translates to:
-  /// **'Unlock Weekly Report'**
-  String get report_prompt_btn;
-
   /// No description provided for @scan_overlay_scanning.
   ///
   /// In en, this message translates to:
@@ -4301,18 +4295,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Taking longer than usual — your result is still coming.'**
   String get scan_wait_longer;
-
-  /// No description provided for @report_card_title.
-  ///
-  /// In en, this message translates to:
-  /// **'WEEKLY PROGRESS REPORT'**
-  String get report_card_title;
-
-  /// No description provided for @report_card_subtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'See why some days went over target and get personalized suggestions to fix it.'**
-  String get report_card_subtitle;
 
   /// No description provided for @startup_launch_issue.
   ///
@@ -8901,6 +8883,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upgrade to continue…'**
   String get coach_input_locked;
+
+  /// No description provided for @stats_range_7.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 days'**
+  String get stats_range_7;
+
+  /// No description provided for @stats_range_30.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 days'**
+  String get stats_range_30;
+
+  /// No description provided for @stats_avg_per_day.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories a day, on average'**
+  String get stats_avg_per_day;
+
+  /// No description provided for @stats_under_target.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} under your target'**
+  String stats_under_target(int amount);
+
+  /// No description provided for @stats_over_target.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} over your target'**
+  String stats_over_target(int amount);
+
+  /// No description provided for @stats_on_target.
+  ///
+  /// In en, this message translates to:
+  /// **'On your target'**
+  String get stats_on_target;
+
+  /// No description provided for @stats_logged_days.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged on {logged} of {days} days'**
+  String stats_logged_days(int logged, int days);
+
+  /// No description provided for @stats_no_data_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing logged in this period'**
+  String get stats_no_data_title;
+
+  /// No description provided for @stats_no_data_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Snap or add a meal and your averages, chart and macros appear here.'**
+  String get stats_no_data_body;
+
+  /// No description provided for @stats_target_line.
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get stats_target_line;
+
+  /// No description provided for @stats_days_logged_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Days logged'**
+  String get stats_days_logged_label;
+
+  /// No description provided for @stats_streak_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak'**
+  String get stats_streak_label;
+
+  /// No description provided for @stats_streak_days.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} in a row'**
+  String stats_streak_days(int count);
+
+  /// No description provided for @stats_macros_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Macros against target'**
+  String get stats_macros_title;
+
+  /// No description provided for @stats_macro_of_target.
+  ///
+  /// In en, this message translates to:
+  /// **'{value}g of {target}g'**
+  String stats_macro_of_target(int value, int target);
+
+  /// No description provided for @stats_weight_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get stats_weight_title;
+
+  /// No description provided for @stats_weight_since.
+  ///
+  /// In en, this message translates to:
+  /// **'Across {days} days'**
+  String stats_weight_since(int days);
+
+  /// No description provided for @stats_weight_one_entry.
+  ///
+  /// In en, this message translates to:
+  /// **'One weigh-in so far — add another to see a trend.'**
+  String get stats_weight_one_entry;
+
+  /// No description provided for @stats_chart_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a day for its total'**
+  String get stats_chart_hint;
+
+  /// No description provided for @stats_pro_range_locked.
+  ///
+  /// In en, this message translates to:
+  /// **'30 days is a Pro view'**
+  String get stats_pro_range_locked;
+
+  /// No description provided for @stats_export.
+  ///
+  /// In en, this message translates to:
+  /// **'Share as PDF'**
+  String get stats_export;
+
+  /// No description provided for @stats_pro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'SEE A FULL MONTH'**
+  String get stats_pro_title;
+
+  /// No description provided for @stats_pro_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro opens the 30-day view and lets you share your numbers as a PDF.'**
+  String get stats_pro_subtitle;
+
+  /// No description provided for @stats_pro_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock 30 days'**
+  String get stats_pro_button;
 }
 
 class _AppLocalizationsDelegate
