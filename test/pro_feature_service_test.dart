@@ -31,7 +31,6 @@ void main() {
       ProFeature.plannerPreferences,
       ProFeature.fullHistory,
       ProFeature.progressPhotos,
-      ProFeature.journeyVideo,
       ProFeature.adRemoval,
     };
 

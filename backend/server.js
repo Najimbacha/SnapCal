@@ -1814,13 +1814,25 @@ app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'SnapCal Backend' });
 });
 
-// The Terms of Service the app links to. Served from here because the address
-// the app used, snapcal.app/terms, never existed: the link opened nothing.
-const TERMS_PATH = path.join(__dirname, 'legal', 'terms.html');
-app.get('/terms', (req, res) => {
-  res.set('Cache-Control', 'public, max-age=3600');
-  return res.sendFile(TERMS_PATH);
-});
+// The legal pages the app and the Play listing link to. Served from here
+// because the address the app used, snapcal.app, never existed: the terms
+// link opened nothing, and the privacy policy lived in a raw GitHub gist
+// that still named AI providers this service stopped using.
+const LEGAL_PAGES = {
+  '/terms': 'terms.html',
+  '/privacy': 'privacy.html',
+  // Google Play requires a reachable page for account and data deletion
+  // requests, for users who cannot open the app.
+  '/account-deletion': 'account-deletion.html',
+};
+
+for (const [route, file] of Object.entries(LEGAL_PAGES)) {
+  const filePath = path.join(__dirname, 'legal', file);
+  app.get(route, (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600');
+    return res.sendFile(filePath);
+  });
+}
 
 // Rolling record of recent scan outcomes.
 //

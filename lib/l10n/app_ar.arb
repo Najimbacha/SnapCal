@@ -439,6 +439,8 @@
   "settings_privacy": "سياسة الخصوصية",
   "settings_privacy_desc": "كيف نتعامل مع بياناتك",
   "settings_terms": "شروط الخدمة",
+  "settings_licenses": "تراخيص المصادر المفتوحة",
+  "settings_licenses_desc": "البرمجيات التي يعتمد عليها SnapCal",
   "settings_terms_desc": "شروط وأحكام الاستخدام",
   "settings_about_snapcal": "حول سناب كال",
   "settings_upgrade_pro": "الترقية إلى برو",

@@ -164,8 +164,9 @@ class FcmService {
       if (token != null) {
         _cachedToken = token;
         await _prefs?.setString(_tokenKey, token);
+        // The length only. The first 20 characters were printed here, and
+        // debugPrint still writes to the device log in a release build.
         debugPrint('🔑 FcmService: token obtained (len=${token.length})');
-        debugPrint('🔑 FcmService: token preview=${token.substring(0, 20)}...');
       } else {
         debugPrint('⚠️ FcmService: getToken() returned null');
       }

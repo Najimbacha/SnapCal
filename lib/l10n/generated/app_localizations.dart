@@ -2658,6 +2658,18 @@ abstract class AppLocalizations {
   /// **'Terms of service'**
   String get settings_terms;
 
+  /// No description provided for @settings_licenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source licences'**
+  String get settings_licenses;
+
+  /// No description provided for @settings_licenses_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'The software SnapCal is built on'**
+  String get settings_licenses_desc;
+
   /// No description provided for @settings_terms_desc.
   ///
   /// In en, this message translates to:

@@ -435,6 +435,8 @@
   "settings_privacy": "Política de privacidad",
   "settings_privacy_desc": "Cómo manejamos tus datos",
   "settings_terms": "Términos de servicio",
+  "settings_licenses": "Licencias de código abierto",
+  "settings_licenses_desc": "El software en el que se basa SnapCal",
   "settings_terms_desc": "Condiciones de uso",
   "settings_about_snapcal": "Sobre SnapCal",
   "settings_upgrade_pro": "Pasar a Pro",

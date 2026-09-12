@@ -135,9 +135,12 @@ class AboutScreen extends StatelessWidget {
                       title: l10n.settings_privacy,
                       subtitle: l10n.settings_privacy_desc,
                       onTap:
+                          // The gist this pointed at still named AI providers
+                          // the service no longer uses; the server hosts the
+                          // current policy.
                           () => launchUrl(
                             Uri.parse(
-                              'https://gist.githubusercontent.com/Najimbacha/ab1c18844431efb2c5701e36f1ab0ff0/raw',
+                              '${ConfigService().backendProxyUrl}/privacy',
                             ),
                             mode: LaunchMode.externalApplication,
                           ),
@@ -154,6 +157,21 @@ class AboutScreen extends StatelessWidget {
                               '${ConfigService().backendProxyUrl}/terms',
                             ),
                             mode: LaunchMode.externalApplication,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    // The app ships other people's software -- FFmpeg and the
+                    // rest -- whose licences require their notices to be
+                    // shown. Nothing showed them.
+                    _AboutLink(
+                      icon: LucideIcons.scale,
+                      title: l10n.settings_licenses,
+                      subtitle: l10n.settings_licenses_desc,
+                      onTap:
+                          () => showLicensePage(
+                            context: context,
+                            applicationName: 'SnapCal',
+                            applicationVersion: version,
                           ),
                     ),
                     const SizedBox(height: 24),

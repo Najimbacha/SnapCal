@@ -44,8 +44,6 @@ class BadgeCard extends StatelessWidget {
         return l10n.achievement_first_checkin;
       case 'achievement_transformation':
         return l10n.achievement_transformation;
-      case 'achievement_journey_video':
-        return l10n.achievement_journey_video;
       default:
         return key;
     }
@@ -86,8 +84,6 @@ class BadgeCard extends StatelessWidget {
         return l10n.achievement_first_checkin_desc;
       case 'achievement_transformation_desc':
         return l10n.achievement_transformation_desc;
-      case 'achievement_journey_video_desc':
-        return l10n.achievement_journey_video_desc;
       default:
         return key;
     }

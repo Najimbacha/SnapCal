@@ -89,3 +89,27 @@ test('the terms of service page is served', async () => {
     assert.match(res.body, /SnapCal Terms of Service/);
   });
 });
+
+test('the privacy policy and account deletion pages are served', async () => {
+  await withServer(async (server) => {
+    const pages = [
+      ['/privacy', /SnapCal Privacy Policy/],
+      ['/account-deletion', /Delete your SnapCal account/],
+    ];
+    for (const [path, needle] of pages) {
+      const res = await request(server, 'GET', path);
+      assert.equal(res.status, 200, `${path} should be served`);
+      assert.match(res.headers['content-type'], /text\/html/);
+      assert.match(res.body, needle);
+    }
+  });
+});
+
+test('the hosted policy names the AI provider actually in use', async () => {
+  await withServer(async (server) => {
+    const res = await request(server, 'GET', '/privacy');
+    assert.match(res.body, /DeepSeek/);
+    // The old gist named providers this service no longer calls.
+    assert.doesNotMatch(res.body, /Groq/i);
+  });
+});

@@ -6,7 +6,6 @@ import '../core/utils/date_utils.dart' as app_date;
 import '../data/models/achievement.dart';
 import '../data/models/meal.dart';
 import '../data/models/user_settings.dart';
-import '../data/services/transformation_video_service.dart';
 import 'metrics_provider.dart';
 import 'repository_providers.dart';
 import 'settings_provider.dart';
@@ -143,14 +142,6 @@ class AchievementDefs {
       categoryIndex: 4,
       targetValue: 10,
     ),
-    Achievement(
-      id: 'journey_video',
-      titleKey: 'achievement_journey_video',
-      descriptionKey: 'achievement_journey_video_desc',
-      emoji: '🎬',
-      categoryIndex: 4,
-      targetValue: 1,
-    ),
   ];
 }
 
@@ -165,7 +156,6 @@ class AchievementStats {
     required this.waterGoalDays,
     required this.calorieGoalStreak,
     required this.photosLogged,
-    required this.hasGeneratedVideo,
     required this.hitMacrosToday,
     required this.perfectWeekDays,
   });
@@ -175,7 +165,6 @@ class AchievementStats {
   final int waterGoalDays;
   final int calorieGoalStreak;
   final int photosLogged;
-  final bool hasGeneratedVideo;
   final bool hitMacrosToday;
   final int perfectWeekDays;
 
@@ -190,7 +179,6 @@ class AchievementStats {
     required int waterGoalMl,
     required UserSettings settings,
     required int photosLogged,
-    required bool hasGeneratedVideo,
     required DateTime today,
   }) {
     final caloriesByDate = <String, int>{};
@@ -243,7 +231,6 @@ class AchievementStats {
               : waterByDate.values.where((ml) => ml >= waterGoalMl).length,
       calorieGoalStreak: streak,
       photosLogged: photosLogged,
-      hasGeneratedVideo: hasGeneratedVideo,
       hitMacrosToday: hitMacrosToday,
       perfectWeekDays: perfectWeekDays,
     );
@@ -262,10 +249,18 @@ class Achievements extends _$Achievements {
     } else {
       _box = Hive.box<Achievement>(boxName);
     }
+    final defs = AchievementDefs.all();
     if (_box!.isEmpty) {
-      for (final a in AchievementDefs.all()) {
+      for (final a in defs) {
         await _box!.put(a.id, a);
       }
+    }
+    // A badge that no longer exists -- the journey video went with the
+    // feature it measured -- would otherwise sit in the box of everyone who
+    // already has one, locked for ever.
+    final known = defs.map((a) => a.id).toSet();
+    for (final key in _box!.keys.toList()) {
+      if (!known.contains(key)) await _box!.delete(key);
     }
     return _box!.values.toList();
   }
@@ -289,7 +284,6 @@ class Achievements extends _$Achievements {
     required int waterGoalDays,
     required int calorieGoalStreak,
     required int photosLogged,
-    required bool hasGeneratedVideo,
     required bool hitMacrosToday,
     required int perfectWeekDays,
   }) async {
@@ -310,7 +304,6 @@ class Achievements extends _$Achievements {
       'snap_legend': totalMealsLogged,
       'first_checkin': photosLogged,
       'transformation': photosLogged,
-      'journey_video': hasGeneratedVideo ? 1 : 0,
     };
     if (_box == null) return;
     for (final entry in checks.entries) {
@@ -341,8 +334,6 @@ class Achievements extends _$Achievements {
         waterGoalMl: settings.effectiveWaterGoalMl,
         settings: settings,
         photosLogged: metrics.where((m) => m.photoFrontPath != null).length,
-        hasGeneratedVideo:
-            await TransformationVideoService.journeyVideoGenerated(),
         today: DateTime.now(),
       );
       await checkAchievements(
@@ -351,7 +342,6 @@ class Achievements extends _$Achievements {
         waterGoalDays: stats.waterGoalDays,
         calorieGoalStreak: stats.calorieGoalStreak,
         photosLogged: stats.photosLogged,
-        hasGeneratedVideo: stats.hasGeneratedVideo,
         hitMacrosToday: stats.hitMacrosToday,
         perfectWeekDays: stats.perfectWeekDays,
       );

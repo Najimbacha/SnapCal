@@ -1396,6 +1396,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_terms => 'Términos de servicio';
 
   @override
+  String get settings_licenses => 'Licencias de código abierto';
+
+  @override
+  String get settings_licenses_desc => 'El software en el que se basa SnapCal';
+
+  @override
   String get settings_terms_desc => 'Condiciones de uso';
 
   @override

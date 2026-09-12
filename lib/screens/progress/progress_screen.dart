@@ -13,11 +13,7 @@ import 'widgets/photo_capture_flow.dart';
 import 'widgets/photo_comparison_sheet.dart';
 import 'widgets/progress_card.dart';
 import 'widgets/weight_trend_chart.dart';
-import '../../core/theme/app_colors.dart';
 import '../../data/services/premium_conversion_service.dart';
-import '../../data/services/pro_feature_service.dart';
-import '../../data/services/transformation_video_service.dart';
-import 'package:share_plus/share_plus.dart';
 
 class ProgressScreen extends ConsumerStatefulWidget {
   const ProgressScreen({super.key});
@@ -70,62 +66,6 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
     }
   }
 
-  bool _isGenerating = false;
-
-  Future<void> _generateJourney(List<BodyMetric> photos) async {
-    final access = ref.read(proAccessProvider);
-    if (access.isUnknown) return; // Status unresolved: do nothing, sell nothing.
-    if (!access.can(ProFeature.journeyVideo)) {
-      PremiumConversionService().openPaywall(
-        context,
-        PaywallEntryPoint.progressPhotoLimit,
-        featureName: 'journey_video',
-      );
-      return;
-    }
-
-    if (photos.length < 2) {
-      final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.progress_video_min_photos)));
-      return;
-    }
-
-    setState(() => _isGenerating = true);
-
-    try {
-      final paths =
-          photos
-              .map((m) => m.photoFrontPath ?? m.photoSidePath)
-              .whereType<String>()
-              .toList();
-
-      final videoPath = await TransformationVideoService().generateVideo(paths);
-
-      if (videoPath != null) {
-        await TransformationVideoService.markJourneyVideoGenerated();
-        if (!mounted) return;
-        final l10n = AppLocalizations.of(context)!;
-        await SharePlus.instance.share(
-          ShareParams(
-            files: [XFile(videoPath)],
-            text: l10n.progress_video_share_text,
-          ),
-        );
-      } else {
-        if (mounted) {
-          final l10n = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(l10n.progress_video_failed)));
-        }
-      }
-    } finally {
-      if (mounted) setState(() => _isGenerating = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -145,33 +85,6 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (photos.length >= 2)
-            _ScaleTap(
-              onTap: () => _generateJourney(photos),
-              child: Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.2),
-                  ),
-                ),
-                child:
-                    _isGenerating
-                        ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : Icon(
-                          LucideIcons.video,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-              ),
-            ),
           _ScaleTap(
             onTap: () => _handleCapture(context, canAdd),
             child: Container(

@@ -3,7 +3,7 @@ description: "SnapCal: AI Calorie Counter - Snap a photo, track your calories."
 publish_to: 'none'
 version: 1.0.24+42
 environment:
-  sdk: ^3.7.0-209.1.beta
+  sdk: ^3.7.0
 
 dependencies:
   flutter:
@@ -75,7 +75,6 @@ dependencies:
   pdf: ^3.11.1
   printing: ^5.13.2
   home_widget: ^0.9.1
-  ffmpeg_kit_flutter_new: ^4.1.0
   confetti: ^0.8.0
   screenshot: ^3.0.0
   health: ^13.3.1

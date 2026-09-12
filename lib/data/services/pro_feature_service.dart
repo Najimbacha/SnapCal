@@ -17,7 +17,6 @@ enum ProFeature {
   fullHistory,
   progressPhotos,
   progressComparisons,
-  journeyVideo,
   adRemoval,
 }
 
@@ -49,7 +48,6 @@ class ProFeatureService {
       case ProFeature.plannerPreferences:
       case ProFeature.fullHistory:
       case ProFeature.progressPhotos:
-      case ProFeature.journeyVideo:
       case ProFeature.adRemoval:
         return isPro;
       case ProFeature.aiDetection:
@@ -85,7 +83,6 @@ class ProFeatureService {
         return PaywallEntryPoint.reportInsight;
       case ProFeature.progressPhotos:
       case ProFeature.progressComparisons:
-      case ProFeature.journeyVideo:
         return PaywallEntryPoint.progressPhotoLimit;
       case ProFeature.adRemoval:
         return PaywallEntryPoint.adRemoval;
@@ -131,7 +128,6 @@ class ProFeatureService {
         return const {
           ProFeature.progressPhotos,
           ProFeature.progressComparisons,
-          ProFeature.journeyVideo,
           ProFeature.unlimitedScans,
         };
       // The app has no ads any more, so there is nothing to remove and
@@ -140,10 +136,7 @@ class ProFeatureService {
       // exhaustive switches -- but nothing routes to this case now, and if
       // something ever does it sells only things that are real.
       case PaywallEntryPoint.adRemoval:
-        return const {
-          ProFeature.unlimitedScans,
-          ProFeature.reports,
-        };
+        return const {ProFeature.unlimitedScans, ProFeature.reports};
       case PaywallEntryPoint.settings:
       case PaywallEntryPoint.homeAha:
         return const {

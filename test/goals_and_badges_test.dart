@@ -58,14 +58,12 @@ void main() {
       Map<String, int> water = const {},
       int waterGoal = 2500,
       int photos = 0,
-      bool video = false,
     }) => AchievementStats.from(
       meals: meals,
       waterByDate: water,
       waterGoalMl: waterGoal,
       settings: settings,
       photosLogged: photos,
-      hasGeneratedVideo: video,
       today: today,
     );
 
@@ -136,10 +134,9 @@ void main() {
       expect(proteinShort.hitMacrosToday, isFalse);
     });
 
-    test('photos and the journey video are carried through', () {
-      final stats = statsFor(photos: 3, video: true);
+    test('photos and the streak are carried through', () {
+      final stats = statsFor(photos: 3);
       expect(stats.photosLogged, 3);
-      expect(stats.hasGeneratedVideo, isTrue);
       expect(stats.currentStreak, 4);
     });
   });
