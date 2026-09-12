@@ -33,10 +33,39 @@ class ApiClient {
   /// here and in Crashlytics.
   static String? lastAppCheckError;
   static int _appCheckFailureCount = 0;
-  static String? _reportedAppCheckError;
+
+  /// When a failing mint may be tried again.
+  ///
+  /// The cooldown above did not apply to a forced refresh, and every rejected
+  /// request forced one: a device whose App Check cannot be minted produced
+  /// twenty-odd attempts a minute, each one a Crashlytics report, until
+  /// Firebase itself answered "Too many attempts" -- which then hid the real
+  /// cause and delayed recovery.
+  static DateTime? _appCheckRetryAfter;
+
+  /// One second after the first failure, then two, four, and so on to a
+  /// minute. Attempts inside the wait use the cached token, or none, without
+  /// touching Firebase.
+  @visibleForTesting
+  static Duration appCheckBackoffFor(int consecutiveFailures) {
+    if (consecutiveFailures <= 0) return Duration.zero;
+    final seconds = 1 << (consecutiveFailures - 1).clamp(0, 6);
+    return Duration(seconds: seconds > 60 ? 60 : seconds);
+  }
+
+  static bool get _appCheckBackingOff {
+    final until = _appCheckRetryAfter;
+    return until != null && DateTime.now().isBefore(until);
+  }
 
   static Future<String?> _appCheckToken({bool forceRefresh = false}) async {
     final now = DateTime.now();
+    // A forced refresh does not get to jump the backoff: it was the forced
+    // path, one per rejected request, that made the storm.
+    final retryAfter = _appCheckRetryAfter;
+    if (retryAfter != null && now.isBefore(retryAfter)) {
+      return _cachedAppCheckToken;
+    }
     final last = _lastAppCheckAttempt;
     if (!forceRefresh &&
         last != null &&
@@ -57,12 +86,13 @@ class ApiClient {
         }
         _cachedAppCheckToken = token;
         _appCheckFailureCount = 0;
+        _appCheckRetryAfter = null;
         lastAppCheckError = null;
-        _reportedAppCheckError = null;
       }
       return token;
     } catch (error, stackTrace) {
       _appCheckFailureCount += 1;
+      _appCheckRetryAfter = now.add(appCheckBackoffFor(_appCheckFailureCount));
       lastAppCheckError = error.toString();
       debugPrint(
         '⚠️ ApiClient: App Check token unavailable '
@@ -74,14 +104,14 @@ class ApiClient {
     }
   }
 
-  /// Reports one Crashlytics non-fatal per distinct App Check error.
+  /// Reports one Crashlytics non-fatal per run of failures.
   ///
-  /// Deduplicated by message so a device stuck in a failure loop produces one
-  /// report per cause, not one per request. Reset on the next success.
+  /// This deduplicated by message, and the messages alternate -- "App
+  /// attestation failed" from Firebase, then its own "Too many attempts" --
+  /// so each new wording was reported again and the dashboard filled with one
+  /// fault. One report per episode; the next success resets it.
   static void _reportAppCheckFailure(Object error, StackTrace stackTrace) {
-    final signature = error.toString();
-    if (signature == _reportedAppCheckError) return;
-    _reportedAppCheckError = signature;
+    if (_appCheckFailureCount != 1) return;
     unawaited(
       FirebaseCrashlytics.instance
           .recordError(
@@ -142,7 +172,10 @@ class ApiClient {
           // A 401 that names App Check is not an auth problem: refreshing the
           // ID token cannot fix it, and doing so doubles the load while
           // hiding the cause. Force one fresh App Check mint instead.
+          // Nothing to gain from a fresh mint while minting is backing off,
+          // and the attempt logged a line per request.
           if (_isAppCheckRejection(error) &&
+              !_appCheckBackingOff &&
               error.requestOptions.extra['skipAppCheck'] != true &&
               error.requestOptions.extra['_retriedAppCheck'] != true) {
             debugPrint(
