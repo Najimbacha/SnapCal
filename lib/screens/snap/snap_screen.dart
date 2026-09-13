@@ -610,6 +610,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     } else {
       cameraLayer = const _CameraShimmerSkeleton();
     }
+    final cameraReady =
+        _controller.isInitialized &&
+        _controller.cameraController?.value.isInitialized == true &&
+        _controller.cameraProblem == null;
+    final hasCameraProblem = _controller.cameraProblem != null;
 
     return Scaffold(
       backgroundColor: const Color(0xFF07110E),
@@ -637,19 +642,20 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             ),
           ),
 
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  24,
-                  topSafe + 132,
-                  24,
-                  bottomSafe + 214,
+          if (cameraReady)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    topSafe + 132,
+                    24,
+                    bottomSafe + 214,
+                  ),
+                  child: _ScanGuide(label: l10n.scan_choice_food_subtitle),
                 ),
-                child: _ScanGuide(label: l10n.scan_choice_food_subtitle),
               ),
             ),
-          ),
 
           if (_focusPoint != null && _focusAnimController != null)
             AnimatedBuilder(
@@ -692,30 +698,33 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             left: 18,
             right: 18,
             child: _InlineCameraHeader(
-              isReady:
-                  _controller.isInitialized &&
-                  _controller.cameraProblem == null,
+              isReady: cameraReady,
               flashMode: _controller.flashMode,
               onClose: () => context.go('/'),
               onFlash: _controller.toggleFlash,
             ),
           ),
 
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: bottomSafe + 16,
-            child: _InlineCameraControls(
-              isCapturing: _controller.isCapturing,
-              onCapture: _capture,
-              onGallery: _pickFromGallery,
-              onBarcode: () => _controller.isScanningBarcode = true,
-              onManual: _openManualEntry,
-              galleryLabel: l10n.snap_gallery,
-              barcodeLabel: l10n.snap_barcode,
-              manualLabel: l10n.log_add_manually,
+          if (!hasCameraProblem)
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: bottomSafe + 16,
+              child: _InlineCameraControls(
+                isCapturing: _controller.isCapturing,
+                onCapture: cameraReady ? _capture : null,
+                onGallery: _pickFromGallery,
+                onBarcode:
+                    cameraReady
+                        ? () => _controller.isScanningBarcode = true
+                        : null,
+                onManual: _openManualEntry,
+                galleryLabel: l10n.snap_gallery,
+                barcodeLabel: l10n.snap_barcode,
+                manualLabel: l10n.log_add_manually,
+                isCameraReady: cameraReady,
+              ),
             ),
-          ),
 
           // ── Analyzing overlay ──
           if (_controller.isAnalyzing)
@@ -1037,6 +1046,7 @@ class _ScanCorners extends StatelessWidget {
 
 class _InlineCameraControls extends StatelessWidget {
   const _InlineCameraControls({
+    required this.isCameraReady,
     required this.isCapturing,
     required this.onCapture,
     required this.onGallery,
@@ -1047,10 +1057,11 @@ class _InlineCameraControls extends StatelessWidget {
     required this.manualLabel,
   });
 
+  final bool isCameraReady;
   final bool isCapturing;
-  final VoidCallback onCapture;
+  final VoidCallback? onCapture;
   final VoidCallback onGallery;
-  final VoidCallback onBarcode;
+  final VoidCallback? onBarcode;
   final VoidCallback onManual;
   final String galleryLabel;
   final String barcodeLabel;
@@ -1092,6 +1103,7 @@ class _InlineCameraControls extends StatelessWidget {
                       icon: LucideIcons.scanLine,
                       label: barcodeLabel,
                       onTap: onBarcode,
+                      enabled: isCameraReady,
                     ),
                   ),
                 ],
@@ -1143,17 +1155,19 @@ class _CameraActionButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.enabled = true,
   });
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1162,11 +1176,17 @@ class _CameraActionButton extends StatelessWidget {
             height: 52,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: Colors.white.withValues(alpha: enabled ? 0.12 : 0.05),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: enabled ? 0.10 : 0.06),
+              ),
             ),
-            child: Icon(icon, color: Colors.white, size: 23),
+            child: Icon(
+              icon,
+              color: enabled ? Colors.white : Colors.white38,
+              size: 23,
+            ),
           ),
           const SizedBox(height: 7),
           Text(
@@ -1174,9 +1194,10 @@ class _CameraActionButton extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Color(0xDEFFFFFF),
               fontSize: 12,
               fontWeight: FontWeight.w600,
+            ).copyWith(
+              color: enabled ? const Color(0xDEFFFFFF) : Colors.white38,
             ),
           ),
         ],
