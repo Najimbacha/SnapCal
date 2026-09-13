@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -70,19 +71,29 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          if (!isPro) ...[
-            const SizedBox(height: 20),
-            SettingsRow(
-              title: 'SnapCal Pro',
-              value: l10n.settings_manage_plan,
-              icon: LucideIcons.sparkles,
+          const SizedBox(height: 20),
+          if (isPro)
+            SettingsSurface(
+              padding: EdgeInsets.zero,
+              child: SettingsRow(
+                title: 'SnapCal Pro',
+                value: l10n.settings_manage_plan,
+                icon: LucideIcons.gem,
+                onTap:
+                    () => PremiumConversionService().openPaywall(
+                      context,
+                      PaywallEntryPoint.settings,
+                    ),
+              ),
+            )
+          else
+            _ProUpsellCard(
               onTap:
                   () => PremiumConversionService().openPaywall(
                     context,
                     PaywallEntryPoint.settings,
                   ),
             ),
-          ],
           const SizedBox(height: 24),
           SettingsSection(
             title: l10n.settings_core_config,
@@ -559,6 +570,147 @@ class _InitialsAvatar extends StatelessWidget {
             fontWeight: FontWeight.w700,
             letterSpacing: -0.5,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The free-user Pro offer. A plain "Manage plan" row reads as a setting the
+/// user already owns; this is a committed, tappable upgrade surface that names
+/// the tier and its payoff, using the same premium gradient as the paywall and
+/// the home upgrade chip.
+class _ProUpsellCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ProUpsellCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AppScaleTap(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors:
+                isDark
+                    ? [
+                      AppColors.primary.withValues(alpha: 0.22),
+                      AppColors.primary.withValues(alpha: 0.05),
+                    ]
+                    : [const Color(0xFFD9F2E7), const Color(0xFFF4FBF8)],
+            stops: const [0.0, 0.85],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: isDark ? 0.28 : 0.24),
+          ),
+          boxShadow:
+              isDark
+                  ? null
+                  : [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: AppColors.premiumGradient,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.28),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                LucideIcons.crown,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'SnapCal Pro',
+                    style: AppTypography.titleMedium.copyWith(
+                      color: settingsText(context),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    l10n.settings_upgrade_desc,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: settingsSubtext(context),
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                gradient: AppColors.premiumGradient,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.premiumGold.withValues(
+                      alpha: isDark ? 0.38 : 0.28,
+                    ),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.home_upgrade_chip,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      height: 1.0,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  const Icon(
+                    LucideIcons.chevronRight,
+                    size: 13,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
