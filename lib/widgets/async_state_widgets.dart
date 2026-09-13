@@ -4,6 +4,7 @@ import '../core/state/async_ui_state.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/theme/theme_colors.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'ui_blocks.dart';
 
 class AppSkeletonBlock extends StatelessWidget {
@@ -207,11 +208,12 @@ class OfflineActionBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AppInlineFallback(
       icon: LucideIcons.wifiOff,
-      title: 'Offline',
+      title: l10n.state_offline,
       message: message,
-      actionLabel: onRetry == null ? null : 'Retry',
+      actionLabel: onRetry == null ? null : l10n.state_retry,
       onAction: onRetry == null ? null : () => onRetry!(),
     );
   }
@@ -239,6 +241,7 @@ class AppStateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     switch (state.phase) {
       case AsyncUiPhase.loading:
         return loading ?? const AppSectionSkeleton();
@@ -246,23 +249,21 @@ class AppStateView extends StatelessWidget {
         return empty ??
             AppInlineFallback(
               icon: LucideIcons.inbox,
-              title: 'Nothing here yet',
-              message: state.message ?? 'There is no data to show.',
+              title: l10n.state_empty_title,
+              message: state.message ?? l10n.state_empty_message,
             );
       case AsyncUiPhase.offline:
         return offline ??
             OfflineActionBanner(
-              message:
-                  state.message ??
-                  'You are offline. Cached data is still available.',
+              message: state.message ?? l10n.state_offline_message,
               onRetry: onRetry,
             );
       case AsyncUiPhase.error:
         return error ??
             AppInlineFallback(
-              title: 'Something went wrong',
-              message: state.message ?? 'Please try again.',
-              actionLabel: onRetry == null ? null : 'Retry',
+              title: l10n.state_error_title,
+              message: state.message ?? l10n.state_error_message,
+              actionLabel: onRetry == null ? null : l10n.state_retry,
               onAction: onRetry == null ? null : () => onRetry!(),
             );
       case AsyncUiPhase.retrying:
