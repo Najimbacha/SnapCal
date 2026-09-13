@@ -1,0 +1,44 @@
+name: CI
+
+# The owner works on one machine and there was no CI, so "the suites pass"
+# meant "they passed on my laptop". This runs both suites on every push and PR
+# so a red commit is caught before it reaches Render or the Play build.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  app:
+    name: Flutter analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Pinned to the revision in .metadata rather than a floating stable, so a
+      # Flutter upgrade is a deliberate commit and not a surprise red build.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.1
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      # Matches the runtime in backend/Dockerfile (node:20.17-alpine).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm test
