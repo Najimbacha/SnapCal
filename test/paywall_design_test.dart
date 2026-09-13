@@ -138,13 +138,9 @@ void main() {
         // The scan demo now runs full width at the top of the screen instead
         // of in a compact box beside the macro bars. Same widget, same job --
         // the key is what changed.
-        expect(find.byKey(const ValueKey('paywall-scan-hero')), findsOneWidget);
-        expect(
-          find.textContaining('248', findRichText: true),
-          findsNothing,
-          reason: 'the hero should stay clean and leave details to the body',
-        );
-        // The hero is one calm product image, not a rotating scan animation.
+        final hero = find.byKey(const ValueKey('paywall-scan-hero'));
+        expect(hero, findsOneWidget);
+        // The scan plays once over a single still: the photo never cycles.
         final settledAsset =
             tester
                 .widgetList<Image>(find.byType(Image))
@@ -158,9 +154,19 @@ void main() {
               .map((i) => i.image)
               .toList(),
           settledAsset,
-          reason: 'the hero should rest on its plate, not cycle',
+          reason: 'the scan plays once over a single still, not a carousel',
         );
-        expect(find.textContaining('248', findRichText: true), findsNothing);
+        // Once it has settled, the reveal names the food on the plate and
+        // reports the calories.
+        expect(
+          find.descendant(of: hero, matching: find.text('Grilled Chicken')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: hero, matching: find.textContaining('590')),
+          findsWidgets,
+          reason: 'the scan should report the meal calories in the hero',
+        );
         final scrollableState = tester.state<ScrollableState>(
           find.byType(Scrollable).first,
         );
@@ -175,7 +181,8 @@ void main() {
           tester.element(find.text('Monthly')),
           alignment: 0.15,
         );
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
         await tester.tap(find.text('Monthly'));
         await tester.pump(const Duration(milliseconds: 300));
         scrollableState.position.jumpTo(

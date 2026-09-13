@@ -11,6 +11,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:snapcal/core/services/config_service.dart';
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/data/services/premium_conversion_service.dart';
 import 'package:snapcal/data/services/app_prompt_session_coordinator.dart';
@@ -63,11 +64,11 @@ class _Palette {
       AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.10);
 }
 
-// Same destinations the Settings > About screen links to. Store review requires
-// these to be reachable from the purchase screen itself, not only from Settings.
-const _privacyPolicyUrl =
-    'https://gist.githubusercontent.com/Najimbacha/ab1c18844431efb2c5701e36f1ab0ff0/raw';
-const _termsUrl = 'https://snapcal.app/terms';
+// The legal pages are hosted by the backend (see `backend/legal/`), and the
+// app links to the same `/terms` and `/privacy` routes there. Store review
+// requires them reachable from the purchase screen itself, not only Settings.
+String get _termsUrl => '${ConfigService().backendProxyUrl}/terms';
+String get _privacyPolicyUrl => '${ConfigService().backendProxyUrl}/privacy';
 
 /// A free introductory offer resolved from the store product, never assumed.
 class _TrialInfo {
@@ -697,9 +698,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               disclosure: _disclosureFor(_selectedPackage, l10n),
               onPurchase: _handlePurchase,
               restoring: _restoring,
-              onRestore: (_isLoading || _restoring) ? null : _handleRestore,
-              onTerms: () => _openUrl(_termsUrl),
-              onPrivacy: () => _openUrl(_privacyPolicyUrl),
             );
 
             // The dock's height depends on the disclosure text, which changes
@@ -786,6 +784,26 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                       ),
                     ],
                     if (inlineDock) dock,
+                    // Store review wants Terms and Privacy reachable from the
+                    // purchase screen, but they are not part of the buy action.
+                    // They sit at the tail of the scroll as fine print so the
+                    // sticky CTA stays one clean object.
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        hPad,
+                        dense ? 24 : 30,
+                        hPad,
+                        8,
+                      ),
+                      child: _LegalFooter(
+                        palette: palette,
+                        onTerms: () => _openUrl(_termsUrl),
+                        onPrivacy: () => _openUrl(_privacyPolicyUrl),
+                        onRestore:
+                            (_isLoading || _restoring) ? null : _handleRestore,
+                        restoring: _restoring,
+                      ),
+                    ),
                   ],
                 ),
                 if (!inlineDock)
@@ -965,20 +983,30 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 // HERO
 //
-// A purchase screen needs a calm first impression. The image proves the food
-// scanning context, while the offer details sit below where they can be read.
+// A purchase screen needs a first impression that proves the product. The plate
+// photo is the proof; a single scan sweep and labelled callouts turn it into
+// "this app reads your food and counts the calories". The sequence plays once,
+// settles on the caught plate, then breathes very slowly so the screen still
+// feels alive without ever pulling attention away from the offer below.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const double _heroChromeTop = 8;
+const String _heroAsset = 'assets/images/paywall/hero_slide_1.png';
+const double _heroImageExtent = 1024;
+const int _heroCalories = 590;
 
-final List<_HeroSlide> _heroSlides = [
-  const _HeroSlide(asset: 'assets/images/paywall/hero_slide_1.png'),
-];
+/// One item detected on the plate. [anchor] is a fraction of the square source
+/// image, mapped onto the cover-cropped box when the hero is laid out.
+class _HeroIngredient {
+  const _HeroIngredient({
+    required this.anchor,
+    required this.label,
+    required this.portion,
+  });
 
-class _HeroSlide {
-  const _HeroSlide({required this.asset});
-
-  final String asset;
+  final Offset anchor;
+  final String label;
+  final String portion;
 }
 
 class _ScanHero extends StatefulWidget {
@@ -998,11 +1026,185 @@ class _ScanHero extends StatefulWidget {
   State<_ScanHero> createState() => _ScanHeroState();
 }
 
-class _ScanHeroState extends State<_ScanHero> {
+class _ScanHeroState extends State<_ScanHero> with TickerProviderStateMixin {
+  static const Duration _revealDuration = Duration(milliseconds: 2400);
+  static const Duration _ambientDuration = Duration(milliseconds: 2600);
+
+  late final AnimationController _reveal;
+  late final AnimationController _ambient;
+  late final Animation<double> _scan;
+  late final Animation<double> _pillFade;
+  late final Animation<double> _badgeFade;
+  late final Animation<double> _count;
+  late final Animation<double> _badgeScale;
+  late final List<Animation<double>> _ringFade;
+  late final List<Animation<double>> _chipFade;
+  bool _reduced = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _reduced =
+        WidgetsBinding
+            .instance
+            .platformDispatcher
+            .accessibilityFeatures
+            .reduceMotion;
+
+    _reveal = AnimationController(
+      vsync: this,
+      duration: _reduced ? const Duration(milliseconds: 200) : _revealDuration,
+    );
+    _ambient = AnimationController(vsync: this, duration: _ambientDuration);
+
+    _scan = _segment(0.10, 0.45, Curves.easeInOut);
+    _pillFade = Tween<double>(begin: 1, end: 0).animate(
+      _segment(0.38, 0.52, Curves.easeIn),
+    );
+    _badgeFade = _segment(0.52, 0.64, Curves.easeOut);
+    _count = Tween<double>(begin: 0, end: _heroCalories.toDouble()).animate(
+      _segment(0.55, 0.90, Curves.easeOutCubic),
+    );
+    _badgeScale = Tween<double>(begin: 0.86, end: 1).animate(
+      _segment(0.72, 0.88, Curves.easeOutBack),
+    );
+    _ringFade = [
+      for (final start in const [0.14, 0.19, 0.24, 0.29])
+        _segment(start, start + 0.16, Curves.easeOut),
+    ];
+    _chipFade = [
+      for (final start in const [0.50, 0.57, 0.64, 0.71])
+        _segment(start, start + 0.12, Curves.easeOut),
+    ];
+
+    if (_reduced) {
+      _reveal.value = 1;
+    } else {
+      _reveal.forward().whenComplete(() {
+        if (mounted) _ambient.repeat(reverse: true);
+      });
+    }
+  }
+
+  Animation<double> _segment(double begin, double end, Curve curve) {
+    return CurvedAnimation(
+      parent: _reveal,
+      curve: Interval(begin, end, curve: curve),
+    );
+  }
+
+  @override
+  void dispose() {
+    _reveal.dispose();
+    _ambient.dispose();
+    super.dispose();
+  }
+
+  List<_HeroIngredient> _ingredients(AppLocalizations l10n) {
+    return [
+      _HeroIngredient(
+        anchor: const Offset(0.33, 0.34),
+        label: l10n.paywall_slide_grilled_chicken,
+        portion: l10n.paywall_slide_chicken_portion,
+      ),
+      _HeroIngredient(
+        anchor: const Offset(0.65, 0.36),
+        label: l10n.paywall_slide_rice,
+        portion: l10n.paywall_slide_rice_portion,
+      ),
+      _HeroIngredient(
+        anchor: const Offset(0.31, 0.68),
+        label: l10n.paywall_slide_avocado,
+        portion: l10n.paywall_slide_avocado_portion,
+      ),
+      _HeroIngredient(
+        anchor: const Offset(0.68, 0.70),
+        label: l10n.paywall_slide_cherry_tomatoes,
+        portion: l10n.paywall_slide_tomatoes_portion,
+      ),
+    ];
+  }
+
+  /// Maps a fraction of the square source image onto the cover-cropped box so
+  /// callouts stay glued to the food whatever the viewport aspect is.
+  Offset _coverPoint(Size box, Offset fraction) {
+    final scale = math.max(
+      box.width / _heroImageExtent,
+      box.height / _heroImageExtent,
+    );
+    final rendered = _heroImageExtent * scale;
+    return Offset(
+      fraction.dx * rendered + (box.width - rendered) / 2,
+      fraction.dy * rendered + (box.height - rendered) / 2,
+    );
+  }
+
+  double _textWidth(
+    String text,
+    TextStyle base,
+    double fontSize,
+    FontWeight weight,
+  ) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: base.merge(
+          TextStyle(fontSize: fontSize, fontWeight: weight),
+        ),
+      ),
+      maxLines: 1,
+      textScaler: TextScaler.noScaling,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return painter.width;
+  }
+
+  /// Each chip hugs its own text so a short name like "Rice" reads as one tidy
+  /// pill rather than a wide box with dead space. Chips are pinned to the near
+  /// edge, which keeps two foods on the same row from ever colliding.
+  List<Rect> _chipRects(
+    Size box,
+    List<Offset> dots,
+    List<_HeroIngredient> ingredients,
+    TextStyle base,
+  ) {
+    const chipHeight = 34.0;
+    const edge = 12.0;
+    const dotSize = 6.0;
+    const dotGap = 8.0;
+    const hPad = 9.0;
+    final maxWidth = math.max(48.0, (box.width - 86) / 2);
+    final rects = <Rect>[];
+    for (var i = 0; i < dots.length; i++) {
+      final dot = dots[i];
+      final item = ingredients[i];
+      final isTop = item.anchor.dy < 0.5;
+      final isLeft = item.anchor.dx < 0.5;
+      final content = math.max(
+        _textWidth(item.label, base, 10, FontWeight.w700),
+        _textWidth(item.portion, base, 8.5, FontWeight.w600),
+      );
+      // A couple of pixels of slack: sizing to the exact glyph width makes the
+      // text ellipsize over sub-pixel rounding, which drops a whole word.
+      final width = math.min(
+        maxWidth,
+        content + dotSize + dotGap + hPad * 2 + 4,
+      );
+      final left = isLeft ? (isTop ? 56.0 : edge) : box.width - edge - width;
+      final rawTop = isTop ? dot.dy + 12 : dot.dy - chipHeight - 12;
+      final top = rawTop
+          .clamp(edge, math.max(edge, box.height - chipHeight - edge))
+          .toDouble();
+      rects.add(Rect.fromLTWH(left, top, width, chipHeight));
+    }
+    return rects;
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = widget.palette;
-    final slide = _heroSlides.first;
+    final l10n = AppLocalizations.of(context)!;
+    final ingredients = _ingredients(l10n);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
@@ -1010,102 +1212,513 @@ class _ScanHeroState extends State<_ScanHero> {
         key: const ValueKey('paywall-scan-hero'),
         height: widget.height,
         width: double.infinity,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset(
-              slide.asset,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-              gaplessPlayback: true,
-              errorBuilder:
-                  (context, error, stack) =>
-                      ColoredBox(color: palette.accentWash),
-            ),
-            if (palette.isDark)
-              const Positioned.fill(
-                child: ColoredBox(color: Color(0x44000000)),
-              ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.22),
-                      Colors.transparent,
-                      palette.paper.withValues(
-                        alpha: palette.isDark ? 0.32 : 0.18,
-                      ),
-                    ],
-                    stops: const [0, 0.48, 1],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final size = Size(constraints.maxWidth, constraints.maxHeight);
+            final dots = [
+              for (final item in ingredients) _coverPoint(size, item.anchor),
+            ];
+            final rects = _chipRects(
+              size,
+              dots,
+              ingredients,
+              DefaultTextStyle.of(context).style,
+            );
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  _heroAsset,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  gaplessPlayback: true,
+                  cacheWidth: 900,
+                  errorBuilder:
+                      (context, error, stack) =>
+                          ColoredBox(color: palette.accentWash),
+                ),
+                if (palette.isDark)
+                  const Positioned.fill(
+                    child: ColoredBox(color: Color(0x44000000)),
                   ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.22),
+                          Colors.transparent,
+                          palette.paper.withValues(
+                            alpha: palette.isDark ? 0.32 : 0.18,
+                          ),
+                        ],
+                        stops: const [0, 0.48, 1],
+                      ),
+                    ),
+                  ),
+                ),
+                // The beam only needs the one-shot reveal, so it is kept out of
+                // the ambient rebuild below.
+                AnimatedBuilder(
+                  animation: _scan,
+                  builder: (context, _) => _scanBeam(),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: RepaintBoundary(
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([_reveal, _ambient]),
+                        builder:
+                            (context, _) =>
+                                _overlay(l10n, dots, rects, ingredients),
+                      ),
+                    ),
+                  ),
+                ),
+                PositionedDirectional(
+                  start: 12,
+                  top: widget.topInset + _heroChromeTop,
+                  child: _HeroIconButton(
+                    icon: LucideIcons.x,
+                    onTap: widget.onClose,
+                    semanticLabel:
+                        MaterialLocalizations.of(context).closeButtonTooltip,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _scanBeam() {
+    final progress = _scan.value;
+    if (progress <= 0 || progress >= 1) return const SizedBox.shrink();
+    final opacity =
+        progress < 0.15
+            ? progress / 0.15
+            : (progress > 0.85 ? (1 - progress) / 0.15 : 1.0);
+    return Positioned(
+      top: progress * widget.height - 3,
+      left: 0,
+      right: 0,
+      height: 6,
+      child: Opacity(
+        opacity: opacity,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withValues(alpha: 0),
+                  AppColors.primary.withValues(alpha: 0.55),
+                  AppColors.primary.withValues(alpha: 0),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _overlay(
+    AppLocalizations l10n,
+    List<Offset> dots,
+    List<Rect> rects,
+    List<_HeroIngredient> ingredients,
+  ) {
+    final pulse = _reduced ? 1.0 : 0.72 + 0.28 * _ambient.value;
+    final palette = widget.palette;
+    // On the bright marble a white hairline disappears; a soft dark line reads
+    // as a leader without competing with the food.
+    final lineColor =
+        palette.isDark
+            ? Colors.white.withValues(alpha: 0.5)
+            : Colors.black.withValues(alpha: 0.24);
+
+    final children = <Widget>[
+      Positioned.fill(
+        child: CustomPaint(
+          painter: _CalloutConnectorPainter(
+            dots: dots,
+            rects: rects,
+            opacities: [for (final fade in _chipFade) fade.value],
+            color: lineColor,
+          ),
+        ),
+      ),
+    ];
+
+    for (var i = 0; i < dots.length; i++) {
+      final dot = dots[i];
+      final ring = _ringFade[i].value;
+      final diameter = 18 + 10 * ring;
+      children.add(
+        Positioned(
+          left: dot.dx - diameter / 2,
+          top: dot.dy - diameter / 2,
+          child: Opacity(
+            opacity: (ring * (0.35 + 0.65 * pulse)).clamp(0, 1),
+            child: Container(
+              width: diameter,
+              height: diameter,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color:
+                      palette.isDark
+                          ? Colors.white.withValues(alpha: 0.85)
+                          : Colors.black.withValues(alpha: 0.32),
+                  width: 1.5,
                 ),
               ),
             ),
-            const Positioned.fill(
-              child: IgnorePointer(child: _HeroFocusMarks()),
-            ),
-            PositionedDirectional(
-              start: 12,
-              top: widget.topInset + _heroChromeTop,
-              child: _HeroIconButton(
-                icon: LucideIcons.x,
-                onTap: widget.onClose,
-                semanticLabel:
-                    MaterialLocalizations.of(context).closeButtonTooltip,
+          ),
+        ),
+      );
+      children.add(
+        Positioned(
+          left: dot.dx - 5,
+          top: dot.dy - 5,
+          child: Opacity(
+            opacity: (_chipFade[i].value * pulse).clamp(0, 1),
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary,
+                border: Border.all(color: Colors.white, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.5 * pulse),
+                    blurRadius: 10,
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
+      );
+    }
+
+    for (var i = 0; i < ingredients.length; i++) {
+      final fade = _chipFade[i].value;
+      final rect = rects[i];
+      children.add(
+        Positioned(
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+          child: Opacity(
+            opacity: fade.clamp(0, 1),
+            child: Transform.scale(
+              scale: 0.94 + 0.06 * fade,
+              child: _IngredientChip(
+                item: ingredients[i],
+                palette: palette,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // The spinner drives its own ticker, so it must leave the tree once the
+    // scan is done rather than merely fade out.
+    if (_pillFade.value > 0.01) {
+      children.add(
+        Positioned.fill(
+          child: Center(
+            child: Opacity(
+              opacity: _pillFade.value.clamp(0, 1),
+              child: _AnalyzingPill(label: l10n.onboarding_scan_scanning),
+            ),
+          ),
+        ),
+      );
+    }
+
+    children.add(
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: 10,
+        child: Center(
+          child: Opacity(
+            opacity: _badgeFade.value.clamp(0, 1),
+            child: Transform.scale(
+              scale: _badgeScale.value,
+              child: _CalorieBadge(
+                calories: _count.value.round(),
+                kcalLabel: l10n.onboarding_scan_kcal,
+                aiLabel: l10n.onboarding_scan_ai_label,
+                pulse: pulse,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return Stack(fit: StackFit.expand, children: children);
+  }
+}
+
+class _IngredientChip extends StatelessWidget {
+  const _IngredientChip({required this.item, required this.palette});
+
+  final _HeroIngredient item;
+  final _Palette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = palette.isDark;
+    final labelColor = isDark ? Colors.white : palette.ink;
+    final portionColor =
+        isDark ? Colors.white.withValues(alpha: 0.7) : palette.muted;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        // Frosted paper in light mode so the pill sits on the marble instead of
+        // punching a black hole in it; the HUD-dark pill only in dark mode.
+        color:
+            isDark
+                ? Colors.black.withValues(alpha: 0.58)
+                : Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.18)
+                  : palette.hairline,
+        ),
+        boxShadow:
+            isDark
+                ? null
+                : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    color: labelColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  item.portion,
+                  maxLines: 1,
+                  textScaler: TextScaler.noScaling,
+                  style: TextStyle(
+                    color: portionColor,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _HeroFocusMarks extends StatelessWidget {
-  const _HeroFocusMarks();
+class _CalorieBadge extends StatelessWidget {
+  const _CalorieBadge({
+    required this.calories,
+    required this.kcalLabel,
+    required this.aiLabel,
+    required this.pulse,
+  });
+
+  final int calories;
+  final String kcalLabel;
+  final String aiLabel;
+  final double pulse;
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _HeroFocusPainter());
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.34 * pulse),
+            blurRadius: 24 * pulse,
+            spreadRadius: 0.5,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              aiLabel,
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.96),
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+          const SizedBox(width: 9),
+          Text(
+            '$calories',
+            textScaler: TextScaler.noScaling,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            kcalLabel,
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-class _HeroFocusPainter extends CustomPainter {
+class _AnalyzingPill extends StatelessWidget {
+  const _AnalyzingPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          const SizedBox(width: 9),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textScaler: TextScaler.noScaling,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CalloutConnectorPainter extends CustomPainter {
+  _CalloutConnectorPainter({
+    required this.dots,
+    required this.rects,
+    required this.opacities,
+    required this.color,
+  });
+
+  final List<Offset> dots;
+  final List<Rect> rects;
+  final List<double> opacities;
+  final Color color;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final points = [
-      Offset(size.width * 0.33, size.height * 0.38),
-      Offset(size.width * 0.66, size.height * 0.36),
-    ];
-    for (final point in points) {
-      canvas.drawCircle(
-        point,
-        12,
-        Paint()
-          ..color = Colors.black.withValues(alpha: 0.12)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+    for (var i = 0; i < dots.length; i++) {
+      final opacity = opacities[i].clamp(0.0, 1.0);
+      if (opacity <= 0.01) continue;
+      final dot = dots[i];
+      final rect = rects[i];
+      final target = Offset(
+        dot.dx.clamp(rect.left + 12, rect.right - 12).toDouble(),
+        dot.dy < rect.top
+            ? rect.top
+            : (dot.dy > rect.bottom ? rect.bottom : rect.center.dy),
       );
-      canvas.drawCircle(
-        point,
-        10,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
-          ..color = Colors.white.withValues(alpha: 0.86),
-      );
-      canvas.drawCircle(
-        point,
-        4.2,
-        Paint()..color = AppColors.primary.withValues(alpha: 0.95),
-      );
+      final paint = Paint()
+        ..color = color.withValues(alpha: color.a * opacity)
+        ..strokeWidth = 1.4
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(target, dot, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _HeroFocusPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _CalloutConnectorPainter oldDelegate) => true;
 }
 
 class _HeroIconButton extends StatelessWidget {
@@ -1327,7 +1940,10 @@ class _PlanCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 17, 16, 17),
+            // The struck renewal price is the first line of the right column;
+            // when the discount badge straddles the top border it needs enough
+            // clearance not to sit on top of it.
+            padding: EdgeInsets.fromLTRB(16, introPrice != null ? 24 : 17, 16, 17),
             child: Row(
               children: [
                 _Radio(selected: selected, palette: palette),
@@ -1544,9 +2160,6 @@ class _CtaDock extends StatelessWidget {
     required this.planLabel,
     required this.disclosure,
     required this.onPurchase,
-    required this.onRestore,
-    required this.onTerms,
-    required this.onPrivacy,
   });
 
   final _Palette palette;
@@ -1563,9 +2176,6 @@ class _CtaDock extends StatelessWidget {
   final String? planLabel;
   final String? disclosure;
   final VoidCallback onPurchase;
-  final VoidCallback? onRestore;
-  final VoidCallback onTerms;
-  final VoidCallback onPrivacy;
 
   String _ctaLabel(AppLocalizations l10n) {
     if (loadingOfferings) return l10n.premium_loading;
@@ -1635,41 +2245,6 @@ class _CtaDock extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 10),
-              Wrap(
-                alignment: WrapAlignment.center,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                // Spacing, not separators.
-                //
-                // The dots were siblings of the links in this Wrap, so a line
-                // break could fall after one -- "Terms & Conditions · Privacy
-                // policy ·" with nothing following it, and Restore on the line
-                // below. Binding each dot to a neighbour only moves the
-                // dangling mark to the start of the next line. Three labels
-                // this long wrap on a 390pt screen in English and wrap harder
-                // in French and Arabic, so the separator has to go rather than
-                // be repositioned.
-                spacing: 20,
-                runSpacing: 6,
-                children: [
-                  _FooterLink(
-                    label: l10n.paywall_terms_conditions,
-                    onTap: onTerms,
-                    palette: palette,
-                  ),
-                  _FooterLink(
-                    label: l10n.settings_privacy,
-                    onTap: onPrivacy,
-                    palette: palette,
-                  ),
-                  _FooterLink(
-                    label: l10n.paywall_restore,
-                    onTap: onRestore,
-                    palette: palette,
-                    busy: restoring,
-                  ),
-                ],
-              ),
             ],
           ),
         ),
@@ -1768,6 +2343,53 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
   }
 }
 
+class _LegalFooter extends StatelessWidget {
+  const _LegalFooter({
+    required this.palette,
+    required this.onTerms,
+    required this.onPrivacy,
+    required this.onRestore,
+    required this.restoring,
+  });
+
+  final _Palette palette;
+  final VoidCallback onTerms;
+  final VoidCallback onPrivacy;
+  final VoidCallback? onRestore;
+  final bool restoring;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      // Spacing, not separators: a wrapped separator would leave a dangling
+      // dot at the end of the first line in the longer locales.
+      spacing: 16,
+      runSpacing: 2,
+      children: [
+        _FooterLink(
+          label: l10n.paywall_terms_conditions,
+          onTap: onTerms,
+          palette: palette,
+        ),
+        _FooterLink(
+          label: l10n.settings_privacy,
+          onTap: onPrivacy,
+          palette: palette,
+        ),
+        _FooterLink(
+          label: l10n.paywall_restore,
+          onTap: onRestore,
+          palette: palette,
+          busy: restoring,
+        ),
+      ],
+    );
+  }
+}
+
 class _FooterLink extends StatelessWidget {
   const _FooterLink({
     required this.label,
@@ -1795,7 +2417,7 @@ class _FooterLink extends StatelessWidget {
       // Purchases -- the control a returning subscriber needs to get back
       // what they already paid for, and the one the stores require here.
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         child:
             busy
                 ? SizedBox(
