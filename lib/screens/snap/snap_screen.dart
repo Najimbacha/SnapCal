@@ -346,7 +346,8 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             body: body,
             primaryLabel: primaryLabel,
             manualLabel: l10n.log_add_manually,
-            onPrimary: () => Navigator.pop(sheetContext, _ProblemChoice.primary),
+            onPrimary:
+                () => Navigator.pop(sheetContext, _ProblemChoice.primary),
             onManual: () => Navigator.pop(sheetContext, _ProblemChoice.manual),
           ),
     );
@@ -550,283 +551,171 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     final l10n = AppLocalizations.of(context)!;
     final topSafe = MediaQuery.of(context).padding.top;
     final bottomSafe = MediaQuery.of(context).padding.bottom;
-    const previewH = 16.0;
-    const cornerRadius = 28.0;
-
-    final cameraContent = <Widget>[];
 
     if (_controller.isScanningBarcode) {
-      cameraContent.add(
-        BarcodeScannerView(
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: BarcodeScannerView(
           onBarcodeDetected: _onBarcodeDetected,
           onCancel: () => context.go('/'),
         ),
       );
-    } else if (_controller.isInitialized &&
-        _controller.cameraController != null) {
-      cameraContent.add(
-        GestureDetector(
-          onTapUp: (details) {
-            HapticFeedback.selectionClick();
-            final box = context.findRenderObject() as RenderBox;
-            final size = box.size;
-            final point = Offset(
-              details.localPosition.dx / size.width,
-              details.localPosition.dy / size.height,
-            );
-            _controller.setFocusPoint(point);
-            setState(() => _focusPoint = details.localPosition);
-            _focusAnimController?.reset();
-            _focusAnimController?.forward();
-          },
-          child:
-              (_controller.cameraController?.value.isInitialized ?? false)
-                  ? CameraPreview(
-                    _controller.cameraController!,
-                    key: ObjectKey(_controller.cameraController),
-                  )
-                  : const _CameraShimmerSkeleton(),
-        ),
+    }
+
+    final Widget cameraLayer;
+    if (_controller.isInitialized && _controller.cameraController != null) {
+      cameraLayer = LayoutBuilder(
+        builder: (context, constraints) {
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (details) {
+              HapticFeedback.selectionClick();
+              final size = constraints.biggest;
+              final point = Offset(
+                (details.localPosition.dx / size.width).clamp(0.0, 1.0),
+                (details.localPosition.dy / size.height).clamp(0.0, 1.0),
+              );
+              _controller.setFocusPoint(point);
+              setState(() => _focusPoint = details.localPosition);
+              _focusAnimController?.reset();
+              _focusAnimController?.forward();
+            },
+            child:
+                (_controller.cameraController?.value.isInitialized ?? false)
+                    ? _InlineCameraPreview(
+                      controller: _controller.cameraController!,
+                    )
+                    : const _CameraShimmerSkeleton(),
+          );
+        },
       );
     } else if (_controller.cameraProblem != null) {
       final problem = _controller.cameraProblem!;
       final needsPermission = problem == CameraProblem.permission;
-      cameraContent.add(
-        _StatePanel(
-          icon: LucideIcons.cameraOff,
-          title: l10n.error_camera,
-          body: switch (problem) {
-            CameraProblem.slow => l10n.snap_camera_slow,
-            CameraProblem.permission => l10n.snap_camera_permission,
-            CameraProblem.unavailable => l10n.snap_camera_unavailable,
-          },
-          actionLabel:
-              needsPermission ? l10n.snap_open_settings : l10n.assistant_retry,
-          onAction:
-              needsPermission
-                  ? () => unawaited(openAppSettings())
-                  : _controller.initializeCamera,
-        ),
+      cameraLayer = _StatePanel(
+        icon: LucideIcons.cameraOff,
+        title: l10n.error_camera,
+        body: switch (problem) {
+          CameraProblem.slow => l10n.snap_camera_slow,
+          CameraProblem.permission => l10n.snap_camera_permission,
+          CameraProblem.unavailable => l10n.snap_camera_unavailable,
+        },
+        actionLabel:
+            needsPermission ? l10n.snap_open_settings : l10n.assistant_retry,
+        onAction:
+            needsPermission
+                ? () => unawaited(openAppSettings())
+                : _controller.initializeCamera,
       );
     } else {
-      cameraContent.add(const _CameraShimmerSkeleton());
+      cameraLayer = const _CameraShimmerSkeleton();
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: const Color(0xFF07110E),
       body: Stack(
         children: [
-          // ── Rounded camera preview area ──
-          Positioned(
-            top: topSafe + 56,
-            left: previewH,
-            right: previewH,
-            bottom: 210 + bottomSafe,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(cornerRadius),
-              child: Container(
+          Positioned.fill(child: cameraLayer),
+
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(cornerRadius),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.10),
-                    width: 0.5,
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.46),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.28),
+                      Colors.black.withValues(alpha: 0.82),
+                    ],
+                    stops: const [0.0, 0.30, 0.62, 1.0],
                   ),
-                ),
-                child: Stack(
-                  children: [
-                    ...cameraContent,
-                    // Tap-to-focus ring
-                    if (_focusPoint != null && _focusAnimController != null)
-                      AnimatedBuilder(
-                        animation: _focusAnimController!,
-                        builder: (context, _) {
-                          return Positioned(
-                            left: _focusPoint!.dx - 30,
-                            top: _focusPoint!.dy - 30,
-                            child: Opacity(
-                              opacity: _focusOpacity?.value ?? 0,
-                              child: Transform.scale(
-                                scale: _focusScale?.value ?? 1.0,
-                                child: Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color(0xFFFFD700),
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                  ],
                 ),
               ),
             ),
           ),
 
-          // ── Bottom gradient for readability ──
-          if (!_controller.isScanningBarcode)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 200,
-              child: IgnorePointer(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.60),
-                      ],
-                    ),
-                  ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  topSafe + 132,
+                  24,
+                  bottomSafe + 214,
                 ),
+                child: _ScanGuide(label: l10n.scan_choice_food_subtitle),
               ),
             ),
+          ),
 
-          // ── Top bar ──
-          if (!_controller.isScanningBarcode)
-            Positioned(
-              top: topSafe + 12,
-              left: 16,
-              right: 16,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => context.go('/'),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.30),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        LucideIcons.x,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  if (_controller.isInitialized &&
-                      _controller.cameraProblem == null)
-                    GestureDetector(
-                      onTap: _controller.toggleFlash,
+          if (_focusPoint != null && _focusAnimController != null)
+            AnimatedBuilder(
+              animation: _focusAnimController!,
+              builder: (context, _) {
+                return Positioned(
+                  left: _focusPoint!.dx - 34,
+                  top: _focusPoint!.dy - 34,
+                  child: Opacity(
+                    opacity: _focusOpacity?.value ?? 0,
+                    child: Transform.scale(
+                      scale: _focusScale?.value ?? 1.0,
                       child: Container(
-                        width: 40,
-                        height: 40,
-                        alignment: Alignment.center,
+                        width: 68,
+                        height: 68,
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.30),
                           shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _controller.flashMode == FlashMode.off
-                              ? LucideIcons.zapOff
-                              : LucideIcons.zap,
-                          color:
-                              _controller.flashMode == FlashMode.off
-                                  ? Colors.white54
-                                  : const Color(0xFFFFD700),
-                          size: 20,
+                          border: Border.all(
+                            color: const Color(0xFF63E6BE),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF10B981,
+                              ).withValues(alpha: 0.32),
+                              blurRadius: 24,
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+                );
+              },
             ),
 
-          // ── Bottom controls ──
-          if (!_controller.isScanningBarcode)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: bottomSafe + 72,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      // Gallery
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _pickFromGallery,
-                          child: _BottomIcon(
-                            icon: LucideIcons.image,
-                            label: l10n.snap_gallery,
-                          ),
-                        ),
-                      ),
-                      // Shutter
-                      ShutterButton(
-                        onPressed: _capture,
-                        isLoading: _controller.isCapturing,
-                      ),
-                      // Barcode
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _controller.isScanningBarcode = true,
-                          child: _BottomIcon(
-                            icon: LucideIcons.scanLine,
-                            label: l10n.snap_barcode,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // The way in without a photo: the same manual form the
-                  // diary uses, where calories can actually be typed.
-                  GestureDetector(
-                    onTap: _openManualEntry,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            LucideIcons.pencil,
-                            color: Colors.white70,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            l10n.log_add_manually,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          Positioned(
+            top: topSafe + 14,
+            left: 18,
+            right: 18,
+            child: _InlineCameraHeader(
+              isReady:
+                  _controller.isInitialized &&
+                  _controller.cameraProblem == null,
+              flashMode: _controller.flashMode,
+              onClose: () => context.go('/'),
+              onFlash: _controller.toggleFlash,
             ),
+          ),
+
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: bottomSafe + 16,
+            child: _InlineCameraControls(
+              isCapturing: _controller.isCapturing,
+              onCapture: _capture,
+              onGallery: _pickFromGallery,
+              onBarcode: () => _controller.isScanningBarcode = true,
+              onManual: _openManualEntry,
+              galleryLabel: l10n.snap_gallery,
+              barcodeLabel: l10n.snap_barcode,
+              manualLabel: l10n.log_add_manually,
+            ),
+          ),
 
           // ── Analyzing overlay ──
           if (_controller.isAnalyzing)
@@ -836,6 +725,460 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
                 onManualEntry: _manualInsteadOfWaiting,
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineCameraPreview extends StatelessWidget {
+  const _InlineCameraPreview({required this.controller});
+
+  final CameraController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        final cameraAspect = controller.value.aspectRatio;
+        var scale = size.aspectRatio * cameraAspect;
+        if (scale < 1) scale = 1 / scale;
+
+        return ClipRect(
+          child: Transform.scale(
+            scale: scale,
+            child: Center(
+              child: CameraPreview(controller, key: ObjectKey(controller)),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _InlineCameraHeader extends StatelessWidget {
+  const _InlineCameraHeader({
+    required this.isReady,
+    required this.flashMode,
+    required this.onClose,
+    required this.onFlash,
+  });
+
+  final bool isReady;
+  final FlashMode flashMode;
+  final VoidCallback onClose;
+  final VoidCallback onFlash;
+
+  @override
+  Widget build(BuildContext context) {
+    final flashOn = flashMode != FlashMode.off;
+
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: ColoredBox(
+              color: Colors.black.withValues(alpha: 0.28),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(
+                            0xFF63E6BE,
+                          ).withValues(alpha: 0.55),
+                        ),
+                      ),
+                      child: const Icon(
+                        LucideIcons.scanLine,
+                        size: 18,
+                        color: Color(0xFF63E6BE),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'SnapCal',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        height: 1,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color:
+                            isReady ? const Color(0xFF63E6BE) : Colors.white38,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        if (isReady)
+          _HeaderCircleButton(
+            icon: flashOn ? LucideIcons.zap : LucideIcons.zapOff,
+            color: flashOn ? const Color(0xFFFFD166) : Colors.white70,
+            onTap: onFlash,
+          ),
+        const SizedBox(width: 10),
+        _HeaderCircleButton(
+          icon: LucideIcons.x,
+          color: Colors.white,
+          onTap: onClose,
+        ),
+      ],
+    );
+  }
+}
+
+class _HeaderCircleButton extends StatelessWidget {
+  const _HeaderCircleButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.30),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: Icon(icon, color: color, size: 21),
+      ),
+    );
+  }
+}
+
+class _ScanGuide extends StatelessWidget {
+  const _ScanGuide({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final guideHeight =
+            constraints.maxHeight.clamp(220.0, 430.0).toDouble();
+
+        return Align(
+          alignment: Alignment.center,
+          child: SizedBox(
+            height: guideHeight,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(34),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF10B981,
+                          ).withValues(alpha: 0.18),
+                          blurRadius: 70,
+                          spreadRadius: -8,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Positioned.fill(child: _ScanCorners()),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Transform.translate(
+                    offset: const Offset(0, 42),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.32),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.10),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            LucideIcons.sparkles,
+                            color: Color(0xFF63E6BE),
+                            size: 15,
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ScanCorners extends StatelessWidget {
+  const _ScanCorners();
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF63E6BE);
+    const size = 52.0;
+    const width = 4.0;
+    const radius = 6.0;
+
+    Widget corner({
+      required Alignment alignment,
+      required bool flipX,
+      required bool flipY,
+    }) {
+      return Align(
+        alignment: alignment,
+        child: Transform.scale(
+          scaleX: flipX ? -1.0 : 1.0,
+          scaleY: flipY ? -1.0 : 1.0,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  width: size,
+                  height: width,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(radius),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  width: width,
+                  height: size,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(radius),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        corner(alignment: Alignment.topLeft, flipX: false, flipY: false),
+        corner(alignment: Alignment.topRight, flipX: true, flipY: false),
+        corner(alignment: Alignment.bottomLeft, flipX: false, flipY: true),
+        corner(alignment: Alignment.bottomRight, flipX: true, flipY: true),
+      ],
+    );
+  }
+}
+
+class _InlineCameraControls extends StatelessWidget {
+  const _InlineCameraControls({
+    required this.isCapturing,
+    required this.onCapture,
+    required this.onGallery,
+    required this.onBarcode,
+    required this.onManual,
+    required this.galleryLabel,
+    required this.barcodeLabel,
+    required this.manualLabel,
+  });
+
+  final bool isCapturing;
+  final VoidCallback onCapture;
+  final VoidCallback onGallery;
+  final VoidCallback onBarcode;
+  final VoidCallback onManual;
+  final String galleryLabel;
+  final String barcodeLabel;
+  final String manualLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(34),
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: 0.36),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(34),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _CameraActionButton(
+                      icon: LucideIcons.image,
+                      label: galleryLabel,
+                      onTap: onGallery,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: ShutterButton(
+                      onPressed: onCapture,
+                      isLoading: isCapturing,
+                    ),
+                  ),
+                  Expanded(
+                    child: _CameraActionButton(
+                      icon: LucideIcons.scanLine,
+                      label: barcodeLabel,
+                      onTap: onBarcode,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onManual,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        LucideIcons.pencil,
+                        color: Colors.white70,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        manualLabel,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CameraActionButton extends StatelessWidget {
+  const _CameraActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+            ),
+            child: Icon(icon, color: Colors.white, size: 23),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xDEFFFFFF),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -996,41 +1339,6 @@ class _CameraShimmerSkeleton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _BottomIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _BottomIcon({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.10),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.white, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xD9FFFFFF),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }
