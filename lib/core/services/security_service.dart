@@ -82,7 +82,15 @@ class SecurityService {
 
   /// Securely clear keys (e.g. on factory reset)
   Future<void> clearKeys() async {
+    // Settle any creation before deleting its persisted result.
+    final pending = _encryptionKeyFuture;
+    if (pending != null) {
+      try {
+        await pending;
+      } catch (_) {}
+    }
     await _secureStorage.delete(key: _encryptionKeyName);
     _encryptionKey = null;
+    _encryptionKeyFuture = null;
   }
 }

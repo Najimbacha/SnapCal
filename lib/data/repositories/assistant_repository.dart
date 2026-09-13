@@ -9,8 +9,7 @@ import '../services/assistant_service.dart';
 class AssistantRepository {
   /// Singleton, for consistency with the other repositories: one Hive handle
   /// and one init future per box. See [SettingsRepository].
-  static final AssistantRepository _instance =
-      AssistantRepository._internal();
+  static final AssistantRepository _instance = AssistantRepository._internal();
   factory AssistantRepository() => _instance;
   AssistantRepository._internal();
 
@@ -19,7 +18,7 @@ class AssistantRepository {
   bool _initialized = false;
 
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized && _box?.isOpen == true) return;
     final existingInit = _initFuture;
     if (existingInit != null) return existingInit;
 
@@ -29,7 +28,7 @@ class AssistantRepository {
       await initFuture;
       _initialized = true;
     } finally {
-      if (!_initialized) _initFuture = null;
+      _initFuture = null;
     }
   }
 

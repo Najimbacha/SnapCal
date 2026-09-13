@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../data/services/pro_feature_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -108,7 +109,11 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                   ref.read(selectedDateProvider.notifier).select(date);
                 },
                 isDateLocked:
-                    (date) => !(isPro || app_date.DateUtils.isToday(date)),
+                    (date) =>
+                        !ProFeatureService.canViewHistoryDate(
+                          date,
+                          isPro: isPro,
+                        ),
                 onLockedDateSelected: (_) {
                   PremiumConversionService().openPaywall(
                     context,
@@ -175,7 +180,14 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     required bool isPro,
   }) async {
     final now = DateTime.now();
-    final firstDate = now.subtract(Duration(days: isPro ? 89 : 13));
+    final firstDate =
+        isPro
+            ? DateTime(2000)
+            : DateTime(
+              now.year,
+              now.month,
+              now.day - (ProFeatureService.freeHistoryDays - 1),
+            );
     final selected = app_date.DateUtils.parseDate(selectedDate);
     final initialDate = selected.isBefore(firstDate) ? firstDate : selected;
     final picked = await showDatePicker(
@@ -187,7 +199,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     if (picked == null || !mounted) return;
 
     final dateString = app_date.DateUtils.getDateString(picked);
-    if (!isPro && !app_date.DateUtils.isToday(dateString)) {
+    if (!ProFeatureService.canViewHistoryDate(dateString, isPro: isPro)) {
       PremiumConversionService().openPaywall(
         context,
         PaywallEntryPoint.settings,
@@ -422,27 +434,9 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     required AsyncValue<UserSettings> settings,
     required AsyncValue<WaterState> water,
   }) {
-    final userSettings = settings.valueOrNull ?? UserSettings.defaults();
-    final waterState = water.valueOrNull ?? const WaterState(todayTotal: 0);
     return summaries.firstWhere(
       (summary) => summary.dateString == selectedDate,
-      orElse:
-          () => DailySummary(
-            dateString: selectedDate,
-            calories: 0,
-            calorieGoal: userSettings.dailyCalorieGoal,
-            protein: 0,
-            proteinGoal: userSettings.dailyProteinGoal,
-            carbs: 0,
-            carbGoal: userSettings.dailyCarbGoal,
-            fat: 0,
-            fatGoal: userSettings.dailyFatGoal,
-            waterMl: waterState.todayTotal,
-            waterGoal: waterState.goal,
-            steps: 0,
-            stepGoal: 10000,
-            mealCount: 0,
-          ),
+      orElse: () => _buildSummaryForDate(dateString: selectedDate),
     );
   }
 }

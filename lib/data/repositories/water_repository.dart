@@ -70,7 +70,7 @@ class WaterRepository {
 
   /// Initialize the repository
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized && _waterBox?.isOpen == true) return;
     final existingInit = _initFuture;
     if (existingInit != null) return existingInit;
 
@@ -80,7 +80,7 @@ class WaterRepository {
       await initFuture;
       _initialized = true;
     } finally {
-      if (!_initialized) _initFuture = null;
+      _initFuture = null;
     }
   }
 

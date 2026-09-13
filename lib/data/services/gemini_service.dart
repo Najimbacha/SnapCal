@@ -144,8 +144,8 @@ class AIService {
   };
 
   /// Generate text-only response — Gemini first, Groq as fallback
-  /// [purpose] tells the backend which allowance the request draws on; the
-  /// coach passes `'coach'`, which counts against the free daily coach limit.
+  /// [purpose] is descriptive only: all free arbitrary-prompt requests consume
+  /// the daily coaching allowance, enforced by the backend.
   Future<String> generateText(String prompt, {String? purpose}) async {
     return _generateTextViaBackend(
       prompt,

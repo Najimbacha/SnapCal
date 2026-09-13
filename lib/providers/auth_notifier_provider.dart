@@ -11,6 +11,7 @@ import '../core/network/api_client.dart';
 import '../core/resilience/timeout_policy.dart';
 import '../core/services/config_service.dart';
 import '../core/services/session_cleanup_service.dart';
+import '../core/services/session_data_guard.dart';
 import '../data/services/scan_gate_service.dart';
 import '../data/services/subscription_service.dart';
 import '../data/services/sync_queue_service.dart';
@@ -73,7 +74,7 @@ class AuthNotifier extends _$AuthNotifier {
       debugPrint('Anonymous token fetch failed before link: $e');
     }
 
-    await signIn();
+    await SessionDataGuard.instance.cleanup(signIn);
 
     // The account's settings first, before anything navigates. Until they
     // arrive the phone still holds the guest's, and a guest who had not
@@ -319,7 +320,7 @@ class AuthNotifier extends _$AuthNotifier {
       } else if (_isDifferentAccount(email: email)) {
         await _signInReplacingAccount(signIn);
       } else {
-        await signIn();
+        await SessionDataGuard.instance.cleanup(signIn);
       }
     });
   }
@@ -348,14 +349,7 @@ class AuthNotifier extends _$AuthNotifier {
   Future<void> _signInReplacingAccount(Future<void> Function() signIn) async {
     await _flushQueueBeforeLeaving();
     try {
-      await SessionCleanupService().clearLocalUserData().timeout(
-        const Duration(seconds: 15),
-      );
-    } catch (e) {
-      debugPrint('Session cleanup warning: $e');
-    }
-    try {
-      await signIn();
+      await SessionCleanupService().clearLocalUserData(finishSession: signIn);
     } finally {
       // On failure the current account is still signed in with an emptied
       // phone; its sync brings the data back.
@@ -407,24 +401,17 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   Future<void> signOut() async {
-    if (state.isLoading) return;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    await _run(() async {
       // Wipe every user-scoped store BEFORE the Firebase sign-out so no other
       // account on this device can ever see the previous user's health data
       // (BUG-002). Provider invalidation alone is not enough — providers
       // rebuild from the same encrypted Hive boxes.
       await _flushQueueBeforeLeaving();
-      try {
-        await SessionCleanupService().clearLocalUserData().timeout(
-          const Duration(seconds: 15),
-        );
-      } catch (e) {
-        debugPrint('Session cleanup warning: $e');
-      }
+      await SessionCleanupService().clearLocalUserData(
+        finishSession: () => FirebaseAuth.instance.signOut(),
+      );
       unawaited(_googleSignIn.signOut());
       unawaited(FacebookAuth.instance.logOut());
-      await FirebaseAuth.instance.signOut();
     });
   }
 
@@ -459,19 +446,16 @@ class AuthNotifier extends _$AuthNotifier {
     // The account is gone; nothing of theirs may remain on disk. Clears
     // every box, deletes the box files and removes the encryption key.
     try {
-      await SessionCleanupService()
-          .clearLocalUserData(wipeSecurityKeys: true)
-          .timeout(const Duration(seconds: 20));
-    } catch (e) {
-      debugPrint('Post-deletion cleanup warning: $e');
+      await SessionCleanupService().clearLocalUserData(
+        wipeSecurityKeys: true,
+        finishSession: () => FirebaseAuth.instance.signOut(),
+      );
+    } catch (e, stack) {
+      state = AsyncError(e, stack);
+      rethrow;
     }
     unawaited(_googleSignIn.signOut());
     unawaited(FacebookAuth.instance.logOut());
-    try {
-      await FirebaseAuth.instance.signOut();
-    } catch (e) {
-      debugPrint('Sign-out after deletion: $e');
-    }
     state = const AsyncData(null);
   }
 

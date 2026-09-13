@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../core/resilience/timeout_policy.dart';
+import '../../core/services/session_data_guard.dart';
 import 'sync_queue_service.dart';
 
 /// Keeps one per-user Firestore collection of small records in step with the
@@ -61,16 +62,22 @@ class CloudRecordSync {
   Future<void> _write(String id, Map<String, dynamic> payload) async {
     final user = _authClient.currentUser;
     if (user == null) return;
+    final lease = SessionDataGuard.instance.capture(
+      () => _authClient.currentUser?.uid,
+    );
+    lease.check();
     final path = _path(user.uid, id);
     try {
       await _db.doc(path).set(payload).timeout(TimeoutPolicy.firestore);
     } catch (e) {
       debugPrint('CloudRecordSync($collection): write queued: $e');
-      await SyncQueueService().enqueueSet(
-        id: '$collection:${user.uid}:$id',
-        documentPath: path,
-        data: payload,
-        merge: false,
+      await lease.write(
+        () => SyncQueueService().enqueueSet(
+          id: '$collection:${user.uid}:$id',
+          documentPath: path,
+          data: payload,
+          merge: false,
+        ),
       );
     }
   }
@@ -80,9 +87,14 @@ class CloudRecordSync {
   Future<void> pushAll(Map<String, Map<String, dynamic>> records) async {
     final user = _authClient.currentUser;
     if (user == null || records.isEmpty) return;
+    final lease = SessionDataGuard.instance.capture(
+      () => _authClient.currentUser?.uid,
+    );
+    lease.check();
     final now = _now();
     final entries = records.entries.toList();
     for (var i = 0; i < entries.length; i += _batchLimit) {
+      lease.check();
       final chunk = entries.sublist(i, min(i + _batchLimit, entries.length));
       final batch = _db.batch();
       final payloads = <String, Map<String, dynamic>>{};
@@ -101,11 +113,13 @@ class CloudRecordSync {
       } catch (e) {
         debugPrint('CloudRecordSync($collection): batch queued: $e');
         for (final entry in payloads.entries) {
-          await SyncQueueService().enqueueSet(
-            id: '$collection:${user.uid}:${entry.key}',
-            documentPath: _path(user.uid, entry.key),
-            data: entry.value,
-            merge: false,
+          await lease.write(
+            () => SyncQueueService().enqueueSet(
+              id: '$collection:${user.uid}:${entry.key}',
+              documentPath: _path(user.uid, entry.key),
+              data: entry.value,
+              merge: false,
+            ),
           );
         }
       }
@@ -117,23 +131,27 @@ class CloudRecordSync {
   /// [upsert] receives a live record's fields, without the bookkeeping ones;
   /// [delete] receives the id of a tombstone. Each returns whether it changed
   /// anything on the phone. Returns whether any record did.
-  Future<bool>
-  pull({
+  Future<bool> pull({
     required Future<bool> Function(String id, Map<String, dynamic> data) upsert,
     required Future<bool> Function(String id) delete,
-  }) =>
-      // Sign-in, resume and "Sync now" can all ask at once; one pull serves all.
-      _pullInFlight ??= _pull(
-        upsert,
-        delete,
-      ).whenComplete(() => _pullInFlight = null);
+  }) {
+    final lease = SessionDataGuard.instance.capture(
+      () => _authClient.currentUser?.uid,
+    );
+    final key = '${lease.generation}:${lease.uid}';
+    return _pulls[key] ??= _pull(lease, upsert, delete).whenComplete(() {
+      _pulls.remove(key);
+    });
+  }
 
-  Future<bool>? _pullInFlight;
+  final _pulls = <String, Future<bool>>{};
 
   Future<bool> _pull(
+    SessionLease lease,
     Future<bool> Function(String id, Map<String, dynamic> data) upsert,
     Future<bool> Function(String id) delete,
   ) async {
+    lease.check();
     final user = _authClient.currentUser;
     if (user == null) return false;
     await SyncQueueService().init();
@@ -159,26 +177,32 @@ class CloudRecordSync {
     }
 
     final startedAt = _now();
-    final snapshot = await query.get().timeout(TimeoutPolicy.firestore);
+    final snapshot = await query
+        .get(const GetOptions(source: Source.server))
+        .timeout(TimeoutPolicy.firestore);
     var changed = false;
+    lease.check();
     for (final doc in snapshot.docs) {
+      lease.check();
       // A change this phone has not uploaded yet is newer than anything the
       // cloud can tell it about the record.
       if (SyncQueueService().hasPendingFor(doc.reference.path)) continue;
       final data = doc.data();
       if (data['deleted'] == true) {
-        changed = await delete(doc.id) || changed;
+        changed = await lease.write(() => delete(doc.id)) || changed;
       } else {
         final fields = Map<String, dynamic>.of(data)
           ..removeWhere((key, _) => _bookkeepingFields.contains(key));
-        changed = await upsert(doc.id, fields) || changed;
+        changed = await lease.write(() => upsert(doc.id, fields)) || changed;
       }
     }
 
     // As in the meal pull, an empty first pull is indistinguishable from one
     // the rules refused, so it does not mark this device as caught up.
     if (cursor != null || snapshot.docs.isNotEmpty) {
-      await SyncCursorStore.set(user.uid, collection, startedAt);
+      await lease.write(
+        () => SyncCursorStore.set(user.uid, collection, startedAt),
+      );
     }
     return changed;
   }

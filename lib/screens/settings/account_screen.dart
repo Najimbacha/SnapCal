@@ -321,7 +321,16 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
 
   if (confirmed != true) return;
 
-  await ref.read(authNotifierProvider.notifier).signOut();
+  try {
+    await ref.read(authNotifierProvider.notifier).signOut();
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.error_generic)),
+      );
+    }
+    return;
+  }
   if (context.mounted) {
     ref.invalidate(settingsProvider);
     ref.invalidate(mealLogProvider);

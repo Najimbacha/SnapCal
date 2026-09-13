@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/session_data_guard.dart';
 import '../../core/resilience/app_failure.dart';
 import '../../core/resilience/timeout_policy.dart';
 
@@ -28,12 +29,12 @@ class UploadQueueService with ChangeNotifier {
   static const int _maxAttempts = 8;
 
   bool get isFlushing => _isFlushing;
-  int get pendingCount => _box?.length ?? 0;
+  int get pendingCount => _box?.isOpen == true ? _box!.length : 0;
   String? get activeJobId => _activeJobId;
   double get activeProgress => _activeProgress;
 
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized && _box?.isOpen == true) return;
     final existingInit = _initFuture;
     if (existingInit != null) return existingInit;
 
@@ -43,7 +44,7 @@ class UploadQueueService with ChangeNotifier {
       await initFuture;
       _initialized = true;
     } finally {
-      if (!_initialized) _initFuture = null;
+      _initFuture = null;
     }
   }
 
@@ -90,6 +91,10 @@ class UploadQueueService with ChangeNotifier {
     final user = FirebaseAuth.instance.currentUser;
     if (box == null || box.isEmpty || user == null || _isFlushing) return;
 
+    final lease = SessionDataGuard.instance.capture(
+      () => FirebaseAuth.instance.currentUser?.uid,
+    );
+    if (!lease.isCurrent) return;
     _isFlushing = true;
     notifyListeners();
     try {
@@ -98,6 +103,7 @@ class UploadQueueService with ChangeNotifier {
           box.keys.map((key) => MapEntry(key, _asMap(box.get(key)))).where((
             entry,
           ) {
+            if (!lease.isCurrent) return false;
             final job = entry.value;
             if (job == null) return false;
             final nextRetryAt = job['nextRetryAt'] as int? ?? 0;
@@ -111,17 +117,21 @@ class UploadQueueService with ChangeNotifier {
 
         try {
           final downloadUrl = await _perform(job).timeout(TimeoutPolicy.upload);
+          lease.check();
           await _finalize(job, downloadUrl).timeout(TimeoutPolicy.firestore);
-          await _cleanupLocalFile(job);
-          await box.delete(key);
+          await lease.write(() async {
+            await _cleanupLocalFile(job);
+            await box.delete(key);
+          });
         } catch (error) {
+          if (!lease.isCurrent) return;
           final failure = AppFailure.fromError(error);
           final attempts = (job['attempts'] as int? ?? 0) + 1;
           if (!failure.isRetryable || attempts >= _maxAttempts) {
             job['attempts'] = attempts;
             job['lastError'] = failure.message;
             job['nextRetryAt'] = 0;
-            await box.put(key, job);
+            await lease.write(() => box.put(key, job));
             debugPrint(
               'Upload queue item stalled after $attempts attempts: $failure',
             );
@@ -133,7 +143,7 @@ class UploadQueueService with ChangeNotifier {
               DateTime.now()
                   .add(_backoff(attempts, failure.retryAfter))
                   .millisecondsSinceEpoch;
-          await box.put(key, job);
+          await lease.write(() => box.put(key, job));
         } finally {
           _activeTask = null;
           _activeJobId = null;

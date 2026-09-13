@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/security_service.dart';
+import '../../core/services/session_data_guard.dart';
 import '../../core/utils/pref_scoping.dart';
 import '../../core/resilience/timeout_policy.dart';
 import '../models/user_settings.dart';
@@ -24,6 +25,11 @@ class SettingsRepository {
   static final SettingsRepository _instance = SettingsRepository._internal();
   factory SettingsRepository() => _instance;
   SettingsRepository._internal();
+
+  @visibleForTesting
+  SettingsRepository.forTesting(FirebaseFirestore firestore, FirebaseAuth auth)
+    : _firestore = firestore,
+      _auth = auth;
 
   Box<UserSettings>? _settingsBox;
   final _settingsController = StreamController<UserSettings>.broadcast();
@@ -51,7 +57,7 @@ class SettingsRepository {
 
   /// Initialize the repository
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized && _settingsBox?.isOpen == true) return;
     final existingInit = _initFuture;
     if (existingInit != null) return existingInit;
 
@@ -61,7 +67,7 @@ class SettingsRepository {
       await initFuture;
       _initialized = true;
     } finally {
-      if (!_initialized) _initFuture = null;
+      _initFuture = null;
     }
   }
 
@@ -102,7 +108,11 @@ class SettingsRepository {
     await _authSubscription?.cancel();
     _authSubscription = _authClient.authStateChanges().listen((user) {
       if (user != null) {
-        unawaited(syncFromFirestore());
+        unawaited(
+          syncFromFirestore().catchError(
+            (Object e) => debugPrint('Background settings pull failed: $e'),
+          ),
+        );
       }
     });
   }
@@ -145,6 +155,10 @@ class SettingsRepository {
   }
 
   Future<void> _pushToCloud(UserSettings settings) async {
+    final lease = SessionDataGuard.instance.capture(
+      () => _authClient.currentUser?.uid,
+    );
+    lease.check();
     final user = _authClient.currentUser;
     if (user != null) {
       final appSettingsPath = 'users/${user.uid}/settings/app';
@@ -162,15 +176,19 @@ class SettingsRepository {
         ]).timeout(TimeoutPolicy.firestore);
       } catch (e) {
         debugPrint('Firestore Sync Error: $e');
-        await SyncQueueService().enqueueSet(
-          id: 'settings:set:${user.uid}',
-          documentPath: appSettingsPath,
-          data: appSettingsPayload,
+        await lease.write(
+          () => SyncQueueService().enqueueSet(
+            id: 'settings:set:${user.uid}',
+            documentPath: appSettingsPath,
+            data: appSettingsPayload,
+          ),
         );
-        await SyncQueueService().enqueueSet(
-          id: 'profile:set:${user.uid}',
-          documentPath: profilePath,
-          data: profilePayload,
+        await lease.write(
+          () => SyncQueueService().enqueueSet(
+            id: 'profile:set:${user.uid}',
+            documentPath: profilePath,
+            data: profilePayload,
+          ),
         );
       }
     }
@@ -212,6 +230,10 @@ class SettingsRepository {
   /// device always takes the first-sync path rather than inheriting someone
   /// else's freshness.
   Future<void> syncFromFirestore({bool force = false}) async {
+    final lease = SessionDataGuard.instance.capture(
+      () => _authClient.currentUser?.uid,
+    );
+    lease.check();
     final user = _authClient.currentUser;
     if (user == null) return;
 
@@ -239,105 +261,118 @@ class SettingsRepository {
     try {
       final rootRef = _firestoreClient.collection('users').doc(user.uid);
       final docs = await Future.wait([
-        rootRef.collection('settings').doc('app').get(),
-        rootRef.collection('private').doc('profile').get(),
-        rootRef.collection('subscription').doc('current').get(),
+        rootRef
+            .collection('settings')
+            .doc('app')
+            .get(const GetOptions(source: Source.server)),
+        rootRef
+            .collection('private')
+            .doc('profile')
+            .get(const GetOptions(source: Source.server)),
+        rootRef
+            .collection('subscription')
+            .doc('current')
+            .get(const GetOptions(source: Source.server)),
         // Only on a first sync. This is a compatibility path for settings that
         // used to live on the user root; once merged, re-reading it every time
         // is a document read that can never contain anything new.
-        if (isFirstSync) rootRef.get(),
+        if (isFirstSync) rootRef.get(const GetOptions(source: Source.server)),
       ]).timeout(TimeoutPolicy.firestore);
 
-      final appSettings = docs[0].data() ?? const <String, dynamic>{};
-      final profile = docs[1].data() ?? const <String, dynamic>{};
-      final subscriptionSnap = docs[2];
-      // Written as a statement, not a ternary. Inside a conditional expression
-      // the parser reads the `?` of `data()?['settings']` as a second `?:`
-      // rather than as the null-aware index, and the line stops compiling.
-      Object? legacySettings;
-      if (docs.length > 3) {
-        legacySettings = docs[3].data()?['settings'];
-      }
-      if (appSettings.isNotEmpty ||
-          profile.isNotEmpty ||
-          legacySettings is Map<String, dynamic>) {
-        final localSettings = getSettings();
-
-        // Field-wise merge, not wholesale replacement.
-        //
-        // The two upload payloads do not carry every field (recommendation
-        // copy, plan pace, dietary notes, ...). Building the merged object
-        // from cloud data alone meant every absent key fell back to its
-        // default and then overwrote a perfectly good local value — silent
-        // data loss on every sign-in. Local values are the base; the cloud
-        // only overrides keys it actually has.
-        final cloudJson = <String, dynamic>{
-          if (legacySettings is Map<String, dynamic>) ...legacySettings,
-          ...profile,
-          ...appSettings,
-        }..removeWhere((_, value) => value == null);
-
-        // `isPro` is server-owned, but only where the server has actually
-        // expressed an opinion. Two cases that are not opinions:
-        //
-        // A missing document. Webhook lag, or a first launch straight after
-        // purchase -- Pro is left exactly as it is. That was already handled.
-        //
-        // A document with no `isActive` field. This one is new and it is the
-        // more dangerous of the two: the server writes `lastRestCheckAt` and
-        // `source` on every RevenueCat REST check, including for users it
-        // finds are not subscribed, and it only writes `isActive` when they
-        // are. So the mere existence of the document stopped meaning anything,
-        // and reading a missing field as `false` would quietly demote a live
-        // subscriber on the next cloud sync.
-        final subscriptionData = subscriptionSnap.data();
-        final serverAnswered =
-            subscriptionSnap.exists &&
-            subscriptionData != null &&
-            subscriptionData.containsKey('isActive');
-        final serverPro =
-            serverAnswered
-                ? subscriptionData['isActive'] == true
-                : localSettings.isPro;
-
-        // And even a server that says "no" does not outrank the store. This
-        // is the rule SubscriptionService documents -- only the store itself
-        // may take Pro away -- which this merge path was quietly breaking.
-        final mergedSettings = UserSettings.fromJson({
-          ...localSettings.toJson(),
-          ...cloudJson,
-        }).copyWith(isPro: serverPro || storeEntitlementActive);
-
-        // Compare merged settings with local settings using mapEquals to avoid redundant writes
-        if (!mapEquals(mergedSettings.toJson(), localSettings.toJson())) {
-          await _settingsBox?.put(AppConstants.settingsKey, mergedSettings);
-          _settingsController.add(mergedSettings);
+      lease.check();
+      await lease.write(() async {
+        final appSettings = docs[0].data() ?? const <String, dynamic>{};
+        final profile = docs[1].data() ?? const <String, dynamic>{};
+        final subscriptionSnap = docs[2];
+        // Written as a statement, not a ternary. Inside a conditional expression
+        // the parser reads the `?` of `data()?['settings']` as a second `?:`
+        // rather than as the null-aware index, and the line stops compiling.
+        Object? legacySettings;
+        if (docs.length > 3) {
+          legacySettings = docs[3].data()?['settings'];
         }
-      }
+        if (appSettings.isNotEmpty ||
+            profile.isNotEmpty ||
+            legacySettings is Map<String, dynamic>) {
+          final localSettings = getSettings();
 
-      // Recorded only after the merge succeeded, and never on a first sync
-      // that returned nothing.
-      //
-      // Same failure as the meal cursor: an empty read and a refused one look
-      // identical here, and a permission-denied read does not always throw.
-      // Stamping a first sync that found no documents would tell the device
-      // its settings are fresh for six hours while local storage is empty —
-      // the user sits on default goals with their real ones in the cloud.
-      final gotAnything = appSettings.isNotEmpty || profile.isNotEmpty;
-      if (!isFirstSync || gotAnything) {
-        await prefs?.setInt(
-          _cloudSyncKeyFor(user.uid),
-          DateTime.now().millisecondsSinceEpoch,
-        );
-      } else {
-        debugPrint(
-          'SettingsRepository: first sync found nothing, not stamping — '
-          'the cloud pull will be retried next launch.',
-        );
-      }
+          // Field-wise merge, not wholesale replacement.
+          //
+          // The two upload payloads do not carry every field (recommendation
+          // copy, plan pace, dietary notes, ...). Building the merged object
+          // from cloud data alone meant every absent key fell back to its
+          // default and then overwrote a perfectly good local value — silent
+          // data loss on every sign-in. Local values are the base; the cloud
+          // only overrides keys it actually has.
+          final cloudJson = <String, dynamic>{
+            if (legacySettings is Map<String, dynamic>) ...legacySettings,
+            ...profile,
+            ...appSettings,
+          }..removeWhere((_, value) => value == null);
+
+          // `isPro` is server-owned, but only where the server has actually
+          // expressed an opinion. Two cases that are not opinions:
+          //
+          // A missing document. Webhook lag, or a first launch straight after
+          // purchase -- Pro is left exactly as it is. That was already handled.
+          //
+          // A document with no `isActive` field. This one is new and it is the
+          // more dangerous of the two: the server writes `lastRestCheckAt` and
+          // `source` on every RevenueCat REST check, including for users it
+          // finds are not subscribed, and it only writes `isActive` when they
+          // are. So the mere existence of the document stopped meaning anything,
+          // and reading a missing field as `false` would quietly demote a live
+          // subscriber on the next cloud sync.
+          final subscriptionData = subscriptionSnap.data();
+          final serverAnswered =
+              subscriptionSnap.exists &&
+              subscriptionData != null &&
+              subscriptionData.containsKey('isActive');
+          final serverPro =
+              serverAnswered
+                  ? subscriptionData['isActive'] == true
+                  : localSettings.isPro;
+
+          // And even a server that says "no" does not outrank the store. This
+          // is the rule SubscriptionService documents -- only the store itself
+          // may take Pro away -- which this merge path was quietly breaking.
+          final mergedSettings = UserSettings.fromJson({
+            ...localSettings.toJson(),
+            ...cloudJson,
+          }).copyWith(isPro: serverPro || storeEntitlementActive);
+
+          // Compare merged settings with local settings using mapEquals to avoid redundant writes
+          if (!mapEquals(mergedSettings.toJson(), localSettings.toJson())) {
+            await _settingsBox?.put(AppConstants.settingsKey, mergedSettings);
+            _settingsController.add(mergedSettings);
+          }
+        }
+
+        // Recorded only after the merge succeeded, and never on a first sync
+        // that returned nothing.
+        //
+        // Same failure as the meal cursor: an empty read and a refused one look
+        // identical here, and a permission-denied read does not always throw.
+        // Stamping a first sync that found no documents would tell the device
+        // its settings are fresh for six hours while local storage is empty —
+        // the user sits on default goals with their real ones in the cloud.
+        final gotAnything = appSettings.isNotEmpty || profile.isNotEmpty;
+        if (!isFirstSync || gotAnything) {
+          await prefs?.setInt(
+            _cloudSyncKeyFor(user.uid),
+            DateTime.now().millisecondsSinceEpoch,
+          );
+        } else {
+          debugPrint(
+            'SettingsRepository: first sync found nothing, not stamping — '
+            'the cloud pull will be retried next launch.',
+          );
+        }
+      });
     } catch (e) {
       // Cursor deliberately not advanced: the next launch tries again.
       debugPrint('Firestore Pull Error: $e');
+      rethrow;
     }
   }
 

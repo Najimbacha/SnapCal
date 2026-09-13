@@ -508,15 +508,14 @@ function currentDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Claims one free AI text request, transactionally, and for the coach one of
-// its daily messages too.
-//
-// The client counts coach messages as well (PremiumGateService), but a client
-// counter is cleared by reinstalling, so this is the enforcing copy. Every
-// request is counted against FREE_DAILY_AI_REQUESTS whatever its purpose: the
-// purpose is the app's word, so it may only add the coach's stricter limit,
-// never skip counting. Throws a 402 carrying `kind` when a limit is reached.
-async function claimAiTextQuota(uid, { coach = false } = {}) {
+// All arbitrary-prompt text requests consume the free daily coaching allowance.
+// The broad request ceiling is additional protection, never an alternate quota.
+// Paid planner/insight requests retain their Pro access. Free planner previews
+// are local and do not call this endpoint. Throws 402 with a quota kind.
+async function claimAiTextQuota(uid) {
+  // Every endpoint accepting an arbitrary client prompt is coaching-capable.
+  // Never trust purpose/format/model options to grant a larger free allowance.
+  const coach = true;
   return db.runTransaction(async (tx) => {
     const subRef = subscriptionDoc(uid);
     const useRef = usageDoc(uid);
@@ -2190,12 +2189,10 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, apiLimiter, async (r
     return safeError(res, 400, 'Invalid AI request.');
   }
 
-  // This used to count only requests labelled 'coach' -- a label the app sets
-  // -- so anything unlabelled, the coach's own chat included, was unlimited.
-  // Every request is counted now; the label only adds the coach's limit.
+  // A client label cannot turn an arbitrary prompt into a higher-quota task.
   let claim;
   try {
-    claim = await claimAiTextQuota(req.user.uid, { coach: body.purpose === 'coach' });
+    claim = await claimAiTextQuota(req.user.uid);
   } catch (error) {
     if (error.code === 402) {
       metrics.quotaDenials.inc({ kind: error.kind || 'ai_daily' });
@@ -2899,4 +2896,6 @@ module.exports = {
     }
     authVerifierForTest = verifier;
   },
+  claimAiTextQuota,
+  refundAiTextQuota,
 };

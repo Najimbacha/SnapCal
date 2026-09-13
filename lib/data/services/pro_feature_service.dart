@@ -25,6 +25,23 @@ class ProFeatureService {
 
   static const int freeHistoryDays = 14;
 
+  /// Calendar days, including today. UTC date-only arithmetic avoids DST
+  /// making a 14-day window an hour too short or too long.
+  static bool canViewHistoryDate(
+    String date, {
+    required bool isPro,
+    DateTime? now,
+  }) {
+    final parsed = DateTime.tryParse(date);
+    if (parsed == null) return false;
+    final today = now ?? DateTime.now();
+    final age =
+        DateTime.utc(today.year, today.month, today.day)
+            .difference(DateTime.utc(parsed.year, parsed.month, parsed.day))
+            .inDays;
+    return age >= 0 && (isPro || age < freeHistoryDays);
+  }
+
   /// Whether macro grams are visible to this user.
   ///
   /// Macro grams are part of the answer a scan produces, not an add-on, so

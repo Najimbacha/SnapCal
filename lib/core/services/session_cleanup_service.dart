@@ -6,7 +6,16 @@ import '../../data/services/app_review_service.dart';
 import '../../data/services/premium_gate_service.dart';
 import '../../data/services/promotional_paywall_service.dart';
 import '../../data/services/scan_gate_service.dart';
+import '../../data/models/meal.dart';
+import '../../data/models/user_settings.dart';
+import '../../data/models/water_log.dart';
+import '../../data/models/body_metric.dart';
+import '../../data/models/meal_plan.dart';
+import '../../data/models/grocery_item.dart';
+import '../../data/models/meal_template.dart';
+import '../../data/models/achievement.dart';
 import 'security_service.dart';
+import 'session_data_guard.dart';
 
 /// Clears every user-scoped local store when a session ends (BUG-002).
 ///
@@ -54,37 +63,38 @@ class SessionCleanupService {
     'activity_box',
   ];
 
-  Future<void> clearLocalUserData({bool wipeSecurityKeys = false}) async {
+  Future<void> clearLocalUserData({
+    bool wipeSecurityKeys = false,
+    Future<void> Function()? finishSession,
+  }) => SessionDataGuard.instance.cleanup(() async {
+    await _clearLocalUserData(wipeSecurityKeys: wipeSecurityKeys);
+    // Keep downloads suspended until Firebase has switched identities too.
+    // Otherwise a fresh old-account pull can start just after the wipe.
+    await finishSession?.call();
+  });
+
+  Future<void> _clearLocalUserData({required bool wipeSecurityKeys}) async {
     debugPrint(
       '🧹 SessionCleanupService: clearing local user data '
       '(wipeSecurityKeys=$wipeSecurityKeys)',
     );
 
-    for (final name in _encryptedBoxes) {
-      await _clearEncryptedBox(name);
+    final boxes = <Box>[];
+    for (final name in [..._encryptedBoxes, ..._plainBoxes]) {
+      final box = await _openUserBox(name);
+      await box.clear();
+      boxes.add(box);
     }
-    for (final name in _plainBoxes) {
-      await _clearPlainBox(name);
-    }
-
     await _clearGatePreferences();
 
     if (wipeSecurityKeys) {
-      try {
-        for (final name in [..._encryptedBoxes, ..._plainBoxes]) {
-          if (Hive.isBoxOpen(name)) {
-            await Hive.box<dynamic>(name).close();
-          }
-          await Hive.deleteBoxFromDisk(name);
-        }
-      } catch (e) {
-        debugPrint('🧹 SessionCleanupService: box deletion skipped: $e');
+      for (final box in boxes) {
+        final name = box.name;
+        await box.close();
+        await Hive.deleteBoxFromDisk(name);
       }
-      try {
-        await SecurityService().clearKeys();
-      } catch (e) {
-        debugPrint('🧹 SessionCleanupService: key cleanup failed: $e');
-      }
+      // Rotate only after every encrypted file has been removed.
+      await SecurityService().clearKeys();
     }
 
     debugPrint('🧹 SessionCleanupService: done');
@@ -148,32 +158,34 @@ class SessionCleanupService {
     }
   }
 
-  Future<void> _clearEncryptedBox(String name) async {
-    try {
-      final box =
-          Hive.isBoxOpen(name)
-              ? Hive.box<dynamic>(name)
-              : await Hive.openBox<dynamic>(
-                name,
-                encryptionCipher: HiveAesCipher(
-                  await SecurityService().getEncryptionKey(),
-                ),
-              );
-      await box.clear();
-    } catch (e) {
-      debugPrint('🧹 SessionCleanupService: clear "$name" failed: $e');
-    }
-  }
+  /// Hive checks its declared value type exactly; `box<dynamic>` cannot access
+  /// a box opened as `box<Meal>`, even though Box itself is covariant.
+  Future<Box> _openUserBox(String name) => switch (name) {
+    'meals_box' => _open<Meal>(name, encrypted: true),
+    'meal_index_box' => _open<List<String>>(name, encrypted: true),
+    'settings_box' => _open<UserSettings>(name, encrypted: true),
+    'water_box' => _open<WaterLog>(name, encrypted: true),
+    'body_metrics_box' => _open<BodyMetric>(name, encrypted: true),
+    'assistant_box' => _open<dynamic>(name, encrypted: true),
+    'meal_plan_box' => _open<MealPlan>(name),
+    'grocery_list_box' => _open<GroceryItem>(name),
+    'templates_box' => _open<MealTemplate>(name),
+    'achievements_box' => _open<Achievement>(name),
+    'sync_queue_box' ||
+    'sync_cursor_box' ||
+    'upload_queue_box' ||
+    'activity_box' => _open<dynamic>(name),
+    _ => throw StateError('Unknown user data box: $name'),
+  };
 
-  Future<void> _clearPlainBox(String name) async {
-    try {
-      final box =
-          Hive.isBoxOpen(name)
-              ? Hive.box<dynamic>(name)
-              : await Hive.openBox<dynamic>(name);
-      await box.clear();
-    } catch (e) {
-      debugPrint('🧹 SessionCleanupService: clear "$name" failed: $e');
-    }
+  Future<Box<T>> _open<T>(String name, {bool encrypted = false}) async {
+    if (Hive.isBoxOpen(name)) return Hive.box<T>(name);
+    return Hive.openBox<T>(
+      name,
+      encryptionCipher:
+          encrypted
+              ? HiveAesCipher(await SecurityService().getEncryptionKey())
+              : null,
+    );
   }
 }

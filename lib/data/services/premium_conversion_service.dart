@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
@@ -47,7 +48,13 @@ class PremiumConversionService {
     final source = entryPoint.analyticsName;
     if (!automatic) {
       session.markPaywallOpened();
-      await _gate.recordCtaClicked(source);
+      unawaited(
+        _gate
+            .recordCtaClicked(source)
+            .catchError(
+              (Object e) => debugPrint('Paywall tap tracking unavailable: $e'),
+            ),
+      );
     }
     _analytics.logEvent(
       'paywall_opened',

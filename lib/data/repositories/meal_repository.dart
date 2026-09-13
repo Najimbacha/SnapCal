@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/security_service.dart';
+import '../../core/services/session_data_guard.dart';
 import '../../core/resilience/timeout_policy.dart';
 import '../models/meal.dart';
 import '../../core/constants/app_constants.dart';
@@ -18,6 +19,11 @@ class MealRepository {
   static final MealRepository _instance = MealRepository._internal();
   factory MealRepository() => _instance;
   MealRepository._internal();
+
+  @visibleForTesting
+  MealRepository.forTesting(FirebaseFirestore firestore, FirebaseAuth auth)
+    : _firestore = firestore,
+      _auth = auth;
 
   Box<Meal>? _mealsBox;
   Box<List<String>>? _indexBox;
@@ -38,7 +44,11 @@ class MealRepository {
 
   /// Initialize the repository
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized &&
+        _mealsBox?.isOpen == true &&
+        _indexBox?.isOpen == true) {
+      return;
+    }
     final existingInit = _initFuture;
     if (existingInit != null) return existingInit;
 
@@ -48,7 +58,7 @@ class MealRepository {
       await initFuture;
       _initialized = true;
     } finally {
-      if (!_initialized) _initFuture = null;
+      _initFuture = null;
     }
   }
 
@@ -135,7 +145,11 @@ class MealRepository {
     await _authSubscription?.cancel();
     _authSubscription = _authClient.authStateChanges().listen((user) {
       if (user != null) {
-        unawaited(syncFromFirestore());
+        unawaited(
+          syncFromFirestore().catchError(
+            (Object e) => debugPrint('Background meal pull failed: $e'),
+          ),
+        );
       }
     });
   }
@@ -266,6 +280,10 @@ class MealRepository {
 
   /// Sync single meal to Firestore
   Future<void> _syncMealToCloud(Meal meal) async {
+    final lease = SessionDataGuard.instance.capture(
+      () => _authClient.currentUser?.uid,
+    );
+    lease.check();
     final user = _authClient.currentUser;
     if (user == null) return;
     final path = 'users/${user.uid}/meals/${meal.id}';
@@ -278,10 +296,12 @@ class MealRepository {
           .timeout(TimeoutPolicy.firestore);
     } catch (e) {
       debugPrint('Meal Sync Error: $e');
-      await SyncQueueService().enqueueSet(
-        id: 'meal:set:${user.uid}:${meal.id}',
-        documentPath: path,
-        data: payload,
+      await lease.write(
+        () => SyncQueueService().enqueueSet(
+          id: 'meal:set:${user.uid}:${meal.id}',
+          documentPath: path,
+          data: payload,
+        ),
       );
     }
   }
@@ -306,6 +326,10 @@ class MealRepository {
 
   /// Delete meal from Firestore
   Future<void> _deleteMealFromCloud(String id) async {
+    final lease = SessionDataGuard.instance.capture(
+      () => _authClient.currentUser?.uid,
+    );
+    lease.check();
     final user = _authClient.currentUser;
     if (user == null) return;
     final path = 'users/${user.uid}/meals/$id';
@@ -317,15 +341,18 @@ class MealRepository {
           .timeout(TimeoutPolicy.firestore);
     } catch (e) {
       debugPrint('Meal Delete Sync Error: $e');
-      await SyncQueueService().enqueueDelete(
-        id: 'meal:delete:${user.uid}:$id',
-        documentPath: path,
+      await lease.write(
+        () => SyncQueueService().enqueueDelete(
+          id: 'meal:delete:${user.uid}:$id',
+          documentPath: path,
+        ),
       );
     }
 
     // The meal document is hard-deleted, which older app versions rely on,
     // so a deletion leaves nothing for the user's other devices to read.
     // This tombstone is what tells them the meal is gone.
+    lease.check();
     final tombstonePath = 'users/${user.uid}/deletedMeals/$id';
     final tombstone = {
       'id': id,
@@ -339,187 +366,151 @@ class MealRepository {
           .timeout(TimeoutPolicy.firestore);
     } catch (e) {
       debugPrint('Meal tombstone queued: $e');
-      await SyncQueueService().enqueueSet(
-        id: 'meal:tombstone:${user.uid}:$id',
-        documentPath: tombstonePath,
-        data: tombstone,
-        merge: false,
+      await lease.write(
+        () => SyncQueueService().enqueueSet(
+          id: 'meal:tombstone:${user.uid}:$id',
+          documentPath: tombstonePath,
+          data: tombstone,
+          merge: false,
+        ),
       );
     }
   }
 
-  /// How far back a first-ever sync on a device reaches.
-  static const _initialSyncWindow = Duration(days: 30);
-
-  /// Overlap subtracted from the stored cursor, to tolerate clock differences
-  /// between two devices belonging to the same user. Re-reading a couple of
-  /// minutes of documents is far cheaper than silently missing one.
   static const _cursorOverlap = Duration(minutes: 5);
-
   static const _cursorKeyPrefix = 'mealSyncCursor:';
-
+  static const _pageSize = 200;
   String _cursorKey(String uid) => '$_cursorKeyPrefix$uid';
+  String _historyKey(String uid) => '${_cursorKey(uid)}fullHistoryV1';
 
-  /// Pull meals changed since the last sync.
-  ///
-  /// This used to re-download every meal from the last 30 days on every single
-  /// launch — roughly 90 documents per app open, for data the device already
-  /// had. Firestore bills per document read, so at 250k daily actives opening
-  /// the app three times a day that is on the order of 60 million reads a day
-  /// to learn nothing, and it was comfortably the largest read source in the
-  /// system.
-  ///
-  /// Now the device remembers when it last synced and asks only for documents
-  /// written since. A steady-state launch reads zero to a couple of documents.
-  ///
-  /// The first sync on a device has no cursor and still takes the 30-day
-  /// window: meals written by older app versions carry no `updatedAt`, and
-  /// Firestore excludes documents missing a field from a range filter, so an
-  /// incremental query would never see them. That full pull happens once per
-  /// device, and everything after it is incremental.
-  Future<void> syncFromFirestore() =>
-      _pullInFlight ??= _pull().whenComplete(() => _pullInFlight = null);
-
-  Future<void>? _pullInFlight;
-
-  Future<void> _pull() async {
-    final user = _authClient.currentUser;
-    if (user == null) return;
-    await SyncQueueService().init();
-
-    try {
-      final cursor = _indexBox?.get(_cursorKey(user.uid));
-      final lastSyncMs =
-          cursor != null && cursor.isNotEmpty
-              ? int.tryParse(cursor.first)
-              : null;
-
-      final collection = _firestoreClient
-          .collection('users')
-          .doc(user.uid)
-          .collection('meals');
-
-      final query =
-          lastSyncMs == null
-              ? collection.where(
-                'timestamp',
-                isGreaterThanOrEqualTo:
-                    DateTime.now()
-                        .subtract(_initialSyncWindow)
-                        .millisecondsSinceEpoch,
-              )
-              : collection.where(
-                'updatedAt',
-                isGreaterThan: lastSyncMs - _cursorOverlap.inMilliseconds,
-              );
-
-      final snapshot = await query.get().timeout(TimeoutPolicy.firestore);
-
-      debugPrint(
-        lastSyncMs == null
-            ? 'MealRepository: first sync on this device, ${snapshot.docs.length} docs'
-            : 'MealRepository: incremental sync, ${snapshot.docs.length} docs',
-      );
-
-      // Deletions first, so a meal deleted and then restored between two
-      // pulls ends up present. A first pull has nothing to delete.
-      if (lastSyncMs != null) await _applyDeletedMeals(user.uid, lastSyncMs);
-
-      for (var doc in snapshot.docs) {
-        final cloudMeal = Meal.fromJson(doc.data());
-        if (_mealsBox == null) continue;
-
-        // A change on this phone the cloud has not received yet is newer than
-        // anything the cloud can say about this meal.
-        if (SyncQueueService().hasPendingFor(doc.reference.path)) continue;
-
-        // The cloud copy wins otherwise. This compared `timestamp` -- when the
-        // meal was eaten -- which an edit does not change, so a meal edited on
-        // one phone never updated on another. Every write here is either
-        // uploaded straight away or queued, so the cloud is the newer copy.
-        //
-        // Photos are never uploaded, so a cloud copy has no local image path;
-        // keep this phone's photo rather than blanking it.
-        final local = _mealsBox!.get(cloudMeal.id);
-        final keepPhoto = cloudMeal.imageUri == null && local?.imageUri != null;
-        await _saveMealLocalOnly(
-          keepPhoto ? cloudMeal.copyWith(imageUri: local!.imageUri) : cloudMeal,
-        );
-      }
-
-      // Advance the cursor only after the whole page has been applied, and
-      // never on a first sync that came back empty.
-      //
-      // An empty first sync is indistinguishable from a failed one. Firestore
-      // returns zero documents both when the user genuinely has no meals and
-      // when a read was refused or raced the auth token settling on sign-in —
-      // and the permission-denied case does not always throw. Writing the
-      // cursor there marks the device permanently "already synced", so the
-      // one-time 30-day pull never runs again and the user's history stays
-      // empty forever with no error anywhere.
-      //
-      // Holding the cursor back costs one empty query per launch until the
-      // account has its first meal, which is a single document read. That is
-      // an unmeasurable price for removing a silent, permanent data-loss mode.
-      final worthRecording = lastSyncMs != null || snapshot.docs.isNotEmpty;
-      if (worthRecording) {
-        await _indexBox?.put(_cursorKey(user.uid), [
-          DateTime.now().millisecondsSinceEpoch.toString(),
-        ]);
-      } else {
-        debugPrint(
-          'MealRepository: first sync found nothing, not recording a cursor '
-          '— the full pull will be retried next launch.',
-        );
-      }
-
-      _emitTodaysMeals();
-    } catch (e) {
-      // The cursor is deliberately NOT advanced here: a failed sync must retry
-      // the same range next launch rather than stepping over it.
-      debugPrint('Meal Pull Error: $e');
-    }
+  /// Backfill all history once (including installations with the old 30-day
+  /// cursor), then fetch only changes. Document-ID pagination includes legacy
+  /// meals without an updatedAt field and bounds each network response.
+  Future<void> syncFromFirestore() {
+    final lease = SessionDataGuard.instance.capture(
+      () => _authClient.currentUser?.uid,
+    );
+    final key = '${lease.generation}:${lease.uid}';
+    return _pulls[key] ??= _pull(lease).whenComplete(() {
+      _pulls.remove(key);
+    });
   }
 
-  /// Removes meals the user deleted on another device since the last pull.
-  ///
-  /// A failure here must not stop the meals themselves from syncing, so it is
-  /// logged and skipped; that also keeps an app released ahead of the rules
-  /// for this collection from losing meal sync altogether.
-  Future<void> _applyDeletedMeals(String uid, int lastSyncMs) async {
-    try {
-      final tombstones = await _firestoreClient
-          .collection('users')
-          .doc(uid)
-          .collection('deletedMeals')
-          .where(
-            'updatedAt',
-            isGreaterThan: lastSyncMs - _cursorOverlap.inMilliseconds,
-          )
-          .get()
+  final _pulls = <String, Future<void>>{};
+
+  Future<void> _pull(SessionLease lease) async {
+    lease.check();
+    final uid = lease.uid;
+    if (uid == null) return;
+    await init();
+    await SyncQueueService().init();
+    lease.check();
+    final cursor = _indexBox?.get(_cursorKey(uid));
+    final lastSyncMs =
+        cursor != null && cursor.isNotEmpty ? int.tryParse(cursor.first) : null;
+    final fullHistory = _indexBox?.containsKey(_historyKey(uid)) != true;
+    final startedAt = DateTime.now().millisecondsSinceEpoch;
+    final collection = _firestoreClient
+        .collection('users')
+        .doc(uid)
+        .collection('meals');
+    final Query<Map<String, dynamic>> query =
+        fullHistory || lastSyncMs == null
+            ? collection.orderBy(FieldPath.documentId)
+            : collection
+                .where(
+                  'updatedAt',
+                  isGreaterThan: lastSyncMs - _cursorOverlap.inMilliseconds,
+                )
+                .orderBy('updatedAt')
+                .orderBy(FieldPath.documentId);
+
+    // A failed deletion pull must also keep the cursor unchanged.
+    if (lastSyncMs != null) await _applyDeletedMeals(lease, lastSyncMs);
+    QueryDocumentSnapshot<Map<String, dynamic>>? after;
+    while (true) {
+      lease.check();
+      final pageQuery = after == null ? query : query.startAfterDocument(after);
+      final page = await pageQuery
+          .limit(_pageSize)
+          .get(const GetOptions(source: Source.server))
           .timeout(TimeoutPolicy.firestore);
-      for (final doc in tombstones.docs) {
-        if (_mealsBox?.containsKey(doc.id) != true) continue;
-        if (SyncQueueService().hasPendingFor('users/$uid/meals/${doc.id}')) {
-          continue;
-        }
-        final meal = await _deleteMealLocalOnly(doc.id);
-        await _deleteUnusedLocalImage(meal?.imageUri);
+      lease.check();
+      for (final doc in page.docs) {
+        await lease.write(() async {
+          if (SyncQueueService().hasPendingFor(doc.reference.path)) return;
+          final cloudMeal = Meal.fromJson(doc.data());
+          final local = _mealsBox!.get(cloudMeal.id);
+          final keepPhoto =
+              cloudMeal.imageUri == null && local?.imageUri != null;
+          await _saveMealLocalOnly(
+            keepPhoto
+                ? cloudMeal.copyWith(imageUri: local!.imageUri)
+                : cloudMeal,
+          );
+        });
       }
-    } catch (e) {
-      debugPrint('Deleted-meal pull skipped: $e');
+      if (page.docs.length < _pageSize) break;
+      after = page.docs.last;
+    }
+    await lease.write(() async {
+      await _indexBox!.put(_cursorKey(uid), [startedAt.toString()]);
+      await _indexBox!.put(_historyKey(uid), ['complete']);
+      _emitTodaysMeals();
+    });
+  }
+
+  Future<void> _applyDeletedMeals(SessionLease lease, int lastSyncMs) async {
+    final uid = lease.uid!;
+    final query = _firestoreClient
+        .collection('users')
+        .doc(uid)
+        .collection('deletedMeals')
+        .where(
+          'updatedAt',
+          isGreaterThan: lastSyncMs - _cursorOverlap.inMilliseconds,
+        )
+        .orderBy('updatedAt')
+        .orderBy(FieldPath.documentId);
+    QueryDocumentSnapshot<Map<String, dynamic>>? after;
+    while (true) {
+      lease.check();
+      final page = await (after == null
+              ? query
+              : query.startAfterDocument(after))
+          .limit(_pageSize)
+          .get(const GetOptions(source: Source.server))
+          .timeout(TimeoutPolicy.firestore);
+      lease.check();
+      for (final doc in page.docs) {
+        await lease.write(() async {
+          if (_mealsBox?.containsKey(doc.id) != true) return;
+          if (SyncQueueService().hasPendingFor('users/$uid/meals/${doc.id}')) {
+            return;
+          }
+          final meal = await _deleteMealLocalOnly(doc.id);
+          await _deleteUnusedLocalImage(meal?.imageUri);
+        });
+      }
+      if (page.docs.length < _pageSize) break;
+      after = page.docs.last;
     }
   }
 
   /// Uploads every meal on this phone to the signed-in account, in batches:
   /// how a guest's meals reach an account they have just signed in to.
   Future<void> pushAllLocal() async {
+    final lease = SessionDataGuard.instance.capture(
+      () => _authClient.currentUser?.uid,
+    );
+    lease.check();
     final user = _authClient.currentUser;
     final box = _mealsBox;
     if (user == null || box == null || box.isEmpty) return;
     final meals = box.values.toList();
     const batchLimit = 400;
     for (var i = 0; i < meals.length; i += batchLimit) {
+      lease.check();
       final end = i + batchLimit < meals.length ? i + batchLimit : meals.length;
       final chunk = meals.sublist(i, end);
       final batch = _firestoreClient.batch();
@@ -534,10 +525,12 @@ class MealRepository {
       } catch (e) {
         debugPrint('Meal upload queued: $e');
         for (final meal in chunk) {
-          await SyncQueueService().enqueueSet(
-            id: 'meal:set:${user.uid}:${meal.id}',
-            documentPath: 'users/${user.uid}/meals/${meal.id}',
-            data: _cloudPayload(meal),
+          await lease.write(
+            () => SyncQueueService().enqueueSet(
+              id: 'meal:set:${user.uid}:${meal.id}',
+              documentPath: 'users/${user.uid}/meals/${meal.id}',
+              data: _cloudPayload(meal),
+            ),
           );
         }
       }
@@ -560,7 +553,7 @@ class MealRepository {
   /// Clear all meals
   Future<void> clearAll() async {
     // Clearing the index box also drops the sync cursor, which is what we
-    // want: an empty device must take the full 30-day pull again rather than
+    // want: an empty device must take the full historical pull again rather than
     // asking for changes since a time when it still had the data.
     await _mealsBox?.clear();
     await _indexBox?.clear();

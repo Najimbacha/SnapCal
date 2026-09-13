@@ -83,6 +83,7 @@ dependencies:
   firebase_analytics: ^12.4.6
 
 dev_dependencies:
+  mock_exceptions: ^0.8.2
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
@@ -90,6 +91,8 @@ dev_dependencies:
   riverpod_generator: ^2.6.1
   analyzer: ^7.0.0
   flutter_launcher_icons: ^0.14.4
+  fake_cloud_firestore: ^4.2.0
+  firebase_auth_mocks: ^0.15.2
 
 dependency_overrides:
   # Temporary Android workaround: path_provider_android 2.3.x uses JNI and

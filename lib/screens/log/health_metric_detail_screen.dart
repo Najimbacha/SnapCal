@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import '../../data/services/pro_feature_service.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
@@ -257,7 +258,7 @@ class _HealthMetricDetailScreenState
         if (isMetricDateLocked(
           widget.metric,
           dateString,
-          (date) => isPro || date == app_date.DateUtils.getTodayString(),
+          (date) => ProFeatureService.canViewHistoryDate(date, isPro: isPro),
         )) {
           locked = true;
           continue;

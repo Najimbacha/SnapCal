@@ -143,6 +143,7 @@ class PremiumGateService {
   // --- Recording Actions ---
 
   Future<void> recordPopupShown() async {
+    await init();
     final count = _prefs.getInt(scopedPrefKey(_popupCountTodayKey)) ?? 0;
     await _prefs.setInt(scopedPrefKey(_popupCountTodayKey), count + 1);
     await _prefs.setInt(
@@ -153,6 +154,9 @@ class PremiumGateService {
   }
 
   Future<void> recordCtaClicked(String source) async {
+    // CTA tracking needs storage, not a settled Firebase session. Do not
+    // wait for the background initializer's auth timeout to open the store.
+    _prefs = await SharedPreferences.getInstance();
     await _prefs.setInt(
       scopedPrefKey(_lastUpgradeTapKey),
       DateTime.now().millisecondsSinceEpoch,
@@ -164,6 +168,7 @@ class PremiumGateService {
   }
 
   Future<void> recordPopupClosed() async {
+    _prefs = await SharedPreferences.getInstance();
     await _prefs.setInt(
       scopedPrefKey(_lastPopupDismissedKey),
       DateTime.now().millisecondsSinceEpoch,
@@ -174,6 +179,7 @@ class PremiumGateService {
   // --- Message/Scan Tracking ---
 
   int getAiMessagesUsed() {
+    if (!_initialized) return 0;
     // The day's count was reset only when the app started, so a free user
     // who kept it open past midnight stayed locked out until they closed it.
     if (_initialized) _resetDailyCountsIfNeeded();
@@ -181,6 +187,7 @@ class PremiumGateService {
   }
 
   Future<void> incrementAiMessages() async {
+    await init();
     final current = getAiMessagesUsed();
     await _prefs.setInt(scopedPrefKey(_aiMessagesUsedKey), current + 1);
   }

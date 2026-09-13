@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/app_lifecycle_service.dart';
+import '../core/services/session_data_guard.dart';
 import '../data/services/cloud_record_sync.dart';
 import '../data/services/connectivity_service.dart';
 import '../data/services/sync_queue_service.dart';
@@ -43,7 +44,7 @@ class CloudSyncNotifier extends Notifier<CloudSyncState> {
   static const _stepTimeout = Duration(seconds: 30);
   static const _lastSyncKey = 'lastSync';
 
-  Future<bool>? _inFlight;
+  final _inFlight = <String, Future<bool>>{};
   DateTime? _lastAttempt;
   bool _wasOnline = false;
 
@@ -51,7 +52,14 @@ class CloudSyncNotifier extends Notifier<CloudSyncState> {
   CloudSyncState build() {
     ref.listen(authStateProvider, (previous, next) {
       final user = next.valueOrNull;
-      if (user == null || user.uid == previous?.valueOrNull?.uid) return;
+      if (user == null) {
+        if (next.hasValue) {
+          state = const CloudSyncState();
+          _lastAttempt = null;
+        }
+        return;
+      }
+      if (user.uid == previous?.valueOrNull?.uid) return;
       // A different account: nothing about the last one's sync applies.
       state = const CloudSyncState();
       _lastAttempt = null;
@@ -108,12 +116,19 @@ class CloudSyncNotifier extends Notifier<CloudSyncState> {
   ///
   /// [manual] is set by "Sync now", which also re-reads settings that are
   /// otherwise refreshed at most every few hours.
-  Future<bool> syncNow({bool manual = false}) =>
-      _inFlight ??= _run(manual).whenComplete(() => _inFlight = null);
+  Future<bool> syncNow({bool manual = false}) {
+    final lease = SessionDataGuard.instance.capture(
+      () => FirebaseAuth.instance.currentUser?.uid,
+    );
+    final key = '${lease.generation}:${lease.uid}:$manual';
+    return _inFlight[key] ??= _run(manual, lease).whenComplete(() {
+      _inFlight.remove(key);
+    });
+  }
 
-  Future<bool> _run(bool manual) async {
+  Future<bool> _run(bool manual, SessionLease lease) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return false;
+    if (user == null || !lease.isCurrent) return false;
     _lastAttempt = DateTime.now();
     state = CloudSyncState(
       phase: CloudSyncPhase.syncing,
@@ -123,6 +138,7 @@ class CloudSyncNotifier extends Notifier<CloudSyncState> {
     var ok = true;
     Future<void> step(String name, Future<void> Function() task) async {
       try {
+        lease.check();
         await task().timeout(_stepTimeout);
       } catch (e) {
         ok = false;
@@ -130,7 +146,12 @@ class CloudSyncNotifier extends Notifier<CloudSyncState> {
       }
     }
 
-    await step('queue', () => SyncQueueService().flushDue());
+    await step('queue', () async {
+      await SyncQueueService().flushDue();
+      if (SyncQueueService().pendingCount > 0) {
+        throw StateError('Changes are still waiting to upload.');
+      }
+    });
     await step('meals', () async {
       final repo = await ref.read(mealRepositoryProvider.future);
       await repo.syncFromFirestore();
@@ -152,19 +173,24 @@ class CloudSyncNotifier extends Notifier<CloudSyncState> {
 
     // Signed out or switched accounts part-way through: this run's result
     // belongs to neither account.
-    if (FirebaseAuth.instance.currentUser?.uid != user.uid) {
-      state = const CloudSyncState();
+    if (!lease.isCurrent) {
       return false;
     }
 
     final now = DateTime.now();
     if (ok) {
-      await SyncCursorStore.set(
-        user.uid,
-        _lastSyncKey,
-        now.millisecondsSinceEpoch,
+      await step(
+        'sync timestamp',
+        () => lease.write(
+          () => SyncCursorStore.set(
+            user.uid,
+            _lastSyncKey,
+            now.millisecondsSinceEpoch,
+          ),
+        ),
       );
     }
+    if (!lease.isCurrent) return false;
     state = CloudSyncState(
       phase: ok ? CloudSyncPhase.idle : CloudSyncPhase.failed,
       lastSyncedAt: ok ? now : state.lastSyncedAt,
@@ -179,8 +205,12 @@ class CloudSyncNotifier extends Notifier<CloudSyncState> {
   /// is on this phone only. Without this it stayed visible here but was never
   /// backed up, and was gone on a reinstall or a new phone.
   Future<void> uploadAllLocal() async {
+    final lease = SessionDataGuard.instance.capture(
+      () => FirebaseAuth.instance.currentUser?.uid,
+    );
     Future<void> step(String name, Future<void> Function() task) async {
       try {
+        lease.check();
         await task().timeout(const Duration(minutes: 2));
       } catch (e) {
         debugPrint('Cloud sync: uploading local $name failed: $e');
@@ -201,5 +231,6 @@ class CloudSyncNotifier extends Notifier<CloudSyncState> {
     await step('templates', () async {
       await ref.read(templatesProvider.notifier).pushAllLocal();
     });
+    if (lease.isCurrent) await syncNow();
   }
 }

@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/session_data_guard.dart';
 import '../../core/resilience/app_failure.dart';
 import '../../core/resilience/timeout_policy.dart';
 
@@ -25,10 +26,10 @@ class SyncQueueService with ChangeNotifier {
   int _lastOrder = 0;
 
   bool get isFlushing => _isFlushing;
-  int get pendingCount => _box?.length ?? 0;
+  int get pendingCount => _box?.isOpen == true ? _box!.length : 0;
 
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized && _box?.isOpen == true) return;
     final existingInit = _initFuture;
     if (existingInit != null) return existingInit;
 
@@ -38,7 +39,7 @@ class SyncQueueService with ChangeNotifier {
       await initFuture;
       _initialized = true;
     } finally {
-      if (!_initialized) _initFuture = null;
+      _initFuture = null;
     }
   }
 
@@ -166,19 +167,27 @@ class SyncQueueService with ChangeNotifier {
     final user = FirebaseAuth.instance.currentUser;
     if (box == null || box.isEmpty || user == null || _isFlushing) return;
 
+    final lease = SessionDataGuard.instance.capture(
+      () => FirebaseAuth.instance.currentUser?.uid,
+    );
+    if (!lease.isCurrent) return;
     _isFlushing = true;
     notifyListeners();
     try {
       final entries = dueOperations(DateTime.now().millisecondsSinceEpoch);
 
       for (final entry in entries) {
+        if (!lease.isCurrent) return;
         final key = entry.key;
         final op = entry.value;
 
         try {
           await _perform(op).timeout(TimeoutPolicy.firestore);
-          if (_isCurrent(box, key, op)) await box.delete(key);
+          await lease.write(() async {
+            if (_isCurrent(box, key, op)) await box.delete(key);
+          });
         } catch (error) {
+          if (!lease.isCurrent) return;
           final failure = AppFailure.fromError(error);
           final attempts = (op['attempts'] as int? ?? 0) + 1;
           if (!failure.isRetryable || attempts >= _maxAttempts) {
@@ -211,7 +220,9 @@ class SyncQueueService with ChangeNotifier {
               DateTime.now()
                   .add(_backoff(attempts, failure.retryAfter))
                   .millisecondsSinceEpoch;
-          await box.put(key, op);
+          await lease.write(() async {
+            if (_isCurrent(box, key, op)) await box.put(key, op);
+          });
         }
       }
     } finally {
