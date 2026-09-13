@@ -31,7 +31,7 @@ import 'package:snapcal/providers/settings_provider.dart';
 // deliberate rather than blown out.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _paywallSage = Color(0xFF92AF83);
+const _paywallSage = AppColors.primary;
 const _paperLight = Color(0xFFFFFFFF);
 const _paperDark = Color(0xFF000000);
 const _surfaceLight = Color(0xFFFFFFFF);
@@ -675,11 +675,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         backgroundColor: palette.paper,
         body: LayoutBuilder(
           builder: (context, viewport) {
-            _heroExtent = 240;
+            _heroExtent = viewport.maxHeight < 680 ? 210 : 228;
             final dense = viewport.maxHeight < 720;
             const hPad = 20.0;
             final inlineDock =
-                viewport.maxHeight < 600 ||
+                viewport.maxHeight < 700 ||
                 MediaQuery.textScalerOf(context).scale(14) > 19;
             final dock = _CtaDock(
               key: _dockKey,
@@ -745,11 +745,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                         if (context.canPop()) context.pop();
                       },
                     ),
+                    const SizedBox(height: 24),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: hPad),
                       child: _buildTitleBlock(context, palette),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: hPad),
                       child: _BenefitLedger(palette: palette),
@@ -881,17 +882,22 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(
             color: palette.ink,
-            fontSize: 25,
-            height: 1.15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.5,
+            fontSize: 31,
+            height: 1.05,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.9,
           ),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 9),
         Text(
           general ? l10n.purchase_headline : title,
           textAlign: TextAlign.center,
-          style: TextStyle(color: palette.muted, fontSize: 12.5, height: 1.45),
+          style: TextStyle(
+            color: palette.muted,
+            fontSize: 16,
+            height: 1.35,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -957,376 +963,22 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HERO — the plate, scanned
+// HERO
 //
-// One photograph at a time, held long enough to be appetising, with the scan
-// the product actually performs drawn over it: a sweep down the plate, then
-// each food naming itself, then the total. It is the thirty-second demo, and
-// it is the only place on the screen that moves.
+// A purchase screen needs a calm first impression. The image proves the food
+// scanning context, while the offer details sit below where they can be read.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// One food the scanner "finds", anchored to where it sits in the photograph.
-///
-/// [spot] is a resolution-independent [Alignment] on the image, and is
-/// deliberately *not* direction-aware: the tomatoes are on the right of the
-/// plate in Arabic too.
-/// One named food on a hero plate.
-///
-/// Two coordinates, deliberately in two different spaces:
-///
-///  * [anchor] is where the food actually is, in the *photograph's* own square
-///    coordinate space (-1..1 on each axis, measured off the 1024x1024 asset).
-///    The hero crops that square to a landscape band, so this has to be
-///    converted at paint time rather than baked in as a hero offset.
-///  * [chip] is where the label card sits, in the *hero's* coordinate space,
-///    chosen so the cards never cover the food, each other, the close button
-///    or the calorie readout.
-///
-/// The leader line drawn between the two is what makes the label read as a
-/// detection rather than as a sticker: the old chips sat loose over the plate,
-/// overlapping one another, pointing at nothing.
-class _Detection {
-  const _Detection({
-    required this.anchor,
-    required this.slots,
-    required this.label,
-    required this.portion,
-    required this.kcal,
-  });
+const double _heroChromeTop = 8;
 
-  /// The middle of the food, in the photograph's square space, measured off
-  /// the 1024x1024 asset. The marker goes here and nowhere else: it is what
-  /// tells the user *this* food is *these* calories.
-  final Alignment anchor;
-
-  /// Candidate slots, best first. The resolver takes the first one that
-  /// covers no food marker, so the card yields to the plate rather than the
-  /// marker being nudged off the middle of the food it names.
-  final List<_ChipSlot> slots;
-
-  final String Function(AppLocalizations) label;
-  final String Function(AppLocalizations) portion;
-  final int kcal;
-}
-
-/// Fixed so the leader geometry is exact: the painter needs the card's rect to
-/// work out which edge the caret belongs on, and an intrinsically sized card
-/// would only be measurable a frame late.
-const double _chipHeight = 30; // one line now, not two
-
-/// Card width, as a share of the hero.
-///
-/// Fixed-width cards ate 37% of a small phone's hero from each side, leaving no
-/// middle corridor: a dot anchored to the left of a plate landed underneath the
-/// very card naming it. Scaling with the hero keeps that corridor open, and
-/// every [_Detection.anchor] is kept inside it (|x| <= 0.26).
-/// Text style of a detection label, shared by the pill and the measurer so
-/// they cannot disagree about how wide a name is.
-const TextStyle _chipLabelStyle = TextStyle(
-  color: Color(0xFF1C1917),
-  fontSize: 11.5,
-  height: 1.15,
-  letterSpacing: -0.1,
-  fontWeight: FontWeight.w600,
-);
-const TextStyle _chipKcalStyle = TextStyle(
-  color: Color(0xFF047857),
-  fontSize: 11.5,
-  height: 1.15,
-  letterSpacing: -0.1,
-  fontWeight: FontWeight.w600,
-);
-const double _chipPadH = 11;
-const double _chipGap = 7;
-
-/// How wide this label needs to be, measured rather than assumed.
-///
-/// Every card used to be 32% of the hero whatever it said, so "Rice" got the
-/// same slab as "Grilled Chicken" and sat half empty. The layout reserves
-/// rectangles and the leader lines start from their edges, so the width has to
-/// be known here, not improvised at paint time.
-double _chipWidthForLabel(String label, String kcal, double heroWidth) {
-  double measure(String text, TextStyle style) {
-    final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    )..layout();
-    return painter.width;
-  }
-
-  final content =
-      measure(label, _chipLabelStyle) +
-      _chipGap +
-      measure(kcal, _chipKcalStyle);
-  return (content + _chipPadH * 2).clamp(64.0, heroWidth * 0.56);
-}
-
-/// The Ken Burns range. Kept shallow: every extra percent of zoom pushes the
-/// anchors off the food they point at.
-const double _heroZoomFrom = 1.01;
-const double _heroZoomTo = 1.04;
-
-/// Which column and band a label card sits in.
-///
-/// Deliberately not an [Alignment]. Fixed alignments assumed a short status
-/// bar: on a device with a tall inset the top band slid under the close button
-/// and the calorie readout, both of which paint over the cards -- "Avocado
-/// Toast" showed up as "oast". The bands are now derived from the actual inset
-/// and the actual chrome heights, so the cards clear them on any device.
-enum _ChipSide { left, right }
-
-class _ChipSlot {
-  const _ChipSlot(this.side, this.row);
-
-  final _ChipSide side;
-
-  /// 0 = upper band, 1 = lower band.
-  final int row;
-
-  @override
-  bool operator ==(Object other) =>
-      other is _ChipSlot && other.side == side && other.row == row;
-
-  @override
-  int get hashCode => Object.hash(side, row);
-}
-
-const _slotLeftTop = _ChipSlot(_ChipSide.left, 0);
-const _slotLeftLow = _ChipSlot(_ChipSide.left, 1);
-const _slotRightTop = _ChipSlot(_ChipSide.right, 0);
-const _slotRightLow = _ChipSlot(_ChipSide.right, 1);
-
-/// Hero chrome, for band maths. Must track the widgets themselves.
-const double _heroChromeTop =
-    8; // close button / readout offset below the inset
-const double _closeButtonSize = 38;
-const double _readoutHeight = 46;
-const double _chromeGap = 10;
-
-/// Radius of the marker ring dropped on the middle of each food.
-const double _reticleRadius = 10.5;
-
-/// Height of the hero's bottom dissolve. Shared so card placement and the
-/// gradient cannot disagree about where the usable area ends.
-double _heroFadeHeight(double heroHeight) => math.max(28, heroHeight * 0.12);
-
-/// One plate, two foods, one to each side.
-///
-/// Two foods because three meant two of them shared a column, and a food
-/// sitting in its own upper band pushes its label to the lower one -- so the
-/// pair swapped and their leader lines crossed. One food per side cannot.
-///
-/// One plate because this paywall is reached by people already using the app,
-/// who know what it looks like; a rotating gallery is an onboarding device.
-/// The carousel also could not be steered -- the dots were decoration, with no
-/// swipe and no tap -- so a photograph you wanted back was gone.
-///
-/// Totals are folded from whatever is listed here, so they follow.
 final List<_HeroSlide> _heroSlides = [
-  _HeroSlide(
-    asset: 'assets/images/paywall/hero_slide_1.png',
-    detections: [
-      _Detection(
-        anchor: const Alignment(-0.32, -0.32),
-        slots: const [_slotLeftTop, _slotLeftLow],
-        label: (l) => l.paywall_slide_grilled_chicken,
-        portion: (l) => l.paywall_slide_chicken_portion,
-        kcal: 248,
-      ),
-      _Detection(
-        anchor: const Alignment(0.31, -0.24),
-        slots: const [_slotRightTop, _slotRightLow],
-        label: (l) => l.paywall_slide_rice,
-        portion: (l) => l.paywall_slide_rice_portion,
-        kcal: 169,
-      ),
-    ],
-  ),
+  const _HeroSlide(asset: 'assets/images/paywall/hero_slide_1.png'),
 ];
 
 class _HeroSlide {
-  const _HeroSlide({required this.asset, required this.detections});
+  const _HeroSlide({required this.asset});
 
   final String asset;
-  final List<_Detection> detections;
-
-  int get totalKcal => detections.fold(0, (sum, d) => sum + d.kcal);
-}
-
-/// Where a detection's card and its food land, in hero pixels.
-class _DetectionGeometry {
-  const _DetectionGeometry(this.card, this.food, {this.visible = true});
-
-  final Rect card;
-  final Offset food;
-
-  /// False when the plate is too crowded on this screen to place the card
-  /// without covering food. Showing two clean labels beats three tangled ones,
-  /// and the readout still totals the whole plate either way.
-  final bool visible;
-
-  /// The point on the card's edge that faces the food, plus the direction to
-  /// travel from there. Used for both the caret and the leader line.
-  (Offset, Offset) get exit {
-    final centre = card.center;
-    final delta = food - centre;
-    if (delta.distance < 0.001) return (centre, const Offset(0, -1));
-    final dir = delta / delta.distance;
-
-    // Scale the ray until it meets the card's boundary.
-    final tx =
-        dir.dx.abs() < 1e-6 ? double.infinity : (card.width / 2) / dir.dx.abs();
-    final ty =
-        dir.dy.abs() < 1e-6
-            ? double.infinity
-            : (card.height / 2) / dir.dy.abs();
-    final t = math.min(tx, ty);
-    return (centre + dir * t, dir);
-  }
-}
-
-/// Places the cards and resolves the food anchors for one slide.
-///
-/// The photograph is square and drawn with [BoxFit.cover] into a landscape
-/// hero, so it is the *width* that fills and the top and bottom that get
-/// cropped. An anchor's x therefore maps against the drawn width and its y
-/// against that same width -- not against the hero's height, which is what
-/// made naive placement drift down the plate as the hero got shorter.
-///
-/// Cards are laid into two bands per column. The upper band starts below
-/// whichever piece of chrome shares its column, the lower band ends above the
-/// bottom fade, so nothing is ever painted over or washed out.
-List<_DetectionGeometry> _resolveDetections(
-  List<_Detection> detections,
-  Size size,
-  double zoom,
-  double topInset,
-  double fadeHeight,
-  List<double> chipWidths,
-) {
-  final drawn = math.max(size.width, size.height) * zoom;
-  final centre = Offset(size.width / 2, size.height / 2);
-  const margin = 12.0;
-
-  // Markers first, and they never move: each sits on the middle of its food.
-  // The cards are what give way.
-  final markers = [
-    for (final d in detections)
-      Offset(
-        centre.dx + d.anchor.x * drawn / 2,
-        centre.dy + d.anchor.y * drawn / 2,
-      ),
-  ];
-
-  final closeRect = Rect.fromLTWH(
-    margin,
-    topInset + _heroChromeTop,
-    _closeButtonSize,
-    _closeButtonSize,
-  );
-  final readoutRect = Rect.fromLTWH(
-    size.width - margin - 130,
-    topInset + _heroChromeTop,
-    130,
-    _readoutHeight,
-  );
-
-  final leftTop = topInset + _heroChromeTop + _closeButtonSize + _chromeGap;
-  final rightTop = topInset + _heroChromeTop + _readoutHeight + _chromeGap;
-  final lowest = size.height - fadeHeight - _chipHeight - 6;
-  final bandBottom = math.max(
-    math.max(leftTop, rightTop) + _chipHeight + 8,
-    lowest,
-  );
-
-  Rect rectFor(_ChipSlot slot, int index) => Rect.fromLTWH(
-    slot.side == _ChipSide.left
-        ? margin
-        : math.max(margin, size.width - chipWidths[index] - margin),
-    (slot.row == 0
-            ? (slot.side == _ChipSide.left ? leftTop : rightTop)
-            : bandBottom)
-        .clamp(margin, math.max(margin, size.height - _chipHeight - margin)),
-    chipWidths[index],
-    _chipHeight,
-  );
-
-  /// A card must fully clear the marker it names -- covering that would hide
-  /// the very thing it points at -- and must not sit on top of anybody else's.
-  /// The second test is looser on purpose: demanding full reticle clearance
-  /// from every marker leaves no legal placement on a busy plate.
-  bool clearOfMarkers(Rect card, int self) {
-    for (var i = 0; i < markers.length; i++) {
-      final pad = i == self ? _reticleRadius + 4 : 2.0;
-      if (card.inflate(pad).contains(markers[i])) return false;
-    }
-    return true;
-  }
-
-  bool clearOfChrome(Rect card) =>
-      !card.overlaps(closeRect) && !card.overlaps(readoutRect);
-
-  final placed = <Rect>[];
-  bool clearOfCards(Rect card) =>
-      !placed.any((other) => card.overlaps(other.inflate(4)));
-
-  bool usable(Rect card, int self) =>
-      clearOfMarkers(card, self) && clearOfChrome(card) && clearOfCards(card);
-
-  /// Last resort before accepting a bad placement: slide the card along its
-  /// column. Cheaper than reserving a whole extra band on a short hero, and it
-  /// keeps the card near the food it belongs to.
-  Rect? nudged(Rect card, int self) {
-    for (var step = 6.0; step <= 54; step += 6) {
-      for (final dy in [step, -step]) {
-        final moved = card.translate(0, dy);
-        if (moved.top < margin || moved.bottom > lowest + _chipHeight) continue;
-        if (usable(moved, self)) return moved;
-      }
-    }
-    return null;
-  }
-
-  final taken = <_ChipSlot>{};
-  final chosen = <Rect?>[];
-
-  for (var i = 0; i < detections.length; i++) {
-    final d = detections[i];
-    Rect? pick;
-
-    for (final slot in d.slots) {
-      if (taken.contains(slot)) continue;
-      final rect = rectFor(slot, i);
-      if (!usable(rect, i)) continue;
-      taken.add(slot);
-      pick = rect;
-      break;
-    }
-
-    if (pick == null) {
-      for (final slot in d.slots) {
-        if (taken.contains(slot)) continue;
-        final moved = nudged(rectFor(slot, i), i);
-        if (moved == null) continue;
-        taken.add(slot);
-        pick = moved;
-        break;
-      }
-    }
-
-    if (pick != null) placed.add(pick);
-    chosen.add(pick);
-  }
-
-  return [
-    for (var i = 0; i < detections.length; i++)
-      _DetectionGeometry(
-        chosen[i] ?? Rect.zero,
-        markers[i],
-        visible: chosen[i] != null,
-      ),
-  ];
 }
 
 class _ScanHero extends StatefulWidget {
@@ -1346,573 +998,114 @@ class _ScanHero extends StatefulWidget {
   State<_ScanHero> createState() => _ScanHeroState();
 }
 
-class _ScanHeroState extends State<_ScanHero>
-    with SingleTickerProviderStateMixin {
-  static const Duration _cycle = Duration(milliseconds: 8200);
-
-  /// Where the scan comes to rest.
-  ///
-  /// The reveal fades everything back out over the last 7% so the next
-  /// photograph could take over. There is no next photograph now, so the
-  /// animation stops just short of that and holds the finished scan: every
-  /// label placed, the total counted. It plays once and then the screen is
-  /// still, which is the point -- a decision screen that keeps moving is
-  /// asking you to watch it instead of read it.
-  static const double _restPoint = 0.92;
-
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: _cycle)
-      ..animateTo(_restPoint);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  /// Eases a value into 0..1 across [start]..[end], flat outside.
-  double _phase(double t, double start, double end) {
-    if (end <= start) return t >= end ? 1 : 0;
-    return ((t - start) / (end - start)).clamp(0.0, 1.0);
-  }
-
+class _ScanHeroState extends State<_ScanHero> {
   @override
   Widget build(BuildContext context) {
     final palette = widget.palette;
-    final l10n = AppLocalizations.of(context)!;
     final slide = _heroSlides.first;
 
-    return ClipRect(
-      // Explicit. The zoomed photograph was painting a sliver of itself past
-      // the hero's bottom edge, showing up as a ~10dp band of un-faded image
-      // below the fade -- the "little space" between the hero and the page.
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
       child: SizedBox(
         key: const ValueKey('paywall-scan-hero'),
         height: widget.height,
         width: double.infinity,
-        child: LayoutBuilder(
-          builder:
-              (context, constraints) => AnimatedBuilder(
-                animation: _controller,
-                builder: (context, _) {
-                  final t = _controller.value;
-                  // Hold the plate still for a beat, sweep, name the food, then leave.
-                  final entrance = _phase(t, 0.00, 0.07);
-                  final exit = 1 - _phase(t, 0.93, 1.00);
-                  final sweep = _phase(t, 0.12, 0.44);
-                  final opacity = entrance * exit;
-
-                  final zoom =
-                      _heroZoomFrom + (t * (_heroZoomTo - _heroZoomFrom));
-                  final chipWidths = [
-                    for (final det in slide.detections)
-                      _chipWidthForLabel(
-                        det.label(l10n),
-                        '${det.kcal} kcal',
-                        constraints.maxWidth,
-                      ),
-                  ];
-                  final geometry = _resolveDetections(
-                    slide.detections,
-                    Size(constraints.maxWidth, widget.height),
-                    zoom,
-                    widget.topInset,
-                    _heroFadeHeight(widget.height),
-                    chipWidths,
-                  );
-                  final reveal = [
-                    for (var i = 0; i < slide.detections.length; i++)
-                      _phase(t, 0.26 + (i * 0.075), 0.44 + (i * 0.075)) * exit,
-                  ];
-
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // ── The photograph, breathing ──
-                      Opacity(
-                        opacity: opacity,
-                        child: Transform.scale(
-                          scale: zoom,
-                          child: Image.asset(
-                            slide.asset,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                            gaplessPlayback: true,
-                            errorBuilder:
-                                (context, error, stack) =>
-                                    ColoredBox(color: palette.accentWash),
-                          ),
-                        ),
-                      ),
-
-                      // ── Dark mode needs the marble knocked back, or it glares ──
-                      if (palette.isDark)
-                        const Positioned.fill(
-                          child: ColoredBox(color: Color(0x33000000)),
-                        ),
-
-                      // ── The scan sweep ──
-                      if (sweep > 0 && sweep < 1)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: CustomPaint(
-                              painter: _SweepPainter(
-                                progress: sweep,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // ── Detections, landing in the sweep's wake ──
-                      //
-                      // Leaders underneath, cards on top, so each line vanishes under
-                      // the card edge it grows from.
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: CustomPaint(
-                            painter: _DetectionLeaderPainter(
-                              geometry: geometry,
-                              progress: reveal,
-                            ),
-                          ),
-                        ),
-                      ),
-                      for (var i = 0; i < slide.detections.length; i++)
-                        if (geometry[i].visible)
-                          Positioned(
-                            left: geometry[i].card.left,
-                            top: geometry[i].card.top,
-                            child: _DetectionChip(
-                              detection: slide.detections[i],
-                              l10n: l10n,
-                              progress: reveal[i],
-                              width: geometry[i].card.width,
-                            ),
-                          ),
-
-                      // ── Running total, in the empty marble at the top end ──
-                      //
-                      // It sat bottom-start until the third detection chip landed on
-                      // top of it. The corner opposite the close button is clear in
-                      // all three photographs and reads like a scanner's own readout.
-                      PositionedDirectional(
-                        end: 12,
-                        top: widget.topInset + _heroChromeTop,
-                        child: Opacity(
-                          opacity: _phase(t, 0.34, 0.48) * exit,
-                          child: _CalorieReadout(
-                            kcal: slide.totalKcal,
-                            progress: _phase(t, 0.34, 0.72),
-                          ),
-                        ),
-                      ),
-
-                      // The photograph ends where it ends.
-                      //
-                      // There was a gradient here washing the page colour up
-                      // over the bottom of the plate -- 60px of it, then 28 --
-                      // and at any height it read as a smudge rather than a
-                      // transition, because the photo is still busy where the
-                      // wash begins. A clean edge is what a full-bleed image
-                      // does everywhere else. _heroFadeHeight stays as the
-                      // reserve that keeps food labels off the bottom edge.
-
-                      // ── Chrome ──
-                      PositionedDirectional(
-                        start: 12,
-                        top: widget.topInset + _heroChromeTop,
-                        child: _HeroIconButton(
-                          icon: LucideIcons.x,
-                          onTap: widget.onClose,
-                          semanticLabel:
-                              MaterialLocalizations.of(
-                                context,
-                              ).closeButtonTooltip,
-                        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              slide.asset,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              gaplessPlayback: true,
+              errorBuilder:
+                  (context, error, stack) =>
+                      ColoredBox(color: palette.accentWash),
+            ),
+            if (palette.isDark)
+              const Positioned.fill(
+                child: ColoredBox(color: Color(0x44000000)),
+              ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.22),
+                      Colors.transparent,
+                      palette.paper.withValues(
+                        alpha: palette.isDark ? 0.32 : 0.18,
                       ),
                     ],
-                  );
-                },
+                    stops: const [0, 0.48, 1],
+                  ),
+                ),
               ),
+            ),
+            const Positioned.fill(
+              child: IgnorePointer(child: _HeroFocusMarks()),
+            ),
+            PositionedDirectional(
+              start: 12,
+              top: widget.topInset + _heroChromeTop,
+              child: _HeroIconButton(
+                icon: LucideIcons.x,
+                onTap: widget.onClose,
+                semanticLabel:
+                    MaterialLocalizations.of(context).closeButtonTooltip,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _SweepPainter extends CustomPainter {
-  _SweepPainter({required this.progress, required this.color});
-
-  final double progress;
-  final Color color;
+class _HeroFocusMarks extends StatelessWidget {
+  const _HeroFocusMarks();
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final y = size.height * progress;
-    final bandHeight = size.height * 0.26;
-
-    final band =
-        Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              color.withValues(alpha: 0),
-              color.withValues(alpha: 0.18),
-              color.withValues(alpha: 0.30),
-            ],
-          ).createShader(
-            Rect.fromLTWH(0, y - bandHeight, size.width, bandHeight),
-          );
-    canvas.drawRect(
-      Rect.fromLTWH(0, y - bandHeight, size.width, bandHeight),
-      band,
-    );
-
-    final edge =
-        Paint()
-          ..color = color.withValues(alpha: 0.9)
-          ..strokeWidth = 1.6
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.4);
-    canvas.drawLine(Offset(0, y), Offset(size.width, y), edge);
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _HeroFocusPainter());
   }
-
-  @override
-  bool shouldRepaint(_SweepPainter old) => old.progress != progress;
 }
 
-/// Draws the anchor dot on the food and the leader that ties it to the card.
-///
-/// Painted beneath the cards, so the leader disappears cleanly under the card
-/// edge and the caret reads as part of it.
-class _DetectionLeaderPainter extends CustomPainter {
-  _DetectionLeaderPainter({required this.geometry, required this.progress});
-
-  final List<_DetectionGeometry> geometry;
-
-  /// Per-detection reveal, 0..1, matching each card's own fade-in.
-  final List<double> progress;
-
-  static const double _caretHalfWidth = 5.5;
-  static const double _caretLength = 6.5;
-
+class _HeroFocusPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    for (var i = 0; i < geometry.length; i++) {
-      final t = progress[i].clamp(0.0, 1.0);
-      if (t <= 0) continue;
-
-      final g = geometry[i];
-      if (!g.visible) continue;
-      final (edge, dir) = g.exit;
-      final tip = edge + dir * _caretLength;
-      final target = g.food - dir * (_reticleRadius + 3);
-
-      // A shallow arc rather than a ruled line: it reads as drawn rather than
-      // as a diagram, and it keeps the leader off whatever it passes over.
-      final chord = target - tip;
-      final normal = Offset(-chord.dy, chord.dx);
-      final bow =
-          chord.distance < 1
-              ? Offset.zero
-              : (normal / chord.distance) * (chord.distance * 0.13);
-      final control = tip + chord / 2 + bow;
-
-      // Grow the arc out from the card as the label lands.
-      final grown = Curves.easeOutCubic.transform(t);
-      final end = _quadratic(tip, control, target, grown);
-      final path = Path()..moveTo(tip.dx, tip.dy);
-      _appendQuadratic(path, tip, control, target, grown);
-
-      // Caret, pointing along the arc's opening tangent.
-      final tangent = control - tip;
-      final td = tangent.distance < 0.001 ? dir : tangent / tangent.distance;
-      final tn = Offset(-td.dy, td.dx);
-      canvas.drawPath(
-        Path()
-          ..moveTo(
-            edge.dx + td.dx * _caretLength,
-            edge.dy + td.dy * _caretLength,
-          )
-          ..lineTo(
-            edge.dx + tn.dx * _caretHalfWidth,
-            edge.dy + tn.dy * _caretHalfWidth,
-          )
-          ..lineTo(
-            edge.dx - tn.dx * _caretHalfWidth,
-            edge.dy - tn.dy * _caretHalfWidth,
-          )
-          ..close(),
-        Paint()..color = Colors.black.withValues(alpha: 0.48 * t),
-      );
-
-      // Dark pass first so the leader survives a pale plate, bright pass on top.
-      canvas.drawPath(
-        path,
+    final points = [
+      Offset(size.width * 0.33, size.height * 0.38),
+      Offset(size.width * 0.66, size.height * 0.36),
+    ];
+    for (final point in points) {
+      canvas.drawCircle(
+        point,
+        12,
         Paint()
-          ..color = Colors.black.withValues(alpha: 0.28 * t)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3.2
-          ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+          ..color = Colors.black.withValues(alpha: 0.12)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
       );
-      canvas.drawPath(
-        path,
+      canvas.drawCircle(
+        point,
+        10,
         Paint()
-          ..color = Colors.white.withValues(alpha: 0.88 * t)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5
-          ..strokeCap = StrokeCap.round,
+          ..color = Colors.white.withValues(alpha: 0.86),
       );
-
-      // A bead riding the head of the line while it travels.
-      if (grown < 0.98) {
-        canvas.drawCircle(
-          end,
-          2.2,
-          Paint()..color = Colors.white.withValues(alpha: 0.9 * t),
-        );
-        continue;
-      }
-
-      _paintReticle(canvas, g.food, t);
-    }
-  }
-
-  /// The marker itself: a ring that snaps in around a solid core, sitting on
-  /// the middle of the food.
-  void _paintReticle(Canvas canvas, Offset at, double t) {
-    final land = ((t - 0.55) / 0.45).clamp(0.0, 1.0);
-    if (land <= 0) return;
-    final ease = Curves.easeOutBack.transform(land).clamp(0.0, 1.2);
-
-    // Halo, so the marker reads on dark and light food alike.
-    canvas.drawCircle(
-      at,
-      _reticleRadius * ease,
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.18 * land)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
-    );
-    canvas.drawCircle(
-      at,
-      _reticleRadius * ease,
-      Paint()..color = AppColors.primary.withValues(alpha: 0.20 * land),
-    );
-
-    // Ring.
-    canvas.drawCircle(
-      at,
-      _reticleRadius * ease,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.85 * land)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4,
-    );
-
-    // A single pulse outward as it lands, then gone.
-    final pulse = ((land - 0.25) / 0.75).clamp(0.0, 1.0);
-    if (pulse > 0 && pulse < 1) {
       canvas.drawCircle(
-        at,
-        _reticleRadius + (_reticleRadius * 1.5 * pulse),
-        Paint()
-          ..color = AppColors.primary.withValues(alpha: 0.45 * (1 - pulse))
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.6,
+        point,
+        4.2,
+        Paint()..color = AppColors.primary.withValues(alpha: 0.95),
       );
     }
-
-    // Core.
-    canvas.drawCircle(
-      at,
-      4.6 * ease,
-      Paint()..color = Colors.white.withValues(alpha: 0.95 * land),
-    );
-    canvas.drawCircle(
-      at,
-      3.1 * ease,
-      Paint()..color = AppColors.primary.withValues(alpha: land),
-    );
-  }
-
-  static Offset _quadratic(Offset a, Offset c, Offset b, double t) {
-    final u = 1 - t;
-    return a * (u * u) + c * (2 * u * t) + b * (t * t);
-  }
-
-  /// Appends the first [t] of the curve a->c->b, subdivided by de Casteljau so
-  /// the partial arc keeps the full curve's shape as it grows.
-  static void _appendQuadratic(
-    Path path,
-    Offset a,
-    Offset c,
-    Offset b,
-    double t,
-  ) {
-    if (t <= 0) return;
-    final c1 = Offset.lerp(a, c, t)!;
-    final end = _quadratic(a, c, b, t);
-    path.quadraticBezierTo(c1.dx, c1.dy, end.dx, end.dy);
   }
 
   @override
-  bool shouldRepaint(_DetectionLeaderPainter old) =>
-      old.progress != progress || old.geometry != geometry;
-}
-
-/// The label card. Fixed size (see [_chipWidth]) so the leader geometry above
-/// can be computed exactly rather than measured a frame late.
-class _DetectionChip extends StatelessWidget {
-  const _DetectionChip({
-    required this.detection,
-    required this.l10n,
-    required this.progress,
-    required this.width,
-  });
-
-  final _Detection detection;
-  final AppLocalizations l10n;
-  final double progress;
-  final double width;
-
-  @override
-  Widget build(BuildContext context) {
-    if (progress <= 0) return const SizedBox.shrink();
-
-    // A light pill, sized to its words.
-    //
-    // This was a dark slab: a black gradient, a white border, a coloured spine
-    // and two lines, all laid over food photography at a fixed 32% of the hero
-    // whatever it said. Dark chrome fights a bright photograph; light glass
-    // with dark text stays readable on almost anything and lets the picture
-    // through, which is how Lens and Visual Look Up label a photo. The gram
-    // weight goes with the second line -- on a sales screen the calories are
-    // the point and nobody is checking the portion.
-    return Opacity(
-      opacity: progress.clamp(0.0, 1.0),
-      child: Transform.scale(
-        scale: 0.94 + (0.06 * progress),
-        child: Container(
-          width: width,
-          height: _chipHeight,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: _chipPadH),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.93),
-            borderRadius: BorderRadius.circular(_chipHeight / 2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: detection.label(l10n), style: _chipLabelStyle),
-                const TextSpan(text: '  '),
-                TextSpan(text: '${detection.kcal} kcal', style: _chipKcalStyle),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CalorieReadout extends StatelessWidget {
-  const _CalorieReadout({required this.kcal, required this.progress});
-
-  final int kcal;
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final shown = (kcal * Curves.easeOutCubic.transform(progress)).round();
-
-    // Named, and a different colour from the food labels.
-    //
-    // This was an unlabelled number wearing the same dark glass pill as the
-    // detections, in the same corner family, so it read as a fourth food
-    // rather than as the sum of the other three. Two things fix that: the
-    // word, and not looking like an ingredient. Emerald 700 rather than the
-    // brighter brand green -- white on it measures 5.48:1, where the brand
-    // green manages 2.54:1.
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 7, 13, 9),
-      decoration: BoxDecoration(
-        color: AppColors.primaryDark,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            AppLocalizations.of(context)!.result_total_calories,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.84),
-              fontSize: 8.5,
-              height: 1.2,
-              letterSpacing: 0.6,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 1),
-          // "453 kcal", not "kcal 453". The row mirrors with the layout in
-          // Arabic, but a figure and its Latin unit are one left-to-right run
-          // in any language.
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '$shown',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 25,
-                    height: 1,
-                    letterSpacing: -0.8,
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 2.5),
-                  child: Text(
-                    'kcal',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.78),
-                      fontSize: 11,
-                      height: 1,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  bool shouldRepaint(covariant _HeroFocusPainter oldDelegate) => false;
 }
 
 class _HeroIconButton extends StatelessWidget {
@@ -1983,37 +1176,55 @@ class _BenefitLedger extends StatelessWidget {
       l10n.purchase_coach_title,
     ];
 
-    return Column(
-      children: [
-        for (var i = 0; i < items.length; i++)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 11),
-            decoration:
-                i == items.length - 1
-                    ? null
-                    : BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: palette.hairline),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.hairline),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < items.length; i++)
+            Padding(
+              padding: EdgeInsets.only(
+                top: i == 0 ? 0 : 10,
+                bottom: i == items.length - 1 ? 0 : 10,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(
+                        alpha: palette.isDark ? 0.22 : 0.12,
                       ),
+                      shape: BoxShape.circle,
                     ),
-            child: Row(
-              children: [
-                Icon(LucideIcons.check, size: 16, color: palette.accentInk),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    items[i],
-                    style: TextStyle(
-                      color: palette.ink,
-                      fontSize: 13.5,
-                      height: 1.3,
+                    child: Icon(
+                      LucideIcons.check,
+                      size: 14,
+                      color: palette.accentInk,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      items[i],
+                      style: TextStyle(
+                        color: palette.ink,
+                        fontSize: 15.5,
+                        height: 1.25,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -2044,14 +1255,16 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final large = MediaQuery.textScalerOf(context).scale(15) > 18;
+    final large =
+        MediaQuery.sizeOf(context).width < 360 ||
+        MediaQuery.textScalerOf(context).scale(15) > 18;
     final title = Text(
       label,
       style: TextStyle(
         color: palette.ink,
-        fontSize: 15,
+        fontSize: 17,
         height: 1.3,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w800,
       ),
     );
     final amount = Column(
@@ -2063,23 +1276,30 @@ class _PlanCard extends StatelessWidget {
             price,
             style: TextStyle(
               color: palette.muted,
-              fontSize: 11,
+              fontSize: 12,
               decoration: TextDecoration.lineThrough,
+              decorationColor: palette.muted,
             ),
           ),
         Text(
           introPrice ?? price,
           style: TextStyle(
             color: palette.ink,
-            fontSize: 16,
+            fontSize: 22,
             height: 1.25,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
           ),
         ),
         if (perMonth != null)
           Text(
             perMonth!,
-            style: TextStyle(color: palette.muted, fontSize: 11, height: 1.3),
+            style: TextStyle(
+              color: palette.muted,
+              fontSize: 12.5,
+              height: 1.3,
+              fontWeight: FontWeight.w600,
+            ),
           ),
       ],
     );
@@ -2087,23 +1307,31 @@ class _PlanCard extends StatelessWidget {
       button: true,
       selected: selected,
       child: Material(
-        color: palette.surface,
+        color:
+            selected
+                ? AppColors.primary.withValues(
+                  alpha: palette.isDark ? 0.13 : 0.07,
+                )
+                : palette.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           side: BorderSide(
-            color: selected ? _paywallSage : palette.hairline,
-            width: selected ? 1.5 : 1,
+            color:
+                selected
+                    ? AppColors.primary.withValues(alpha: 0.62)
+                    : palette.hairline,
+            width: selected ? 1.8 : 1,
           ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.fromLTRB(16, 17, 16, 17),
             child: Row(
               children: [
                 _Radio(selected: selected, palette: palette),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child:
                       large
@@ -2111,14 +1339,14 @@ class _PlanCard extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               title,
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               amount,
                             ],
                           )
                           : Row(
                             children: [
                               Expanded(child: title),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               Flexible(child: amount),
                             ],
                           ),
@@ -2142,18 +1370,25 @@ class _PlanCard extends StatelessWidget {
           end: 13,
           top: 0,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: palette.accentInk,
-              borderRadius: BorderRadius.circular(5),
+              color: AppColors.primaryDark,
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryDark.withValues(alpha: 0.18),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Text(
               badge!,
               style: TextStyle(
-                color: palette.paper,
-                fontSize: 9,
+                color: Colors.white,
+                fontSize: 10,
                 height: 1.35,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -2176,8 +1411,11 @@ class _Radio extends StatelessWidget {
     decoration: BoxDecoration(
       shape: BoxShape.circle,
       border: Border.all(
-        color: selected ? _paywallSage : palette.muted,
-        width: 1.5,
+        color:
+            selected
+                ? AppColors.primary
+                : palette.muted.withValues(alpha: 0.72),
+        width: selected ? 2 : 1.5,
       ),
     ),
     child:
@@ -2188,7 +1426,7 @@ class _Radio extends StatelessWidget {
                 height: 11,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _paywallSage,
+                  color: AppColors.primary,
                 ),
               ),
             )
@@ -2355,7 +1593,7 @@ class _CtaDock extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
         child: Container(
           decoration: BoxDecoration(
-            color: palette.paper,
+            color: palette.paper.withValues(alpha: 0.97),
             border: Border(top: BorderSide(color: palette.hairline)),
           ),
           padding: EdgeInsets.fromLTRB(hPad, 14, hPad, bottomInset + 12),
@@ -2492,8 +1730,15 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
               width: double.infinity,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: _paywallSage,
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.26),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child:
                   widget.busy
@@ -2509,10 +1754,10 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
                         widget.label,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: Color(0xFF111810),
+                          color: Colors.white,
                           fontSize: 15,
                           letterSpacing: 0,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
             ),

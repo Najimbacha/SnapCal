@@ -4,11 +4,18 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/water_provider.dart';
+
+const _hydrationAccent = Color(0xFF3B9BE8);
+const _hydrationInk = Color(0xFF1C1917);
+const _hydrationMuted = Color(0xFF777370);
+const _hydrationLine = Color(0xFFEDE9E1);
+const _hydrationPaper = Color(0xFFFBFCFA);
 
 void showHydrationSheet(BuildContext context) {
   showModalBottomSheet(
@@ -20,12 +27,6 @@ void showHydrationSheet(BuildContext context) {
   );
 }
 
-/// The hydration sheet.
-///
-/// The sheet is the glass: water occupies the whole lower half and rises as
-/// the day fills. Everything animated here is driven by two controllers — one
-/// endless phase for the surface, one spring for the level — so adding a glass
-/// reads as liquid arriving rather than as a progress bar jumping.
 class _HydrationSheet extends ConsumerStatefulWidget {
   const _HydrationSheet();
 
@@ -33,76 +34,18 @@ class _HydrationSheet extends ConsumerStatefulWidget {
   ConsumerState<_HydrationSheet> createState() => _HydrationSheetState();
 }
 
-class _HydrationSheetState extends ConsumerState<_HydrationSheet>
-    with TickerProviderStateMixin {
-  /// Endless: drives the wave phase and the bubbles.
-  late final AnimationController _phase;
-
-  /// One shot per add: the level travels, overshoots slightly, settles.
-  late final AnimationController _level;
-
-  /// The splash the moment water lands.
-  late final AnimationController _splash;
-
-  late Animation<double> _levelAnim;
-
+class _HydrationSheetState extends ConsumerState<_HydrationSheet> {
   static const _presets = [100, 250, 500];
 
   int _selectedMl = 250;
-  bool _busy = false;
-  double _fromProgress = 0;
-  double _toProgress = 0;
-  int _fromMl = 0;
-  int _toMl = 0;
   int? _lastAddMl;
+  bool _busy = false;
   Timer? _undoTimer;
-  bool _celebrated = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _phase = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 6),
-    )..repeat();
-    _level = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _splash = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _levelAnim = AlwaysStoppedAnimation(0);
-
-    final state = ref.read(waterProvider).valueOrNull;
-    final total = state?.todayTotal ?? 0;
-    final goal = math.max(state?.goal ?? 2500, 1);
-    _fromMl = _toMl = total;
-    _fromProgress = _toProgress = (total / goal).clamp(0.0, 1.0);
-    _celebrated = _toProgress >= 1;
-    _levelAnim = AlwaysStoppedAnimation(_toProgress);
-  }
 
   @override
   void dispose() {
-    _phase.dispose();
-    _level.dispose();
-    _splash.dispose();
     _undoTimer?.cancel();
     super.dispose();
-  }
-
-  void _animateTo(int ml, int goal) {
-    _fromProgress = _levelAnim.value;
-    _fromMl = _toMl;
-    _toMl = ml;
-    _toProgress = (ml / math.max(goal, 1)).clamp(0.0, 1.0);
-    _levelAnim = Tween<double>(
-      begin: _fromProgress,
-      end: _toProgress,
-    ).animate(CurvedAnimation(parent: _level, curve: Curves.easeOutBack));
-    _level.forward(from: 0);
   }
 
   Future<void> _add() async {
@@ -110,19 +53,8 @@ class _HydrationSheetState extends ConsumerState<_HydrationSheet>
     HapticFeedback.mediumImpact();
     setState(() => _busy = true);
 
-    final before = ref.read(waterProvider).valueOrNull;
     await ref.read(waterProvider.notifier).addWater(_selectedMl);
     if (!mounted) return;
-
-    final after = ref.read(waterProvider).valueOrNull;
-    final goal = after?.goal ?? before?.goal ?? 2500;
-    _splash.forward(from: 0);
-    _animateTo(after?.todayTotal ?? 0, goal);
-
-    if (!_celebrated && (after?.todayTotal ?? 0) >= goal) {
-      _celebrated = true;
-      HapticFeedback.heavyImpact();
-    }
 
     _undoTimer?.cancel();
     setState(() {
@@ -135,7 +67,8 @@ class _HydrationSheetState extends ConsumerState<_HydrationSheet>
   }
 
   Future<void> _undo() async {
-    if (_busy || _lastAddMl == null) return;
+    final lastAdd = _lastAddMl;
+    if (_busy || lastAdd == null) return;
     HapticFeedback.lightImpact();
     _undoTimer?.cancel();
     setState(() {
@@ -143,203 +76,152 @@ class _HydrationSheetState extends ConsumerState<_HydrationSheet>
       _lastAddMl = null;
     });
 
-    await ref.read(waterProvider.notifier).removeWater(0);
+    await ref.read(waterProvider.notifier).removeWater(lastAdd);
     if (!mounted) return;
-    final after = ref.read(waterProvider).valueOrNull;
-    _celebrated = false;
-    _animateTo(after?.todayTotal ?? 0, after?.goal ?? 2500);
     setState(() => _busy = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final media = MediaQuery.of(context);
-    final height = math.min(media.size.height * 0.78, 620.0);
-
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final height = math.min(media.size.height * 0.72, 560.0);
     final state =
-        ref.watch(waterProvider).valueOrNull ??
-        const WaterState(todayTotal: 0);
-    final goal = math.max(state.goal, 1);
-
-    // Keep the painted level in step with changes made elsewhere (the Home
-    // card's quick add, a sync) without animating on every rebuild.
-    if (!_level.isAnimating && state.todayTotal != _toMl) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _animateTo(state.todayTotal, goal);
-      });
-    }
+        ref.watch(waterProvider).valueOrNull ?? const WaterState(todayTotal: 0);
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-      child: SizedBox(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: Container(
         height: height,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(
-              color: isDark ? const Color(0xFF101418) : const Color(0xFFF7FBFD),
-            ),
-            // ── The water ──
-            AnimatedBuilder(
-              animation: Listenable.merge([_phase, _level, _splash]),
-              builder:
-                  (context, _) => CustomPaint(
-                    painter: _WaterPainter(
-                      progress: _levelAnim.value.clamp(0.0, 1.0),
-                      phase: _phase.value,
-                      splash: _splash.value,
-                      isDark: isDark,
-                    ),
-                  ),
-            ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 12, 22, 18),
-                child: Column(
-                  children: [
-                    _Grabber(isDark: isDark),
-                    const SizedBox(height: 14),
-                    _Header(
-                      title: l10n.water_hydration,
-                      isDark: isDark,
-                      onClose: () => Navigator.of(context).maybePop(),
-                    ),
-                    const Spacer(flex: 2),
-                    AnimatedBuilder(
-                      animation: _level,
-                      builder: (context, _) {
-                        final ml =
-                            (_fromMl + (_toMl - _fromMl) * _level.value)
-                                .round();
-                        return _Readout(
-                          ml: _level.isAnimating ? ml : _toMl,
-                          goal: goal,
-                          unit: l10n.water_unit_ml,
-                          isDark: isDark,
-                        );
-                      },
-                    ),
-                    const Spacer(flex: 3),
-                    _PresetRow(
-                      presets: _presets,
-                      selected: _selectedMl,
-                      unit: l10n.water_unit_ml,
-                      isDark: isDark,
-                      onSelect: (ml) {
-                        HapticFeedback.selectionClick();
-                        setState(() => _selectedMl = ml);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _AddButton(
-                      label: l10n.water_add_amount(_selectedMl),
-                      busy: _busy,
-                      onTap: _add,
-                    ),
-                    SizedBox(
-                      height: 34,
-                      child: Center(
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 200),
-                          opacity: _lastAddMl == null ? 0 : 1,
-                          child: TextButton(
-                            onPressed: _lastAddMl == null ? null : _undo,
-                            child: Text(
-                              l10n.water_undo,
-                              style: AppTypography.labelSmall.copyWith(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                                color:
-                                    isDark
-                                        ? Colors.white70
-                                        : const Color(0xFF3B6E8F),
-                              ),
-                            ),
+        color: isDark ? Colors.black : _hydrationPaper,
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Center(child: _Grabber()),
+                const SizedBox(height: 14),
+                _Header(onClose: () => Navigator.of(context).maybePop()),
+                const SizedBox(height: 18),
+                _ProgressCard(state: state),
+                const SizedBox(height: 14),
+                _PresetRow(
+                  presets: _presets,
+                  selected: _selectedMl,
+                  unit: l10n.water_unit_ml,
+                  onSelect: (ml) {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedMl = ml);
+                  },
+                ),
+                const SizedBox(height: 14),
+                _AddButton(
+                  label: l10n.water_add_amount(_selectedMl),
+                  busy: _busy,
+                  onTap: _add,
+                ),
+                SizedBox(
+                  height: 40,
+                  child: Center(
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 180),
+                      opacity: _lastAddMl == null ? 0 : 1,
+                      child: TextButton(
+                        onPressed: _lastAddMl == null ? null : _undo,
+                        child: Text(
+                          l10n.water_undo,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: isDark ? Colors.white70 : _hydrationMuted,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ── Chrome ───────────────────────────────────────────────────────────────────
-
 class _Grabber extends StatelessWidget {
-  const _Grabber({required this.isDark});
-  final bool isDark;
+  const _Grabber();
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 38,
-    height: 4,
-    decoration: BoxDecoration(
-      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.18),
-      borderRadius: BorderRadius.circular(999),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 38,
+      height: 4,
+      decoration: BoxDecoration(
+        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(999),
+      ),
+    );
+  }
 }
 
 class _Header extends StatelessWidget {
-  const _Header({
-    required this.title,
-    required this.isDark,
-    required this.onClose,
-  });
+  const _Header({required this.onClose});
 
-  final String title;
-  final bool isDark;
   final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
-    final ink = isDark ? Colors.white : const Color(0xFF10222E);
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _hydrationInk;
+
     return Row(
       children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: _hydrationAccent.withValues(alpha: isDark ? 0.22 : 0.13),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            LucideIcons.droplets,
+            color: _hydrationAccent,
+            size: 19,
+          ),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
-            title,
+            l10n.water_hydration,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.titleLarge.copyWith(
               color: ink,
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
               letterSpacing: -0.4,
             ),
           ),
         ),
+        const SizedBox(width: 8),
         GestureDetector(
           onTap: onClose,
           behavior: HitTestBehavior.opaque,
-          // Padding, not a bigger circle: the drawn dot stays 30px, the
-          // target becomes 44. This is the only tap-to-dismiss on the sheet.
-          child: Container(
+          child: SizedBox(
             width: 44,
             height: 44,
-            alignment: Alignment.center,
-            child: Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: (isDark ? Colors.white : Colors.black).withValues(
-                  alpha: 0.06,
-                ),
-                shape: BoxShape.circle,
-              ),
+            child: Center(
               child: Icon(
                 LucideIcons.x,
-                size: 15,
-                color: ink.withValues(alpha: 0.7),
+                size: 20,
+                color: isDark ? Colors.white54 : const Color(0xFF8E8E93),
               ),
             ),
           ),
@@ -349,96 +231,122 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// The day, as one number over the water.
-class _Readout extends StatelessWidget {
-  const _Readout({
-    required this.ml,
-    required this.goal,
-    required this.unit,
-    required this.isDark,
-  });
+class _ProgressCard extends StatelessWidget {
+  const _ProgressCard({required this.state});
 
-  final int ml;
-  final int goal;
-  final String unit;
-  final bool isDark;
+  final WaterState state;
 
   @override
   Widget build(BuildContext context) {
-    final ink = isDark ? Colors.white : const Color(0xFF0E2230);
-    final pct = ((ml / math.max(goal, 1)) * 100).clamp(0, 999).round();
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _hydrationInk;
+    final muted = isDark ? Colors.white60 : _hydrationMuted;
+    final goal = math.max(state.goal, 1);
+    final progress = (state.todayTotal / goal).clamp(0.0, 1.0);
+    final pct = (progress * 100).round();
+    final numberFormat = NumberFormat.decimalPattern(l10n.localeName);
+    final number = numberFormat.format(state.todayTotal);
+    final goalText = numberFormat.format(goal);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              '$ml',
-              style: AppTypography.displayLarge.copyWith(
-                color: ink,
-                fontSize: 62,
-                height: 1,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -2.4,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                unit,
-                style: AppTypography.titleMedium.copyWith(
-                  color: ink.withValues(alpha: 0.45),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 15),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.045) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.07) : _hydrationLine,
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'of $goal $unit',
-              style: AppTypography.bodySmall.copyWith(
-                color: ink.withValues(alpha: 0.42),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E9BD6).withValues(
-                  alpha: isDark ? 0.24 : 0.13,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: RichText(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: number,
+                        style: AppTypography.displayLarge.copyWith(
+                          color: ink,
+                          fontSize: 44,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.4,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' ${l10n.water_unit_ml}',
+                        style: AppTypography.titleSmall.copyWith(
+                          color: muted,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(999),
               ),
-              child: Text(
-                '$pct%',
-                style: AppTypography.labelSmall.copyWith(
-                  color:
-                      isDark
-                          ? const Color(0xFF8ED0F5)
-                          : const Color(0xFF1B6F9E),
-                  fontSize: 12,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _hydrationAccent.withValues(
+                    alpha: isDark ? 0.24 : 0.12,
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$pct%',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: isDark ? const Color(0xFF9BD6FF) : _hydrationAccent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            l10n.home_metric_of_goal(goalText, l10n.water_unit_ml),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.labelSmall.copyWith(
+              color: muted,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
             ),
-          ],
-        ),
-      ],
+          ),
+          const SizedBox(height: 14),
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: progress),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.easeOutCubic,
+            builder:
+                (context, value, _) => ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    minHeight: 8,
+                    value: value,
+                    backgroundColor: _hydrationAccent.withValues(
+                      alpha: isDark ? 0.18 : 0.11,
+                    ),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      _hydrationAccent,
+                    ),
+                  ),
+                ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -448,14 +356,12 @@ class _PresetRow extends StatelessWidget {
     required this.presets,
     required this.selected,
     required this.unit,
-    required this.isDark,
     required this.onSelect,
   });
 
   final List<int> presets;
   final int selected;
   final String unit;
-  final bool isDark;
   final ValueChanged<int> onSelect;
 
   @override
@@ -469,7 +375,6 @@ class _PresetRow extends StatelessWidget {
               ml: presets[i],
               unit: unit,
               selected: presets[i] == selected,
-              isDark: isDark,
               onTap: () => onSelect(presets[i]),
             ),
           ),
@@ -484,44 +389,41 @@ class _PresetChip extends StatelessWidget {
     required this.ml,
     required this.unit,
     required this.selected,
-    required this.isDark,
     required this.onTap,
   });
 
   final int ml;
   final String unit;
   final bool selected;
-  final bool isDark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFF2E9BD6);
-    final ink = isDark ? Colors.white : const Color(0xFF0E2230);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _hydrationInk;
 
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
           color:
               selected
-                  ? accent.withValues(alpha: isDark ? 0.26 : 0.13)
-                  : (isDark ? Colors.white : Colors.white).withValues(
-                    alpha: isDark ? 0.05 : 0.72,
-                  ),
+                  ? _hydrationAccent.withValues(alpha: isDark ? 0.24 : 0.1)
+                  : isDark
+                  ? Colors.white.withValues(alpha: 0.045)
+                  : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color:
                 selected
-                    ? accent.withValues(alpha: 0.55)
-                    : (isDark ? Colors.white : Colors.black).withValues(
-                      alpha: 0.07,
-                    ),
-            width: selected ? 1.4 : 1,
+                    ? _hydrationAccent.withValues(alpha: 0.5)
+                    : isDark
+                    ? Colors.white.withValues(alpha: 0.07)
+                    : _hydrationLine,
           ),
         ),
         child: Column(
@@ -529,23 +431,29 @@ class _PresetChip extends StatelessWidget {
           children: [
             Text(
               '$ml',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AppTypography.titleMedium.copyWith(
-                color: selected ? accent : ink.withValues(alpha: 0.8),
-                fontSize: 19,
+                color: selected ? _hydrationAccent : ink,
+                fontSize: 18,
                 height: 1,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.4,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.2,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Text(
               unit,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AppTypography.labelSmall.copyWith(
-                color: (selected ? accent : ink).withValues(alpha: 0.55),
-                fontSize: 10.5,
+                color:
+                    selected
+                        ? _hydrationAccent.withValues(alpha: 0.75)
+                        : ink.withValues(alpha: isDark ? 0.55 : 0.45),
+                fontWeight: FontWeight.w700,
                 height: 1,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -581,216 +489,55 @@ class _AddButtonState extends State<_AddButton> {
       onTapCancel: () => setState(() => _down = false),
       onTap: widget.busy ? null : widget.onTap,
       child: AnimatedScale(
-        scale: _down ? 0.97 : 1,
+        scale: _down ? 0.98 : 1,
         duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
         child: Container(
           height: 54,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF3FAEE8), Color(0xFF1E7FC2)],
-            ),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF1E7FC2).withValues(alpha: 0.34),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            color: _hydrationAccent,
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.busy ? LucideIcons.loader : LucideIcons.plus,
-                size: 17,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 9),
-              Text(
-                widget.label,
-                style: AppTypography.titleSmall.copyWith(
-                  color: Colors.white,
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 160),
+            child:
+                widget.busy
+                    ? const SizedBox(
+                      key: ValueKey('busy'),
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                    : Row(
+                      key: const ValueKey('ready'),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          LucideIcons.plus,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 9),
+                        Text(
+                          widget.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleSmall.copyWith(
+                            color: Colors.white,
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ],
+                    ),
           ),
         ),
       ),
     );
   }
-}
-
-// ── The water itself ─────────────────────────────────────────────────────────
-
-/// Two sine waves, a surface highlight, and rising bubbles.
-///
-/// One wave alone reads as a graphic; two at different wavelengths and speeds,
-/// slightly out of phase, is what makes a surface look like liquid. The splash
-/// term briefly raises the amplitude where water just landed.
-class _WaterPainter extends CustomPainter {
-  _WaterPainter({
-    required this.progress,
-    required this.phase,
-    required this.splash,
-    required this.isDark,
-  });
-
-  final double progress;
-  final double phase;
-  final double splash;
-  final bool isDark;
-
-  /// Fixed field, so bubbles do not jump around between frames.
-  static final List<_Bubble> _bubbles = List.generate(
-    18,
-    (i) => _Bubble(
-      x: (i * 0.137 + 0.05) % 1,
-      radius: 1.4 + (i % 4) * 0.9,
-      speed: 0.22 + (i % 5) * 0.06,
-      offset: (i * 0.19) % 1,
-    ),
-  );
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // The water occupies the lower 62% of the sheet at full, so a finished day
-    // still leaves the controls on dry ground.
-    final band = size.height * 0.62;
-    final surfaceY = size.height - band * progress.clamp(0.0, 1.0);
-    if (progress <= 0.001) return;
-
-    final t = phase * 2 * math.pi;
-    // Settles back within a second of landing.
-    final kick =
-        splash <= 0 ? 0.0 : (1 - Curves.easeOutCubic.transform(splash)) * 7;
-
-    final deep =
-        isDark ? const Color(0xFF10456B) : const Color(0xFF9FD6F2);
-    final shallow =
-        isDark ? const Color(0xFF1D6F9E) : const Color(0xFFCDEBFA);
-
-    // Back wave: longer, slower, dimmer — depth comes from the pair.
-    _fillWave(
-      canvas,
-      size,
-      surfaceY: surfaceY + 6,
-      amplitude: 7 + kick * 0.6,
-      wavelength: size.width * 1.35,
-      travel: t * 0.6,
-      colors: [shallow.withValues(alpha: 0.55), deep.withValues(alpha: 0.42)],
-    );
-
-    // Front wave carries the real surface line.
-    final frontPath = _fillWave(
-      canvas,
-      size,
-      surfaceY: surfaceY,
-      amplitude: 10 + kick,
-      wavelength: size.width * 0.95,
-      travel: -t,
-      colors: [shallow.withValues(alpha: 0.9), deep.withValues(alpha: 0.86)],
-    );
-
-    canvas.drawPath(
-      frontPath,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..color = Colors.white.withValues(alpha: isDark ? 0.16 : 0.55),
-    );
-
-    _paintBubbles(canvas, size, surfaceY: surfaceY, band: band, t: phase);
-  }
-
-  Path _fillWave(
-    Canvas canvas,
-    Size size, {
-    required double surfaceY,
-    required double amplitude,
-    required double wavelength,
-    required double travel,
-    required List<Color> colors,
-  }) {
-    final path = Path()..moveTo(0, surfaceY);
-    for (var x = 0.0; x <= size.width; x += 4) {
-      final y =
-          surfaceY +
-          math.sin((x / wavelength) * 2 * math.pi + travel) * amplitude;
-      path.lineTo(x, y);
-    }
-    final fill = Path.from(path)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: colors,
-        ).createShader(
-          Rect.fromLTWH(0, surfaceY, size.width, size.height - surfaceY),
-        ),
-    );
-    return path;
-  }
-
-  void _paintBubbles(
-    Canvas canvas,
-    Size size, {
-    required double surfaceY,
-    required double band,
-    required double t,
-  }) {
-    final depth = size.height - surfaceY;
-    if (depth <= 12) return;
-
-    for (final bubble in _bubbles) {
-      final travel = (t * bubble.speed * 4 + bubble.offset) % 1;
-      final y = size.height - travel * depth;
-      if (y < surfaceY + 4) continue;
-      // Fade out as they approach the surface, and in as they leave the floor.
-      final nearSurface = ((y - surfaceY) / math.max(depth * 0.35, 1)).clamp(
-        0.0,
-        1.0,
-      );
-      final alpha = 0.30 * nearSurface;
-      if (alpha <= 0.01) continue;
-      canvas.drawCircle(
-        Offset(bubble.x * size.width, y),
-        bubble.radius,
-        Paint()..color = Colors.white.withValues(alpha: alpha),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _WaterPainter old) =>
-      old.progress != progress ||
-      old.phase != phase ||
-      old.splash != splash ||
-      old.isDark != isDark;
-}
-
-class _Bubble {
-  const _Bubble({
-    required this.x,
-    required this.radius,
-    required this.speed,
-    required this.offset,
-  });
-
-  final double x;
-  final double radius;
-  final double speed;
-  final double offset;
 }

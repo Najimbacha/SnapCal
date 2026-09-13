@@ -609,7 +609,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               isRefreshing: isRefreshing,
               streak: streak,
               onSettingsTap: () => context.push('/settings'),
-              onProTap: () => context.push('/paywall'),
             ),
           ),
           const SizedBox(height: 20),
@@ -784,23 +783,21 @@ const _minimalGreenText = AppColors.primaryDark;
 /// site cannot forget it.
 Color _greenInk(bool isDark) => isDark ? _minimalGreen : _minimalGreenText;
 
-class _MinimalHomeTopBar extends ConsumerWidget {
+class _MinimalHomeTopBar extends StatelessWidget {
   final bool isPro;
   final bool isRefreshing;
   final int streak;
   final VoidCallback onSettingsTap;
-  final VoidCallback onProTap;
 
   const _MinimalHomeTopBar({
     required this.isPro,
     required this.isRefreshing,
     required this.streak,
     required this.onSettingsTap,
-    required this.onProTap,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? Colors.white : _minimalInk;
 
@@ -887,19 +884,27 @@ class _MinimalHomeTopBar extends ConsumerWidget {
             ),
             const SizedBox(width: 14),
           ],
-          // Pro badge, or the live offer when a campaign is running.
-          if (ref.watch(proAccessProvider).isFree)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 120),
-              child: TextButton(
-                onPressed: onProTap,
-                child: Text(
-                  AppLocalizations.of(context)!.pro_offer_get_pro,
-                  textAlign: TextAlign.center,
+          if (isPro) ...[
+            Tooltip(
+              message: AppLocalizations.of(context)!.home_pro_badge,
+              child: Semantics(
+                label: AppLocalizations.of(context)!.home_pro_badge,
+                child: SizedBox(
+                  width: 36,
+                  height: 44,
+                  child: Icon(
+                    LucideIcons.gem,
+                    color:
+                        isDark
+                            ? const Color(0xFFFFD86B)
+                            : const Color(0xFFE29200),
+                    size: 18,
+                  ),
                 ),
               ),
             ),
-          const SizedBox(width: 4),
+            const SizedBox(width: 4),
+          ],
           // Settings button
           GestureDetector(
             onTap: onSettingsTap,

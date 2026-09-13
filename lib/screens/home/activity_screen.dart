@@ -18,7 +18,6 @@ import '../../widgets/activity_ring_gauge.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/async_state_widgets.dart';
 import '../../widgets/ui_blocks.dart';
-import 'widgets/activity_health_connect_sheet.dart';
 
 /// The activity screen, on the app's own paper.
 ///
@@ -45,8 +44,6 @@ class ActivityScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _ConnectionCard(),
-          const SizedBox(height: 16),
           if (!connected)
             const _NotConnectedCard()
           else ...[
@@ -56,94 +53,6 @@ class ActivityScreen extends ConsumerWidget {
             const SizedBox(height: 28),
             if (isPro) const _WeekSection(),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Health Connect, its state, and the two things you can do about it.
-class _ConnectionCard extends ConsumerWidget {
-  const _ConnectionCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final async = ref.watch(ap.activityProvider);
-    final connected = async.valueOrNull?.healthConnected ?? false;
-    final busy = async.isLoading;
-
-    return AppSectionCard(
-      glass: true,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      onTap: () => showActivityHealthConnectSheet(context),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: (connected ? AppColors.primary : AppColors.warning)
-                  .withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(
-              connected ? LucideIcons.footprints : LucideIcons.alertCircle,
-              size: 19,
-              color: connected ? AppColors.primary : AppColors.warning,
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Health Connect',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: context.textPrimaryColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  connected
-                      ? l10n.settings_status_connected
-                      : l10n.settings_status_not_connected,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: context.textMutedColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (busy)
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            IconButton(
-              tooltip: l10n.home_metric_activity_sync,
-              onPressed: () async {
-                await ref.read(ap.activityProvider.notifier).authorize();
-                ref.invalidate(ap.activityProvider);
-              },
-              icon: Icon(
-                LucideIcons.refreshCw,
-                size: 18,
-                color: context.textSecondaryColor,
-              ),
-            ),
-          Icon(
-            LucideIcons.chevronRight,
-            size: 18,
-            color: context.textMutedColor,
-          ),
         ],
       ),
     );
