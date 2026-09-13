@@ -288,7 +288,7 @@ User daily targets:
             response.data is Map
                 ? jsonEncode(response.data)
                 : response.data.toString();
-        debugPrint('❌ Scan failed: status=${response.statusCode}, body=$body');
+        debugPrint('❌ Scan failed: status=${response.statusCode}');
         throw GeminiException(
           'Scan failed (status: ${response.statusCode}): $body',
         );

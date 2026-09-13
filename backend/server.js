@@ -2258,7 +2258,9 @@ async function deleteUserAccount(uid, steps) {
 app.delete('/api/account', authenticateToken, verifyAppCheck, apiLimiter, requireFreshAuth, async (req, res) => {
   const uid = req.user.uid;
   await deleteUserAccount(uid, accountDeletionForTest || defaultAccountDeletion());
-  console.log('Account deleted:', uid);
+  // No uid in the log: the audit trail lives in auditLogs, and a raw user
+  // identifier in plaintext logs is PII we do not need.
+  console.log('Account deleted');
   return res.status(204).send();
 });
 
@@ -2770,7 +2772,7 @@ if (NODE_ENV !== 'production') {
         lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
       await invalidateEntitlement(req.user.uid);
-      console.log(`Debug: granted premium to ${req.user.uid}`);
+      console.log('Debug: granted premium');
       return res.json({ ok: true, uid: req.user.uid });
     },
   );
@@ -2786,7 +2788,7 @@ if (NODE_ENV !== 'production') {
         lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
       await invalidateEntitlement(req.user.uid);
-      console.log(`Debug: revoked premium from ${req.user.uid}`);
+      console.log('Debug: revoked premium');
       return res.json({ ok: true, uid: req.user.uid });
     },
   );

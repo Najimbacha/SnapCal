@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -372,8 +371,6 @@ class FcmService {
     debugPrint('  ┌─ RemoteMessage ─────────────────────');
     debugPrint('  │ messageId : ${message.messageId}');
     debugPrint('  │ title     : ${n?.title}');
-    debugPrint('  │ body      : ${n?.body}');
-    debugPrint('  │ data      : ${jsonEncode(message.data)}');
     debugPrint('  │ sentTime  : ${message.sentTime}');
     debugPrint('  └─────────────────────────────────────');
   }

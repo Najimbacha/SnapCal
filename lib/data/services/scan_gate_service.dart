@@ -109,7 +109,7 @@ class ScanGateService {
 
     await prefs.remove('scanCount_$monthKey');
     await prefs.remove(_bonusScansKey);
-    debugPrint('🔀 ScanGateService: migrated anonymous quota into $uid');
+    debugPrint('🔀 ScanGateService: migrated anonymous quota');
   }
 
   bool _ready() {

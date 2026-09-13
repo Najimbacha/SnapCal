@@ -148,7 +148,6 @@ class SubscriptionService {
         final result = await Purchases.logIn(
           user.uid,
         ).timeout(TimeoutPolicy.revenueCat);
-        debugPrint("RevenueCat App User ID: ${user.uid}");
         await _processCustomerInfo(result.customerInfo);
         return;
       }

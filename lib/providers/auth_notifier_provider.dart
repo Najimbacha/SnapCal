@@ -71,7 +71,7 @@ class AuthNotifier extends _$AuthNotifier {
     try {
       previousUidToken = await anonymousUser.getIdToken();
     } catch (e) {
-      debugPrint('Anonymous token fetch failed before link: $e');
+      debugPrint('Anonymous token fetch failed before link: ${e.runtimeType}');
     }
 
     await SessionDataGuard.instance.cleanup(signIn);
