@@ -51,6 +51,12 @@ const REVENUECAT_SECRET_API_KEY = process.env.REVENUECAT_SECRET_API_KEY || '';
 // the user active until expiration_at_ms passes, which getPremiumStatus()
 // re-checks on every read.
 const REVOKES_ACCESS_IMMEDIATELY = ['EXPIRATION', 'REFUND', 'SUBSCRIPTION_PAUSED'];
+const PRO_PRODUCT_IDS = new Set([
+  'snapcal_pro_annual',
+  'snapcal_pro_annual:annual-plan',
+  'snapcal_pro_monthly',
+  'snapcal_pro_monthly:monthly-plan',
+]);
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 if (NODE_ENV === 'production' && !REQUIRE_APP_CHECK) {
@@ -512,42 +518,50 @@ function currentDayKey() {
 // The broad request ceiling is additional protection, never an alternate quota.
 // Paid planner/insight requests retain their Pro access. Free planner previews
 // are local and do not call this endpoint. Throws 402 with a quota kind.
-async function claimAiTextQuota(uid) {
+async function claimAiTextQuota(uid, options = {}) {
+  const verifiedEntitlement = options.verifiedEntitlement || await getEntitlementForQuota(uid, {
+    forceRestCheck: options.forceRestCheck === true,
+  });
   // Every endpoint accepting an arbitrary client prompt is coaching-capable.
   // Never trust purpose/format/model options to grant a larger free allowance.
   const coach = true;
-  return db.runTransaction(async (tx) => {
-    const subRef = subscriptionDoc(uid);
-    const useRef = usageDoc(uid);
-    const [subSnap, useSnap] = await Promise.all([tx.get(subRef), tx.get(useRef)]);
+  try {
+    return await db.runTransaction(async (tx) => {
+      const subRef = subscriptionDoc(uid);
+      const useRef = usageDoc(uid);
+      const [subSnap, useSnap] = await Promise.all([tx.get(subRef), tx.get(useRef)]);
 
-    const subscription = subSnap.exists ? subSnap.data() : {};
-    const expiresDate = subscription?.expiresAt?.toDate ? subscription.expiresAt.toDate() : null;
-    const isPremium = subscription?.isActive === true && (!expiresDate || expiresDate > new Date());
-    if (isPremium) return { isPremium: true };
+      const subscription = subSnap.exists ? subSnap.data() : {};
+      const isPremium = verifiedEntitlement?.isActive === true || isSubscriptionDataActive(subscription);
+      if (isPremium) return { isPremium: true };
 
-    const usage = useSnap.exists ? useSnap.data() : {};
-    const dayKey = currentDayKey();
-    const sameDay = usage.aiDayKey === dayKey;
-    const requestsUsed = sameDay ? Number(usage.aiRequestsUsed || 0) : 0;
-    const coachUsed = sameDay ? Number(usage.aiMessagesUsed || 0) : 0;
+      const usage = useSnap.exists ? useSnap.data() : {};
+      const dayKey = currentDayKey();
+      const sameDay = usage.aiDayKey === dayKey;
+      const requestsUsed = sameDay ? Number(usage.aiRequestsUsed || 0) : 0;
+      const coachUsed = sameDay ? Number(usage.aiMessagesUsed || 0) : 0;
 
-    if (requestsUsed >= FREE_DAILY_AI_REQUESTS) {
-      throw Object.assign(new Error('ai-quota-exceeded'), { code: 402, kind: 'ai_daily' });
-    }
-    if (coach && coachUsed >= FREE_DAILY_AI_MESSAGES) {
-      throw Object.assign(new Error('ai-coach-quota-exceeded'), { code: 402, kind: 'ai_coach' });
-    }
+      if (requestsUsed >= FREE_DAILY_AI_REQUESTS) {
+        throw Object.assign(new Error('ai-quota-exceeded'), { code: 402, kind: 'ai_daily' });
+      }
+      if (coach && coachUsed >= FREE_DAILY_AI_MESSAGES) {
+        throw Object.assign(new Error('ai-coach-quota-exceeded'), { code: 402, kind: 'ai_coach' });
+      }
 
-    tx.set(useRef, {
-      aiDayKey: dayKey,
-      aiRequestsUsed: requestsUsed + 1,
-      aiMessagesUsed: coachUsed + (coach ? 1 : 0),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
+      tx.set(useRef, {
+        aiDayKey: dayKey,
+        aiRequestsUsed: requestsUsed + 1,
+        aiMessagesUsed: coachUsed + (coach ? 1 : 0),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
 
-    return { isPremium: false, dayKey, coach };
-  });
+      return { isPremium: false, dayKey, coach };
+    });
+  } catch (error) {
+    const recovered = await retryQuotaAfterForcedEntitlement(uid, error, options, claimAiTextQuota);
+    if (recovered) return recovered;
+    throw error;
+  }
 }
 
 // Best-effort refund when the AI call fails after a successful claim, so a
@@ -576,6 +590,66 @@ async function refundAiTextQuota(uid, claim) {
 // Bounds the fallback below to roughly one call per user per interval.
 const REVENUECAT_RECHECK_MS = Number(process.env.REVENUECAT_RECHECK_MS || 10 * 60 * 1000);
 
+function isProRevenueCatProductId(productId) {
+  const value = String(productId || '');
+  const base = value.split(':')[0];
+  return PRO_PRODUCT_IDS.has(value) ||
+    PRO_PRODUCT_IDS.has(base) ||
+    base.startsWith('snapcal_pro_');
+}
+
+function revenueCatExpiryMs(value) {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function bestRevenueCatCandidate(current, candidate) {
+  if (!current) return candidate;
+  if (candidate.isActive && !current.isActive) return candidate;
+  if (candidate.isActive === current.isActive && candidate.expiresMs === 0) return candidate;
+  if (candidate.isActive === current.isActive && current.expiresMs !== 0 && candidate.expiresMs > current.expiresMs) {
+    return candidate;
+  }
+  return current;
+}
+
+function parseRevenueCatSubscriber(subscriber, now = Date.now()) {
+  const empty = { isActive: false, entitlementId: null, productId: null, expiresMs: 0 };
+  if (!subscriber || typeof subscriber !== 'object') return empty;
+
+  let best = null;
+  const entitlements = subscriber.entitlements || {};
+  for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
+    const expiresMs = revenueCatExpiryMs(entitlement?.expires_date);
+    const isActive = expiresMs === 0 || expiresMs > now;
+    best = bestRevenueCatCandidate(best, {
+      entitlementId,
+      productId: entitlement?.product_identifier || null,
+      expiresMs,
+      isActive,
+    });
+  }
+
+  // Match the mobile SDK's defensive fallback: if the entitlement mapping is
+  // missing or stale but RevenueCat still shows one of SnapCal's Pro products
+  // as active, the backend must not enforce free-user quota against a payer.
+  const subscriptions = subscriber.subscriptions || {};
+  for (const [productId, subscription] of Object.entries(subscriptions)) {
+    if (!isProRevenueCatProductId(productId)) continue;
+    const expiresMs = revenueCatExpiryMs(subscription?.expires_date);
+    const isActive = expiresMs === 0 || expiresMs > now;
+    best = bestRevenueCatCandidate(best, {
+      entitlementId: 'pro',
+      productId,
+      expiresMs,
+      isActive,
+    });
+  }
+
+  return best || empty;
+}
+
 // Reads the entitlement straight from RevenueCat.
 //
 // `subscription/current` is written by the webhook, which can be late, retried,
@@ -599,28 +673,7 @@ async function fetchRevenueCatEntitlement(uid) {
       return { isActive: false, entitlementId: null, productId: null, expiresMs: 0 };
     }
 
-    const entitlements = response.data?.subscriber?.entitlements || {};
-    const now = Date.now();
-    let best = null;
-    for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
-      const expiresMs = entitlement?.expires_date
-        ? Date.parse(entitlement.expires_date)
-        : 0;
-      const isActive = expiresMs === 0 || (Number.isFinite(expiresMs) && expiresMs > now);
-      const candidate = {
-        entitlementId,
-        productId: entitlement?.product_identifier || null,
-        expiresMs: Number.isFinite(expiresMs) ? expiresMs : 0,
-        isActive,
-      };
-      // Prefer an active entitlement, and among those the one lasting longest.
-      if (!best) best = candidate;
-      else if (candidate.isActive && !best.isActive) best = candidate;
-      else if (candidate.isActive === best.isActive && candidate.expiresMs === 0) best = candidate;
-      else if (candidate.isActive === best.isActive && best.expiresMs !== 0 && candidate.expiresMs > best.expiresMs) best = candidate;
-    }
-
-    return best || { isActive: false, entitlementId: null, productId: null, expiresMs: 0 };
+    return parseRevenueCatSubscriber(response.data?.subscriber);
   } catch (error) {
     console.error('RevenueCat REST verification failed:', error.message);
     return null;
@@ -638,6 +691,11 @@ function entitlementCacheKey(uid) {
   return `ent:v1:${uid}`;
 }
 
+function isSubscriptionDataActive(subscription, now = new Date()) {
+  const expiresDate = subscription?.expiresAt?.toDate ? subscription.expiresAt.toDate() : null;
+  return subscription?.isActive === true && (!expiresDate || expiresDate > now);
+}
+
 /// Drops a user's cached entitlement. Call this from anywhere that changes
 /// what the answer should be — a stale Pro flag is a support ticket, a stale
 /// free flag is a paying customer who cannot use what they bought.
@@ -646,20 +704,20 @@ async function invalidateEntitlement(uid) {
   await redisCache.del(entitlementCacheKey(uid));
 }
 
-async function loadEntitlement(uid) {
+async function loadEntitlement(uid, options = {}) {
   const snap = await subscriptionDoc(uid).get();
   metrics.firestoreOps.inc({ operation: 'get', collection: 'subscription' });
   let data = snap.exists ? snap.data() : {};
   let expiresAt = data?.expiresAt;
   let expiresDate = expiresAt?.toDate ? expiresAt.toDate() : null;
-  let active = data?.isActive === true && (!expiresDate || expiresDate > new Date());
+  let active = isSubscriptionDataActive(data);
 
   // Webhook fallback. Only runs when the mirror says "not active", and is
   // throttled by lastRestCheckAt so a genuinely free user costs one call per
   // REVENUECAT_RECHECK_MS rather than one per request.
   if (!active && REVENUECAT_SECRET_API_KEY) {
     const lastCheck = data?.lastRestCheckAt?.toMillis ? data.lastRestCheckAt.toMillis() : 0;
-    if (Date.now() - lastCheck > REVENUECAT_RECHECK_MS) {
+    if (options.forceRestCheck === true || Date.now() - lastCheck > REVENUECAT_RECHECK_MS) {
       const verified = await fetchRevenueCatEntitlement(uid);
       if (verified) {
         const payload = {
@@ -711,6 +769,37 @@ async function loadEntitlement(uid) {
     source: data?.source || null,
     lastVerifiedAt: data?.lastVerifiedAt || null,
   };
+}
+
+async function getEntitlementForQuota(uid, options = {}) {
+  if (!options.forceRestCheck) {
+    const cached = await redisCache.getJson(entitlementCacheKey(uid));
+    if (cached) {
+      metrics.entitlementCache.inc({ result: 'hit' });
+      return cached;
+    }
+  }
+
+  // Without the REST key, quota paths cannot safely repair a stale webhook
+  // mirror ahead of time. They still read the mirror inside the transaction.
+  if (!REVENUECAT_SECRET_API_KEY && !options.forceRestCheck) return null;
+
+  metrics.entitlementCache.inc({ result: 'miss' });
+  const fresh = await loadEntitlement(uid, { forceRestCheck: options.forceRestCheck === true });
+  const entitlement = JSON.parse(JSON.stringify(fresh));
+  await redisCache.setJson(entitlementCacheKey(uid), entitlement, ENTITLEMENT_CACHE_TTL);
+  return entitlement;
+}
+
+async function retryQuotaAfterForcedEntitlement(uid, error, options, retry) {
+  if (error?.code !== 402 || options.forceRestCheck || !REVENUECAT_SECRET_API_KEY) return null;
+  const forced = await getEntitlementForQuota(uid, { forceRestCheck: true });
+  if (forced?.isActive !== true) return null;
+  return retry(uid, {
+    ...options,
+    forceRestCheck: true,
+    verifiedEntitlement: forced,
+  });
 }
 
 /// The entitlement half is cached; the quota half never is.
@@ -769,84 +858,107 @@ async function getPremiumStatus(uid) {
   };
 }
 
-async function claimScanQuota(uid, scanId) {
-  return db.runTransaction(async (tx) => {
-    const subRef = subscriptionDoc(uid);
-    const useRef = usageDoc(uid);
-    const scanRef = scanDoc(uid, scanId);
-    const [subSnap, useSnap, scanSnap] = await Promise.all([
-      tx.get(subRef),
-      tx.get(useRef),
-      tx.get(scanRef),
-    ]);
-
-    if (!scanSnap.exists) {
-      throw Object.assign(new Error('scan-not-found'), { code: 404 });
-    }
-
-    const scan = scanSnap.data();
-    if (scan.status !== 'uploaded' && scan.status !== 'failed') {
-      throw Object.assign(new Error('scan-not-processable'), { code: 409 });
-    }
-
-    const subscription = subSnap.exists ? subSnap.data() : {};
-    const expiresDate = subscription?.expiresAt?.toDate ? subscription.expiresAt.toDate() : null;
-    const isPremium = subscription?.isActive === true && (!expiresDate || expiresDate > new Date());
-    const usage = useSnap.exists ? useSnap.data() : {};
-    const monthKey = currentMonthKey();
-    const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
-
-    if (!isPremium && scansUsed >= freeAllowanceFor(usage, monthKey)) {
-      throw Object.assign(new Error('quota-exceeded'), { code: 402 });
-    }
-
-    tx.set(useRef, {
-      monthKey,
-      scansUsed: scansUsed + 1,
-      premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    tx.update(scanRef, {
-      status: 'processing',
-      processingError: admin.firestore.FieldValue.delete(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    return scan;
+async function claimScanQuota(uid, scanId, options = {}) {
+  const verifiedEntitlement = options.verifiedEntitlement || await getEntitlementForQuota(uid, {
+    forceRestCheck: options.forceRestCheck === true,
   });
+
+  try {
+    return await db.runTransaction(async (tx) => {
+      const subRef = subscriptionDoc(uid);
+      const useRef = usageDoc(uid);
+      const scanRef = scanDoc(uid, scanId);
+      const [subSnap, useSnap, scanSnap] = await Promise.all([
+        tx.get(subRef),
+        tx.get(useRef),
+        tx.get(scanRef),
+      ]);
+
+      if (!scanSnap.exists) {
+        throw Object.assign(new Error('scan-not-found'), { code: 404 });
+      }
+
+      const scan = scanSnap.data();
+      if (scan.status !== 'uploaded' && scan.status !== 'failed') {
+        throw Object.assign(new Error('scan-not-processable'), { code: 409 });
+      }
+
+      const subscription = subSnap.exists ? subSnap.data() : {};
+      const isPremium = verifiedEntitlement?.isActive === true || isSubscriptionDataActive(subscription);
+      const usage = useSnap.exists ? useSnap.data() : {};
+      const monthKey = currentMonthKey();
+      const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
+
+      if (!isPremium && scansUsed >= freeAllowanceFor(usage, monthKey)) {
+        throw Object.assign(new Error('quota-exceeded'), { code: 402 });
+      }
+
+      tx.set(useRef, {
+        monthKey,
+        scansUsed: scansUsed + 1,
+        premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      tx.update(scanRef, {
+        status: 'processing',
+        processingError: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return scan;
+    });
+  } catch (error) {
+    const recovered = await retryQuotaAfterForcedEntitlement(
+      uid,
+      error,
+      options,
+      (retryUid, retryOptions) => claimScanQuota(retryUid, scanId, retryOptions),
+    );
+    if (recovered) return recovered;
+    throw error;
+  }
 }
 
 // Transactional quota claim for the stateless /v1/scan endpoint (BUG-011).
 // The increment is committed BEFORE the AI call so parallel requests cannot
 // all read the same scansUsed and slip past the check during the 20-60s
 // processing window. Returns the premium flag at claim time.
-async function claimScanQuotaForScan(uid) {
-  return db.runTransaction(async (tx) => {
-    const subRef = subscriptionDoc(uid);
-    const useRef = usageDoc(uid);
-    const [subSnap, useSnap] = await Promise.all([tx.get(subRef), tx.get(useRef)]);
-
-    const subscription = subSnap.exists ? subSnap.data() : {};
-    const expiresDate = subscription?.expiresAt?.toDate ? subscription.expiresAt.toDate() : null;
-    const isPremium = subscription?.isActive === true && (!expiresDate || expiresDate > new Date());
-    const usage = useSnap.exists ? useSnap.data() : {};
-    const monthKey = currentMonthKey();
-    const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
-
-    if (!isPremium && scansUsed >= freeAllowanceFor(usage, monthKey)) {
-      throw Object.assign(new Error('quota-exceeded'), { code: 402 });
-    }
-
-    tx.set(useRef, {
-      monthKey,
-      scansUsed: scansUsed + 1,
-      premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    return { isPremium, monthKey };
+async function claimScanQuotaForScan(uid, options = {}) {
+  const verifiedEntitlement = options.verifiedEntitlement || await getEntitlementForQuota(uid, {
+    forceRestCheck: options.forceRestCheck === true,
   });
+
+  try {
+    return await db.runTransaction(async (tx) => {
+      const subRef = subscriptionDoc(uid);
+      const useRef = usageDoc(uid);
+      const [subSnap, useSnap] = await Promise.all([tx.get(subRef), tx.get(useRef)]);
+
+      const subscription = subSnap.exists ? subSnap.data() : {};
+      const isPremium = verifiedEntitlement?.isActive === true || isSubscriptionDataActive(subscription);
+      const usage = useSnap.exists ? useSnap.data() : {};
+      const monthKey = currentMonthKey();
+      const scansUsed = usage.monthKey === monthKey ? Number(usage.scansUsed || 0) : 0;
+
+      if (!isPremium && scansUsed >= freeAllowanceFor(usage, monthKey)) {
+        throw Object.assign(new Error('quota-exceeded'), { code: 402 });
+      }
+
+      tx.set(useRef, {
+        monthKey,
+        scansUsed: scansUsed + 1,
+        premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      return { isPremium, monthKey };
+    });
+  } catch (error) {
+    const recovered = await retryQuotaAfterForcedEntitlement(uid, error, options, claimScanQuotaForScan);
+    if (recovered) return recovered;
+    throw error;
+  }
 }
 
 // Best-effort refund when the AI call fails after a successful claim, so a
@@ -2898,4 +3010,6 @@ module.exports = {
   },
   claimAiTextQuota,
   refundAiTextQuota,
+  isProRevenueCatProductId,
+  parseRevenueCatSubscriber,
 };
