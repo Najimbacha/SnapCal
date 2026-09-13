@@ -4176,6 +4176,234 @@ abstract class AppLocalizations {
   /// **'PRO'**
   String get home_pro_badge;
 
+  /// No description provided for @home_upgrade_chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade'**
+  String get home_upgrade_chip;
+
+  /// No description provided for @state_offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get state_offline;
+
+  /// No description provided for @state_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get state_retry;
+
+  /// No description provided for @state_empty_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet'**
+  String get state_empty_title;
+
+  /// No description provided for @state_empty_message.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no data to show.'**
+  String get state_empty_message;
+
+  /// No description provided for @state_offline_message.
+  ///
+  /// In en, this message translates to:
+  /// **'You are offline. Cached data is still available.'**
+  String get state_offline_message;
+
+  /// No description provided for @state_error_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get state_error_title;
+
+  /// No description provided for @state_error_message.
+  ///
+  /// In en, this message translates to:
+  /// **'Please try again.'**
+  String get state_error_message;
+
+  /// No description provided for @coach_prompt_plan_meal.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my next meal'**
+  String get coach_prompt_plan_meal;
+
+  /// No description provided for @coach_prompt_macros.
+  ///
+  /// In en, this message translates to:
+  /// **'How are my macros?'**
+  String get coach_prompt_macros;
+
+  /// No description provided for @coach_prompt_tips.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick nutrition tips'**
+  String get coach_prompt_tips;
+
+  /// No description provided for @coach_prompt_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Help me hit protein'**
+  String get coach_prompt_protein;
+
+  /// No description provided for @coach_prompt_weekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly check-in'**
+  String get coach_prompt_weekly;
+
+  /// No description provided for @metric_cal.
+  ///
+  /// In en, this message translates to:
+  /// **'Cal'**
+  String get metric_cal;
+
+  /// No description provided for @metric_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein'**
+  String get metric_protein;
+
+  /// No description provided for @metric_carbs.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbs'**
+  String get metric_carbs;
+
+  /// No description provided for @metric_fat.
+  ///
+  /// In en, this message translates to:
+  /// **'Fat'**
+  String get metric_fat;
+
+  /// No description provided for @recipe_ingredients.
+  ///
+  /// In en, this message translates to:
+  /// **'Ingredients'**
+  String get recipe_ingredients;
+
+  /// No description provided for @recipe_steps.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get recipe_steps;
+
+  /// No description provided for @measurement_metric.
+  ///
+  /// In en, this message translates to:
+  /// **'Metric'**
+  String get measurement_metric;
+
+  /// No description provided for @measurement_imperial.
+  ///
+  /// In en, this message translates to:
+  /// **'Imperial'**
+  String get measurement_imperial;
+
+  /// No description provided for @coach_empty_title.
+  ///
+  /// In en, this message translates to:
+  /// **'What can I help with?'**
+  String get coach_empty_title;
+
+  /// No description provided for @coach_empty_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about a meal, your macros, or what to eat next.'**
+  String get coach_empty_subtitle;
+
+  /// No description provided for @coach_suggested.
+  ///
+  /// In en, this message translates to:
+  /// **'SUGGESTED'**
+  String get coach_suggested;
+
+  /// No description provided for @coach_suggest_eat.
+  ///
+  /// In en, this message translates to:
+  /// **'What should I eat?'**
+  String get coach_suggest_eat;
+
+  /// No description provided for @coach_suggest_track.
+  ///
+  /// In en, this message translates to:
+  /// **'Am I on track today?'**
+  String get coach_suggest_track;
+
+  /// No description provided for @coach_suggest_week.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my week'**
+  String get coach_suggest_week;
+
+  /// No description provided for @coach_suggest_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit my protein'**
+  String get coach_suggest_protein;
+
+  /// No description provided for @coach_error_server.
+  ///
+  /// In en, this message translates to:
+  /// **'Fajar\'s server is having trouble right now. Give it a moment and retry.'**
+  String get coach_error_server;
+
+  /// No description provided for @coach_error_connection.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get coach_error_connection;
+
+  /// No description provided for @home_insight_scan_first.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan your first meal'**
+  String get home_insight_scan_first;
+
+  /// No description provided for @home_insight_go_lighter.
+  ///
+  /// In en, this message translates to:
+  /// **'Go lighter next meal'**
+  String get home_insight_go_lighter;
+
+  /// No description provided for @home_insight_protein_behind.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein is behind'**
+  String get home_insight_protein_behind;
+
+  /// No description provided for @home_insight_next_meal_fits.
+  ///
+  /// In en, this message translates to:
+  /// **'Next meal fits today'**
+  String get home_insight_next_meal_fits;
+
+  /// No description provided for @home_cmp_baseline.
+  ///
+  /// In en, this message translates to:
+  /// **'Build your baseline'**
+  String get home_cmp_baseline;
+
+  /// No description provided for @home_cmp_same.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as yesterday'**
+  String get home_cmp_same;
+
+  /// No description provided for @home_cmp_below.
+  ///
+  /// In en, this message translates to:
+  /// **'{kcal} kcal below yesterday'**
+  String home_cmp_below(int kcal);
+
+  /// No description provided for @home_cmp_above.
+  ///
+  /// In en, this message translates to:
+  /// **'{kcal} kcal above yesterday'**
+  String home_cmp_above(int kcal);
+
   /// No description provided for @settings_upgrade_to_pro.
   ///
   /// In en, this message translates to:

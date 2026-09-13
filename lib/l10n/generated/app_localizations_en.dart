@@ -2229,6 +2229,127 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_pro_badge => 'PRO';
 
   @override
+  String get home_upgrade_chip => 'Upgrade';
+
+  @override
+  String get state_offline => 'Offline';
+
+  @override
+  String get state_retry => 'Retry';
+
+  @override
+  String get state_empty_title => 'Nothing here yet';
+
+  @override
+  String get state_empty_message => 'There is no data to show.';
+
+  @override
+  String get state_offline_message =>
+      'You are offline. Cached data is still available.';
+
+  @override
+  String get state_error_title => 'Something went wrong';
+
+  @override
+  String get state_error_message => 'Please try again.';
+
+  @override
+  String get coach_prompt_plan_meal => 'Plan my next meal';
+
+  @override
+  String get coach_prompt_macros => 'How are my macros?';
+
+  @override
+  String get coach_prompt_tips => 'Quick nutrition tips';
+
+  @override
+  String get coach_prompt_protein => 'Help me hit protein';
+
+  @override
+  String get coach_prompt_weekly => 'Weekly check-in';
+
+  @override
+  String get metric_cal => 'Cal';
+
+  @override
+  String get metric_protein => 'Protein';
+
+  @override
+  String get metric_carbs => 'Carbs';
+
+  @override
+  String get metric_fat => 'Fat';
+
+  @override
+  String get recipe_ingredients => 'Ingredients';
+
+  @override
+  String get recipe_steps => 'Steps';
+
+  @override
+  String get measurement_metric => 'Metric';
+
+  @override
+  String get measurement_imperial => 'Imperial';
+
+  @override
+  String get coach_empty_title => 'What can I help with?';
+
+  @override
+  String get coach_empty_subtitle =>
+      'Ask about a meal, your macros, or what to eat next.';
+
+  @override
+  String get coach_suggested => 'SUGGESTED';
+
+  @override
+  String get coach_suggest_eat => 'What should I eat?';
+
+  @override
+  String get coach_suggest_track => 'Am I on track today?';
+
+  @override
+  String get coach_suggest_week => 'Plan my week';
+
+  @override
+  String get coach_suggest_protein => 'Hit my protein';
+
+  @override
+  String get coach_error_server =>
+      'Fajar\'s server is having trouble right now. Give it a moment and retry.';
+
+  @override
+  String get coach_error_connection => 'Check your connection and try again.';
+
+  @override
+  String get home_insight_scan_first => 'Scan your first meal';
+
+  @override
+  String get home_insight_go_lighter => 'Go lighter next meal';
+
+  @override
+  String get home_insight_protein_behind => 'Protein is behind';
+
+  @override
+  String get home_insight_next_meal_fits => 'Next meal fits today';
+
+  @override
+  String get home_cmp_baseline => 'Build your baseline';
+
+  @override
+  String get home_cmp_same => 'Same as yesterday';
+
+  @override
+  String home_cmp_below(int kcal) {
+    return '$kcal kcal below yesterday';
+  }
+
+  @override
+  String home_cmp_above(int kcal) {
+    return '$kcal kcal above yesterday';
+  }
+
+  @override
   String get settings_upgrade_to_pro => 'UPGRADE TO PRO';
 
   @override

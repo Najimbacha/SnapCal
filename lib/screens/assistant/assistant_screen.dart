@@ -228,9 +228,6 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           'AI coach request failed'
           '${statusCode != null ? ' (HTTP $statusCode)' : ''}: $error',
         );
-        if (error is DioException && error.response?.data != null) {
-          debugPrint('AI coach server detail: ${error.response!.data}');
-        }
         _messages.add({
           'type': 'assistant',
           'content': _errorMsg,
@@ -473,7 +470,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                 // help you with?" -- under a header already
                                 // naming him, saying the same thing four ways.
                                 Text(
-                                  'What can I help with?',
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.coach_empty_title,
                                   style: TextStyle(
                                     fontSize: 19,
                                     height: 1.25,
@@ -484,8 +483,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                 ),
                                 const SizedBox(height: 7),
                                 Text(
-                                  'Ask about a meal, your macros, or what to '
-                                  'eat next.',
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.coach_empty_subtitle,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 12.5,
@@ -750,15 +750,14 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   }
 
   Widget _buildErrorBubble(bool d, int? statusCode) {
+    final l10n = AppLocalizations.of(context)!;
     final tint = AppColors.error;
     // A 5xx is the server failing, not the phone: "check your connection"
     // would send the user staring at their Wi-Fi for nothing.
     final isServerIssue =
         statusCode != null && statusCode >= 500 && statusCode < 600;
     final detail =
-        isServerIssue
-            ? "Fajar's server is having trouble right now. Give it a moment and retry."
-            : 'Check your connection and try again.';
+        isServerIssue ? l10n.coach_error_server : l10n.coach_error_connection;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
@@ -832,15 +831,28 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   /// app's own line icons instead of emoji -- emoji render differently on
   /// every Android skin, so their look was never ours to control.
   Widget _buildActionGrid(bool d) {
+    final l10n = AppLocalizations.of(context)!;
     final items = [
-      (LucideIcons.utensils, 'What should I eat?', 'What should I eat today?'),
+      (
+        LucideIcons.utensils,
+        l10n.coach_suggest_eat,
+        'What should I eat today?',
+      ),
       (
         LucideIcons.target,
-        'Am I on track today?',
+        l10n.coach_suggest_track,
         'How am I doing against my goals today?',
       ),
-      (LucideIcons.calendarDays, 'Plan my week', 'Create a meal plan for me'),
-      (LucideIcons.trendingUp, 'Hit my protein', 'Suggest a high-protein meal'),
+      (
+        LucideIcons.calendarDays,
+        l10n.coach_suggest_week,
+        'Create a meal plan for me',
+      ),
+      (
+        LucideIcons.trendingUp,
+        l10n.coach_suggest_protein,
+        'Suggest a high-protein meal',
+      ),
     ];
 
     return Column(
@@ -849,7 +861,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: Text(
-            'SUGGESTED',
+            AppLocalizations.of(context)!.coach_suggested,
             style: TextStyle(
               fontSize: 11,
               height: 1.2,

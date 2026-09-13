@@ -4,6 +4,7 @@ import 'package:snapcal/widgets/app_icon.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Recipe card used inside AI chat messages — minimal, premium feel.
 class ChatRecipeCard extends StatelessWidget {
@@ -20,6 +21,7 @@ class ChatRecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final parsed = ParsedRecipe.fromMarkdown(content);
     final accent = AppColors.homeCoachAccent;
 
@@ -108,7 +110,7 @@ class ChatRecipeCard extends StatelessWidget {
                           if (parsed.ingredients.isNotEmpty) ...[
                             _Section(
                               icon: AppSymbols.utensils,
-                              label: 'Ingredients',
+                              label: l10n.recipe_ingredients,
                               child: _IngredientsWrap(
                                 items: parsed.ingredients,
                               ),
@@ -119,7 +121,7 @@ class ChatRecipeCard extends StatelessWidget {
                           if (parsed.steps.isNotEmpty) ...[
                             _Section(
                               icon: AppSymbols.listChecks,
-                              label: 'Steps',
+                              label: l10n.recipe_steps,
                               child: _StepsList(steps: parsed.steps),
                             ),
                           ],

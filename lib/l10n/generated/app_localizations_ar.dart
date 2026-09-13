@@ -2231,6 +2231,127 @@ class AppLocalizationsAr extends AppLocalizations {
   String get home_pro_badge => 'برو';
 
   @override
+  String get home_upgrade_chip => 'ترقية';
+
+  @override
+  String get state_offline => 'بدون اتصال';
+
+  @override
+  String get state_retry => 'إعادة المحاولة';
+
+  @override
+  String get state_empty_title => 'لا شيء هنا بعد';
+
+  @override
+  String get state_empty_message => 'لا توجد بيانات لعرضها.';
+
+  @override
+  String get state_offline_message =>
+      'أنت غير متصل. البيانات المحفوظة لا تزال متاحة.';
+
+  @override
+  String get state_error_title => 'حدث خطأ ما';
+
+  @override
+  String get state_error_message => 'يرجى المحاولة مرة أخرى.';
+
+  @override
+  String get coach_prompt_plan_meal => 'خطط لوجبتي القادمة';
+
+  @override
+  String get coach_prompt_macros => 'كيف حال الماكروز لدي؟';
+
+  @override
+  String get coach_prompt_tips => 'نصائح غذائية سريعة';
+
+  @override
+  String get coach_prompt_protein => 'ساعدني في تحقيق البروتين';
+
+  @override
+  String get coach_prompt_weekly => 'مراجعة أسبوعية';
+
+  @override
+  String get metric_cal => 'سعرة';
+
+  @override
+  String get metric_protein => 'بروتين';
+
+  @override
+  String get metric_carbs => 'كربوهيدرات';
+
+  @override
+  String get metric_fat => 'دهون';
+
+  @override
+  String get recipe_ingredients => 'المكوّنات';
+
+  @override
+  String get recipe_steps => 'الخطوات';
+
+  @override
+  String get measurement_metric => 'متري';
+
+  @override
+  String get measurement_imperial => 'إمبراطوري';
+
+  @override
+  String get coach_empty_title => 'كيف يمكنني المساعدة؟';
+
+  @override
+  String get coach_empty_subtitle =>
+      'اسأل عن وجبة أو الماكروز أو ماذا تأكل بعد ذلك.';
+
+  @override
+  String get coach_suggested => 'مقترح';
+
+  @override
+  String get coach_suggest_eat => 'ماذا آكل؟';
+
+  @override
+  String get coach_suggest_track => 'هل أنا على المسار اليوم؟';
+
+  @override
+  String get coach_suggest_week => 'خطط أسبوعي';
+
+  @override
+  String get coach_suggest_protein => 'حقق البروتين';
+
+  @override
+  String get coach_error_server =>
+      'خادم فجر يواجه مشكلة الآن. أمهله لحظة ثم أعد المحاولة.';
+
+  @override
+  String get coach_error_connection => 'تحقق من اتصالك وحاول مرة أخرى.';
+
+  @override
+  String get home_insight_scan_first => 'امسح وجبتك الأولى';
+
+  @override
+  String get home_insight_go_lighter => 'اجعل الوجبة القادمة أخف';
+
+  @override
+  String get home_insight_protein_behind => 'البروتين متأخر';
+
+  @override
+  String get home_insight_next_meal_fits => 'الوجبة القادمة مناسبة اليوم';
+
+  @override
+  String get home_cmp_baseline => 'أنشئ خط الأساس';
+
+  @override
+  String get home_cmp_same => 'نفس الأمس';
+
+  @override
+  String home_cmp_below(int kcal) {
+    return '$kcal سعرة أقل من الأمس';
+  }
+
+  @override
+  String home_cmp_above(int kcal) {
+    return '$kcal سعرة أكثر من الأمس';
+  }
+
+  @override
   String get settings_upgrade_to_pro => 'الترقية إلى برو';
 
   @override
