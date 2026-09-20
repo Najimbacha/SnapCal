@@ -85,9 +85,17 @@ class ConfigService {
   }
 
   String get backendProxyUrl {
+    final buildOverride = AppConstants.backendProxyUrlOverride.trim();
+    if (buildOverride.isNotEmpty) return _withoutTrailingSlash(buildOverride);
     if (!_initialized) return AppConstants.defaultBackendProxyUrl;
     final url = _remoteConfig.getString('backend_proxy_url').trim();
-    return url.isEmpty ? AppConstants.defaultBackendProxyUrl : url;
+    return _withoutTrailingSlash(
+      url.isEmpty ? AppConstants.defaultBackendProxyUrl : url,
+    );
+  }
+
+  String _withoutTrailingSlash(String url) {
+    return url.replaceFirst(RegExp(r'/+$'), '');
   }
 
   /// Whether free users can see macro grams on scan results and the home

@@ -58,6 +58,8 @@ const PRO_PRODUCT_IDS = new Set([
   'snapcal_pro_monthly:monthly-plan',
 ]);
 const NODE_ENV = process.env.NODE_ENV || 'development';
+const { sharedRedisRequired, redisAvailabilityGuard, protectLimiter, shutdownSettings } = require('./cloud_run_runtime');
+const REQUIRE_SHARED_REDIS = sharedRedisRequired();
 
 if (NODE_ENV === 'production' && !REQUIRE_APP_CHECK) {
   throw new Error(
@@ -122,6 +124,8 @@ function forwardAsyncErrors(router) {
 const path = require('node:path');
 
 const app = forwardAsyncErrors(express());
+// Process probe only: upstream outages must not cause restart loops.
+app.get('/startup', (req, res) => res.status(200).json({ status: 'started' }));
 const db = admin.firestore();
 let authVerifierForTest = null;
 
@@ -149,14 +153,19 @@ app.use(morgan(process.env.NODE_ENV === 'test' ? 'combined' : 'dev'));
 // body parsers so the timing covers parsing too, which is where a large
 // image payload actually spends its first hundred milliseconds.
 app.use(httpMetricsMiddleware);
+const requireRateLimitStore = redisAvailabilityGuard(REQUIRE_SHARED_REDIS, () => redisCache.isReady());
+app.use('/api', requireRateLimitStore);
+app.use('/v1', requireRateLimitStore);
 // Image-bearing routes get the large parser; everything else gets 2mb. The
 // base64 expansion factor is ~1.37, so 14mb covers the 10MB image cap.
 const imageBodyParser = express.json({
   limit: MAX_IMAGE_BODY,
   type: 'application/json',
 });
-app.use('/v1/scan', imageBodyParser);
-app.use('/api/ai/image', imageBodyParser);
+// Admit image work before buffering/parsing its base64 body. Otherwise even
+// rejected scans allocate a full image and can exhaust a small container.
+app.use('/v1/scan', limitScanConcurrency, imageBodyParser);
+app.use('/api/ai/image', limitScanConcurrency, imageBodyParser);
 app.use(express.json({ limit: MAX_JSON_BODY, type: 'application/json' }));
 app.use(express.urlencoded({ limit: MAX_JSON_BODY, extended: false }));
 
@@ -176,16 +185,17 @@ app.use(express.urlencoded({ limit: MAX_JSON_BODY, extended: false }));
 let limiterStoreFactory = () => undefined;
 
 redisCache.init();
+if (REQUIRE_SHARED_REDIS && !redisCache.getClient()) {
+  throw new Error('Shared Redis client could not be initialized.');
+}
 if (redisCache.getClient()) {
   try {
-    const { RedisStore } = require('rate-limit-redis');
+    const { createSharedRateLimitStore } = require('./shared_rate_limit_store');
     limiterStoreFactory = (prefix) =>
-      new RedisStore({
-        prefix,
-        sendCommand: (...args) => redisCache.getClient().sendCommand(args),
-      });
+      createSharedRateLimitStore(redisCache, prefix);
     console.log('Rate limiting backed by Redis');
   } catch (error) {
+    if (REQUIRE_SHARED_REDIS) throw new Error('Shared rate-limit store could not be initialized.');
     console.error(
       'REDIS_URL set but the Redis store could not load:',
       error.message,
@@ -215,7 +225,7 @@ function identityKey(req) {
 }
 
 function makeLimiter({ prefix, windowMs, max, message }) {
-  return rateLimit({
+  return protectLimiter(rateLimit({
     windowMs,
     max,
     standardHeaders: true,
@@ -223,7 +233,7 @@ function makeLimiter({ prefix, windowMs, max, message }) {
     keyGenerator: identityKey,
     store: limiterStoreFactory(prefix),
     ...(message ? { message } : {}),
-  });
+  }));
 }
 
 const apiLimiter = makeLimiter({
@@ -1999,7 +2009,8 @@ app.get('/health', (req, res) => {
   // scan at all. A monitor watching for non-200 pages you on either — which is
   // the whole point of the endpoint.
   const threshold = Number(process.env.HEALTH_FAIL_THRESHOLD) || 0.5;
-  const degraded = configured.length === 0 || (attempts >= 3 && failureRate > threshold);
+  const degraded = configured.length === 0 || (REQUIRE_SHARED_REDIS && !redisCache.isReady()) ||
+    (attempts >= 3 && failureRate > threshold);
 
   // Draining reports 503 too, but says so distinctly: an operator reading this
   // during a deploy should see a planned shutdown, not a provider outage.
@@ -2624,7 +2635,7 @@ function isCachedScanResult(value) {
   );
 }
 
-app.post('/v1/scan', limitScanConcurrency, authenticateToken, verifyAppCheck, scanLimiter, async (req, res) => {
+app.post('/v1/scan', authenticateToken, verifyAppCheck, scanLimiter, async (req, res) => {
   const scanStartedAt = process.hrtime.bigint();
   const scanSeconds = () => Number(process.hrtime.bigint() - scanStartedAt) / 1e9;
   const { image, language = 'en' } = req.body || {};
@@ -2902,8 +2913,7 @@ app.use((err, req, res, next) => {
 /// balancer routes new traffic elsewhere, wait a beat for it to notice, then
 /// close the listener and drain.
 function installGracefulShutdown(server) {
-  const DRAIN_MS = Number(process.env.SHUTDOWN_DRAIN_MS || 5000);
-  const HARD_LIMIT_MS = Number(process.env.SHUTDOWN_TIMEOUT_MS || 60000);
+  const { drainMs: DRAIN_MS, timeoutMs: HARD_LIMIT_MS } = shutdownSettings();
   let shuttingDown = false;
 
   const stop = (signal) => {

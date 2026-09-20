@@ -1,0 +1,18 @@
+title: SnapCal backend runtime
+description: Existing SnapCal API and reminders, without project or IAM administration.
+stage: GA
+includedPermissions:
+  - datastore.entities.get
+  - datastore.entities.list
+  - datastore.entities.create
+  - datastore.entities.update
+  - datastore.entities.delete
+  - datastore.databases.get
+  - datastore.databases.getMetadata
+  - firebaseauth.users.get
+  - firebaseauth.users.delete
+  - firebasecloudmessaging.messages.create
+  - firebaseappcheck.appCheckTokens.verify
+  - storage.objects.get
+  - storage.objects.list
+  - storage.objects.delete

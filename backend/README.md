@@ -1,5 +1,9 @@
 # SnapCal Backend Proxy Server
 
+For the Cloud Run migration, use [the owner runbook](CLOUD_RUN.md). It covers
+deployment, cost controls, validation and rollback while keeping Render available.
+The Render instructions below are historical; the actual entry point is `server.js`.
+
 A secure, high-performance Node.js proxy server for the **SnapCal** calorie tracking app. It proxies food image scanning requests to Groq (with Gemini fallback) to keep API keys secure and off client devices.
 
 ---
@@ -20,7 +24,7 @@ Because your code is already synced with GitHub, deploying this backend to [Rend
    - **Name**: `snapcal-backend` (or any name you like)
    - **Root Directory**: `backend` (this tells Render to only deploy the Node.js server inside the `backend` folder, instead of trying to run the Flutter code)
    - **Build Command**: `npm install`
-   - **Start Command**: `node index.js`
+   - **Start Command**: `node server.js`
 5. Choose the **Free** plan (or any plan you prefer).
 6. Click **Create Web Service**.
 

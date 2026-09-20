@@ -23,6 +23,12 @@ class AppConstants {
       'https://api.groq.com/openai/v1/chat/completions';
 
   // Backend Proxy Configuration
+  // Optional per-build override for private migration testing. Normal builds
+  // do not define this value and continue to use Firebase Remote Config.
+  static const String backendProxyUrlOverride = String.fromEnvironment(
+    'BACKEND_PROXY_URL',
+    defaultValue: '',
+  );
   static const String defaultBackendProxyUrl =
       'https://snapcal-mxh9.onrender.com';
   static const String backendScanFoodPath = '/api/scan-food';

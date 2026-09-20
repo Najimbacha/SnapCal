@@ -1,5 +1,8 @@
-# Allow only runtime source and its required data. Never copy credentials.
+# Keep uploaded source as narrow as the container context.
 **
+!Dockerfile
+!.dockerignore
+!.gcloudignore
 !package.json
 !package-lock.json
 !*.js

@@ -5,12 +5,13 @@
  * across every instance) and the entitlement cache (so a Pro user's app launch
  * does not read Firestore once per request).
  *
- * Redis is a CACHE here, never a source of truth. Every caller must work
- * correctly when it is down, empty, or has evicted the key — the store is
- * configured `allkeys-lru`, so eviction is normal operation, not a fault. A
- * cache read that throws is logged once and treated as a miss.
+ * Subscription/scan caches degrade to misses. Rate limiting is different:
+ * Cloud Run requires Redis and fails closed while it is unavailable. Eviction
+ * can reset counters, so monitor capacity as well as connection health.
  */
 const REDIS_URL = process.env.REDIS_URL || '';
+const { validateRedisConfig } = require('./cloud_run_runtime');
+validateRedisConfig();
 
 let client = null;
 let ready = false;
@@ -21,7 +22,11 @@ function init() {
 
   try {
     const { createClient } = require('redis');
-    client = createClient({ url: REDIS_URL });
+    client = createClient({
+      url: REDIS_URL,
+      disableOfflineQueue: true,
+      socket: { connectTimeout: 5000 },
+    });
     client.on('error', (err) => {
       ready = false;
       if (!loggedFailure) {
@@ -34,6 +39,8 @@ function init() {
       loggedFailure = false;
       console.log('Redis connected');
     });
+    client.on('reconnecting', () => { ready = false; });
+    client.on('end', () => { ready = false; });
     client.connect().catch((err) => {
       console.error('Redis connect failed:', err.message);
     });

@@ -26,3 +26,9 @@ snapcal-*.json
 # Local Firestore backups (see scripts/backup-firestore.js). They contain
 # every user's data in plain text.
 backups/
+
+# Owner-specific cloud settings, deployment outputs, and secret import files.
+*.local.json
+*.local.yaml
+*.secret
+deployment-output/
