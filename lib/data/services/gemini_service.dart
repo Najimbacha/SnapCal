@@ -13,6 +13,7 @@ import '../models/meal.dart';
 import '../models/meal_plan.dart';
 import '../models/grocery_item.dart';
 import '../models/user_settings.dart';
+import 'scan_gate_service.dart';
 
 /// Generic Nutrition Result from AI, Barcode, or Manual Entry
 class NutritionResult {
@@ -34,6 +35,9 @@ class NutritionResult {
   final Map<String, dynamic>? nutritionPer100g;
   final Map<String, dynamic>? nutritionActual;
 
+  /// Stable English detection name, including when the display name is localised.
+  final String? matchKey;
+
   NutritionResult({
     required this.foodName,
     required this.portion,
@@ -50,6 +54,7 @@ class NutritionResult {
     this.matched = true,
     this.nutritionPer100g,
     this.nutritionActual,
+    this.matchKey,
   });
 
   factory NutritionResult.fromJson(Map<String, dynamic> json) {
@@ -112,6 +117,7 @@ class NutritionResult {
       matched: matched,
       nutritionPer100g: per100g,
       nutritionActual: actual,
+      matchKey: json['match_key']?.toString(),
     );
   }
 
@@ -274,6 +280,8 @@ User daily targets:
     final base64Image = await compute(base64Encode, bytes);
     final proxyUrl = ConfigService().backendProxyUrl;
 
+    final scanGate = ScanGateService();
+    scanGate.invalidateServerCount();
     try {
       final response = await _dio.post(
         '$proxyUrl/v1/scan',
@@ -308,6 +316,10 @@ User daily targets:
         '❌ Scan DioException: type=${e.type}, status=$status, body=$body',
       );
       rethrow;
+    } finally {
+      // A cache hit costs no scan, and a failure may refund a reservation.
+      // Re-read the server after either outcome instead of guessing locally.
+      unawaited(scanGate.refreshFromServer());
     }
   }
 

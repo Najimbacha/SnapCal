@@ -543,6 +543,8 @@ class SubscriptionService {
   }
 
   Future<bool> _fetchBackendPremiumStatus(bool storeSaysActive) async {
+    final scanGate = ScanGateService();
+    final quotaRequest = scanGate.beginServerRefresh();
     try {
       final response = await ApiClient.dio
           .get('${ConfigService().backendProxyUrl}/api/premium-status')
@@ -555,18 +557,7 @@ class SubscriptionService {
       // -- or lost the response to one -- converges on what will actually be
       // honoured instead of showing a scan it cannot spend.
       if (response.data is Map) {
-        final bonus = (response.data['bonusScans'] as num?)?.toInt();
-        if (bonus != null) {
-          await ScanGateService().syncBonusScansFromServer(bonus);
-        }
-        // The free monthly allowance is the server's to set. Taking it from
-        // here is what makes FREE_MONTHLY_SCANS a knob that actually moves
-        // something -- the client used to hard-code 3 and refuse the fourth
-        // scan itself, before the server was ever consulted.
-        final limit = (response.data['monthlyScanLimit'] as num?)?.toInt();
-        if (limit != null) {
-          await ScanGateService().syncFreeLimitFromServer(limit);
-        }
+        await scanGate.syncQuotaFromServer(response.data as Map, quotaRequest);
       }
 
       _cachedServerActive = serverSaysActive;

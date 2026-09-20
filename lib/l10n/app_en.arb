@@ -1,4 +1,12 @@
 {
+  "result_estimated_calories": "Estimated calories",
+  "result_review_portions": "Review portions",
+  "result_portion_guidance": "Tap an amount to edit it. Photo estimates can vary with portion size and cooking oil.",
+  "result_volume_hint": "Drink volume is approximate (1 g ≈ 1 ml). Check the can or bottle label.",
+  "result_set_volume": "Set volume",
+  "result_scan_balance_pending": "Checking scan balance…",
+  "result_scan_balance_unavailable": "Scan balance unavailable",
+  "result_health_score_hint": "SnapCal nutrition guide, not a medical rating.",
   "coach_allowance_used": "Your free message is used. More messages are available after the daily reset.",
   "planner_unlock_week": "Unlock weekly planning",
   "purchase_billed_yearly": "Billed yearly",

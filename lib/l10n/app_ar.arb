@@ -1,4 +1,12 @@
 {
+  "result_estimated_calories": "سعرات حرارية تقديرية",
+  "result_review_portions": "راجع الكميات",
+  "result_portion_guidance": "اضغط على الكمية لتعديلها. قد تختلف تقديرات الصور حسب حجم الحصة وزيت الطهي.",
+  "result_volume_hint": "حجم المشروب تقريبي (1 غ ≈ 1 مل). تحقق من ملصق العبوة.",
+  "result_set_volume": "تحديد الحجم",
+  "result_scan_balance_pending": "جارٍ التحقق من الرصيد…",
+  "result_scan_balance_unavailable": "رصيد المسح غير متاح",
+  "result_health_score_hint": "دليل SnapCal الغذائي، وليس تقييمًا طبيًا.",
   "coach_allowance_used": "استخدمت رسالتك المجانية. تتوفر رسائل أخرى بعد التجديد اليومي.",
   "planner_unlock_week": "افتح التخطيط الأسبوعي",
   "purchase_billed_yearly": "فوترة سنوية",

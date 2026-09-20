@@ -9,6 +9,33 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get result_estimated_calories => 'Calories estimées';
+
+  @override
+  String get result_review_portions => 'Vérifiez les portions';
+
+  @override
+  String get result_portion_guidance =>
+      'Touchez une quantité pour la modifier. Les estimations peuvent varier selon la portion et l’huile de cuisson.';
+
+  @override
+  String get result_volume_hint =>
+      'Le volume est approximatif (1 g ≈ 1 ml). Vérifiez l’étiquette de la boisson.';
+
+  @override
+  String get result_set_volume => 'Définir le volume';
+
+  @override
+  String get result_scan_balance_pending => 'Vérification des scans restants…';
+
+  @override
+  String get result_scan_balance_unavailable => 'Solde de scans indisponible';
+
+  @override
+  String get result_health_score_hint =>
+      'Guide nutritionnel SnapCal, pas une évaluation médicale.';
+
+  @override
   String get coach_allowance_used =>
       'Votre message gratuit a été utilisé. D’autres messages seront disponibles après la réinitialisation quotidienne.';
 

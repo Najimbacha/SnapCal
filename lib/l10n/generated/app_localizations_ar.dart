@@ -9,6 +9,33 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
+  String get result_estimated_calories => 'سعرات حرارية تقديرية';
+
+  @override
+  String get result_review_portions => 'راجع الكميات';
+
+  @override
+  String get result_portion_guidance =>
+      'اضغط على الكمية لتعديلها. قد تختلف تقديرات الصور حسب حجم الحصة وزيت الطهي.';
+
+  @override
+  String get result_volume_hint =>
+      'حجم المشروب تقريبي (1 غ ≈ 1 مل). تحقق من ملصق العبوة.';
+
+  @override
+  String get result_set_volume => 'تحديد الحجم';
+
+  @override
+  String get result_scan_balance_pending => 'جارٍ التحقق من الرصيد…';
+
+  @override
+  String get result_scan_balance_unavailable => 'رصيد المسح غير متاح';
+
+  @override
+  String get result_health_score_hint =>
+      'دليل SnapCal الغذائي، وليس تقييمًا طبيًا.';
+
+  @override
   String get coach_allowance_used =>
       'استخدمت رسالتك المجانية. تتوفر رسائل أخرى بعد التجديد اليومي.';
 

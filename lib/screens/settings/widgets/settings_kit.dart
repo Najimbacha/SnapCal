@@ -707,26 +707,28 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      IntrinsicWidth(
-                        child: TextField(
-                          controller: _controller,
-                          keyboardType: TextInputType.numberWithOptions(
-                            decimal: widget.decimals > 0,
-                          ),
-                          textAlign: TextAlign.center,
-                          onChanged: (_) => setState(() {}),
-                          style: AppTypography.headlineSmall.copyWith(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 40,
-                            color:
-                                showError
-                                    ? const Color(0xFFE05A47)
-                                    : kSettingsGreenText,
-                          ),
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
+                      Flexible(
+                        child: IntrinsicWidth(
+                          child: TextField(
+                            controller: _controller,
+                            keyboardType: TextInputType.numberWithOptions(
+                              decimal: widget.decimals > 0,
+                            ),
+                            textAlign: TextAlign.center,
+                            onChanged: (_) => setState(() {}),
+                            style: AppTypography.headlineSmall.copyWith(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 40,
+                              color:
+                                  showError
+                                      ? const Color(0xFFE05A47)
+                                      : kSettingsGreenText,
+                            ),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
                           ),
                         ),
                       ),

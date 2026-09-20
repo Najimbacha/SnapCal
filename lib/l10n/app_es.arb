@@ -1,4 +1,12 @@
 {
+  "result_estimated_calories": "Calorías estimadas",
+  "result_review_portions": "Revisa las porciones",
+  "result_portion_guidance": "Toca una cantidad para editarla. Las estimaciones pueden variar según la porción y el aceite de cocción.",
+  "result_volume_hint": "El volumen es aproximado (1 g ≈ 1 ml). Comprueba la etiqueta del envase.",
+  "result_set_volume": "Ajustar volumen",
+  "result_scan_balance_pending": "Consultando escaneos restantes…",
+  "result_scan_balance_unavailable": "Saldo de escaneos no disponible",
+  "result_health_score_hint": "Guía nutricional de SnapCal, no una valoración médica.",
   "coach_allowance_used": "Has usado tu mensaje gratis. Tendrás más mensajes tras el reinicio diario.",
   "planner_unlock_week": "Desbloquear el plan semanal",
   "purchase_billed_yearly": "Facturación anual",

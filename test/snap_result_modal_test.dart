@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -6,6 +7,8 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/data/services/gemini_service.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/screens/snap/widgets/result_modal.dart';
+import 'package:snapcal/data/services/scan_gate_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   Future<void> setupTester(WidgetTester tester) async {
@@ -23,6 +26,8 @@ void main() {
     void Function(String, int, int, int, int, String?)? onSave,
     void Function(List<NutritionResult>)? onSaveAll,
     bool isPro = false,
+    ScanGateService? scanGate,
+    Uint8List? imageBytes,
   }) {
     return ProviderScope(
       overrides: [effectiveIsProProvider.overrideWith((ref) => isPro)],
@@ -31,6 +36,8 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ResultModal(
+            scanGate: scanGate,
+            imageBytes: imageBytes,
             result: result,
             results: results,
             onSave: onSave ?? (_, _, _, _, _, _) {},
@@ -41,6 +48,98 @@ void main() {
       ),
     );
   }
+
+  testWidgets(
+    'photo drink uses approximate ml and exact typed edits are saved',
+    (tester) async {
+      await setupTester(tester);
+      final bytes =
+          (await rootBundle.load(
+            'assets/images/paywall/onboarding_grilled_chicken_bowl.png',
+          )).buffer.asUint8List();
+      List<NutritionResult>? saved;
+      await tester.pumpWidget(
+        buildSubject(
+          isPro: true,
+          imageBytes: bytes,
+          result: NutritionResult(
+            foodName: 'Lemon Mint Drink',
+            matchKey: 'lemon mint drink',
+            portion: '330g',
+            weightG: 330,
+            calories: 132,
+            protein: 0,
+            carbs: 33,
+            fat: 0,
+            nutritionPer100g: {
+              'calories': 40,
+              'protein': 0,
+              'carbs': 10,
+              'fat': 0,
+            },
+          ),
+          onSaveAll: (items) => saved = items,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Estimated calories'), findsOneWidget);
+      expect(find.text('Review portions'), findsOneWidget);
+      final amount = find.descendant(
+        of: find.byKey(const ValueKey('card-header')),
+        matching: find.text('≈ 330 ml'),
+      );
+      await tester.tap(amount);
+      await tester.pumpAndSettle();
+      expect(find.text('Set volume'), findsOneWidget);
+      expect(find.textContaining('1 g ≈ 1 ml'), findsAtLeastNWidgets(1));
+      await tester.enterText(find.byType(TextField), '355');
+      await tester.pump();
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Confirm'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Confirm'));
+      await tester.pumpAndSettle();
+      expect(find.text('Set volume'), findsNothing);
+      final portionTexts =
+          tester
+              .widgetList<Text>(
+                find.descendant(
+                  of: find.byKey(const ValueKey('portion-edit-0')),
+                  matching: find.byType(Text),
+                ),
+              )
+              .map((widget) => widget.data)
+              .whereType<String>()
+              .toList();
+      expect(portionTexts, contains('≈ 355 ml'));
+      await tester.tap(find.byKey(const ValueKey('result-save-button')));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(saved, isNotNull);
+      expect(saved!.single.portion, '≈ 355 ml');
+      expect(saved!.single.weightG, 355);
+      expect(saved!.single.calories, 142);
+      expect(saved!.single.matchKey, 'lemon mint drink');
+    },
+  );
+
+  testWidgets('barcode result is not described as a photo estimate', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildSubject(
+        isPro: true,
+        result: NutritionResult(
+          foodName: 'Diet Pepsi',
+          portion: '330g',
+          calories: 3,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        ),
+      ),
+    );
+    expect(find.text('Estimated calories'), findsNothing);
+    expect(find.text('Review portions'), findsNothing);
+    expect(find.text('≈ 330 ml'), findsNothing);
+  });
 
   testWidgets('single scan renders food with weight and kcal', (tester) async {
     await tester.pumpWidget(
@@ -438,9 +537,22 @@ void main() {
     tester,
   ) async {
     await setupTester(tester);
+    SharedPreferences.setMockInitialValues({});
+    final gate = ScanGateService.forTesting(
+      preferences: await SharedPreferences.getInstance(),
+      scope: () => 'test-user',
+      now: () => DateTime.utc(2026, 9, 20),
+    );
+    await gate.syncQuotaFromServer({
+      'monthlyScanLimit': 15,
+      'bonusScans': 2,
+      'scanAllowance': 17,
+      'scansRemaining': 14,
+    }, gate.beginServerRefresh());
     await tester.pumpWidget(
       buildSubject(
         isPro: false,
+        scanGate: gate,
         result: NutritionResult(
           foodName: 'Rice',
           portion: '150.0g',
@@ -453,12 +565,26 @@ void main() {
     );
 
     expect(
-      find.textContaining('scans remaining', skipOffstage: false),
+      find.text('14 of 17 scans remaining', skipOffstage: false),
       findsOneWidget,
     );
+    gate.invalidateServerCount();
+    await tester.pump();
+    expect(find.text('Scan balance unavailable'), findsOneWidget);
+    expect(find.text('14 of 17 scans remaining'), findsNothing);
+    await gate.syncQuotaFromServer({
+      'monthlyScanLimit': 15,
+      'bonusScans': 2,
+      'scanAllowance': 17,
+      'scansRemaining': 13,
+    }, gate.beginServerRefresh());
+    await tester.pump();
+    expect(find.text('13 of 17 scans remaining'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    gate.changes.dispose();
   });
 
-  testWidgets('collapsed row shows a static weight and only expands', (
+  testWidgets('food name expands the row without changing weight', (
     tester,
   ) async {
     await setupTester(tester);

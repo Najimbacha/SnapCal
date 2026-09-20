@@ -9,6 +9,33 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get result_estimated_calories => 'Estimated calories';
+
+  @override
+  String get result_review_portions => 'Review portions';
+
+  @override
+  String get result_portion_guidance =>
+      'Tap an amount to edit it. Photo estimates can vary with portion size and cooking oil.';
+
+  @override
+  String get result_volume_hint =>
+      'Drink volume is approximate (1 g ≈ 1 ml). Check the can or bottle label.';
+
+  @override
+  String get result_set_volume => 'Set volume';
+
+  @override
+  String get result_scan_balance_pending => 'Checking scan balance…';
+
+  @override
+  String get result_scan_balance_unavailable => 'Scan balance unavailable';
+
+  @override
+  String get result_health_score_hint =>
+      'SnapCal nutrition guide, not a medical rating.';
+
+  @override
   String get coach_allowance_used =>
       'Your free message is used. More messages are available after the daily reset.';
 

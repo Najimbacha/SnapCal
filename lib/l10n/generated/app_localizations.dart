@@ -102,6 +102,54 @@ abstract class AppLocalizations {
     Locale('fr'),
   ];
 
+  /// No description provided for @result_estimated_calories.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated calories'**
+  String get result_estimated_calories;
+
+  /// No description provided for @result_review_portions.
+  ///
+  /// In en, this message translates to:
+  /// **'Review portions'**
+  String get result_review_portions;
+
+  /// No description provided for @result_portion_guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap an amount to edit it. Photo estimates can vary with portion size and cooking oil.'**
+  String get result_portion_guidance;
+
+  /// No description provided for @result_volume_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drink volume is approximate (1 g ≈ 1 ml). Check the can or bottle label.'**
+  String get result_volume_hint;
+
+  /// No description provided for @result_set_volume.
+  ///
+  /// In en, this message translates to:
+  /// **'Set volume'**
+  String get result_set_volume;
+
+  /// No description provided for @result_scan_balance_pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking scan balance…'**
+  String get result_scan_balance_pending;
+
+  /// No description provided for @result_scan_balance_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan balance unavailable'**
+  String get result_scan_balance_unavailable;
+
+  /// No description provided for @result_health_score_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal nutrition guide, not a medical rating.'**
+  String get result_health_score_hint;
+
   /// No description provided for @coach_allowance_used.
   ///
   /// In en, this message translates to:

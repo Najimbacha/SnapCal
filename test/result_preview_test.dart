@@ -33,6 +33,7 @@ void main() {
     ('pro-dark', true, true, 'en', 390.0, 1.0),
     ('free-arabic', false, true, 'ar', 320.0, 1.0),
     ('free-large-text', false, false, 'en', 320.0, 1.6),
+    ('free-accessibility-text', false, false, 'fr', 320.0, 2.0),
   ]) {
     testWidgets('result ${scenario.$1}', (tester) async {
       tester.view.physicalSize = Size(scenario.$5, 844);

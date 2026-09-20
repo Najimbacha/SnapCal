@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/drink_portion.dart';
 import '../../../data/models/meal.dart';
 import '../../../data/services/gemini_service.dart';
 import '../../../data/services/pro_feature_service.dart';
@@ -60,6 +61,8 @@ class _Item {
     this.healthScore = 5,
     this.insights = const [],
     this.matchId,
+    this.matchKey,
+    this.approximateVolume = false,
   }) : uid = uid ?? _uidSeed++;
 
   final int uid;
@@ -74,6 +77,12 @@ class _Item {
   /// The nutrition table row the server matched, carried through to the
   /// saved meal.
   final String? matchId;
+  final String? matchKey;
+  final bool approximateVolume;
+
+  String get unit => approximateVolume ? 'ml' : 'g';
+  String get amountLabel =>
+      '${approximateVolume ? '≈ ' : ''}${weightG.round()} $unit';
 
   int get calories => _calc('calories');
   int get protein => _calc('protein');
@@ -87,7 +96,7 @@ class _Item {
     return ((val is num ? val.toDouble() : 0) * weightG / 100).round();
   }
 
-  factory _Item.from(NutritionResult r) {
+  factory _Item.from(NutritionResult r, {required bool photoEstimate}) {
     // Presence of per-100g is the signal, not `matched`. `matched` means "in
     // the curated table", and the server now sends per-100g for AI estimates
     // too -- requiring both sent every estimate down the lossy path below,
@@ -131,6 +140,9 @@ class _Item {
       healthScore: r.healthScore,
       insights: r.insights,
       matchId: r.nutritionMatchId,
+      matchKey: r.matchKey,
+      approximateVolume:
+          photoEstimate && usesApproximateDrinkVolume(r.matchKey ?? r.foodName),
     );
   }
 
@@ -153,6 +165,8 @@ class _Item {
     healthScore: healthScore,
     insights: insights,
     matchId: matchId,
+    matchKey: matchKey,
+    approximateVolume: approximateVolume,
   );
 }
 
@@ -187,6 +201,7 @@ class ResultModal extends ConsumerStatefulWidget {
   final void Function(String, int, int, int, int, String?) onSave;
   final void Function(List<NutritionResult> selected)? onSaveAll;
   final VoidCallback onCancel;
+  final ScanGateService? scanGate;
 
   const ResultModal({
     super.key,
@@ -196,6 +211,7 @@ class ResultModal extends ConsumerStatefulWidget {
     required this.onSave,
     this.onSaveAll,
     required this.onCancel,
+    this.scanGate,
   });
 
   @override
@@ -205,17 +221,27 @@ class ResultModal extends ConsumerStatefulWidget {
 class _ResultModalState extends ConsumerState<ResultModal> {
   late List<_Item> _items;
   bool _saving = false;
-  late final int _remainingScans;
+  ScanGateService get _scanGate => widget.scanGate ?? ScanGateService();
 
   @override
   void initState() {
     super.initState();
     final r = widget.results ?? (widget.result == null ? [] : [widget.result!]);
-    _items = r.map(_Item.from).toList();
+    _items =
+        r
+            .map(
+              (item) =>
+                  _Item.from(item, photoEstimate: widget.imageBytes != null),
+            )
+            .toList();
     if (_items.isEmpty) _items.add(_Item.blank());
-    _remainingScans = ScanGateService().getRemainingScans(
-      ref.read(effectiveIsProProvider),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          !ref.read(effectiveIsProProvider) &&
+          _scanGate.verifiedRemaining == null) {
+        _scanGate.refreshFromServer();
+      }
+    });
   }
 
   int get _kcal => _items.fold(0, (s, i) => s + i.calories);
@@ -448,7 +474,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
         i.protein,
         i.carbs,
         i.fat,
-        '${i.weightG.round()}g',
+        i.amountLabel,
       );
     } else {
       widget.onSaveAll!(
@@ -456,7 +482,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
             .map(
               (i) => NutritionResult(
                 foodName: i.name,
-                portion: '${i.weightG.round()}g',
+                portion: i.amountLabel,
                 calories: i.calories,
                 protein: i.protein,
                 carbs: i.carbs,
@@ -466,6 +492,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                 weightG: i.weightG,
                 confidence: i.confidence,
                 nutritionMatchId: i.matchId,
+                matchKey: i.matchKey,
                 matched: i.matched,
                 nutritionPer100g: i.per100g,
                 nutritionActual:
@@ -522,25 +549,39 @@ class _ResultModalState extends ConsumerState<ResultModal> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder:
-          (_) => SettingsValueSheet(
-            title: l10n.result_set_weight,
-            // The item's own name, so the sheet says which of four plates on
-            // screen is being resized.
-            helperText:
-                item.name.trim().isEmpty ? null : _capitalize(item.name.trim()),
-            initialValue: item.weightG.roundToDouble().clamp(5, 5000),
-            unit: 'g',
-            min: 5,
-            max: 5000,
-            // The sheet's own default derives a step from the range, which
-            // over 5-5000g lands on 100g jumps -- far coarser than anyone
-            // adjusts a portion. Use the same scale the card's own steppers
-            // use, so a 40g egg nudges by 10 and a 900g roast by 50.
-            step: _stepFor(item.weightG.round()).toDouble(),
-            onSave: (v) {
-              if (!mounted) return;
-              _setWt(i, v.clamp(5, 5000));
-            },
+          (_) => SingleChildScrollView(
+            child: SettingsValueSheet(
+              title:
+                  item.approximateVolume
+                      ? l10n.result_set_volume
+                      : l10n.result_set_weight,
+              // The item's own name, so the sheet says which of four plates on
+              // screen is being resized.
+              helperText: [
+                if (item.name.trim().isNotEmpty) _capitalize(item.name.trim()),
+                if (item.approximateVolume) l10n.result_volume_hint,
+              ].join('\n'),
+              initialValue: item.weightG.roundToDouble().clamp(5, 5000),
+              unit: item.unit,
+              min: 5,
+              max: 5000,
+              // The sheet's own default derives a step from the range, which
+              // over 5-5000g lands on 100g jumps -- far coarser than anyone
+              // adjusts a portion. Use the same scale the card's own steppers
+              // use, so a 40g egg nudges by 10 and a 900g roast by 50.
+              step: _stepFor(item.weightG.round()).toDouble(),
+              onSave: (v) {
+                if (!mounted) return;
+                // Keep typed quantities exact (e.g. a 330 ml can), without the
+                // rounding used to make dragging the slider comfortable.
+                setState(
+                  () =>
+                      _items[i] = _items[i].copy(
+                        weightG: v.clamp(5, 5000).roundToDouble(),
+                      ),
+                );
+              },
+            ),
           ),
     );
   }
@@ -574,6 +615,26 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                     _header(context, l10n, d),
                     _macroStrip(context, showMacros),
                     const SizedBox(height: 24),
+                    if (widget.imageBytes != null) ...[
+                      Text(
+                        l10n.result_review_portions,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: d ? Colors.white : const Color(0xFF17251F),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        l10n.result_portion_guidance,
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.45,
+                          color: d ? Colors.white70 : const Color(0xFF56675D),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     if (_shareBar() != null) ...[
                       _shareBar()!,
                       const SizedBox(height: 12),
@@ -748,6 +809,17 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                       ),
                     ),
                     const SizedBox(height: 6),
+                    if (widget.imageBytes != null) ...[
+                      Text(
+                        l10n.result_estimated_calories,
+                        style: TextStyle(
+                          color: muted,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                    ],
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: AlignmentDirectional.centerStart,
@@ -778,12 +850,15 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                     ),
                     if (score != null) ...[
                       const SizedBox(height: 8),
-                      Text(
-                        '$score/10 ${_healthLabel(l10n, score)}',
-                        style: TextStyle(
-                          color: muted,
-                          fontSize: 12,
-                          height: 1.4,
+                      Tooltip(
+                        message: l10n.result_health_score_hint,
+                        child: Text(
+                          '$score/10 ${_healthLabel(l10n, score)}',
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
                         ),
                       ),
                     ],
@@ -896,17 +971,27 @@ class _ResultModalState extends ConsumerState<ResultModal> {
           ),
           if (!pro) ...[
             const SizedBox(height: 10),
-            Text(
-              l10n.result_scans_left(
-                _remainingScans,
-                ScanGateService.freeTierLimit,
-              ),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                height: 1.4,
-                color: d ? Colors.white70 : const Color(0xFF56675D),
-              ),
+            ValueListenableBuilder<int>(
+              valueListenable: _scanGate.changes,
+              builder: (context, _, child) {
+                final remaining = _scanGate.verifiedRemaining;
+                return Text(
+                  remaining != null
+                      ? l10n.result_scans_left(
+                        remaining,
+                        _scanGate.getMonthlyLimit(),
+                      )
+                      : _scanGate.isRefreshing
+                      ? l10n.result_scan_balance_pending
+                      : l10n.result_scan_balance_unavailable,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.4,
+                    color: d ? Colors.white70 : const Color(0xFF56675D),
+                  ),
+                );
+              },
             ),
           ],
         ],
@@ -1337,43 +1422,72 @@ class _FoodCardState extends State<_FoodCard>
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Static readout while collapsed. No stepper here, so
-                          // a near-miss can't fire the wrong action.
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: (d ? Colors.white : Colors.black)
-                                  .withValues(alpha: 0.05),
+                          // The amount is a direct editing target; the rest
+                          // of the row still expands the detailed controls.
+                          Semantics(
+                            button: true,
+                            label:
+                                item.approximateVolume
+                                    ? l10n.result_set_volume
+                                    : l10n.result_set_weight,
+                            child: InkWell(
+                              key: ValueKey('portion-edit-${item.uid}'),
+                              onTap: widget.onWeightType,
                               borderRadius: BorderRadius.circular(9),
-                            ),
-                            child: Text(
-                              '${item.weightG.round()} g',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color:
-                                    unsupported
-                                        ? (d
-                                            ? Colors.white24
-                                            : const Color(0xFFC7C7CC))
-                                        : (d
-                                            ? Colors.white
-                                            : const Color(0xFF1C1C1E)),
-                                fontFeatures: const [
-                                  FontFeature.tabularFigures(),
-                                ],
+                              child: Container(
+                                constraints: const BoxConstraints(
+                                  minHeight: 48,
+                                  maxWidth: 110,
+                                ),
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: (d ? Colors.white : Colors.black)
+                                      .withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        item.amountLabel,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color:
+                                              unsupported
+                                                  ? (d
+                                                      ? Colors.white24
+                                                      : const Color(0xFFC7C7CC))
+                                                  : (d
+                                                      ? Colors.white
+                                                      : const Color(
+                                                        0xFF1C1C1E,
+                                                      )),
+                                          fontFeatures: const [
+                                            FontFeature.tabularFigures(),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Icon(
+                                        LucideIcons.pencil,
+                                        size: 12,
+                                        color: accent,
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(width: 2),
-                          // The only trailing control left, and now a real
-                          // target: the overflow menu used to sit six pixels
-                          // from this chevron with shrinkWrap and zero
-                          // padding, so two different actions shared about
-                          // 32px of row against a 48dp minimum.
+                          // Expand the card for presets, macros and actions.
                           SizedBox(
                             width: 40,
                             height: 40,
@@ -1456,7 +1570,7 @@ class _FoodCardState extends State<_FoodCard>
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Text(
-                                                '${item.weightG.round()} g',
+                                                item.amountLabel,
                                                 style: TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w800,
@@ -1478,10 +1592,28 @@ class _FoodCardState extends State<_FoodCard>
                                       ),
                                     ],
                                   ),
+                                  if (item.approximateVolume) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      l10n.result_volume_hint,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        height: 1.4,
+                                        color:
+                                            d
+                                                ? Colors.white70
+                                                : const Color(0xFF56675D),
+                                      ),
+                                    ),
+                                  ],
                                   const SizedBox(height: 10),
                                   // Presets first — this is the primary path.
                                   SizedBox(
-                                    height: 34,
+                                    height:
+                                        24 +
+                                        MediaQuery.textScalerOf(
+                                          context,
+                                        ).scale(13),
                                     child: ListView.separated(
                                       scrollDirection: Axis.horizontal,
                                       physics: const BouncingScrollPhysics(),
@@ -1490,7 +1622,7 @@ class _FoodCardState extends State<_FoodCard>
                                           (_, _) => const SizedBox(width: 6),
                                       itemBuilder:
                                           (context, i) => _WtChip(
-                                            label: '${presets[i]}g',
+                                            label: '${presets[i]} ${item.unit}',
                                             selected:
                                                 item.weightG.round() ==
                                                 presets[i],
@@ -1550,7 +1682,9 @@ class _FoodCardState extends State<_FoodCard>
                                   ),
                                   const SizedBox(height: 8),
                                   if (widget.showMacros)
-                                    Row(
+                                    Wrap(
+                                      spacing: 14,
+                                      runSpacing: 8,
                                       children: [
                                         _dot(
                                           'P',
@@ -1558,14 +1692,12 @@ class _FoodCardState extends State<_FoodCard>
                                           AppColors.protein,
                                           d,
                                         ),
-                                        const SizedBox(width: 14),
                                         _dot(
                                           'C',
                                           item.carbs,
                                           AppColors.carbs,
                                           d,
                                         ),
-                                        const SizedBox(width: 14),
                                         _dot('F', item.fat, AppColors.fat, d),
                                       ],
                                     ),

@@ -16,7 +16,6 @@ import '../../core/utils/image_utils.dart';
 import '../../data/models/user_settings.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../providers/meal_provider.dart';
-import '../../data/services/scan_gate_service.dart';
 
 import '../../data/services/camera_service.dart';
 
@@ -25,12 +24,19 @@ import '../../data/services/camera_service.dart';
 /// Every failure used to open the result screen empty -- "Food item, 0 kcal"
 /// with nothing to type calories into -- so a phone with no signal looked
 /// like a photo with no food, and the only way out was back.
-enum ScanProblem { offline, slow, noFood, unreadableImage, barcodeNotFound, failed }
+enum ScanProblem {
+  offline,
+  slow,
+  noFood,
+  unreadableImage,
+  barcodeNotFound,
+  failed,
+}
 
 /// Why the camera preview is not showing.
 enum CameraProblem { slow, permission, unavailable }
 
-enum _Gate { open, offline, limitReached }
+enum _Gate { open, offline }
 
 class SnapController {
   VoidCallback? onStateChanged;
@@ -148,7 +154,9 @@ class SnapController {
       final status = await Permission.camera.status;
       if (_disposed) return;
       _cameraProblem =
-          status.isGranted ? CameraProblem.unavailable : CameraProblem.permission;
+          status.isGranted
+              ? CameraProblem.unavailable
+              : CameraProblem.permission;
     }
     onStateChanged?.call();
   }
@@ -191,7 +199,8 @@ class SnapController {
     if (!await connectivity.refreshReachability(force: true)) {
       return _Gate.offline;
     }
-    if (!ScanGateService().canScan(isPro)) return _Gate.limitReached;
+    // The backend owns quota enforcement. A stale local count must not block
+    // a scan, and a cached photo remains free even at zero remaining scans.
     return _Gate.open;
   }
 
@@ -203,8 +212,6 @@ class SnapController {
     if (gate == _Gate.offline) {
       HapticFeedback.vibrate();
       onProblem(ScanProblem.offline);
-    } else if (gate == _Gate.limitReached) {
-      onShowPaywall();
     }
   }
 
@@ -455,7 +462,6 @@ class SnapController {
     }
 
     _analysisResults = items;
-    await _recordFreeScanIfNeeded(isPro);
     if (!_isCurrent(op)) return;
     _isAnalyzing = false;
     onStateChanged?.call();
@@ -526,12 +532,6 @@ class SnapController {
     _isAnalyzing = false;
     onStateChanged?.call();
     onShowResult();
-  }
-
-  Future<void> _recordFreeScanIfNeeded(bool isPro) async {
-    if (!isPro) {
-      await ScanGateService().incrementScanCount();
-    }
   }
 
   void reset() {

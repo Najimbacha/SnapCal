@@ -1,21 +1,150 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/utils/pref_scoping.dart';
+import '../../core/network/api_client.dart';
+import '../../core/services/config_service.dart';
+
+typedef ScanQuotaRequest = ({String? scope, String month, int generation});
 
 /// Gates food scans for free users.
 ///
-/// The free tier is **3 scans per calendar month (UTC)** — the same window the
-/// server enforces via `/v1/scan` (402 past three per month). The client
+/// The free tier defaults to 15 scans per calendar month (UTC). The client
 /// counter is a display mirror of that authoritative quota; the server always
 /// decides. Keys are UID-scoped so a new account on a shared device starts
-/// with its own quota, and counters survive a device clock change because the
-/// key is derived from UTC.
+/// with its own quota. UTC month keys match the backend; only the backend can
+/// enforce quota independently of device clock changes.
 class ScanGateService {
   static final ScanGateService _instance = ScanGateService._internal();
   factory ScanGateService() => _instance;
   ScanGateService._internal();
+
+  @visibleForTesting
+  ScanGateService.forTesting({
+    required SharedPreferences preferences,
+    required String? Function() scope,
+    required DateTime Function() now,
+  }) : _prefs = preferences,
+       _initialized = true,
+       _scope = scope,
+       _now = now;
+
+  String? Function() _scope = resolvePrefScope;
+  DateTime Function() _now = DateTime.now;
+  final ValueNotifier<int> changes = ValueNotifier(0);
+  int _generation = 0;
+  ScanQuotaRequest? _verified;
+  Future<void>? _refresh;
+  ScanQuotaRequest? _refreshRequest;
+
+  String _key(String base, [String? scope]) {
+    final uid = scope ?? _scope();
+    return uid == null || uid.isEmpty ? base : '$uid:$base';
+  }
+
+  bool _isCurrent(ScanQuotaRequest request) =>
+      request.scope == _scope() &&
+      request.month == _currentMonthStr() &&
+      request.generation == _generation;
+
+  ScanQuotaRequest beginServerRefresh() => (
+    scope: _scope(),
+    month: _currentMonthStr(),
+    generation: ++_generation,
+  );
+
+  /// Only show a confirmed count for the current account and UTC month.
+  int? get verifiedRemaining {
+    final request = _verified;
+    if (request == null ||
+        request.scope != _scope() ||
+        request.month != _currentMonthStr()) {
+      return null;
+    }
+    return getRemainingScans(false);
+  }
+
+  bool get isRefreshing =>
+      _refreshRequest != null && _isCurrent(_refreshRequest!);
+
+  void invalidateServerCount() {
+    _generation++;
+    _verified = null;
+    changes.value++;
+  }
+
+  /// Reject unknown balances and late responses from an older scan/account.
+  Future<void> syncQuotaFromServer(Map data, ScanQuotaRequest request) async {
+    await init();
+    if (!_initialized || !_isCurrent(request)) return;
+    int? whole(dynamic value) =>
+        value is num &&
+                value.isFinite &&
+                value >= 0 &&
+                value == value.roundToDouble()
+            ? value.toInt()
+            : null;
+    final base = whole(data['monthlyScanLimit']);
+    final bonus = whole(data['bonusScans']);
+    final remaining = whole(data['scansRemaining']);
+    if (base == null ||
+        base < 1 ||
+        base > 100 ||
+        bonus == null ||
+        bonus > 100 ||
+        remaining == null ||
+        remaining > base + bonus) {
+      return;
+    }
+    final allowance = whole(data['scanAllowance']);
+    if (data.containsKey('scanAllowance') && allowance != base + bonus) return;
+    final prefs = _prefs!;
+    await Future.wait([
+      prefs.setInt(_key(_scanLimitKey, request.scope), base),
+      prefs.setInt(_key(_bonusScansKey, request.scope), bonus),
+      prefs.setInt(
+        _key('scanCount_${request.month}', request.scope),
+        base + bonus - remaining,
+      ),
+      prefs.setString(_key(_lastPeriodKey, request.scope), request.month),
+    ]);
+    if (!_isCurrent(request)) return;
+    _verified = request;
+    changes.value++;
+  }
+
+  Future<void> refreshFromServer({Dio? client}) async {
+    if (!_initialized || _scope() == null) return;
+    final pending = _refresh;
+    if (pending != null && isRefreshing) return pending;
+    final request = beginServerRefresh();
+    _refreshRequest = request;
+    changes.value++;
+    final work = _fetchQuota(request, client ?? ApiClient.dio);
+    _refresh = work;
+    await work;
+  }
+
+  Future<void> _fetchQuota(ScanQuotaRequest request, Dio client) async {
+    try {
+      final response = await client
+          .get('${ConfigService().backendProxyUrl}/api/premium-status')
+          .timeout(const Duration(seconds: 5));
+      if (response.data is Map) {
+        await syncQuotaFromServer(response.data as Map, request);
+      }
+    } catch (_) {
+      // A balance refresh must never discard a successfully scanned meal.
+      debugPrint('Scan balance unavailable; keeping the scan result.');
+    } finally {
+      if (_refreshRequest == request) {
+        _refreshRequest = null;
+        _refresh = null;
+        changes.value++;
+      }
+    }
+  }
 
   SharedPreferences? _prefs;
   bool _initialized = false;
@@ -24,6 +153,7 @@ class ScanGateService {
   static const String _bonusScansKey = 'bonusScansCount';
   static const String _lastPeriodKey = 'scanGate_lastMonth';
   static const String _scanLimitKey = 'freeScanLimit';
+
   /// What a device assumes before the server has told it anything.
   ///
   /// This was 3, which is not the policy -- the free tier is 15 a month. A
@@ -36,20 +166,20 @@ class ScanGateService {
 
   /// The free monthly allowance, before bonus scans.
   ///
-  /// The server decides this -- it is FREE_MONTHLY_SCANS on Render, and the
+  /// The server decides this -- it is FREE_MONTHLY_SCANS on the backend, and the
   /// server is what actually refuses a scan. This used to be a hardcoded 3 on
   /// both sides, which meant raising the server's number changed nothing: the
   /// client blocked at 3 before the server was ever asked, so the environment
   /// variable looked like a live knob and was not one.
   ///
   /// The last value premium-status reported is cached here and used until the
-  /// server says otherwise, so the limit survives being offline. 3 is only the
+  /// server says otherwise, so the limit survives being offline. 15 is only the
   /// fallback for a device that has never heard an answer.
   static int get freeTierLimit => _instance._storedFreeLimit();
 
   int _storedFreeLimit() {
     if (!_ready()) return _defaultFreeTierLimit;
-    final raw = _readInt(scopedPrefKey(_scanLimitKey));
+    final raw = _readInt(_key(_scanLimitKey));
     if (raw <= 0) return _defaultFreeTierLimit;
     // A sane ceiling: a corrupted or hostile value must not turn the free
     // tier into an unlimited one.
@@ -64,7 +194,7 @@ class ScanGateService {
   Future<void> syncFreeLimitFromServer(int serverLimit) async {
     if (!_ready()) return;
     if (serverLimit <= 0 || serverLimit > 100) return;
-    final key = scopedPrefKey(_scanLimitKey);
+    final key = _key(_scanLimitKey);
     if (_readInt(key) == serverLimit) return;
     await _prefs!.setInt(key, serverLimit);
     debugPrint('🔄 ScanGateService: free limit synced to $serverLimit');
@@ -90,7 +220,7 @@ class ScanGateService {
   Future<void> migrateScopeTo(String uid) async {
     if (!_ready()) return;
     final prefs = _prefs!;
-    final monthKey = utcMonthKey(DateTime.now());
+    final monthKey = _currentMonthStr();
 
     final fromCount = prefs.getInt('scanCount_$monthKey') ?? 0;
     final fromBonus = prefs.getInt(_bonusScansKey) ?? 0;
@@ -122,14 +252,14 @@ class ScanGateService {
 
   /// `scanCount_YYYY-MM` in UTC — mirrors the server's monthly quota window.
   String _currentScanKey() {
-    return scopedPrefKey('scanCount_${utcMonthKey(DateTime.now())}');
+    return _key('scanCount_${_currentMonthStr()}');
   }
 
-  String _currentMonthStr() => utcMonthKey(DateTime.now());
+  String _currentMonthStr() => utcMonthKey(_now());
 
   /// All stored scan-count keys for the current scope (any month).
   Iterable<String> _scanKeysForCurrentScope(SharedPreferences prefs) {
-    final scope = resolvePrefScope();
+    final scope = _scope();
     return prefs.getKeys().where((k) {
       if (!k.contains('scanCount_')) return false;
       if (scope == null || scope.isEmpty) return !k.contains(':');
@@ -162,14 +292,14 @@ class ScanGateService {
     }
 
     // 2. Detect new-month boundary and reset.
-    final storedMonth = prefs.getString(scopedPrefKey(_lastPeriodKey));
+    final storedMonth = prefs.getString(_key(_lastPeriodKey));
     if (storedMonth != currentMonth) {
       debugPrint(
         '🔄 ScanGateService: monthly reset '
         '(lastMonth=$storedMonth, now=$currentMonth)',
       );
       await prefs.setInt(currentKey, 0);
-      await prefs.setString(scopedPrefKey(_lastPeriodKey), currentMonth);
+      await prefs.setString(_key(_lastPeriodKey), currentMonth);
     }
 
     _logState();
@@ -178,6 +308,7 @@ class ScanGateService {
   /// Removes every user-scoped counter. Invoked by SessionCleanupService on
   /// sign-out so the next account starts from zero.
   Future<void> resetSessionState() async {
+    invalidateServerCount();
     final prefs = _prefs ?? await SharedPreferences.getInstance();
     final keys =
         prefs.getKeys().where((k) {
@@ -221,7 +352,7 @@ class ScanGateService {
 
   int getBonusScans() {
     if (!_ready()) return 0;
-    final key = scopedPrefKey(_bonusScansKey);
+    final key = _key(_bonusScansKey);
     final raw = _readInt(key);
     final clamped = raw.clamp(0, 100);
     if (clamped != raw) {
@@ -246,25 +377,14 @@ class ScanGateService {
   Future<void> syncBonusScansFromServer(int serverBonus) async {
     if (!_ready()) return;
     if (serverBonus < 0) return;
-    final key = scopedPrefKey(_bonusScansKey);
+    final key = _key(_bonusScansKey);
     if (_readInt(key) == serverBonus) return;
     await _prefs!.setInt(key, serverBonus);
     debugPrint('🔄 ScanGateService: bonus synced to $serverBonus');
   }
 
-  Future<void> incrementScanCount() async {
-    if (!_ready()) return;
-    final before = getPeriodScanCount();
-    final limit = _storedFreeLimit() + getBonusScans();
-    final after = (before + 1).clamp(0, limit);
-    await _prefs!.setInt(_currentScanKey(), after);
-    await _prefs!.setString(scopedPrefKey(_lastPeriodKey), _currentMonthStr());
-    debugPrint('📊 ScanGateService: month count $before ➜ $after');
-    _logState();
-  }
-
   bool canScan(bool isPro) {
-    final userId = FirebaseAuth.instance.currentUser?.uid ?? 'anon';
+    final userId = _scope() ?? 'anon';
 
     if (isPro) {
       debugPrint(
@@ -273,7 +393,7 @@ class ScanGateService {
       return true;
     }
 
-    if (!_ready()) {
+    if (!_ready() || verifiedRemaining == null) {
       debugPrint(
         '⚠️ ScanGateService: userId=$userId, isPro=false, not ready → '
         'allowing scan',
@@ -320,13 +440,11 @@ class ScanGateService {
     final used = _readInt(_currentScanKey());
     final bonus = getBonusScans();
     final limit = _storedFreeLimit() + bonus;
-    final userId = FirebaseAuth.instance.currentUser?.uid ?? 'anon';
+    final userId = _scope() ?? 'anon';
     debugPrint('═══════════ ScanGateService State ═══════════');
     debugPrint('  User ID        : $userId');
     debugPrint('  Current month  : ${_currentMonthStr()}');
-    debugPrint(
-      '  Last period    : ${_prefs!.getString(scopedPrefKey(_lastPeriodKey))}',
-    );
+    debugPrint('  Last period    : ${_prefs!.getString(_key(_lastPeriodKey))}');
     debugPrint('  Month count    : $used');
     debugPrint('  Bonus scans    : $bonus');
     debugPrint('  Free tier limit: ${_storedFreeLimit()}');
