@@ -2364,6 +2364,30 @@ abstract class AppLocalizations {
   /// **'Use the camera to log calories and macros automatically.'**
   String get home_first_meal_cta_body;
 
+  /// No description provided for @first_meal_guide_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with a meal photo'**
+  String get first_meal_guide_title;
+
+  /// No description provided for @first_meal_guide_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Snap your meal, review the estimate, then add it to your log.'**
+  String get first_meal_guide_body;
+
+  /// No description provided for @first_meal_guide_action.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan meal'**
+  String get first_meal_guide_action;
+
+  /// No description provided for @first_meal_guide_dismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss first meal guide'**
+  String get first_meal_guide_dismiss;
+
   /// No description provided for @home_section_macros_today.
   ///
   /// In en, this message translates to:

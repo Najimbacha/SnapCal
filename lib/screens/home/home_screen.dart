@@ -19,6 +19,7 @@ import '../log/widgets/hydration_sheet.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../data/services/promotional_paywall_service.dart';
 import '../../data/services/app_prompt_session_coordinator.dart';
+import '../../data/services/first_meal_guide_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/meal_provider.dart';
@@ -44,12 +45,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   late final AnimationController _animController;
   late final List<Animation<double>> _itemAnims;
+  late final Future<bool> _firstMealGuidePending;
   Timer? _upgradePromptTimer;
-
-
-
-
-
+  bool _showFirstMealGuide = false;
 
   @override
   void initState() {
@@ -72,6 +70,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     } else {
       _animController.value = 1.0;
     }
+
+    _firstMealGuidePending = _loadFirstMealGuide();
 
     // Badges are worked out from what is already logged. Nothing ever asked
     // for them, so not one of them could unlock.
@@ -96,6 +96,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // A waiting update comes first: it is the one thing worth asking about,
     // and two prompts back to back is one too many.
     if (await ForceUpdateService().checkAndPrompt(context)) {
+      AppPromptSessionCoordinator().suppressAutomaticOffers();
+      return;
+    }
+    if (!mounted) return;
+
+    // The user's first useful action comes before permissions or offers. The
+    // guide is inline rather than modal, but showing another prompt over it
+    // would turn a calm first Home visit into a stack of demands.
+    if (await _firstMealGuidePending) {
       AppPromptSessionCoordinator().suppressAutomaticOffers();
       return;
     }
@@ -135,6 +144,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       featureName: 'promotional',
       automatic: true,
     );
+  }
+
+  Future<bool> _loadFirstMealGuide() async {
+    final pending = await FirstMealGuideService().isPending();
+    if (pending && mounted) {
+      setState(() => _showFirstMealGuide = true);
+    }
+    return pending;
+  }
+
+  Future<void> _dismissFirstMealGuide() async {
+    if (mounted) setState(() => _showFirstMealGuide = false);
+    await FirstMealGuideService().dismiss();
   }
 
   @override
@@ -240,6 +262,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   activityBonus: isPro ? activeCalories : 0,
                 ),
           ),
+          if (_showFirstMealGuide && mealCount == 0)
+            _staggeredSlide(
+              _itemAnims[2],
+              _FirstMealGuideCard(
+                onScan: () => context.go('/snap'),
+                onDismiss: _dismissFirstMealGuide,
+              ),
+            ),
           // Macros sit directly under the calorie hero for every user. The
           // previous order pushed them below water and steps for free users,
           // which made sense while the card was a locked placeholder — it now
@@ -310,9 +340,143 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
+}
 
+class _FirstMealGuideCard extends StatelessWidget {
+  const _FirstMealGuideCard({required this.onScan, required this.onDismiss});
 
+  final VoidCallback onScan;
+  final VoidCallback onDismiss;
 
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : _minimalInk;
+    final muted = isDark ? Colors.white70 : _minimalMuted;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0C1511) : const Color(0xFFF2FAF6),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: isDark ? 0.28 : 0.20),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(
+                      alpha: isDark ? 0.18 : 0.12,
+                    ),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: const Icon(
+                    LucideIcons.camera,
+                    size: 21,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.first_meal_guide_title,
+                          style: AppTypography.titleSmall.copyWith(
+                            color: ink,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.first_meal_guide_body,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: muted,
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Tooltip(
+                  message: l10n.first_meal_guide_dismiss,
+                  child: IconButton(
+                    key: const ValueKey('first-meal-guide-dismiss'),
+                    onPressed: onDismiss,
+                    icon: const Icon(LucideIcons.x, size: 18),
+                    color: muted,
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 13),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                key: const ValueKey('first-meal-guide-scan'),
+                onPressed: onScan,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.camera, size: 19),
+                    const SizedBox(width: 9),
+                    Flexible(
+                      child: Text(
+                        l10n.first_meal_guide_action,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.labelLarge.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 Widget _staggeredSlide(Animation<double> animation, Widget child) {
@@ -1020,7 +1184,6 @@ class _MinimalEmptyMealRow extends StatelessWidget {
     );
   }
 }
-
 
 /// Locale-aware grouping, shared with the Log screen's `_formatInt`.
 ///

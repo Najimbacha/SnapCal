@@ -140,6 +140,7 @@ class SessionCleanupService {
         'free_scans_used_today',
         'promo_paywall_',
         'review_',
+        'first_meal_guide_',
         // SettingsRepository's per-account 'synced recently' marker. Left behind,
         // signing back in within its interval skipped the settings pull, so an
         // emptied phone showed default goals and sent the user to onboarding.

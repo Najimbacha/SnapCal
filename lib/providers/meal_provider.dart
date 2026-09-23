@@ -8,6 +8,7 @@ import '../data/models/meal.dart';
 import '../core/services/app_lifecycle_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/gemini_service.dart';
+import '../data/services/first_meal_guide_service.dart';
 import '../data/services/promotional_paywall_service.dart';
 import 'planner_provider.dart';
 import 'repository_providers.dart';
@@ -77,6 +78,10 @@ class MealLog extends _$MealLog {
   }) async {
     final repo = await ref.read(mealRepositoryProvider.future);
     await repo.addMeal(meal);
+
+    // The first useful action explains the product better than a recurring
+    // tutorial. Once any meal is safely stored, the optional Home hint is done.
+    unawaited(FirstMealGuideService().markCompleted());
 
     // Fire-and-forget streak update via settings
     unawaited(

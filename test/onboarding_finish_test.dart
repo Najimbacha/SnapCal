@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snapcal/data/services/first_meal_guide_service.dart';
 import 'package:snapcal/data/models/body_metric.dart';
 import 'package:snapcal/data/models/user_settings.dart';
 import 'package:snapcal/data/services/calorie_onboarding_service.dart';
@@ -52,6 +54,7 @@ class _FakeBodyMetrics extends BodyMetrics {
 
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets('"Start plan" saves the plan and lands on Home', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -124,6 +127,7 @@ void main() {
     expect(settings.saved, isNotNull);
     expect(settings.state.valueOrNull?.onboardingComplete, isTrue);
     expect(metrics.weights, [75]);
+    expect(await FirstMealGuideService().isPending(), isTrue);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await settle(2000);

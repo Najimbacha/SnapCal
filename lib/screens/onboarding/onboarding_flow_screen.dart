@@ -6,6 +6,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../data/services/calorie_onboarding_service.dart';
+import '../../data/services/first_meal_guide_service.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/metrics_provider.dart';
 import 'onboarding_draft.dart';
@@ -172,6 +173,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         recommendation: _draft.recommendation!,
       );
       await metrics.logWeight(_draft.currentWeightKg!);
+      await FirstMealGuideService().schedule();
     } catch (e) {
       debugPrint('OnboardingFlow: Error completing onboarding: $e');
       if (!mounted) return;
@@ -421,7 +423,10 @@ class _OnboardingBackdrop extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: [color.withValues(alpha: alpha), color.withValues(alpha: 0)],
+            colors: [
+              color.withValues(alpha: alpha),
+              color.withValues(alpha: 0),
+            ],
           ),
         ),
       ),

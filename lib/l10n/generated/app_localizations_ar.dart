@@ -1223,6 +1223,19 @@ class AppLocalizationsAr extends AppLocalizations {
       'استخدم الكاميرا لتسجيل السعرات والعناصر الغذائية تلقائياً.';
 
   @override
+  String get first_meal_guide_title => 'ابدأ بصورة لوجبتك';
+
+  @override
+  String get first_meal_guide_body =>
+      'صوّر وجبتك، راجع التقدير، ثم أضفها إلى سجلك.';
+
+  @override
+  String get first_meal_guide_action => 'تصوير وجبة';
+
+  @override
+  String get first_meal_guide_dismiss => 'إغلاق دليل الوجبة الأولى';
+
+  @override
   String get home_section_macros_today => 'عناصر اليوم';
 
   @override

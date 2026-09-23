@@ -1239,6 +1239,19 @@ class AppLocalizationsEs extends AppLocalizations {
       'Usa la cámara para registrar calorías y macros automáticamente.';
 
   @override
+  String get first_meal_guide_title => 'Empieza con una foto de tu comida';
+
+  @override
+  String get first_meal_guide_body =>
+      'Haz una foto, revisa la estimación y añádela a tu registro.';
+
+  @override
+  String get first_meal_guide_action => 'Escanear comida';
+
+  @override
+  String get first_meal_guide_dismiss => 'Cerrar la guía de la primera comida';
+
+  @override
   String get home_section_macros_today => 'Macros de hoy';
 
   @override

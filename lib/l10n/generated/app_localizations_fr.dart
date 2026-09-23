@@ -1244,6 +1244,19 @@ class AppLocalizationsFr extends AppLocalizations {
       'Utilisez l\'appareil photo pour enregistrer calories et macros automatiquement.';
 
   @override
+  String get first_meal_guide_title => 'Commencez par une photo du repas';
+
+  @override
+  String get first_meal_guide_body =>
+      'Photographiez le repas, vérifiez l\'estimation, puis ajoutez-le au journal.';
+
+  @override
+  String get first_meal_guide_action => 'Scanner un repas';
+
+  @override
+  String get first_meal_guide_dismiss => 'Fermer le guide du premier repas';
+
+  @override
   String get home_section_macros_today => 'Macros du jour';
 
   @override
