@@ -142,7 +142,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Food Log'), findsOneWidget);
-    expect(find.text('Daily balance'), findsOneWidget);
+    expect(find.text('Daily balance'), findsNothing);
     expect(find.text('Meals'), findsOneWidget);
     // Personalized Quick Add intentionally repeats frequently logged names
     // above the full diary list.
@@ -174,7 +174,7 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.byKey(const ValueKey('daily-balance-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('daily-balance-card')), findsNothing);
     expect(find.byKey(const ValueKey('log-add-manually')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -206,7 +206,7 @@ void main() {
     await tester.pumpWidget(_host(locale: const Locale('ar')));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.byKey(const ValueKey('daily-balance-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('daily-balance-card')), findsNothing);
     expect(find.byKey(const ValueKey('log-scan-meal')), findsNothing);
     expect(find.byKey(const ValueKey('log-add-manually')), findsOneWidget);
     expect(tester.takeException(), isNull);

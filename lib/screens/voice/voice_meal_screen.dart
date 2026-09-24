@@ -388,10 +388,16 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final surface = dark ? const Color(0xFF101412) : const Color(0xFFFAFCFB);
-    final textColor = dark ? Colors.white : const Color(0xFF17201B);
+    final surface = dark ? AppColors.darkBackground : AppColors.lightBackground;
+    final card = dark ? AppColors.darkCard : AppColors.lightCard;
+    final textColor = dark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final secondaryText =
+        dark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final border =
+        dark ? Colors.white.withValues(alpha: 0.09) : AppColors.lightCardBorder;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -402,20 +408,44 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
         appBar: AppBar(
           backgroundColor: surface,
           surfaceTintColor: Colors.transparent,
+          toolbarHeight: 64,
           leading: IconButton(
             key: const ValueKey('voice-close'),
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             onPressed: () => context.pop(),
-            icon: const Icon(LucideIcons.x, size: 22),
-          ),
-          title: Text(
-            l10n.voice_log_title,
-            style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.w700,
-              color: textColor,
+            style: IconButton.styleFrom(
+              backgroundColor: card,
+              side: BorderSide(color: border),
             ),
+            icon: const Icon(LucideIcons.x, size: 20),
           ),
-          centerTitle: true,
+          titleSpacing: 8,
+          title: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  LucideIcons.waves,
+                  size: 18,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                l10n.voice_log_title,
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          centerTitle: false,
         ),
         body: SafeArea(
           top: false,
@@ -424,7 +454,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                 (context, constraints) => SingleChildScrollView(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset),
+                  padding: EdgeInsets.fromLTRB(20, 10, 20, 24 + bottomInset),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
                       minHeight: (constraints.maxHeight - 40).clamp(
@@ -437,71 +467,114 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                       children: [
                         Text(
                           l10n.voice_heading,
-                          textAlign: TextAlign.center,
                           style: AppTypography.headlineSmall.copyWith(
                             color: textColor,
                             fontWeight: FontWeight.w800,
+                            letterSpacing: -0.35,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           l10n.voice_subtitle,
-                          textAlign: TextAlign.center,
                           style: AppTypography.bodyMedium.copyWith(
-                            color: textColor.withValues(alpha: 0.60),
+                            color: secondaryText,
                             height: 1.4,
                           ),
                         ),
-                        const SizedBox(height: 22),
-                        _MicControl(
-                          listening: _isListening,
-                          analyzing: _isAnalyzing,
-                          soundLevel: _soundLevel,
-                          secondsLeft: _secondsLeft,
-                          onTap:
-                              _isAnalyzing
-                                  ? null
-                                  : _isListening
-                                  ? _stopListening
-                                  : _startListening,
-                          readyLabel: l10n.voice_tap_to_speak,
-                          listeningLabel: l10n.voice_listening,
-                        ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 18),
                         Container(
-                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
                           decoration: BoxDecoration(
-                            color:
-                                dark
-                                    ? Colors.white.withValues(alpha: 0.055)
-                                    : Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: (dark ? Colors.white : Colors.black)
-                                  .withValues(alpha: 0.08),
-                            ),
+                            color: card,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: border),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: dark ? 0.20 : 0.045,
+                                ),
+                                blurRadius: 24,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                           ),
-                          child: TextField(
-                            key: const ValueKey('voice-transcript'),
-                            controller: _transcriptController,
-                            focusNode: _focusNode,
-                            enabled: !_isAnalyzing,
-                            minLines: 3,
-                            maxLines: 5,
-                            maxLength: 500,
-                            textCapitalization: TextCapitalization.sentences,
-                            onChanged: (_) => setState(() => _error = null),
-                            decoration: InputDecoration(
-                              labelText: l10n.voice_transcript_label,
-                              hintText: l10n.voice_transcript_hint,
-                              helperText: l10n.voice_example,
-                              helperMaxLines: 2,
-                              border: InputBorder.none,
-                              counterText: '',
-                            ),
+                          child: Column(
+                            children: [
+                              _MicControl(
+                                listening: _isListening,
+                                analyzing: _isAnalyzing,
+                                soundLevel: _soundLevel,
+                                secondsLeft: _secondsLeft,
+                                onTap:
+                                    _isAnalyzing
+                                        ? null
+                                        : _isListening
+                                        ? _stopListening
+                                        : _startListening,
+                                readyLabel: l10n.voice_tap_to_speak,
+                                listeningLabel: l10n.voice_listening,
+                              ),
+                              const SizedBox(height: 20),
+                              Container(
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  10,
+                                  14,
+                                  6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      dark
+                                          ? Colors.white.withValues(
+                                            alpha: 0.055,
+                                          )
+                                          : AppColors.background,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: border),
+                                ),
+                                child: TextField(
+                                  key: const ValueKey('voice-transcript'),
+                                  controller: _transcriptController,
+                                  focusNode: _focusNode,
+                                  enabled: !_isAnalyzing,
+                                  minLines: 3,
+                                  maxLines: 5,
+                                  maxLength: 500,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                  onChanged:
+                                      (_) => setState(() => _error = null),
+                                  decoration: InputDecoration(
+                                    labelText: l10n.voice_transcript_label,
+                                    hintText: l10n.voice_transcript_hint,
+                                    helperText: l10n.voice_example,
+                                    helperMaxLines: 2,
+                                    labelStyle: TextStyle(
+                                      color: secondaryText,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    floatingLabelStyle: const TextStyle(
+                                      color: AppColors.primaryDark,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    hintStyle: TextStyle(
+                                      color: secondaryText.withValues(
+                                        alpha: 0.72,
+                                      ),
+                                    ),
+                                    helperStyle: TextStyle(
+                                      color: secondaryText,
+                                      height: 1.3,
+                                    ),
+                                    border: InputBorder.none,
+                                    counterText: '',
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -516,14 +589,15 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                                 l10n.voice_privacy_note,
                                 textAlign: TextAlign.center,
                                 style: AppTypography.labelSmall.copyWith(
-                                  color: textColor.withValues(alpha: 0.55),
+                                  color: secondaryText,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ],
                         ),
                         if (_error != null) ...[
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 12),
                           _ErrorBanner(
                             message: _error!,
                             showSettings: _permanentlyDenied,
@@ -531,17 +605,23 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                             onSettings: openAppSettings,
                           ),
                         ],
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 18),
                         FilledButton.icon(
                           key: const ValueKey('voice-analyze'),
                           onPressed: _canAnalyze ? _analyze : null,
                           style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(54),
+                            minimumSize: const Size.fromHeight(56),
                             backgroundColor: AppColors.emeraldDark,
                             foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                dark
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : AppColors.lightCardBorder,
+                            disabledForegroundColor: secondaryText,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(16),
                             ),
+                            elevation: 0,
                           ),
                           icon:
                               _isAnalyzing
@@ -563,7 +643,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                         ),
                         if (_transcriptController.text.trim().isNotEmpty &&
                             !_isAnalyzing) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           TextButton.icon(
                             key: const ValueKey('voice-speak-again'),
                             onPressed:
@@ -572,6 +652,12 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                                     : () => _startListening(clearFirst: true),
                             icon: const Icon(LucideIcons.rotateCcw, size: 17),
                             label: Text(l10n.voice_speak_again),
+                            style: TextButton.styleFrom(
+                              foregroundColor:
+                                  dark
+                                      ? AppColors.emeraldLight
+                                      : AppColors.primaryDark,
+                            ),
                           ),
                         ],
                       ],
@@ -608,6 +694,7 @@ class _MicControl extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final label = listening ? '$listeningLabel · ${secondsLeft}s' : readyLabel;
+    final muted = dark ? AppColors.darkTextSecondary : AppColors.textSecondary;
 
     return Column(
       children: [
@@ -617,35 +704,51 @@ class _MicControl extends StatelessWidget {
           child: InkResponse(
             key: const ValueKey('voice-mic'),
             onTap: onTap,
-            radius: 66,
+            radius: 60,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 220),
-              width: 104,
-              height: 104,
+              width: 108,
+              height: 108,
+              padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: AppColors.primaryGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(
-                      alpha: listening ? 0.34 : 0.20,
-                    ),
-                    blurRadius: listening ? 28 : 18,
-                    spreadRadius: listening ? 5 : 1,
+                color: AppColors.primary.withValues(
+                  alpha: listening ? 0.13 : 0.075,
+                ),
+                border: Border.all(
+                  color: AppColors.primary.withValues(
+                    alpha: listening ? 0.36 : 0.16,
                   ),
-                ],
+                ),
               ),
-              child: Icon(
-                listening ? LucideIcons.square : LucideIcons.mic,
-                size: listening ? 31 : 38,
-                color: Colors.white,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppColors.primaryGradient,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(
+                        alpha: listening ? 0.30 : 0.18,
+                      ),
+                      blurRadius: listening ? 24 : 16,
+                      spreadRadius: listening ? 2 : 0,
+                      offset: const Offset(0, 7),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  listening ? LucideIcons.square : LucideIcons.mic,
+                  size: listening ? 25 : 31,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 26,
+          height: 22,
           child:
               listening
                   ? Row(
@@ -653,10 +756,10 @@ class _MicControl extends StatelessWidget {
                     children: List.generate(7, (index) {
                       final distance = (index - 3).abs();
                       final factor = 1 - distance * 0.12;
-                      final height = 7 + (19 * soundLevel * factor);
+                      final height = 5 + (17 * soundLevel * factor);
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 100),
-                        width: 4,
+                        width: 3,
                         height: height,
                         margin: const EdgeInsets.symmetric(horizontal: 3),
                         decoration: BoxDecoration(
@@ -668,23 +771,16 @@ class _MicControl extends StatelessWidget {
                   )
                   : Icon(
                     analyzing ? LucideIcons.loader : LucideIcons.activity,
-                    size: 21,
-                    color: (dark ? Colors.white : Colors.black).withValues(
-                      alpha: 0.30,
-                    ),
+                    size: 18,
+                    color: muted.withValues(alpha: 0.55),
                   ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 4),
         Text(
           label,
           style: AppTypography.labelMedium.copyWith(
             fontWeight: FontWeight.w600,
-            color:
-                listening
-                    ? AppColors.primary
-                    : (dark ? Colors.white : Colors.black).withValues(
-                      alpha: 0.62,
-                    ),
+            color: listening ? AppColors.primary : muted,
           ),
         ),
       ],
@@ -707,29 +803,39 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF2F0),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFFCDC7)),
+        color: scheme.errorContainer.withValues(alpha: 0.52),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             LucideIcons.alertCircle,
-            color: Color(0xFFB42318),
-            size: 19,
+            color: scheme.onErrorContainer,
+            size: 18,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Color(0xFF7A271A), fontSize: 13),
+              style: AppTypography.bodySmall.copyWith(
+                color: scheme.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           if (showSettings)
-            TextButton(onPressed: onSettings, child: Text(settingsLabel)),
+            TextButton(
+              onPressed: onSettings,
+              style: TextButton.styleFrom(
+                foregroundColor: scheme.onErrorContainer,
+              ),
+              child: Text(settingsLabel),
+            ),
         ],
       ),
     );
