@@ -5253,70 +5253,116 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get quick_add_title => 'إضافة سريعة';
+
   @override
   String get quick_add_search => 'البحث عن طعام';
+
   @override
   String get quick_add_for_you => 'لك';
+
   @override
   String get quick_add_recent => 'الأخيرة';
+
   @override
   String get quick_add_local => 'محلية';
+
   @override
   String get quick_add_favorites => 'المفضلة';
+
   @override
   String get quick_add_all => 'كل الأطعمة';
+
   @override
   String get quick_add_see_all => 'عرض الكل';
+
   @override
   String get quick_add_empty => 'لا توجد أطعمة تطابق البحث.';
+
   @override
   String get quick_add_empty_favorites =>
       'أضف الأطعمة إلى المفضلة لتجدها بنقرة واحدة.';
+
   @override
   String get quick_add_region => 'منطقة الطعام';
+
   @override
   String get quick_add_region_subtitle =>
       'تظهر الأطعمة المحلية أولاً. يمكنك تغيير ذلك في أي وقت.';
+
   @override
   String get quick_add_region_automatic => 'تلقائي';
+
   @override
   String get quick_add_region_pakistan => 'باكستان';
+
   @override
   String get quick_add_region_south_asian => 'جنوب آسيا';
+
   @override
   String get quick_add_region_middle_eastern => 'الشرق الأوسط';
+
   @override
   String get quick_add_region_gulf => 'الخليج';
+
   @override
   String get quick_add_region_east_asian => 'شرق آسيا';
+
   @override
   String get quick_add_region_korean => 'كوري';
+
   @override
   String get quick_add_region_american => 'أمريكي';
+
   @override
   String get quick_add_region_mediterranean => 'متوسطي';
+
   @override
   String get quick_add_region_international => 'عالمي';
+
   @override
   String get quick_add_serving => 'الحصة';
+
   @override
   String get quick_add_half_serving => 'نصف حصة';
+
   @override
   String get quick_add_one_serving => 'حصة واحدة';
+
   @override
   String get quick_add_one_half_servings => 'حصة ونصف';
+
   @override
   String get quick_add_two_servings => 'حصتان';
+
   @override
-  String quick_add_grams(int grams) => '$grams غ';
+  String quick_add_grams(int grams) {
+    final intl.NumberFormat gramsNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String gramsString = gramsNumberFormat.format(grams);
+
+    return '$gramsString غ';
+  }
+
   @override
-  String quick_add_calories(int calories) => '$calories سعرة';
+  String quick_add_calories(int calories) {
+    final intl.NumberFormat caloriesNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String caloriesString = caloriesNumberFormat.format(calories);
+
+    return '$caloriesString سعرة';
+  }
+
   @override
   String get quick_add_add => 'إضافة إلى السجل';
+
   @override
-  String quick_add_added(String food) => 'تمت إضافة $food';
+  String quick_add_added(String food) {
+    return 'تمت إضافة $food';
+  }
+
   @override
   String get quick_add_undo => 'تراجع';
+
   @override
   String get quick_add_previous_portion => 'حصتك المعتادة';
 }

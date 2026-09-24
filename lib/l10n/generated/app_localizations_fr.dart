@@ -5375,71 +5375,117 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get quick_add_title => 'Ajout rapide';
+
   @override
   String get quick_add_search => 'Rechercher un aliment';
+
   @override
   String get quick_add_for_you => 'Pour vous';
+
   @override
   String get quick_add_recent => 'Récents';
+
   @override
   String get quick_add_local => 'Locaux';
+
   @override
   String get quick_add_favorites => 'Favoris';
+
   @override
   String get quick_add_all => 'Tous';
+
   @override
   String get quick_add_see_all => 'Tout voir';
+
   @override
   String get quick_add_empty =>
       'Aucun aliment ne correspond à cette recherche.';
+
   @override
   String get quick_add_empty_favorites =>
       'Ajoutez des favoris pour les retrouver en un geste.';
+
   @override
   String get quick_add_region => 'Région alimentaire';
+
   @override
   String get quick_add_region_subtitle =>
       'Les aliments locaux apparaissent en premier. Vous pouvez modifier ce choix à tout moment.';
+
   @override
   String get quick_add_region_automatic => 'Automatique';
+
   @override
   String get quick_add_region_pakistan => 'Pakistan';
+
   @override
   String get quick_add_region_south_asian => 'Asie du Sud';
+
   @override
   String get quick_add_region_middle_eastern => 'Moyen-Orient';
+
   @override
   String get quick_add_region_gulf => 'Golfe';
+
   @override
   String get quick_add_region_east_asian => 'Asie de l’Est';
+
   @override
   String get quick_add_region_korean => 'Coréenne';
+
   @override
   String get quick_add_region_american => 'Américaine';
+
   @override
   String get quick_add_region_mediterranean => 'Méditerranéenne';
+
   @override
   String get quick_add_region_international => 'Internationale';
+
   @override
   String get quick_add_serving => 'Portion';
+
   @override
   String get quick_add_half_serving => '½ portion';
+
   @override
   String get quick_add_one_serving => '1 portion';
+
   @override
   String get quick_add_one_half_servings => '1½ portions';
+
   @override
   String get quick_add_two_servings => '2 portions';
+
   @override
-  String quick_add_grams(int grams) => '$grams g';
+  String quick_add_grams(int grams) {
+    final intl.NumberFormat gramsNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String gramsString = gramsNumberFormat.format(grams);
+
+    return '$gramsString g';
+  }
+
   @override
-  String quick_add_calories(int calories) => '$calories kcal';
+  String quick_add_calories(int calories) {
+    final intl.NumberFormat caloriesNumberFormat = intl
+        .NumberFormat.decimalPattern(localeName);
+    final String caloriesString = caloriesNumberFormat.format(calories);
+
+    return '$caloriesString kcal';
+  }
+
   @override
   String get quick_add_add => 'Ajouter au journal';
+
   @override
-  String quick_add_added(String food) => '$food ajouté';
+  String quick_add_added(String food) {
+    return '$food ajouté';
+  }
+
   @override
   String get quick_add_undo => 'Annuler';
+
   @override
   String get quick_add_previous_portion => 'Votre portion habituelle';
 }

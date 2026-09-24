@@ -9454,38 +9454,202 @@ abstract class AppLocalizations {
   /// **'SnapCal couldn\'t analyze that meal. Please try again.'**
   String get voice_analysis_failed;
 
+  /// No description provided for @quick_add_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick add'**
   String get quick_add_title;
+
+  /// No description provided for @quick_add_search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search foods'**
   String get quick_add_search;
+
+  /// No description provided for @quick_add_for_you.
+  ///
+  /// In en, this message translates to:
+  /// **'For you'**
   String get quick_add_for_you;
+
+  /// No description provided for @quick_add_recent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
   String get quick_add_recent;
+
+  /// No description provided for @quick_add_local.
+  ///
+  /// In en, this message translates to:
+  /// **'Local'**
   String get quick_add_local;
+
+  /// No description provided for @quick_add_favorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
   String get quick_add_favorites;
+
+  /// No description provided for @quick_add_all.
+  ///
+  /// In en, this message translates to:
+  /// **'All foods'**
   String get quick_add_all;
+
+  /// No description provided for @quick_add_see_all.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
   String get quick_add_see_all;
+
+  /// No description provided for @quick_add_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No foods match this search.'**
   String get quick_add_empty;
+
+  /// No description provided for @quick_add_empty_favorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite foods to keep them one tap away.'**
   String get quick_add_empty_favorites;
+
+  /// No description provided for @quick_add_region.
+  ///
+  /// In en, this message translates to:
+  /// **'Food region'**
   String get quick_add_region;
+
+  /// No description provided for @quick_add_region_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Local foods appear first. You can change this anytime.'**
   String get quick_add_region_subtitle;
+
+  /// No description provided for @quick_add_region_automatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
   String get quick_add_region_automatic;
+
+  /// No description provided for @quick_add_region_pakistan.
+  ///
+  /// In en, this message translates to:
+  /// **'Pakistan'**
   String get quick_add_region_pakistan;
+
+  /// No description provided for @quick_add_region_south_asian.
+  ///
+  /// In en, this message translates to:
+  /// **'South Asian'**
   String get quick_add_region_south_asian;
+
+  /// No description provided for @quick_add_region_middle_eastern.
+  ///
+  /// In en, this message translates to:
+  /// **'Middle Eastern'**
   String get quick_add_region_middle_eastern;
+
+  /// No description provided for @quick_add_region_gulf.
+  ///
+  /// In en, this message translates to:
+  /// **'Gulf'**
   String get quick_add_region_gulf;
+
+  /// No description provided for @quick_add_region_east_asian.
+  ///
+  /// In en, this message translates to:
+  /// **'East Asian'**
   String get quick_add_region_east_asian;
+
+  /// No description provided for @quick_add_region_korean.
+  ///
+  /// In en, this message translates to:
+  /// **'Korean'**
   String get quick_add_region_korean;
+
+  /// No description provided for @quick_add_region_american.
+  ///
+  /// In en, this message translates to:
+  /// **'American'**
   String get quick_add_region_american;
+
+  /// No description provided for @quick_add_region_mediterranean.
+  ///
+  /// In en, this message translates to:
+  /// **'Mediterranean'**
   String get quick_add_region_mediterranean;
+
+  /// No description provided for @quick_add_region_international.
+  ///
+  /// In en, this message translates to:
+  /// **'International'**
   String get quick_add_region_international;
+
+  /// No description provided for @quick_add_serving.
+  ///
+  /// In en, this message translates to:
+  /// **'Serving'**
   String get quick_add_serving;
+
+  /// No description provided for @quick_add_half_serving.
+  ///
+  /// In en, this message translates to:
+  /// **'½ serving'**
   String get quick_add_half_serving;
+
+  /// No description provided for @quick_add_one_serving.
+  ///
+  /// In en, this message translates to:
+  /// **'1 serving'**
   String get quick_add_one_serving;
+
+  /// No description provided for @quick_add_one_half_servings.
+  ///
+  /// In en, this message translates to:
+  /// **'1½ servings'**
   String get quick_add_one_half_servings;
+
+  /// No description provided for @quick_add_two_servings.
+  ///
+  /// In en, this message translates to:
+  /// **'2 servings'**
   String get quick_add_two_servings;
+
+  /// No description provided for @quick_add_grams.
+  ///
+  /// In en, this message translates to:
+  /// **'{grams} g'**
   String quick_add_grams(int grams);
+
+  /// No description provided for @quick_add_calories.
+  ///
+  /// In en, this message translates to:
+  /// **'{calories} kcal'**
   String quick_add_calories(int calories);
+
+  /// No description provided for @quick_add_add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Log'**
   String get quick_add_add;
+
+  /// No description provided for @quick_add_added.
+  ///
+  /// In en, this message translates to:
+  /// **'{food} added'**
   String quick_add_added(String food);
+
+  /// No description provided for @quick_add_undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
   String get quick_add_undo;
+
+  /// No description provided for @quick_add_previous_portion.
+  ///
+  /// In en, this message translates to:
+  /// **'Your usual portion'**
   String get quick_add_previous_portion;
 }
 
