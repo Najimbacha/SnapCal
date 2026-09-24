@@ -43,6 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/build/
 
 # Generated code (Riverpod, Hive, etc.)
 **/*.g.dart
@@ -82,3 +83,7 @@ HANDOFF.md
 /appshot-video/out/real-qa-*.png
 /appshot-video/out/test-shot.png
 /appshot-captures/
+
+# Local recovery archives and chat attachments; never ship them with the app.
+/_to_delete/
+/.codex-remote-attachments/
