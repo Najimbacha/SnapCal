@@ -74,3 +74,11 @@ GoogleService-Info.plist
 # Local session handoff notes. References local key paths and env var
 # names -- this repo is public, so it stays out of it.
 HANDOFF.md
+
+# Appshot marketing render dependencies/cache
+/appshot-video/node_modules/
+/appshot-video/.remotion/
+/appshot-video/out/qa-frame-*.png
+/appshot-video/out/real-qa-*.png
+/appshot-video/out/test-shot.png
+/appshot-captures/

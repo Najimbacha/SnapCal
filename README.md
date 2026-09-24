@@ -14,7 +14,7 @@
   <img alt="RevenueCat" src="https://img.shields.io/badge/RevenueCat-Pro%20Subscriptions-6E56CF?style=for-the-badge" />
 </p>
 
-SnapCal lets users snap a meal, get an AI nutrition estimate, review detected foods, and save calories/macros into a daily food log. The app also includes barcode scanning, meal planning, hydration/activity tracking, an AI nutrition coach, subscriptions, reminders, and secure cloud sync.
+SnapCal lets users snap a meal or describe it by voice, get an AI nutrition estimate, review detected foods, and save calories/macros into a daily food log. The app also includes barcode scanning, meal planning, hydration/activity tracking, an AI nutrition coach, subscriptions, reminders, and secure cloud sync.
 
 > Android is the primary target right now. iOS support exists in the codebase, but current product work is Android-first.
 
@@ -25,6 +25,8 @@ SnapCal lets users snap a meal, get an AI nutrition estimate, review detected fo
 | Product | Engineering |
 | --- | --- |
 | AI food scan from camera | Flutter + Riverpod mobile app |
+| Voice meal logging with editable transcript | Native Android speech recognition + protected text-scan API |
+| Personalized regional Quick Add | Offline curated catalogue + local meal-history ranking |
 | Barcode lookup for packaged food | Node.js / Express backend |
 | Daily calorie, macro, hydration, and activity tracking | Firebase Auth, Firestore, Storage, FCM, App Check |
 | AI coach and meal planning | Backend-proxied AI providers |
@@ -35,6 +37,8 @@ SnapCal lets users snap a meal, get an AI nutrition estimate, review detected fo
 ## What SnapCal does
 
 - Camera-based AI food scanning
+- Voice meal logging with a review-before-analysis transcript
+- One-tap Quick Add using recent, frequent, favorite, and regional foods
 - Barcode lookup for packaged food
 - Daily calories, macros, meals, hydration, activity, and weight tracking
 - AI nutrition coach for meal and goal guidance
@@ -55,9 +59,9 @@ Check daily calories + macros
   ↓
 Tap camera
   ↓
-Choose food scan or barcode
+Choose photo, barcode, or voice
   ↓
-Scan meal
+Capture or describe the meal
   ↓
 AI detects foods + estimates nutrition
   ↓
@@ -75,8 +79,9 @@ Add to food log
 | App | Flutter / Dart |
 | State | Riverpod |
 | Navigation | GoRouter |
-| Local storage | Hive + secure storage |
+| Local storage | Hive + secure storage + lightweight preferences |
 | Camera | `camera`, `image_picker`, `mobile_scanner` |
+| Voice | `speech_to_text` using Android speech recognition |
 | Charts/UI | `fl_chart`, `flutter_animate`, `lucide_icons`, Material |
 | Backend | Node.js / Express |
 | AI | Backend-proxied AI providers, Gemini-first |
@@ -177,7 +182,7 @@ The backend is the safe gateway for AI providers and subscription/webhook operat
 | `OPENROUTER_API_KEY` | Optional fallback | AI fallback provider. |
 | `QWEN_API_KEY` | Optional fallback | AI fallback provider. |
 | `GROQ_API_KEY` | Optional fallback | AI fallback provider. |
-| `FREE_MONTHLY_SCANS` | Optional | Free monthly scan limit. Default is `3`. |
+| `FREE_MONTHLY_SCANS` | Optional | Free monthly photo-and-voice scan limit. Default is `15`. |
 | `SCAN_PIPELINE` | Optional | `v1` or `v2` scan pipeline. |
 | `PORT` | Optional | Backend port. |
 | `API_RATE_LIMIT` | Optional | General API rate limiting. |
@@ -249,11 +254,32 @@ Current scan flow:
 - `/snap` opens the inline camera
 - camera preview is rendered inside SnapCal UI
 - users can capture food, choose gallery, switch to barcode, or add manually
+- users can choose Voice Log, speak for up to 30 seconds, and correct the transcript before analysis
 - captured image is compressed before upload
-- AI scan result opens in the review screen
+- photo and voice results open in the same review screen
 - saved meals are written into the food log
 
 Barcode scanning uses `mobile_scanner` and product lookup via OpenFoodFacts.
+Voice Log sends only the reviewed transcript to `/v1/text-scan`; SnapCal does not
+record or upload an audio file. It uses the same monthly AI scan allowance as a
+photo scan. The release entry point is controlled by the Firebase Remote Config
+boolean `voice_logging_enabled`, whose safe default is `false`.
+
+### Regional Quick Add
+
+The Food Log can rank familiar meals without an AI request or GPS permission.
+It starts with recent and frequently logged meals, then uses the saved Food
+Region, planner cuisine preference, device country, current meal time, and an
+international fallback. Catalogue items reuse stable nutrition IDs and per-100 g
+values from `backend/data/nutrition_db.json`; each logged meal keeps a nutrition
+snapshot, so later catalogue updates cannot rewrite history.
+
+The initial offline catalogue covers common South Asian, Middle Eastern, East
+Asian, American, Mediterranean, and international foods. The release surface is
+controlled by the Firebase Remote Config boolean `quick_foods_enabled`, whose
+safe default is `false`. Debug builds expose it automatically for device and
+layout testing. Food-region and favorite preferences are cleared during account
+session cleanup so another user of the same phone cannot inherit them.
 
 ---
 

@@ -82,6 +82,16 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final key = GlobalKey();
+      final router = GoRouter(
+        // AppPageScaffold asks the router whether it can pop.
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => const ActivityScreen(),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -114,15 +124,7 @@ void main() {
             stepStreakProvider.overrideWith((ref) => Future.value(4)),
           ],
           child: MaterialApp.router(
-            routerConfig: GoRouter(
-              // AppPageScaffold asks the router whether it can pop.
-              routes: [
-                GoRoute(
-                  path: '/',
-                  builder: (context, state) => const ActivityScreen(),
-                ),
-              ],
-            ),
+            routerConfig: router,
             locale: Locale(locale),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,

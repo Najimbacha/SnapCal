@@ -125,6 +125,15 @@ Rules:
   // free tier — for an A/B test, say — without shipping a new build.
   static const bool defaultFreeMacrosEnabled = false;
 
+  // Voice logging rolls out through Remote Config so the backend can be
+  // deployed and observed before the entry point reaches every Android user.
+  static const bool defaultVoiceLoggingEnabled = false;
+
+  // Quick Add first ships behind a kill switch. Debug builds expose it for
+  // device and layout testing; release builds stay hidden until its catalogue
+  // and interaction metrics have been checked in production.
+  static const bool defaultQuickFoodsEnabled = false;
+
   // Animation Durations
   static const Duration shortAnimation = Duration(milliseconds: 200);
   static const Duration mediumAnimation = Duration(milliseconds: 400);

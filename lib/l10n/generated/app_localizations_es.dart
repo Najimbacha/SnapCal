@@ -3719,18 +3719,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get common_unlock => 'Desbloquear';
 
   @override
-  String get scan_choice_title => 'Elige el tipo de escaneo';
+  String get scan_choice_title => 'Registrar una comida';
 
   @override
   String get scan_choice_subtitle =>
-      'Registra una comida desde una foto o escanea un alimento envasado.';
+      'Elige la forma más rápida de añadir lo que comiste.';
 
   @override
-  String get scan_choice_food_title => 'Escanear comida';
+  String get scan_choice_food_title => 'Escanear foto';
 
   @override
   String get scan_choice_food_subtitle =>
-      'Usa la cámara para nutrición instantánea con IA.';
+      'Haz una foto para obtener nutrición instantánea con IA.';
 
   @override
   String get scan_choice_barcode_title => 'Escanear código';
@@ -3738,6 +3738,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get scan_choice_barcode_subtitle =>
       'Encuentra alimentos envasados por código de barras.';
+
+  @override
+  String get scan_choice_voice_title => 'Registro por voz';
+
+  @override
+  String get scan_choice_voice_subtitle =>
+      'Di lo que comiste y revisa el resultado.';
 
   @override
   String get planner_empty_headline =>
@@ -5269,4 +5276,134 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get stats_pro_button => 'Desbloquear 30 días';
+
+  @override
+  String get voice_log_title => 'Registro por voz';
+
+  @override
+  String get voice_heading => 'Describe lo que comiste';
+
+  @override
+  String get voice_subtitle =>
+      'Habla con naturalidad y revisa el texto antes de que SnapCal analice tu comida.';
+
+  @override
+  String get voice_tap_to_speak => 'Toca para hablar';
+
+  @override
+  String get voice_listening => 'Escuchando — toca para parar';
+
+  @override
+  String get voice_transcript_label => 'Descripción de la comida';
+
+  @override
+  String get voice_transcript_hint => '¿Qué comiste o bebiste?';
+
+  @override
+  String get voice_example =>
+      'Ejemplo: Dos huevos, una tostada y café con leche';
+
+  @override
+  String get voice_privacy_note => 'SnapCal no guarda tu audio.';
+
+  @override
+  String get voice_analyze => 'Analizar comida';
+
+  @override
+  String get voice_analyzing => 'Analizando comida…';
+
+  @override
+  String get voice_speak_again => 'Hablar de nuevo';
+
+  @override
+  String get voice_no_speech =>
+      'No he oído nada. Inténtalo de nuevo o escribe tu comida.';
+
+  @override
+  String get voice_permission_denied =>
+      'Se necesita acceso al micrófono. También puedes escribir tu comida.';
+
+  @override
+  String get voice_open_settings => 'Ajustes';
+
+  @override
+  String get voice_unavailable =>
+      'El reconocimiento de voz no está disponible. También puedes escribir tu comida.';
+
+  @override
+  String get voice_no_food =>
+      'No se encontró comida en esa descripción. Revisa el texto e inténtalo de nuevo.';
+
+  @override
+  String get voice_analysis_failed =>
+      'SnapCal no pudo analizar esa comida. Inténtalo de nuevo.';
+
+  @override
+  String get quick_add_title => 'Añadir rápido';
+  @override
+  String get quick_add_search => 'Buscar alimentos';
+  @override
+  String get quick_add_for_you => 'Para ti';
+  @override
+  String get quick_add_recent => 'Recientes';
+  @override
+  String get quick_add_local => 'Locales';
+  @override
+  String get quick_add_favorites => 'Favoritos';
+  @override
+  String get quick_add_all => 'Todos';
+  @override
+  String get quick_add_see_all => 'Ver todos';
+  @override
+  String get quick_add_empty => 'Ningún alimento coincide con la búsqueda.';
+  @override
+  String get quick_add_empty_favorites =>
+      'Marca alimentos como favoritos para tenerlos a un toque.';
+  @override
+  String get quick_add_region => 'Región de alimentos';
+  @override
+  String get quick_add_region_subtitle =>
+      'Los alimentos locales aparecen primero. Puedes cambiarlo cuando quieras.';
+  @override
+  String get quick_add_region_automatic => 'Automática';
+  @override
+  String get quick_add_region_pakistan => 'Pakistán';
+  @override
+  String get quick_add_region_south_asian => 'Sur de Asia';
+  @override
+  String get quick_add_region_middle_eastern => 'Oriente Medio';
+  @override
+  String get quick_add_region_gulf => 'Golfo';
+  @override
+  String get quick_add_region_east_asian => 'Asia oriental';
+  @override
+  String get quick_add_region_korean => 'Coreana';
+  @override
+  String get quick_add_region_american => 'Americana';
+  @override
+  String get quick_add_region_mediterranean => 'Mediterránea';
+  @override
+  String get quick_add_region_international => 'Internacional';
+  @override
+  String get quick_add_serving => 'Porción';
+  @override
+  String get quick_add_half_serving => '½ porción';
+  @override
+  String get quick_add_one_serving => '1 porción';
+  @override
+  String get quick_add_one_half_servings => '1½ porciones';
+  @override
+  String get quick_add_two_servings => '2 porciones';
+  @override
+  String quick_add_grams(int grams) => '$grams g';
+  @override
+  String quick_add_calories(int calories) => '$calories kcal';
+  @override
+  String get quick_add_add => 'Añadir al registro';
+  @override
+  String quick_add_added(String food) => '$food añadido';
+  @override
+  String get quick_add_undo => 'Deshacer';
+  @override
+  String get quick_add_previous_portion => 'Tu porción habitual';
 }

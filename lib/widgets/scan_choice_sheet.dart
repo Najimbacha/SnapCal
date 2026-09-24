@@ -6,12 +6,13 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../l10n/generated/app_localizations.dart';
 
-enum ScanChoice { food, barcode }
+enum ScanChoice { food, barcode, voice }
 
 Future<void> showScanChoiceSheet({
   required BuildContext context,
   required VoidCallback onFoodScan,
   required VoidCallback onBarcodeScan,
+  VoidCallback? onVoiceLog,
 }) async {
   final choice = await showModalBottomSheet<ScanChoice>(
     context: context,
@@ -19,7 +20,7 @@ Future<void> showScanChoiceSheet({
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.55),
-    builder: (_) => const _ScanChoiceSheet(),
+    builder: (_) => _ScanChoiceSheet(showVoice: onVoiceLog != null),
   );
 
   if (!context.mounted || choice == null) return;
@@ -31,11 +32,16 @@ Future<void> showScanChoiceSheet({
     case ScanChoice.barcode:
       onBarcodeScan();
       break;
+    case ScanChoice.voice:
+      onVoiceLog?.call();
+      break;
   }
 }
 
 class _ScanChoiceSheet extends StatefulWidget {
-  const _ScanChoiceSheet();
+  const _ScanChoiceSheet({required this.showVoice});
+
+  final bool showVoice;
 
   @override
   State<_ScanChoiceSheet> createState() => _ScanChoiceSheetState();
@@ -56,90 +62,109 @@ class _ScanChoiceSheetState extends State<_ScanChoiceSheet> {
     final l10n = AppLocalizations.of(context)!;
     final d = Theme.of(context).brightness == Brightness.dark;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.90;
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      child: Container(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 20 + bottomPadding),
-        decoration: BoxDecoration(
-          color: d ? const Color(0xFF16171C) : const Color(0xFFFEFCF7),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border(
-            top: BorderSide(
-              color: Colors.white.withValues(alpha: d ? 0.08 : 0),
-            ),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: (d ? Colors.white : Colors.black).withValues(
-                  alpha: 0.12,
-                ),
-                borderRadius: BorderRadius.circular(2),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: Container(
+          decoration: BoxDecoration(
+            color: d ? const Color(0xFF16171C) : const Color(0xFFFEFCF7),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withValues(alpha: d ? 0.08 : 0),
               ),
             ),
-            Row(
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 20 + bottomPadding),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.scan_choice_title,
-                        style: AppTypography.titleMedium.copyWith(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: d ? Colors.white : const Color(0xFF1C1917),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        l10n.scan_choice_subtitle,
-                        style: AppTypography.labelSmall.copyWith(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: (d ? Colors.white : const Color(0xFF1C1917))
-                              .withValues(alpha: 0.45),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: (d ? Colors.white : Colors.black).withValues(
+                      alpha: 0.12,
+                    ),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(width: 8),
-                _CloseButton(
-                  isDark: d,
-                  onTap: () => Navigator.of(context).pop(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.scan_choice_title,
+                            style: AppTypography.titleMedium.copyWith(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: d ? Colors.white : const Color(0xFF1C1917),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            l10n.scan_choice_subtitle,
+                            style: AppTypography.labelSmall.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: (d
+                                      ? Colors.white
+                                      : const Color(0xFF1C1917))
+                                  .withValues(alpha: 0.45),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _CloseButton(
+                      isDark: d,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 14),
+                _ScanOption(
+                  key: const ValueKey('scan-choice-food'),
+                  icon: LucideIcons.camera,
+                  highlighted: true,
+                  title: l10n.scan_choice_food_title,
+                  subtitle: l10n.scan_choice_food_subtitle,
+                  isDark: d,
+                  onTap: () => _select(ScanChoice.food),
+                ),
+                const SizedBox(height: 8),
+                _ScanOption(
+                  key: const ValueKey('scan-choice-barcode'),
+                  icon: LucideIcons.scanLine,
+                  title: l10n.scan_choice_barcode_title,
+                  subtitle: l10n.scan_choice_barcode_subtitle,
+                  isDark: d,
+                  onTap: () => _select(ScanChoice.barcode),
+                ),
+                if (widget.showVoice) ...[
+                  const SizedBox(height: 8),
+                  _ScanOption(
+                    key: const ValueKey('scan-choice-voice'),
+                    icon: LucideIcons.mic,
+                    title: l10n.scan_choice_voice_title,
+                    subtitle: l10n.scan_choice_voice_subtitle,
+                    isDark: d,
+                    onTap: () => _select(ScanChoice.voice),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 14),
-            _ScanOption(
-              key: const ValueKey('scan-choice-food'),
-              icon: LucideIcons.camera,
-              highlighted: true,
-              title: l10n.scan_choice_food_title,
-              subtitle: l10n.scan_choice_food_subtitle,
-              isDark: d,
-              onTap: () => _select(ScanChoice.food),
-            ),
-            const SizedBox(height: 8),
-            _ScanOption(
-              key: const ValueKey('scan-choice-barcode'),
-              icon: LucideIcons.scanLine,
-              title: l10n.scan_choice_barcode_title,
-              subtitle: l10n.scan_choice_barcode_subtitle,
-              isDark: d,
-              onTap: () => _select(ScanChoice.barcode),
-            ),
-          ],
+          ),
         ),
       ),
     );

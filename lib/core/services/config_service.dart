@@ -23,6 +23,8 @@ class ConfigService {
         'revenuecat_google_api_key': AppConstants.defaultRevenueCatGoogleApiKey,
         'backend_proxy_url': AppConstants.defaultBackendProxyUrl,
         'free_macros_enabled': AppConstants.defaultFreeMacrosEnabled,
+        'voice_logging_enabled': AppConstants.defaultVoiceLoggingEnabled,
+        'quick_foods_enabled': AppConstants.defaultQuickFoodsEnabled,
       });
 
       await _remoteConfig.setConfigSettings(
@@ -103,6 +105,22 @@ class ConfigService {
   bool get freeMacrosEnabled {
     if (!_initialized) return AppConstants.defaultFreeMacrosEnabled;
     return _remoteConfig.getBool('free_macros_enabled');
+  }
+
+  /// Remote kill switch for the voice-meal entry point. Debug builds expose
+  /// it automatically so it can be exercised before the production flag is
+  /// enabled; release builds stay off until Remote Config says otherwise.
+  bool get voiceLoggingEnabled {
+    if (kDebugMode) return true;
+    if (!_initialized) return AppConstants.defaultVoiceLoggingEnabled;
+    return _remoteConfig.getBool('voice_logging_enabled');
+  }
+
+  /// Remote kill switch for the regional Quick Add surface.
+  bool get quickFoodsEnabled {
+    if (kDebugMode) return true;
+    if (!_initialized) return AppConstants.defaultQuickFoodsEnabled;
+    return _remoteConfig.getBool('quick_foods_enabled');
   }
 
   String get latestVersion {

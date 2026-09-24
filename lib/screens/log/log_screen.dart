@@ -13,8 +13,10 @@ import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/meal.dart';
+import '../../data/models/quick_food.dart';
 import '../../data/models/user_settings.dart';
 import '../../data/models/water_log.dart';
+import '../../core/services/config_service.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/meal_provider.dart';
@@ -26,6 +28,7 @@ import 'widgets/edit_meal_modal.dart';
 import 'widgets/horizontal_day_calendar.dart';
 import 'widgets/hydration_sheet.dart';
 import 'widgets/meal_list_tile.dart';
+import 'widgets/quick_add_foods.dart';
 
 class LogScreen extends ConsumerStatefulWidget {
   const LogScreen({super.key});
@@ -57,6 +60,8 @@ class _LogScreenState extends ConsumerState<LogScreen> {
         (app_date.DateUtils.isToday(selectedDate)
             ? todayMeals ?? const <Meal>[]
             : const <Meal>[]);
+    final allMeals =
+        mealRepository?.getAllMeals() ?? todayMeals ?? const <Meal>[];
 
     final summaries = _buildDailySummaries(isPro: isPro);
     final selectedSummary = _summaryFor(
@@ -134,7 +139,35 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                       mealType: _suggestedMealType(),
                     ),
               ),
-              const SizedBox(height: 10),
+              if (ConfigService().quickFoodsEnabled) ...[
+                const SizedBox(height: 10),
+                QuickAddFoods(
+                  meals: allMeals,
+                  mealType: _suggestedMealType(),
+                  cuisinePreference:
+                      settings.valueOrNull?.cuisinePreference ??
+                      'international',
+                  onAddCatalogFood:
+                      (food, grams) => _addQuickFood(
+                        food: food,
+                        grams: grams,
+                        dateString: selectedDate,
+                        mealType: _suggestedMealType(),
+                      ),
+                  onRepeatMeal:
+                      (meal) => _repeatMeal(
+                        meal,
+                        dateString: selectedDate,
+                        mealType: _suggestedMealType(),
+                      ),
+                  onUndo:
+                      (mealId) =>
+                          ref.read(mealLogProvider.notifier).deleteMeal(mealId),
+                ),
+                const SizedBox(height: 24),
+              ] else ...[
+                const SizedBox(height: 10),
+              ],
               for (var index = 0; index < groups.length; index++) ...[
                 _MealGroupSection(
                   group: groups[index],
@@ -280,6 +313,79 @@ class _LogScreenState extends ConsumerState<LogScreen> {
             onCancel: () => Navigator.of(modalContext).pop(),
           ),
     );
+  }
+
+  Future<Meal> _addQuickFood({
+    required QuickFood food,
+    required double grams,
+    required String dateString,
+    required String mealType,
+  }) async {
+    final meal = Meal(
+      id: ref.read(mealLogProvider.notifier).generateMealId(),
+      timestamp: _mealTimestamp(dateString),
+      dateString: dateString,
+      foodName: food.displayName(Localizations.localeOf(context).languageCode),
+      calories: food.caloriesFor(grams),
+      macros: food.macrosFor(grams),
+      mealType: mealType,
+      portion: AppLocalizations.of(context)!.quick_add_grams(grams.round()),
+      scanSource: 'quick_add',
+      weightG: grams,
+      nutritionMatchId: food.nutritionId,
+      nutritionPer100g: food.nutritionPer100g,
+    );
+    await ref
+        .read(mealLogProvider.notifier)
+        .addMeal(meal, mealDate: dateString);
+    if (mounted) setState(() {});
+    return meal;
+  }
+
+  Future<Meal> _repeatMeal(
+    Meal source, {
+    required String dateString,
+    required String mealType,
+  }) async {
+    // A repeated meal is a fresh snapshot. Its nutrition and portion are
+    // preserved, but an old local photo path is deliberately not copied.
+    final meal = Meal(
+      id: ref.read(mealLogProvider.notifier).generateMealId(),
+      timestamp: _mealTimestamp(dateString),
+      dateString: dateString,
+      foodName: source.foodName,
+      calories: source.calories,
+      macros: source.macros.copyWith(),
+      mealType: mealType,
+      portion: source.portion,
+      scanSource: 'quick_repeat',
+      originalCalories: source.originalCalories,
+      userCorrected: source.userCorrected,
+      weightG: source.weightG,
+      nutritionMatchId: source.nutritionMatchId,
+      nutritionPer100g:
+          source.nutritionPer100g == null
+              ? null
+              : Map<String, dynamic>.from(source.nutritionPer100g!),
+    );
+    await ref
+        .read(mealLogProvider.notifier)
+        .addMeal(meal, mealDate: dateString);
+    if (mounted) setState(() {});
+    return meal;
+  }
+
+  int _mealTimestamp(String dateString) {
+    final date = app_date.DateUtils.parseDate(dateString);
+    final now = DateTime.now();
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      now.hour,
+      now.minute,
+      now.second,
+    ).millisecondsSinceEpoch;
   }
 
   Future<void> _deleteMeal(Meal meal) async {

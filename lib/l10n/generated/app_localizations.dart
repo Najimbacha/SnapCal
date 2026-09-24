@@ -6723,25 +6723,25 @@ abstract class AppLocalizations {
   /// No description provided for @scan_choice_title.
   ///
   /// In en, this message translates to:
-  /// **'Choose scan type'**
+  /// **'Log a meal'**
   String get scan_choice_title;
 
   /// No description provided for @scan_choice_subtitle.
   ///
   /// In en, this message translates to:
-  /// **'Log a meal from a photo or scan packaged food.'**
+  /// **'Choose the quickest way to add what you ate.'**
   String get scan_choice_subtitle;
 
   /// No description provided for @scan_choice_food_title.
   ///
   /// In en, this message translates to:
-  /// **'Scan food'**
+  /// **'Photo scan'**
   String get scan_choice_food_title;
 
   /// No description provided for @scan_choice_food_subtitle.
   ///
   /// In en, this message translates to:
-  /// **'Use the camera for instant AI nutrition.'**
+  /// **'Take a food photo for instant AI nutrition.'**
   String get scan_choice_food_subtitle;
 
   /// No description provided for @scan_choice_barcode_title.
@@ -6755,6 +6755,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Find packaged food by barcode.'**
   String get scan_choice_barcode_subtitle;
+
+  /// No description provided for @scan_choice_voice_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice log'**
+  String get scan_choice_voice_title;
+
+  /// No description provided for @scan_choice_voice_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Say what you ate and review the result.'**
+  String get scan_choice_voice_subtitle;
 
   /// No description provided for @planner_empty_headline.
   ///
@@ -9333,6 +9345,148 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unlock 30 days'**
   String get stats_pro_button;
+
+  /// No description provided for @voice_log_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice log'**
+  String get voice_log_title;
+
+  /// No description provided for @voice_heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what you ate'**
+  String get voice_heading;
+
+  /// No description provided for @voice_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak naturally, then check the words before SnapCal analyzes your meal.'**
+  String get voice_subtitle;
+
+  /// No description provided for @voice_tap_to_speak.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to speak'**
+  String get voice_tap_to_speak;
+
+  /// No description provided for @voice_listening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening — tap to stop'**
+  String get voice_listening;
+
+  /// No description provided for @voice_transcript_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal description'**
+  String get voice_transcript_label;
+
+  /// No description provided for @voice_transcript_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'What did you eat or drink?'**
+  String get voice_transcript_hint;
+
+  /// No description provided for @voice_example.
+  ///
+  /// In en, this message translates to:
+  /// **'Example: Two eggs, one slice of toast, and coffee with milk'**
+  String get voice_example;
+
+  /// No description provided for @voice_privacy_note.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal does not save your audio.'**
+  String get voice_privacy_note;
+
+  /// No description provided for @voice_analyze.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyze meal'**
+  String get voice_analyze;
+
+  /// No description provided for @voice_analyzing.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzing meal…'**
+  String get voice_analyzing;
+
+  /// No description provided for @voice_speak_again.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak again'**
+  String get voice_speak_again;
+
+  /// No description provided for @voice_no_speech.
+  ///
+  /// In en, this message translates to:
+  /// **'I didn\'t hear anything. Try again or type your meal.'**
+  String get voice_no_speech;
+
+  /// No description provided for @voice_permission_denied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone access is needed to listen. You can still type your meal.'**
+  String get voice_permission_denied;
+
+  /// No description provided for @voice_open_settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get voice_open_settings;
+
+  /// No description provided for @voice_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech recognition is unavailable. You can still type your meal.'**
+  String get voice_unavailable;
+
+  /// No description provided for @voice_no_food.
+  ///
+  /// In en, this message translates to:
+  /// **'No food was found in that description. Check the words and try again.'**
+  String get voice_no_food;
+
+  /// No description provided for @voice_analysis_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'SnapCal couldn\'t analyze that meal. Please try again.'**
+  String get voice_analysis_failed;
+
+  String get quick_add_title;
+  String get quick_add_search;
+  String get quick_add_for_you;
+  String get quick_add_recent;
+  String get quick_add_local;
+  String get quick_add_favorites;
+  String get quick_add_all;
+  String get quick_add_see_all;
+  String get quick_add_empty;
+  String get quick_add_empty_favorites;
+  String get quick_add_region;
+  String get quick_add_region_subtitle;
+  String get quick_add_region_automatic;
+  String get quick_add_region_pakistan;
+  String get quick_add_region_south_asian;
+  String get quick_add_region_middle_eastern;
+  String get quick_add_region_gulf;
+  String get quick_add_region_east_asian;
+  String get quick_add_region_korean;
+  String get quick_add_region_american;
+  String get quick_add_region_mediterranean;
+  String get quick_add_region_international;
+  String get quick_add_serving;
+  String get quick_add_half_serving;
+  String get quick_add_one_serving;
+  String get quick_add_one_half_servings;
+  String get quick_add_two_servings;
+  String quick_add_grams(int grams);
+  String quick_add_calories(int calories);
+  String get quick_add_add;
+  String quick_add_added(String food);
+  String get quick_add_undo;
+  String get quick_add_previous_portion;
 }
 
 class _AppLocalizationsDelegate

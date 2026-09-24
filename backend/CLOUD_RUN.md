@@ -259,7 +259,12 @@ and Cloud Run revision. Do not include shared secrets in the backup notes.
 3. Restart an already-installed Android app and confirm it fetches the URL and
    scans with the same account and Pro status. Config activation is not instantaneous:
    requests before initialization or after fetch failure can still use Render.
-4. Monitor scan latency/failures, Redis, 429/503 rates, memory, RevenueCat delivery,
+4. After the Cloud Run revision containing `/v1/text-scan` is healthy and the
+   Android voice flow has passed internal testing, create the Remote Config boolean
+   `voice_logging_enabled` with default `false`. Enable it only for testers first,
+   then publish `true` for production. Turning it off hides Voice Log without
+   affecting photo, barcode, manual logging, or already-saved meals.
+5. Monitor scan latency/failures, Redis, 429/503 rates, memory, RevenueCat delivery,
    reminder delivery and Billing daily for 14 days. Configure Monitoring notifications
    for sustained errors and memory pressure to the owner's channel. Keep logs free
    of images/tokens and use finite retention; review Artifact Registry storage and

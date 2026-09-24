@@ -5,8 +5,11 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../providers/settings_provider.dart';
+import '../../providers/quick_food_provider.dart';
 import '../../data/models/user_settings.dart';
+import '../../core/services/config_service.dart';
 import '../../widgets/app_page_scaffold.dart';
+import '../log/widgets/quick_add_foods.dart';
 
 import 'widgets/settings_kit.dart';
 
@@ -177,6 +180,31 @@ class PreferencesScreen extends ConsumerWidget {
               );
             },
           ),
+          if (ConfigService().quickFoodsEnabled) ...[
+            const SizedBox(height: 24),
+            SettingsSection(
+              title: l10n.quick_add_title,
+              children: [
+                Consumer(
+                  builder: (context, ref, _) {
+                    final region =
+                        ref
+                            .watch(quickFoodPreferencesProvider)
+                            .valueOrNull
+                            ?.region ??
+                        'automatic';
+                    return SettingsRow(
+                      icon: LucideIcons.mapPin,
+                      title: l10n.quick_add_region,
+                      subtitle: l10n.quick_add_region_subtitle,
+                      value: quickFoodRegionLabel(l10n, region),
+                      onTap: () => showQuickFoodRegionSheet(context, ref),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 24),
           SettingsSection(
             title: l10n.settings_appearance, // "App Appearance"

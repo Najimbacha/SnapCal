@@ -323,6 +323,46 @@ User daily targets:
     }
   }
 
+  /// Turns a short, user-reviewed speech transcript into the same nutrition
+  /// result model used by photo scans. Audio never reaches this service.
+  Future<List<NutritionResult>> analyzeMealText(
+    String transcript, {
+    String language = 'en',
+  }) async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      throw GeminiException('Please sign in before analyzing a meal.');
+    }
+    final text = transcript.trim();
+    if (text.length < 2 || text.length > 500) {
+      throw GeminiException('Meal description must be 2–500 characters.');
+    }
+
+    final scanGate = ScanGateService();
+    scanGate.invalidateServerCount();
+    try {
+      final response = await _dio.post(
+        '${ConfigService().backendProxyUrl}/v1/text-scan',
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: TimeoutPolicy.aiScan,
+        ),
+        data: {'text': text, 'language': language},
+      );
+      final responseData = response.data;
+      if (responseData is Map && responseData['items'] is List) {
+        if ((responseData['items'] as List).isEmpty) return [];
+      }
+      final encoded =
+          responseData is String ? responseData : jsonEncode(responseData);
+      return _parseResponse(encoded);
+    } finally {
+      // A failed provider call is refunded and a cache hit is free, so the
+      // server must remain the source of truth for the displayed balance.
+      unawaited(scanGate.refreshFromServer());
+    }
+  }
+
   /// Shared JSON Parser (Runs in Background Isolate)
   Future<List<NutritionResult>> _parseResponse(String text) async {
     debugPrint("🔍 Parsing JSON from: $text");

@@ -34,6 +34,8 @@ import 'screens/progress/progress_screen.dart';
 import 'widgets/hero_action_button.dart';
 import 'screens/achievements/achievements_screen.dart';
 import 'screens/settings/fcm_debug_screen.dart';
+import 'screens/voice/voice_meal_screen.dart';
+import 'core/services/config_service.dart';
 
 part 'router.g.dart';
 
@@ -209,6 +211,11 @@ GoRouter router(RouterRef ref) {
             (context, state) => _sharedAxisPage(state, const ActivityScreen()),
       ),
       GoRoute(
+        path: '/voice-log',
+        pageBuilder:
+            (context, state) => _sharedAxisPage(state, const VoiceMealScreen()),
+      ),
+      GoRoute(
         path: '/log/metric/:metric',
         pageBuilder: (context, state) {
           final metric = LogMetricType.fromId(state.pathParameters['metric']);
@@ -354,6 +361,10 @@ class _MainShellState extends State<MainShell> {
                       context: context,
                       onFoodScan: () => context.go('/snap'),
                       onBarcodeScan: () => context.go('/snap?mode=barcode'),
+                      onVoiceLog:
+                          ConfigService().voiceLoggingEnabled
+                              ? () => context.push('/voice-log')
+                              : null,
                     );
                   },
                 ),

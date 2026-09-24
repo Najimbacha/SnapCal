@@ -144,9 +144,11 @@ void main() {
     expect(find.text('Food Log'), findsOneWidget);
     expect(find.text('Daily balance'), findsOneWidget);
     expect(find.text('Meals'), findsOneWidget);
-    expect(find.text('Avocado toast and eggs'), findsOneWidget);
-    expect(find.text('Chicken rice bowl'), findsOneWidget);
-    expect(find.text('Greek yogurt and berries'), findsOneWidget);
+    // Personalized Quick Add intentionally repeats frequently logged names
+    // above the full diary list.
+    expect(find.text('Avocado toast and eggs'), findsWidgets);
+    expect(find.text('Chicken rice bowl'), findsWidgets);
+    expect(find.text('Greek yogurt and berries'), findsWidgets);
     // The floating scan/pencil dock is gone -- it hovered over the meal rows
     // and covered "Add Dinner". Scanning is the camera button in the nav bar
     // and adding by hand is the action on the Meals heading, both of which

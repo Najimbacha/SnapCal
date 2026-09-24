@@ -91,6 +91,15 @@ test('AI image analysis requires sign-in', async () => {
   });
 });
 
+test('voice meal analysis requires sign-in', async () => {
+  await withServer(app, async (server) => {
+    const res = await request(server, 'POST', '/v1/text-scan', {
+      body: { text: 'two eggs and toast', language: 'en' },
+    });
+    assert.equal(res.status, 401);
+  });
+});
+
 test('malformed AI requests are refused before any allowance is charged', async () => {
   setAuthVerifierForTest(async () => ({ uid: 'user12345', admin: false }));
   try {
@@ -106,6 +115,12 @@ test('malformed AI requests are refused before any allowance is charged', async 
         body: { prompt: '' },
       });
       assert.equal(text.status, 400);
+
+      const voice = await request(server, 'POST', '/v1/text-scan', {
+        headers: { Authorization: 'Bearer valid' },
+        body: { text: 'x', language: 'en' },
+      });
+      assert.equal(voice.status, 400);
     });
   } finally {
     setAuthVerifierForTest(null);

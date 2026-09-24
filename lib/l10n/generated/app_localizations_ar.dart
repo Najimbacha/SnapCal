@@ -3670,17 +3670,17 @@ class AppLocalizationsAr extends AppLocalizations {
   String get common_unlock => 'فتح';
 
   @override
-  String get scan_choice_title => 'اختر نوع المسح';
+  String get scan_choice_title => 'سجّل وجبة';
 
   @override
-  String get scan_choice_subtitle => 'سجل وجبة من صورة أو امسح طعاماً مغلفاً.';
+  String get scan_choice_subtitle => 'اختر أسرع طريقة لإضافة ما تناولته.';
 
   @override
-  String get scan_choice_food_title => 'مسح الطعام';
+  String get scan_choice_food_title => 'مسح بالصورة';
 
   @override
   String get scan_choice_food_subtitle =>
-      'استخدم الكاميرا لتقدير التغذية فوراً بالذكاء الاصطناعي.';
+      'التقط صورة للطعام لتحليل التغذية فوراً.';
 
   @override
   String get scan_choice_barcode_title => 'مسح الباركود';
@@ -3688,6 +3688,12 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get scan_choice_barcode_subtitle =>
       'ابحث عن الطعام المغلف بواسطة الباركود.';
+
+  @override
+  String get scan_choice_voice_title => 'تسجيل صوتي';
+
+  @override
+  String get scan_choice_voice_subtitle => 'قل ما تناولته ثم راجع النتيجة.';
 
   @override
   String get planner_empty_headline => 'تخطيط ذكي ومخصص للوجبات لمدة 7 أيام';
@@ -5185,4 +5191,132 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get stats_pro_button => 'افتح 30 يوماً';
+
+  @override
+  String get voice_log_title => 'تسجيل صوتي';
+
+  @override
+  String get voice_heading => 'صِف ما تناولته';
+
+  @override
+  String get voice_subtitle =>
+      'تحدث بطبيعتك، ثم راجع الكلمات قبل أن يحلل SnapCal وجبتك.';
+
+  @override
+  String get voice_tap_to_speak => 'اضغط للتحدث';
+
+  @override
+  String get voice_listening => 'جارٍ الاستماع — اضغط للإيقاف';
+
+  @override
+  String get voice_transcript_label => 'وصف الوجبة';
+
+  @override
+  String get voice_transcript_hint => 'ماذا أكلت أو شربت؟';
+
+  @override
+  String get voice_example => 'مثال: بيضتان وشريحة خبز وقهوة بالحليب';
+
+  @override
+  String get voice_privacy_note => 'لا يحفظ SnapCal صوتك.';
+
+  @override
+  String get voice_analyze => 'تحليل الوجبة';
+
+  @override
+  String get voice_analyzing => 'جارٍ تحليل الوجبة…';
+
+  @override
+  String get voice_speak_again => 'تحدث مرة أخرى';
+
+  @override
+  String get voice_no_speech => 'لم أسمع شيئاً. حاول مجدداً أو اكتب وجبتك.';
+
+  @override
+  String get voice_permission_denied =>
+      'يلزم إذن الميكروفون للاستماع. لا يزال بإمكانك كتابة وجبتك.';
+
+  @override
+  String get voice_open_settings => 'الإعدادات';
+
+  @override
+  String get voice_unavailable =>
+      'التعرف على الكلام غير متاح. لا يزال بإمكانك كتابة وجبتك.';
+
+  @override
+  String get voice_no_food =>
+      'لم يتم العثور على طعام في هذا الوصف. راجع الكلمات وحاول مجدداً.';
+
+  @override
+  String get voice_analysis_failed =>
+      'تعذر على SnapCal تحليل هذه الوجبة. حاول مجدداً.';
+
+  @override
+  String get quick_add_title => 'إضافة سريعة';
+  @override
+  String get quick_add_search => 'البحث عن طعام';
+  @override
+  String get quick_add_for_you => 'لك';
+  @override
+  String get quick_add_recent => 'الأخيرة';
+  @override
+  String get quick_add_local => 'محلية';
+  @override
+  String get quick_add_favorites => 'المفضلة';
+  @override
+  String get quick_add_all => 'كل الأطعمة';
+  @override
+  String get quick_add_see_all => 'عرض الكل';
+  @override
+  String get quick_add_empty => 'لا توجد أطعمة تطابق البحث.';
+  @override
+  String get quick_add_empty_favorites =>
+      'أضف الأطعمة إلى المفضلة لتجدها بنقرة واحدة.';
+  @override
+  String get quick_add_region => 'منطقة الطعام';
+  @override
+  String get quick_add_region_subtitle =>
+      'تظهر الأطعمة المحلية أولاً. يمكنك تغيير ذلك في أي وقت.';
+  @override
+  String get quick_add_region_automatic => 'تلقائي';
+  @override
+  String get quick_add_region_pakistan => 'باكستان';
+  @override
+  String get quick_add_region_south_asian => 'جنوب آسيا';
+  @override
+  String get quick_add_region_middle_eastern => 'الشرق الأوسط';
+  @override
+  String get quick_add_region_gulf => 'الخليج';
+  @override
+  String get quick_add_region_east_asian => 'شرق آسيا';
+  @override
+  String get quick_add_region_korean => 'كوري';
+  @override
+  String get quick_add_region_american => 'أمريكي';
+  @override
+  String get quick_add_region_mediterranean => 'متوسطي';
+  @override
+  String get quick_add_region_international => 'عالمي';
+  @override
+  String get quick_add_serving => 'الحصة';
+  @override
+  String get quick_add_half_serving => 'نصف حصة';
+  @override
+  String get quick_add_one_serving => 'حصة واحدة';
+  @override
+  String get quick_add_one_half_servings => 'حصة ونصف';
+  @override
+  String get quick_add_two_servings => 'حصتان';
+  @override
+  String quick_add_grams(int grams) => '$grams غ';
+  @override
+  String quick_add_calories(int calories) => '$calories سعرة';
+  @override
+  String get quick_add_add => 'إضافة إلى السجل';
+  @override
+  String quick_add_added(String food) => 'تمت إضافة $food';
+  @override
+  String get quick_add_undo => 'تراجع';
+  @override
+  String get quick_add_previous_portion => 'حصتك المعتادة';
 }
