@@ -1,4 +1,4 @@
-/// SnapCal App Constants
+/// Wazn App Constants
 class AppConstants {
   AppConstants._();
 

@@ -87,7 +87,7 @@ class NotificationService {
       );
 
       // No permission request here. It fired the moment the app first
-      // opened, before the user knew what SnapCal was; many said no, and
+      // opened, before the user knew what Wazn was; many said no, and
       // Android stops asking after that. NotificationPermissionPrompt asks
       // once, after onboarding, and says why.
       //

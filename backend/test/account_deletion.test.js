@@ -86,15 +86,15 @@ test('the terms of service page is served', async () => {
     const res = await request(server, 'GET', '/terms');
     assert.equal(res.status, 200);
     assert.match(res.headers['content-type'], /text\/html/);
-    assert.match(res.body, /SnapCal Terms of Service/);
+    assert.match(res.body, /Wazn Terms of Service/);
   });
 });
 
 test('the privacy policy and account deletion pages are served', async () => {
   await withServer(async (server) => {
     const pages = [
-      ['/privacy', /SnapCal Privacy Policy/],
-      ['/account-deletion', /Delete your SnapCal account/],
+      ['/privacy', /Wazn Privacy Policy/],
+      ['/account-deletion', /Delete your Wazn account/],
     ];
     for (const [path, needle] of pages) {
       const res = await request(server, 'GET', path);

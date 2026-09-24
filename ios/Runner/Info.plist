@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Snapcal</string>
+	<string>Wazn</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -67,11 +67,11 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>SnapCal needs access to the camera to scan food items and barcodes for calorie tracking.</string>
+	<string>Wazn needs access to the camera to scan food items and barcodes for calorie tracking.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SnapCal needs access to your photo library to pick images of food for calorie counting.</string>
+	<string>Wazn needs access to your photo library to pick images of food for calorie counting.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>SnapCal needs access to motion sensors to track your steps and calculate active calorie burn.</string>
+	<string>Wazn needs access to motion sensors to track your steps and calculate active calorie burn.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -86,7 +86,7 @@
 	<key>FacebookClientToken</key>
 	<string>884ee2ee9cd73422d425671de6d74129</string>
 	<key>FacebookDisplayName</key>
-	<string>SnapCal</string>
+	<string>Wazn</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>fbapi</string>

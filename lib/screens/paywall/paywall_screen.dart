@@ -526,7 +526,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         return;
       case SubscriptionStatus.cancelled:
         // Neutral, not celebratory. This was the brand green with a tick --
-        // the same colours as "Welcome to SnapCal Pro" two cases up, with
+        // the same colours as "Welcome to Wazn Pro" two cases up, with
         // only the icon differing. Someone who cancels and glances at a green
         // check-marked toast can reasonably believe they just subscribed.
         _showPurchaseSnackBar(

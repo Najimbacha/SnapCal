@@ -56,7 +56,7 @@ void main() {
     await playIntro(tester);
 
     expect(find.text("You're all set"), findsOneWidget);
-    expect(find.text('Welcome to SnapCal Pro'), findsOneWidget);
+    expect(find.text('Welcome to Wazn Pro'), findsOneWidget);
     for (final benefit in [
       'Unlimited scans',
       'AI guidance',
@@ -78,7 +78,7 @@ void main() {
 
     expect(find.text('Welcome back'), findsOneWidget);
     expect(find.text('Pro restored'), findsOneWidget);
-    expect(find.text('Welcome to SnapCal Pro'), findsNothing);
+    expect(find.text('Welcome to Wazn Pro'), findsNothing);
 
     await tearDownScreen(tester);
   });
@@ -105,7 +105,7 @@ void main() {
     await tester.pump();
 
     expect(continued, 1);
-    expect(find.text('Welcome to SnapCal Pro'), findsOneWidget);
+    expect(find.text('Welcome to Wazn Pro'), findsOneWidget);
 
     await tearDownScreen(tester);
   });
@@ -117,7 +117,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(Animate), findsNothing);
-    expect(find.text('Welcome to SnapCal Pro'), findsOneWidget);
+    expect(find.text('Welcome to Wazn Pro'), findsOneWidget);
     expect(find.text('Start exploring'), findsOneWidget);
 
     await tearDownScreen(tester);

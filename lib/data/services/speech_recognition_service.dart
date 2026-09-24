@@ -8,7 +8,7 @@ typedef SpeechErrorCallback = void Function(String message, bool permanent);
 
 /// Thin lifecycle-safe wrapper around Android's native speech recognizer.
 ///
-/// SnapCal never records or uploads an audio file. The platform recognizer
+/// Wazn never records or uploads an audio file. The platform recognizer
 /// emits text, and only that transcript is later sent to the nutrition API.
 class SpeechRecognitionService {
   SpeechRecognitionService({SpeechToText? speech})

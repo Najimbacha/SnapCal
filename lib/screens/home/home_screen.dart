@@ -504,7 +504,7 @@ const _minimalInk = Color(0xFF1C1917);
 /// cards were already hitting. Same warm grey, deep enough to read: 4.56:1.
 const _minimalMuted = Color(0xFF777370);
 const _minimalGreen =
-    AppColors.primary; // SnapCal emerald — brand progress color
+    AppColors.primary; // Wazn emerald — brand progress color
 const _minimalGreenText = AppColors.primaryDark;
 
 /// The green that reads on the current ground.
@@ -562,7 +562,7 @@ class _MinimalHomeTopBar extends StatelessWidget {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    'SnapCal',
+                    'Wazn',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.titleMedium.copyWith(

@@ -11,7 +11,7 @@
         android:id="@+id/widget_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="SnapCal"
+        android:text="Wazn"
         android:textColor="#3B82F6"
         android:textSize="12sp"
         android:textStyle="bold" />

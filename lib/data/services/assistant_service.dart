@@ -212,7 +212,7 @@ class AssistantService {
       final languageName = AIService.languageNames[language] ?? 'English';
 
       final prompt = """
-You are the SnapCal AI Wellness Coach.
+You are the Wazn AI Wellness Coach.
 STRICT LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN THE $languageName LANGUAGE.
 
 USER COACH PROFILE:

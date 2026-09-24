@@ -18,7 +18,7 @@ import '../../data/services/pro_feature_service.dart';
 import '../../data/services/premium_conversion_service.dart';
 
 // The coach was drawn in Zinc and iOS system greys -- #09090B, #18181B,
-// #F2F2F7, #8E8E93 -- while the rest of SnapCal is warm paper and emerald.
+// #F2F2F7, #8E8E93 -- while the rest of Wazn is warm paper and emerald.
 // Cool grey beside warm off-white reads as a different app. These are the
 // tokens the home, log and purchase screens already use.
 Color _coachPaper(bool d) =>

@@ -1,10 +1,10 @@
-# SnapCal Backend Proxy Server
+# Wazn Backend Proxy Server
 
 For the Cloud Run migration, use [the owner runbook](CLOUD_RUN.md). It covers
 deployment, cost controls, validation and rollback while keeping Render available.
 The Render instructions below are historical; the actual entry point is `server.js`.
 
-A secure, high-performance Node.js proxy server for the **SnapCal** calorie tracking app. It proxies food image scanning requests to Groq (with Gemini fallback) to keep API keys secure and off client devices.
+A secure, high-performance Node.js proxy server for the **Wazn** calorie tracking app. It proxies food image scanning requests to Groq (with Gemini fallback) to keep API keys secure and off client devices.
 
 ---
 

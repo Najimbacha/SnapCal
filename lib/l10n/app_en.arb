@@ -6,12 +6,12 @@
   "result_set_volume": "Set volume",
   "result_scan_balance_pending": "Checking scan balance…",
   "result_scan_balance_unavailable": "Scan balance unavailable",
-  "result_health_score_hint": "SnapCal nutrition guide, not a medical rating.",
+  "result_health_score_hint": "Wazn nutrition guide, not a medical rating.",
   "coach_allowance_used": "Your free message is used. More messages are available after the daily reset.",
   "planner_unlock_week": "Unlock weekly planning",
   "purchase_billed_yearly": "Billed yearly",
   "purchase_headline": "Know what to eat next.",
-  "purchase_preview_title": "See SnapCal Pro in action",
+  "purchase_preview_title": "See Wazn Pro in action",
   "purchase_preview_advice": "Plan a protein-rich dinner.",
   "purchase_scan_detail": "Log meals without the monthly limit",
   "purchase_planner_title": "Meal plans for your goals",
@@ -25,7 +25,7 @@
   "home_dashboard_ask": "Ask",
   "home_dashboard_liters": "L",
   "@@locale": "en",
-  "appTitle": "SnapCal",
+  "appTitle": "Wazn",
   "@appTitle": {
     "description": "The name of the application"
   },
@@ -161,7 +161,7 @@
   "assistant_title": "AI Coach",
   "assistant_status": "Always active",
   "assistant_initial_prompt": "How can I help you today?",
-  "assistant_initial_body": "Your personal SnapCal coach is ready to assist with recipes, goals, and nutrition advice.",
+  "assistant_initial_body": "Your personal Wazn coach is ready to assist with recipes, goals, and nutrition advice.",
   "assistant_preparing": "Preparing your wellness journey...",
   "assistant_input_hint": "Type a message...",
   "assistant_input_listening": "Listening...",
@@ -177,7 +177,7 @@
   "assistant_starter_tips_desc": "Curbing late-night cravings",
   "assistant_starter_plans_title": "Plans",
   "assistant_starter_plans_desc": "Create a 3-day meal plan",
-  "premium_welcome": "Welcome to SnapCal Pro! 🎉",
+  "premium_welcome": "Welcome to Wazn Pro! 🎉",
   "premium_restore_success": "Purchases Restored! 🎉",
   "premium_restore_empty": "No previous purchases found.",
   "premium_restore_fail": "Failed to restore purchases.",
@@ -282,18 +282,18 @@
   "notif_dinner_body": "End the day strong—log your dinner now.",
   "notif_meal_reminders_channel": "Meal reminders",
   "notif_prompt_title": "Get a nudge at mealtimes",
-  "notif_prompt_body": "SnapCal can remind you to log breakfast, lunch and dinner. You can change this any time in Settings.",
+  "notif_prompt_body": "Wazn can remind you to log breakfast, lunch and dinner. You can change this any time in Settings.",
   "notif_prompt_allow": "Turn on reminders",
   "notif_prompt_later": "Not now",
-  "notif_blocked_title": "Notifications are off for SnapCal",
+  "notif_blocked_title": "Notifications are off for Wazn",
   "notif_blocked_body": "Your phone is blocking them, so reminders can’t reach you. Tap to turn them on.",
   "notif_food_reminders_channel": "Food scan reminders",
   "notif_food_reminders_channel_description": "Reminders to scan your meals",
-  "notif_updates_channel": "SnapCal updates",
-  "notif_updates_channel_description": "News and app updates from SnapCal",
+  "notif_updates_channel": "Wazn updates",
+  "notif_updates_channel_description": "News and app updates from Wazn",
   "notif_meal_reminders_channel_description": "Reminders to log your daily nutrition.",
   "notif_daily_motivation_channel": "Daily Motivation",
-  "notif_daily_motivation_channel_description": "Gentle daily nutrition motivation from SnapCal.",
+  "notif_daily_motivation_channel_description": "Gentle daily nutrition motivation from Wazn.",
   "notif_motivation_1_title": "Small steps count",
   "notif_motivation_1_body": "Log your first meal when you’re ready.",
   "notif_motivation_2_title": "Today starts simple",
@@ -318,7 +318,7 @@
   "auth_btn_signup": "Create My Account",
   "auth_btn_signin": "Sign In with Email",
   "auth_footer_member": "Already a member? ",
-  "auth_footer_new": "New to SnapCal? ",
+  "auth_footer_new": "New to Wazn? ",
   "auth_action_signin": "Sign In",
   "auth_action_join": "Join Now",
   "auth_msg_success": "Login successful!",
@@ -468,9 +468,9 @@
   "settings_delete_failed": "Couldn’t delete your account. Check your connection and try again.",
   "settings_deleting_account": "Deleting your account…",
   "settings_account_deleted": "Your account and data have been deleted.",
-  "settings_delete_subscription_note": "This does not cancel your SnapCal Pro subscription. Cancel it in Google Play to stop being charged.",
+  "settings_delete_subscription_note": "This does not cancel your Wazn Pro subscription. Cancel it in Google Play to stop being charged.",
   "settings_name_failed": "Couldn’t update your name. Please try again.",
-  "paywall_welcome": "Welcome to SnapCal Pro! 🎉",
+  "paywall_welcome": "Welcome to Wazn Pro! 🎉",
   "progress_log_progress": "Log Progress",
   "progress_take_photos_desc": "Take photos to track your journey.",
   "progress_front_view": "Front View",
@@ -593,9 +593,9 @@
   "settings_privacy_desc": "How we handle your data",
   "settings_terms": "Terms of service",
   "settings_licenses": "Open source licences",
-  "settings_licenses_desc": "The software SnapCal is built on",
+  "settings_licenses_desc": "The software Wazn is built on",
   "settings_terms_desc": "Usage terms & conditions",
-  "settings_about_snapcal": "About SnapCal",
+  "settings_about_snapcal": "About Wazn",
   "settings_upgrade_pro": "Upgrade to Pro",
   "settings_upgrade_desc": "Unlock unlimited scans & AI coach",
   "planner_free_limit_body": "Free users can view Mon & Tue only.",
@@ -775,7 +775,7 @@
   "settings_recalculate_query": "I just optimized my nutrition plan. Please explain why these specific calories and macros were chosen for me based on my profile.",
   "settings_guest_account": "Guest Account",
   "settings_sign_in": "Sign In",
-  "settings_member": "SnapCal Member",
+  "settings_member": "Wazn Member",
   "settings_auth_cta": "Sign up or Sign in",
   "settings_preferences_title": "Preferences",
   "settings_notifications": "Notifications",
@@ -791,8 +791,8 @@
   "settings_create_account": "Create account",
   "settings_sign_out_desc": "Leave this device session",
   "settings_sync_data_desc": "Sync your data",
-  "settings_about_app": "About SnapCal",
-  "settings_legalese": "© 2026 SnapCal. All rights reserved.",
+  "settings_about_app": "About Wazn",
+  "settings_legalese": "© 2026 Wazn. All rights reserved.",
   "onboarding_result_maintain": "Maintain Current Weight",
   "onboarding_result_weekly_rate": "~{rate} kg / week",
   "@onboarding_result_weekly_rate": {
@@ -803,7 +803,7 @@
     }
   },
   "error_connection_title": "Connection Issue",
-  "error_connection_body": "Unable to initialize SnapCal. Please check your data or Wi-Fi.",
+  "error_connection_body": "Unable to initialize Wazn. Please check your data or Wi-Fi.",
   "error_unexpected_title": "Something went wrong",
   "error_unexpected_body": "We encountered an unexpected error. Our team has been notified and we are working to fix it.",
   "report_guest_user": "Valued User",
@@ -848,7 +848,7 @@
   "progress_generate_video": "Generate Journey Video",
   "progress_video_failed": "Video generation failed. Try again.",
   "progress_video_min_photos": "Take at least 2 progress photos first!",
-  "progress_video_share_text": "My SnapCal Transformation Journey! 🚀",
+  "progress_video_share_text": "My Wazn Transformation Journey! 🚀",
   "widget_status_on_track": "On Track",
   "widget_status_over_goal": "Over Goal",
   "widget_status_almost_there": "Almost There",
@@ -926,7 +926,7 @@
   "feature_achievements_unlocked_title": "Achievement Unlocked!",
   "common_continue": "Continue",
   "feature_insights_subtitle": "Your AI-powered weekly nutrition summary is ready!",
-  "feature_insights_share_text": "Check out my weekly nutrition summary from SnapCal! 📊",
+  "feature_insights_share_text": "Check out my weekly nutrition summary from Wazn! 📊",
   "settings_guest_title": "Protect Your Progress",
   "settings_guest_subtitle": "Sign in to sync your data securely.",
   "activity_tracking_status": "TRACKING STATUS",
@@ -1006,11 +1006,11 @@
   "scan_overlay_manual": "LOG MANUALLY",
   "scan_wait_stay": "Keep this screen open",
   "@scan_wait_stay": {
-    "description": "SnapCal UI string: scan_wait_stay"
+    "description": "Wazn UI string: scan_wait_stay"
   },
   "scan_wait_longer": "Taking longer than usual — your result is still coming.",
   "@scan_wait_longer": {
-    "description": "SnapCal UI string: scan_wait_longer"
+    "description": "Wazn UI string: scan_wait_longer"
   },
   "startup_launch_issue": "Launch Encountered an Issue",
   "startup_initialization_slow": "Initialization is taking longer than expected.",
@@ -1044,7 +1044,7 @@
   "auth_back_to_social": "Back to Social Login",
   "auth_create_account": "Create account",
   "auth_welcome_back_title": "Welcome back",
-  "home_welcome_guest": "Welcome to SnapCal",
+  "home_welcome_guest": "Welcome to Wazn",
   "auth_lets_dive": "Let's dive in",
   "auth_sign_up_short": "Sign Up",
   "auth_log_in": "Log In",
@@ -1196,7 +1196,7 @@
   "report_pdf_date": "Date",
   "report_pdf_meal_item": "Meal Item",
   "report_pdf_type": "Type",
-  "report_pdf_footer": "This report was automatically generated by SnapCal AI.",
+  "report_pdf_footer": "This report was automatically generated by Wazn AI.",
   "report_pdf_tagline": "Stay consistent, stay healthy.",
   "onboarding_safety_safer_pace": "We'll suggest a safer pace.",
   "onboarding_safety_surplus_capped": "We capped the surplus to keep the plan realistic.",
@@ -1341,7 +1341,7 @@
   "settings_unit_lb": "lb",
   "settings_unit_cm": "cm",
   "settings_unit_in": "in",
-  "paywall_unlock_snapcal_pro": "Unlock SnapCal Pro",
+  "paywall_unlock_snapcal_pro": "Unlock Wazn Pro",
   "paywall_barcode_title": "Unlock Barcode Scanner",
   "paywall_barcode_subtitle": "Instantly log packaged foods by scanning their barcodes",
   "paywall_free_scans_used_title": "You used {used}/{limit} free scans this month",
@@ -1503,7 +1503,7 @@
   "activity_estimated_calories": "Estimated calories",
   "activity_step_streak": "Step streak",
   "activity_not_connected_title": "Connect Health Connect",
-  "activity_not_connected_body": "SnapCal reads your steps from Health Connect. It never writes anything back.",
+  "activity_not_connected_body": "Wazn reads your steps from Health Connect. It never writes anything back.",
   "activity_connect": "Connect",
   "activity_calories_estimated_hint": "Estimated",
   "activity_calories_measured_hint": "Measured",
@@ -1516,7 +1516,7 @@
   "@activity_workout_minutes": {"placeholders": {"minutes": {"type": "int"}}},
   "activity_workout_calories": "Workout calories",
   "activity_score": "Activity score",
-  "log_health_title": "SnapCal Health",
+  "log_health_title": "Wazn Health",
   "log_key_metrics": "Key metrics",
   "log_customize": "Customize",
   "log_metric_water": "Water",
@@ -1566,8 +1566,8 @@
   "aha_prompt_subtitle": "Imagine saving this time every single day. Go Pro for unlimited photo scans and effortless tracking.",
   "aha_prompt_btn": "Go Pro",
   "macro_locked_title": "Macros are Pro",
-  "macro_locked_body": "Unlock protein, carbs, and fat details with SnapCal Pro.",
-  "macro_unlock_cta": "Unlock with SnapCal Pro",
+  "macro_locked_body": "Unlock protein, carbs, and fat details with Wazn Pro.",
+  "macro_unlock_cta": "Unlock with Wazn Pro",
   "macro_locked_placeholder": "Locked",
   "macro_unlock_card_title": "Unlock your macro breakdown",
   "macro_unlock_card_body": "See protein, carbs and fat progress for every meal.",
@@ -1581,7 +1581,7 @@
   "scan_choice_voice_title": "Voice log",
   "scan_choice_voice_subtitle": "Say what you ate and review the result.",
   "planner_empty_headline": "Personalized 7-day smart meal planning",
-  "planner_empty_body": "SnapCal builds meals around your calories, macros, preferences, and grocery needs.",
+  "planner_empty_body": "Wazn builds meals around your calories, macros, preferences, and grocery needs.",
   "planner_empty_benefit_adaptive": "Adaptive day guidance",
   "planner_empty_benefit_macros": "Macro-balanced meals",
   "planner_empty_benefit_grocery": "Grocery list",
@@ -1766,27 +1766,27 @@
   "onboarding_error_target_higher": "Target must be higher than current weight",
   "result_set_weight": "Set weight",
   "@result_set_weight": {
-    "description": "SnapCal UI string: result_set_weight"
+    "description": "Wazn UI string: result_set_weight"
   },
   "result_cancel": "Cancel",
   "@result_cancel": {
-    "description": "SnapCal UI string: result_cancel"
+    "description": "Wazn UI string: result_cancel"
   },
   "result_save": "Save",
   "@result_save": {
-    "description": "SnapCal UI string: result_save"
+    "description": "Wazn UI string: result_save"
   },
   "result_tap_to_adjust": "Tap an item to adjust its portion",
   "@result_tap_to_adjust": {
-    "description": "SnapCal UI string: result_tap_to_adjust"
+    "description": "Wazn UI string: result_tap_to_adjust"
   },
   "result_retake": "Retake",
   "@result_retake": {
-    "description": "SnapCal UI string: result_retake"
+    "description": "Wazn UI string: result_retake"
   },
   "result_scans_left": "{remaining} of {total} scans remaining",
   "@result_scans_left": {
-    "description": "SnapCal UI string: result_scans_left",
+    "description": "Wazn UI string: result_scans_left",
     "placeholders": {
       "remaining": {
         "type": "int"
@@ -1798,59 +1798,59 @@
   },
   "result_added": "Added",
   "@result_added": {
-    "description": "SnapCal UI string: result_added"
+    "description": "Wazn UI string: result_added"
   },
   "result_save_log": "Save log",
   "@result_save_log": {
-    "description": "SnapCal UI string: result_save_log"
+    "description": "Wazn UI string: result_save_log"
   },
   "result_unlock_title": "Unlock deeper insights",
   "@result_unlock_title": {
-    "description": "SnapCal UI string: result_unlock_title"
+    "description": "Wazn UI string: result_unlock_title"
   },
   "result_unlock_subtitle": "Health score, AI coaching and meal insights",
   "@result_unlock_subtitle": {
-    "description": "SnapCal UI string: result_unlock_subtitle"
+    "description": "Wazn UI string: result_unlock_subtitle"
   },
   "result_no_items_detected": "No items detected — add one below or retake the photo",
   "@result_no_items_detected": {
-    "description": "SnapCal UI string: result_no_items_detected"
+    "description": "Wazn UI string: result_no_items_detected"
   },
   "result_confidence_estimated": "Estimated",
   "@result_confidence_estimated": {
-    "description": "SnapCal UI string: result_confidence_estimated"
+    "description": "Wazn UI string: result_confidence_estimated"
   },
   "result_confidence_low": "Low",
   "@result_confidence_low": {
-    "description": "SnapCal UI string: result_confidence_low"
+    "description": "Wazn UI string: result_confidence_low"
   },
   "result_health_excellent": "Excellent",
   "@result_health_excellent": {
-    "description": "SnapCal UI string: result_health_excellent"
+    "description": "Wazn UI string: result_health_excellent"
   },
   "result_health_good": "Good",
   "@result_health_good": {
-    "description": "SnapCal UI string: result_health_good"
+    "description": "Wazn UI string: result_health_good"
   },
   "result_health_okay": "Okay",
   "@result_health_okay": {
-    "description": "SnapCal UI string: result_health_okay"
+    "description": "Wazn UI string: result_health_okay"
   },
   "result_health_poor": "Poor",
   "@result_health_poor": {
-    "description": "SnapCal UI string: result_health_poor"
+    "description": "Wazn UI string: result_health_poor"
   },
   "result_health_bad": "Bad",
   "@result_health_bad": {
-    "description": "SnapCal UI string: result_health_bad"
+    "description": "Wazn UI string: result_health_bad"
   },
   "result_no_items": "No items",
   "@result_no_items": {
-    "description": "SnapCal UI string: result_no_items"
+    "description": "Wazn UI string: result_no_items"
   },
   "result_foods_detected": "{count} foods detected",
   "@result_foods_detected": {
-    "description": "SnapCal UI string: result_foods_detected",
+    "description": "Wazn UI string: result_foods_detected",
     "placeholders": {
       "count": {
         "type": "int"
@@ -1859,11 +1859,11 @@
   },
   "result_food_item": "Food item",
   "@result_food_item": {
-    "description": "SnapCal UI string: result_food_item"
+    "description": "Wazn UI string: result_food_item"
   },
   "result_removed": "Removed {name}",
   "@result_removed": {
-    "description": "SnapCal UI string: result_removed",
+    "description": "Wazn UI string: result_removed",
     "placeholders": {
       "name": {
         "type": "String"
@@ -1872,67 +1872,67 @@
   },
   "result_undo": "Undo",
   "@result_undo": {
-    "description": "SnapCal UI string: result_undo"
+    "description": "Wazn UI string: result_undo"
   },
   "result_rename": "Rename",
   "@result_rename": {
-    "description": "SnapCal UI string: result_rename"
+    "description": "Wazn UI string: result_rename"
   },
   "result_food_name": "Food name",
   "@result_food_name": {
-    "description": "SnapCal UI string: result_food_name"
+    "description": "Wazn UI string: result_food_name"
   },
   "result_discard_title": "Discard scan?",
   "@result_discard_title": {
-    "description": "SnapCal UI string: result_discard_title"
+    "description": "Wazn UI string: result_discard_title"
   },
   "result_discard_body": "Your scanned items haven’t been logged yet.",
   "@result_discard_body": {
-    "description": "SnapCal UI string: result_discard_body"
+    "description": "Wazn UI string: result_discard_body"
   },
   "result_keep_editing": "Keep editing",
   "@result_keep_editing": {
-    "description": "SnapCal UI string: result_keep_editing"
+    "description": "Wazn UI string: result_keep_editing"
   },
   "result_discard": "Discard",
   "@result_discard": {
-    "description": "SnapCal UI string: result_discard"
+    "description": "Wazn UI string: result_discard"
   },
   "result_not_matched": "Not matched · tap to fix",
   "@result_not_matched": {
-    "description": "SnapCal UI string: result_not_matched"
+    "description": "Wazn UI string: result_not_matched"
   },
   "result_not_in_database": "Not in database",
   "@result_not_in_database": {
-    "description": "SnapCal UI string: result_not_in_database"
+    "description": "Wazn UI string: result_not_in_database"
   },
   "result_assign_food": "Assign food",
   "@result_assign_food": {
-    "description": "SnapCal UI string: result_assign_food"
+    "description": "Wazn UI string: result_assign_food"
   },
   "macro_no_meals_yet": "No meals logged yet",
   "@macro_no_meals_yet": {
-    "description": "SnapCal UI string: macro_no_meals_yet"
+    "description": "Wazn UI string: macro_no_meals_yet"
   },
   "macro_targets_cta": "Daily targets and goal tracking",
   "@macro_targets_cta": {
-    "description": "SnapCal UI string: macro_targets_cta"
+    "description": "Wazn UI string: macro_targets_cta"
   },
   "macro_pro_label": "Pro",
   "@macro_pro_label": {
-    "description": "SnapCal UI string: macro_pro_label"
+    "description": "Wazn UI string: macro_pro_label"
   },
   "macro_ring_unlock_title": "See your exact numbers",
   "@macro_ring_unlock_title": {
-    "description": "SnapCal UI string: macro_ring_unlock_title"
+    "description": "Wazn UI string: macro_ring_unlock_title"
   },
   "macro_ring_unlock_body": "Unlock grams and daily targets",
   "@macro_ring_unlock_body": {
-    "description": "SnapCal UI string: macro_ring_unlock_body"
+    "description": "Wazn UI string: macro_ring_unlock_body"
   },
   "macro_ring_on_track": "You're on track for {macro} — unlock exact grams",
   "@macro_ring_on_track": {
-    "description": "SnapCal UI string: macro_ring_on_track",
+    "description": "Wazn UI string: macro_ring_on_track",
     "placeholders": {
       "macro": {
         "type": "String"
@@ -1941,7 +1941,7 @@
   },
   "result_add_to_log_kcal": "Add to log · {calories} kcal",
   "@result_add_to_log_kcal": {
-    "description": "SnapCal UI string: result_add_to_log_kcal",
+    "description": "Wazn UI string: result_add_to_log_kcal",
     "placeholders": {
       "calories": {
         "type": "String"
@@ -1950,7 +1950,7 @@
   },
   "planner_teaser_locked_summary": "+{count} more meals · {kcal} kcal planned",
   "@planner_teaser_locked_summary": {
-    "description": "SnapCal UI string: planner_teaser_locked_summary",
+    "description": "Wazn UI string: planner_teaser_locked_summary",
     "placeholders": {
       "count": {
         "type": "int"
@@ -1962,19 +1962,19 @@
   },
   "planner_teaser_title": "Unlock full meal plans",
   "@planner_teaser_title": {
-    "description": "SnapCal UI string: planner_teaser_title"
+    "description": "Wazn UI string: planner_teaser_title"
   },
   "planner_teaser_subtitle": "Get your complete daily schedule, personalised to your goals",
   "@planner_teaser_subtitle": {
-    "description": "SnapCal UI string: planner_teaser_subtitle"
+    "description": "Wazn UI string: planner_teaser_subtitle"
   },
-  "planner_teaser_cta": "Unlock with SnapCal Pro",
+  "planner_teaser_cta": "Unlock with Wazn Pro",
   "@planner_teaser_cta": {
-    "description": "SnapCal UI string: planner_teaser_cta"
+    "description": "Wazn UI string: planner_teaser_cta"
   },
   "paywall_disclosure_trial_year": "Free for {days} days, then {price} per year. Cancel anytime before then.",
   "@paywall_disclosure_trial_year": {
-    "description": "SnapCal UI string: paywall_disclosure_trial_year",
+    "description": "Wazn UI string: paywall_disclosure_trial_year",
     "placeholders": {
       "days": {
         "type": "int"
@@ -1986,7 +1986,7 @@
   },
   "paywall_disclosure_trial_month": "Free for {days} days, then {price} per month. Cancel anytime before then.",
   "@paywall_disclosure_trial_month": {
-    "description": "SnapCal UI string: paywall_disclosure_trial_month",
+    "description": "Wazn UI string: paywall_disclosure_trial_month",
     "placeholders": {
       "days": {
         "type": "int"
@@ -1998,7 +1998,7 @@
   },
   "paywall_disclosure_year": "{price} per year. Renews automatically until you cancel.",
   "@paywall_disclosure_year": {
-    "description": "SnapCal UI string: paywall_disclosure_year",
+    "description": "Wazn UI string: paywall_disclosure_year",
     "placeholders": {
       "price": {
         "type": "String"
@@ -2007,7 +2007,7 @@
   },
   "paywall_disclosure_month": "{price} per month. Renews automatically until you cancel.",
   "@paywall_disclosure_month": {
-    "description": "SnapCal UI string: paywall_disclosure_month",
+    "description": "Wazn UI string: paywall_disclosure_month",
     "placeholders": {
       "price": {
         "type": "String"
@@ -2016,7 +2016,7 @@
   },
   "paywall_disclosure_lifetime": "{price}, one-time payment. No subscription.",
   "@paywall_disclosure_lifetime": {
-    "description": "SnapCal UI string: paywall_disclosure_lifetime",
+    "description": "Wazn UI string: paywall_disclosure_lifetime",
     "placeholders": {
       "price": {
         "type": "String"
@@ -2025,7 +2025,7 @@
   },
   "paywall_disclosure_intro_year": "{introPrice} for the first year, then {price} per year. Renews automatically until you cancel.",
   "@paywall_disclosure_intro_year": {
-    "description": "SnapCal UI string: paywall_disclosure_intro_year",
+    "description": "Wazn UI string: paywall_disclosure_intro_year",
     "placeholders": {
       "introPrice": {
         "type": "String"
@@ -2037,7 +2037,7 @@
   },
   "paywall_disclosure_intro_month": "{introPrice} for the first month, then {price} per month. Renews automatically until you cancel.",
   "@paywall_disclosure_intro_month": {
-    "description": "SnapCal UI string: paywall_disclosure_intro_month",
+    "description": "Wazn UI string: paywall_disclosure_intro_month",
     "placeholders": {
       "introPrice": {
         "type": "String"
@@ -2049,7 +2049,7 @@
   },
   "paywall_intro_first_year": "{introPrice} first year",
   "@paywall_intro_first_year": {
-    "description": "SnapCal UI string: paywall_intro_first_year",
+    "description": "Wazn UI string: paywall_intro_first_year",
     "placeholders": {
       "introPrice": {
         "type": "String"
@@ -2058,7 +2058,7 @@
   },
   "paywall_intro_first_month": "{introPrice} first month",
   "@paywall_intro_first_month": {
-    "description": "SnapCal UI string: paywall_intro_first_month",
+    "description": "Wazn UI string: paywall_intro_first_month",
     "placeholders": {
       "introPrice": {
         "type": "String"
@@ -2067,7 +2067,7 @@
   },
   "home_goal_activity_bonus": "+{kcal} kcal earned from activity",
   "@home_goal_activity_bonus": {
-    "description": "SnapCal UI string: home_goal_activity_bonus",
+    "description": "Wazn UI string: home_goal_activity_bonus",
     "placeholders": {
       "kcal": {
         "type": "int"
@@ -2076,7 +2076,7 @@
   },
   "home_metric_of_goal": "of {goal} {unit}",
   "@home_metric_of_goal": {
-    "description": "SnapCal UI string: home_metric_of_goal",
+    "description": "Wazn UI string: home_metric_of_goal",
     "placeholders": {
       "goal": {
         "type": "String"
@@ -2088,11 +2088,11 @@
   },
   "water_unit_ml": "ml",
   "@water_unit_ml": {
-    "description": "SnapCal UI string: water_unit_ml"
+    "description": "Wazn UI string: water_unit_ml"
   },
   "home_kcal_short": "{kcal} kcal",
   "@home_kcal_short": {
-    "description": "SnapCal UI string: home_kcal_short",
+    "description": "Wazn UI string: home_kcal_short",
     "placeholders": {
       "kcal": {
         "type": "int"
@@ -2101,7 +2101,7 @@
   },
   "home_kcal_estimated_short": "~{kcal} kcal",
   "@home_kcal_estimated_short": {
-    "description": "SnapCal UI string: home_kcal_estimated_short",
+    "description": "Wazn UI string: home_kcal_estimated_short",
     "placeholders": {
       "kcal": {
         "type": "int"
@@ -2344,9 +2344,9 @@
   "planner_unlock_body": "See all 7 days, swap meals, and shop from one smart grocery list.",
   "planner_one_day_preview": "Your one-day preview",
   "planner_locked_days": "6 more days are ready with Pro",
-  "planner_unlock_pro": "Unlock with SnapCal Pro",
+  "planner_unlock_pro": "Unlock with Wazn Pro",
   "pro_welcome_eyebrow": "You're all set",
-  "pro_welcome_title": "Welcome to SnapCal Pro",
+  "pro_welcome_title": "Welcome to Wazn Pro",
   "pro_welcome_subtitle": "Everything in Pro is ready for you.",
   "pro_welcome_cta": "Start exploring",
   "pro_restored_eyebrow": "Welcome back",
@@ -2363,15 +2363,15 @@
   "@sync_status_last": {"placeholders":{"time":{"type":"String"}}},
   "@sync_status_pending": {"placeholders":{"count":{"type":"int"}}},
   "update_available_title": "Update available",
-  "update_available_message": "A new version of SnapCal is ready, with fixes and improvements.",
+  "update_available_message": "A new version of Wazn is ready, with fixes and improvements.",
   "update_now": "Update now",
   "update_later": "Later",
-  "settings_rate_app": "Rate SnapCal",
+  "settings_rate_app": "Rate Wazn",
   "settings_send_feedback": "Send feedback",
-  "feedback_email_subject": "SnapCal feedback",
+  "feedback_email_subject": "Wazn feedback",
   "feedback_email_copied": "No email app found. Our address was copied: {email}",
   "@feedback_email_copied": {"placeholders":{"email":{"type":"String"}}},
-  "pro_offer_title": "Unlock SnapCal Pro",
+  "pro_offer_title": "Unlock Wazn Pro",
   "pro_offer_subtitle": "Scan every meal, with no limits.",
   "pro_offer_scans_used": "You've used {used} of {limit} free scans this month",
   "pro_offer_days_free": "{days} days free",
@@ -2382,7 +2382,7 @@
   "pro_offer_per_month": "{price}/month",
   "pro_offer_approx_month": "≈ {price}/month",
   "pro_offer_claim": "Claim {percent}% off",
-  "pro_offer_get_pro": "Get SnapCal Pro",
+  "pro_offer_get_pro": "Get Wazn Pro",
   "pro_offer_not_now": "Not now",
   "pro_offer_ends_on": "Offer ends {date}",
   "@pro_offer_scans_used": {"placeholders":{"used":{"type":"int"},"limit":{"type":"int"}}},
@@ -2392,10 +2392,10 @@
   "@pro_offer_approx_month": {"placeholders":{"price":{"type":"String"}}},
   "@pro_offer_claim": {"placeholders":{"percent":{"type":"String"}}},
   "@pro_offer_ends_on": {"placeholders":{"date":{"type":"String"}}},
-  "pro_offer_brand": "SNAPCAL PRO",
+  "pro_offer_brand": "WAZN PRO",
   "pro_offer_big_percent": "{percent}%",
   "pro_offer_off": "OFF",
-  "pro_offer_off_first_year": "your first year of SnapCal Pro",
+  "pro_offer_off_first_year": "your first year of Wazn Pro",
   "pro_offer_off_yearly": "when you pay yearly",
   "pro_offer_paying_monthly": "Paying monthly for a year",
   "pro_offer_with_offer": "With this offer",
@@ -2437,7 +2437,7 @@
   "scan_problem_dismiss": "OK",
   "meal_save_failed": "Couldn't save your meal. Please try again.",
   "snap_camera_slow": "The camera is taking longer than usual to start.",
-  "snap_camera_permission": "SnapCal needs camera access to scan food. Allow it in your phone's settings.",
+  "snap_camera_permission": "Wazn needs camera access to scan food. Allow it in your phone's settings.",
   "snap_camera_unavailable": "The camera couldn't start. Please try again.",
   "snap_open_settings": "Open settings",
   "log_meal_deleted": "Meal deleted",
@@ -2497,13 +2497,13 @@
   "stats_pro_button": "Unlock 30 days",
   "voice_log_title": "Voice log",
   "voice_heading": "Describe what you ate",
-  "voice_subtitle": "Speak naturally, then check the words before SnapCal analyzes your meal.",
+  "voice_subtitle": "Speak naturally, then check the words before Wazn analyzes your meal.",
   "voice_tap_to_speak": "Tap to speak",
   "voice_listening": "Listening — tap to stop",
   "voice_transcript_label": "Meal description",
   "voice_transcript_hint": "What did you eat or drink?",
   "voice_example": "Example: Two eggs, one slice of toast, and coffee with milk",
-  "voice_privacy_note": "SnapCal does not save your audio.",
+  "voice_privacy_note": "Wazn does not save your audio.",
   "voice_analyze": "Analyze meal",
   "voice_analyzing": "Analyzing meal…",
   "voice_speak_again": "Speak again",
@@ -2512,7 +2512,7 @@
   "voice_open_settings": "Settings",
   "voice_unavailable": "Speech recognition is unavailable. You can still type your meal.",
   "voice_no_food": "No food was found in that description. Check the words and try again.",
-  "voice_analysis_failed": "SnapCal couldn't analyze that meal. Please try again.",
+  "voice_analysis_failed": "Wazn couldn't analyze that meal. Please try again.",
   "quick_add_title": "Quick add",
   "quick_add_search": "Search foods",
   "quick_add_for_you": "For you",

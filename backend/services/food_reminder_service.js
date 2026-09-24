@@ -64,7 +64,7 @@ const COPY = {
     morning: { title: 'Good morning ☀️', body: 'Scan your breakfast and start tracking your day.' },
     lunch: { title: 'What did you eat today?', body: 'Open the app and scan your meal.' },
     evening: { title: "Don't forget your food log.", body: 'Scan your dinner to complete your day.' },
-    fallback: { title: 'Time to scan your food', body: 'Open SnapCal and log your meal.' },
+    fallback: { title: 'Time to scan your food', body: 'Open Wazn and log your meal.' },
   },
   es: {
     streak: (n) => ({
@@ -74,7 +74,7 @@ const COPY = {
     morning: { title: 'Buenos días ☀️', body: 'Escanea tu desayuno y empieza a registrar tu día.' },
     lunch: { title: '¿Qué has comido hoy?', body: 'Abre la app y escanea tu comida.' },
     evening: { title: 'No olvides tu registro de comidas.', body: 'Escanea tu cena para completar el día.' },
-    fallback: { title: 'Hora de escanear tu comida', body: 'Abre SnapCal y registra tu comida.' },
+    fallback: { title: 'Hora de escanear tu comida', body: 'Abre Wazn y registra tu comida.' },
   },
   fr: {
     streak: (n) => ({
@@ -84,7 +84,7 @@ const COPY = {
     morning: { title: 'Bonjour ☀️', body: 'Scannez votre petit-déjeuner et commencez à suivre votre journée.' },
     lunch: { title: "Qu'avez-vous mangé aujourd'hui ?", body: "Ouvrez l'app et scannez votre repas." },
     evening: { title: "N'oubliez pas votre journal alimentaire.", body: 'Scannez votre dîner pour compléter votre journée.' },
-    fallback: { title: 'Il est temps de scanner votre repas', body: 'Ouvrez SnapCal et enregistrez votre repas.' },
+    fallback: { title: 'Il est temps de scanner votre repas', body: 'Ouvrez Wazn et enregistrez votre repas.' },
   },
   ar: {
     streak: (n) => ({
@@ -94,7 +94,7 @@ const COPY = {
     morning: { title: 'صباح الخير ☀️', body: 'امسح فطورك وابدأ تتبع يومك.' },
     lunch: { title: 'ماذا أكلت اليوم؟', body: 'افتح التطبيق وامسح وجبتك.' },
     evening: { title: 'لا تنسَ سجل طعامك.', body: 'امسح عشاءك لتكمل يومك.' },
-    fallback: { title: 'حان وقت مسح طعامك', body: 'افتح SnapCal وسجّل وجبتك.' },
+    fallback: { title: 'حان وقت مسح طعامك', body: 'افتح Wazn وسجّل وجبتك.' },
   },
 };
 

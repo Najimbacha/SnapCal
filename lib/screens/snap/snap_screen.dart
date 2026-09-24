@@ -819,7 +819,7 @@ class _InlineCameraHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     const Text(
-                      'SnapCal',
+                      'Wazn',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

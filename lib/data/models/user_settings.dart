@@ -6,7 +6,7 @@ import '../../l10n/generated/app_localizations.dart';
 
 part 'user_settings.g.dart';
 
-/// The device's language when SnapCal ships that language, English otherwise.
+/// The device's language when Wazn ships that language, English otherwise.
 ///
 /// This is the default for a user who has never opened the language picker.
 /// It used to be a flat 'en', which meant the Arabic, Spanish and French

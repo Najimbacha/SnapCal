@@ -1,4 +1,4 @@
-# Privacy Policy for SnapCal
+# Privacy Policy for Wazn
 
 The privacy policy now lives at **https://snapcal-mxh9.onrender.com/privacy**.
 

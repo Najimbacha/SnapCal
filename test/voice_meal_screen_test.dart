@@ -23,7 +23,7 @@ void main() {
     expect(find.byKey(const ValueKey('voice-mic')), findsOneWidget);
     expect(find.byKey(const ValueKey('voice-transcript')), findsOneWidget);
     expect(find.byKey(const ValueKey('voice-analyze')), findsOneWidget);
-    expect(find.text('SnapCal does not save your audio.'), findsOneWidget);
+    expect(find.text('Wazn does not save your audio.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

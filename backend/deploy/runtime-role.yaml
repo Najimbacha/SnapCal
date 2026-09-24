@@ -1,5 +1,5 @@
-title: SnapCal backend runtime
-description: Existing SnapCal API and reminders, without project or IAM administration.
+title: Wazn backend runtime
+description: Existing Wazn API and reminders, without project or IAM administration.
 stage: GA
 includedPermissions:
   - datastore.entities.get

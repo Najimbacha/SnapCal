@@ -240,7 +240,7 @@ class PreferencesScreen extends ConsumerWidget {
   }
 }
 
-/// Says so when the phone is blocking SnapCal's notifications.
+/// Says so when the phone is blocking Wazn's notifications.
 ///
 /// Every switch on this screen used to read "on" while the phone dropped
 /// everything, with nothing to say why reminders never came or how to fix it.

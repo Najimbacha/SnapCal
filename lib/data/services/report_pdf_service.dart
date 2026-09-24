@@ -68,7 +68,7 @@ class ReportPdfService {
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.Text(
-                          'SnapCal',
+                          'Wazn',
                           style: pw.TextStyle(
                             fontSize: 24,
                             fontWeight: pw.FontWeight.bold,
@@ -256,7 +256,7 @@ class ReportPdfService {
     // Preview/Print/Share
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'SnapCal_Report_${DateFormat('yyyyMMdd').format(now)}.pdf',
+      name: 'Wazn_Report_${DateFormat('yyyyMMdd').format(now)}.pdf',
     );
   }
 

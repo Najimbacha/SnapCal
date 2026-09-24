@@ -1,4 +1,4 @@
-# SnapCal Production Resilience Playbook
+# Wazn Production Resilience Playbook
 
 This app must assume every async boundary can fail, return late, return malformed data, or complete after the user leaves the screen. The production architecture is:
 

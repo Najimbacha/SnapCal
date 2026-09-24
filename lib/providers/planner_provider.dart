@@ -2072,10 +2072,10 @@ class PlannerProvider with ChangeNotifier {
     };
 
     final title = switch (_languageCode) {
-      'ar' => '🛒 قائمة مشتريات SnapCal',
-      'es' => '🛒 Lista de compras de SnapCal',
-      'fr' => '🛒 Liste de courses SnapCal',
-      _ => '🛒 SnapCal Grocery List',
+      'ar' => '🛒 قائمة مشتريات Wazn',
+      'es' => '🛒 Lista de compras de Wazn',
+      'fr' => '🛒 Liste de courses Wazn',
+      _ => '🛒 Wazn Grocery List',
     };
     final buffer = StringBuffer('$title\n');
     grouped.forEach((category, items) {

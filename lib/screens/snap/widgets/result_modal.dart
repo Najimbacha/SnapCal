@@ -731,7 +731,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
               ),
               Expanded(
                 child: Text(
-                  'SnapCal',
+                  'Wazn',
                   style: TextStyle(
                     color: ink,
                     fontSize: 20,

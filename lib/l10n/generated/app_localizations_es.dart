@@ -34,7 +34,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get result_health_score_hint =>
-      'Guía nutricional de SnapCal, no una valoración médica.';
+      'Guía nutricional de Wazn, no una valoración médica.';
 
   @override
   String get coach_allowance_used =>
@@ -50,7 +50,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get purchase_headline => 'Descubre qué comer después.';
 
   @override
-  String get purchase_preview_title => 'Mira SnapCal Pro en acción';
+  String get purchase_preview_title => 'Mira Wazn Pro en acción';
 
   @override
   String get purchase_preview_advice => 'Planea una cena rica en proteínas.';
@@ -92,7 +92,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get home_dashboard_liters => 'L';
 
   @override
-  String get appTitle => 'SnapCal';
+  String get appTitle => 'Wazn';
 
   @override
   String get ads_label => 'PUBLICIDAD';
@@ -305,7 +305,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get assistant_initial_body =>
-      'Tu entrenador personal de SnapCal está listo para ayudarte con recetas, metas y consejos nutricionales.';
+      'Tu entrenador personal de Wazn está listo para ayudarte con recetas, metas y consejos nutricionales.';
 
   @override
   String get assistant_preparing => 'Preparando tu viaje de bienestar...';
@@ -354,7 +354,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get assistant_starter_plans_desc => 'Crear plan de 3 días';
 
   @override
-  String get premium_welcome => '¡Bienvenido a SnapCal Pro! 🎉';
+  String get premium_welcome => '¡Bienvenido a Wazn Pro! 🎉';
 
   @override
   String get premium_restore_success => '¡Compras restauradas! 🎉';
@@ -614,7 +614,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get notif_prompt_body =>
-      'SnapCal puede recordarte registrar el desayuno, la comida y la cena. Puedes cambiarlo cuando quieras en Ajustes.';
+      'Wazn puede recordarte registrar el desayuno, la comida y la cena. Puedes cambiarlo cuando quieras en Ajustes.';
 
   @override
   String get notif_prompt_allow => 'Activar recordatorios';
@@ -624,7 +624,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get notif_blocked_title =>
-      'Las notificaciones de SnapCal están desactivadas';
+      'Las notificaciones de Wazn están desactivadas';
 
   @override
   String get notif_blocked_body =>
@@ -639,11 +639,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Recordatorios para escanear tus comidas';
 
   @override
-  String get notif_updates_channel => 'Novedades de SnapCal';
+  String get notif_updates_channel => 'Novedades de Wazn';
 
   @override
   String get notif_updates_channel_description =>
-      'Noticias y actualizaciones de SnapCal';
+      'Noticias y actualizaciones de Wazn';
 
   @override
   String get notif_meal_reminders_channel_description =>
@@ -654,7 +654,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get notif_daily_motivation_channel_description =>
-      'Motivación diaria y amable de nutrición de SnapCal.';
+      'Motivación diaria y amable de nutrición de Wazn.';
 
   @override
   String get notif_motivation_1_title => 'Los pasos pequeños cuentan';
@@ -736,7 +736,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get auth_footer_member => '¿Ya eres miembro? ';
 
   @override
-  String get auth_footer_new => '¿Nuevo en SnapCal? ';
+  String get auth_footer_new => '¿Nuevo en Wazn? ';
 
   @override
   String get auth_action_signin => 'Iniciar sesión';
@@ -1068,14 +1068,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settings_delete_subscription_note =>
-      'Esto no cancela tu suscripción a SnapCal Pro. Cancélala en Google Play para que no se te cobre.';
+      'Esto no cancela tu suscripción a Wazn Pro. Cancélala en Google Play para que no se te cobre.';
 
   @override
   String get settings_name_failed =>
       'No se pudo actualizar tu nombre. Inténtalo de nuevo.';
 
   @override
-  String get paywall_welcome => '¡Bienvenido a SnapCal Pro! 🎉';
+  String get paywall_welcome => '¡Bienvenido a Wazn Pro! 🎉';
 
   @override
   String get progress_log_progress => 'Registrar Progreso';
@@ -1444,13 +1444,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_licenses => 'Licencias de código abierto';
 
   @override
-  String get settings_licenses_desc => 'El software en el que se basa SnapCal';
+  String get settings_licenses_desc => 'El software en el que se basa Wazn';
 
   @override
   String get settings_terms_desc => 'Condiciones de uso';
 
   @override
-  String get settings_about_snapcal => 'Sobre SnapCal';
+  String get settings_about_snapcal => 'Sobre Wazn';
 
   @override
   String get settings_upgrade_pro => 'Pasar a Pro';
@@ -1864,7 +1864,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_sign_in => 'Iniciar sesión';
 
   @override
-  String get settings_member => 'Miembro de SnapCal';
+  String get settings_member => 'Miembro de Wazn';
 
   @override
   String get settings_auth_cta => 'Regístrate o Inicia sesión';
@@ -1913,11 +1913,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_sync_data_desc => 'Sincroniza tus datos';
 
   @override
-  String get settings_about_app => 'Acerca de SnapCal';
+  String get settings_about_app => 'Acerca de Wazn';
 
   @override
-  String get settings_legalese =>
-      '© 2026 SnapCal. Todos los derechos reservados.';
+  String get settings_legalese => '© 2026 Wazn. Todos los derechos reservados.';
 
   @override
   String get onboarding_result_maintain => 'Mantener peso actual';
@@ -1932,7 +1931,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get error_connection_body =>
-      'No se pudo inicializar SnapCal. Verifica tus datos o Wi-Fi.';
+      'No se pudo inicializar Wazn. Verifica tus datos o Wi-Fi.';
 
   @override
   String get error_unexpected_title => 'Algo salió mal';
@@ -2058,7 +2057,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get progress_video_share_text =>
-      '¡Mi viaje de transformación en SnapCal! 🚀';
+      '¡Mi viaje de transformación en Wazn! 🚀';
 
   @override
   String get widget_status_on_track => 'En camino';
@@ -2245,7 +2244,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get feature_insights_share_text =>
-      '¡Mira mi resumen nutricional semanal de SnapCal! 📊';
+      '¡Mira mi resumen nutricional semanal de Wazn! 📊';
 
   @override
   String get settings_guest_title => 'Protege tu progreso';
@@ -2572,7 +2571,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get auth_welcome_back_title => 'Bienvenido de nuevo';
 
   @override
-  String get home_welcome_guest => 'Bienvenido a SnapCal';
+  String get home_welcome_guest => 'Bienvenido a Wazn';
 
   @override
   String get auth_lets_dive => 'Empecemos';
@@ -2877,7 +2876,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get report_pdf_footer =>
-      'Este informe fue generado automáticamente por SnapCal AI.';
+      'Este informe fue generado automáticamente por Wazn AI.';
 
   @override
   String get report_pdf_tagline => 'Mantén la constancia, cuida tu salud.';
@@ -3199,7 +3198,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_unit_in => 'in';
 
   @override
-  String get paywall_unlock_snapcal_pro => 'Desbloquear SnapCal Pro';
+  String get paywall_unlock_snapcal_pro => 'Desbloquear Wazn Pro';
 
   @override
   String get paywall_barcode_title => 'Desbloquear escáner de códigos';
@@ -3548,7 +3547,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get activity_not_connected_body =>
-      'SnapCal lee tus pasos desde Health Connect. Nunca escribe nada.';
+      'Wazn lee tus pasos desde Health Connect. Nunca escribe nada.';
 
   @override
   String get activity_connect => 'Conectar';
@@ -3586,7 +3585,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get activity_score => 'Puntuación de actividad';
 
   @override
-  String get log_health_title => 'Salud SnapCal';
+  String get log_health_title => 'Salud Wazn';
 
   @override
   String get log_key_metrics => 'Métricas clave';
@@ -3700,7 +3699,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get macro_locked_body =>
-      'Desbloquea detalles de proteína, carbohidratos y grasas con SnapCal Pro.';
+      'Desbloquea detalles de proteína, carbohidratos y grasas con Wazn Pro.';
 
   @override
   String get macro_unlock_cta => 'Desbloquear macros';
@@ -3752,7 +3751,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planner_empty_body =>
-      'SnapCal crea comidas según tus calorías, macros, preferencias y compras.';
+      'Wazn crea comidas según tus calorías, macros, preferencias y compras.';
 
   @override
   String get planner_empty_benefit_adaptive => 'Guía adaptativa';
@@ -4311,7 +4310,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Consigue tu horario diario completo, personalizado para tus objetivos';
 
   @override
-  String get planner_teaser_cta => 'Desbloquear con SnapCal Pro';
+  String get planner_teaser_cta => 'Desbloquear con Wazn Pro';
 
   @override
   String paywall_disclosure_trial_year(int days, String price) {
@@ -4806,13 +4805,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planner_locked_days => '6 días más listos con Pro';
 
   @override
-  String get planner_unlock_pro => 'Desbloquear con SnapCal Pro';
+  String get planner_unlock_pro => 'Desbloquear con Wazn Pro';
 
   @override
   String get pro_welcome_eyebrow => 'Todo listo';
 
   @override
-  String get pro_welcome_title => 'Bienvenido a SnapCal Pro';
+  String get pro_welcome_title => 'Bienvenido a Wazn Pro';
 
   @override
   String get pro_welcome_subtitle => 'Todo lo de Pro ya está listo para ti.';
@@ -4868,7 +4867,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get update_available_message =>
-      'Hay una nueva versión de SnapCal con correcciones y mejoras.';
+      'Hay una nueva versión de Wazn con correcciones y mejoras.';
 
   @override
   String get update_now => 'Actualizar ahora';
@@ -4877,13 +4876,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get update_later => 'Más tarde';
 
   @override
-  String get settings_rate_app => 'Valorar SnapCal';
+  String get settings_rate_app => 'Valorar Wazn';
 
   @override
   String get settings_send_feedback => 'Enviar comentarios';
 
   @override
-  String get feedback_email_subject => 'Comentarios sobre SnapCal';
+  String get feedback_email_subject => 'Comentarios sobre Wazn';
 
   @override
   String feedback_email_copied(String email) {
@@ -4891,7 +4890,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get pro_offer_title => 'Desbloquea SnapCal Pro';
+  String get pro_offer_title => 'Desbloquea Wazn Pro';
 
   @override
   String get pro_offer_subtitle => 'Escanea cada comida, sin límites.';
@@ -4936,7 +4935,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get pro_offer_get_pro => 'Obtener SnapCal Pro';
+  String get pro_offer_get_pro => 'Obtener Wazn Pro';
 
   @override
   String get pro_offer_not_now => 'Ahora no';
@@ -4947,7 +4946,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get pro_offer_brand => 'SNAPCAL PRO';
+  String get pro_offer_brand => 'WAZN PRO';
 
   @override
   String pro_offer_big_percent(String percent) {
@@ -4958,7 +4957,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get pro_offer_off => 'DTO.';
 
   @override
-  String get pro_offer_off_first_year => 'en tu primer año de SnapCal Pro';
+  String get pro_offer_off_first_year => 'en tu primer año de Wazn Pro';
 
   @override
   String get pro_offer_off_yearly => 'pagando anualmente';
@@ -5085,7 +5084,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get snap_camera_permission =>
-      'SnapCal necesita acceso a la cámara para escanear comida. Permítelo en los ajustes de tu teléfono.';
+      'Wazn necesita acceso a la cámara para escanear comida. Permítelo en los ajustes de tu teléfono.';
 
   @override
   String get snap_camera_unavailable =>
@@ -5285,7 +5284,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get voice_subtitle =>
-      'Habla con naturalidad y revisa el texto antes de que SnapCal analice tu comida.';
+      'Habla con naturalidad y revisa el texto antes de que Wazn analice tu comida.';
 
   @override
   String get voice_tap_to_speak => 'Toca para hablar';
@@ -5304,7 +5303,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Ejemplo: Dos huevos, una tostada y café con leche';
 
   @override
-  String get voice_privacy_note => 'SnapCal no guarda tu audio.';
+  String get voice_privacy_note => 'Wazn no guarda tu audio.';
 
   @override
   String get voice_analyze => 'Analizar comida';
@@ -5336,7 +5335,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get voice_analysis_failed =>
-      'SnapCal no pudo analizar esa comida. Inténtalo de nuevo.';
+      'Wazn no pudo analizar esa comida. Inténtalo de nuevo.';
 
   @override
   String get quick_add_title => 'Añadir rápido';

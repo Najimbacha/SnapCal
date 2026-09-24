@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// SnapCal Design System — Brand Colors
+/// Wazn Design System — Brand Colors
 ///
 /// One unified visual identity: premium emerald green as the single brand
 /// color, warm neutral surfaces, and semantic supporting colors only.
@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // ============= BRAND — SNAPCAL EMERALD =============
+  // ============= BRAND — WAZN EMERALD =============
   /// Seed for Material 3 ColorScheme generation (both themes).
   static const Color seed = Color(0xFF059669); // Emerald 600
 

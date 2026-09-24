@@ -147,7 +147,7 @@ abstract class AppLocalizations {
   /// No description provided for @result_health_score_hint.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal nutrition guide, not a medical rating.'**
+  /// **'Wazn nutrition guide, not a medical rating.'**
   String get result_health_score_hint;
 
   /// No description provided for @coach_allowance_used.
@@ -177,7 +177,7 @@ abstract class AppLocalizations {
   /// No description provided for @purchase_preview_title.
   ///
   /// In en, this message translates to:
-  /// **'See SnapCal Pro in action'**
+  /// **'See Wazn Pro in action'**
   String get purchase_preview_title;
 
   /// No description provided for @purchase_preview_advice.
@@ -255,7 +255,7 @@ abstract class AppLocalizations {
   /// The name of the application
   ///
   /// In en, this message translates to:
-  /// **'SnapCal'**
+  /// **'Wazn'**
   String get appTitle;
 
   /// No description provided for @ads_label.
@@ -633,7 +633,7 @@ abstract class AppLocalizations {
   /// No description provided for @assistant_initial_body.
   ///
   /// In en, this message translates to:
-  /// **'Your personal SnapCal coach is ready to assist with recipes, goals, and nutrition advice.'**
+  /// **'Your personal Wazn coach is ready to assist with recipes, goals, and nutrition advice.'**
   String get assistant_initial_body;
 
   /// No description provided for @assistant_preparing.
@@ -729,7 +729,7 @@ abstract class AppLocalizations {
   /// No description provided for @premium_welcome.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to SnapCal Pro! 🎉'**
+  /// **'Welcome to Wazn Pro! 🎉'**
   String get premium_welcome;
 
   /// No description provided for @premium_restore_success.
@@ -1215,7 +1215,7 @@ abstract class AppLocalizations {
   /// No description provided for @notif_prompt_body.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal can remind you to log breakfast, lunch and dinner. You can change this any time in Settings.'**
+  /// **'Wazn can remind you to log breakfast, lunch and dinner. You can change this any time in Settings.'**
   String get notif_prompt_body;
 
   /// No description provided for @notif_prompt_allow.
@@ -1233,7 +1233,7 @@ abstract class AppLocalizations {
   /// No description provided for @notif_blocked_title.
   ///
   /// In en, this message translates to:
-  /// **'Notifications are off for SnapCal'**
+  /// **'Notifications are off for Wazn'**
   String get notif_blocked_title;
 
   /// No description provided for @notif_blocked_body.
@@ -1257,13 +1257,13 @@ abstract class AppLocalizations {
   /// No description provided for @notif_updates_channel.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal updates'**
+  /// **'Wazn updates'**
   String get notif_updates_channel;
 
   /// No description provided for @notif_updates_channel_description.
   ///
   /// In en, this message translates to:
-  /// **'News and app updates from SnapCal'**
+  /// **'News and app updates from Wazn'**
   String get notif_updates_channel_description;
 
   /// No description provided for @notif_meal_reminders_channel_description.
@@ -1281,7 +1281,7 @@ abstract class AppLocalizations {
   /// No description provided for @notif_daily_motivation_channel_description.
   ///
   /// In en, this message translates to:
-  /// **'Gentle daily nutrition motivation from SnapCal.'**
+  /// **'Gentle daily nutrition motivation from Wazn.'**
   String get notif_daily_motivation_channel_description;
 
   /// No description provided for @notif_motivation_1_title.
@@ -1431,7 +1431,7 @@ abstract class AppLocalizations {
   /// No description provided for @auth_footer_new.
   ///
   /// In en, this message translates to:
-  /// **'New to SnapCal? '**
+  /// **'New to Wazn? '**
   String get auth_footer_new;
 
   /// No description provided for @auth_action_signin.
@@ -2037,7 +2037,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_delete_subscription_note.
   ///
   /// In en, this message translates to:
-  /// **'This does not cancel your SnapCal Pro subscription. Cancel it in Google Play to stop being charged.'**
+  /// **'This does not cancel your Wazn Pro subscription. Cancel it in Google Play to stop being charged.'**
   String get settings_delete_subscription_note;
 
   /// No description provided for @settings_name_failed.
@@ -2049,7 +2049,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywall_welcome.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to SnapCal Pro! 🎉'**
+  /// **'Welcome to Wazn Pro! 🎉'**
   String get paywall_welcome;
 
   /// No description provided for @progress_log_progress.
@@ -2745,7 +2745,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_licenses_desc.
   ///
   /// In en, this message translates to:
-  /// **'The software SnapCal is built on'**
+  /// **'The software Wazn is built on'**
   String get settings_licenses_desc;
 
   /// No description provided for @settings_terms_desc.
@@ -2757,7 +2757,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_about_snapcal.
   ///
   /// In en, this message translates to:
-  /// **'About SnapCal'**
+  /// **'About Wazn'**
   String get settings_about_snapcal;
 
   /// No description provided for @settings_upgrade_pro.
@@ -3465,7 +3465,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_member.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal Member'**
+  /// **'Wazn Member'**
   String get settings_member;
 
   /// No description provided for @settings_auth_cta.
@@ -3561,13 +3561,13 @@ abstract class AppLocalizations {
   /// No description provided for @settings_about_app.
   ///
   /// In en, this message translates to:
-  /// **'About SnapCal'**
+  /// **'About Wazn'**
   String get settings_about_app;
 
   /// No description provided for @settings_legalese.
   ///
   /// In en, this message translates to:
-  /// **'© 2026 SnapCal. All rights reserved.'**
+  /// **'© 2026 Wazn. All rights reserved.'**
   String get settings_legalese;
 
   /// No description provided for @onboarding_result_maintain.
@@ -3591,7 +3591,7 @@ abstract class AppLocalizations {
   /// No description provided for @error_connection_body.
   ///
   /// In en, this message translates to:
-  /// **'Unable to initialize SnapCal. Please check your data or Wi-Fi.'**
+  /// **'Unable to initialize Wazn. Please check your data or Wi-Fi.'**
   String get error_connection_body;
 
   /// No description provided for @error_unexpected_title.
@@ -3819,7 +3819,7 @@ abstract class AppLocalizations {
   /// No description provided for @progress_video_share_text.
   ///
   /// In en, this message translates to:
-  /// **'My SnapCal Transformation Journey! 🚀'**
+  /// **'My Wazn Transformation Journey! 🚀'**
   String get progress_video_share_text;
 
   /// No description provided for @widget_status_on_track.
@@ -4161,7 +4161,7 @@ abstract class AppLocalizations {
   /// No description provided for @feature_insights_share_text.
   ///
   /// In en, this message translates to:
-  /// **'Check out my weekly nutrition summary from SnapCal! 📊'**
+  /// **'Check out my weekly nutrition summary from Wazn! 📊'**
   String get feature_insights_share_text;
 
   /// No description provided for @settings_guest_title.
@@ -4590,13 +4590,13 @@ abstract class AppLocalizations {
   /// **'LOG MANUALLY'**
   String get scan_overlay_manual;
 
-  /// SnapCal UI string: scan_wait_stay
+  /// Wazn UI string: scan_wait_stay
   ///
   /// In en, this message translates to:
   /// **'Keep this screen open'**
   String get scan_wait_stay;
 
-  /// SnapCal UI string: scan_wait_longer
+  /// Wazn UI string: scan_wait_longer
   ///
   /// In en, this message translates to:
   /// **'Taking longer than usual — your result is still coming.'**
@@ -4755,7 +4755,7 @@ abstract class AppLocalizations {
   /// No description provided for @home_welcome_guest.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to SnapCal'**
+  /// **'Welcome to Wazn'**
   String get home_welcome_guest;
 
   /// No description provided for @auth_lets_dive.
@@ -5289,7 +5289,7 @@ abstract class AppLocalizations {
   /// No description provided for @report_pdf_footer.
   ///
   /// In en, this message translates to:
-  /// **'This report was automatically generated by SnapCal AI.'**
+  /// **'This report was automatically generated by Wazn AI.'**
   String get report_pdf_footer;
 
   /// No description provided for @report_pdf_tagline.
@@ -5847,7 +5847,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywall_unlock_snapcal_pro.
   ///
   /// In en, this message translates to:
-  /// **'Unlock SnapCal Pro'**
+  /// **'Unlock Wazn Pro'**
   String get paywall_unlock_snapcal_pro;
 
   /// No description provided for @paywall_barcode_title.
@@ -6399,7 +6399,7 @@ abstract class AppLocalizations {
   /// No description provided for @activity_not_connected_body.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal reads your steps from Health Connect. It never writes anything back.'**
+  /// **'Wazn reads your steps from Health Connect. It never writes anything back.'**
   String get activity_not_connected_body;
 
   /// No description provided for @activity_connect.
@@ -6471,7 +6471,7 @@ abstract class AppLocalizations {
   /// No description provided for @log_health_title.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal Health'**
+  /// **'Wazn Health'**
   String get log_health_title;
 
   /// No description provided for @log_key_metrics.
@@ -6687,13 +6687,13 @@ abstract class AppLocalizations {
   /// No description provided for @macro_locked_body.
   ///
   /// In en, this message translates to:
-  /// **'Unlock protein, carbs, and fat details with SnapCal Pro.'**
+  /// **'Unlock protein, carbs, and fat details with Wazn Pro.'**
   String get macro_locked_body;
 
   /// No description provided for @macro_unlock_cta.
   ///
   /// In en, this message translates to:
-  /// **'Unlock with SnapCal Pro'**
+  /// **'Unlock with Wazn Pro'**
   String get macro_unlock_cta;
 
   /// No description provided for @macro_locked_placeholder.
@@ -6777,7 +6777,7 @@ abstract class AppLocalizations {
   /// No description provided for @planner_empty_body.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal builds meals around your calories, macros, preferences, and grocery needs.'**
+  /// **'Wazn builds meals around your calories, macros, preferences, and grocery needs.'**
   String get planner_empty_body;
 
   /// No description provided for @planner_empty_benefit_adaptive.
@@ -7492,343 +7492,343 @@ abstract class AppLocalizations {
   /// **'Target must be higher than current weight'**
   String get onboarding_error_target_higher;
 
-  /// SnapCal UI string: result_set_weight
+  /// Wazn UI string: result_set_weight
   ///
   /// In en, this message translates to:
   /// **'Set weight'**
   String get result_set_weight;
 
-  /// SnapCal UI string: result_cancel
+  /// Wazn UI string: result_cancel
   ///
   /// In en, this message translates to:
   /// **'Cancel'**
   String get result_cancel;
 
-  /// SnapCal UI string: result_save
+  /// Wazn UI string: result_save
   ///
   /// In en, this message translates to:
   /// **'Save'**
   String get result_save;
 
-  /// SnapCal UI string: result_tap_to_adjust
+  /// Wazn UI string: result_tap_to_adjust
   ///
   /// In en, this message translates to:
   /// **'Tap an item to adjust its portion'**
   String get result_tap_to_adjust;
 
-  /// SnapCal UI string: result_retake
+  /// Wazn UI string: result_retake
   ///
   /// In en, this message translates to:
   /// **'Retake'**
   String get result_retake;
 
-  /// SnapCal UI string: result_scans_left
+  /// Wazn UI string: result_scans_left
   ///
   /// In en, this message translates to:
   /// **'{remaining} of {total} scans remaining'**
   String result_scans_left(int remaining, int total);
 
-  /// SnapCal UI string: result_added
+  /// Wazn UI string: result_added
   ///
   /// In en, this message translates to:
   /// **'Added'**
   String get result_added;
 
-  /// SnapCal UI string: result_save_log
+  /// Wazn UI string: result_save_log
   ///
   /// In en, this message translates to:
   /// **'Save log'**
   String get result_save_log;
 
-  /// SnapCal UI string: result_unlock_title
+  /// Wazn UI string: result_unlock_title
   ///
   /// In en, this message translates to:
   /// **'Unlock deeper insights'**
   String get result_unlock_title;
 
-  /// SnapCal UI string: result_unlock_subtitle
+  /// Wazn UI string: result_unlock_subtitle
   ///
   /// In en, this message translates to:
   /// **'Health score, AI coaching and meal insights'**
   String get result_unlock_subtitle;
 
-  /// SnapCal UI string: result_no_items_detected
+  /// Wazn UI string: result_no_items_detected
   ///
   /// In en, this message translates to:
   /// **'No items detected — add one below or retake the photo'**
   String get result_no_items_detected;
 
-  /// SnapCal UI string: result_confidence_estimated
+  /// Wazn UI string: result_confidence_estimated
   ///
   /// In en, this message translates to:
   /// **'Estimated'**
   String get result_confidence_estimated;
 
-  /// SnapCal UI string: result_confidence_low
+  /// Wazn UI string: result_confidence_low
   ///
   /// In en, this message translates to:
   /// **'Low'**
   String get result_confidence_low;
 
-  /// SnapCal UI string: result_health_excellent
+  /// Wazn UI string: result_health_excellent
   ///
   /// In en, this message translates to:
   /// **'Excellent'**
   String get result_health_excellent;
 
-  /// SnapCal UI string: result_health_good
+  /// Wazn UI string: result_health_good
   ///
   /// In en, this message translates to:
   /// **'Good'**
   String get result_health_good;
 
-  /// SnapCal UI string: result_health_okay
+  /// Wazn UI string: result_health_okay
   ///
   /// In en, this message translates to:
   /// **'Okay'**
   String get result_health_okay;
 
-  /// SnapCal UI string: result_health_poor
+  /// Wazn UI string: result_health_poor
   ///
   /// In en, this message translates to:
   /// **'Poor'**
   String get result_health_poor;
 
-  /// SnapCal UI string: result_health_bad
+  /// Wazn UI string: result_health_bad
   ///
   /// In en, this message translates to:
   /// **'Bad'**
   String get result_health_bad;
 
-  /// SnapCal UI string: result_no_items
+  /// Wazn UI string: result_no_items
   ///
   /// In en, this message translates to:
   /// **'No items'**
   String get result_no_items;
 
-  /// SnapCal UI string: result_foods_detected
+  /// Wazn UI string: result_foods_detected
   ///
   /// In en, this message translates to:
   /// **'{count} foods detected'**
   String result_foods_detected(int count);
 
-  /// SnapCal UI string: result_food_item
+  /// Wazn UI string: result_food_item
   ///
   /// In en, this message translates to:
   /// **'Food item'**
   String get result_food_item;
 
-  /// SnapCal UI string: result_removed
+  /// Wazn UI string: result_removed
   ///
   /// In en, this message translates to:
   /// **'Removed {name}'**
   String result_removed(String name);
 
-  /// SnapCal UI string: result_undo
+  /// Wazn UI string: result_undo
   ///
   /// In en, this message translates to:
   /// **'Undo'**
   String get result_undo;
 
-  /// SnapCal UI string: result_rename
+  /// Wazn UI string: result_rename
   ///
   /// In en, this message translates to:
   /// **'Rename'**
   String get result_rename;
 
-  /// SnapCal UI string: result_food_name
+  /// Wazn UI string: result_food_name
   ///
   /// In en, this message translates to:
   /// **'Food name'**
   String get result_food_name;
 
-  /// SnapCal UI string: result_discard_title
+  /// Wazn UI string: result_discard_title
   ///
   /// In en, this message translates to:
   /// **'Discard scan?'**
   String get result_discard_title;
 
-  /// SnapCal UI string: result_discard_body
+  /// Wazn UI string: result_discard_body
   ///
   /// In en, this message translates to:
   /// **'Your scanned items haven’t been logged yet.'**
   String get result_discard_body;
 
-  /// SnapCal UI string: result_keep_editing
+  /// Wazn UI string: result_keep_editing
   ///
   /// In en, this message translates to:
   /// **'Keep editing'**
   String get result_keep_editing;
 
-  /// SnapCal UI string: result_discard
+  /// Wazn UI string: result_discard
   ///
   /// In en, this message translates to:
   /// **'Discard'**
   String get result_discard;
 
-  /// SnapCal UI string: result_not_matched
+  /// Wazn UI string: result_not_matched
   ///
   /// In en, this message translates to:
   /// **'Not matched · tap to fix'**
   String get result_not_matched;
 
-  /// SnapCal UI string: result_not_in_database
+  /// Wazn UI string: result_not_in_database
   ///
   /// In en, this message translates to:
   /// **'Not in database'**
   String get result_not_in_database;
 
-  /// SnapCal UI string: result_assign_food
+  /// Wazn UI string: result_assign_food
   ///
   /// In en, this message translates to:
   /// **'Assign food'**
   String get result_assign_food;
 
-  /// SnapCal UI string: macro_no_meals_yet
+  /// Wazn UI string: macro_no_meals_yet
   ///
   /// In en, this message translates to:
   /// **'No meals logged yet'**
   String get macro_no_meals_yet;
 
-  /// SnapCal UI string: macro_targets_cta
+  /// Wazn UI string: macro_targets_cta
   ///
   /// In en, this message translates to:
   /// **'Daily targets and goal tracking'**
   String get macro_targets_cta;
 
-  /// SnapCal UI string: macro_pro_label
+  /// Wazn UI string: macro_pro_label
   ///
   /// In en, this message translates to:
   /// **'Pro'**
   String get macro_pro_label;
 
-  /// SnapCal UI string: macro_ring_unlock_title
+  /// Wazn UI string: macro_ring_unlock_title
   ///
   /// In en, this message translates to:
   /// **'See your exact numbers'**
   String get macro_ring_unlock_title;
 
-  /// SnapCal UI string: macro_ring_unlock_body
+  /// Wazn UI string: macro_ring_unlock_body
   ///
   /// In en, this message translates to:
   /// **'Unlock grams and daily targets'**
   String get macro_ring_unlock_body;
 
-  /// SnapCal UI string: macro_ring_on_track
+  /// Wazn UI string: macro_ring_on_track
   ///
   /// In en, this message translates to:
   /// **'You\'re on track for {macro} — unlock exact grams'**
   String macro_ring_on_track(String macro);
 
-  /// SnapCal UI string: result_add_to_log_kcal
+  /// Wazn UI string: result_add_to_log_kcal
   ///
   /// In en, this message translates to:
   /// **'Add to log · {calories} kcal'**
   String result_add_to_log_kcal(String calories);
 
-  /// SnapCal UI string: planner_teaser_locked_summary
+  /// Wazn UI string: planner_teaser_locked_summary
   ///
   /// In en, this message translates to:
   /// **'+{count} more meals · {kcal} kcal planned'**
   String planner_teaser_locked_summary(int count, String kcal);
 
-  /// SnapCal UI string: planner_teaser_title
+  /// Wazn UI string: planner_teaser_title
   ///
   /// In en, this message translates to:
   /// **'Unlock full meal plans'**
   String get planner_teaser_title;
 
-  /// SnapCal UI string: planner_teaser_subtitle
+  /// Wazn UI string: planner_teaser_subtitle
   ///
   /// In en, this message translates to:
   /// **'Get your complete daily schedule, personalised to your goals'**
   String get planner_teaser_subtitle;
 
-  /// SnapCal UI string: planner_teaser_cta
+  /// Wazn UI string: planner_teaser_cta
   ///
   /// In en, this message translates to:
-  /// **'Unlock with SnapCal Pro'**
+  /// **'Unlock with Wazn Pro'**
   String get planner_teaser_cta;
 
-  /// SnapCal UI string: paywall_disclosure_trial_year
+  /// Wazn UI string: paywall_disclosure_trial_year
   ///
   /// In en, this message translates to:
   /// **'Free for {days} days, then {price} per year. Cancel anytime before then.'**
   String paywall_disclosure_trial_year(int days, String price);
 
-  /// SnapCal UI string: paywall_disclosure_trial_month
+  /// Wazn UI string: paywall_disclosure_trial_month
   ///
   /// In en, this message translates to:
   /// **'Free for {days} days, then {price} per month. Cancel anytime before then.'**
   String paywall_disclosure_trial_month(int days, String price);
 
-  /// SnapCal UI string: paywall_disclosure_year
+  /// Wazn UI string: paywall_disclosure_year
   ///
   /// In en, this message translates to:
   /// **'{price} per year. Renews automatically until you cancel.'**
   String paywall_disclosure_year(String price);
 
-  /// SnapCal UI string: paywall_disclosure_month
+  /// Wazn UI string: paywall_disclosure_month
   ///
   /// In en, this message translates to:
   /// **'{price} per month. Renews automatically until you cancel.'**
   String paywall_disclosure_month(String price);
 
-  /// SnapCal UI string: paywall_disclosure_lifetime
+  /// Wazn UI string: paywall_disclosure_lifetime
   ///
   /// In en, this message translates to:
   /// **'{price}, one-time payment. No subscription.'**
   String paywall_disclosure_lifetime(String price);
 
-  /// SnapCal UI string: paywall_disclosure_intro_year
+  /// Wazn UI string: paywall_disclosure_intro_year
   ///
   /// In en, this message translates to:
   /// **'{introPrice} for the first year, then {price} per year. Renews automatically until you cancel.'**
   String paywall_disclosure_intro_year(String introPrice, String price);
 
-  /// SnapCal UI string: paywall_disclosure_intro_month
+  /// Wazn UI string: paywall_disclosure_intro_month
   ///
   /// In en, this message translates to:
   /// **'{introPrice} for the first month, then {price} per month. Renews automatically until you cancel.'**
   String paywall_disclosure_intro_month(String introPrice, String price);
 
-  /// SnapCal UI string: paywall_intro_first_year
+  /// Wazn UI string: paywall_intro_first_year
   ///
   /// In en, this message translates to:
   /// **'{introPrice} first year'**
   String paywall_intro_first_year(String introPrice);
 
-  /// SnapCal UI string: paywall_intro_first_month
+  /// Wazn UI string: paywall_intro_first_month
   ///
   /// In en, this message translates to:
   /// **'{introPrice} first month'**
   String paywall_intro_first_month(String introPrice);
 
-  /// SnapCal UI string: home_goal_activity_bonus
+  /// Wazn UI string: home_goal_activity_bonus
   ///
   /// In en, this message translates to:
   /// **'+{kcal} kcal earned from activity'**
   String home_goal_activity_bonus(int kcal);
 
-  /// SnapCal UI string: home_metric_of_goal
+  /// Wazn UI string: home_metric_of_goal
   ///
   /// In en, this message translates to:
   /// **'of {goal} {unit}'**
   String home_metric_of_goal(String goal, String unit);
 
-  /// SnapCal UI string: water_unit_ml
+  /// Wazn UI string: water_unit_ml
   ///
   /// In en, this message translates to:
   /// **'ml'**
   String get water_unit_ml;
 
-  /// SnapCal UI string: home_kcal_short
+  /// Wazn UI string: home_kcal_short
   ///
   /// In en, this message translates to:
   /// **'{kcal} kcal'**
   String home_kcal_short(int kcal);
 
-  /// SnapCal UI string: home_kcal_estimated_short
+  /// Wazn UI string: home_kcal_estimated_short
   ///
   /// In en, this message translates to:
   /// **'~{kcal} kcal'**
@@ -8593,7 +8593,7 @@ abstract class AppLocalizations {
   /// No description provided for @planner_unlock_pro.
   ///
   /// In en, this message translates to:
-  /// **'Unlock with SnapCal Pro'**
+  /// **'Unlock with Wazn Pro'**
   String get planner_unlock_pro;
 
   /// No description provided for @pro_welcome_eyebrow.
@@ -8605,7 +8605,7 @@ abstract class AppLocalizations {
   /// No description provided for @pro_welcome_title.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to SnapCal Pro'**
+  /// **'Welcome to Wazn Pro'**
   String get pro_welcome_title;
 
   /// No description provided for @pro_welcome_subtitle.
@@ -8689,7 +8689,7 @@ abstract class AppLocalizations {
   /// No description provided for @update_available_message.
   ///
   /// In en, this message translates to:
-  /// **'A new version of SnapCal is ready, with fixes and improvements.'**
+  /// **'A new version of Wazn is ready, with fixes and improvements.'**
   String get update_available_message;
 
   /// No description provided for @update_now.
@@ -8707,7 +8707,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_rate_app.
   ///
   /// In en, this message translates to:
-  /// **'Rate SnapCal'**
+  /// **'Rate Wazn'**
   String get settings_rate_app;
 
   /// No description provided for @settings_send_feedback.
@@ -8719,7 +8719,7 @@ abstract class AppLocalizations {
   /// No description provided for @feedback_email_subject.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal feedback'**
+  /// **'Wazn feedback'**
   String get feedback_email_subject;
 
   /// No description provided for @feedback_email_copied.
@@ -8731,7 +8731,7 @@ abstract class AppLocalizations {
   /// No description provided for @pro_offer_title.
   ///
   /// In en, this message translates to:
-  /// **'Unlock SnapCal Pro'**
+  /// **'Unlock Wazn Pro'**
   String get pro_offer_title;
 
   /// No description provided for @pro_offer_subtitle.
@@ -8797,7 +8797,7 @@ abstract class AppLocalizations {
   /// No description provided for @pro_offer_get_pro.
   ///
   /// In en, this message translates to:
-  /// **'Get SnapCal Pro'**
+  /// **'Get Wazn Pro'**
   String get pro_offer_get_pro;
 
   /// No description provided for @pro_offer_not_now.
@@ -8815,7 +8815,7 @@ abstract class AppLocalizations {
   /// No description provided for @pro_offer_brand.
   ///
   /// In en, this message translates to:
-  /// **'SNAPCAL PRO'**
+  /// **'WAZN PRO'**
   String get pro_offer_brand;
 
   /// No description provided for @pro_offer_big_percent.
@@ -8833,7 +8833,7 @@ abstract class AppLocalizations {
   /// No description provided for @pro_offer_off_first_year.
   ///
   /// In en, this message translates to:
-  /// **'your first year of SnapCal Pro'**
+  /// **'your first year of Wazn Pro'**
   String get pro_offer_off_first_year;
 
   /// No description provided for @pro_offer_off_yearly.
@@ -9049,7 +9049,7 @@ abstract class AppLocalizations {
   /// No description provided for @snap_camera_permission.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal needs camera access to scan food. Allow it in your phone\'s settings.'**
+  /// **'Wazn needs camera access to scan food. Allow it in your phone\'s settings.'**
   String get snap_camera_permission;
 
   /// No description provided for @snap_camera_unavailable.
@@ -9361,7 +9361,7 @@ abstract class AppLocalizations {
   /// No description provided for @voice_subtitle.
   ///
   /// In en, this message translates to:
-  /// **'Speak naturally, then check the words before SnapCal analyzes your meal.'**
+  /// **'Speak naturally, then check the words before Wazn analyzes your meal.'**
   String get voice_subtitle;
 
   /// No description provided for @voice_tap_to_speak.
@@ -9397,7 +9397,7 @@ abstract class AppLocalizations {
   /// No description provided for @voice_privacy_note.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal does not save your audio.'**
+  /// **'Wazn does not save your audio.'**
   String get voice_privacy_note;
 
   /// No description provided for @voice_analyze.
@@ -9451,7 +9451,7 @@ abstract class AppLocalizations {
   /// No description provided for @voice_analysis_failed.
   ///
   /// In en, this message translates to:
-  /// **'SnapCal couldn\'t analyze that meal. Please try again.'**
+  /// **'Wazn couldn\'t analyze that meal. Please try again.'**
   String get voice_analysis_failed;
 
   /// No description provided for @quick_add_title.

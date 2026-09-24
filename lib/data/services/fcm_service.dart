@@ -328,7 +328,7 @@ class FcmService {
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
     final data = message.data;
-    final title = notification?.title ?? data['title'] ?? 'SnapCal';
+    final title = notification?.title ?? data['title'] ?? 'Wazn';
     final body = notification?.body ?? data['body'] ?? '';
     final l10n = NotificationService.deviceLocalizations();
 

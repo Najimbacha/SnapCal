@@ -177,14 +177,14 @@ class AppTree extends ConsumerWidget {
     FcmService().onFoodReminderTapped = () => globalRouter?.go('/snap');
     NotificationService.onFoodReminderTapped = () => globalRouter?.go('/snap');
 
-    // SnapCal brand identity: always use the seeded emerald schemes.
+    // Wazn brand identity: always use the seeded emerald schemes.
     // (DynamicColorBuilder wallpaper palettes previously overrode the brand.)
     final settingsAsync = ref.watch(settingsProvider);
     if (!settingsAsync.hasValue) return const SizedBox.shrink();
     final settings = settingsAsync.requireValue;
 
     return MaterialApp.router(
-      title: AppLocalizations.of(context)?.appTitle ?? 'SnapCal',
+      title: AppLocalizations.of(context)?.appTitle ?? 'Wazn',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

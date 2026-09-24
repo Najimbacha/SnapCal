@@ -48,7 +48,7 @@ if (metricsPort > 0) {
       console.log(`Worker metrics on :${metricsPort}/metrics`);
     });
 }
-console.log('SnapCal reminder worker started (single replica expected)');
+console.log('Wazn reminder worker started (single replica expected)');
 
 // A crash here is not recoverable in place: the schedule is gone and no
 // reminders will be sent until the platform restarts the process. Exit loudly

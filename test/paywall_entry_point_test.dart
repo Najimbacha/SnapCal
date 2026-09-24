@@ -47,7 +47,7 @@ void main() {
     // the line under it. The second subtitle ("Upgrade to unlock unlimited
     // scanning" beneath "You used 15/15 free scans this month") is gone --
     // it repeated the line above it.
-    expect(find.text('SnapCal Pro'), findsOneWidget);
+    expect(find.text('Wazn Pro'), findsOneWidget);
     expect(
       find.textContaining('Upgrade to unlock unlimited scanning'),
       findsNothing,
@@ -62,7 +62,7 @@ void main() {
     await tester.pump();
 
     expect(find.textContaining('Unlock unlimited AI coaching'), findsOneWidget);
-    expect(find.text('SnapCal Pro'), findsOneWidget);
+    expect(find.text('Wazn Pro'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 9));

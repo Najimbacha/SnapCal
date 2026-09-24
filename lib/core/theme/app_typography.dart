@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// SnapCal Typography - Expressive Material 3
+/// Wazn Typography - Expressive Material 3
 class AppTypography {
   AppTypography._();
 

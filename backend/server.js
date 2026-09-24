@@ -718,7 +718,7 @@ function parseRevenueCatSubscriber(subscriber, now = Date.now()) {
   }
 
   // Match the mobile SDK's defensive fallback: if the entitlement mapping is
-  // missing or stale but RevenueCat still shows one of SnapCal's Pro products
+  // missing or stale but RevenueCat still shows one of Wazn's Pro products
   // as active, the backend must not enforce free-user quota against a payer.
   const subscriptions = subscriber.subscriptions || {};
   for (const [productId, subscription] of Object.entries(subscriptions)) {
@@ -1715,7 +1715,7 @@ async function callAiWithImage(base64Data, language, customPrompt = null, useV2 
       run: (key) => openAiVision(
         'https://openrouter.ai/api/v1/chat/completions',
         process.env.SCANNER_MODEL || 'qwen/qwen3-vl-8b-instruct',
-        { Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
+        { Authorization: `Bearer ${key}`, 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'Wazn' },
       ),
     },
   };
@@ -1924,7 +1924,7 @@ async function callAiText(prompt, options = {}) {
         'https://openrouter.ai/api/v1/chat/completions',
         options.textModel || process.env.TEXT_MODEL || 'qwen/qwen-plus',
         key,
-        { 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'SnapCal' },
+        { 'HTTP-Referer': 'https://snapcal.com', 'X-Title': 'Wazn' },
       ),
     },
   };
@@ -2008,7 +2008,7 @@ async function writeAuditLog({ actorUid, action, targetUid, result, metadata = {
 }
 
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'ok', service: 'SnapCal Backend' });
+  res.status(200).json({ status: 'ok', service: 'Wazn Backend' });
 });
 
 // The legal pages the app and the Play listing link to. Served from here
@@ -3131,7 +3131,7 @@ if (require.main === module) {
   // Drive it from Cloud Scheduler via /api/notifications/food-reminder/trigger
   // if you would rather not run the worker at all.
   const server = app.listen(port, () => {
-    console.log(`SnapCal backend running on port ${port}`);
+    console.log(`Wazn backend running on port ${port}`);
     // Say this once, loudly, at boot. With neither the webhook secret nor the
     // REST key set, purchases never reach the server and every paying user
     // keeps seeing the paywall -- with no error anywhere to notice.

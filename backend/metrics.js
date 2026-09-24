@@ -1,5 +1,5 @@
 /**
- * Prometheus metrics for the SnapCal API.
+ * Prometheus metrics for the Wazn API.
  *
  * Why this is not `prom-client`
  * -----------------------------

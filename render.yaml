@@ -1,4 +1,4 @@
-# Infrastructure as code for the SnapCal backend — free-tier shape.
+# Infrastructure as code for the Wazn backend — free-tier shape.
 #
 # This file exists because the deployment previously lived only in the Render
 # dashboard: nothing in the repository described how the service ran, what it

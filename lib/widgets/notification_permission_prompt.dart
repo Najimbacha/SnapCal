@@ -9,7 +9,7 @@ import '../l10n/generated/app_localizations.dart';
 /// Asks for notification permission once, with a reason, after onboarding.
 ///
 /// The app used to ask the moment it first opened, before the user knew what
-/// SnapCal was or why it wanted to notify them. Asked cold, many people say
+/// Wazn was or why it wanted to notify them. Asked cold, many people say
 /// no, and Android then stops asking -- while every reminder switch in
 /// Settings went on reading "on".
 class NotificationPermissionPrompt {

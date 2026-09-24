@@ -77,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'SnapCal',
+                  'Wazn',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w600,

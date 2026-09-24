@@ -106,7 +106,7 @@ void main() {
       expect(find.text('YOUR DATA'), findsOneWidget);
       expect(find.text('ABOUT'), findsOneWidget);
       expect(find.text('Sign Out'), findsNothing);
-    expect(find.text('SnapCal Pro'), findsOneWidget);
+    expect(find.text('Wazn Pro'), findsOneWidget);
     expect(find.byType(PremiumPromptCard), findsNothing);
     },
   );

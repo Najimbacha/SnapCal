@@ -1,4 +1,4 @@
-# SnapCal: owner guide for moving to Cloud Run
+# Wazn: owner guide for moving to Cloud Run
 
 Prepared against Google documentation on 19 September 2026 and updated after
 the production cutover on 20 September 2026. Cloud Run now serves the API and
@@ -84,7 +84,7 @@ project administration or ability to mint tokens. Admin-only SDK operations beyo
 the deployed API (for example the separate set-admin script) are not granted.
 
 ```powershell
-gcloud iam service-accounts create snapcal-run --display-name='SnapCal API runtime' --project=snapcal-ef333
+gcloud iam service-accounts create snapcal-run --display-name='Wazn API runtime' --project=snapcal-ef333
 gcloud iam roles create snapcalRuntime --file=backend/deploy/runtime-role.yaml --project=snapcal-ef333
 gcloud projects add-iam-policy-binding snapcal-ef333 --member='serviceAccount:snapcal-run@snapcal-ef333.iam.gserviceaccount.com' --role='projects/snapcal-ef333/roles/snapcalRuntime'
 gcloud storage buckets add-iam-policy-binding gs://snapcal-ef333.firebasestorage.app --member='serviceAccount:snapcal-run@snapcal-ef333.iam.gserviceaccount.com' --role=roles/storage.objectUser

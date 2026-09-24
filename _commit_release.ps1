@@ -49,7 +49,7 @@ Entitlement chain
   instead of wiping Pro and logging out of RevenueCat.
 - New three-state proAccessProvider (unknown | free | pro). Every gate and
   every upsell now reads one source; "still loading" is no longer answered
-  as "free", which is what put "Unlock SnapCal Pro" in front of paying
+  as "free", which is what put "Unlock Wazn Pro" in front of paying
   users on cold start and just after a purchase.
 
 Gates that were not gating

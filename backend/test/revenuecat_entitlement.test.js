@@ -9,7 +9,7 @@ const {
   parseRevenueCatSubscriber,
 } = require('../server');
 
-test('RevenueCat parser treats active SnapCal Pro product as active without entitlement', () => {
+test('RevenueCat parser treats active Wazn Pro product as active without entitlement', () => {
   const now = Date.parse('2026-09-13T12:00:00.000Z');
   const result = parseRevenueCatSubscriber({
     entitlements: {},

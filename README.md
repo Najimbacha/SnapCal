@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon/icon.png" alt="SnapCal app icon" width="96" height="96" />
+  <img src="assets/icon/icon.png" alt="Wazn app icon" width="96" height="96" />
 </p>
 
-<h1 align="center">SnapCal</h1>
+<h1 align="center">Wazn</h1>
 
 <p align="center">
   AI-powered calorie tracking for people who want to log food without typing every ingredient.
@@ -14,7 +14,7 @@
   <img alt="RevenueCat" src="https://img.shields.io/badge/RevenueCat-Pro%20Subscriptions-6E56CF?style=for-the-badge" />
 </p>
 
-SnapCal lets users snap a meal or describe it by voice, get an AI nutrition estimate, review detected foods, and save calories/macros into a daily food log. The app also includes barcode scanning, meal planning, hydration/activity tracking, an AI nutrition coach, subscriptions, reminders, and secure cloud sync.
+Wazn lets users snap a meal or describe it by voice, get an AI nutrition estimate, review detected foods, and save calories/macros into a daily food log. The app also includes barcode scanning, meal planning, hydration/activity tracking, an AI nutrition coach, subscriptions, reminders, and secure cloud sync.
 
 > Android is the primary target right now. iOS support exists in the codebase, but current product work is Android-first.
 
@@ -34,7 +34,7 @@ SnapCal lets users snap a meal or describe it by voice, get an AI nutrition esti
 
 ---
 
-## What SnapCal does
+## What Wazn does
 
 - Camera-based AI food scanning
 - Voice meal logging with a review-before-analysis transcript
@@ -227,7 +227,7 @@ the Firebase CLI requires Java 21 or newer.
 
 ## Security model
 
-SnapCal is designed so sensitive decisions happen on the server, not on the client.
+Wazn is designed so sensitive decisions happen on the server, not on the client.
 
 - The client never decides whether a user is Pro.
 - RevenueCat webhooks and backend admin logic write subscription state.
@@ -250,12 +250,12 @@ That keeps app data and rules in sync.
 
 ## Camera and scanning
 
-SnapCal uses an inline custom camera experience built on Flutter’s `camera` package.
+Wazn uses an inline custom camera experience built on Flutter’s `camera` package.
 
 Current scan flow:
 
 - `/snap` opens the inline camera
-- camera preview is rendered inside SnapCal UI
+- camera preview is rendered inside Wazn UI
 - users can capture food, choose gallery, switch to barcode, or add manually
 - users can choose Voice Log, speak for up to 30 seconds, and correct the transcript before analysis
 - captured image is compressed before upload
@@ -263,7 +263,7 @@ Current scan flow:
 - saved meals are written into the food log
 
 Barcode scanning uses `mobile_scanner` and product lookup via OpenFoodFacts.
-Voice Log sends only the reviewed transcript to `/v1/text-scan`; SnapCal does not
+Voice Log sends only the reviewed transcript to `/v1/text-scan`; Wazn does not
 record or upload an audio file. It uses the same monthly AI scan allowance as a
 photo scan. The release entry point is controlled by the Firebase Remote Config
 boolean `voice_logging_enabled`, whose safe default is `false`.
@@ -288,7 +288,7 @@ session cleanup so another user of the same phone cannot inherit them.
 
 ## Monetization
 
-SnapCal uses RevenueCat for subscriptions and a backend-authoritative entitlement model.
+Wazn uses RevenueCat for subscriptions and a backend-authoritative entitlement model.
 
 Typical Pro value:
 

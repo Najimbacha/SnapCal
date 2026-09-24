@@ -197,7 +197,7 @@ class AIService {
   }) async {
     final languageName = languageNames[languageCode] ?? 'English';
     final prompt = '''
-You are SnapCal's nutrition coach.
+You are Wazn's nutrition coach.
 RESPOND ENTIRELY IN $languageName.
 Give exactly one concise, practical meal improvement insight for this user.
 Mention one specific macro or calorie observation and one specific next action.

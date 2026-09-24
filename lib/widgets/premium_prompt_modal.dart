@@ -27,7 +27,7 @@ class PremiumPromptModal {
     // the settings provider is still loading — and the callers fire on a
     // 1.5s/2s timer from initState, and again right after the paywall
     // refreshes the provider. That is how paying users were shown "Unlock
-    // SnapCal Pro".
+    // Wazn Pro".
     //
     // Waiting is better than guessing: settle the status first, then decide.
     // A free user still gets the prompt, a moment later than before.

@@ -6,7 +6,7 @@ import 'package:snapcal/widgets/update_available_modal.dart';
 
 void main() {
   group('store link', () {
-    test('Android goes to SnapCal on Google Play by default', () {
+    test('Android goes to Wazn on Google Play by default', () {
       expect(
         ForceUpdateService.storeUri(isAndroid: true).toString(),
         ForceUpdateService.androidStoreUrl,

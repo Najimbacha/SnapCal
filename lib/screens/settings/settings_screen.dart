@@ -76,7 +76,7 @@ class SettingsScreen extends ConsumerWidget {
             SettingsSurface(
               padding: EdgeInsets.zero,
               child: SettingsRow(
-                title: 'SnapCal Pro',
+                title: 'Wazn Pro',
                 value: l10n.settings_manage_plan,
                 icon: LucideIcons.gem,
                 onTap:
@@ -652,7 +652,7 @@ class _ProUpsellCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'SnapCal Pro',
+                    'Wazn Pro',
                     style: AppTypography.titleMedium.copyWith(
                       color: settingsText(context),
                       fontWeight: FontWeight.w800,

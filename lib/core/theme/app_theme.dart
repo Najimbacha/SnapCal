@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 
-/// SnapCal Theme Configuration - Material 3 Expressive
+/// Wazn Theme Configuration - Material 3 Expressive
 class AppTheme {
   AppTheme._();
 

@@ -1,4 +1,4 @@
-// k6 load test for the SnapCal API.
+// k6 load test for the Wazn API.
 //
 //   k6 run -e BASE_URL=https://staging... -e TOKENS=./tokens.txt scripts/loadtest.js
 //

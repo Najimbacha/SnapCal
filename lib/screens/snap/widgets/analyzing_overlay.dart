@@ -119,7 +119,7 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                                     fit: BoxFit.scaleDown,
                                     alignment: AlignmentDirectional.centerStart,
                                     child: Text(
-                                      'SnapCal',
+                                      'Wazn',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 22,

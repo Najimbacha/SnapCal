@@ -35,7 +35,7 @@ void main() {
     )).load();
   });
 
-  // The prices SnapCal charges on Google Play today: SAR 149.99 a year with a
+  // The prices Wazn charges on Google Play today: SAR 149.99 a year with a
   // first-year offer of SAR 85.99, against SAR 29.99 a month.
   const introOffer = ProOfferSummary(
     price: 'SAR 149.99',
@@ -223,7 +223,7 @@ void main() {
 
     test('with no offer it still invites, without inventing a price', () {
       const plain = ProOfferSummary(price: 'SAR 149.99');
-      expect(plain.cta(l10n), 'Get SnapCal Pro');
+      expect(plain.cta(l10n), 'Get Wazn Pro');
       expect(plain.ctaDetail(l10n), 'SAR 149.99/year');
     });
   });

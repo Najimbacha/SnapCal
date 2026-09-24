@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-/// SnapCal spacing and shape tokens.
+/// Wazn spacing and shape tokens.
 ///
 /// Keep layout rhythm on this scale unless a measured component, safe-area
 /// inset, or platform affordance needs a specific size.

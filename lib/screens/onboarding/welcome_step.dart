@@ -64,7 +64,7 @@ class WelcomeStep extends ConsumerWidget {
               ),
               const SizedBox(width: 9),
               Text(
-                'SnapCal',
+                'Wazn',
                 style: TextStyle(
                   color: context.textPrimaryColor,
                   fontSize: 19,

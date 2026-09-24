@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Screen size categories for SnapCal
+/// Screen size categories for Wazn
 enum ScreenSize {
   small, // Phones like Pixel 2, older small devices (< 380dp width)
   standard, // Modern mainstream phones (380-600dp width)

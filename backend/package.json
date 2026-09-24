@@ -1,7 +1,7 @@
 {
   "name": "snapcal-backend",
   "version": "1.0.0",
-  "description": "Secure proxy backend for SnapCal food scanning",
+  "description": "Secure proxy backend for Wazn food scanning",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

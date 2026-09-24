@@ -80,7 +80,7 @@ class AboutScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'SnapCal',
+                        'Wazn',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w700,
@@ -170,7 +170,7 @@ class AboutScreen extends StatelessWidget {
                       onTap:
                           () => showLicensePage(
                             context: context,
-                            applicationName: 'SnapCal',
+                            applicationName: 'Wazn',
                             applicationVersion: version,
                           ),
                     ),

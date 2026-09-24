@@ -18,7 +18,7 @@ const _minimalDarkBg = Color(0xFF14130F);
 const _minimalInk = Color(0xFF1C1917);
 const _minimalMuted = Color(0xFF777370);
 
-/// Facebook's own blue. The mark was being painted in SnapCal's green, and a
+/// Facebook's own blue. The mark was being painted in Wazn's green, and a
 /// brand mark repainted is not that brand's mark.
 const _facebookBlue = Color(0xFF1877F2);
 const _minimalLine = Color(0xFFE1E3DF);

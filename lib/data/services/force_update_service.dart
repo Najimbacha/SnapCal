@@ -102,7 +102,7 @@ class ForceUpdateService {
     return true;
   }
 
-  /// Opens SnapCal's store page. [url] is a link a notification carried; it
+  /// Opens Wazn's store page. [url] is a link a notification carried; it
   /// is used only when it points at an app store.
   Future<bool> openStore({String? url}) async {
     final uri = storeUri(
@@ -142,7 +142,7 @@ class ForceUpdateService {
   ///
   /// Only app-store links are accepted, so a notification cannot send people
   /// anywhere else. The notification's own link wins, then Remote Config,
-  /// then SnapCal's Google Play page on Android.
+  /// then Wazn's Google Play page on Android.
   @visibleForTesting
   static Uri? storeUri({
     String? preferred,

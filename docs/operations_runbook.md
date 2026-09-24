@@ -1,4 +1,4 @@
-# SnapCal operations runbook
+# Wazn operations runbook
 
 What to watch, what to do when it fires, and how to prove a restore works.
 Everything here refers to things that exist in the repository — metric names

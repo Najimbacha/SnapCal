@@ -11,7 +11,7 @@ import '../../l10n/generated/app_localizations.dart';
 /// version and platform filled in so a report can be acted on.
 ///
 /// It is its own option in Settings and never a question put before the review
-/// prompt. Asking "do you like SnapCal?" first and showing the rating only to
+/// prompt. Asking "do you like Wazn?" first and showing the rating only to
 /// people who say yes is review gating, which Google Play forbids.
 class FeedbackService {
   FeedbackService._();
@@ -24,7 +24,7 @@ class FeedbackService {
     required String appVersion,
     required String platform,
   }) {
-    final body = '\n\n\n---\nSnapCal $appVersion · $platform';
+    final body = '\n\n\n---\nWazn $appVersion · $platform';
     // Encoded by hand: Uri's queryParameters writes spaces as "+", which
     // several mail apps then show literally.
     return Uri.parse(
