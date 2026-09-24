@@ -337,7 +337,6 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
     ref.invalidate(waterProvider);
     ref.invalidate(bodyMetricsProvider);
     ref.invalidate(assistantProvider);
-    ref.invalidate(plannerProvider);
     ref.invalidate(plannerNotifierProvider);
     ref.invalidate(achievementsProvider);
     ref.invalidate(stepGoalProvider);
@@ -449,7 +448,6 @@ Future<void> confirmAndDeleteAccount(
     ref.invalidate(waterProvider);
     ref.invalidate(bodyMetricsProvider);
     ref.invalidate(assistantProvider);
-    ref.invalidate(plannerProvider);
     ref.invalidate(plannerNotifierProvider);
     ref.invalidate(achievementsProvider);
     ref.invalidate(stepGoalProvider);

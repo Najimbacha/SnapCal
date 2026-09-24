@@ -3,7 +3,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/grocery_item.dart';
 import '../data/models/meal.dart';
@@ -18,14 +17,10 @@ import '../planner/planner_models.dart';
 import '../core/utils/pref_scoping.dart';
 import 'settings_provider.dart';
 
-part 'planner_provider.g.dart';
-
 /// The planner the screens use, following settings as they change.
 ///
-/// Lives here rather than in the planner screen so that signing out can
-/// reset it. Sign-out invalidated the placeholder [plannerProvider] instead,
-/// and this one went on showing the previous account's plan and grocery list
-/// from memory, over boxes the sign-out had already deleted.
+/// Lives here rather than in the planner screen so that signing out can reset
+/// it together with the rest of the user-scoped providers.
 final plannerNotifierProvider = ChangeNotifierProvider<PlannerProvider>((ref) {
   final settings =
       ref.read(settingsProvider).valueOrNull ?? UserSettings.defaults();
@@ -2106,12 +2101,4 @@ class PlannerProvider with ChangeNotifier {
     _fallbackNotice = null;
     notifyListeners();
   }
-}
-
-// Minimal Riverpod provider to satisfy screens that reference plannerProvider.
-// TODO: Migrate the full 2109-line PlannerProvider to Riverpod.
-@Riverpod(keepAlive: true)
-class Planner extends _$Planner {
-  @override
-  FutureOr<void> build() {}
 }

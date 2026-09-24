@@ -220,6 +220,9 @@ npm install
 npm test
 ```
 
+The security test command starts the Firestore and Storage emulators itself;
+the Firebase CLI requires Java 21 or newer.
+
 ---
 
 ## Security model

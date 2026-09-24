@@ -32,6 +32,7 @@ import '../utils/async_guard.dart';
 
 class AppInitializer {
   static bool _errorReportingConfigured = false;
+  static bool _firebaseServicesConfigured = false;
   static bool _lifecycleRecoveryConfigured = false;
 
   static Future<void> preInit() async {
@@ -175,6 +176,8 @@ class AppInitializer {
   }
 
   static Future<void> _initFirebase() async {
+    if (_firebaseServicesConfigured) return;
+
     try {
       debugPrint('🔥 Firebase: Checking if already initialized...');
       if (Firebase.apps.isEmpty) {
@@ -195,6 +198,7 @@ class AppInitializer {
                 : const AppleAppAttestProvider(),
       );
       await _configureCrashlyticsAfterFirebase();
+      _firebaseServicesConfigured = true;
     } catch (e) {
       _logFirebaseInitFailure(e);
       // Rethrow to ensure the UI shows the retry screen instead of hanging in a half-initialized state
