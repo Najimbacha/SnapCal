@@ -21,7 +21,6 @@ import 'screens/splash/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   debugPrint('🏗️ MAIN: Starting App...');
-  await AppInitializer.preInit();
   runApp(const ProviderScope(child: SnapCalApp()));
 }
 

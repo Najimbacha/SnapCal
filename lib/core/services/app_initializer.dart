@@ -35,10 +35,6 @@ class AppInitializer {
   static bool _firebaseServicesConfigured = false;
   static bool _lifecycleRecoveryConfigured = false;
 
-  static Future<void> preInit() async {
-    await _initFirebase();
-  }
-
   static Future<void> init() async {
     final startTime = DateTime.now();
     debugPrint('🚀 AppInitializer: Starting initialization...');
