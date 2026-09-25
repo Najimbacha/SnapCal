@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/motion/reveal.dart';
 import 'onboarding_body.dart';
 import 'onboarding_conversions.dart';
 import 'onboarding_draft.dart';
@@ -438,7 +440,10 @@ class BmiCard extends StatelessWidget {
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
-              Container(
+              // Crossing into another range tints the pill anew and
+              // brings the new words up into it.
+              AnimatedContainer(
+                duration: AppMotion.maybeZero(context, AppMotion.expansion),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 3,
@@ -447,12 +452,22 @@ class BmiCard extends StatelessWidget {
                   color: pillBg,
                   borderRadius: BorderRadius.circular(99),
                 ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: pillFg,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
+                child: AnimatedSize(
+                  duration: AppMotion.maybeZero(context, AppMotion.standard),
+                  curve: Curves.easeOutCubic,
+                  child: Reveal(
+                    key: ValueKey(label),
+                    offset: const Offset(0, 8),
+                    duration: const Duration(milliseconds: 360),
+                    curve: AppMotion.springCurve,
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: pillFg,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -516,7 +531,11 @@ class _BmiScale extends StatelessWidget {
                             if (i > 0) const SizedBox(width: 3),
                             Expanded(
                               flex: (bands[i].$2 * 10).round(),
-                              child: Container(
+                              child: AnimatedContainer(
+                                duration: AppMotion.maybeZero(
+                                  context,
+                                  AppMotion.expansion,
+                                ),
                                 height: 8,
                                 decoration: BoxDecoration(
                                   color:
@@ -532,12 +551,25 @@ class _BmiScale extends StatelessWidget {
                           ],
                         ],
                       ),
-                      Positioned(
-                        left: (constraints.maxWidth * at - 2).clamp(
-                          0.0,
-                          constraints.maxWidth - 4,
+                      // The marker trails the ruler a moment, so it glides
+                      // rather than jitters.
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(end: at),
+                        duration: AppMotion.maybeZero(
+                          context,
+                          const Duration(milliseconds: 260),
                         ),
+                        curve: Curves.easeOutCubic,
+                        builder:
+                            (context, at, child) => Positioned(
+                              left: (constraints.maxWidth * at - 2).clamp(
+                                0.0,
+                                constraints.maxWidth - 4,
+                              ),
+                              child: child!,
+                            ),
                         child: Container(
+                          key: const ValueKey('onboarding-bmi-marker'),
                           width: 4,
                           height: 18,
                           decoration: BoxDecoration(

@@ -375,7 +375,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     final footer = _footer(l10n);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     // New screens come in from the side the user is heading.
-    final enterFrom = (_forward ? 1.0 : -1.0) * (rtl ? -1 : 1) * 0.08;
+    final enterFrom = (_forward ? 1.0 : -1.0) * (rtl ? -1 : 1) * 0.14;
 
     return PopScope(
       canPop: _step == _Step.welcome,
@@ -396,8 +396,13 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                 ),
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: Duration(milliseconds: reduceMotion ? 0 : 260),
-                  switchInCurve: Curves.easeOutCubic,
+                  // The old question leaves quickly; the new one glides in
+                  // and its cards follow it up one by one.
+                  duration: Duration(milliseconds: reduceMotion ? 0 : 420),
+                  reverseDuration: Duration(
+                    milliseconds: reduceMotion ? 0 : 240,
+                  ),
+                  switchInCurve: Curves.easeOutQuart,
                   switchOutCurve: Curves.easeInCubic,
                   layoutBuilder:
                       (current, previous) => Stack(

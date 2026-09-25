@@ -21,7 +21,7 @@ import 'account_screen.dart';
 import 'widgets/settings_kit.dart';
 import '../../core/theme/app_motion.dart';
 import '../../widgets/motion/reveal.dart';
-import '../../widgets/motion/visible_gate.dart';
+import '../../widgets/motion/shine_sweep.dart';
 
 /// Settings root: grouped inset lists in the platform-standard pattern —
 /// title rows carrying their live value, one accent, destructive action
@@ -618,7 +618,9 @@ class _ProUpsellCard extends StatelessWidget {
 
     return AppScaleTap(
       onTap: onTap,
-      child: _Shine(
+      child: ShineSweep(
+        delay: const Duration(milliseconds: 684),
+        sweep: const Duration(milliseconds: 1116),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -746,85 +748,3 @@ class _ProUpsellCard extends StatelessWidget {
 
 /// One soft band of light that sweeps across its child a moment after it
 /// first shows, to draw the eye to the Pro offer once, not keep flashing.
-class _Shine extends StatefulWidget {
-  const _Shine({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_Shine> createState() => _ShineState();
-}
-
-class _ShineState extends State<_Shine>
-    with SingleTickerProviderStateMixin, VisibleGate {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    runWhenVisible(() {
-      if (!AppMotion.reduceMotion(context)) _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Stack(
-      children: [
-        widget.child,
-        Positioned.fill(
-          child: IgnorePointer(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: AnimatedBuilder(
-                animation: _controller,
-                builder: (context, _) {
-                  // Waits for the card to arrive, then crosses it.
-                  final t = const Interval(
-                    .38,
-                    1,
-                    curve: Curves.easeInOutCubic,
-                  ).transform(_controller.value);
-                  if (t <= 0 || t >= 1) return const SizedBox.shrink();
-                  return FractionalTranslation(
-                    translation: Offset(-1 + 2.4 * t, 0),
-                    child: FractionallySizedBox(
-                      widthFactor: .4,
-                      alignment: Alignment.centerLeft,
-                      child: Transform(
-                        transform: Matrix4.skewX(-.3),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.white.withValues(alpha: 0),
-                                Colors.white.withValues(
-                                  alpha: dark ? .16 : .55,
-                                ),
-                                Colors.white.withValues(alpha: 0),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}

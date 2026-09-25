@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
+import 'core/theme/app_colors.dart';
+import 'core/theme/app_motion.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -175,7 +177,7 @@ GoRouter router(RouterRef ref) {
         path: '/pro-welcome',
         pageBuilder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
-          return _sharedAxisPage(
+          return _floodPage(
             state,
             ProWelcomeScreen(
               isRestore: extra?['restore'] as bool? ?? false,
@@ -325,6 +327,69 @@ CustomTransitionPage<void> _sharedAxisPage(GoRouterState state, Widget child) {
       );
     },
   );
+}
+
+/// Green floods up from the buy button at the bottom of the screen, then
+/// clears to show the page underneath: the welcome after paying for Pro.
+CustomTransitionPage<void> _floodPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    transitionDuration: const Duration(milliseconds: 900),
+    reverseTransitionDuration: const Duration(milliseconds: 220),
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (AppMotion.reduceMotion(context)) {
+        return FadeTransition(opacity: animation, child: child);
+      }
+      return AnimatedBuilder(
+        animation: animation,
+        child: child,
+        builder: (context, child) {
+          final t = animation.value;
+          final grow = Curves.easeInOutCubic.transform(
+            (t / .6).clamp(0.0, 1.0),
+          );
+          final clear = Curves.easeOut.transform(
+            ((t - .55) / .45).clamp(0.0, 1.0),
+          );
+          return ClipPath(
+            clipper: _CircleFromBottom(grow),
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                child!,
+                if (clear < 1)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: ColoredBox(
+                        color: AppColors.primary.withValues(alpha: 1 - clear),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+class _CircleFromBottom extends CustomClipper<Path> {
+  const _CircleFromBottom(this.progress);
+
+  final double progress;
+
+  @override
+  Path getClip(Size size) {
+    final origin = Offset(size.width / 2, size.height - 60);
+    final reach = Offset(size.width / 2, size.height).distance + 60;
+    return Path()
+      ..addOval(Rect.fromCircle(center: origin, radius: reach * progress));
+  }
+
+  @override
+  bool shouldReclip(_CircleFromBottom old) => old.progress != progress;
 }
 
 /// Shell route for bottom navigation
