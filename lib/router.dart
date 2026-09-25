@@ -36,6 +36,7 @@ import 'screens/achievements/achievements_screen.dart';
 import 'screens/settings/fcm_debug_screen.dart';
 import 'screens/voice/voice_meal_screen.dart';
 import 'core/services/config_service.dart';
+import 'widgets/motion/tab_switcher.dart';
 
 part 'router.g.dart';
 
@@ -225,10 +226,18 @@ GoRouter router(RouterRef ref) {
           );
         },
       ),
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
         builder:
             (context, state, navigationShell) =>
                 MainShell(navigationShell: navigationShell),
+        // Like the indexed stack, every tab stays alive; switching between
+        // them glides instead of cutting. The camera (branch 2) only fades.
+        navigatorContainerBuilder:
+            (context, navigationShell, children) => TabSwitcher(
+              currentIndex: navigationShell.currentIndex,
+              fadeOnlyIndex: 2,
+              children: children,
+            ),
         branches: [
           StatefulShellBranch(
             routes: [

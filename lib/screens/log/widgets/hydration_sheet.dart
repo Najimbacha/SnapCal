@@ -10,6 +10,8 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/water_provider.dart';
+import '../../../widgets/motion/count_up_text.dart';
+import '../../../widgets/motion/water_glass.dart';
 
 const _hydrationAccent = Color(0xFF3B9BE8);
 const _hydrationInk = Color(0xFF1C1917);
@@ -242,7 +244,6 @@ class _ProgressCard extends StatelessWidget {
     final progress = (state.todayTotal / goal).clamp(0.0, 1.0);
     final pct = (progress * 100).round();
     final numberFormat = NumberFormat.decimalPattern(l10n.localeName);
-    final number = numberFormat.format(state.todayTotal);
     final goalText = numberFormat.format(goal);
 
     return Container(
@@ -259,14 +260,29 @@ class _ProgressCard extends StatelessWidget {
         children: [
           Row(
             children: [
+              // A drop falls in and the water rises each time a glass is
+              // added below.
+              WaterGlass(
+                level: progress,
+                color: _hydrationAccent,
+                outline: muted,
+                size: const Size(34, 46),
+                showDrop: true,
+                fillFromEmpty: true,
+              ),
+              const SizedBox(width: 14),
               Expanded(
-                child: RichText(
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
                     children: [
-                      TextSpan(
-                        text: number,
+                      CountUpText(
+                        value: state.todayTotal,
+                        format: numberFormat.format,
+                        duration: const Duration(milliseconds: 700),
                         style: AppTypography.displayLarge.copyWith(
                           color: ink,
                           fontSize: 44,
@@ -276,8 +292,8 @@ class _ProgressCard extends StatelessWidget {
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
-                      TextSpan(
-                        text: ' ${l10n.water_unit_ml}',
+                      Text(
+                        ' ${l10n.water_unit_ml}',
                         style: AppTypography.titleSmall.copyWith(
                           color: muted,
                           fontWeight: FontWeight.w800,

@@ -99,6 +99,7 @@
   "log_add_meal_type": "إضافة {meal}",
   "log_protein_left_today": "{value} غ بروتين متبقية اليوم",
   "log_protein_goal_met_today": "تم تحقيق هدف البروتين اليوم",
+  "home_protein_goal_detail": "{grams} غ من البروتين اليوم",
   "log_removed_snackbar": "تم حذف {food}",
   "assistant_title": "مدرب الذكاء الاصطناعي",
   "assistant_status": "نشط دائماً",

@@ -296,6 +296,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get log_protein_goal_met_today => 'تم تحقيق هدف البروتين اليوم';
 
   @override
+  String home_protein_goal_detail(int grams) {
+    return '$grams غ من البروتين اليوم';
+  }
+
+  @override
   String log_removed_snackbar(String food) {
     return 'تم حذف $food';
   }

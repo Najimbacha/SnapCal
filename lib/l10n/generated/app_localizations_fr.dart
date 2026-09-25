@@ -289,6 +289,11 @@ class AppLocalizationsFr extends AppLocalizations {
       'Objectif protéines atteint aujourd\'hui';
 
   @override
+  String home_protein_goal_detail(int grams) {
+    return '$grams g de protéines aujourd\'hui';
+  }
+
+  @override
   String log_removed_snackbar(String food) {
     return '$food supprimé';
   }

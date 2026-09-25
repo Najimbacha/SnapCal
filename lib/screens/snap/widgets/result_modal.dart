@@ -1,9 +1,12 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import '../../../widgets/wazn_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/utils/drink_portion.dart';
 import '../../../data/models/meal.dart';
 import '../../../data/services/gemini_service.dart';
@@ -12,6 +15,7 @@ import '../../../data/services/scan_gate_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/macro_display.dart';
+import '../../../widgets/motion/reveal.dart';
 import '../../settings/widgets/settings_kit.dart';
 
 const _presetWeights = <int>[50, 100, 150, 200, 250, 300, 400, 500];
@@ -221,6 +225,10 @@ class ResultModal extends ConsumerStatefulWidget {
 class _ResultModalState extends ConsumerState<ResultModal> {
   late List<_Item> _items;
   bool _saving = false;
+
+  /// The foods the scan found. They arrive one after another when the screen
+  /// opens; anything added afterwards simply appears.
+  late final Set<Object> _foundUids = {for (final i in _items) i.uid};
   ScanGateService get _scanGate => widget.scanGate ?? ScanGateService();
 
   @override
@@ -613,7 +621,10 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   children: [
                     _header(context, l10n, d),
-                    _macroStrip(context, showMacros),
+                    Reveal(
+                      delay: const Duration(milliseconds: 620),
+                      child: _macroStrip(context, showMacros),
+                    ),
                     const SizedBox(height: 24),
                     if (widget.imageBytes != null) ...[
                       Text(
@@ -640,18 +651,26 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                       const SizedBox(height: 12),
                     ],
                     ..._items.asMap().entries.map(
-                      (e) => _FoodCard(
-                        key: ValueKey('food-${e.value.uid}'),
-                        item: e.value,
-                        isDark: d,
-                        accent: _accentFor(e.value),
-                        sharePct: _sharePctOf(e.value),
-                        showMacros: showMacros,
-                        onWeightDelta: (delta) => _adjWt(e.key, delta),
-                        onWeightSet: (g) => _setWt(e.key, g),
-                        onWeightType: () => _typeWeight(e.key),
-                        onRename: () => _rename(e.key),
-                        onDelete: () => _del(e.key, withUndo: true),
+                      (e) => Reveal(
+                        key: ValueKey('food-reveal-${e.value.uid}'),
+                        delay:
+                            _foundUids.contains(e.value.uid)
+                                ? Duration(milliseconds: 820 + e.key * 110)
+                                : Duration.zero,
+                        offset: const Offset(0, 18),
+                        child: _FoodCard(
+                          key: ValueKey('food-${e.value.uid}'),
+                          item: e.value,
+                          isDark: d,
+                          accent: _accentFor(e.value),
+                          sharePct: _sharePctOf(e.value),
+                          showMacros: showMacros,
+                          onWeightDelta: (delta) => _adjWt(e.key, delta),
+                          onWeightSet: (g) => _setWt(e.key, g),
+                          onWeightType: () => _typeWeight(e.key),
+                          onRename: () => _rename(e.key),
+                          onDelete: () => _del(e.key, withUndo: true),
+                        ),
                       ),
                     ),
                     if (_items.isEmpty) _emptyState(l10n, d),
@@ -703,7 +722,12 @@ class _ResultModalState extends ConsumerState<ResultModal> {
             ],
           ),
         ),
-        bottomNavigationBar: _saveBar(context, l10n, d, pro, b),
+        bottomNavigationBar: Reveal(
+          delay: const Duration(milliseconds: 1050),
+          offset: const Offset(0, 32),
+          curve: AppMotion.springCurve,
+          child: _saveBar(context, l10n, d, pro, b),
+        ),
       ),
     );
   }
@@ -771,17 +795,19 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                     borderRadius: BorderRadius.circular(8),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(
-                        widget.imageBytes!,
-                        width: 104,
-                        height: 120,
-                        fit: BoxFit.cover,
-                        errorBuilder:
-                            (_, error, stack) => const SizedBox(
-                              width: 104,
-                              height: 120,
-                              child: Icon(WaznIcons.meal, size: 32),
-                            ),
+                      child: _FocusIn(
+                        child: Image.memory(
+                          widget.imageBytes!,
+                          width: 104,
+                          height: 120,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (_, error, stack) => const SizedBox(
+                                width: 104,
+                                height: 120,
+                                child: Icon(WaznIcons.meal, size: 32),
+                              ),
+                        ),
                       ),
                     ),
                   ),
@@ -789,73 +815,83 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                 const SizedBox(width: 18),
               ],
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _title(l10n),
-                      style: TextStyle(
-                        color: muted,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    if (widget.imageBytes != null) ...[
+                child: Reveal(
+                  delay: const Duration(milliseconds: 320),
+                  offset: const Offset(0, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        l10n.result_estimated_calories,
+                        _title(l10n),
                         style: TextStyle(
                           color: muted,
-                          fontSize: 12,
-                          height: 1.4,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
                         ),
                       ),
-                      const SizedBox(height: 3),
-                    ],
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: AlignmentDirectional.centerStart,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          _CountUp(
-                            value: _kcal,
-                            style: TextStyle(
-                              color: ink,
-                              fontSize: 44,
-                              fontWeight: FontWeight.w700,
-                              height: 1.1,
-                              letterSpacing: 0,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'kcal',
-                            style: TextStyle(color: muted, fontSize: 15),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (score != null) ...[
-                      const SizedBox(height: 8),
-                      Tooltip(
-                        message: l10n.result_health_score_hint,
-                        child: Text(
-                          '$score/10 ${_healthLabel(l10n, score)}',
+                      const SizedBox(height: 6),
+                      if (widget.imageBytes != null) ...[
+                        Text(
+                          l10n.result_estimated_calories,
                           style: TextStyle(
                             color: muted,
                             fontSize: 12,
                             height: 1.4,
                           ),
                         ),
+                        const SizedBox(height: 3),
+                      ],
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            _CountUp(
+                              value: _kcal,
+                              style: TextStyle(
+                                color: ink,
+                                fontSize: 44,
+                                fontWeight: FontWeight.w700,
+                                height: 1.1,
+                                letterSpacing: 0,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'kcal',
+                              style: TextStyle(color: muted, fontSize: 15),
+                            ),
+                          ],
+                        ),
                       ),
+                      if (score != null) ...[
+                        const SizedBox(height: 8),
+                        Reveal(
+                          delay: const Duration(milliseconds: 1000),
+                          offset: Offset.zero,
+                          scale: .6,
+                          curve: AppMotion.springCurve,
+                          child: Tooltip(
+                            message: l10n.result_health_score_hint,
+                            child: Text(
+                              '$score/10 ${_healthLabel(l10n, score)}',
+                              style: TextStyle(
+                                color: muted,
+                                fontSize: 12,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -920,47 +956,11 @@ class _ResultModalState extends ConsumerState<ResultModal> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              key: const ValueKey('result-save-button'),
-              onPressed: _saving ? null : _save,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.emeraldDark,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.emeraldDark,
-                disabledForegroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(56),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _saving ? WaznIcons.check : WaznIcons.bookmarkPlus,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      _saving ? l10n.result_added : l10n.result_add_to_log,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _SaveButton(
+            saving: _saving,
+            label: l10n.result_add_to_log,
+            doneLabel: l10n.result_added,
+            onPressed: _save,
           ),
           if (!pro) ...[
             const SizedBox(height: 10),
@@ -1045,6 +1045,150 @@ class _ResultModalState extends ConsumerState<ResultModal> {
 /// controller: disposing from the caller raced the pop animation, rebuilding a
 /// live TextField against a disposed controller. State.dispose runs only after
 /// the route has fully unmounted.
+/// "Add to Log", which on tapping draws itself in to a green circle and
+/// ticks: the meal is in.
+class _SaveButton extends StatelessWidget {
+  const _SaveButton({
+    required this.saving,
+    required this.label,
+    required this.doneLabel,
+    required this.onPressed,
+  });
+
+  final bool saving;
+  final String label, doneLabel;
+  final VoidCallback onPressed;
+
+  static const _height = 56.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = AppMotion.maybeZero(
+      context,
+      const Duration(milliseconds: 320),
+    );
+    return Semantics(
+      button: true,
+      enabled: !saving,
+      label: saving ? doneLabel : label,
+      excludeSemantics: true,
+      child: LayoutBuilder(
+        builder:
+            (context, constraints) => Center(
+              child: AnimatedContainer(
+                duration: duration,
+                curve: Curves.easeOutCubic,
+                width: saving ? _height : constraints.maxWidth,
+                height: _height,
+                decoration: BoxDecoration(
+                  color: saving ? AppColors.primary : AppColors.emeraldDark,
+                  borderRadius: BorderRadius.circular(saving ? _height / 2 : 8),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    key: const ValueKey('result-save-button'),
+                    onTap: saving ? null : onPressed,
+                    child: AnimatedSwitcher(
+                      duration: AppMotion.maybeZero(
+                        context,
+                        const Duration(milliseconds: 160),
+                      ),
+                      child:
+                          saving
+                              ? const _DrawnTick(key: ValueKey('tick'))
+                              : OverflowBox(
+                                key: const ValueKey('label'),
+                                maxWidth: constraints.maxWidth,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      WaznIcons.bookmarkPlus,
+                                      size: 20,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Flexible(
+                                      child: Text(
+                                        label,
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.labelLarge?.copyWith(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+      ),
+    );
+  }
+}
+
+/// A tick that draws itself, stroke first to last.
+class _DrawnTick extends StatelessWidget {
+  const _DrawnTick({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: AppMotion.maybeZero(
+          context,
+          const Duration(milliseconds: 260),
+        ),
+        curve: Curves.easeOutCubic,
+        builder:
+            (context, t, _) =>
+                CustomPaint(size: const Size(24, 24), painter: _TickPainter(t)),
+      ),
+    );
+  }
+}
+
+class _TickPainter extends CustomPainter {
+  const _TickPainter(this.progress);
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path =
+        Path()
+          ..moveTo(size.width * .2, size.height * .53)
+          ..lineTo(size.width * .4, size.height * .72)
+          ..lineTo(size.width * .8, size.height * .3);
+    final metric = path.computeMetrics().first;
+    canvas.drawPath(
+      metric.extractPath(0, metric.length * progress),
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TickPainter old) => old.progress != progress;
+}
+
 class _CountUp extends StatefulWidget {
   final int value;
   final TextStyle style;
@@ -1063,19 +1207,43 @@ class _CountUpState extends State<_CountUp>
   @override
   void initState() {
     super.initState();
+    // The first count starts as the photo comes into focus; later ones
+    // follow portion changes.
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 680),
     );
-    _animateTo(widget.value.toDouble(), from: 0);
+    _anim = const AlwaysStoppedAnimation(0);
   }
 
-  void _animateTo(double target, {required double from}) {
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    _animateTo(
+      widget.value.toDouble(),
+      from: 0,
+      curve: const Interval(.12, 1, curve: Curves.easeOutCubic),
+    );
+  }
+
+  void _animateTo(
+    double target, {
+    required double from,
+    Curve curve = Curves.easeOutCubic,
+  }) {
     _anim = Tween<double>(
       begin: from,
       end: target,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
-    _ctrl.forward(from: 0);
+    ).animate(CurvedAnimation(parent: _ctrl, curve: curve));
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      _ctrl.value = 1;
+    } else {
+      _ctrl.forward(from: 0);
+    }
   }
 
   @override
@@ -1084,6 +1252,7 @@ class _CountUpState extends State<_CountUp>
     if (oldWidget.value != widget.value) {
       final current =
           _ctrl.isAnimating ? _anim.value : oldWidget.value.toDouble();
+      _ctrl.duration = const Duration(milliseconds: 600);
       _animateTo(widget.value.toDouble(), from: current);
     }
   }
@@ -1100,6 +1269,76 @@ class _CountUpState extends State<_CountUp>
       animation: _anim,
       builder:
           (context, _) => Text(_fmt(_anim.value.round()), style: widget.style),
+    );
+  }
+}
+
+/// The photo arriving from the scanner: it sharpens out of a blur and
+/// settles from a slight zoom while one last scan line sweeps down it.
+class _FocusIn extends StatelessWidget {
+  const _FocusIn({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1000),
+      child: child,
+      builder: (context, t, child) {
+        final focus = Curves.easeOutCubic.transform(
+          ((t - .15) / .85).clamp(0.0, 1.0),
+        );
+        final sweep = Curves.easeInOut.transform((t / .8).clamp(0.0, 1.0));
+        final blur = 6 * (1 - focus);
+        return Stack(
+          fit: StackFit.passthrough,
+          children: [
+            Transform.scale(
+              scale: 1.12 - .12 * focus,
+              child:
+                  blur > .05
+                      ? ImageFiltered(
+                        imageFilter: ImageFilter.blur(
+                          sigmaX: blur,
+                          sigmaY: blur,
+                        ),
+                        child: child,
+                      )
+                      : child,
+            ),
+            if (t < .8)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: FractionallySizedBox(
+                    alignment: Alignment(0, -1.4 + 2.8 * sweep),
+                    heightFactor: .35,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0),
+                            AppColors.primary.withValues(alpha: .4),
+                          ],
+                        ),
+                        border: const Border(
+                          bottom: BorderSide(
+                            color: Color(0xFF6EE7B7),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
