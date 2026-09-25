@@ -52,3 +52,20 @@ test('RevenueCat parser does not grant expired or unknown products', () => {
   assert.equal(unknown.isActive, false);
   assert.equal(unknown.productId, null);
 });
+
+test('webhook events about other products or entitlements do not touch Pro', () => {
+  const { webhookEventConcernsPro } = require('../server');
+
+  // A Pro purchase, by entitlement or by product.
+  assert.equal(webhookEventConcernsPro({ entitlement_ids: ['pro'], product_id: 'snapcal_pro_monthly' }), true);
+  assert.equal(webhookEventConcernsPro({ entitlement_id: 'pro' }), true);
+  assert.equal(webhookEventConcernsPro({ product_id: 'snapcal_pro_annual:annual-plan' }), true);
+
+  // Some other product: must neither grant nor revoke Pro.
+  assert.equal(webhookEventConcernsPro({ entitlement_ids: ['coach_pack'], product_id: 'coach_pack_1' }), false);
+  assert.equal(webhookEventConcernsPro({ product_id: 'other_app_product' }), false);
+
+  // An event naming nothing is read as Pro, as every event was before.
+  assert.equal(webhookEventConcernsPro({ type: 'EXPIRATION' }), true);
+  assert.equal(webhookEventConcernsPro({ entitlement_ids: [] }), true);
+});

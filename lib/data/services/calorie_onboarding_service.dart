@@ -8,6 +8,12 @@ import '../../core/nutrition/plan_math.dart';
 import '../../core/services/config_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 
+/// Wazn is for 13 and over. Under this age the plan counts as a minor's.
+const int kMinorAgeLimit = 18;
+
+/// The fastest weight loss a minor's plan allows: the gentle pace.
+const double kMinorMaxWeeklyLossKg = 0.25;
+
 typedef OnboardingAiBuilder =
     Future<Map<String, dynamic>?> Function(
       OnboardingProfileInput input,
@@ -140,7 +146,7 @@ class CalorieOnboardingService {
       weeklyRateKg: computed.weeklyRateKg,
       paceAdjusted: computed.paceAdjusted,
       usedFallback: aiPayload == null,
-      isMinor: input.age < 16,
+      isMinor: input.age < kMinorAgeLimit,
       bmr: computed.bmr,
       tdee: computed.tdee,
     );
@@ -164,7 +170,7 @@ class CalorieOnboardingService {
       weeklyRateKg: computed.weeklyRateKg,
       paceAdjusted: computed.paceAdjusted,
       usedFallback: true,
-      isMinor: input.age < 16,
+      isMinor: input.age < kMinorAgeLimit,
       bmr: computed.bmr,
       tdee: computed.tdee,
     );
@@ -205,9 +211,13 @@ class CalorieOnboardingService {
     var safetyNote = '';
 
     if (goalMode == 'cut') {
+      // Under 18 a weight-loss plan runs at the gentle pace, whatever was
+      // asked for; adults are held to 1 kg a week.
+      final maxWeeklyLossKg =
+          input.age < kMinorAgeLimit ? kMinorMaxWeeklyLossKg : 1.0;
       final weeklyLossKg = (adjustment.abs() * 7) / 7700;
-      if (weeklyLossKg > 1) {
-        adjustment = -(7700 / 7);
+      if (weeklyLossKg > maxWeeklyLossKg + 1e-9) {
+        adjustment = -(maxWeeklyLossKg * 7700 / 7);
         paceAdjusted = true;
         safetyNote = l10n.onboarding_safety_safer_pace;
       }

@@ -51,6 +51,8 @@ const REVENUECAT_SECRET_API_KEY = process.env.REVENUECAT_SECRET_API_KEY || '';
 // the user active until expiration_at_ms passes, which getPremiumStatus()
 // re-checks on every read.
 const REVOKES_ACCESS_IMMEDIATELY = ['EXPIRATION', 'REFUND', 'SUBSCRIPTION_PAUSED'];
+// The RevenueCat entitlement the app checks (SubscriptionService._entitlementId).
+const PRO_ENTITLEMENT_ID = 'pro';
 const PRO_PRODUCT_IDS = new Set([
   'snapcal_pro_annual',
   'snapcal_pro_annual:annual-plan',
@@ -682,6 +684,22 @@ function isProRevenueCatProductId(productId) {
   return PRO_PRODUCT_IDS.has(value) ||
     PRO_PRODUCT_IDS.has(base) ||
     base.startsWith('snapcal_pro_');
+}
+
+// Whether a webhook event is about the Pro entitlement at all.
+//
+// RevenueCat sends every event for the app to one URL, and the webhook used
+// to write `isActive` for whatever arrived: any entitlement or product would
+// have switched Pro on, and an event about some other product would have
+// switched it off for a paying subscriber. An event naming neither an
+// entitlement nor a product is taken as Pro, which is how every event was
+// read before.
+function webhookEventConcernsPro(event) {
+  const ids = Array.isArray(event.entitlement_ids) ? event.entitlement_ids.map(String) : [];
+  if (event.entitlement_id) ids.push(String(event.entitlement_id));
+  if (ids.includes(PRO_ENTITLEMENT_ID)) return true;
+  if (event.product_id) return isProRevenueCatProductId(event.product_id);
+  return ids.length === 0;
 }
 
 function revenueCatExpiryMs(value) {
@@ -2541,6 +2559,21 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
         return;
       }
 
+      // A dashboard TEST event, or one about a product that is not Pro, says
+      // nothing about this user's Pro access; record it and leave the
+      // subscription document alone.
+      if (type === 'TEST' || !webhookEventConcernsPro(event)) {
+        tx.set(eventRef, {
+          appUserId,
+          type,
+          ignored: true,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expiresAt: eventRetentionDeadline(),
+          processed: true,
+        });
+        return;
+      }
+
       // Only these end access before the period the user already paid for.
       // CANCELLATION means auto-renew was turned off -- access continues until
       // expiration_at_ms. PRODUCT_CHANGE is a plan switch on an active
@@ -2551,7 +2584,7 @@ app.post('/api/revenuecat/webhook', webhookLimiter, async (req, res) => {
         (expirationMs === 0 || expirationMs > Date.now());
 
       tx.set(subscriptionDoc(appUserId), {
-        entitlementId: event.entitlement_id || event.entitlement_ids?.[0] || 'pro',
+        entitlementId: event.entitlement_id || event.entitlement_ids?.[0] || PRO_ENTITLEMENT_ID,
         isActive,
         productId: event.product_id || null,
         expiresAt: expirationMs ? admin.firestore.Timestamp.fromMillis(expirationMs) : null,
@@ -3184,6 +3217,7 @@ module.exports = {
   isCachedScanResult,
   forwardAsyncErrors,
   identityKey,
+  webhookEventConcernsPro,
   setAccountDeletionForTest(steps) {
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('Test account deletion is only available in NODE_ENV=test.');

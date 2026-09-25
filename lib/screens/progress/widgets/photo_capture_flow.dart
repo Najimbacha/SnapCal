@@ -74,13 +74,15 @@ class _PhotoCaptureFlowState extends ConsumerState<PhotoCaptureFlow> {
 
     final metricsProvider = ref.read(bodyMetricsProvider.notifier);
     try {
-      if (_frontPath != null && await File(_frontPath!).exists()) {
-        await metricsProvider.logProgressPhoto(_frontPath!);
-      }
-
-      if (_sidePath != null && await File(_sidePath!).exists()) {
-        await metricsProvider.logProgressPhoto(_sidePath!);
-      }
+      final front = _frontPath;
+      final side = _sidePath;
+      // Both photos are one check-in, saved together: the front and side of
+      // the same day belong to the same entry.
+      await metricsProvider.logProgressPhotos(
+        frontPath:
+            front != null && await File(front).exists() ? front : null,
+        sidePath: side != null && await File(side).exists() ? side : null,
+      );
 
       if (mounted) Navigator.pop(context);
     } catch (_) {

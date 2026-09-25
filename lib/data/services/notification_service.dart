@@ -126,20 +126,13 @@ class NotificationService {
   }) async {
     await _ensureTimeZoneInitialized();
 
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduledDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      hour,
-      minute,
-    );
-
     // A meal already logged today skips today's reminder for it.
-    if (scheduledDate.isBefore(now) || startTomorrow) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
+    final scheduledDate = nextDailyOccurrence(
+      tz.TZDateTime.now(tz.local),
+      hour: hour,
+      minute: minute,
+      startTomorrow: startTomorrow,
+    );
 
     // Use inexact scheduling for better battery efficiency and Google Play compliance
     await _notificationsPlugin.zonedSchedule(
@@ -188,23 +181,23 @@ class NotificationService {
     await _ensureTimeZoneInitialized();
     await cancelDailyMotivation();
 
-    final now = tz.TZDateTime.now(tz.local);
-    var firstDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      hour,
-      minute,
+    final firstDate = nextDailyOccurrence(
+      tz.TZDateTime.now(tz.local),
+      hour: hour,
+      minute: minute,
+      startTomorrow: skipToday,
     );
-
-    if (skipToday || firstDate.isBefore(now)) {
-      firstDate = firstDate.add(const Duration(days: 1));
-    }
 
     int? previousIndex;
     for (var offset = 0; offset < _dailyMotivationScheduleDays; offset++) {
-      final scheduledDate = firstDate.add(Duration(days: offset));
+      final scheduledDate = tz.TZDateTime(
+        firstDate.location,
+        firstDate.year,
+        firstDate.month,
+        firstDate.day + offset,
+        hour,
+        minute,
+      );
       final index = _randomMessageIndex(
         scheduledDate,
         messages.length,
@@ -238,6 +231,40 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
     }
+  }
+
+  /// The next [hour]:[minute] on [now]'s calendar: today if it is still
+  /// ahead, otherwise tomorrow.
+  ///
+  /// Tomorrow is built from its date, not as `today + Duration(days: 1)`. A
+  /// Duration is 24 hours, and the day a daylight-saving change falls on is
+  /// 23 or 25, so the evening before a switch every reminder was rescheduled
+  /// an hour off -- and `DateTimeComponents.time` then repeated that wrong
+  /// hour every day until the next settings save.
+  @visibleForTesting
+  static tz.TZDateTime nextDailyOccurrence(
+    tz.TZDateTime now, {
+    required int hour,
+    required int minute,
+    bool startTomorrow = false,
+  }) {
+    final today = tz.TZDateTime(
+      now.location,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+    if (!startTomorrow && !today.isBefore(now)) return today;
+    return tz.TZDateTime(
+      now.location,
+      now.year,
+      now.month,
+      now.day + 1,
+      hour,
+      minute,
+    );
   }
 
   int _randomMessageIndex(

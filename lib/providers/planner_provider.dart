@@ -10,6 +10,7 @@ import '../data/models/meal_plan.dart';
 import '../data/models/user_settings.dart';
 import '../data/services/gemini_service.dart';
 import '../core/state/async_ui_state.dart';
+import '../core/utils/date_utils.dart' as app_date;
 import '../l10n/generated/app_localizations.dart';
 import '../planner/planner_conversion.dart';
 import '../planner/planner_math.dart';
@@ -943,7 +944,7 @@ class PlannerProvider with ChangeNotifier {
   int? _dayIndexForDateString(String dateString) {
     if (_currentPlan == null) return null;
     for (var day = 0; day < 7; day++) {
-      final date = _currentPlan!.startDate.add(Duration(days: day));
+      final date = app_date.DateUtils.addDays(_currentPlan!.startDate, day);
       if (_dateString(date) == dateString) return day;
     }
     return null;
@@ -1058,7 +1059,7 @@ class PlannerProvider with ChangeNotifier {
             protein: (proteinGoal * splits[index]).round(),
             carbs: (carbGoal * splits[index]).round(),
             fat: (fatGoal * splits[index]).round(),
-            date: start.add(Duration(days: day)),
+            date: app_date.DateUtils.addDays(start, day),
           ),
       ];
     }

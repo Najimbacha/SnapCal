@@ -2,7 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:snapcal/data/models/user_settings.dart';
 import 'package:snapcal/data/services/notification_service.dart';
 import 'package:snapcal/providers/settings_provider.dart';
-import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/data/latest_all.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
 
 void main() {
   group('streak repair', () {
@@ -45,6 +46,72 @@ void main() {
       );
       final now = DateTime.now().millisecondsSinceEpoch;
       expect(location.timeZone(now).offset, offset);
+    });
+  });
+
+  group('next reminder across daylight saving', () {
+    setUpAll(tz_data.initializeTimeZones);
+
+    // "Tomorrow" was today plus 24 hours. On the evening before a switch that
+    // is an hour off, and DateTimeComponents.time repeated the wrong hour
+    // every day after.
+    test('Cairo: the night before clocks go back, 08:00 is still 08:00', () {
+      final cairo = tz.getLocation('Africa/Cairo');
+      // Egypt ends summer time at midnight on the last Thursday of October.
+      final now = tz.TZDateTime(cairo, 2026, 10, 29, 22, 0);
+      final next = NotificationService.nextDailyOccurrence(
+        now,
+        hour: 8,
+        minute: 0,
+      );
+      expect(next.location, cairo);
+      expect([next.year, next.month, next.day], [2026, 10, 30]);
+      expect([next.hour, next.minute], [8, 0]);
+    });
+
+    test('Cairo: the night before clocks go forward, 08:00 is 08:00', () {
+      final cairo = tz.getLocation('Africa/Cairo');
+      // Summer time begins at midnight on the last Friday of April.
+      final now = tz.TZDateTime(cairo, 2026, 4, 23, 22, 0);
+      final next = NotificationService.nextDailyOccurrence(
+        now,
+        hour: 8,
+        minute: 0,
+      );
+      expect([next.year, next.month, next.day], [2026, 4, 24]);
+      expect([next.hour, next.minute], [8, 0]);
+    });
+
+    test('London: the night before the spring switch, 08:00 is 08:00', () {
+      final london = tz.getLocation('Europe/London');
+      final now = tz.TZDateTime(london, 2026, 3, 28, 9, 0);
+      final next = NotificationService.nextDailyOccurrence(
+        now,
+        hour: 8,
+        minute: 0,
+      );
+      expect([next.year, next.month, next.day], [2026, 3, 29]);
+      expect([next.hour, next.minute], [8, 0]);
+    });
+
+    test('stays today while the time is still ahead', () {
+      final london = tz.getLocation('Europe/London');
+      final now = tz.TZDateTime(london, 2026, 3, 28, 7, 0);
+      final next = NotificationService.nextDailyOccurrence(
+        now,
+        hour: 8,
+        minute: 0,
+      );
+      expect(next.day, 28);
+      expect(
+        NotificationService.nextDailyOccurrence(
+          now,
+          hour: 8,
+          minute: 0,
+          startTomorrow: true,
+        ).day,
+        29,
+      );
     });
   });
 }

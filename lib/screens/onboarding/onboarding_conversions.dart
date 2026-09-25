@@ -9,11 +9,12 @@ class OnboardingConversions {
 
   static double inchToCm(double inch) => inch * 2.54;
 
+  /// Rounded to the nearest whole inch before splitting, so 182.5 cm is
+  /// 6 ft 0 in and not "5 ft 12 in" -- rounding the remainder on its own
+  /// could reach 12.
   static ({int feet, int inches}) cmToFtIn(double cm) {
-    final totalInches = cm / 2.54;
-    final feet = totalInches ~/ 12;
-    final inches = (totalInches % 12).round();
-    return (feet: feet, inches: inches);
+    final totalInches = (cm / 2.54).round();
+    return (feet: totalInches ~/ 12, inches: totalInches % 12);
   }
 
   static double ftInToCm(int feet, int inches) {
@@ -21,7 +22,8 @@ class OnboardingConversions {
   }
 
   static bool isValidPositiveNumber(String text) {
-    return double.tryParse(text.trim()) != null;
+    final value = double.tryParse(text.trim());
+    return value != null && value.isFinite && value > 0;
   }
 
   static String formatWeightKgForDisplay(double kg) {

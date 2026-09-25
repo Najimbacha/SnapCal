@@ -10,6 +10,7 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
+import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/grocery_item.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/meal_plan.dart';
@@ -236,7 +237,7 @@ class PlannerDayStrip extends StatelessWidget {
         itemCount: 7,
         separatorBuilder: (context, index) => const SizedBox(width: 7),
         itemBuilder: (context, index) {
-          final date = plan.startDate.add(Duration(days: index));
+          final date = app_date.DateUtils.addDays(plan.startDate, index);
           final selected = index == selectedIndex;
           final locked = lockedAfterIndex != null && index > lockedAfterIndex!;
           return InkWell(

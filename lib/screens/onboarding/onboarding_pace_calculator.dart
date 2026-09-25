@@ -42,7 +42,8 @@ class OnboardingPaceCalculator {
     final deltaKg = (targetKg - currentKg).abs();
     final weeks = deltaKg / weeklyRateKg;
     final days = (weeks * 7).round();
-    return DateTime.now().add(Duration(days: days));
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day + days);
   }
 
   static int deriveTimelineMonths(double deltaKg, double weeklyRateKg) {

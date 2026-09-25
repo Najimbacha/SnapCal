@@ -481,7 +481,10 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     final todayKey = app_date.DateUtils.getDateString(now);
     final liveSteps = ref.watch(activityProvider).valueOrNull?.steps ?? 0;
     return List.generate(visibleDayCount, (index) {
-      final date = now.subtract(Duration(days: visibleDayCount - 1 - index));
+      final date = app_date.DateUtils.addDays(
+        now,
+        -(visibleDayCount - 1 - index),
+      );
       final dateString = app_date.DateUtils.getDateString(date);
       return _buildSummaryForDate(
         dateString: dateString,
