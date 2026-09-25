@@ -17,6 +17,7 @@ import 'providers/auth_notifier_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/splash/splash_screen.dart';
 import 'widgets/wazn_icons.dart';
+import 'widgets/motion/theme_reveal.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -204,14 +205,17 @@ class AppTree extends ConsumerWidget {
       // beats text that is clipped out of the layout entirely.
       builder: (context, child) {
         final media = MediaQuery.of(context);
-        return MediaQuery(
-          data: media.copyWith(
-            textScaler: media.textScaler.clamp(
-              minScaleFactor: 1.0,
-              maxScaleFactor: 1.3,
+        // Lets a theme change spread out in a circle from the tap.
+        return ThemeRevealHost(
+          child: MediaQuery(
+            data: media.copyWith(
+              textScaler: media.textScaler.clamp(
+                minScaleFactor: 1.0,
+                maxScaleFactor: 1.3,
+              ),
             ),
+            child: child ?? const SizedBox.shrink(),
           ),
-          child: child ?? const SizedBox.shrink(),
         );
       },
       locale: Locale(settings.languageCode ?? 'en'),

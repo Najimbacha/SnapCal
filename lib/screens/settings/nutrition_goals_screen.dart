@@ -14,6 +14,9 @@ import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 
 import 'widgets/settings_kit.dart';
+import '../../core/theme/app_motion.dart';
+import '../../widgets/motion/count_up_text.dart';
+import '../../widgets/motion/rolling_number.dart';
 
 /// The daily plan: one calorie target and the three macros that make it up.
 ///
@@ -110,8 +113,9 @@ class _PlanHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text(
-                      '$calories',
+                    RollingNumber(
+                      value: calories,
+                      format: (v) => '$v',
                       style: AppTypography.displayLarge.copyWith(
                         color: settingsText(context),
                         fontWeight: FontWeight.w800,
@@ -200,30 +204,75 @@ class _MacroBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // flex takes whole numbers, so shares are scaled rather than rounded to
-    // percent — a 0.5% macro still draws as a sliver instead of vanishing.
-    return SizedBox(
-      height: 10,
-      child: Row(
-        children: [
-          Expanded(
-            flex: (shares.protein * 1000).round().clamp(1, 1000),
-            child: _Segment(color: AppColors.protein, first: true),
-          ),
-          const SizedBox(width: 2),
-          Expanded(
-            flex: (shares.carbs * 1000).round().clamp(1, 1000),
-            child: _Segment(color: AppColors.carbs),
-          ),
-          const SizedBox(width: 2),
-          Expanded(
-            flex: (shares.fat * 1000).round().clamp(1, 1000),
-            child: _Segment(color: AppColors.fat, last: true),
-          ),
-        ],
+    // The split reshapes smoothly when a macro changes: each segment glides
+    // to its new share, landing with a small overshoot.
+    return TweenAnimationBuilder<_Shares>(
+      tween: _SharesTween(
+        end: _Shares(shares.protein, shares.carbs, shares.fat),
       ),
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 700)),
+      curve: const Cubic(.3, 1.2, .5, 1),
+      builder: (context, s, _) {
+        // flex takes whole numbers, so shares are scaled rather than rounded
+        // to percent -- a 0.5% macro still draws as a sliver instead of
+        // vanishing.
+        int flex(double share) => (share * 1000).round().clamp(1, 1000);
+        return SizedBox(
+          height: 10,
+          child: Row(
+            children: [
+              Expanded(
+                flex: flex(s.protein),
+                child: const _Segment(color: AppColors.protein, first: true),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                flex: flex(s.carbs),
+                child: const _Segment(color: AppColors.carbs),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                flex: flex(s.fat),
+                child: const _Segment(color: AppColors.fat, last: true),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
+}
+
+/// The three shares as one value, equal by content, so the bar only
+/// animates when the split actually changes.
+@immutable
+class _Shares {
+  const _Shares(this.protein, this.carbs, this.fat);
+
+  final double protein, carbs, fat;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _Shares &&
+      other.protein == protein &&
+      other.carbs == carbs &&
+      other.fat == fat;
+
+  @override
+  int get hashCode => Object.hash(protein, carbs, fat);
+}
+
+/// Tweens three shares at once. Starts at the end value, so the bar draws at
+/// its split on first show and only moves when the split changes.
+class _SharesTween extends Tween<_Shares> {
+  _SharesTween({required _Shares end}) : super(begin: end, end: end);
+
+  @override
+  _Shares lerp(double t) => _Shares(
+    begin!.protein + (end!.protein - begin!.protein) * t,
+    begin!.carbs + (end!.carbs - begin!.carbs) * t,
+    begin!.fat + (end!.fat - begin!.fat) * t,
+  );
 }
 
 class _Segment extends StatelessWidget {
@@ -295,20 +344,38 @@ class _MacroLegend extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 3),
-        Text(
-          '$grams${l10n.settings_grams_unit}',
+        // Both lines count to their new figures when the split changes.
+        CountUpText(
+          value: grams,
+          duration: const Duration(milliseconds: 700),
+          format: (v) => '$v${l10n.settings_grams_unit}',
           style: AppTypography.titleMedium.copyWith(
             color: settingsText(context),
             fontWeight: FontWeight.w700,
             fontSize: 15,
           ),
         ),
-        Text(
-          '$kcal ${l10n.settings_kcal_unit} · ${(share * 100).round()}%',
-          style: AppTypography.labelSmall.copyWith(
-            color: settingsSubtext(context),
-            fontSize: 10.5,
-          ),
+        Row(
+          children: [
+            CountUpText(
+              value: kcal,
+              duration: const Duration(milliseconds: 700),
+              format: (v) => '$v ${l10n.settings_kcal_unit} · ',
+              style: AppTypography.labelSmall.copyWith(
+                color: settingsSubtext(context),
+                fontSize: 10.5,
+              ),
+            ),
+            CountUpText(
+              value: (share * 100).round(),
+              duration: const Duration(milliseconds: 700),
+              format: (v) => '$v%',
+              style: AppTypography.labelSmall.copyWith(
+                color: settingsSubtext(context),
+                fontSize: 10.5,
+              ),
+            ),
+          ],
         ),
       ],
     );

@@ -19,6 +19,9 @@ import '../../widgets/ui_blocks.dart';
 import '../home/widgets/activity_health_connect_sheet.dart';
 import 'account_screen.dart';
 import 'widgets/settings_kit.dart';
+import '../../core/theme/app_motion.dart';
+import '../../widgets/motion/reveal.dart';
+import '../../widgets/motion/visible_gate.dart';
 
 /// Settings root: grouped inset lists in the platform-standard pattern —
 /// title rows carrying their live value, one accent, destructive action
@@ -61,117 +64,134 @@ class SettingsScreen extends ConsumerWidget {
           Consumer(
             builder: (context, ref, _) {
               final auth = ref.watch(authStateProvider).valueOrNull;
-              return _ProfileCard(
-                auth: SettingsAuthSnapshot(
-                  isAnonymous: auth?.isAnonymous ?? true,
-                  displayName: auth?.displayName,
-                  email: auth?.email,
-                  photoURL: auth?.photoURL,
+              return Reveal(
+                child: _ProfileCard(
+                  auth: SettingsAuthSnapshot(
+                    isAnonymous: auth?.isAnonymous ?? true,
+                    displayName: auth?.displayName,
+                    email: auth?.email,
+                    photoURL: auth?.photoURL,
+                  ),
                 ),
               );
             },
           ),
           const SizedBox(height: 20),
           if (isPro)
-            SettingsSurface(
-              padding: EdgeInsets.zero,
-              child: SettingsRow(
-                title: 'Wazn Pro',
-                value: l10n.settings_manage_plan,
-                icon: WaznIcons.pro,
+            Reveal(
+              delay: const Duration(milliseconds: 70),
+              child: SettingsSurface(
+                padding: EdgeInsets.zero,
+                child: SettingsRow(
+                  title: 'Wazn Pro',
+                  value: l10n.settings_manage_plan,
+                  icon: WaznIcons.pro,
+                  onTap:
+                      () => PremiumConversionService().openPaywall(
+                        context,
+                        PaywallEntryPoint.settings,
+                      ),
+                ),
+              ),
+            )
+          else
+            Reveal(
+              delay: const Duration(milliseconds: 70),
+              child: _ProUpsellCard(
                 onTap:
                     () => PremiumConversionService().openPaywall(
                       context,
                       PaywallEntryPoint.settings,
                     ),
               ),
-            )
-          else
-            _ProUpsellCard(
-              onTap:
-                  () => PremiumConversionService().openPaywall(
-                    context,
-                    PaywallEntryPoint.settings,
-                  ),
             ),
           const SizedBox(height: 24),
-          SettingsSection(
-            title: l10n.settings_core_config,
-            children: [
-              SettingsRow(
-                icon: WaznIcons.profile,
-                title: l10n.settings_body_profile,
-                value: bodyValue,
-                onTap: () => context.push('/settings/body-profile'),
-              ),
-              SettingsRow(
-                icon: WaznIcons.calories,
-                title: l10n.settings_nutrition_goals,
-                value:
-                    settings == null
-                        ? null
-                        : '${settings.dailyCalorieGoal} ${l10n.settings_kcal_unit}',
-                onTap: () => context.push('/settings/nutrition-goals'),
-              ),
-              SettingsRow(
-                icon: WaznIcons.settings,
-                title: l10n.settings_preferences,
-                value: settingsLanguageName(settings?.languageCode),
-                onTap: () => context.push('/settings/preferences'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          SettingsSection(
-            title: l10n.settings_data_security,
-            children: [
-              SettingsRow(
-                icon: WaznIcons.watch,
-                title: 'Health Connect',
-                value:
-                    healthConnected
-                        ? l10n.settings_status_connected
-                        : l10n.settings_status_not_connected,
-                onTap: () => showActivityHealthConnectSheet(context),
-              ),
-              SettingsRow(
-                icon: WaznIcons.hardDrive,
-                title: l10n.settings_data_sync,
-                onTap: () => context.push('/settings/data-sync'),
-              ),
-              SettingsRow(
-                icon: WaznIcons.profile,
-                title: l10n.settings_account,
-                // No "Create account" here: the profile card at the top of
-                // this same screen already makes that offer, and two doors to
-                // one room make a screen feel padded.
-                onTap: () => context.push('/settings/account'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          SettingsSection(
-            title: l10n.settings_information,
-            children: [
-              SettingsRow(
-                icon: WaznIcons.info,
-                title: l10n.settings_about,
-                onTap: () => context.push('/settings/about'),
-              ),
-              // Google Play only: there is no App Store listing to open yet.
-              if (defaultTargetPlatform == TargetPlatform.android)
+          Reveal(
+            delay: const Duration(milliseconds: 140),
+            child: SettingsSection(
+              title: l10n.settings_core_config,
+              children: [
                 SettingsRow(
-                  icon: WaznIcons.star,
-                  title: l10n.settings_rate_app,
-                  onTap:
-                      () => AppReviewService.instance().openStoreRatingPage(),
+                  icon: WaznIcons.profile,
+                  title: l10n.settings_body_profile,
+                  value: bodyValue,
+                  onTap: () => context.push('/settings/body-profile'),
                 ),
-              SettingsRow(
-                icon: WaznIcons.mail,
-                title: l10n.settings_send_feedback,
-                onTap: () => FeedbackService.send(context),
-              ),
-            ],
+                SettingsRow(
+                  icon: WaznIcons.calories,
+                  title: l10n.settings_nutrition_goals,
+                  value:
+                      settings == null
+                          ? null
+                          : '${settings.dailyCalorieGoal} ${l10n.settings_kcal_unit}',
+                  onTap: () => context.push('/settings/nutrition-goals'),
+                ),
+                SettingsRow(
+                  icon: WaznIcons.settings,
+                  title: l10n.settings_preferences,
+                  value: settingsLanguageName(settings?.languageCode),
+                  onTap: () => context.push('/settings/preferences'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Reveal(
+            delay: const Duration(milliseconds: 210),
+            child: SettingsSection(
+              title: l10n.settings_data_security,
+              children: [
+                SettingsRow(
+                  icon: WaznIcons.watch,
+                  title: 'Health Connect',
+                  value:
+                      healthConnected
+                          ? l10n.settings_status_connected
+                          : l10n.settings_status_not_connected,
+                  onTap: () => showActivityHealthConnectSheet(context),
+                ),
+                SettingsRow(
+                  icon: WaznIcons.hardDrive,
+                  title: l10n.settings_data_sync,
+                  onTap: () => context.push('/settings/data-sync'),
+                ),
+                SettingsRow(
+                  icon: WaznIcons.profile,
+                  title: l10n.settings_account,
+                  // No "Create account" here: the profile card at the top of
+                  // this same screen already makes that offer, and two doors to
+                  // one room make a screen feel padded.
+                  onTap: () => context.push('/settings/account'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Reveal(
+            delay: const Duration(milliseconds: 280),
+            child: SettingsSection(
+              title: l10n.settings_information,
+              children: [
+                SettingsRow(
+                  icon: WaznIcons.info,
+                  title: l10n.settings_about,
+                  onTap: () => context.push('/settings/about'),
+                ),
+                // Google Play only: there is no App Store listing to open yet.
+                if (defaultTargetPlatform == TargetPlatform.android)
+                  SettingsRow(
+                    icon: WaznIcons.star,
+                    title: l10n.settings_rate_app,
+                    onTap:
+                        () => AppReviewService.instance().openStoreRatingPage(),
+                  ),
+                SettingsRow(
+                  icon: WaznIcons.mail,
+                  title: l10n.settings_send_feedback,
+                  onTap: () => FeedbackService.send(context),
+                ),
+              ],
+            ),
           ),
           if (!isAnonymous) ...[
             const SizedBox(height: 24),
@@ -441,22 +461,28 @@ class _MemberCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Avatar: photo or initials gradient
-            Container(
-              width: 52,
-              height: 52,
-              decoration: const BoxDecoration(shape: BoxShape.circle),
-              child: ClipOval(
-                child:
-                    auth.photoURL != null
-                        ? Image.network(
-                          auth.photoURL!,
-                          fit: BoxFit.cover,
-                          errorBuilder:
-                              (context, error, stackTrace) =>
-                                  _InitialsAvatar(initials: initials),
-                        )
-                        : _InitialsAvatar(initials: initials),
+            // Avatar: photo or initials gradient. Pops in as Profile opens.
+            Reveal(
+              delay: const Duration(milliseconds: 120),
+              offset: Offset.zero,
+              scale: .4,
+              curve: AppMotion.springCurve,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(shape: BoxShape.circle),
+                child: ClipOval(
+                  child:
+                      auth.photoURL != null
+                          ? Image.network(
+                            auth.photoURL!,
+                            fit: BoxFit.cover,
+                            errorBuilder:
+                                (context, error, stackTrace) =>
+                                    _InitialsAvatar(initials: initials),
+                          )
+                          : _InitialsAvatar(initials: initials),
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -592,123 +618,213 @@ class _ProUpsellCard extends StatelessWidget {
 
     return AppScaleTap(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors:
+      child: _Shine(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors:
+                  isDark
+                      ? [
+                        AppColors.primary.withValues(alpha: 0.22),
+                        AppColors.primary.withValues(alpha: 0.05),
+                      ]
+                      : [const Color(0xFFD9F2E7), const Color(0xFFF4FBF8)],
+              stops: const [0.0, 0.85],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: isDark ? 0.28 : 0.24),
+            ),
+            boxShadow:
                 isDark
-                    ? [
-                      AppColors.primary.withValues(alpha: 0.22),
-                      AppColors.primary.withValues(alpha: 0.05),
-                    ]
-                    : [const Color(0xFFD9F2E7), const Color(0xFFF4FBF8)],
-            stops: const [0.0, 0.85],
+                    ? null
+                    : [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.10),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
           ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: isDark ? 0.28 : 0.24),
-          ),
-          boxShadow:
-              isDark
-                  ? null
-                  : [
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: AppColors.premiumGradient,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.10),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+                      color: AppColors.primary.withValues(alpha: 0.28),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: AppColors.premiumGradient,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.28),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                ),
+                child: const Icon(WaznIcons.pro, size: 20, color: Colors.white),
               ),
-              child: const Icon(WaznIcons.pro, size: 20, color: Colors.white),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Wazn Pro',
-                    style: AppTypography.titleMedium.copyWith(
-                      color: settingsText(context),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      letterSpacing: -0.2,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Wazn Pro',
+                      style: AppTypography.titleMedium.copyWith(
+                        color: settingsText(context),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    l10n.settings_upgrade_desc,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: settingsSubtext(context),
-                      fontSize: 11.5,
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.settings_upgrade_desc,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: settingsSubtext(context),
+                        fontSize: 11.5,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                gradient: AppColors.premiumGradient,
-                borderRadius: BorderRadius.circular(999),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.premiumGold.withValues(
-                      alpha: isDark ? 0.38 : 0.28,
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  gradient: AppColors.premiumGradient,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.premiumGold.withValues(
+                        alpha: isDark ? 0.38 : 0.28,
+                      ),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
                     ),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l10n.home_upgrade_chip,
-                    style: const TextStyle(
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l10n.home_upgrade_chip,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    const Icon(
+                      WaznIcons.chevronRight,
+                      size: 13,
                       color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      height: 1.0,
                     ),
-                  ),
-                  const SizedBox(width: 3),
-                  const Icon(
-                    WaznIcons.chevronRight,
-                    size: 13,
-                    color: Colors.white,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// One soft band of light that sweeps across its child a moment after it
+/// first shows, to draw the eye to the Pro offer once, not keep flashing.
+class _Shine extends StatefulWidget {
+  const _Shine({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_Shine> createState() => _ShineState();
+}
+
+class _ShineState extends State<_Shine>
+    with SingleTickerProviderStateMixin, VisibleGate {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    runWhenVisible(() {
+      if (!AppMotion.reduceMotion(context)) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Stack(
+      children: [
+        widget.child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) {
+                  // Waits for the card to arrive, then crosses it.
+                  final t = const Interval(
+                    .38,
+                    1,
+                    curve: Curves.easeInOutCubic,
+                  ).transform(_controller.value);
+                  if (t <= 0 || t >= 1) return const SizedBox.shrink();
+                  return FractionalTranslation(
+                    translation: Offset(-1 + 2.4 * t, 0),
+                    child: FractionallySizedBox(
+                      widthFactor: .4,
+                      alignment: Alignment.centerLeft,
+                      child: Transform(
+                        transform: Matrix4.skewX(-.3),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withValues(alpha: 0),
+                                Colors.white.withValues(
+                                  alpha: dark ? .16 : .55,
+                                ),
+                                Colors.white.withValues(alpha: 0),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

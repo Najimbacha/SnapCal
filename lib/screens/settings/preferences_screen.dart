@@ -12,6 +12,8 @@ import '../../widgets/app_page_scaffold.dart';
 import '../log/widgets/quick_add_foods.dart';
 
 import 'widgets/settings_kit.dart';
+import '../../widgets/motion/reveal.dart';
+import '../../widgets/motion/unfold.dart';
 
 class PreferencesScreen extends ConsumerWidget {
   const PreferencesScreen({super.key});
@@ -111,72 +113,90 @@ class PreferencesScreen extends ConsumerWidget {
                       .valueOrNull
                       ?.mealRemindersEnabled ??
                   true;
-              if (!enabled) return const SizedBox.shrink();
-              return Column(
-                children: [
-                  const SizedBox(height: 24),
-                  SettingsSection(
-                    title: l10n.settings_meal_reminders, // "Meal Reminders"
-                    children: [
-                      Consumer(
-                        builder: (context, ref, _) {
-                          final settings =
-                              ref.watch(settingsProvider).valueOrNull;
-                          if (settings == null) return const SizedBox.shrink();
-                          return Column(
-                            children: [
-                              SettingsRow(
-                                icon: WaznIcons.breakfast,
-                                title: l10n.settings_breakfast_time,
-                                value: formatReminderTime(
-                                  context,
-                                  settings.breakfastTime,
-                                ),
-                                onTap:
-                                    () => selectTime(
+              // The times unfold when reminders are switched on, one after
+              // another, and fold away when they are switched off.
+              return Unfold(
+                open: enabled,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    SettingsSection(
+                      title: l10n.settings_meal_reminders, // "Meal Reminders"
+                      children: [
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final settings =
+                                ref.watch(settingsProvider).valueOrNull;
+                            if (settings == null) {
+                              return const SizedBox.shrink();
+                            }
+                            return Column(
+                              children: [
+                                Reveal(
+                                  delay: const Duration(milliseconds: 120),
+                                  offset: const Offset(0, -8),
+                                  child: SettingsRow(
+                                    icon: WaznIcons.breakfast,
+                                    title: l10n.settings_breakfast_time,
+                                    value: formatReminderTime(
                                       context,
-                                      settings,
-                                      ref,
-                                      'breakfast',
+                                      settings.breakfastTime,
                                     ),
-                              ),
-                              SettingsRow(
-                                icon: WaznIcons.lunch,
-                                title: l10n.settings_lunch_time,
-                                value: formatReminderTime(
-                                  context,
-                                  settings.lunchTime,
+                                    onTap:
+                                        () => selectTime(
+                                          context,
+                                          settings,
+                                          ref,
+                                          'breakfast',
+                                        ),
+                                  ),
                                 ),
-                                onTap:
-                                    () => selectTime(
+                                Reveal(
+                                  delay: const Duration(milliseconds: 210),
+                                  offset: const Offset(0, -8),
+                                  child: SettingsRow(
+                                    icon: WaznIcons.lunch,
+                                    title: l10n.settings_lunch_time,
+                                    value: formatReminderTime(
                                       context,
-                                      settings,
-                                      ref,
-                                      'lunch',
+                                      settings.lunchTime,
                                     ),
-                              ),
-                              SettingsRow(
-                                icon: WaznIcons.dinner,
-                                title: l10n.settings_dinner_time,
-                                value: formatReminderTime(
-                                  context,
-                                  settings.dinnerTime,
+                                    onTap:
+                                        () => selectTime(
+                                          context,
+                                          settings,
+                                          ref,
+                                          'lunch',
+                                        ),
+                                  ),
                                 ),
-                                onTap:
-                                    () => selectTime(
+                                Reveal(
+                                  delay: const Duration(milliseconds: 300),
+                                  offset: const Offset(0, -8),
+                                  child: SettingsRow(
+                                    icon: WaznIcons.dinner,
+                                    title: l10n.settings_dinner_time,
+                                    value: formatReminderTime(
                                       context,
-                                      settings,
-                                      ref,
-                                      'dinner',
+                                      settings.dinnerTime,
                                     ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
+                                    onTap:
+                                        () => selectTime(
+                                          context,
+                                          settings,
+                                          ref,
+                                          'dinner',
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               );
             },
           ),
