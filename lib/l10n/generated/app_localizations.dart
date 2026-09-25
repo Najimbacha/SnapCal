@@ -606,6 +606,12 @@ abstract class AppLocalizations {
   /// **'Protein goal reached today'**
   String get log_protein_goal_met_today;
 
+  /// Under the note that appears when the day's protein goal is reached
+  ///
+  /// In en, this message translates to:
+  /// **'{grams} g of protein today'**
+  String home_protein_goal_detail(int grams);
+
   /// No description provided for @log_removed_snackbar.
   ///
   /// In en, this message translates to:

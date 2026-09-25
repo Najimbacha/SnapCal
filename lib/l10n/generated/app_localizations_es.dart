@@ -290,6 +290,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get log_protein_goal_met_today => 'Meta de proteína alcanzada hoy';
 
   @override
+  String home_protein_goal_detail(int grams) {
+    return '$grams g de proteína hoy';
+  }
+
+  @override
   String log_removed_snackbar(String food) {
     return '$food eliminado';
   }

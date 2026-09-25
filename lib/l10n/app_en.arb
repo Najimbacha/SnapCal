@@ -150,6 +150,15 @@
     }
   },
   "log_protein_goal_met_today": "Protein goal reached today",
+  "home_protein_goal_detail": "{grams} g of protein today",
+  "@home_protein_goal_detail": {
+    "description": "Under the note that appears when the day's protein goal is reached",
+    "placeholders": {
+      "grams": {
+        "type": "int"
+      }
+    }
+  },
   "log_removed_snackbar": "{food} removed",
   "@log_removed_snackbar": {
     "placeholders": {

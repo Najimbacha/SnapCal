@@ -90,6 +90,7 @@
   "log_add_meal_type": "Ajouter {meal}",
   "log_protein_left_today": "Il reste {value} g de protéines aujourd'hui",
   "log_protein_goal_met_today": "Objectif protéines atteint aujourd'hui",
+  "home_protein_goal_detail": "{grams} g de protéines aujourd'hui",
   "log_removed_snackbar": "{food} supprimé",
   "assistant_title": "Coach IA",
   "assistant_status": "Toujours actif",

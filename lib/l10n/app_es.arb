@@ -90,6 +90,7 @@
   "log_add_meal_type": "Agregar {meal}",
   "log_protein_left_today": "Faltan {value} g de proteína hoy",
   "log_protein_goal_met_today": "Meta de proteína alcanzada hoy",
+  "home_protein_goal_detail": "{grams} g de proteína hoy",
   "log_removed_snackbar": "{food} eliminado",
   "assistant_title": "Entrenador IA",
   "assistant_status": "Siempre activo",

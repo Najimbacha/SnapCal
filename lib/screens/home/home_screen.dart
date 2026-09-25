@@ -7,11 +7,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../widgets/wazn_icons.dart';
 
 import '../../widgets/notification_permission_prompt.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/meal.dart';
 import 'widgets/activity_health_connect_sheet.dart';
@@ -27,6 +28,9 @@ import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/home_upgrade_chip.dart';
+import '../../widgets/motion/count_up_text.dart';
+import '../../widgets/motion/rolling_number.dart';
+import '../../widgets/motion/visible_gate.dart';
 import '../../widgets/scan_choice_sheet.dart';
 import '../../widgets/ui_blocks.dart';
 import 'widgets/home_nutrition_dashboard.dart';
@@ -48,6 +52,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late final Future<bool> _firstMealGuidePending;
   Timer? _upgradePromptTimer;
   bool _showFirstMealGuide = false;
+
+  /// The first Home of this app session: its numbers count in from zero.
+  late final bool _firstOpen = !_hasPlayedInitialAnimation;
 
   @override
   void initState() {
@@ -260,6 +267,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   // That was folded silently into one number, so the feature
                   // people pay for looked like an arbitrary target.
                   activityBonus: isPro ? activeCalories : 0,
+                  animateIn: _firstOpen,
                 ),
           ),
           if (_showFirstMealGuide && mealCount == 0)
@@ -677,6 +685,9 @@ class _MinimalCalorieHero extends StatelessWidget {
   /// Active calories folded into [goal]. Zero when there is no bonus to show.
   final int activityBonus;
 
+  /// Count the figures in from the empty day rather than showing them.
+  final bool animateIn;
+
   const _MinimalCalorieHero({
     required this.consumed,
     required this.goal,
@@ -684,6 +695,7 @@ class _MinimalCalorieHero extends StatelessWidget {
     required this.mealCount,
     required this.progress,
     this.activityBonus = 0,
+    this.animateIn = false,
   });
 
   @override
@@ -698,19 +710,40 @@ class _MinimalCalorieHero extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
       child: Column(
         children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              _formatNumber(context, remaining.abs()),
-              style: AppTypography.displayLarge.copyWith(
-                color: ink,
-                fontSize: 54,
-                height: 1,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0,
-                fontFeatures: const [FontFeature.tabularFigures()],
+          // The figure rolls like an odometer whenever it changes, and a
+          // chip beside it says by how much.
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: RollingNumber(
+                  value: remaining.abs(),
+                  from: animateIn ? goal : null,
+                  delay: const Duration(milliseconds: 240),
+                  format: (v) => _formatNumber(context, v),
+                  style: AppTypography.displayLarge.copyWith(
+                    color: ink,
+                    fontSize: 54,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
               ),
-            ),
+              Positioned(
+                top: -4,
+                right: 0,
+                child: FractionalTranslation(
+                  translation: const Offset(1.12, 0),
+                  child: _CalorieDelta(
+                    consumed: consumed,
+                    remaining: remaining,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 7),
           Text(
@@ -739,7 +772,8 @@ class _MinimalCalorieHero extends StatelessWidget {
               Expanded(
                 child: _MinimalHeroStat(
                   label: l10n.home_calories_eaten,
-                  value: _formatNumber(context, consumed),
+                  value: consumed,
+                  countIn: animateIn,
                   unit: 'kcal',
                 ),
               ),
@@ -747,7 +781,7 @@ class _MinimalCalorieHero extends StatelessWidget {
               Expanded(
                 child: _MinimalHeroStat(
                   label: l10n.home_metric_goal,
-                  value: _formatNumber(context, goal),
+                  value: goal,
                   unit: 'kcal',
                   valueColor: _greenInk(isDark),
                 ),
@@ -756,13 +790,108 @@ class _MinimalCalorieHero extends StatelessWidget {
               Expanded(
                 child: _MinimalHeroStat(
                   label: l10n.home_metric_meals,
-                  value: _formatNumber(context, mealCount),
+                  value: mealCount,
+                  countIn: animateIn,
                   unit: l10n.log_entries.toLowerCase(),
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "−523" floating up beside the calorie figure as it rolls, so the change
+/// reads at a glance. It says how far the figure on screen moved while it
+/// counts what is left; once over the goal it names the calories added.
+class _CalorieDelta extends StatefulWidget {
+  const _CalorieDelta({required this.consumed, required this.remaining});
+
+  final int consumed;
+  final int remaining;
+
+  @override
+  State<_CalorieDelta> createState() => _CalorieDeltaState();
+}
+
+class _CalorieDeltaState extends State<_CalorieDelta>
+    with SingleTickerProviderStateMixin, VisibleGate {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+    value: 1,
+  );
+  String _label = '';
+
+  @override
+  void didUpdateWidget(_CalorieDelta oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.consumed == oldWidget.consumed) return;
+    final fmt = NumberFormat.decimalPattern(
+      AppLocalizations.of(context)?.localeName,
+    );
+    String signed(int d) => '${d < 0 ? '\u2212' : '+'}${fmt.format(d.abs())}';
+    _label =
+        oldWidget.remaining >= 0 && widget.remaining >= 0
+            ? signed(widget.remaining - oldWidget.remaining)
+            : '${signed(widget.consumed - oldWidget.consumed)} kcal';
+    _controller.value = 0;
+    runWhenVisible(() {
+      if (AppMotion.reduceMotion(context)) {
+        _controller.value = 1;
+      } else {
+        _controller.forward(from: 0);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return IgnorePointer(
+      child: ExcludeSemantics(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            final v = _controller.value;
+            if (v <= 0 || v >= 1) return const SizedBox.shrink();
+            final opacity =
+                v < .15 ? v / .15 : (v > .7 ? 1 - (v - .7) / .3 : 1.0);
+            return Opacity(
+              opacity: opacity.clamp(0.0, 1.0),
+              child: Transform.translate(
+                offset: Offset(0, 8 - 30 * Curves.easeOutCubic.transform(v)),
+                child: child,
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: isDark ? .22 : .13),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              _label,
+              textDirection: TextDirection.ltr,
+              style: AppTypography.labelMedium.copyWith(
+                color: _greenInk(isDark),
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -883,15 +1012,19 @@ class _ActivityBonusPill extends StatelessWidget {
 
 class _MinimalHeroStat extends StatelessWidget {
   final String label;
-  final String value;
+  final int value;
   final String unit;
   final Color? valueColor;
+
+  /// Count up from zero the first time it shows.
+  final bool countIn;
 
   const _MinimalHeroStat({
     required this.label,
     required this.value,
     required this.unit,
     this.valueColor,
+    this.countIn = false,
   });
 
   @override
@@ -917,8 +1050,11 @@ class _MinimalHeroStat extends StatelessWidget {
         const SizedBox(height: 4),
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text(
-            value,
+          child: CountUpText(
+            value: value,
+            from: countIn ? 0 : null,
+            delay: const Duration(milliseconds: 240),
+            format: (v) => _formatNumber(context, v),
             style: AppTypography.titleLarge.copyWith(
               color: valueColor ?? ink,
               fontSize: 20,
@@ -964,7 +1100,7 @@ class _MinimalDivider extends StatelessWidget {
   }
 }
 
-class _MinimalMealsSection extends StatelessWidget {
+class _MinimalMealsSection extends StatefulWidget {
   final List<Meal> meals;
   final bool isPro;
   final VoidCallback onViewAll;
@@ -980,7 +1116,28 @@ class _MinimalMealsSection extends StatelessWidget {
   });
 
   @override
+  State<_MinimalMealsSection> createState() => _MinimalMealsSectionState();
+}
+
+class _MinimalMealsSectionState extends State<_MinimalMealsSection> {
+  /// Meals that arrived since the last build, which slide into the list.
+  Set<String> _arrived = const {};
+
+  @override
+  void didUpdateWidget(_MinimalMealsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final before = oldWidget.meals.map((m) => m.id).toSet();
+    _arrived = {
+      for (final m in widget.meals)
+        if (!before.contains(m.id)) m.id,
+    };
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final meals = widget.meals;
+    final onViewAll = widget.onViewAll;
+    final onScan = widget.onScan;
     final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hiddenMealCount = math.max(0, meals.length - 3);
@@ -1027,8 +1184,97 @@ class _MinimalMealsSection extends StatelessWidget {
           else
             ...meals
                 .take(3)
-                .map((meal) => _MinimalMealRow(meal: meal, onTap: onViewAll)),
+                .map(
+                  (meal) => _ArrivingRow(
+                    key: ValueKey('home-meal-${meal.id}'),
+                    arrived: _arrived.contains(meal.id),
+                    child: _MinimalMealRow(meal: meal, onTap: onViewAll),
+                  ),
+                ),
         ],
+      ),
+    );
+  }
+}
+
+/// A meal row that opens a space for itself and slides in, with a brief
+/// green wash, when the meal has just been logged. Rows already there when
+/// Home opened simply show.
+class _ArrivingRow extends StatefulWidget {
+  const _ArrivingRow({super.key, required this.arrived, required this.child});
+
+  final bool arrived;
+  final Widget child;
+
+  @override
+  State<_ArrivingRow> createState() => _ArrivingRowState();
+}
+
+class _ArrivingRowState extends State<_ArrivingRow>
+    with SingleTickerProviderStateMixin, VisibleGate {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+    value: widget.arrived ? 0 : 1,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.arrived) {
+      runWhenVisible(() {
+        if (AppMotion.reduceMotion(context)) {
+          _controller.value = 1;
+        } else {
+          _controller.forward();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final open = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0, .32, curve: Curves.easeOutCubic),
+    );
+    final slide = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(.12, .5, curve: AppMotion.springCurve),
+    );
+    final wash = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(.35, 1, curve: Curves.easeIn),
+    );
+    return SizeTransition(
+      sizeFactor: open,
+      axisAlignment: -1,
+      child: AnimatedBuilder(
+        animation: _controller,
+        child: widget.child,
+        builder: (context, child) {
+          final washAlpha =
+              _controller.value >= 1 ? 0.0 : (1 - wash.value) * .10;
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: washAlpha),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Opacity(
+              opacity: slide.value.clamp(0.0, 1.0),
+              child: Transform.translate(
+                offset: Offset(0, -12 * (1 - slide.value)),
+                child: child,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../../data/models/meal.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../core/theme/app_motion.dart';
+import '../../../widgets/motion/celebration.dart';
+import '../../../widgets/motion/count_up_text.dart';
+import '../../../widgets/motion/visible_gate.dart';
+import '../../../widgets/motion/water_glass.dart';
 import '../../../widgets/wazn_icons.dart';
 
 const _sage = Color(0xFF82A789);
@@ -197,6 +202,7 @@ class _ProBadge extends StatelessWidget {
 
 class _Track extends StatelessWidget {
   const _Track({
+    super.key,
     required this.value,
     required this.color,
     this.overflow = false,
@@ -221,15 +227,23 @@ class _Track extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          FractionallySizedBox(
-            widthFactor: value.clamp(0.0, 1.0),
-            child: Container(
-              height: 3,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: .88),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+          // Fills from empty when it first shows, then glides between
+          // values as meals are logged.
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: value.clamp(0.0, 1.0)),
+            duration: AppMotion.maybeZero(context, AppMotion.count),
+            curve: Curves.easeOutCubic,
+            builder:
+                (context, fill, _) => FractionallySizedBox(
+                  widthFactor: fill,
+                  child: Container(
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: .88),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
           ),
           if (overflow)
             Align(
@@ -249,7 +263,7 @@ class _Track extends StatelessWidget {
   );
 }
 
-class HomeMacroSection extends StatelessWidget {
+class HomeMacroSection extends StatefulWidget {
   const HomeMacroSection({
     super.key,
     required this.macros,
@@ -266,13 +280,63 @@ class HomeMacroSection extends StatelessWidget {
   final VoidCallback onUpgrade;
 
   @override
-  Widget build(BuildContext context) {
-    if (!hasMeals) return const SizedBox.shrink();
+  State<HomeMacroSection> createState() => _HomeMacroSectionState();
+}
+
+class _HomeMacroSectionState extends State<HomeMacroSection> with VisibleGate {
+  final _proteinTrack = GlobalKey();
+
+  @override
+  void didUpdateWidget(HomeMacroSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Celebrated as the goal is crossed by a meal just logged. The first load
+    // of a day that has already met it (hasMeals turning on) is not a moment.
+    final goal = widget.proteinGoal;
+    if (goal > 0 &&
+        oldWidget.hasMeals &&
+        oldWidget.macros.protein < goal &&
+        widget.macros.protein >= goal) {
+      // After the frame, once the bar has been laid out at its new length.
+      runWhenVisible(
+        () => WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _celebrateProtein();
+        }),
+      );
+    }
+  }
+
+  void _celebrateProtein() {
     final l = AppLocalizations.of(context)!;
+    final box = _proteinTrack.currentContext?.findRenderObject() as RenderBox?;
+    final origin =
+        box != null && box.hasSize
+            ? box.localToGlobal(
+              Offset(
+                Directionality.of(context) == TextDirection.rtl
+                    ? 0
+                    : box.size.width,
+                box.size.height / 2,
+              ),
+            )
+            : MediaQuery.sizeOf(context).center(Offset.zero);
+    celebrateGoal(
+      context,
+      origin: origin,
+      title: l.log_protein_goal_met_today,
+      subtitle: l.home_protein_goal_detail(widget.macros.protein),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.hasMeals) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context)!;
+    final macros = widget.macros;
+    final isPro = widget.isPro;
     final rows = [
-      (l.result_protein, macros.protein, proteinGoal, 4, _sage),
-      (l.result_carbs, macros.carbs, carbGoal, 4, _blue),
-      (l.result_fat, macros.fat, fatGoal, 9, _amber),
+      (l.result_protein, macros.protein, widget.proteinGoal, 4, _sage),
+      (l.result_carbs, macros.carbs, widget.carbGoal, 4, _blue),
+      (l.result_fat, macros.fat, widget.fatGoal, 9, _amber),
     ];
     final energy = rows.fold<int>(
       0,
@@ -298,16 +362,33 @@ class HomeMacroSection extends StatelessWidget {
               return Column(
                 children:
                     rows.map((r) {
+                      final isProtein = r.$1 == l.result_protein;
                       final fraction =
                           isPro
                               ? (r.$3 > 0 ? math.max(0, r.$2) / r.$3 : 0.0)
                               : (energy > 0
                                   ? math.max(0, r.$2) * r.$4 / energy
                                   : 0.0);
+                      // The figure counts along with its bar.
                       final value =
                           isPro
-                              ? '${number.format(r.$2)} / ${r.$3 > 0 ? number.format(r.$3) : "—"}g'
-                              : '${number.format((fraction * 100).round())}%';
+                              ? CountUpText(
+                                value: r.$2,
+                                from: 0,
+                                format:
+                                    (v) =>
+                                        '${number.format(v)} / ${r.$3 > 0 ? number.format(r.$3) : "—"}g',
+                                textAlign: TextAlign.end,
+                                style: _type(12),
+                              )
+                              : CountUpText(
+                                value: (fraction * 100).round(),
+                                from: 0,
+                                format: (v) => '${number.format(v)}%',
+                                textAlign: TextAlign.end,
+                                style: _type(12),
+                              );
+                      final met = isProtein && r.$3 > 0 && r.$2 >= r.$3;
                       final label = Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -321,12 +402,21 @@ class HomeMacroSection extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Flexible(child: Text(r.$1, style: _type(12))),
+                          if (met) ...[
+                            const SizedBox(width: 5),
+                            const _GoalTick(),
+                          ],
                         ],
                       );
                       final track = _Track(
+                        key: isProtein ? _proteinTrack : null,
                         value: fraction,
                         color: r.$5,
                         overflow: isPro && fraction > 1,
+                      );
+                      final directional = Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: value,
                       );
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -338,11 +428,7 @@ class HomeMacroSection extends StatelessWidget {
                                       children: [
                                         Expanded(child: label),
                                         const SizedBox(width: 8),
-                                        Text(
-                                          value,
-                                          textDirection: TextDirection.ltr,
-                                          style: _type(12),
-                                        ),
+                                        directional,
                                       ],
                                     ),
                                     const SizedBox(height: 8),
@@ -356,12 +442,7 @@ class HomeMacroSection extends StatelessWidget {
                                     const SizedBox(width: 12),
                                     SizedBox(
                                       width: isPro ? 96 : 42,
-                                      child: Text(
-                                        value,
-                                        textAlign: TextAlign.end,
-                                        textDirection: TextDirection.ltr,
-                                        style: _type(12),
-                                      ),
+                                      child: directional,
                                     ),
                                   ],
                                 ),
@@ -371,6 +452,32 @@ class HomeMacroSection extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The small tick beside Protein once the day's goal is met. It pops in with
+/// a little overshoot when it first appears.
+class _GoalTick extends StatelessWidget {
+  const _GoalTick();
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 520)),
+      curve: AppMotion.springCurve,
+      builder:
+          (context, t, child) => Transform.rotate(
+            angle: (1 - t) * -0.6,
+            child: Transform.scale(scale: t, child: child),
+          ),
+      child: Container(
+        width: 14,
+        height: 14,
+        decoration: const BoxDecoration(color: _sage, shape: BoxShape.circle),
+        child: const Icon(WaznIcons.check, size: 9, color: Colors.white),
       ),
     );
   }
@@ -414,7 +521,14 @@ class HomeWellnessSection extends StatelessWidget {
                       label: l.water_hydration,
                       value: water,
                       detail: '',
-                      icon: const _GlassIcon(),
+                      // Fills when Home opens, and rises with a slosh
+                      // after a glass is added in the hydration sheet.
+                      icon: WaterGlass(
+                        level: waterGoal > 0 ? waterTotal / waterGoal : 0,
+                        color: const Color(0xFF6B8CA6),
+                        outline: _muted(context),
+                        fillFromEmpty: true,
+                      ),
                       color: const Color(0xFF6B8CA6),
                       progress: waterGoal > 0 ? waterTotal / waterGoal : 0,
                       onTap: onWaterTap,
@@ -606,49 +720,6 @@ class _WalkingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WalkingPainter oldDelegate) => false;
-}
-
-class _GlassIcon extends StatelessWidget {
-  const _GlassIcon();
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: const Size(22, 32),
-    painter: _GlassPainter(_muted(context)),
-  );
-}
-
-class _GlassPainter extends CustomPainter {
-  const _GlassPainter(this.stroke);
-  final Color stroke;
-  @override
-  void paint(Canvas canvas, Size size) {
-    final outline =
-        Path()
-          ..moveTo(2, 2)
-          ..lineTo(20, 2)
-          ..lineTo(17, 30)
-          ..lineTo(5, 30)
-          ..close();
-    canvas.drawPath(
-      Path()
-        ..moveTo(5, 20)
-        ..lineTo(17, 20)
-        ..lineTo(16, 28)
-        ..lineTo(6, 28)
-        ..close(),
-      Paint()..color = const Color(0xFF6B8CA6).withValues(alpha: .88),
-    );
-    canvas.drawPath(
-      outline,
-      Paint()
-        ..color = stroke
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_GlassPainter oldDelegate) => oldDelegate.stroke != stroke;
 }
 
 class HomeToolsSection extends StatelessWidget {
