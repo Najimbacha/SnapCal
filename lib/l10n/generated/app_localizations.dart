@@ -3504,6 +3504,48 @@ abstract class AppLocalizations {
   /// **'Routine logged successfully!'**
   String get feature_templates_logged;
 
+  /// No description provided for @settings_your_journey.
+  ///
+  /// In en, this message translates to:
+  /// **'Your journey'**
+  String get settings_your_journey;
+
+  /// No description provided for @settings_progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get settings_progress;
+
+  /// No description provided for @settings_progress_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No weigh-ins yet'**
+  String get settings_progress_empty;
+
+  /// No description provided for @settings_achievements_earned.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total} earned'**
+  String settings_achievements_earned(String count, String total);
+
+  /// No description provided for @progress_change_since.
+  ///
+  /// In en, this message translates to:
+  /// **'{change} since {date}'**
+  String progress_change_since(String change, String date);
+
+  /// No description provided for @achievement_to_go.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} to go'**
+  String achievement_to_go(String count);
+
+  /// No description provided for @achievement_earned_on.
+  ///
+  /// In en, this message translates to:
+  /// **'Earned {date}'**
+  String achievement_earned_on(String date);
+
   /// No description provided for @feature_achievements_title.
   ///
   /// In en, this message translates to:

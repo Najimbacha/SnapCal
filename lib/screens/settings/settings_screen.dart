@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../data/services/feedback_service.dart';
 import '../../data/services/app_review_service.dart';
 import 'package:flutter/foundation.dart';
@@ -10,8 +12,10 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../providers/achievements_provider.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/auth_state_provider.dart';
+import '../../providers/metrics_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/auth_modal.dart';
@@ -105,6 +109,13 @@ class SettingsScreen extends ConsumerWidget {
                     ),
               ),
             ),
+          const SizedBox(height: 24),
+          // Progress and Achievements had no way in: their links went with
+          // an older Stats screen, so nobody could reach either.
+          const Reveal(
+            delay: Duration(milliseconds: 105),
+            child: _JourneySection(),
+          ),
           const SizedBox(height: 24),
           Reveal(
             delay: const Duration(milliseconds: 140),
@@ -748,3 +759,181 @@ class _ProUpsellCard extends StatelessWidget {
 
 /// One soft band of light that sweeps across its child a moment after it
 /// first shows, to draw the eye to the Pro offer once, not keep flashing.
+
+/// Your weight line and your badges, each a row that opens its own screen.
+class _JourneySection extends ConsumerWidget {
+  const _JourneySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    // Newest first.
+    final metrics = ref.watch(bodyMetricsProvider).valueOrNull ?? const [];
+    final badges = ref.watch(achievementsProvider).valueOrNull ?? const [];
+    final earned =
+        badges.where((a) => a.isUnlocked).toList()
+          ..sort((a, b) => (b.unlockedAt ?? 0).compareTo(a.unlockedAt ?? 0));
+    final weights = [
+      for (final m in metrics.take(8).toList().reversed) m.weight,
+    ];
+    final chevron = Icon(
+      WaznIcons.chevronRight,
+      size: 14,
+      color: settingsSubtext(context).withValues(alpha: 0.55),
+    );
+    return SettingsSection(
+      title: l10n.settings_your_journey,
+      children: [
+        SettingsRow(
+          key: const ValueKey('settings-progress'),
+          icon: WaznIcons.trend,
+          title: l10n.settings_progress,
+          subtitle:
+              metrics.isEmpty
+                  ? l10n.settings_progress_empty
+                  : '${metrics.first.weight.toStringAsFixed(1)} ${l10n.settings_unit_kg}',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (weights.length > 1) ...[
+                _Sparkline(weights: weights),
+                const SizedBox(width: 10),
+              ],
+              chevron,
+            ],
+          ),
+          onTap: () => context.push('/progress'),
+        ),
+        SettingsRow(
+          key: const ValueKey('settings-achievements'),
+          icon: WaznIcons.star,
+          title: l10n.feature_achievements_title,
+          subtitle: l10n.settings_achievements_earned(
+            '${earned.length}',
+            '${badges.length}',
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (earned.isNotEmpty) ...[
+                _BadgeStack(emojis: [for (final a in earned.take(3)) a.emoji]),
+                const SizedBox(width: 10),
+              ],
+              chevron,
+            ],
+          ),
+          onTap: () => context.push('/achievements'),
+        ),
+      ],
+    );
+  }
+}
+
+/// A small weight line that draws itself in from the left.
+class _Sparkline extends StatelessWidget {
+  const _Sparkline({required this.weights});
+
+  final List<double> weights;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: AppMotion.maybeZero(
+          context,
+          const Duration(milliseconds: 900),
+        ),
+        curve: const Interval(.3, 1, curve: Curves.easeInOutCubic),
+        builder:
+            (context, t, _) => CustomPaint(
+              size: const Size(56, 22),
+              painter: _SparkPainter(weights, t, kSettingsGreenText),
+            ),
+      ),
+    );
+  }
+}
+
+class _SparkPainter extends CustomPainter {
+  const _SparkPainter(this.weights, this.progress, this.color);
+
+  final List<double> weights;
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (weights.length < 2 || progress <= 0) return;
+    final hi = weights.reduce(math.max), lo = weights.reduce(math.min);
+    final span = hi - lo == 0 ? 1.0 : hi - lo;
+    final path = Path();
+    for (var i = 0; i < weights.length; i++) {
+      final x = i * size.width / (weights.length - 1);
+      final y = 2 + (hi - weights[i]) / span * (size.height - 4);
+      i == 0 ? path.moveTo(x, y) : path.lineTo(x, y);
+    }
+    final metric = path.computeMetrics().first;
+    canvas.drawPath(
+      metric.extractPath(0, metric.length * progress),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SparkPainter old) =>
+      old.progress != progress ||
+      old.color != color ||
+      !listEquals(old.weights, weights);
+}
+
+/// The latest badges, overlapping, each popping in after the last.
+class _BadgeStack extends StatelessWidget {
+  const _BadgeStack({required this.emojis});
+
+  final List<String> emojis;
+
+  @override
+  Widget build(BuildContext context) {
+    final ring = Theme.of(context).scaffoldBackgroundColor;
+    return ExcludeSemantics(
+      child: SizedBox(
+        width: 22.0 + 16 * (emojis.length - 1),
+        height: 24,
+        child: Stack(
+          children: [
+            for (var i = 0; i < emojis.length; i++)
+              PositionedDirectional(
+                start: 16.0 * i,
+                child: Reveal(
+                  delay: Duration(milliseconds: 350 + 110 * i),
+                  offset: Offset.zero,
+                  scale: .3,
+                  curve: AppMotion.springCurve,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFFBEFD6),
+                      border: Border.all(color: ring, width: 2),
+                    ),
+                    child: Text(
+                      emojis[i],
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

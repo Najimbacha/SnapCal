@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../widgets/wazn_icons.dart';
 
@@ -22,8 +23,68 @@ class PhotoComparisonSheet extends StatefulWidget {
   State<PhotoComparisonSheet> createState() => _PhotoComparisonSheetState();
 }
 
-class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
+class _PhotoComparisonSheetState extends State<PhotoComparisonSheet>
+    with SingleTickerProviderStateMixin {
   double _sliderPosition = 0.5;
+
+  /// On opening, the divider sweeps across and back once, so it is plain
+  /// that it can be dragged. A finger on it stops the sweep.
+  late final AnimationController _intro;
+  late final Animation<double> _sweep;
+  bool _touched = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _intro = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    );
+    _sweep = TweenSequence<double>([
+      TweenSequenceItem(tween: ConstantTween(0.5), weight: 20),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.5,
+          end: 0.15,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 25,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.15,
+          end: 0.85,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 35,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.85,
+          end: 0.5,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 20,
+      ),
+    ]).animate(_intro);
+    _intro.addListener(() {
+      if (!_touched) setState(() => _sliderPosition = _sweep.value);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_intro.isAnimating &&
+        !_intro.isCompleted &&
+        !AppMotion.reduceMotion(context)) {
+      _intro.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _intro.dispose();
+    super.dispose();
+  }
+
   bool _showSide = false;
 
   String? get _currentPhoto =>
@@ -85,15 +146,27 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                       style: AppTypography.heading3,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      AppLocalizations.of(
+                    // The difference counts up from nothing.
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: weightDiff.toDouble()),
+                      duration: AppMotion.maybeZero(
                         context,
-                      )!.progress_weight_diff(weightDiff.toStringAsFixed(1)),
-                      style: AppTypography.bodySmall.copyWith(
-                        color:
-                            weightDiff <= 0 ? AppColors.protein : AppColors.fat,
-                        fontWeight: FontWeight.w700,
+                        const Duration(milliseconds: 900),
                       ),
+                      curve: Curves.easeOutCubic,
+                      builder:
+                          (context, diff, _) => Text(
+                            AppLocalizations.of(
+                              context,
+                            )!.progress_weight_diff(diff.toStringAsFixed(1)),
+                            style: AppTypography.bodySmall.copyWith(
+                              color:
+                                  weightDiff <= 0
+                                      ? AppColors.protein
+                                      : AppColors.fat,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                     ),
                   ],
                 ),
@@ -148,6 +221,10 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           return GestureDetector(
+            onPanDown: (_) {
+              _touched = true;
+              _intro.stop();
+            },
             onPanUpdate: (details) {
               setState(() {
                 _sliderPosition += details.delta.dx / width;

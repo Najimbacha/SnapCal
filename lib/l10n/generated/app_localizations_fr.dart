@@ -1880,6 +1880,35 @@ class AppLocalizationsFr extends AppLocalizations {
   String get feature_templates_logged => 'Routine enregistrée avec succès !';
 
   @override
+  String get settings_your_journey => 'Votre parcours';
+
+  @override
+  String get settings_progress => 'Progression';
+
+  @override
+  String get settings_progress_empty => 'Aucune pesée pour l\'instant';
+
+  @override
+  String settings_achievements_earned(String count, String total) {
+    return '$count sur $total obtenus';
+  }
+
+  @override
+  String progress_change_since(String change, String date) {
+    return '$change depuis le $date';
+  }
+
+  @override
+  String achievement_to_go(String count) {
+    return 'Plus que $count';
+  }
+
+  @override
+  String achievement_earned_on(String date) {
+    return 'Obtenu le $date';
+  }
+
+  @override
   String get feature_achievements_title => 'Succès';
 
   @override
