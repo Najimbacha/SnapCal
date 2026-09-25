@@ -17,13 +17,16 @@ void main() {
       expect(shares.protein, closeTo(shares.carbs, 1e-9));
     });
 
-    test('an empty split reports an even share rather than dividing by zero', () {
-      const split = MacroSplit(protein: 0, carbs: 0, fat: 0);
-      final shares = split.shares;
-      expect(shares.protein, closeTo(1 / 3, 1e-9));
-      expect(shares.carbs, closeTo(1 / 3, 1e-9));
-      expect(shares.fat, closeTo(1 / 3, 1e-9));
-    });
+    test(
+      'an empty split reports an even share rather than dividing by zero',
+      () {
+        const split = MacroSplit(protein: 0, carbs: 0, fat: 0);
+        final shares = split.shares;
+        expect(shares.protein, closeTo(1 / 3, 1e-9));
+        expect(shares.carbs, closeTo(1 / 3, 1e-9));
+        expect(shares.fat, closeTo(1 / 3, 1e-9));
+      },
+    );
   });
 
   group('rebalanceToCalories', () {
@@ -48,7 +51,10 @@ void main() {
       const current = MacroSplit(protein: 200, carbs: 150, fat: 60);
       final before = current.shares;
 
-      final result = rebalanceToCalories(current: current, targetCalories: 1500);
+      final result = rebalanceToCalories(
+        current: current,
+        targetCalories: 1500,
+      );
       final after = result.shares;
 
       expect(after.protein, closeTo(before.protein, 0.02));
@@ -59,7 +65,10 @@ void main() {
     test('scaling up and back down returns roughly where it started', () {
       const current = MacroSplit(protein: 150, carbs: 200, fat: 65);
       final up = rebalanceToCalories(current: current, targetCalories: 3000);
-      final down = rebalanceToCalories(current: up, targetCalories: current.kcal);
+      final down = rebalanceToCalories(
+        current: up,
+        targetCalories: current.kcal,
+      );
 
       expect(down.protein, closeTo(current.protein, 2));
       expect(down.carbs, closeTo(current.carbs, 2));
@@ -99,33 +108,44 @@ void main() {
         current: carbHeavy,
         targetCalories: 5636,
       );
-      expect(macrosAgreeWithCalories(result, 5636), isTrue,
-          reason: 'got ${result.kcal} kcal from $result');
+      expect(
+        macrosAgreeWithCalories(result, 5636),
+        isTrue,
+        reason: 'got ${result.kcal} kcal from $result',
+      );
     });
 
-    test('holds across the whole allowed calorie range for lopsided splits', () {
-      const splits = [
-        MacroSplit(protein: 400, carbs: 10, fat: 5),
-        MacroSplit(protein: 5, carbs: 600, fat: 5),
-        MacroSplit(protein: 5, carbs: 5, fat: 300),
-        MacroSplit(protein: 1, carbs: 1, fat: 1),
-      ];
-      for (final split in splits) {
-        for (var target = PlanLimits.minCalories;
+    test(
+      'holds across the whole allowed calorie range for lopsided splits',
+      () {
+        const splits = [
+          MacroSplit(protein: 400, carbs: 10, fat: 5),
+          MacroSplit(protein: 5, carbs: 600, fat: 5),
+          MacroSplit(protein: 5, carbs: 5, fat: 300),
+          MacroSplit(protein: 1, carbs: 1, fat: 1),
+        ];
+        for (final split in splits) {
+          for (
+            var target = PlanLimits.minCalories;
             target <= PlanLimits.maxCalories;
-            target += 137) {
-          final result = rebalanceToCalories(
-            current: split,
-            targetCalories: target,
-          );
-          expect(result.protein, greaterThanOrEqualTo(0));
-          expect(result.carbs, greaterThanOrEqualTo(0));
-          expect(result.fat, greaterThanOrEqualTo(0));
-          expect(macrosAgreeWithCalories(result, target), isTrue,
-              reason: '$split -> $target gave ${result.kcal}');
+            target += 137
+          ) {
+            final result = rebalanceToCalories(
+              current: split,
+              targetCalories: target,
+            );
+            expect(result.protein, greaterThanOrEqualTo(0));
+            expect(result.carbs, greaterThanOrEqualTo(0));
+            expect(result.fat, greaterThanOrEqualTo(0));
+            expect(
+              macrosAgreeWithCalories(result, target),
+              isTrue,
+              reason: '$split -> $target gave ${result.kcal}',
+            );
+          }
         }
-      }
-    });
+      },
+    );
 
     test('clamps a target outside the allowed range', () {
       const current = MacroSplit(protein: 150, carbs: 200, fat: 65);
@@ -134,8 +154,14 @@ void main() {
         current: current,
         targetCalories: 99999,
       );
-      expect(tooLow.kcal, greaterThanOrEqualTo(PlanLimits.minCalories - kMacroCalorieTolerance));
-      expect(tooHigh.kcal, lessThanOrEqualTo(PlanLimits.maxCalories + kMacroCalorieTolerance));
+      expect(
+        tooLow.kcal,
+        greaterThanOrEqualTo(PlanLimits.minCalories - kMacroCalorieTolerance),
+      );
+      expect(
+        tooHigh.kcal,
+        lessThanOrEqualTo(PlanLimits.maxCalories + kMacroCalorieTolerance),
+      );
     });
   });
 
@@ -154,7 +180,10 @@ void main() {
         targetCalories: 1850,
       );
       expect(macrosAgreeWithCalories(split, 1850), isTrue);
-      expect(macroCalorieDrift(split, 1850).abs(), lessThanOrEqualTo(kMacroCalorieTolerance));
+      expect(
+        macroCalorieDrift(split, 1850).abs(),
+        lessThanOrEqualTo(kMacroCalorieTolerance),
+      );
     });
   });
 

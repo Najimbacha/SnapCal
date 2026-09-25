@@ -68,18 +68,21 @@ void main() {
       expect(await first, isTrue);
     });
 
-    test('fireAndReport reports background failures without throwing', () async {
-      AppFailure? reported;
+    test(
+      'fireAndReport reports background failures without throwing',
+      () async {
+        AppFailure? reported;
 
-      await SafeAsync.fireAndReport(
-        label: 'background failure',
-        operation: () async => throw TimeoutException('slow background work'),
-        timeout: const Duration(milliseconds: 5),
-        onFailure: (failure) => reported = failure,
-      );
+        await SafeAsync.fireAndReport(
+          label: 'background failure',
+          operation: () async => throw TimeoutException('slow background work'),
+          timeout: const Duration(milliseconds: 5),
+          onFailure: (failure) => reported = failure,
+        );
 
-      expect(reported, isNotNull);
-      expect(reported?.type, AppFailureType.timeout);
-    });
+        expect(reported, isNotNull);
+        expect(reported?.type, AppFailureType.timeout);
+      },
+    );
   });
 }

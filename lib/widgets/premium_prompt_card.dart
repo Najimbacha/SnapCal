@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import '../core/theme/app_colors.dart';
 import '../providers/promo_offer_provider.dart';
 import '../core/theme/app_typography.dart';
@@ -8,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_provider.dart';
 import '../l10n/generated/app_localizations.dart';
+import 'wazn_icons.dart';
 
 enum PremiumPromptStyle { inline, glass, bento, mini }
 
@@ -107,7 +107,7 @@ class PremiumPromptCard extends ConsumerWidget {
               if (onDismiss != null)
                 IconButton(
                   onPressed: onDismiss,
-                  icon: Icon(LucideIcons.x, size: 18),
+                  icon: Icon(WaznIcons.close, size: 18),
                   // padding: zero with constraints: BoxConstraints() strips
                   // IconButton's 48dp minimum entirely and leaves the 18px
                   // glyph as the hit area, so the card could not be
@@ -274,7 +274,7 @@ class PremiumPromptCard extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               Icon(
-                LucideIcons.chevronRight,
+                WaznIcons.chevronRight,
                 size: 18,
                 color: AppColors.primary.withValues(alpha: 0.8),
               ),

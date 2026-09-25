@@ -30,9 +30,8 @@ void main() {
         ),
       ),
     )).load();
-    await (FontLoader('packages/lucide_icons/Lucide')..addFont(
-      rootBundle.load('packages/lucide_icons/assets/lucide.ttf'),
-    )).load();
+    await (FontLoader('WaznIcons')
+      ..addFont(rootBundle.load('assets/fonts/WaznIcons.ttf'))).load();
   });
 
   // The prices Wazn charges on Google Play today: SAR 149.99 a year with a
@@ -148,58 +147,59 @@ void main() {
     });
   }
 
-  testWidgets('the buttons close the sheet, and only upgrade opens the paywall', (
-    tester,
-  ) async {
-    var upgraded = 0;
-    var dismissed = 0;
-    Future<void> open() async {
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Builder(
-            builder:
-                (context) => Scaffold(
-                  body: TextButton(
-                    onPressed:
-                        () => ProOfferSheet.show(
-                          context,
-                          offer: introOffer,
-                          onUpgrade: () => upgraded++,
-                          onDismiss: () => dismissed++,
-                        ),
-                    child: const Text('open'),
+  testWidgets(
+    'the buttons close the sheet, and only upgrade opens the paywall',
+    (tester) async {
+      var upgraded = 0;
+      var dismissed = 0;
+      Future<void> open() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder:
+                  (context) => Scaffold(
+                    body: TextButton(
+                      onPressed:
+                          () => ProOfferSheet.show(
+                            context,
+                            offer: introOffer,
+                            onUpgrade: () => upgraded++,
+                            onDismiss: () => dismissed++,
+                          ),
+                      child: const Text('open'),
+                    ),
                   ),
-                ),
+            ),
           ),
-        ),
-      );
-      await tester.tap(find.text('open'));
-      for (var i = 0; i < 20; i++) {
+        );
+        await tester.tap(find.text('open'));
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+      }
+
+      await open();
+      await tester.tap(find.text('Claim 76% off'));
+      for (var i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
-    }
+      expect((upgraded, dismissed), (1, 0));
+      expect(find.text('Claim 76% off'), findsNothing);
 
-    await open();
-    await tester.tap(find.text('Claim 76% off'));
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-    expect((upgraded, dismissed), (1, 0));
-    expect(find.text('Claim 76% off'), findsNothing);
+      await open();
+      await tester.tap(find.text('Not now'));
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect((upgraded, dismissed), (1, 1));
+      expect(find.text('Not now'), findsNothing);
 
-    await open();
-    await tester.tap(find.text('Not now'));
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-    expect((upgraded, dismissed), (1, 1));
-    expect(find.text('Not now'), findsNothing);
-
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(seconds: 2));
-  });
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 2));
+    },
+  );
 
   group('what the sheet promises', () {
     late AppLocalizations l10n;
@@ -215,11 +215,14 @@ void main() {
       );
     });
 
-    test('a free trial, if one is ever added in the store, is offered as one', () {
-      const trial = ProOfferSummary(price: 'SAR 149.99', trialDays: 7);
-      expect(trial.cta(l10n), l10n.premium_start_trial);
-      expect(trial.ctaDetail(l10n), '7 days free · Then SAR 149.99/year');
-    });
+    test(
+      'a free trial, if one is ever added in the store, is offered as one',
+      () {
+        const trial = ProOfferSummary(price: 'SAR 149.99', trialDays: 7);
+        expect(trial.cta(l10n), l10n.premium_start_trial);
+        expect(trial.ctaDetail(l10n), '7 days free · Then SAR 149.99/year');
+      },
+    );
 
     test('with no offer it still invites, without inventing a price', () {
       const plain = ProOfferSummary(price: 'SAR 149.99');
@@ -237,7 +240,10 @@ void main() {
     });
 
     test('thousands keep their separator', () {
-      expect(ProOfferSummary.formatLike('Rs 3,599.00', 12345.6), 'Rs 12,345.60');
+      expect(
+        ProOfferSummary.formatLike('Rs 3,599.00', 12345.6),
+        'Rs 12,345.60',
+      );
       expect(ProOfferSummary.formatLike('1.234,56 €', 9876.5), '9.876,50 €');
       expect(ProOfferSummary.formatLike('¥1,200', 100), '¥100');
     });

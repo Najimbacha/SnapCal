@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -159,10 +159,7 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal> {
                   children: [
                     Row(
                       children: [
-                        const Icon(
-                          LucideIcons.scale,
-                          color: _settingsGreenText,
-                        ),
+                        const Icon(WaznIcons.weight, color: _settingsGreenText),
                         const SizedBox(width: 10),
                         Text(
                           AppLocalizations.of(context)!.report_log_weight,

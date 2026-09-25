@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -97,7 +97,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
                 ),
               ),
               child: Icon(
-                LucideIcons.camera,
+                WaznIcons.camera,
                 color: colorScheme.primary,
                 size: 20,
               ),
@@ -140,7 +140,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
     final l10n = AppLocalizations.of(context)!;
     return Center(
       child: AppEmptyState(
-        icon: LucideIcons.image,
+        icon: WaznIcons.image,
         title: l10n.progress_no_photos_title,
         body: l10n.progress_take_photos_desc,
         actionLabel: l10n.progress_tap_to_snap,

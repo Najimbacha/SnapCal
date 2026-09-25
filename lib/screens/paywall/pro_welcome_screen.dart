@@ -4,7 +4,7 @@ import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/core/theme/app_motion.dart';
 import 'package:snapcal/core/theme/app_typography.dart';
@@ -224,13 +224,7 @@ class _ProWelcomeScreenState extends State<ProWelcomeScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Icon(
-                                      Directionality.of(context) ==
-                                              TextDirection.rtl
-                                          ? LucideIcons.arrowLeft
-                                          : LucideIcons.arrowRight,
-                                      size: 18,
-                                    ),
+                                    Icon(WaznIcons.forward, size: 18),
                                   ],
                                 ),
                               ),
@@ -297,7 +291,7 @@ class _Emblem extends StatelessWidget {
           background,
         ),
       ),
-      child: const Icon(LucideIcons.gem, size: 44, color: _proGold),
+      child: const Icon(WaznIcons.pro, size: 44, color: _proGold),
     );
 
     return SizedBox.fromSize(
@@ -355,7 +349,7 @@ class _BenefitRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(LucideIcons.checkCircle, size: 22, color: AppColors.primary),
+        const Icon(WaznIcons.success, size: 22, color: AppColors.primary),
         const SizedBox(width: 12),
         Flexible(
           child: Text(

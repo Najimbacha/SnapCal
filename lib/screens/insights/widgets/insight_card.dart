@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/core/theme/app_typography.dart';
 import 'package:snapcal/widgets/glass_card.dart';
@@ -19,11 +19,7 @@ class InsightCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                LucideIcons.sparkles,
-                color: AppColors.primary,
-                size: 20,
-              ),
+              const Icon(WaznIcons.ai, color: AppColors.primary, size: 20),
               const SizedBox(width: 12),
               Expanded(child: Text(insight, style: AppTypography.bodyMedium)),
             ],

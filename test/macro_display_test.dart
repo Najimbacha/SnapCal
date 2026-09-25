@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:snapcal/widgets/wazn_icons.dart';
 import 'package:snapcal/data/models/meal.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/widgets/macro_display.dart';
 
 void main() {
   Widget wrap(Widget child) => MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: child),
-      );
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(body: child),
+  );
 
   // 42*4 + 84*4 + 20*9 = 684 kcal -> 25% / 49% / 26%
   final macros = Macros(protein: 42, carbs: 84, fat: 20);
@@ -20,17 +20,16 @@ void main() {
     bool showGrams = true,
     bool showGoals = true,
     VoidCallback? onUpgradeTap,
-  }) =>
-      MacroDisplay(
-        macros: macros,
-        proteinGoal: 120,
-        carbGoal: 220,
-        fatGoal: 70,
-        variant: variant,
-        showGrams: showGrams,
-        showGoals: showGoals,
-        onUpgradeTap: onUpgradeTap,
-      );
+  }) => MacroDisplay(
+    macros: macros,
+    proteinGoal: 120,
+    carbGoal: 220,
+    fatGoal: 70,
+    variant: variant,
+    showGrams: showGrams,
+    showGoals: showGoals,
+    onUpgradeTap: onUpgradeTap,
+  );
 
   testWidgets('detailed variant renders without owning Expanded parent data', (
     tester,
@@ -44,9 +43,7 @@ void main() {
   });
 
   testWidgets('can be expanded by a Row caller', (tester) async {
-    await tester.pumpWidget(
-      wrap(Row(children: [Expanded(child: build())])),
-    );
+    await tester.pumpWidget(wrap(Row(children: [Expanded(child: build())])));
 
     expect(find.text('Protein'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -96,7 +93,7 @@ void main() {
     // One upgrade affordance, no padlocks and no placeholder dashes.
     expect(find.text('Daily targets and goal tracking'), findsOneWidget);
     expect(find.text('Pro'), findsOneWidget);
-    expect(find.byIcon(LucideIcons.lock), findsNothing);
+    expect(find.byIcon(WaznIcons.lock), findsNothing);
     expect(find.textContaining('—g'), findsNothing);
   });
 
@@ -165,7 +162,7 @@ void main() {
     expect(find.text('42g', findRichText: true), findsOneWidget);
     // 120 - 42 = 78 left on protein.
     expect(find.text('78g to go'), findsOneWidget);
-    expect(find.byIcon(LucideIcons.lock), findsNothing);
+    expect(find.byIcon(WaznIcons.lock), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -185,7 +182,7 @@ void main() {
     await tester.pump();
 
     // One padlock for the section, on the CTA — not one per card as well.
-    expect(find.byIcon(LucideIcons.lock), findsOneWidget);
+    expect(find.byIcon(WaznIcons.lock), findsOneWidget);
     expect(find.text('42g', findRichText: true), findsNothing);
     expect(find.text('78g to go'), findsNothing);
     // Grams are withheld, but the composition share is not: the same 25/49/26

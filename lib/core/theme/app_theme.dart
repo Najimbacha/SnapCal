@@ -3,10 +3,20 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
+import '../../widgets/wazn_icons.dart';
 
 /// Wazn Theme Configuration - Material 3 Expressive
 class AppTheme {
   AppTheme._();
+
+  /// Back, close and drawer buttons that Flutter adds on its own -- an
+  /// AppBar's automatic back arrow, the licenses page -- use Wazn icons too.
+  static final _actionIcons = ActionIconThemeData(
+    backButtonIconBuilder: (_) => const Icon(WaznIcons.back),
+    closeButtonIconBuilder: (_) => const Icon(WaznIcons.close),
+    drawerButtonIconBuilder: (_) => const Icon(WaznIcons.list),
+    endDrawerButtonIconBuilder: (_) => const Icon(WaznIcons.list),
+  );
 
   // ============= DARK THEME =============
   static ThemeData get darkTheme {
@@ -125,6 +135,7 @@ class AppTheme {
           borderSide: BorderSide(color: colorScheme.primary, width: 2),
         ),
       ),
+      actionIconTheme: _actionIcons,
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         elevation: 0,
@@ -266,6 +277,7 @@ class AppTheme {
           borderSide: BorderSide(color: colorScheme.primary, width: 2),
         ),
       ),
+      actionIconTheme: _actionIcons,
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         elevation: 0,

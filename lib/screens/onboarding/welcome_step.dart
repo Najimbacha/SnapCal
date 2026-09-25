@@ -125,7 +125,10 @@ class WelcomeStep extends ConsumerWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _Feature(icon: AppSymbols.camera, label: l10n.onboarding_feat_scan),
+              _Feature(
+                icon: AppSymbols.camera,
+                label: l10n.onboarding_feat_scan,
+              ),
               _Feature(
                 icon: AppSymbols.target,
                 label: l10n.onboarding_feature_target,

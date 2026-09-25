@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -20,6 +19,7 @@ import 'package:snapcal/data/services/scan_gate_service.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/providers/settings_provider.dart';
+import '../../widgets/wazn_icons.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PALETTE
@@ -328,7 +328,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     }
   }
 
-  /// "SAR 12.50/mo" — with the separator the store's own priceString uses.
+  /// "SAR 12.50/month", in the user's language, with the separator the
+  /// store's own priceString uses.
   ///
   /// Derived from the introductory price when there is one, so every number on
   /// an annual card describes the same period: the year the user is buying.
@@ -341,9 +342,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       final symbol = priceString.replaceAll(RegExp(r'[0-9.,\s]+'), '').trim();
       if (symbol.isEmpty) return null;
       final formatted = (price / 12.0).toStringAsFixed(2);
-      return priceString.trim().startsWith(symbol)
-          ? '$symbol $formatted/mo'
-          : '$formatted $symbol/mo';
+      final monthly =
+          priceString.trim().startsWith(symbol)
+              ? '$symbol $formatted'
+              : '$formatted $symbol';
+      return AppLocalizations.of(context)!.pro_offer_per_month(monthly);
     } catch (_) {
       return null;
     }
@@ -446,7 +449,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         ScaffoldMessenger.of(context),
         _purchaseCopy(context, _PurchaseCopyKey.storeNotReady),
         backgroundColor: AppColors.warning,
-        icon: LucideIcons.clock,
+        icon: WaznIcons.clock,
       );
       return;
     }
@@ -457,7 +460,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         ScaffoldMessenger.of(context),
         message,
         backgroundColor: AppColors.warning,
-        icon: LucideIcons.refreshCw,
+        icon: WaznIcons.refresh,
       );
       unawaited(_loadOfferings());
       return;
@@ -521,7 +524,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           messenger,
           message,
           backgroundColor: AppColors.warning,
-          icon: LucideIcons.clock,
+          icon: WaznIcons.clock,
         );
         return;
       case SubscriptionStatus.cancelled:
@@ -533,7 +536,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           messenger,
           _purchaseCopy(context, _PurchaseCopyKey.purchaseCancelled),
           backgroundColor: const Color(0xFF3A3A3C),
-          icon: LucideIcons.x,
+          icon: WaznIcons.close,
         );
         return;
       case SubscriptionStatus.noPurchase:
@@ -553,7 +556,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           messenger,
           message,
           backgroundColor: AppColors.warning,
-          icon: LucideIcons.refreshCw,
+          icon: WaznIcons.refresh,
         );
         return;
       case SubscriptionStatus.offline:
@@ -568,7 +571,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           messenger,
           message,
           backgroundColor: AppColors.warning,
-          icon: LucideIcons.wifiOff,
+          icon: WaznIcons.offline,
         );
         return;
       case SubscriptionStatus.storeUnavailable:
@@ -586,7 +589,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           messenger,
           message,
           backgroundColor: AppColors.warning,
-          icon: LucideIcons.clock,
+          icon: WaznIcons.clock,
         );
         return;
       case SubscriptionStatus.failed:
@@ -605,7 +608,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           messenger,
           message,
           backgroundColor: AppColors.warning,
-          icon: LucideIcons.refreshCw,
+          icon: WaznIcons.refresh,
         );
         return;
     }
@@ -1058,16 +1061,19 @@ class _ScanHeroState extends State<_ScanHero> with TickerProviderStateMixin {
     _ambient = AnimationController(vsync: this, duration: _ambientDuration);
 
     _scan = _segment(0.10, 0.45, Curves.easeInOut);
-    _pillFade = Tween<double>(begin: 1, end: 0).animate(
-      _segment(0.38, 0.52, Curves.easeIn),
-    );
+    _pillFade = Tween<double>(
+      begin: 1,
+      end: 0,
+    ).animate(_segment(0.38, 0.52, Curves.easeIn));
     _badgeFade = _segment(0.52, 0.64, Curves.easeOut);
-    _count = Tween<double>(begin: 0, end: _heroCalories.toDouble()).animate(
-      _segment(0.55, 0.90, Curves.easeOutCubic),
-    );
-    _badgeScale = Tween<double>(begin: 0.86, end: 1).animate(
-      _segment(0.72, 0.88, Curves.easeOutBack),
-    );
+    _count = Tween<double>(
+      begin: 0,
+      end: _heroCalories.toDouble(),
+    ).animate(_segment(0.55, 0.90, Curves.easeOutCubic));
+    _badgeScale = Tween<double>(
+      begin: 0.86,
+      end: 1,
+    ).animate(_segment(0.72, 0.88, Curves.easeOutBack));
     _ringFade = [
       for (final start in const [0.14, 0.19, 0.24, 0.29])
         _segment(start, start + 0.16, Curves.easeOut),
@@ -1148,9 +1154,7 @@ class _ScanHeroState extends State<_ScanHero> with TickerProviderStateMixin {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: base.merge(
-          TextStyle(fontSize: fontSize, fontWeight: weight),
-        ),
+        style: base.merge(TextStyle(fontSize: fontSize, fontWeight: weight)),
       ),
       maxLines: 1,
       textScaler: TextScaler.noScaling,
@@ -1166,9 +1170,14 @@ class _ScanHeroState extends State<_ScanHero> with TickerProviderStateMixin {
     Size box,
     List<Offset> dots,
     List<_HeroIngredient> ingredients,
-    TextStyle base,
-  ) {
-    const chipHeight = 34.0;
+    TextStyle base, {
+    required bool rtl,
+  }) {
+    const chipHeight = 36.0;
+    // The close button sits at the top of the leading edge -- the left in
+    // English, the right in Arabic -- so the top chip on that side keeps
+    // clear of it.
+    const closeClearance = 56.0;
     const edge = 12.0;
     const dotSize = 6.0;
     const dotGap = 8.0;
@@ -1190,11 +1199,14 @@ class _ScanHeroState extends State<_ScanHero> with TickerProviderStateMixin {
         maxWidth,
         content + dotSize + dotGap + hPad * 2 + 4,
       );
-      final left = isLeft ? (isTop ? 56.0 : edge) : box.width - edge - width;
+      final besideClose = isTop && (isLeft != rtl);
+      final inset = besideClose ? closeClearance : edge;
+      final left = isLeft ? inset : box.width - inset - width;
       final rawTop = isTop ? dot.dy + 12 : dot.dy - chipHeight - 12;
-      final top = rawTop
-          .clamp(edge, math.max(edge, box.height - chipHeight - edge))
-          .toDouble();
+      final top =
+          rawTop
+              .clamp(edge, math.max(edge, box.height - chipHeight - edge))
+              .toDouble();
       rects.add(Rect.fromLTWH(left, top, width, chipHeight));
     }
     return rects;
@@ -1223,6 +1235,7 @@ class _ScanHeroState extends State<_ScanHero> with TickerProviderStateMixin {
               dots,
               ingredients,
               DefaultTextStyle.of(context).style,
+              rtl: Directionality.of(context) == TextDirection.rtl,
             );
             return Stack(
               fit: StackFit.expand,
@@ -1281,7 +1294,7 @@ class _ScanHeroState extends State<_ScanHero> with TickerProviderStateMixin {
                   start: 12,
                   top: widget.topInset + _heroChromeTop,
                   child: _HeroIconButton(
-                    icon: LucideIcons.x,
+                    icon: WaznIcons.close,
                     onTap: widget.onClose,
                     semanticLabel:
                         MaterialLocalizations.of(context).closeButtonTooltip,
@@ -1421,10 +1434,7 @@ class _ScanHeroState extends State<_ScanHero> with TickerProviderStateMixin {
             opacity: fade.clamp(0, 1),
             child: Transform.scale(
               scale: 0.94 + 0.06 * fade,
-              child: _IngredientChip(
-                item: ingredients[i],
-                palette: palette,
-              ),
+              child: _IngredientChip(item: ingredients[i], palette: palette),
             ),
           ),
         ),
@@ -1487,7 +1497,7 @@ class _IngredientChip extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       decoration: BoxDecoration(
         // Frosted paper in light mode so the pill sits on the marble instead of
         // punching a black hole in it; the HUD-dark pill only in dark mode.
@@ -1498,9 +1508,7 @@ class _IngredientChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.18)
-                  : palette.hairline,
+              isDark ? Colors.white.withValues(alpha: 0.18) : palette.hairline,
         ),
         boxShadow:
             isDark
@@ -1534,6 +1542,11 @@ class _IngredientChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textScaler: TextScaler.noScaling,
+                  strutStyle: const StrutStyle(
+                    fontSize: 10,
+                    height: 1.15,
+                    forceStrutHeight: true,
+                  ),
                   style: TextStyle(
                     color: labelColor,
                     fontSize: 10,
@@ -1545,7 +1558,13 @@ class _IngredientChip extends StatelessWidget {
                 Text(
                   item.portion,
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   textScaler: TextScaler.noScaling,
+                  strutStyle: const StrutStyle(
+                    fontSize: 8.5,
+                    height: 1.1,
+                    forceStrutHeight: true,
+                  ),
                   style: TextStyle(
                     color: portionColor,
                     fontSize: 8.5,
@@ -1709,10 +1728,11 @@ class _CalloutConnectorPainter extends CustomPainter {
             ? rect.top
             : (dot.dy > rect.bottom ? rect.bottom : rect.center.dy),
       );
-      final paint = Paint()
-        ..color = color.withValues(alpha: color.a * opacity)
-        ..strokeWidth = 1.4
-        ..strokeCap = StrokeCap.round;
+      final paint =
+          Paint()
+            ..color = color.withValues(alpha: color.a * opacity)
+            ..strokeWidth = 1.4
+            ..strokeCap = StrokeCap.round;
       canvas.drawLine(target, dot, paint);
     }
   }
@@ -1816,7 +1836,7 @@ class _BenefitLedger extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      LucideIcons.check,
+                      WaznIcons.check,
                       size: 14,
                       color: palette.accentInk,
                     ),
@@ -1943,7 +1963,12 @@ class _PlanCard extends StatelessWidget {
             // The struck renewal price is the first line of the right column;
             // when the discount badge straddles the top border it needs enough
             // clearance not to sit on top of it.
-            padding: EdgeInsets.fromLTRB(16, introPrice != null ? 24 : 17, 16, 17),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              introPrice != null ? 24 : 17,
+              16,
+              17,
+            ),
             child: Row(
               children: [
                 _Radio(selected: selected, palette: palette),
@@ -2097,11 +2122,7 @@ class _NoticeBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            LucideIcons.alertCircle,
-            size: 17,
-            color: AppColors.warning,
-          ),
+          const Icon(WaznIcons.error, size: 17, color: AppColors.warning),
           const SizedBox(width: 11),
           Expanded(
             child: Text(
@@ -2125,7 +2146,7 @@ class _NoticeBanner extends StatelessWidget {
                 width: 44,
                 height: 44,
                 child: Icon(
-                  LucideIcons.refreshCw,
+                  WaznIcons.refresh,
                   size: 17,
                   color: palette.accentInk,
                 ),

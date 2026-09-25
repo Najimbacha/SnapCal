@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../../../widgets/wazn_icons.dart';
 
 class BarcodeScannerView extends StatefulWidget {
   final Function(String barcode) onBarcodeDetected;
@@ -93,7 +93,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
                   color: Colors.black.withValues(alpha: 0.25),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(LucideIcons.x, color: Colors.white, size: 18),
+                child: Icon(WaznIcons.close, color: Colors.white, size: 18),
               ),
             ),
           ),
@@ -106,10 +106,10 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _iconButton(LucideIcons.zap, () => _controller.toggleTorch()),
+                _iconButton(WaznIcons.flash, () => _controller.toggleTorch()),
                 const SizedBox(width: 32),
                 _iconButton(
-                  LucideIcons.refreshCw,
+                  WaznIcons.refresh,
                   () => _controller.switchCamera(),
                 ),
               ],

@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -144,7 +144,7 @@ class _PhotoCaptureFlowState extends ConsumerState<PhotoCaptureFlow> {
                           strokeWidth: 2,
                         ),
                       )
-                      : Icon(LucideIcons.check),
+                      : Icon(WaznIcons.check),
               label: Text(
                 _isSaving
                     ? AppLocalizations.of(context)!.progress_saving
@@ -206,7 +206,7 @@ class _CaptureSlot extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              LucideIcons.camera,
+                              WaznIcons.camera,
                               size: 32,
                               color: context.textSecondaryColor,
                             ),
@@ -231,7 +231,7 @@ class _CaptureSlot extends StatelessWidget {
                                 File(path!).existsSync()
                                     ? Image.file(File(path!), fit: BoxFit.cover)
                                     : const Center(
-                                      child: Icon(LucideIcons.imageOff),
+                                      child: Icon(WaznIcons.imageOff),
                                     ),
                           ),
                           Positioned(
@@ -239,7 +239,7 @@ class _CaptureSlot extends StatelessWidget {
                             right: 8,
                             child: IconButton.filled(
                               onPressed: onClear,
-                              icon: Icon(LucideIcons.x, size: 16),
+                              icon: Icon(WaznIcons.close, size: 16),
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.black.withValues(
                                   alpha: 0.6,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import '../../../data/models/meal_slot.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -89,7 +89,7 @@ class SmartMealPlannerCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(LucideIcons.calendarDays, color: p, size: 15),
+                          Icon(WaznIcons.calendar, color: p, size: 15),
                           const SizedBox(width: 8),
                           // Flexible with an ellipsis: a fixed PRO badge sits
                           // to the right of this title, so a longer
@@ -145,7 +145,7 @@ class SmartMealPlannerCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(LucideIcons.refreshCw, color: p, size: 20),
+                  icon: Icon(WaznIcons.refresh, color: p, size: 20),
                   onPressed: onRefreshTap,
                   style: IconButton.styleFrom(
                     backgroundColor: refreshBg,
@@ -253,7 +253,7 @@ class SmartMealPlannerCard extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              LucideIcons.checkCircle2,
+                              WaznIcons.success,
                               color: Colors.white,
                               size: 16,
                             ),
@@ -314,7 +314,7 @@ class SmartMealPlannerCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(LucideIcons.lock, size: 14, color: p),
+                Icon(WaznIcons.lock, size: 14, color: p),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Text(
@@ -339,7 +339,7 @@ class SmartMealPlannerCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(LucideIcons.sparkles, color: p, size: 15),
+            Icon(WaznIcons.ai, color: p, size: 15),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
@@ -420,7 +420,7 @@ class SmartMealPlannerCard extends StatelessWidget {
         color: isDark ? const Color(0xFF1A1A24) : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(10),
       );
-      icon = LucideIcons.check;
+      icon = WaznIcons.check;
       iconC = p;
       nameC = isDark ? const Color(0xFFFAFAFA) : const Color(0xFF0F172A);
       metaC = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF475569);
@@ -436,7 +436,7 @@ class SmartMealPlannerCard extends StatelessWidget {
         gradient: LinearGradient(colors: [p, p.withValues(alpha: 0.7)]),
         borderRadius: BorderRadius.circular(10),
       );
-      icon = LucideIcons.utensils;
+      icon = WaznIcons.meal;
       iconC = Colors.white;
       nameC = p;
       metaC = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF475569);
@@ -452,7 +452,7 @@ class SmartMealPlannerCard extends StatelessWidget {
         color: isDark ? const Color(0xFF1A1A22) : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(10),
       );
-      icon = LucideIcons.moon;
+      icon = WaznIcons.dinner;
       iconC = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF64748B);
       nameC = isDark ? const Color(0xFFD4D4D8) : const Color(0xFF334155);
       metaC = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF64748B);
@@ -575,11 +575,7 @@ class _SwapButtonState extends State<_SwapButton>
           children: [
             RotationTransition(
               turns: _ctrl,
-              child: Icon(
-                LucideIcons.refreshCw,
-                color: widget.primary,
-                size: 16,
-              ),
+              child: Icon(WaznIcons.refresh, color: widget.primary, size: 16),
             ),
             const SizedBox(width: 4),
             Text(
@@ -635,9 +631,7 @@ class MacroInsightCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: p.withValues(alpha: 0.2)),
             ),
-            child: Center(
-              child: Icon(LucideIcons.lightbulb, color: p, size: 20),
-            ),
+            child: Center(child: Icon(WaznIcons.lightbulb, color: p, size: 20)),
           ),
           const SizedBox(width: 12),
           Expanded(

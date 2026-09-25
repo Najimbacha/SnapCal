@@ -184,15 +184,11 @@ MacroSplit rebalanceToCalories({
 /// A default split for [calories], used when there is no existing shape to
 /// preserve.
 MacroSplit splitForCalories(int calories) {
-  final target = calories.clamp(
-    PlanLimits.minCalories,
-    PlanLimits.maxCalories,
-  );
+  final target = calories.clamp(PlanLimits.minCalories, PlanLimits.maxCalories);
 
   final protein = (target * _defaultProteinShare / kcalPerGramProtein).round();
   final fat =
-      (target * (1 - _defaultProteinShare - _defaultCarbShare) /
-              kcalPerGramFat)
+      (target * (1 - _defaultProteinShare - _defaultCarbShare) / kcalPerGramFat)
           .round();
   final carbs =
       ((target - protein * kcalPerGramProtein - fat * kcalPerGramFat) /

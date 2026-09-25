@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show DateFormat, NumberFormat;
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -171,7 +171,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         const SizedBox(height: 18),
         if (!summary.hasData)
           AppEmptyState(
-            icon: LucideIcons.barChart2,
+            icon: WaznIcons.stats,
             title: l10n.stats_no_data_title,
             body: l10n.stats_no_data_body,
           )
@@ -190,7 +190,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   value: '${summary.loggedDays}/${summary.days}',
                   hint: '${summary.consistencyPercent}%',
                   accent: AppColors.primary,
-                  icon: LucideIcons.calendarCheck,
+                  icon: WaznIcons.calendarCheck,
                 ),
               ),
               const SizedBox(width: 12),
@@ -200,7 +200,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   value: '${settings.currentStreak}',
                   hint: l10n.stats_streak_days(settings.currentStreak),
                   accent: AppColors.warning,
-                  icon: LucideIcons.flame,
+                  icon: WaznIcons.calories,
                 ),
               ),
             ],
@@ -297,7 +297,7 @@ class _RangeOption extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (locked) ...[
-              Icon(LucideIcons.lock, size: 12, color: context.textMutedColor),
+              Icon(WaznIcons.lock, size: 12, color: context.textMutedColor),
               const SizedBox(width: 6),
             ],
             Flexible(
@@ -396,10 +396,10 @@ class _HeadlineCard extends StatelessWidget {
                 children: [
                   Icon(
                     onTarget
-                        ? LucideIcons.check
+                        ? WaznIcons.check
                         : over
-                        ? LucideIcons.trendingUp
-                        : LucideIcons.trendingDown,
+                        ? WaznIcons.trend
+                        : WaznIcons.trendDown,
                     size: 14,
                     color: accent,
                   ),
@@ -807,7 +807,7 @@ class _WeightCard extends StatelessWidget {
     if (current == null) {
       return AppSectionCard(
         child: AppEmptyState(
-          icon: LucideIcons.scale,
+          icon: WaznIcons.weight,
           title: l10n.report_no_weight_title,
           body: l10n.report_no_weight_body,
           actionLabel: l10n.report_log_weight,
@@ -855,10 +855,10 @@ class _WeightCard extends StatelessWidget {
                   children: [
                     Icon(
                       flat
-                          ? LucideIcons.minus
+                          ? WaznIcons.minus
                           : gained
-                          ? LucideIcons.arrowUpRight
-                          : LucideIcons.arrowDownRight,
+                          ? WaznIcons.arrowUpRight
+                          : WaznIcons.arrowDownRight,
                       size: 15,
                       color: flat ? context.textMutedColor : AppColors.primary,
                     ),
@@ -994,11 +994,7 @@ class _ExportButton extends StatelessWidget {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                  : Icon(
-                    LucideIcons.share,
-                    size: 20,
-                    color: colorScheme.primary,
-                  ),
+                  : Icon(WaznIcons.share, size: 20, color: colorScheme.primary),
         ),
       ),
     );

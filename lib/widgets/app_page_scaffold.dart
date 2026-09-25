@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_typography.dart';
 import '../core/theme/app_colors.dart';
@@ -132,7 +132,7 @@ class AppPageScaffold extends ConsumerWidget {
                   ),
                   if (isPremium) ...[
                     const SizedBox(width: 6),
-                    Icon(LucideIcons.gem, color: AppColors.primary, size: 14),
+                    Icon(WaznIcons.pro, color: AppColors.primary, size: 14),
                   ],
                 ],
               ),
@@ -157,7 +157,7 @@ class AppPageScaffold extends ConsumerWidget {
                         }
                       },
                       child: _HeaderIconButton(
-                        icon: LucideIcons.arrowLeft,
+                        icon: WaznIcons.back,
                         colorScheme: colorScheme,
                       ),
                     )
@@ -165,8 +165,7 @@ class AppPageScaffold extends ConsumerWidget {
           ),
 
           // ── Trailing ──
-          if (trailing != null)
-            PositionedDirectional(end: 0, child: trailing!),
+          if (trailing != null) PositionedDirectional(end: 0, child: trailing!),
         ],
       ),
     );
@@ -274,7 +273,7 @@ class _OfflineBanner extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            LucideIcons.wifiOff,
+            WaznIcons.offline,
             size: 12,
             color: colorScheme.onErrorContainer,
           ),

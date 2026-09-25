@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show NumberFormat;
-import 'package:lucide_icons/lucide_icons.dart';
 import '../../../data/models/meal.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../widgets/wazn_icons.dart';
 
 const _sage = Color(0xFF82A789);
 const _blue = Color(0xFF6B9BCB);
@@ -15,9 +15,7 @@ class _Chevron extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.onSurface;
     return Icon(
-      Directionality.of(context) == TextDirection.rtl
-          ? LucideIcons.chevronLeft
-          : LucideIcons.chevronRight,
+      WaznIcons.chevronRight,
       size: 16,
       color: color.withValues(alpha: .78),
     );

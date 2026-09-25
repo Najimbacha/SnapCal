@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -39,7 +39,7 @@ class PreferencesScreen extends ConsumerWidget {
                           ?.notificationsEnabled ??
                       true;
                   return SettingsSwitchRow(
-                    icon: LucideIcons.bell,
+                    icon: WaznIcons.notifications,
                     title: l10n.settings_notifications,
                     value: value,
                     onChanged:
@@ -56,7 +56,7 @@ class PreferencesScreen extends ConsumerWidget {
                           ?.mealRemindersEnabled ??
                       true;
                   return SettingsSwitchRow(
-                    icon: LucideIcons.clock3,
+                    icon: WaznIcons.clock,
                     title: l10n.settings_meal_reminders,
                     value: value,
                     onChanged:
@@ -73,7 +73,7 @@ class PreferencesScreen extends ConsumerWidget {
                           ?.dailyMotivationEnabled ??
                       false;
                   return SettingsSwitchRow(
-                    icon: LucideIcons.sparkles,
+                    icon: WaznIcons.ai,
                     title: l10n.settings_daily_motivation,
                     value: value,
                     onChanged:
@@ -92,7 +92,7 @@ class PreferencesScreen extends ConsumerWidget {
                           ?.foodRemindersEnabled ??
                       false;
                   return SettingsSwitchRow(
-                    icon: LucideIcons.camera,
+                    icon: WaznIcons.camera,
                     title: l10n.settings_food_reminders,
                     subtitle: l10n.settings_food_reminders_subtitle,
                     value: value,
@@ -126,7 +126,7 @@ class PreferencesScreen extends ConsumerWidget {
                           return Column(
                             children: [
                               SettingsRow(
-                                icon: LucideIcons.egg,
+                                icon: WaznIcons.breakfast,
                                 title: l10n.settings_breakfast_time,
                                 value: formatReminderTime(
                                   context,
@@ -141,7 +141,7 @@ class PreferencesScreen extends ConsumerWidget {
                                     ),
                               ),
                               SettingsRow(
-                                icon: LucideIcons.utensils,
+                                icon: WaznIcons.lunch,
                                 title: l10n.settings_lunch_time,
                                 value: formatReminderTime(
                                   context,
@@ -156,7 +156,7 @@ class PreferencesScreen extends ConsumerWidget {
                                     ),
                               ),
                               SettingsRow(
-                                icon: LucideIcons.moon,
+                                icon: WaznIcons.dinner,
                                 title: l10n.settings_dinner_time,
                                 value: formatReminderTime(
                                   context,
@@ -194,7 +194,7 @@ class PreferencesScreen extends ConsumerWidget {
                             ?.region ??
                         'automatic';
                     return SettingsRow(
-                      icon: LucideIcons.mapPin,
+                      icon: WaznIcons.mapPin,
                       title: l10n.quick_add_region,
                       subtitle: l10n.quick_add_region_subtitle,
                       value: quickFoodRegionLabel(l10n, region),
@@ -218,7 +218,7 @@ class PreferencesScreen extends ConsumerWidget {
                         currentMode: settings?.themeMode ?? 'system',
                       ),
                       SettingsRow(
-                        icon: LucideIcons.languages,
+                        icon: WaznIcons.languages,
                         title: l10n.settings_language,
                         value: getLanguageName(settings?.languageCode ?? 'en'),
                         onTap:
@@ -308,7 +308,7 @@ class _NotificationsBlockedBannerState
       child: SettingsSurface(
         padding: EdgeInsets.zero,
         child: SettingsRow(
-          icon: LucideIcons.bellOff,
+          icon: WaznIcons.notificationsOff,
           title: l10n.notif_blocked_title,
           subtitle: l10n.notif_blocked_body,
           destructive: true,

@@ -70,6 +70,8 @@ class GoalStep extends StatelessWidget {
       ),
     );
 
-    return Column(children: [pair(0, 1), const SizedBox(height: 12), pair(2, 3)]);
+    return Column(
+      children: [pair(0, 1), const SizedBox(height: 12), pair(2, 3)],
+    );
   }
 }

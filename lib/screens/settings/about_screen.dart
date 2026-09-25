@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/config_service.dart';
 import '../../data/services/feedback_service.dart';
@@ -131,7 +131,7 @@ class AboutScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _AboutLink(
-                      icon: LucideIcons.shield,
+                      icon: WaznIcons.shield,
                       title: l10n.settings_privacy,
                       subtitle: l10n.settings_privacy_desc,
                       onTap:
@@ -147,7 +147,7 @@ class AboutScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     _AboutLink(
-                      icon: LucideIcons.fileText,
+                      icon: WaznIcons.fileText,
                       title: l10n.settings_terms,
                       subtitle: l10n.settings_terms_desc,
                       onTap:
@@ -164,7 +164,7 @@ class AboutScreen extends StatelessWidget {
                     // rest -- whose licences require their notices to be
                     // shown. Nothing showed them.
                     _AboutLink(
-                      icon: LucideIcons.scale,
+                      icon: WaznIcons.weight,
                       title: l10n.settings_licenses,
                       subtitle: l10n.settings_licenses_desc,
                       onTap:
@@ -269,7 +269,7 @@ class _AboutLink extends StatelessWidget {
               ),
             ),
             Icon(
-              LucideIcons.chevronRight,
+              WaznIcons.chevronRight,
               size: 18,
               color: isDark ? Colors.white24 : const Color(0xFFD6D3D1),
             ),
@@ -320,7 +320,7 @@ class _FollowUsSection extends StatelessWidget {
           child: Column(
             children: [
               _FollowTile(
-                icon: LucideIcons.camera,
+                icon: WaznIcons.camera,
                 iconColor: const Color(0xFFE1306C),
                 title: 'Instagram',
                 subtitle: l10n.about_instagram_desc,
@@ -333,7 +333,7 @@ class _FollowUsSection extends StatelessWidget {
                 isLast: false,
               ),
               _FollowTile(
-                icon: LucideIcons.facebook,
+                icon: WaznIcons.facebook,
                 iconColor: const Color(0xFF1877F2),
                 title: 'Facebook',
                 subtitle: l10n.about_facebook_desc,
@@ -346,7 +346,7 @@ class _FollowUsSection extends StatelessWidget {
                 isLast: false,
               ),
               _FollowTile(
-                icon: LucideIcons.mail,
+                icon: WaznIcons.mail,
                 iconColor: AppColors.primary,
                 title: l10n.about_email_us,
                 subtitle: FeedbackService.supportEmail,
@@ -435,7 +435,7 @@ class _FollowTile extends StatelessWidget {
                     ),
                   ),
                   Icon(
-                    LucideIcons.chevronRight,
+                    WaznIcons.chevronRight,
                     size: 14,
                     color: settingsSubtext(context).withValues(alpha: 0.55),
                   ),

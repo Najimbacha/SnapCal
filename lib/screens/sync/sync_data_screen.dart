@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_errors.dart';
@@ -12,6 +11,7 @@ import '../../providers/auth_notifier_provider.dart';
 import '../../widgets/auth_modal.dart';
 import '../../widgets/ui_blocks.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import '../../widgets/wazn_icons.dart';
 
 /// ============================================================================
 /// SYNC DATA SCREEN - WITH DIRECT AUTH OPTIONS
@@ -52,19 +52,19 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
 
   List<_Benefit> _buildBenefits(BuildContext context) => [
     _Benefit(
-      icon: LucideIcons.smartphone,
+      icon: WaznIcons.smartphone,
       text: AppLocalizations.of(context)!.sync_benefit_devices,
     ),
     _Benefit(
-      icon: LucideIcons.shield,
+      icon: WaznIcons.shield,
       text: AppLocalizations.of(context)!.sync_benefit_progress,
     ),
     _Benefit(
-      icon: LucideIcons.cloudOff,
+      icon: WaznIcons.cloudOff,
       text: AppLocalizations.of(context)!.sync_benefit_offline,
     ),
     _Benefit(
-      icon: LucideIcons.lock,
+      icon: WaznIcons.lock,
       text: AppLocalizations.of(context)!.sync_benefit_secure,
     ),
   ];
@@ -332,7 +332,7 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
                                 alignment: Alignment.center,
                                 children: [
                                   Icon(
-                                    LucideIcons.cloud,
+                                    WaznIcons.cloud,
                                     size: 40,
                                     color: colorScheme.onSurface,
                                   ),
@@ -356,7 +356,7 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
                                           ],
                                         ),
                                         child: const Icon(
-                                          LucideIcons.refreshCw,
+                                          WaznIcons.refresh,
                                           size: 14,
                                           color: Colors.white,
                                         ),
@@ -531,7 +531,7 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
                                 _AuthButton(
                                   label:
                                       AppLocalizations.of(context)!.sync_email,
-                                  icon: LucideIcons.mail,
+                                  icon: WaznIcons.mail,
                                   onPressed: _handleEmailSignIn,
                                   backgroundColor: Colors.transparent,
                                   foregroundColor: context.textPrimaryColor,

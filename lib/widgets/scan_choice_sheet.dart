@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'wazn_icons.dart';
 
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
@@ -135,7 +135,7 @@ class _ScanChoiceSheetState extends State<_ScanChoiceSheet> {
                 const SizedBox(height: 14),
                 _ScanOption(
                   key: const ValueKey('scan-choice-food'),
-                  icon: LucideIcons.camera,
+                  icon: WaznIcons.camera,
                   highlighted: true,
                   title: l10n.scan_choice_food_title,
                   subtitle: l10n.scan_choice_food_subtitle,
@@ -145,7 +145,7 @@ class _ScanChoiceSheetState extends State<_ScanChoiceSheet> {
                 const SizedBox(height: 8),
                 _ScanOption(
                   key: const ValueKey('scan-choice-barcode'),
-                  icon: LucideIcons.scanLine,
+                  icon: WaznIcons.scan,
                   title: l10n.scan_choice_barcode_title,
                   subtitle: l10n.scan_choice_barcode_subtitle,
                   isDark: d,
@@ -155,7 +155,7 @@ class _ScanChoiceSheetState extends State<_ScanChoiceSheet> {
                   const SizedBox(height: 8),
                   _ScanOption(
                     key: const ValueKey('scan-choice-voice'),
-                    icon: LucideIcons.mic,
+                    icon: WaznIcons.voice,
                     title: l10n.scan_choice_voice_title,
                     subtitle: l10n.scan_choice_voice_subtitle,
                     isDark: d,
@@ -199,7 +199,7 @@ class _CloseButton extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           child: Icon(
-            LucideIcons.x,
+            WaznIcons.close,
             size: 15,
             color: (isDark ? Colors.white : Colors.black).withValues(
               alpha: 0.55,
@@ -310,7 +310,7 @@ class _ScanOption extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  LucideIcons.chevronRight,
+                  WaznIcons.chevronRight,
                   size: 17,
                   color:
                       accent ??

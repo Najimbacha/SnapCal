@@ -262,7 +262,10 @@ class PlanResultStep extends StatelessWidget {
       return l10n.onboarding_safety_adjusted_detail(
         OnboardingPaceCalculator.formatWeeklyRateValue(originalKg, system),
         OnboardingPaceCalculator.weeklyRateUnit(system),
-        OnboardingPaceCalculator.formatWeeklyRateValue(rec.weeklyRateKg, system),
+        OnboardingPaceCalculator.formatWeeklyRateValue(
+          rec.weeklyRateKg,
+          system,
+        ),
       );
     }
     return l10n.onboarding_safety_adjusted_fallback;

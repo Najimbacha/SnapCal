@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -9,6 +8,7 @@ import 'package:snapcal/data/models/meal.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/providers/template_provider.dart';
 import 'package:snapcal/widgets/glass_card.dart';
+import '../../../widgets/wazn_icons.dart';
 
 class SaveRoutineSheet extends ConsumerStatefulWidget {
   final List<Meal> meals;
@@ -133,7 +133,7 @@ class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
                 ),
                 child: Row(
                   children: [
-                    Icon(LucideIcons.star, color: AppColors.error),
+                    Icon(WaznIcons.star, color: AppColors.error),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(

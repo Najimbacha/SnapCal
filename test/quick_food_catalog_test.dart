@@ -39,6 +39,18 @@ void main() {
     expect(biryani, lessThan(kabsa));
   });
 
+  test('every catalog food has a name in each app language', () {
+    for (final food in QuickFoodCatalog.foods) {
+      for (final language in ['ar', 'es', 'fr']) {
+        expect(
+          food.localizedNames[language]?.trim(),
+          isNotEmpty,
+          reason: '${food.name} has no $language name',
+        );
+      }
+    }
+  });
+
   test('catalog IDs are unique and serving nutrition scales safely', () {
     final ids = QuickFoodCatalog.foods.map((food) => food.nutritionId).toSet();
     expect(ids, hasLength(QuickFoodCatalog.foods.length));

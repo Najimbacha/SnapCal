@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'wazn_icons.dart';
 
 import '../core/theme/app_colors.dart';
 import '../data/models/meal.dart';
@@ -72,7 +72,7 @@ class MacroDisplay extends StatelessWidget {
       macros.protein,
       proteinGoal,
       AppColors.protein,
-      LucideIcons.dumbbell,
+      WaznIcons.exercise,
       4,
     ),
     _MacroDatum(
@@ -80,7 +80,7 @@ class MacroDisplay extends StatelessWidget {
       macros.carbs,
       carbGoal,
       AppColors.carbs,
-      LucideIcons.wheat,
+      WaznIcons.carbs,
       4,
     ),
     _MacroDatum(
@@ -88,7 +88,7 @@ class MacroDisplay extends StatelessWidget {
       macros.fat,
       fatGoal,
       AppColors.fat,
-      LucideIcons.droplet,
+      WaznIcons.water,
       9,
     ),
   ];
@@ -422,7 +422,7 @@ class MacroDisplay extends StatelessWidget {
                 color: scheme.primary,
               ),
             ),
-            Icon(LucideIcons.chevronRight, size: 15, color: scheme.primary),
+            Icon(WaznIcons.chevronRight, size: 15, color: scheme.primary),
           ],
         ),
       ),
@@ -583,7 +583,6 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
     final sweep = raw <= 0 ? 0.0 : (raw / _sweepFraction).clamp(0.0, 1.0);
     final sweeping = locked && sweep > 0 && sweep < 1;
 
-
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -592,7 +591,8 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
           end: Alignment.bottomRight,
           colors: [
             m.color.withValues(
-              alpha: locked ? (isDark ? 0.085 : 0.065) : (isDark ? 0.10 : 0.075),
+              alpha:
+                  locked ? (isDark ? 0.085 : 0.065) : (isDark ? 0.10 : 0.075),
             ),
             (isDark ? Colors.white : Colors.black).withValues(
               alpha: isDark ? 0.02 : 0.012,
@@ -688,12 +688,7 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    if (met)
-                      Icon(
-                        LucideIcons.check,
-                        size: 12,
-                        color: m.color,
-                      ),
+                    if (met) Icon(WaznIcons.check, size: 12, color: m.color),
                   ],
                 ),
                 const SizedBox(height: 7),
@@ -710,7 +705,9 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                         progress: progress,
                         color:
                             locked
-                                ? m.color.withValues(alpha: isDark ? 0.62 : 0.55)
+                                ? m.color.withValues(
+                                  alpha: isDark ? 0.62 : 0.55,
+                                )
                                 : m.color,
                         track: scheme.onSurface.withValues(
                           alpha: isDark ? 0.20 : 0.13,
@@ -831,7 +828,7 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
       child: Row(
         children: [
           Icon(
-            done ? LucideIcons.checkCircle2 : LucideIcons.check,
+            done ? WaznIcons.success : WaznIcons.check,
             size: 14,
             color: scheme.primary.withValues(alpha: done ? 1 : 0.55),
           ),
@@ -935,7 +932,7 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                   ],
                 ),
                 child: const Icon(
-                  LucideIcons.lock,
+                  WaznIcons.lock,
                   size: 14,
                   color: Color(0xFF032A20),
                 ),
@@ -1003,7 +1000,7 @@ class _RingsRowState extends State<_RingsRow> with TickerProviderStateMixin {
                       ),
                     ),
                     const Icon(
-                      LucideIcons.chevronRight,
+                      WaznIcons.chevronRight,
                       size: 12,
                       color: Color(0xFF04231A),
                     ),
@@ -1114,7 +1111,11 @@ class _RingPainter extends CustomPainter {
       final tailSweep = 2 * math.pi - sweep;
       // One dot every ~11 degrees, with the first cleared of the arc's cap.
       const step = 0.19;
-      for (var a = tailStart + 0.16; a < tailStart + tailSweep - 0.06; a += step) {
+      for (
+        var a = tailStart + 0.16;
+        a < tailStart + tailSweep - 0.06;
+        a += step
+      ) {
         canvas.drawArc(rect, a, 0.012, false, dotPaint);
       }
     }

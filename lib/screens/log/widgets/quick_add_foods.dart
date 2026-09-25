@@ -2,8 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/models/meal.dart';
@@ -80,19 +81,15 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
           child: InkWell(
             key: const ValueKey('quick-add-search'),
             onTap: () => _showBrowser(preferences),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(99),
             child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: context.surfaceContainerColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.dividerColor),
-              ),
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              decoration: _softSurface(context, radius: 99),
               child: Row(
                 children: [
                   Icon(
-                    LucideIcons.search,
+                    WaznIcons.search,
                     size: 18,
                     color: context.textMutedColor,
                   ),
@@ -106,9 +103,7 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
                     ),
                   ),
                   Icon(
-                    Directionality.of(context) == TextDirection.rtl
-                        ? LucideIcons.chevronLeft
-                        : LucideIcons.chevronRight,
+                    WaznIcons.chevronRight,
                     size: 18,
                     color: context.textMutedColor,
                   ),
@@ -369,7 +364,7 @@ class _QuickFoodBrowserSheetState
                               context,
                             ).closeButtonTooltip,
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(LucideIcons.x),
+                        icon: const Icon(WaznIcons.close),
                       ),
                     ],
                   ),
@@ -383,7 +378,7 @@ class _QuickFoodBrowserSheetState
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: l10n.quick_add_search,
-                      prefixIcon: const Icon(LucideIcons.search, size: 19),
+                      prefixIcon: const Icon(WaznIcons.search, size: 19),
                       suffixIcon:
                           _searchController.text.isEmpty
                               ? null
@@ -392,7 +387,7 @@ class _QuickFoodBrowserSheetState
                                   _searchController.clear();
                                   setState(() {});
                                 },
-                                icon: const Icon(LucideIcons.x, size: 18),
+                                icon: const Icon(WaznIcons.close, size: 18),
                               ),
                       filled: true,
                       fillColor: context.surfaceContainerColor,
@@ -419,7 +414,7 @@ class _QuickFoodBrowserSheetState
                       child: Row(
                         children: [
                           Icon(
-                            LucideIcons.mapPin,
+                            WaznIcons.mapPin,
                             size: 17,
                             color: context.primaryColor,
                           ),
@@ -434,7 +429,7 @@ class _QuickFoodBrowserSheetState
                             ),
                           ),
                           Icon(
-                            LucideIcons.chevronDown,
+                            WaznIcons.chevronDown,
                             size: 17,
                             color: context.textMutedColor,
                           ),
@@ -703,9 +698,7 @@ class _QuickFoodPortionSheetState extends State<_QuickFoodPortionSheet> {
                         setState(() => _favorite = !_favorite);
                       },
                       icon: Icon(
-                        _favorite
-                            ? Icons.star_rounded
-                            : Icons.star_border_rounded,
+                        _favorite ? WaznIcons.starFilled : WaznIcons.star,
                         color:
                             _favorite
                                 ? const Color(0xFFE3A62F)
@@ -716,7 +709,7 @@ class _QuickFoodPortionSheetState extends State<_QuickFoodPortionSheet> {
                       tooltip:
                           MaterialLocalizations.of(context).closeButtonTooltip,
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(LucideIcons.x),
+                      icon: const Icon(WaznIcons.close),
                     ),
                   ],
                 ),
@@ -822,7 +815,7 @@ class _QuickFoodPortionSheetState extends State<_QuickFoodPortionSheet> {
                               dimension: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                            : const Icon(LucideIcons.plus, size: 19),
+                            : const Icon(WaznIcons.plus, size: 19),
                     label: Text(l10n.quick_add_add),
                   ),
                 ),
@@ -878,7 +871,7 @@ Future<void> showQuickFoodRegionSheet(
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(LucideIcons.x),
+                          icon: const Icon(WaznIcons.close),
                         ),
                       ],
                     ),
@@ -904,14 +897,12 @@ Future<void> showQuickFoodRegionSheet(
                           title: Text(quickFoodRegionLabel(l10n, region.id)),
                           leading: Icon(
                             region.id == 'automatic'
-                                ? LucideIcons.locate
-                                : LucideIcons.mapPin,
+                                ? WaznIcons.locate
+                                : WaznIcons.mapPin,
                             size: 19,
                           ),
                           trailing: Icon(
-                            isSelected
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_off,
+                            isSelected ? WaznIcons.circleDot : WaznIcons.circle,
                             color:
                                 isSelected
                                     ? context.primaryColor
@@ -1048,60 +1039,65 @@ class _QuickFoodCard extends StatelessWidget {
 
     return SizedBox(
       width: 158,
-      child: Material(
-        color: context.surfaceContainerColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: context.dividerColor),
-        ),
-        child: InkWell(
-          key: ValueKey('quick-food-${food?.nutritionId ?? meal!.id}'),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(13, 12, 10, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: context.textPrimaryColor,
-                      fontWeight: FontWeight.w700,
+      child: DecoratedBox(
+        decoration: _softSurface(context, radius: 18),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: ValueKey('quick-food-${food?.nutritionId ?? meal!.id}'),
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 13, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: context.textPrimaryColor,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l10n.quick_add_calories(calories),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.labelMedium.copyWith(
-                          color: context.textSecondaryColor,
+                  Row(
+                    children: [
+                      const Icon(
+                        WaznIcons.calories,
+                        size: 14,
+                        color: AppColors.warning,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          l10n.quick_add_calories(calories),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelMedium.copyWith(
+                            color: context.textSecondaryColor,
+                          ),
                         ),
                       ),
-                    ),
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: context.primaryColor,
-                        shape: BoxShape.circle,
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: context.primaryColor.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          WaznIcons.plus,
+                          color: context.primaryColor,
+                          size: 18,
+                        ),
                       ),
-                      child: const Icon(
-                        LucideIcons.plus,
-                        color: Colors.white,
-                        size: 17,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1150,7 +1146,7 @@ class _BrowserFoodRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(11),
                 ),
                 child: Icon(
-                  meal != null ? LucideIcons.history : LucideIcons.utensils,
+                  meal != null ? WaznIcons.history : WaznIcons.meal,
                   size: 20,
                   color: context.primaryColor,
                 ),
@@ -1189,18 +1185,14 @@ class _BrowserFoodRow extends StatelessWidget {
                   tooltip: l10n.quick_add_favorites,
                   onPressed: onFavorite,
                   icon: Icon(
-                    isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+                    isFavorite ? WaznIcons.starFilled : WaznIcons.star,
                     color:
                         isFavorite
                             ? const Color(0xFFE3A62F)
                             : context.textMutedColor,
                   ),
                 ),
-              Icon(
-                LucideIcons.plusCircle,
-                size: 22,
-                color: context.primaryColor,
-              ),
+              Icon(WaznIcons.plusCircle, size: 22, color: context.primaryColor),
             ],
           ),
         ),
@@ -1230,13 +1222,18 @@ class _FilterChip extends StatelessWidget {
         onSelected: (_) => onTap(),
         showCheckmark: false,
         visualDensity: VisualDensity.compact,
+        shape: const StadiumBorder(),
         side: BorderSide(
-          color: selected ? context.primaryColor : context.dividerColor,
+          color:
+              selected
+                  ? Colors.transparent
+                  : context.dividerColor.withValues(alpha: 0.6),
         ),
-        selectedColor: context.primaryColor.withValues(alpha: 0.10),
-        backgroundColor: context.surfaceContainerColor,
+        selectedColor: context.primaryColor,
+        backgroundColor: context.cardColor,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         labelStyle: AppTypography.labelMedium.copyWith(
-          color: selected ? context.primaryColor : context.textSecondaryColor,
+          color: selected ? Colors.white : context.textSecondaryColor,
           fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
         ),
       ),
@@ -1362,5 +1359,27 @@ class _SheetHandle extends StatelessWidget {
         borderRadius: BorderRadius.circular(2),
       ),
     ),
+  );
+}
+
+/// A raised surface for Quick Add's search pill and food cards: no hard
+/// outline, a soft shadow in light mode and a faint lift in dark mode.
+BoxDecoration _softSurface(BuildContext context, {required double radius}) {
+  final dark = Theme.of(context).brightness == Brightness.dark;
+  return BoxDecoration(
+    color: dark ? Colors.white.withValues(alpha: 0.045) : AppColors.cardBg,
+    borderRadius: BorderRadius.circular(radius),
+    border:
+        dark ? Border.all(color: Colors.white.withValues(alpha: 0.06)) : null,
+    boxShadow:
+        dark
+            ? null
+            : [
+              BoxShadow(
+                color: const Color(0xFF16181D).withValues(alpha: 0.05),
+                blurRadius: 16,
+                offset: const Offset(0, 5),
+              ),
+            ],
   );
 }

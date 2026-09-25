@@ -5,7 +5,7 @@ import '../../data/services/pro_feature_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -128,17 +128,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              _SectionHeading(
-                title: l10n.home_metric_meals,
-                actionLabel: l10n.log_add_manually,
-                onAction:
-                    () => _showNewMealSheet(
-                      dateString: selectedDate,
-                      mealType: _suggestedMealType(),
-                    ),
-              ),
               if (ConfigService().quickFoodsEnabled) ...[
-                const SizedBox(height: 10),
                 QuickAddFoods(
                   meals: allMeals,
                   mealType: _suggestedMealType(),
@@ -163,23 +153,30 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                           ref.read(mealLogProvider.notifier).deleteMeal(mealId),
                 ),
                 const SizedBox(height: 24),
-              ] else ...[
-                const SizedBox(height: 10),
               ],
-              for (var index = 0; index < groups.length; index++) ...[
-                _MealGroupSection(
-                  group: groups[index],
-                  isPro: isPro,
-                  onAdd:
-                      () => _showNewMealSheet(
-                        dateString: selectedDate,
-                        mealType: groups[index].key,
-                      ),
-                  onEdit: _showEditMealSheet,
-                  onDelete: _deleteWithUndo,
-                ),
-                if (index != groups.length - 1) const SizedBox(height: 12),
-              ],
+              _SectionHeading(
+                title: l10n.home_metric_meals,
+                calories: selectedSummary.calories,
+                calorieGoal: selectedSummary.calorieGoal,
+                actionLabel: l10n.log_add_manually,
+                onAction:
+                    () => _showNewMealSheet(
+                      dateString: selectedDate,
+                      mealType: _suggestedMealType(),
+                    ),
+              ),
+              const SizedBox(height: 10),
+              _MealDiaryCard(
+                groups: groups,
+                isPro: isPro,
+                onAdd:
+                    (mealType) => _showNewMealSheet(
+                      dateString: selectedDate,
+                      mealType: mealType,
+                    ),
+                onEdit: _showEditMealSheet,
+                onDelete: _deleteWithUndo,
+              ),
               const SizedBox(height: 24),
               _DailyHealthCard(
                 waterMl: selectedSummary.waterMl,
@@ -226,6 +223,8 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       initialDate: initialDate,
       firstDate: firstDate,
       lastDate: now,
+      switchToInputEntryModeIcon: const Icon(WaznIcons.edit),
+      switchToCalendarEntryModeIcon: const Icon(WaznIcons.calendar),
     );
     if (picked == null || !mounted) return;
 
@@ -427,8 +426,8 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     final buckets = <String, List<Meal>>{
       'Breakfast': [],
       'Lunch': [],
-      'Snack': [],
       'Dinner': [],
+      'Snack': [],
     };
     final sorted = [...meals]
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -448,14 +447,14 @@ class _LogScreenState extends ConsumerState<LogScreen> {
         meals: buckets['Lunch']!,
       ),
       _MealGroupData(
-        key: 'Snack',
-        label: l10n.result_meal_snack,
-        meals: buckets['Snack']!,
-      ),
-      _MealGroupData(
         key: 'Dinner',
         label: l10n.result_meal_dinner,
         meals: buckets['Dinner']!,
+      ),
+      _MealGroupData(
+        key: 'Snack',
+        label: l10n.result_meal_snack,
+        meals: buckets['Snack']!,
       ),
     ];
   }
@@ -579,7 +578,7 @@ class _LogHeader extends StatelessWidget {
             ),
           ),
           _HeaderIconButton(
-            icon: LucideIcons.calendarDays,
+            icon: WaznIcons.calendar,
             tooltip: l10n.nav_stats,
             onTap: onCalendarTap,
           ),
@@ -605,14 +604,14 @@ class _LogHeader extends StatelessWidget {
                   PopupMenuItem(
                     value: _LogMenuAction.reports,
                     child: _MenuRow(
-                      icon: LucideIcons.barChart3,
+                      icon: WaznIcons.stats,
                       label: l10n.nav_stats,
                     ),
                   ),
                   PopupMenuItem(
                     value: _LogMenuAction.settings,
                     child: _MenuRow(
-                      icon: LucideIcons.settings2,
+                      icon: WaznIcons.settings,
                       label: l10n.nav_profile,
                     ),
                   ),
@@ -621,7 +620,7 @@ class _LogHeader extends StatelessWidget {
               width: 44,
               height: 44,
               child: Icon(
-                LucideIcons.moreHorizontal,
+                WaznIcons.more,
                 size: 23,
                 color: context.textPrimaryColor,
               ),
@@ -681,46 +680,162 @@ class _MenuRow extends StatelessWidget {
   }
 }
 
+/// The raised surface shared by the Food Log's cards: no hard outline, a
+/// soft shadow in light mode and a faint lift in dark mode.
+BoxDecoration _softCard(BuildContext context, {double radius = 18}) {
+  final dark = context.isDarkMode;
+  return BoxDecoration(
+    color: dark ? Colors.white.withValues(alpha: 0.045) : AppColors.cardBg,
+    borderRadius: BorderRadius.circular(radius),
+    border:
+        dark ? Border.all(color: Colors.white.withValues(alpha: 0.06)) : null,
+    boxShadow:
+        dark
+            ? null
+            : [
+              BoxShadow(
+                color: const Color(0xFF16181D).withValues(alpha: 0.05),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+  );
+}
+
 class _SectionHeading extends StatelessWidget {
   const _SectionHeading({
     required this.title,
+    required this.calories,
+    required this.calorieGoal,
     required this.actionLabel,
     required this.onAction,
   });
 
   final String title;
+  final int calories;
+  final int calorieGoal;
   final String actionLabel;
   final VoidCallback onAction;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final l10n = AppLocalizations.of(context)!;
+    final progress =
+        calorieGoal <= 0 ? 0.0 : (calories / calorieGoal).clamp(0.0, 1.0);
+    final over = calorieGoal > 0 && calories > calorieGoal;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            title,
-            style: AppTypography.titleLarge.copyWith(
-              color: context.textPrimaryColor,
-              fontWeight: FontWeight.w700,
-              fontSize: 20,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: AppTypography.titleLarge.copyWith(
+                  color: context.textPrimaryColor,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                ),
+              ),
             ),
-          ),
-        ),
-        TextButton.icon(
-          key: const ValueKey('log-add-manually'),
-          onPressed: onAction,
-          icon: const Icon(LucideIcons.plus, size: 16),
-          label: Text(actionLabel),
-          style: TextButton.styleFrom(
-            foregroundColor: context.primaryColor,
-            minimumSize: const Size(44, 40),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            textStyle: AppTypography.titleSmall.copyWith(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
+            TextButton.icon(
+              key: const ValueKey('log-add-manually'),
+              onPressed: onAction,
+              icon: const Icon(WaznIcons.plus, size: 16),
+              label: Text(actionLabel),
+              style: TextButton.styleFrom(
+                foregroundColor: context.primaryColor,
+                minimumSize: const Size(44, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                shape: const StadiumBorder(),
+                textStyle: AppTypography.titleSmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  backgroundColor: context.primaryColor.withValues(alpha: 0.12),
+                  valueColor: AlwaysStoppedAnimation(
+                    over ? AppColors.warning : context.primaryColor,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text.rich(
+              key: const ValueKey('log-day-total'),
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: _formatInt(context, calories),
+                    style: TextStyle(
+                      color: context.textPrimaryColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  TextSpan(
+                    text:
+                        ' / ${_formatInt(context, calorieGoal)} '
+                        '${l10n.settings_kcal_unit}',
+                  ),
+                ],
+              ),
+              style: AppTypography.bodySmall.copyWith(
+                color: context.textMutedColor,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// The day's meals as a stack of cards, one per meal: an icon, the meal's
+/// calorie total and an add button, with that meal's entries under it.
+class _MealDiaryCard extends StatelessWidget {
+  const _MealDiaryCard({
+    required this.groups,
+    required this.isPro,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final List<_MealGroupData> groups;
+  final bool isPro;
+  final ValueChanged<String> onAdd;
+  final ValueChanged<Meal> onEdit;
+  final ValueChanged<Meal> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('log-meal-diary'),
+      children: [
+        for (var index = 0; index < groups.length; index++) ...[
+          if (index != 0) const SizedBox(height: 12),
+          _MealGroupSection(
+            group: groups[index],
+            isPro: isPro,
+            onAdd: () => onAdd(groups[index].key),
+            onEdit: onEdit,
+            onDelete: onDelete,
+          ),
+        ],
       ],
     );
   }
@@ -736,6 +851,22 @@ class _MealGroupData {
   final String key;
   final String label;
   final List<Meal> meals;
+
+  int get calories => meals.fold(0, (total, meal) => total + meal.calories);
+
+  IconData get icon => switch (key) {
+    'Breakfast' => WaznIcons.breakfast,
+    'Lunch' => WaznIcons.lunch,
+    'Dinner' => WaznIcons.dinner,
+    _ => WaznIcons.snack,
+  };
+
+  Color get accent => switch (key) {
+    'Breakfast' => AppColors.warning,
+    'Lunch' => AppColors.primary,
+    'Dinner' => AppColors.secondary,
+    _ => AppColors.fat,
+  };
 }
 
 class _MealGroupSection extends StatelessWidget {
@@ -755,151 +886,104 @@ class _MealGroupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeLabel =
-        group.meals.length == 1
-            ? DateFormat.j(AppLocalizations.of(context)!.localeName).format(
-              DateTime.fromMillisecondsSinceEpoch(group.meals.first.timestamp),
-            )
-            : null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              group.label,
-              style: AppTypography.titleMedium.copyWith(
-                color: context.textPrimaryColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-              ),
-            ),
-            if (timeLabel != null) ...[
-              const SizedBox(width: 12),
-              Text(
-                timeLabel,
-                style: AppTypography.bodySmall.copyWith(
-                  color: context.textMutedColor,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 7),
-        if (group.meals.isEmpty)
-          _EmptyMealSlot(label: group.label, onTap: onAdd)
-        else
-          Container(
-            decoration: BoxDecoration(
-              color:
-                  context.isDarkMode
-                      ? Colors.white.withValues(alpha: 0.025)
-                      : Colors.transparent,
-              border: Border(
-                bottom: BorderSide(
-                  color: context.dividerColor.withValues(alpha: 0.55),
-                ),
-              ),
-            ),
-            child: Column(
-              children: [
-                for (var index = 0; index < group.meals.length; index++)
-                  MealListTile(
-                    meal: group.meals[index],
-                    isPro: isPro,
-                    showTime: group.meals.length > 1,
-                    showDivider: index != group.meals.length - 1,
-                    onTap: () => onEdit(group.meals[index]),
-                    onDelete: () => onDelete(group.meals[index]),
-                  ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _EmptyMealSlot extends StatelessWidget {
-  const _EmptyMealSlot({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Semantics(
-      button: true,
-      label: l10n.log_add_meal_type(label),
-      child: CustomPaint(
-        painter: _DashedBorderPainter(
-          color: context.textMutedColor.withValues(alpha: 0.45),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: SizedBox(
-            height: 48,
-            width: double.infinity,
+    final isEmpty = group.meals.isEmpty;
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: _softCard(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 10, 12),
             child: Row(
               children: [
-                const SizedBox(width: 14),
-                Icon(
-                  LucideIcons.plusCircle,
-                  size: 20,
-                  color: context.primaryColor,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  l10n.log_add_meal_type(label),
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: context.textSecondaryColor,
-                    fontSize: 13,
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: group.accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
                   ),
+                  child: Icon(group.icon, size: 19, color: group.accent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.label,
+                        style: AppTypography.titleMedium.copyWith(
+                          color: context.textPrimaryColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        '${_formatInt(context, group.calories)} '
+                        '${l10n.settings_kcal_unit}',
+                        style: AppTypography.bodySmall.copyWith(
+                          color:
+                              isEmpty
+                                  ? context.textMutedColor
+                                  : context.textSecondaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton.filledTonal(
+                  key: ValueKey('log-add-${group.key.toLowerCase()}'),
+                  tooltip: l10n.log_add_meal_type(group.label),
+                  onPressed: onAdd,
+                  style: IconButton.styleFrom(
+                    backgroundColor: context.primaryColor.withValues(
+                      alpha: 0.10,
+                    ),
+                    foregroundColor: context.primaryColor,
+                    minimumSize: const Size(40, 40),
+                  ),
+                  icon: const Icon(WaznIcons.plus, size: 20),
                 ),
               ],
             ),
           ),
-        ),
+          if (!isEmpty) ...[
+            Divider(
+              height: 1,
+              thickness: 1,
+              indent: 14,
+              endIndent: 14,
+              color: context.dividerColor.withValues(alpha: 0.35),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 2, 10, 4),
+              child: Column(
+                children: [
+                  for (var index = 0; index < group.meals.length; index++)
+                    MealListTile(
+                      meal: group.meals[index],
+                      isPro: isPro,
+                      showTime: true,
+                      showDivider: index != group.meals.length - 1,
+                      onTap: () => onEdit(group.meals[index]),
+                      onDelete: () => onDelete(group.meals[index]),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
-}
-
-class _DashedBorderPainter extends CustomPainter {
-  const _DashedBorderPainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1;
-    final path =
-        Path()..addRRect(
-          RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(8)),
-        );
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      while (distance < metric.length) {
-        canvas.drawPath(
-          metric.extractPath(distance, math.min(distance + 5, metric.length)),
-          paint,
-        );
-        distance += 9;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) =>
-      oldDelegate.color != color;
 }
 
 class _DailyHealthCard extends StatelessWidget {
@@ -934,19 +1018,12 @@ class _DailyHealthCard extends StatelessWidget {
         const SizedBox(height: 8),
         Container(
           height: 76,
-          decoration: BoxDecoration(
-            color:
-                context.isDarkMode
-                    ? Colors.white.withValues(alpha: 0.035)
-                    : AppColors.cardBg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: context.cardBorderColor),
-          ),
+          decoration: _softCard(context),
           child: Row(
             children: [
               Expanded(
                 child: _HealthValue(
-                  icon: LucideIcons.droplets,
+                  icon: WaznIcons.water,
                   label: l10n.log_metric_water,
                   value:
                       '${_formatLiters(context, waterMl)} / ${_formatLiters(context, waterGoal)} L',
@@ -960,7 +1037,7 @@ class _DailyHealthCard extends StatelessWidget {
               ),
               Expanded(
                 child: _HealthValue(
-                  icon: LucideIcons.footprints,
+                  icon: WaznIcons.steps,
                   label: l10n.log_metric_steps,
                   value: _formatInt(context, steps),
                   onTap: onStepsTap,
@@ -991,9 +1068,9 @@ class _HealthValue extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(18),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: [
             Container(
@@ -1001,10 +1078,10 @@ class _HealthValue extends StatelessWidget {
               height: 34,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: context.primaryColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
+                color: context.primaryColor.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 19, color: context.primaryColor),
+              child: Icon(icon, size: 18, color: context.primaryColor),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -1067,25 +1144,14 @@ class _ProteinInsightTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
           constraints: const BoxConstraints(minHeight: 54),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color:
-                context.isDarkMode
-                    ? Colors.white.withValues(alpha: 0.035)
-                    : AppColors.cardBg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: context.cardBorderColor),
-          ),
+          decoration: _softCard(context),
           child: Row(
             children: [
-              Icon(
-                LucideIcons.messageSquare,
-                size: 20,
-                color: context.primaryColor,
-              ),
+              Icon(WaznIcons.coach, size: 20, color: context.primaryColor),
               const SizedBox(width: 11),
               Expanded(
                 child: Text(
@@ -1123,7 +1189,7 @@ class _ProteinInsightTile extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Icon(
-                LucideIcons.chevronRight,
+                WaznIcons.chevronRight,
                 size: 18,
                 color: context.textMutedColor,
               ),

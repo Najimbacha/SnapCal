@@ -83,6 +83,7 @@ class PlannerProvider with ChangeNotifier {
   bool get isRebalancing => _isRebalancing;
   String? _error;
   String? get error => _error;
+
   /// When the plan was last refreshed by AI -- a day, or a week that was
   /// still running -- kept on the phone. The count lived in memory, so the
   /// weekly limit reset whenever the app restarted, and a week refresh reset
@@ -575,7 +576,6 @@ class PlannerProvider with ChangeNotifier {
 
         await _groceryBox?.clear();
         await _groceryBox?.addAll(_groceryList);
-
       } else {
         _error = _l10n.error_generic;
       }
@@ -882,8 +882,7 @@ class PlannerProvider with ChangeNotifier {
     return [
       for (final meal in fitted)
         meal.copyWith(
-          portion:
-              meal.calories == 0 ? _l10n.planner_skip_light : meal.portion,
+          portion: meal.calories == 0 ? _l10n.planner_skip_light : meal.portion,
           aiRationale: _rebalanceRationale(meal.calories, meal.macros.protein),
           scanSource: 'meal_planner_rebalanced',
         ),

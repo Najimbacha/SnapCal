@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import 'wazn_icons.dart';
 import '../l10n/generated/app_localizations.dart';
 
 /// Asks for notification permission once, with a reason, after onboarding.
@@ -86,7 +87,7 @@ class _PromptSheet extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.notifications_active_outlined,
+                WaznIcons.notifications,
                 color: AppColors.primary,
                 size: 30,
               ),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/models/meal.dart';
+import '../../../widgets/wazn_icons.dart';
 
 Color _mealColor(String? type) {
   switch (type?.toLowerCase()) {
@@ -176,9 +176,7 @@ class _MealCardState extends State<MealCard> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
-                            widget.isLogged
-                                ? LucideIcons.check
-                                : Icons.add_rounded,
+                            widget.isLogged ? WaznIcons.check : WaznIcons.plus,
                             size: 16,
                             color:
                                 widget.isLogged
@@ -228,7 +226,7 @@ class _MealCardState extends State<MealCard> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        LucideIcons.refreshCw,
+                                        WaznIcons.refresh,
                                         size: 12,
                                         color: context.primaryColor,
                                       ),
@@ -324,7 +322,7 @@ class _MealCardState extends State<MealCard> {
       ),
       child: Row(
         children: [
-          Icon(LucideIcons.lock, size: 14, color: context.textMutedColor),
+          Icon(WaznIcons.lock, size: 14, color: context.textMutedColor),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

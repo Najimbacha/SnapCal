@@ -303,6 +303,7 @@ User Stats: $currentCalories / $targetCalories kcal.
     String? activityLevel,
     String? foodDislikes,
     String? medicalNotes,
+
     /// Prior turns, oldest first, as {'type': 'user'|'assistant', 'content': ...}.
     /// Without these the model answers every message as if it were the first,
     /// so a reply of "1" to a numbered question is genuinely unreadable to it.
@@ -310,12 +311,13 @@ User Stats: $currentCalories / $targetCalories kcal.
   }) {
     final languageName = AIService.languageNames[language] ?? 'English';
 
-    final transcript = history.isEmpty
-        ? ''
-        : '\nCONVERSATION SO FAR (oldest first):\n${history.map((m) {
-            final who = m['type'] == 'user' ? 'User' : 'You (Fajar)';
-            return '$who: ${m['content']}';
-          }).join('\n')}\n';
+    final transcript =
+        history.isEmpty
+            ? ''
+            : '\nCONVERSATION SO FAR (oldest first):\n${history.map((m) {
+              final who = m['type'] == 'user' ? 'User' : 'You (Fajar)';
+              return '$who: ${m['content']}';
+            }).join('\n')}\n';
 
     return """
 You are Fajar, a friendly and knowledgeable AI nutritionist.

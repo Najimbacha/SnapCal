@@ -109,7 +109,6 @@ class OnbBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rtl = Directionality.of(context) == TextDirection.rtl;
     return Semantics(
       button: true,
       label: MaterialLocalizations.of(context).backButtonTooltip,
@@ -124,13 +123,10 @@ class OnbBackButton extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: context.cardBorderColor),
           ),
-          child: Transform.flip(
-            flipX: rtl,
-            child: Icon(
-              AppSymbols.chevronLeft,
-              size: 24,
-              color: context.textPrimaryColor,
-            ),
+          child: Icon(
+            AppSymbols.chevronLeft,
+            size: 24,
+            color: context.textPrimaryColor,
           ),
         ),
       ),
@@ -482,7 +478,6 @@ class OnbPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onTap != null && !loading;
     final isDark = context.isDarkMode;
-    final rtl = Directionality.of(context) == TextDirection.rtl;
     final fg =
         enabled
             ? Colors.white
@@ -551,14 +546,7 @@ class OnbPrimaryButton extends StatelessWidget {
                           ),
                           if (showArrow) ...[
                             const SizedBox(width: 8),
-                            Transform.flip(
-                              flipX: rtl,
-                              child: Icon(
-                                AppSymbols.arrowRight,
-                                size: 20,
-                                color: fg,
-                              ),
-                            ),
+                            Icon(AppSymbols.arrowRight, size: 20, color: fg),
                           ],
                         ],
                       ),
@@ -613,7 +601,9 @@ class OnbUnitToggle extends StatelessWidget {
             label,
             style: TextStyle(
               color:
-                  active ? context.textPrimaryColor : context.textSecondaryColor,
+                  active
+                      ? context.textPrimaryColor
+                      : context.textSecondaryColor,
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
             ),

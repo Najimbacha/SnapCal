@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../../providers/metrics_provider.dart';
@@ -66,7 +66,7 @@ class BodyProgressCard extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            LucideIcons.scale,
+                            WaznIcons.weight,
                             color: Color(0xFF6B4DFF),
                             size: 20,
                           ),
@@ -79,7 +79,7 @@ class BodyProgressCard extends StatelessWidget {
                       ],
                     ),
                     Icon(
-                      LucideIcons.chevronRight,
+                      WaznIcons.chevronRight,
                       color: context.textSecondaryColor,
                       size: 20,
                     ),

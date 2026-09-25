@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_typography.dart';
@@ -218,6 +218,8 @@ class _HealthMetricDetailScreenState
               : _anchor,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      switchToInputEntryModeIcon: const Icon(WaznIcons.edit),
+      switchToCalendarEntryModeIcon: const Icon(WaznIcons.calendar),
     );
     if (picked == null || !mounted) return;
     setState(() {
@@ -368,7 +370,7 @@ class _LockedMacroMetricDetail extends StatelessWidget {
                   color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(LucideIcons.lock, color: accent, size: 21),
+                child: Icon(WaznIcons.lock, color: accent, size: 21),
               ),
               const SizedBox(height: 16),
               Text(
@@ -393,7 +395,7 @@ class _LockedMacroMetricDetail extends StatelessWidget {
                 height: 52,
                 child: FilledButton.icon(
                   onPressed: onUnlock,
-                  icon: Icon(LucideIcons.sparkles, size: 17),
+                  icon: Icon(WaznIcons.ai, size: 17),
                   label: Text(l10n.macro_unlock_cta),
                 ),
               ),
@@ -460,7 +462,7 @@ class _DetailHeader extends StatelessWidget {
               ),
             ),
             child: Icon(
-              LucideIcons.arrowLeft,
+              WaznIcons.back,
               size: 20,
               color: _healthText(context).withValues(alpha: 0.88),
             ),
@@ -496,7 +498,7 @@ class _DetailHeader extends StatelessWidget {
             ),
           ),
           child: Icon(
-            LucideIcons.moreHorizontal,
+            WaznIcons.more,
             size: 20,
             color: _healthText(context).withValues(alpha: 0.54),
           ),
@@ -628,22 +630,18 @@ class _PeriodNavigation extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         _NavChip(
-          icon: LucideIcons.chevronLeft,
+          icon: WaznIcons.chevronLeft,
           onTap: onPrevious,
           isDark: isDark,
         ),
         const SizedBox(width: 8),
         _NavChip(
-          icon: LucideIcons.chevronRight,
+          icon: WaznIcons.chevronRight,
           onTap: canMoveNext ? onNext : null,
           isDark: isDark,
         ),
         const SizedBox(width: 8),
-        _NavChip(
-          icon: LucideIcons.calendarDays,
-          onTap: onCalendar,
-          isDark: isDark,
-        ),
+        _NavChip(icon: WaznIcons.calendar, onTap: onCalendar, isDark: isDark),
       ],
     );
   }
@@ -794,7 +792,7 @@ class _MetricHero extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      isGoalHit ? LucideIcons.checkCircle2 : LucideIcons.target,
+                      isGoalHit ? WaznIcons.success : WaznIcons.goal,
                       size: 12,
                       color: isGoalHit ? accent : Colors.orange,
                     ),
@@ -1318,7 +1316,7 @@ class _MetricPointList extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Icon(
-                      LucideIcons.lock,
+                      WaznIcons.lock,
                       size: 14,
                       color: _healthText(context).withValues(alpha: 0.40),
                     ),

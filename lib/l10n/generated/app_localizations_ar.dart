@@ -49,7 +49,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get purchase_headline => 'اعرف ماذا تأكل بعد ذلك.';
 
   @override
-  String get purchase_preview_title => 'شاهد سناب كال برو أثناء العمل';
+  String get purchase_preview_title => 'شاهد Wazn Pro أثناء العمل';
 
   @override
   String get purchase_preview_advice => 'خطط لعشاء غني بالبروتين.';
@@ -89,7 +89,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get home_dashboard_liters => 'لتر';
 
   @override
-  String get appTitle => 'سناب كال';
+  String get appTitle => 'Wazn';
 
   @override
   String get ads_label => 'إعلان';
@@ -728,7 +728,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get auth_footer_member => 'عضو بالفعل؟ ';
 
   @override
-  String get auth_footer_new => 'جديد في سناب كال؟ ';
+  String get auth_footer_new => 'جديد في Wazn؟ ';
 
   @override
   String get auth_action_signin => 'تسجيل الدخول';
@@ -1059,7 +1059,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'تعذّر تحديث اسمك. يرجى المحاولة مرة أخرى.';
 
   @override
-  String get paywall_welcome => 'مرحباً بك في سناب كال برو! 🎉';
+  String get paywall_welcome => 'مرحباً بك في Wazn Pro! 🎉';
 
   @override
   String get progress_log_progress => 'تسجيل التقدم';
@@ -1429,7 +1429,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_terms_desc => 'شروط وأحكام الاستخدام';
 
   @override
-  String get settings_about_snapcal => 'حول سناب كال';
+  String get settings_about_snapcal => 'حول Wazn';
 
   @override
   String get settings_upgrade_pro => 'الترقية إلى برو';
@@ -1853,7 +1853,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_sign_in => 'تسجيل الدخول';
 
   @override
-  String get settings_member => 'عضو سناب كال';
+  String get settings_member => 'عضو Wazn';
 
   @override
   String get settings_auth_cta => 'سجل أو ادخل';
@@ -1901,10 +1901,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings_sync_data_desc => 'مزامنة بياناتك';
 
   @override
-  String get settings_about_app => 'حول سناب كال';
+  String get settings_about_app => 'حول Wazn';
 
   @override
-  String get settings_legalese => '© 2026 سناب كال. جميع الحقوق محفوظة.';
+  String get settings_legalese => '© 2026 Wazn. جميع الحقوق محفوظة.';
 
   @override
   String get onboarding_result_maintain => 'الحفاظ على الوزن الحالي';
@@ -2221,7 +2221,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get feature_insights_share_text =>
-      'اطلع على ملخصي الأسبوعي للتغذية من سناب كال! 📊';
+      'اطلع على ملخصي الأسبوعي للتغذية من Wazn! 📊';
 
   @override
   String get settings_guest_title => 'احمِ تقدمك';
@@ -4241,7 +4241,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'احصل على جدولك اليومي الكامل المخصص لأهدافك';
 
   @override
-  String get planner_teaser_cta => 'افتح مع سناب كال برو';
+  String get planner_teaser_cta => 'افتح مع Wazn Pro';
 
   @override
   String paywall_disclosure_trial_year(int days, String price) {

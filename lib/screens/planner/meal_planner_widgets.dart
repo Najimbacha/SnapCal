@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -42,7 +42,7 @@ class PlannerTopBar extends StatelessWidget {
           IconButton(
             tooltip: l10n.common_back,
             onPressed: onBack,
-            icon: const Icon(LucideIcons.arrowLeft, size: 21),
+            icon: const Icon(WaznIcons.back, size: 21),
           ),
           Expanded(
             child: Row(
@@ -70,7 +70,7 @@ class PlannerTopBar extends StatelessWidget {
                 IconButton(
                   tooltip: l10n.planner_tab_grocery,
                   onPressed: onGrocery,
-                  icon: const Icon(LucideIcons.shoppingBag, size: 21),
+                  icon: const Icon(WaznIcons.grocery, size: 21),
                 ),
                 if (groceryCount > 0 && isPro)
                   PositionedDirectional(
@@ -101,7 +101,7 @@ class PlannerTopBar extends StatelessWidget {
           if (isPro)
             PopupMenuButton<String>(
               tooltip: l10n.planner_meal_preferences,
-              icon: const Icon(LucideIcons.moreVertical, size: 21),
+              icon: const Icon(WaznIcons.moreVertical, size: 21),
               onSelected: (value) {
                 if (value == 'preferences') onPreferences();
                 if (value == 'regenerate') onRegenerate();
@@ -111,14 +111,14 @@ class PlannerTopBar extends StatelessWidget {
                     PopupMenuItem(
                       value: 'preferences',
                       child: _MenuLabel(
-                        icon: LucideIcons.slidersHorizontal,
+                        icon: WaznIcons.settings,
                         label: l10n.planner_meal_preferences,
                       ),
                     ),
                     PopupMenuItem(
                       value: 'regenerate',
                       child: _MenuLabel(
-                        icon: LucideIcons.refreshCw,
+                        icon: WaznIcons.refresh,
                         label: l10n.planner_regenerate,
                       ),
                     ),
@@ -158,13 +158,13 @@ class PlannerTabs extends StatelessWidget {
           children: [
             _TabButton(
               label: l10n.planner_plan_tab,
-              icon: LucideIcons.calendarDays,
+              icon: WaznIcons.calendar,
               selected: !grocerySelected,
               onTap: onPlan,
             ),
             _TabButton(
               label: l10n.planner_tab_grocery,
-              icon: LucideIcons.shoppingBag,
+              icon: WaznIcons.grocery,
               selected: grocerySelected,
               onTap: onGrocery,
             ),
@@ -280,7 +280,7 @@ class PlannerDayStrip extends StatelessWidget {
                       if (locked) ...[
                         const SizedBox(width: 2),
                         Icon(
-                          LucideIcons.lock,
+                          WaznIcons.lock,
                           size: 8,
                           color:
                               selected
@@ -307,7 +307,7 @@ class PlannerPreviewLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(LucideIcons.eye, size: 15, color: context.primaryColor),
+        Icon(WaznIcons.eye, size: 15, color: context.primaryColor),
         const SizedBox(width: 7),
         Expanded(
           child: Text(
@@ -371,7 +371,7 @@ class PlannerDayHeading extends StatelessWidget {
           IconButton.outlined(
             tooltip: l10n.planner_regenerate,
             onPressed: onRegenerate,
-            icon: const Icon(LucideIcons.refreshCw, size: 18),
+            icon: const Icon(WaznIcons.refresh, size: 18),
           ),
       ],
     );
@@ -595,7 +595,7 @@ class PlannerMealRow extends StatelessWidget {
                       ),
                       padding: const EdgeInsets.all(8),
                       icon: Icon(
-                        isLogged ? LucideIcons.checkCircle : LucideIcons.plus,
+                        isLogged ? WaznIcons.success : WaznIcons.plus,
                         size: 19,
                         color:
                             isLogged
@@ -611,13 +611,13 @@ class PlannerMealRow extends StatelessWidget {
                         height: 40,
                       ),
                       padding: const EdgeInsets.all(8),
-                      icon: const Icon(LucideIcons.repeat2, size: 17),
+                      icon: const Icon(WaznIcons.repeat, size: 17),
                     ),
                   ],
                 ),
               ] else
                 Icon(
-                  LucideIcons.chevronRight,
+                  WaznIcons.chevronRight,
                   size: 18,
                   color: context.textMutedColor,
                 ),
@@ -669,10 +669,7 @@ class PlannerBottomActions extends StatelessWidget {
           Expanded(
             child: OutlinedButton.icon(
               onPressed: onAdjust,
-              icon: Icon(
-                isPro ? LucideIcons.slidersHorizontal : LucideIcons.lock,
-                size: 17,
-              ),
+              icon: Icon(isPro ? WaznIcons.settings : WaznIcons.lock, size: 17),
               style: _buttonStyle(context, outlined: true),
               label: Text(l10n.planner_adjust_day),
             ),
@@ -681,7 +678,7 @@ class PlannerBottomActions extends StatelessWidget {
           Expanded(
             child: FilledButton.icon(
               onPressed: onGrocery,
-              icon: const Icon(LucideIcons.shoppingBag, size: 17),
+              icon: const Icon(WaznIcons.grocery, size: 17),
               style: _buttonStyle(context),
               label: Text(
                 isPro ? l10n.planner_view_grocery : l10n.planner_unlock_pro,
@@ -737,7 +734,7 @@ class PlannerLockedWeekCard extends StatelessWidget {
                   border: Border.all(color: context.cardBorderColor),
                 ),
                 child: Icon(
-                  LucideIcons.lock,
+                  WaznIcons.lock,
                   size: 18,
                   color: context.primaryColor,
                 ),
@@ -805,12 +802,12 @@ class PlannerNotice extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(LucideIcons.info, size: 17, color: AppColors.warning),
+          const Icon(WaznIcons.info, size: 17, color: AppColors.warning),
           const SizedBox(width: 8),
           Expanded(child: Text(message, style: AppTypography.bodySmall)),
           IconButton(
             onPressed: onDismiss,
-            icon: const Icon(LucideIcons.x, size: 16),
+            icon: const Icon(WaznIcons.close, size: 16),
           ),
         ],
       ),
@@ -828,11 +825,7 @@ class PlannerEmptyMeals extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 36),
       child: Column(
         children: [
-          Icon(
-            LucideIcons.utensilsCrossed,
-            size: 28,
-            color: context.textMutedColor,
-          ),
+          Icon(WaznIcons.meal, size: 28, color: context.textMutedColor),
           const SizedBox(height: 10),
           Text(
             AppLocalizations.of(context)!.planner_no_meals_body,
@@ -842,7 +835,7 @@ class PlannerEmptyMeals extends StatelessWidget {
           ),
           TextButton.icon(
             onPressed: onRegenerate,
-            icon: const Icon(LucideIcons.refreshCw, size: 16),
+            icon: const Icon(WaznIcons.refresh, size: 16),
             label: Text(AppLocalizations.of(context)!.planner_regenerate),
           ),
         ],
@@ -899,7 +892,7 @@ class _PlannerGeneratingScreenState extends State<PlannerGeneratingScreen> {
                 children: [
                   IconButton(
                     onPressed: widget.onLeave,
-                    icon: const Icon(LucideIcons.arrowLeft, size: 21),
+                    icon: const Icon(WaznIcons.back, size: 21),
                   ),
                   Expanded(
                     child: Row(
@@ -976,8 +969,8 @@ class _PlannerGeneratingScreenState extends State<PlannerGeneratingScreen> {
                                     )
                                     : Icon(
                                       complete
-                                          ? LucideIcons.checkCircle
-                                          : LucideIcons.circle,
+                                          ? WaznIcons.success
+                                          : WaznIcons.circle,
                                       size: 21,
                                       color:
                                           complete
@@ -1017,15 +1010,15 @@ class _PlannerGeneratingScreenState extends State<PlannerGeneratingScreen> {
                     runSpacing: 8,
                     children: [
                       _QuietChip(
-                        icon: LucideIcons.clock3,
+                        icon: WaznIcons.clock,
                         label: l10n.planner_under_30,
                       ),
                       _QuietChip(
-                        icon: LucideIcons.wallet,
+                        icon: WaznIcons.wallet,
                         label: l10n.planner_style_budget,
                       ),
                       _QuietChip(
-                        icon: LucideIcons.recycle,
+                        icon: WaznIcons.refresh,
                         label: l10n.planner_smart_leftovers,
                       ),
                     ],
@@ -1115,7 +1108,7 @@ class GroceryPlannerView extends StatelessWidget {
             IconButton.outlined(
               tooltip: l10n.planner_share,
               onPressed: onShare,
-              icon: const Icon(LucideIcons.share2, size: 18),
+              icon: const Icon(WaznIcons.share, size: 18),
             ),
           ],
         ),
@@ -1148,7 +1141,7 @@ class GroceryPlannerView extends StatelessWidget {
         const SizedBox(height: 12),
         Row(
           children: [
-            Icon(LucideIcons.combine, size: 15, color: context.textMutedColor),
+            Icon(WaznIcons.combine, size: 15, color: context.textMutedColor),
             const SizedBox(width: 7),
             Expanded(
               child: Text(
@@ -1166,7 +1159,7 @@ class GroceryPlannerView extends StatelessWidget {
             child: Column(
               children: [
                 Icon(
-                  LucideIcons.shoppingBag,
+                  WaznIcons.grocery,
                   size: 30,
                   color: context.textMutedColor,
                 ),
@@ -1190,7 +1183,7 @@ class GroceryPlannerView extends StatelessWidget {
               Expanded(
                 child: TextButton.icon(
                   onPressed: checked == 0 ? null : onClearChecked,
-                  icon: const Icon(LucideIcons.eraser, size: 17),
+                  icon: const Icon(WaznIcons.eraser, size: 17),
                   label: Text(l10n.planner_clear_checked),
                 ),
               ),
@@ -1199,7 +1192,7 @@ class GroceryPlannerView extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onShoppingMode,
                   icon: Icon(
-                    shoppingMode ? LucideIcons.x : LucideIcons.shoppingCart,
+                    shoppingMode ? WaznIcons.close : WaznIcons.shoppingCart,
                     size: 17,
                   ),
                   style: FilledButton.styleFrom(
@@ -1259,7 +1252,7 @@ class _PlannerMealDetailScreenState extends State<PlannerMealDetailScreen> {
                 Navigator.pop(context);
                 widget.onSwap();
               },
-              icon: const Icon(LucideIcons.repeat2, size: 16),
+              icon: const Icon(WaznIcons.repeat, size: 16),
               label: Text(l10n.planner_swap_meal),
             ),
         ],
@@ -1286,9 +1279,7 @@ class _PlannerMealDetailScreenState extends State<PlannerMealDetailScreen> {
                             widget.onSwap();
                           },
                           icon: Icon(
-                            widget.isPro
-                                ? LucideIcons.repeat2
-                                : LucideIcons.lock,
+                            widget.isPro ? WaznIcons.repeat : WaznIcons.lock,
                             size: 17,
                           ),
                           style: OutlinedButton.styleFrom(
@@ -1304,7 +1295,7 @@ class _PlannerMealDetailScreenState extends State<PlannerMealDetailScreen> {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: widget.isPro ? _log : null,
-                          icon: const Icon(LucideIcons.plus, size: 17),
+                          icon: const Icon(WaznIcons.plus, size: 17),
                           style: FilledButton.styleFrom(
                             minimumSize: const Size.fromHeight(50),
                             shape: RoundedRectangleBorder(
@@ -1501,20 +1492,16 @@ class _PlannerSwapSheetState extends State<PlannerSwapSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final intents = [
-      ('lower_calorie', l10n.planner_swap_lower_calorie, LucideIcons.flame),
-      (
-        'higher_protein',
-        l10n.planner_swap_higher_protein,
-        LucideIcons.dumbbell,
-      ),
-      ('faster_prep', l10n.planner_swap_faster_prep, LucideIcons.timer),
-      ('cheaper', l10n.planner_swap_cheaper, LucideIcons.wallet),
+      ('lower_calorie', l10n.planner_swap_lower_calorie, WaznIcons.calories),
+      ('higher_protein', l10n.planner_swap_higher_protein, WaznIcons.exercise),
+      ('faster_prep', l10n.planner_swap_faster_prep, WaznIcons.timer),
+      ('cheaper', l10n.planner_swap_cheaper, WaznIcons.wallet),
       (
         'different_cuisine',
         l10n.planner_swap_different_cuisine,
-        LucideIcons.globe2,
+        WaznIcons.globe,
       ),
-      ('surprise', l10n.planner_swap_surprise, LucideIcons.sparkles),
+      ('surprise', l10n.planner_swap_surprise, WaznIcons.ai),
     ];
     return SafeArea(
       top: false,
@@ -1572,7 +1559,7 @@ class _PlannerSwapSheetState extends State<PlannerSwapSheet> {
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(LucideIcons.x, size: 20),
+                    icon: const Icon(WaznIcons.close, size: 20),
                   ),
                 ],
               ),
@@ -1627,11 +1614,7 @@ class _PlannerSwapSheetState extends State<PlannerSwapSheet> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(
-                    LucideIcons.info,
-                    size: 15,
-                    color: context.textMutedColor,
-                  ),
+                  Icon(WaznIcons.info, size: 15, color: context.textMutedColor),
                   const SizedBox(width: 7),
                   Text(
                     l10n.planner_only_meal_changes,
@@ -1657,7 +1640,7 @@ class _PlannerSwapSheetState extends State<PlannerSwapSheet> {
                       PlannerSwapResult(intent: _intent, note: constraints),
                     );
                   },
-                  icon: const Icon(LucideIcons.sparkles, size: 18),
+                  icon: const Icon(WaznIcons.ai, size: 18),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
                     shape: RoundedRectangleBorder(
@@ -2006,7 +1989,7 @@ class _Stepper extends StatelessWidget {
         children: [
           IconButton(
             onPressed: onMinus,
-            icon: const Icon(LucideIcons.minus, size: 17),
+            icon: const Icon(WaznIcons.minus, size: 17),
           ),
           Text(
             '$value',
@@ -2016,7 +1999,7 @@ class _Stepper extends StatelessWidget {
           ),
           IconButton(
             onPressed: onPlus,
-            icon: const Icon(LucideIcons.plus, size: 17),
+            icon: const Icon(WaznIcons.plus, size: 17),
           ),
         ],
       ),

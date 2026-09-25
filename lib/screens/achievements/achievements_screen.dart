@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/core/theme/app_typography.dart';
@@ -47,7 +47,7 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
         children: [
           _CategorySection(
             title: l10n.achievement_category_consistency,
-            icon: LucideIcons.calendarClock,
+            icon: WaznIcons.calendar,
             achievements: achievementsNotifier.byCategory(
               AchievementCategory.consistency,
             ),
@@ -55,7 +55,7 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
           const SizedBox(height: 32),
           _CategorySection(
             title: l10n.achievement_category_precision,
-            icon: LucideIcons.target,
+            icon: WaznIcons.goal,
             achievements: achievementsNotifier.byCategory(
               AchievementCategory.precision,
             ),
@@ -63,7 +63,7 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
           const SizedBox(height: 32),
           _CategorySection(
             title: l10n.achievement_category_hydration,
-            icon: LucideIcons.droplets,
+            icon: WaznIcons.water,
             achievements: achievementsNotifier.byCategory(
               AchievementCategory.hydration,
             ),
@@ -71,7 +71,7 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
           const SizedBox(height: 32),
           _CategorySection(
             title: l10n.achievement_category_logging,
-            icon: LucideIcons.camera,
+            icon: WaznIcons.camera,
             achievements: achievementsNotifier.byCategory(
               AchievementCategory.logging,
             ),
@@ -79,7 +79,7 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
           const SizedBox(height: 32),
           _CategorySection(
             title: l10n.achievement_category_progress,
-            icon: LucideIcons.trendingUp,
+            icon: WaznIcons.trend,
             achievements: achievementsNotifier.byCategory(
               AchievementCategory.progress,
             ),

@@ -44,16 +44,15 @@ void main() {
         ),
       )).load();
     }
-    await (FontLoader('packages/material_symbols_icons/MaterialSymbolsOutlined')
-          ..addFont(
-            rootBundle.load(
-              'packages/material_symbols_icons/lib/fonts/MaterialSymbolsOutlined.ttf',
-            ),
-          ))
-        .load();
-    await (FontLoader('packages/lucide_icons/Lucide')..addFont(
-      rootBundle.load('packages/lucide_icons/assets/lucide.ttf'),
+    await (FontLoader(
+      'packages/material_symbols_icons/MaterialSymbolsOutlined',
+    )..addFont(
+      rootBundle.load(
+        'packages/material_symbols_icons/lib/fonts/MaterialSymbolsOutlined.ttf',
+      ),
     )).load();
+    await (FontLoader('WaznIcons')
+      ..addFont(rootBundle.load('assets/fonts/WaznIcons.ttf'))).load();
   });
 
   for (final (name, locale, dark, size) in [
@@ -151,7 +150,10 @@ void main() {
       await settle(2000);
       await shot('6-plan');
 
-      expect(find.byKey(const ValueKey('onboarding-start-plan')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('onboarding-start-plan')),
+        findsOneWidget,
+      );
       // The pace chosen on the pace step is the pace in the plan.
       if (locale == 'en') {
         expect(find.textContaining('0.5 kg/week'), findsWidgets);

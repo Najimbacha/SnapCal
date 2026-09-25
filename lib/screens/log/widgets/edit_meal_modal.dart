@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_typography.dart';
@@ -169,7 +169,7 @@ class _EditMealModalState extends State<EditMealModal> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      widget.isNew ? LucideIcons.plus : LucideIcons.pencil,
+                      widget.isNew ? WaznIcons.plus : WaznIcons.edit,
                       size: 19,
                       color: context.primaryColor,
                     ),
@@ -189,7 +189,7 @@ class _EditMealModalState extends State<EditMealModal> {
                     tooltip:
                         MaterialLocalizations.of(context).closeButtonTooltip,
                     onPressed: widget.onCancel ?? () => Navigator.pop(context),
-                    icon: const Icon(LucideIcons.x),
+                    icon: const Icon(WaznIcons.close),
                     color: context.textSecondaryColor,
                     iconSize: 20,
                   ),
@@ -214,7 +214,7 @@ class _EditMealModalState extends State<EditMealModal> {
                       controller: _nameController,
                       label: l10n.log_food_name,
                       hint: l10n.log_food_hint,
-                      icon: LucideIcons.utensils,
+                      icon: WaznIcons.meal,
                       textInputAction: TextInputAction.next,
                       onChanged: (_) => setState(() {}),
                     ),
@@ -223,14 +223,14 @@ class _EditMealModalState extends State<EditMealModal> {
                       controller: _portionController,
                       label: l10n.log_portion_desc,
                       hint: l10n.log_portion_hint,
-                      icon: LucideIcons.scale,
+                      icon: WaznIcons.weight,
                       textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 22),
                     Row(
                       children: [
                         Icon(
-                          LucideIcons.activity,
+                          WaznIcons.activity,
                           size: 17,
                           color: context.primaryColor,
                         ),
@@ -259,7 +259,7 @@ class _EditMealModalState extends State<EditMealModal> {
                       const SizedBox(height: 16),
                       TextButton.icon(
                         onPressed: () => _showDeleteConfirmation(context),
-                        icon: const Icon(LucideIcons.trash2, size: 17),
+                        icon: const Icon(WaznIcons.delete, size: 17),
                         label: Text(l10n.log_delete_entry),
                         style: TextButton.styleFrom(
                           foregroundColor: Theme.of(context).colorScheme.error,
@@ -286,7 +286,7 @@ class _EditMealModalState extends State<EditMealModal> {
                 height: 52,
                 child: ElevatedButton.icon(
                   onPressed: _canSave ? _handleSave : null,
-                  icon: const Icon(LucideIcons.check, size: 19),
+                  icon: const Icon(WaznIcons.check, size: 19),
                   label: Text(l10n.log_save_entry),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: context.primaryColor,
@@ -370,10 +370,10 @@ class _MealTypeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final options = [
-      ('Breakfast', l10n.result_meal_breakfast, LucideIcons.coffee),
-      ('Lunch', l10n.result_meal_lunch, LucideIcons.sun),
-      ('Dinner', l10n.result_meal_dinner, LucideIcons.moon),
-      ('Snack', l10n.result_meal_snack, LucideIcons.apple),
+      ('Breakfast', l10n.result_meal_breakfast, WaznIcons.breakfast),
+      ('Lunch', l10n.result_meal_lunch, WaznIcons.lunch),
+      ('Dinner', l10n.result_meal_dinner, WaznIcons.dinner),
+      ('Snack', l10n.result_meal_snack, WaznIcons.snack),
     ];
 
     return Container(
@@ -564,7 +564,7 @@ class _NutritionPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  LucideIcons.flame,
+                  WaznIcons.calories,
                   size: 18,
                   color: context.primaryColor,
                 ),

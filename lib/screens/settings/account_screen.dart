@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
@@ -46,7 +46,7 @@ class AccountScreen extends ConsumerWidget {
                 builder: (context, ref, _) {
                   final isPro = ref.watch(effectiveIsProProvider);
                   return SettingsRow(
-                    icon: LucideIcons.crown,
+                    icon: WaznIcons.pro,
                     title: l10n.settings_subscription,
                     value:
                         isPro
@@ -68,8 +68,8 @@ class AccountScreen extends ConsumerWidget {
               SettingsRow(
                 icon:
                     ref.watch(isAnonymousProvider)
-                        ? LucideIcons.userPlus
-                        : LucideIcons.logOut,
+                        ? WaznIcons.userPlus
+                        : WaznIcons.logOut,
                 title:
                     ref.watch(isAnonymousProvider)
                         ? l10n.settings_create_account
@@ -82,13 +82,13 @@ class AccountScreen extends ConsumerWidget {
               ),
               if (!ref.watch(isAnonymousProvider))
                 SettingsRow(
-                  icon: LucideIcons.trash2,
+                  icon: WaznIcons.delete,
                   title: l10n.common_delete_account,
                   value: l10n.common_delete_account_confirm,
                   onTap: () => confirmAndDeleteAccount(context, ref),
                 ),
               SettingsRow(
-                icon: LucideIcons.refreshCw,
+                icon: WaznIcons.refresh,
                 title: l10n.paywall_restore,
                 // This said "Purchases Restored!" before anything was tapped.
                 value: l10n.settings_restore_desc,
@@ -121,7 +121,7 @@ class AccountScreen extends ConsumerWidget {
       messenger,
       l10n.premium_loading,
       color: AppColors.primary,
-      icon: LucideIcons.refreshCw,
+      icon: WaznIcons.refresh,
     );
 
     final result = await subService.restorePurchasesDetailed();
@@ -133,7 +133,7 @@ class AccountScreen extends ConsumerWidget {
           messenger,
           l10n.premium_restore_success,
           color: AppColors.primary,
-          icon: LucideIcons.sparkles,
+          icon: WaznIcons.ai,
         );
         return;
       case SubscriptionStatus.pending:
@@ -144,7 +144,7 @@ class AccountScreen extends ConsumerWidget {
             _SettingsSubscriptionCopyKey.restorePending,
           ),
           color: AppColors.warning,
-          icon: LucideIcons.clock,
+          icon: WaznIcons.clock,
         );
         return;
       case SubscriptionStatus.cancelled:
@@ -155,7 +155,7 @@ class AccountScreen extends ConsumerWidget {
             _SettingsSubscriptionCopyKey.restoreCancelled,
           ),
           color: AppColors.primary,
-          icon: LucideIcons.checkCircle2,
+          icon: WaznIcons.success,
         );
         return;
       case SubscriptionStatus.noPurchase:
@@ -163,7 +163,7 @@ class AccountScreen extends ConsumerWidget {
           messenger,
           l10n.premium_restore_empty,
           color: AppColors.warning,
-          icon: LucideIcons.refreshCw,
+          icon: WaznIcons.refresh,
         );
         return;
       case SubscriptionStatus.offline:
@@ -174,7 +174,7 @@ class AccountScreen extends ConsumerWidget {
             _SettingsSubscriptionCopyKey.restoreOffline,
           ),
           color: AppColors.warning,
-          icon: LucideIcons.wifiOff,
+          icon: WaznIcons.offline,
         );
         return;
       case SubscriptionStatus.storeUnavailable:
@@ -185,7 +185,7 @@ class AccountScreen extends ConsumerWidget {
             _SettingsSubscriptionCopyKey.storeSlow,
           ),
           color: AppColors.warning,
-          icon: LucideIcons.clock,
+          icon: WaznIcons.clock,
         );
         return;
       case SubscriptionStatus.failed:
@@ -196,7 +196,7 @@ class AccountScreen extends ConsumerWidget {
             _SettingsSubscriptionCopyKey.restoreFailed,
           ),
           color: AppColors.warning,
-          icon: LucideIcons.refreshCw,
+          icon: WaznIcons.refresh,
         );
         return;
     }

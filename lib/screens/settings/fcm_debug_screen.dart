@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/services/fcm_service.dart';
+import '../../widgets/wazn_icons.dart';
 
 /// Developer-only FCM debug screen.
 /// Only accessible when kDebugMode is true.
@@ -61,7 +61,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
         title: const Text('FCM Debug'),
         actions: [
           IconButton(
-            icon: Icon(LucideIcons.refreshCw, size: 20),
+            icon: Icon(WaznIcons.refresh, size: 20),
             onPressed: _refresh,
             tooltip: 'Refresh',
           ),
@@ -72,7 +72,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
         children: [
           _sectionCard(
             title: 'Service Status',
-            icon: LucideIcons.activity,
+            icon: WaznIcons.activity,
             color: AppColors.primary,
             child: _buildKeyValue([
               ('Initialized', 'yes'),
@@ -85,7 +85,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
 
           _sectionCard(
             title: 'FCM Token',
-            icon: LucideIcons.key,
+            icon: WaznIcons.key,
             color: AppColors.primary,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +132,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
 
           _sectionCard(
             title: 'Topic: snapcal_all_users',
-            icon: LucideIcons.hash,
+            icon: WaznIcons.hash,
             color: AppColors.secondary,
             child: Row(
               children: [
@@ -176,7 +176,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
 
           _sectionCard(
             title: 'Last Received Notification',
-            icon: LucideIcons.messageCircle,
+            icon: WaznIcons.chat,
             color: AppColors.warning,
             child: _buildLastMessage(),
           ),
@@ -196,7 +196,7 @@ class _FcmDebugScreenState extends State<FcmDebugScreen> {
                 Row(
                   children: [
                     Icon(
-                      LucideIcons.terminal,
+                      WaznIcons.terminal,
                       size: 18,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),

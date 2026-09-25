@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../snap_controller.dart';
@@ -107,7 +107,7 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                           child: Row(
                             children: [
                               const Icon(
-                                LucideIcons.scanLine,
+                                WaznIcons.scan,
                                 color: AppColors.emeraldLight,
                                 size: 23,
                               ),
@@ -145,7 +145,7 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                                   ),
                                   minimumSize: const Size(48, 48),
                                 ),
-                                icon: const Icon(LucideIcons.x, size: 20),
+                                icon: const Icon(WaznIcons.close, size: 20),
                               ),
                             ],
                           ),
@@ -208,7 +208,7 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                               OutlinedButton.icon(
                                 key: const ValueKey('analyzing-manual-entry'),
                                 onPressed: widget.onManualEntry,
-                                icon: const Icon(LucideIcons.pencil, size: 16),
+                                icon: const Icon(WaznIcons.edit, size: 16),
                                 label: Text(
                                   l10n.scan_overlay_manual,
                                   textAlign: TextAlign.center,
@@ -269,7 +269,7 @@ class _PhotoPlaceholder extends StatelessWidget {
   const _PhotoPlaceholder();
   @override
   Widget build(BuildContext context) => const Center(
-    child: Icon(LucideIcons.utensils, size: 64, color: AppColors.emeraldLight),
+    child: Icon(WaznIcons.meal, size: 64, color: AppColors.emeraldLight),
   );
 }
 

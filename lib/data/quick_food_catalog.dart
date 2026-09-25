@@ -85,6 +85,11 @@ class QuickFoodCatalog {
       fatPer100g: 8,
       defaultServingG: 250,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'كاري الدجاج',
+        'es': 'Pollo al curry',
+        'fr': 'Curry de poulet',
+      },
       countries: {'PK', 'IN', 'BD'},
     ),
     QuickFood(
@@ -96,6 +101,11 @@ class QuickFoodCatalog {
       fatPer100g: 10,
       defaultServingG: 250,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'دجاج تكا ماسالا',
+        'es': 'Pollo tikka masala',
+        'fr': 'Poulet tikka masala',
+      },
       countries: {'PK', 'IN', 'GB'},
     ),
     QuickFood(
@@ -107,8 +117,12 @@ class QuickFoodCatalog {
       fatPer100g: 6,
       defaultServingG: 300,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'برياني دجاج',
+        'es': 'Biryani de pollo',
+        'fr': 'Biryani au poulet',
+      },
       countries: {'PK', 'IN', 'BD'},
-      localizedNames: {'ar': 'برياني دجاج'},
     ),
     QuickFood(
       nutritionId: 'FDB_000534',
@@ -119,8 +133,12 @@ class QuickFoodCatalog {
       fatPer100g: 0.4,
       defaultServingG: 220,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'دال بالعدس',
+        'es': 'Dal de lentejas',
+        'fr': 'Dal de lentilles',
+      },
       countries: {'PK', 'IN', 'BD'},
-      localizedNames: {'ar': 'دال بالعدس'},
       aliases: ['daal', 'lentil curry'],
     ),
     QuickFood(
@@ -132,6 +150,11 @@ class QuickFoodCatalog {
       fatPer100g: 6,
       defaultServingG: 100,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'خبز نان بالثوم',
+        'es': 'Naan de ajo',
+        'fr': 'Naan à l\'ail',
+      },
       countries: {'PK', 'IN'},
     ),
     QuickFood(
@@ -143,6 +166,11 @@ class QuickFoodCatalog {
       fatPer100g: 13,
       defaultServingG: 75,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'سمبوسة خضار',
+        'es': 'Samosa de verduras',
+        'fr': 'Samoussa aux légumes',
+      },
       countries: {'PK', 'IN', 'BD'},
     ),
     QuickFood(
@@ -154,6 +182,11 @@ class QuickFoodCatalog {
       fatPer100g: 10,
       defaultServingG: 200,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'دجاج تندوري',
+        'es': 'Pollo tandoori',
+        'fr': 'Poulet tandoori',
+      },
       countries: {'PK', 'IN'},
     ),
     QuickFood(
@@ -165,6 +198,11 @@ class QuickFoodCatalog {
       fatPer100g: 12,
       defaultServingG: 250,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'دجاج بالزبدة',
+        'es': 'Pollo a la mantequilla',
+        'fr': 'Poulet au beurre',
+      },
       countries: {'PK', 'IN'},
     ),
     QuickFood(
@@ -176,6 +214,11 @@ class QuickFoodCatalog {
       fatPer100g: 8,
       defaultServingG: 220,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'بالاك بانير (سبانخ بالجبن)',
+        'es': 'Palak paneer (espinacas con queso)',
+        'fr': 'Palak paneer (épinards au fromage)',
+      },
       countries: {'PK', 'IN'},
     ),
     QuickFood(
@@ -187,6 +230,11 @@ class QuickFoodCatalog {
       fatPer100g: 4,
       defaultServingG: 220,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'حمص ماسالا',
+        'es': 'Chana masala (garbanzos al curry)',
+        'fr': 'Chana masala (pois chiches au curry)',
+      },
       countries: {'PK', 'IN'},
     ),
     QuickFood(
@@ -198,8 +246,12 @@ class QuickFoodCatalog {
       fatPer100g: 7.45,
       defaultServingG: 50,
       regions: {'south_asian'},
+      localizedNames: {
+        'ar': 'خبز روتي',
+        'es': 'Roti (pan plano)',
+        'fr': 'Roti (pain plat)',
+      },
       countries: {'PK', 'IN', 'BD'},
-      localizedNames: {'ar': 'خبز روتي'},
       aliases: ['chapati'],
     ),
 
@@ -213,8 +265,8 @@ class QuickFoodCatalog {
       fatPer100g: 18,
       defaultServingG: 100,
       regions: {'middle_eastern'},
+      localizedNames: {'ar': 'فلافل', 'es': 'Falafel', 'fr': 'Falafels'},
       countries: {'SA', 'AE', 'EG', 'JO', 'LB'},
-      localizedNames: {'ar': 'فلافل'},
     ),
     QuickFood(
       nutritionId: 'FDB_000546',
@@ -225,8 +277,12 @@ class QuickFoodCatalog {
       fatPer100g: 5,
       defaultServingG: 220,
       regions: {'middle_eastern'},
+      localizedNames: {
+        'ar': 'شاورما دجاج',
+        'es': 'Shawarma de pollo',
+        'fr': 'Chawarma au poulet',
+      },
       countries: {'SA', 'AE', 'JO', 'LB'},
-      localizedNames: {'ar': 'شاورما دجاج'},
     ),
     QuickFood(
       nutritionId: 'FDB_000547',
@@ -237,8 +293,12 @@ class QuickFoodCatalog {
       fatPer100g: 12,
       defaultServingG: 180,
       regions: {'middle_eastern'},
+      localizedNames: {
+        'ar': 'كباب مشوي',
+        'es': 'Kebab a la parrilla',
+        'fr': 'Kebab grillé',
+      },
       countries: {'SA', 'AE', 'TR', 'PK'},
-      localizedNames: {'ar': 'كباب مشوي'},
     ),
     QuickFood(
       nutritionId: 'FDB_000548',
@@ -249,7 +309,11 @@ class QuickFoodCatalog {
       fatPer100g: 9,
       defaultServingG: 180,
       regions: {'middle_eastern', 'mediterranean'},
-      localizedNames: {'ar': 'حمص مع خبز عربي'},
+      localizedNames: {
+        'ar': 'حمص مع خبز عربي',
+        'es': 'Hummus con pan pita',
+        'fr': 'Houmous et pain pita',
+      },
     ),
     QuickFood(
       nutritionId: 'FDB_000549',
@@ -260,7 +324,11 @@ class QuickFoodCatalog {
       fatPer100g: 6.2,
       defaultServingG: 150,
       regions: {'middle_eastern', 'mediterranean'},
-      localizedNames: {'ar': 'بابا غنوج'},
+      localizedNames: {
+        'ar': 'بابا غنوج',
+        'es': 'Baba ganoush',
+        'fr': 'Baba ghanoush',
+      },
     ),
     QuickFood(
       nutritionId: 'FDB_000577',
@@ -271,8 +339,12 @@ class QuickFoodCatalog {
       fatPer100g: 6,
       defaultServingG: 320,
       regions: {'middle_eastern'},
+      localizedNames: {
+        'ar': 'كبسة دجاج',
+        'es': 'Kabsa de pollo',
+        'fr': 'Kabsa au poulet',
+      },
       countries: {'SA', 'KW', 'QA', 'BH'},
-      localizedNames: {'ar': 'كبسة دجاج'},
     ),
     QuickFood(
       nutritionId: 'FDB_000578',
@@ -283,8 +355,12 @@ class QuickFoodCatalog {
       fatPer100g: 7,
       defaultServingG: 320,
       regions: {'middle_eastern'},
+      localizedNames: {
+        'ar': 'مندي دجاج',
+        'es': 'Mandi de pollo',
+        'fr': 'Mandi au poulet',
+      },
       countries: {'SA', 'YE', 'AE'},
-      localizedNames: {'ar': 'مندي دجاج'},
     ),
     QuickFood(
       nutritionId: 'FDB_000579',
@@ -295,8 +371,8 @@ class QuickFoodCatalog {
       fatPer100g: 3,
       defaultServingG: 300,
       regions: {'middle_eastern'},
+      localizedNames: {'ar': 'كشري', 'es': 'Koshari', 'fr': 'Koshari'},
       countries: {'EG'},
-      localizedNames: {'ar': 'كشري'},
     ),
     QuickFood(
       nutritionId: 'FDB_000580',
@@ -307,7 +383,11 @@ class QuickFoodCatalog {
       fatPer100g: 5,
       defaultServingG: 160,
       regions: {'middle_eastern', 'mediterranean'},
-      localizedNames: {'ar': 'ورق عنب'},
+      localizedNames: {
+        'ar': 'ورق عنب',
+        'es': 'Hojas de parra rellenas',
+        'fr': 'Feuilles de vigne farcies',
+      },
       aliases: ['dolma'],
     ),
     QuickFood(
@@ -319,7 +399,7 @@ class QuickFoodCatalog {
       fatPer100g: 3,
       defaultServingG: 180,
       regions: {'middle_eastern', 'mediterranean'},
-      localizedNames: {'ar': 'تبولة'},
+      localizedNames: {'ar': 'تبولة', 'es': 'Tabulé', 'fr': 'Taboulé'},
     ),
     QuickFood(
       nutritionId: 'FDB_000582',
@@ -330,7 +410,11 @@ class QuickFoodCatalog {
       fatPer100g: 5,
       defaultServingG: 200,
       regions: {'middle_eastern', 'mediterranean'},
-      localizedNames: {'ar': 'سلطة فتوش'},
+      localizedNames: {
+        'ar': 'سلطة فتوش',
+        'es': 'Ensalada fattoush',
+        'fr': 'Salade fattouche',
+      },
     ),
 
     // East Asia.
@@ -343,6 +427,11 @@ class QuickFoodCatalog {
       fatPer100g: 2,
       defaultServingG: 180,
       regions: {'east_asian'},
+      localizedNames: {
+        'ar': 'رول سوشي سلمون',
+        'es': 'Rollo de sushi de salmón',
+        'fr': 'Maki au saumon',
+      },
       countries: {'JP'},
     ),
     QuickFood(
@@ -354,6 +443,11 @@ class QuickFoodCatalog {
       fatPer100g: 5.5,
       defaultServingG: 500,
       regions: {'east_asian'},
+      localizedNames: {
+        'ar': 'رامن تونكوتسو',
+        'es': 'Ramen tonkotsu',
+        'fr': 'Ramen tonkotsu',
+      },
       countries: {'JP'},
     ),
     QuickFood(
@@ -365,6 +459,7 @@ class QuickFoodCatalog {
       fatPer100g: 5,
       defaultServingG: 250,
       regions: {'east_asian'},
+      localizedNames: {'ar': 'أرز مقلي', 'es': 'Arroz frito', 'fr': 'Riz frit'},
       countries: {'CN', 'SG'},
     ),
     QuickFood(
@@ -376,6 +471,11 @@ class QuickFoodCatalog {
       fatPer100g: 5,
       defaultServingG: 280,
       regions: {'east_asian'},
+      localizedNames: {
+        'ar': 'تشاو مين (نودلز مقلية)',
+        'es': 'Chow mein (fideos salteados)',
+        'fr': 'Chow mein (nouilles sautées)',
+      },
       countries: {'CN'},
     ),
     QuickFood(
@@ -387,6 +487,11 @@ class QuickFoodCatalog {
       fatPer100g: 2.5,
       defaultServingG: 180,
       regions: {'east_asian'},
+      localizedNames: {
+        'ar': 'زلابية على البخار',
+        'es': 'Dumplings al vapor',
+        'fr': 'Raviolis vapeur',
+      },
       countries: {'CN', 'KR', 'JP'},
     ),
     QuickFood(
@@ -398,6 +503,7 @@ class QuickFoodCatalog {
       fatPer100g: 0.5,
       defaultServingG: 80,
       regions: {'east_asian'},
+      localizedNames: {'ar': 'كيمتشي', 'es': 'Kimchi', 'fr': 'Kimchi'},
       countries: {'KR'},
     ),
     QuickFood(
@@ -409,6 +515,7 @@ class QuickFoodCatalog {
       fatPer100g: 3.5,
       defaultServingG: 350,
       regions: {'east_asian'},
+      localizedNames: {'ar': 'بيبيمباب', 'es': 'Bibimbap', 'fr': 'Bibimbap'},
       countries: {'KR'},
     ),
     QuickFood(
@@ -420,6 +527,11 @@ class QuickFoodCatalog {
       fatPer100g: 7,
       defaultServingG: 220,
       regions: {'east_asian'},
+      localizedNames: {
+        'ar': 'دجاج ترياكي',
+        'es': 'Pollo teriyaki',
+        'fr': 'Poulet teriyaki',
+      },
       countries: {'JP'},
     ),
     QuickFood(
@@ -431,6 +543,11 @@ class QuickFoodCatalog {
       fatPer100g: 1.1,
       defaultServingG: 250,
       regions: {'east_asian'},
+      localizedNames: {
+        'ar': 'حساء ميسو',
+        'es': 'Sopa de miso',
+        'fr': 'Soupe miso',
+      },
       countries: {'JP'},
     ),
 
@@ -444,6 +561,11 @@ class QuickFoodCatalog {
       fatPer100g: 10,
       defaultServingG: 120,
       regions: {'american'},
+      localizedNames: {
+        'ar': 'بيتزا بالجبن',
+        'es': 'Pizza de queso',
+        'fr': 'Pizza au fromage',
+      },
     ),
     QuickFood(
       nutritionId: 'FDB_000483',
@@ -454,6 +576,7 @@ class QuickFoodCatalog {
       fatPer100g: 9,
       defaultServingG: 180,
       regions: {'american'},
+      localizedNames: {'ar': 'همبرغر', 'es': 'Hamburguesa', 'fr': 'Hamburger'},
       countries: {'US', 'CA'},
     ),
     QuickFood(
@@ -465,6 +588,11 @@ class QuickFoodCatalog {
       fatPer100g: 12,
       defaultServingG: 100,
       regions: {'american'},
+      localizedNames: {
+        'ar': 'تاكو باللحم',
+        'es': 'Taco de carne',
+        'fr': 'Taco au bœuf',
+      },
       countries: {'US', 'MX'},
     ),
     QuickFood(
@@ -476,6 +604,11 @@ class QuickFoodCatalog {
       fatPer100g: 9,
       defaultServingG: 250,
       regions: {'american'},
+      localizedNames: {
+        'ar': 'بوريتو باللحم',
+        'es': 'Burrito de carne',
+        'fr': 'Burrito au bœuf',
+      },
       countries: {'US', 'MX'},
     ),
 
@@ -489,8 +622,8 @@ class QuickFoodCatalog {
       fatPer100g: 3.5,
       defaultServingG: 300,
       regions: {'mediterranean'},
+      localizedNames: {'ar': 'باييلا', 'es': 'Paella', 'fr': 'Paella'},
       countries: {'ES'},
-      localizedNames: {'es': 'Paella'},
     ),
     QuickFood(
       nutritionId: 'FDB_000551',
@@ -501,6 +634,7 @@ class QuickFoodCatalog {
       fatPer100g: 3.5,
       defaultServingG: 280,
       regions: {'mediterranean'},
+      localizedNames: {'ar': 'ريزوتو', 'es': 'Risotto', 'fr': 'Risotto'},
       countries: {'IT'},
     ),
     QuickFood(
@@ -512,6 +646,11 @@ class QuickFoodCatalog {
       fatPer100g: 10,
       defaultServingG: 280,
       regions: {'mediterranean'},
+      localizedNames: {
+        'ar': 'باستا كاربونارا',
+        'es': 'Pasta carbonara',
+        'fr': 'Pâtes carbonara',
+      },
       countries: {'IT'},
     ),
     QuickFood(
@@ -523,6 +662,11 @@ class QuickFoodCatalog {
       fatPer100g: 3.5,
       defaultServingG: 300,
       regions: {'mediterranean'},
+      localizedNames: {
+        'ar': 'باستا بولونيز',
+        'es': 'Pasta a la boloñesa',
+        'fr': 'Pâtes bolognaise',
+      },
       countries: {'IT'},
     ),
     QuickFood(
@@ -534,6 +678,7 @@ class QuickFoodCatalog {
       fatPer100g: 8,
       defaultServingG: 300,
       regions: {'mediterranean'},
+      localizedNames: {'ar': 'لازانيا', 'es': 'Lasaña', 'fr': 'Lasagnes'},
       countries: {'IT'},
     ),
     QuickFood(
@@ -545,6 +690,11 @@ class QuickFoodCatalog {
       fatPer100g: 9,
       defaultServingG: 120,
       regions: {'mediterranean'},
+      localizedNames: {
+        'ar': 'بيتزا مارغريتا',
+        'es': 'Pizza margarita',
+        'fr': 'Pizza margherita',
+      },
       countries: {'IT'},
     ),
   ];

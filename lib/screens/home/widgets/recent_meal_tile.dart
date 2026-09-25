@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/meal.dart';
 import '../../../widgets/ui_blocks.dart';
+import '../../../widgets/wazn_icons.dart';
 
 /// Tile for displaying a recent meal on the home screen
 class RecentMealTile extends StatelessWidget {
@@ -234,7 +234,7 @@ class RecentMealTile extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        LucideIcons.clock,
+                        WaznIcons.clock,
                         size: 12,
                         color: context.textMutedColor,
                       ),

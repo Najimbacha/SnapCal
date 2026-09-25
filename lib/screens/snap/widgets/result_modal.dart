@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -673,7 +673,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                LucideIcons.plus,
+                                WaznIcons.plus,
                                 size: 16,
                                 color:
                                     d
@@ -724,10 +724,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                 key: const ValueKey('result-back'),
                 tooltip: MaterialLocalizations.of(context).backButtonTooltip,
                 onPressed: _handleBack,
-                icon: Transform.flip(
-                  flipX: Directionality.of(context) == TextDirection.rtl,
-                  child: const Icon(LucideIcons.arrowLeft, size: 22),
-                ),
+                icon: const Icon(WaznIcons.back, size: 22),
               ),
               Expanded(
                 child: Text(
@@ -741,11 +738,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                 ),
               ),
               if (pro) ...[
-                const Icon(
-                  LucideIcons.sparkles,
-                  size: 15,
-                  color: AppColors.primary,
-                ),
+                const Icon(WaznIcons.ai, size: 15, color: AppColors.primary),
                 const SizedBox(width: 5),
                 Text(
                   'PRO',
@@ -761,7 +754,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
               IconButton(
                 tooltip: l10n.result_retake,
                 onPressed: _retake,
-                icon: const Icon(LucideIcons.camera, size: 21),
+                icon: const Icon(WaznIcons.camera, size: 21),
               ),
             ],
           ),
@@ -787,7 +780,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                             (_, error, stack) => const SizedBox(
                               width: 104,
                               height: 120,
-                              child: Icon(LucideIcons.utensils, size: 32),
+                              child: Icon(WaznIcons.meal, size: 32),
                             ),
                       ),
                     ),
@@ -955,7 +948,7 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    _saving ? LucideIcons.check : LucideIcons.bookmarkPlus,
+                    _saving ? WaznIcons.check : WaznIcons.bookmarkPlus,
                     size: 20,
                   ),
                   const SizedBox(width: 10),
@@ -1220,7 +1213,7 @@ class _FoodCardState extends State<_FoodCard>
           color: const Color(0xFFFF3B30),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Icon(LucideIcons.trash2, size: 20, color: Colors.white),
+        child: const Icon(WaznIcons.delete, size: 20, color: Colors.white),
       ),
       onDismissed: (_) => widget.onDelete(),
       child: ClipRRect(
@@ -1343,7 +1336,7 @@ class _FoodCardState extends State<_FoodCard>
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Icon(
-                                          LucideIcons.alertTriangle,
+                                          WaznIcons.warning,
                                           size: 10,
                                           color: Color(0xFFFF9500),
                                         ),
@@ -1476,7 +1469,7 @@ class _FoodCardState extends State<_FoodCard>
                                       ),
                                       const SizedBox(width: 5),
                                       Icon(
-                                        LucideIcons.pencil,
+                                        WaznIcons.edit,
                                         size: 12,
                                         color: accent,
                                       ),
@@ -1496,7 +1489,7 @@ class _FoodCardState extends State<_FoodCard>
                                 turns: _open ? 0.5 : 0,
                                 duration: const Duration(milliseconds: 200),
                                 child: Icon(
-                                  LucideIcons.chevronDown,
+                                  WaznIcons.chevronDown,
                                   size: 18,
                                   color:
                                       d
@@ -1582,7 +1575,7 @@ class _FoodCardState extends State<_FoodCard>
                                               ),
                                               const SizedBox(width: 5),
                                               Icon(
-                                                LucideIcons.pencil,
+                                                WaznIcons.edit,
                                                 size: 11,
                                                 color: accent,
                                               ),
@@ -1639,7 +1632,7 @@ class _FoodCardState extends State<_FoodCard>
                                   Row(
                                     children: [
                                       _StepBtn(
-                                        icon: LucideIcons.minus,
+                                        icon: WaznIcons.minus,
                                         isDark: d,
                                         onTap:
                                             () => widget.onWeightDelta(-step),
@@ -1674,7 +1667,7 @@ class _FoodCardState extends State<_FoodCard>
                                         ),
                                       ),
                                       _StepBtn(
-                                        icon: LucideIcons.plus,
+                                        icon: WaznIcons.plus,
                                         isDark: d,
                                         onTap: () => widget.onWeightDelta(step),
                                       ),
@@ -1724,7 +1717,7 @@ class _FoodCardState extends State<_FoodCard>
                                       Expanded(
                                         child: _CardAction(
                                           label: l10n.result_rename,
-                                          icon: LucideIcons.pencil,
+                                          icon: WaznIcons.edit,
                                           onTap: widget.onRename,
                                           isDark: d,
                                         ),
@@ -1734,7 +1727,7 @@ class _FoodCardState extends State<_FoodCard>
                                         child: _CardAction(
                                           key: const ValueKey('card-delete'),
                                           label: l10n.result_discard,
-                                          icon: LucideIcons.trash2,
+                                          icon: WaznIcons.delete,
                                           onTap: widget.onDelete,
                                           isDark: d,
                                           danger: true,
@@ -1807,7 +1800,7 @@ class _FoodCardState extends State<_FoodCard>
                 height: 44,
                 alignment: Alignment.center,
                 child: const Icon(
-                  LucideIcons.trash2,
+                  WaznIcons.delete,
                   size: 17,
                   color: Color(0xFFFF3B30),
                 ),

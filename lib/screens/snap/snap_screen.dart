@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart'
     show openAppSettings;
@@ -292,32 +292,32 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
 
     final (IconData icon, String title, String body) = switch (problem) {
       ScanProblem.offline => (
-        LucideIcons.wifiOff,
+        WaznIcons.offline,
         l10n.scan_problem_offline_title,
         l10n.scan_problem_offline_body,
       ),
       ScanProblem.slow => (
-        LucideIcons.hourglass,
+        WaznIcons.hourglass,
         l10n.scan_problem_slow_title,
         l10n.scan_problem_slow_body,
       ),
       ScanProblem.failed => (
-        LucideIcons.alertCircle,
+        WaznIcons.error,
         l10n.scan_problem_failed_title,
         l10n.scan_problem_failed_body,
       ),
       ScanProblem.noFood => (
-        LucideIcons.utensilsCrossed,
+        WaznIcons.meal,
         l10n.scan_problem_no_food_title,
         l10n.scan_problem_no_food_body,
       ),
       ScanProblem.unreadableImage => (
-        LucideIcons.imageOff,
+        WaznIcons.imageOff,
         l10n.scan_problem_image_title,
         l10n.scan_problem_image_body,
       ),
       ScanProblem.barcodeNotFound => (
-        LucideIcons.scanLine,
+        WaznIcons.scan,
         l10n.scan_problem_barcode_title,
         l10n.scan_problem_barcode_body,
       ),
@@ -593,7 +593,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
       final problem = _controller.cameraProblem!;
       final needsPermission = problem == CameraProblem.permission;
       cameraLayer = _StatePanel(
-        icon: LucideIcons.cameraOff,
+        icon: WaznIcons.cameraOff,
         title: l10n.error_camera,
         body: switch (problem) {
           CameraProblem.slow => l10n.snap_camera_slow,
@@ -812,7 +812,7 @@ class _InlineCameraHeader extends StatelessWidget {
                         ),
                       ),
                       child: const Icon(
-                        LucideIcons.scanLine,
+                        WaznIcons.scan,
                         size: 18,
                         color: Color(0xFF63E6BE),
                       ),
@@ -849,13 +849,13 @@ class _InlineCameraHeader extends StatelessWidget {
         const SizedBox(width: 10),
         if (isReady)
           _HeaderCircleButton(
-            icon: flashOn ? LucideIcons.zap : LucideIcons.zapOff,
+            icon: flashOn ? WaznIcons.flash : WaznIcons.flashOff,
             color: flashOn ? const Color(0xFFFFD166) : Colors.white70,
             onTap: onFlash,
           ),
         const SizedBox(width: 10),
         _HeaderCircleButton(
-          icon: LucideIcons.x,
+          icon: WaznIcons.close,
           color: Colors.white,
           onTap: onClose,
         ),
@@ -950,7 +950,7 @@ class _ScanGuide extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            LucideIcons.sparkles,
+                            WaznIcons.ai,
                             color: Color(0xFF63E6BE),
                             size: 15,
                           ),
@@ -1086,7 +1086,7 @@ class _InlineCameraControls extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _CameraActionButton(
-                      icon: LucideIcons.image,
+                      icon: WaznIcons.image,
                       label: galleryLabel,
                       onTap: onGallery,
                     ),
@@ -1100,7 +1100,7 @@ class _InlineCameraControls extends StatelessWidget {
                   ),
                   Expanded(
                     child: _CameraActionButton(
-                      icon: LucideIcons.scanLine,
+                      icon: WaznIcons.scan,
                       label: barcodeLabel,
                       onTap: onBarcode,
                       enabled: isCameraReady,
@@ -1125,7 +1125,7 @@ class _InlineCameraControls extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        LucideIcons.pencil,
+                        WaznIcons.edit,
                         color: Colors.white70,
                         size: 14,
                       ),
@@ -1307,7 +1307,7 @@ class _ScanProblemSheet extends StatelessWidget {
               child: OutlinedButton.icon(
                 key: const ValueKey('scan-problem-manual'),
                 onPressed: onManual,
-                icon: const Icon(LucideIcons.pencil, size: 16),
+                icon: const Icon(WaznIcons.edit, size: 16),
                 label: Text(manualLabel),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),

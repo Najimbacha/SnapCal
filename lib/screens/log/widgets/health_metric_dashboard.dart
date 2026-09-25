@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/ui_blocks.dart';
 import '../models/log_metric_models.dart';
 import '../../../providers/settings_provider.dart';
+import '../../../widgets/wazn_icons.dart';
 
 enum HealthMetricChartStyle { bars, line }
 
@@ -228,7 +228,7 @@ class HealthMetricCard extends StatelessWidget {
               Row(
                 children: [
                   Icon(
-                    LucideIcons.lock,
+                    WaznIcons.lock,
                     size: 14,
                     color: isDark ? Colors.white38 : const Color(0xFFA8A29E),
                   ),

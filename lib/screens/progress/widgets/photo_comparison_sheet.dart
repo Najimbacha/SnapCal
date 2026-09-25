@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import '../../../widgets/wazn_icons.dart';
 
 class PhotoComparisonSheet extends StatefulWidget {
   final dynamic current;
@@ -202,7 +202,7 @@ class _PhotoComparisonSheetState extends State<PhotoComparisonSheet> {
                           ],
                         ),
                         child: const Icon(
-                          LucideIcons.arrowLeftRight,
+                          WaznIcons.compare,
                           size: 18,
                           color: Colors.black,
                         ),

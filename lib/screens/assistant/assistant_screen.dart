@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -331,7 +331,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                LucideIcons.chevronLeft,
+                WaznIcons.chevronLeft,
                 size: 20,
                 color: _coachMuted(d),
               ),
@@ -414,11 +414,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                   border: Border.all(color: _coachLine(d)),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  LucideIcons.refreshCw,
-                  size: 18,
-                  color: _coachMuted(d),
-                ),
+                child: Icon(WaznIcons.refresh, size: 18, color: _coachMuted(d)),
               ),
             ),
           ),
@@ -712,7 +708,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                                           ),
                                         ),
                                         child: Icon(
-                                          LucideIcons.user,
+                                          WaznIcons.profile,
                                           size: 14,
                                           color:
                                               d
@@ -772,7 +768,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         children: [
           Row(
             children: [
-              Icon(LucideIcons.wifiOff, size: 14, color: tint),
+              Icon(WaznIcons.offline, size: 14, color: tint),
               const SizedBox(width: 8),
               Text(
                 "Fajar couldn't reply",
@@ -800,7 +796,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               child: Row(
                 children: [
                   Icon(
-                    LucideIcons.refreshCw,
+                    WaznIcons.refresh,
                     size: 12,
                     color: d ? AppColors.primary : AppColors.primaryDark,
                   ),
@@ -833,23 +829,19 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   Widget _buildActionGrid(bool d) {
     final l10n = AppLocalizations.of(context)!;
     final items = [
+      (WaznIcons.meal, l10n.coach_suggest_eat, 'What should I eat today?'),
       (
-        LucideIcons.utensils,
-        l10n.coach_suggest_eat,
-        'What should I eat today?',
-      ),
-      (
-        LucideIcons.target,
+        WaznIcons.goal,
         l10n.coach_suggest_track,
         'How am I doing against my goals today?',
       ),
       (
-        LucideIcons.calendarDays,
+        WaznIcons.calendar,
         l10n.coach_suggest_week,
         'Create a meal plan for me',
       ),
       (
-        LucideIcons.trendingUp,
+        WaznIcons.trend,
         l10n.coach_suggest_protein,
         'Suggest a high-protein meal',
       ),
@@ -1042,7 +1034,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                               : const Color(0xFFD7D3CB)),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(LucideIcons.arrowUp, size: 18, color: Colors.white),
+                child: Icon(WaznIcons.arrowUp, size: 18, color: Colors.white),
               ),
             ),
           ),

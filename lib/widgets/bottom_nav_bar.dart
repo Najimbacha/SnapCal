@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'wazn_icons.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
@@ -13,10 +13,18 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 enum NavTab { home, log, stats, profile }
 
 const _navIcons = <NavTab, IconData>{
-  NavTab.home: LucideIcons.home,
-  NavTab.log: LucideIcons.clipboardList,
-  NavTab.stats: LucideIcons.barChart2,
-  NavTab.profile: LucideIcons.user,
+  NavTab.home: WaznIcons.home,
+  NavTab.log: WaznIcons.log,
+  NavTab.stats: WaznIcons.stats,
+  NavTab.profile: WaznIcons.profile,
+};
+
+/// The selected tab shows the filled version of its icon.
+const _navIconsSelected = <NavTab, IconData>{
+  NavTab.home: WaznIcons.homeFilled,
+  NavTab.log: WaznIcons.logFilled,
+  NavTab.stats: WaznIcons.statsFilled,
+  NavTab.profile: WaznIcons.profileFilled,
 };
 
 String _navLabel(BuildContext context, NavTab tab) {
@@ -192,7 +200,13 @@ class _BottomNavBarState extends State<BottomNavBar>
                     ),
                     Transform.translate(
                       offset: Offset(0, -2 * selection),
-                      child: Icon(_navIcons[tab], color: tabColor, size: 23),
+                      child: Icon(
+                        selection > 0.5
+                            ? _navIconsSelected[tab]
+                            : _navIcons[tab],
+                        color: tabColor,
+                        size: 23,
+                      ),
                     ),
                   ],
                 ),

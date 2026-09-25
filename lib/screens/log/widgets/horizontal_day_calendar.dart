@@ -3,10 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../widgets/wazn_icons.dart';
 
 class DailySummary {
   final String dateString;
@@ -239,7 +239,7 @@ class _DayCell extends StatelessWidget {
                         )
                         : locked
                         ? Icon(
-                          LucideIcons.lock,
+                          WaznIcons.lock,
                           size: 9,
                           color: colorScheme.onSurfaceVariant.withValues(
                             alpha: 0.42,

@@ -17,7 +17,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            connectivityProvider.overrideWith((ref) => Stream.value(<ConnectivityResult>[])),
+            connectivityProvider.overrideWith(
+              (ref) => Stream.value(<ConnectivityResult>[]),
+            ),
           ],
           child: _app(
             child: AppPageScaffold(
@@ -62,7 +64,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          connectivityProvider.overrideWith((ref) => Stream.value(<ConnectivityResult>[])),
+          connectivityProvider.overrideWith(
+            (ref) => Stream.value(<ConnectivityResult>[]),
+          ),
         ],
         child: _app(
           textScaler: const TextScaler.linear(1.35),

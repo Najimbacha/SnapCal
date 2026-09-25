@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -149,7 +149,7 @@ class _OptimizePlanButtonState extends ConsumerState<OptimizePlanButton> {
                     color: textColor,
                   ),
                 )
-                : Icon(LucideIcons.sparkles, size: 17),
+                : Icon(WaznIcons.ai, size: 17),
       );
     }
 
@@ -172,7 +172,7 @@ class _OptimizePlanButtonState extends ConsumerState<OptimizePlanButton> {
                     color: textColor,
                   ),
                 )
-                : Icon(LucideIcons.sparkles, size: 20, color: textColor),
+                : Icon(WaznIcons.ai, size: 20, color: textColor),
         label: Text(
           _isLoading
               ? AppLocalizations.of(context)!.settings_optimizing

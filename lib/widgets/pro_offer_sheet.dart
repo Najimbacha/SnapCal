@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart' show DateFormat;
-import 'package:lucide_icons/lucide_icons.dart';
+import 'wazn_icons.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../core/theme/app_motion.dart';
@@ -108,7 +108,9 @@ class ProOfferSummary {
       isAnnual: isAnnual,
       percentOff:
           promo?.percentOff ??
-          (derivedPercent != null && derivedPercent >= 5 ? derivedPercent : null),
+          (derivedPercent != null && derivedPercent >= 5
+              ? derivedPercent
+              : null),
       campaignLabel: promo?.label,
       endsAt: promo?.endsAt,
       trialDays: trialDays,
@@ -180,7 +182,9 @@ class ProOfferSummary {
   /// The small line under the button: what is charged, and what it renews at.
   String ctaDetail(AppLocalizations l10n) {
     final renew =
-        isAnnual ? l10n.pro_offer_per_year(price) : l10n.pro_offer_per_month(price);
+        isAnnual
+            ? l10n.pro_offer_per_year(price)
+            : l10n.pro_offer_per_month(price);
     if (trialDays != null) {
       return '${l10n.pro_offer_days_free(trialDays!)} · ${l10n.paywall_then(renew)}';
     }
@@ -305,7 +309,9 @@ class ProOfferSheet extends StatelessWidget {
           child: Stack(
             children: [
               Positioned.fill(
-                child: IgnorePointer(child: _Backdrop(reduceMotion: reduceMotion)),
+                child: IgnorePointer(
+                  child: _Backdrop(reduceMotion: reduceMotion),
+                ),
               ),
               SafeArea(
                 top: false,
@@ -328,7 +334,10 @@ class ProOfferSheet extends StatelessWidget {
                             const SizedBox(height: 22),
                             if (offer != null && offer.shareOfMonthly != null)
                               enter(
-                                _SavingsCard(offer: offer, reduceMotion: reduceMotion),
+                                _SavingsCard(
+                                  offer: offer,
+                                  reduceMotion: reduceMotion,
+                                ),
                                 250,
                               )
                             else if (offer != null)
@@ -346,7 +355,9 @@ class ProOfferSheet extends StatelessWidget {
                               const SizedBox(height: 12),
                             ],
                             enter(
-                              _Comparison(scanLimit: scanLimit ?? _fallbackScanLimit),
+                              _Comparison(
+                                scanLimit: scanLimit ?? _fallbackScanLimit,
+                              ),
                               450,
                             ),
                           ],
@@ -411,7 +422,12 @@ class _Backdrop extends StatelessWidget {
       if (reduceMotion) return child;
       return child
           .animate(onPlay: (c) => c.repeat(reverse: true))
-          .move(begin: Offset.zero, end: to, duration: period, curve: Curves.easeInOut);
+          .move(
+            begin: Offset.zero,
+            end: to,
+            duration: period,
+            curve: Curves.easeInOut,
+          );
     }
 
     return LayoutBuilder(
@@ -441,7 +457,11 @@ class _Backdrop extends StatelessWidget {
               Positioned(
                 left: x * constraints.maxWidth,
                 top: top,
-                child: _Sparkle(size: size, delayMs: delay, reduceMotion: reduceMotion),
+                child: _Sparkle(
+                  size: size,
+                  delayMs: delay,
+                  reduceMotion: reduceMotion,
+                ),
               ),
           ],
         );
@@ -470,7 +490,10 @@ class _Sparkle extends StatelessWidget {
         color: _Palette.goldLight,
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(color: _Palette.goldLight.withValues(alpha: 0.8), blurRadius: 6),
+          BoxShadow(
+            color: _Palette.goldLight.withValues(alpha: 0.8),
+            blurRadius: 6,
+          ),
         ],
       ),
     );
@@ -519,7 +542,11 @@ class _TopBar extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(LucideIcons.x, size: 16, color: _Palette.muted),
+                  child: const Icon(
+                    WaznIcons.close,
+                    size: 16,
+                    color: _Palette.muted,
+                  ),
                 ),
               ),
             ),
@@ -552,7 +579,12 @@ class _Header extends StatelessWidget {
       return child
           .animate(delay: delayMs.ms)
           .fadeIn(duration: 450.ms, curve: AppMotion.entranceCurve)
-          .slideY(begin: 0.15, end: 0, duration: 450.ms, curve: AppMotion.entranceCurve);
+          .slideY(
+            begin: 0.15,
+            end: 0,
+            duration: 450.ms,
+            curve: AppMotion.entranceCurve,
+          );
     }
 
     return Column(
@@ -573,7 +605,7 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (offer?.campaignLabel != null) ...[
-          enter(_Chip(label: offer!.campaignLabel!, icon: LucideIcons.sparkles), 120),
+          enter(_Chip(label: offer!.campaignLabel!, icon: WaznIcons.ai), 120),
           const SizedBox(height: 12),
         ],
         if (percent != null)
@@ -614,7 +646,7 @@ class _Header extends StatelessWidget {
         ],
         if (endsOn != null) ...[
           const SizedBox(height: 14),
-          enter(_Chip(label: endsOn!, icon: LucideIcons.clock), 220),
+          enter(_Chip(label: endsOn!, icon: WaznIcons.clock), 220),
         ],
       ],
     );
@@ -633,7 +665,10 @@ class _Medallion extends StatelessWidget {
       height: 92,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: _Palette.gold.withValues(alpha: 0.45), width: 1.5),
+        border: Border.all(
+          color: _Palette.gold.withValues(alpha: 0.45),
+          width: 1.5,
+        ),
       ),
     );
     Widget core = Container(
@@ -650,7 +685,7 @@ class _Medallion extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(LucideIcons.crown, size: 30, color: _Palette.ink),
+      child: const Icon(WaznIcons.pro, size: 30, color: _Palette.ink),
     );
     if (!reduceMotion) {
       // A ring of light that keeps widening away from the crown.
@@ -672,7 +707,10 @@ class _Medallion extends StatelessWidget {
             curve: Curves.easeOutBack,
           )
           .then(delay: 200.ms)
-          .shimmer(duration: 1200.ms, color: Colors.white.withValues(alpha: 0.7));
+          .shimmer(
+            duration: 1200.ms,
+            color: Colors.white.withValues(alpha: 0.7),
+          );
     }
     return SizedBox(
       width: 120,
@@ -875,7 +913,10 @@ class _SavingsCard extends StatelessWidget {
             children: [
               if (offer.savings != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     gradient: _Palette.goldGradient,
                     borderRadius: BorderRadius.circular(999),
@@ -883,7 +924,7 @@ class _SavingsCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(LucideIcons.tag, size: 14, color: _Palette.ink),
+                      const Icon(WaznIcons.tag, size: 14, color: _Palette.ink),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -966,7 +1007,9 @@ class _BarRow extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: ColoredBox(color: Colors.white.withValues(alpha: 0.07)),
+                  child: ColoredBox(
+                    color: Colors.white.withValues(alpha: 0.07),
+                  ),
                 ),
                 Positioned.fill(
                   child:
@@ -1083,7 +1126,7 @@ class _UsageMeter extends StatelessWidget {
               color: color.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(LucideIcons.scanLine, size: 20, color: color),
+            child: Icon(WaznIcons.scan, size: 20, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1167,7 +1210,7 @@ class _Comparison extends StatelessWidget {
       ),
     );
     final locked = Icon(
-      LucideIcons.lock,
+      WaznIcons.lock,
       size: 16,
       color: _Palette.muted.withValues(alpha: 0.7),
     );
@@ -1178,26 +1221,26 @@ class _Comparison extends StatelessWidget {
         color: _Palette.emerald,
         shape: BoxShape.circle,
       ),
-      child: const Icon(LucideIcons.check, size: 14, color: Colors.white),
+      child: const Icon(WaznIcons.check, size: 14, color: Colors.white),
     );
 
     final rows = <(IconData, String, Widget, Widget)>[
       (
-        LucideIcons.scanLine,
+        WaznIcons.scan,
         l10n.pro_offer_row_scans,
         freeText(l10n.pro_offer_scans_month(scanLimit)),
         proText(l10n.pro_offer_unlimited),
       ),
       (
-        LucideIcons.sparkles,
+        WaznIcons.ai,
         l10n.pro_offer_row_coach,
         freeText(l10n.pro_offer_limited),
         proText(l10n.pro_offer_unlimited),
       ),
-      (LucideIcons.calendarDays, l10n.pro_offer_row_planner, locked, included),
-      (LucideIcons.barChart3, l10n.pro_offer_row_reports, locked, included),
+      (WaznIcons.calendar, l10n.pro_offer_row_planner, locked, included),
+      (WaznIcons.stats, l10n.pro_offer_row_reports, locked, included),
       (
-        LucideIcons.history,
+        WaznIcons.history,
         l10n.pro_offer_row_history,
         freeText(l10n.pro_offer_days(ProFeatureService.freeHistoryDays)),
         proText(l10n.pro_offer_full),
@@ -1218,7 +1261,9 @@ class _Comparison extends StatelessWidget {
               decoration: BoxDecoration(
                 color: _Palette.gold.withValues(alpha: 0.09),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _Palette.gold.withValues(alpha: 0.45)),
+                border: Border.all(
+                  color: _Palette.gold.withValues(alpha: 0.45),
+                ),
               ),
             ),
           ),
@@ -1295,7 +1340,10 @@ class _Comparison extends StatelessWidget {
                             ),
                           ),
                         ),
-                        SizedBox(width: _freeColumn, child: Center(child: free)),
+                        SizedBox(
+                          width: _freeColumn,
+                          child: Center(child: free),
+                        ),
                         SizedBox(width: _proColumn, child: Center(child: pro)),
                       ],
                     ),
@@ -1424,13 +1472,7 @@ class _CtaButton extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(
-                        Directionality.of(context) == TextDirection.rtl
-                            ? LucideIcons.arrowLeft
-                            : LucideIcons.arrowRight,
-                        size: 20,
-                        color: _Palette.ink,
-                      ),
+                      Icon(WaznIcons.forward, size: 20, color: _Palette.ink),
                     ],
                   ),
                   if (detail != null) ...[

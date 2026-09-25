@@ -144,8 +144,23 @@ void main() {
     expect(find.text('Food Log'), findsOneWidget);
     expect(find.text('Daily balance'), findsNothing);
     expect(find.text('Meals'), findsOneWidget);
-    // Personalized Quick Add intentionally repeats frequently logged names
-    // above the full diary list.
+    // Meals are one diary card in eating order, each meal with
+    // its own add button instead of a dashed placeholder box.
+    expect(find.byKey(const ValueKey('log-day-total')), findsOneWidget);
+    expect(find.byKey(const ValueKey('log-meal-diary')), findsOneWidget);
+    final mealOrder =
+        [
+              'log-add-breakfast',
+              'log-add-lunch',
+              'log-add-dinner',
+              'log-add-snack',
+            ]
+            .map((key) => tester.getTopLeft(find.byKey(ValueKey(key))).dy)
+            .toList();
+    expect(mealOrder, orderedEquals([...mealOrder]..sort()));
+    expect(find.textContaining('Add Breakfast'), findsNothing);
+    // Personalized Quick Add sits above the diary and repeats frequently
+    // logged names.
     expect(find.text('Avocado toast and eggs'), findsWidgets);
     expect(find.text('Chicken rice bowl'), findsWidgets);
     expect(find.text('Greek yogurt and berries'), findsWidgets);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -46,7 +46,7 @@ class _MealPreferencesScreenState extends ConsumerState<MealPreferencesScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: Icon(LucideIcons.x, color: context.textPrimaryColor),
+          icon: Icon(WaznIcons.close, color: context.textPrimaryColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -171,7 +171,7 @@ class _MealPreferencesScreenState extends ConsumerState<MealPreferencesScreen> {
                                             () => setState(
                                               () => _mealsPerDay = n,
                                             ),
-                                        icon: LucideIcons.utensils,
+                                        icon: WaznIcons.meal,
                                       ),
                                     ),
                                   ),
@@ -273,7 +273,7 @@ class _MealPreferencesScreenState extends ConsumerState<MealPreferencesScreen> {
                       navigator.pop();
                       widget.onGenerate();
                     },
-                    icon: Icon(LucideIcons.sparkles, size: 18),
+                    icon: Icon(WaznIcons.ai, size: 18),
                     label: Text(
                       AppLocalizations.of(context)!.planner_generate_plan,
                     ),
@@ -374,62 +374,62 @@ class _MealPreferencesScreenState extends ConsumerState<MealPreferencesScreen> {
   IconData _getPrepTimeIcon(String value) {
     switch (value) {
       case 'quick':
-        return LucideIcons.timer;
+        return WaznIcons.timer;
       case 'batch':
-        return LucideIcons.layers;
+        return WaznIcons.layers;
       case 'balanced':
       default:
-        return LucideIcons.scale;
+        return WaznIcons.weight;
     }
   }
 
   IconData _getBudgetIcon(String value) {
     switch (value) {
       case 'budget':
-        return LucideIcons.piggyBank;
+        return WaznIcons.piggyBank;
       case 'premium':
-        return LucideIcons.gem;
+        return WaznIcons.pro;
       case 'standard':
       default:
-        return LucideIcons.coins;
+        return WaznIcons.coins;
     }
   }
 
   IconData _getRestrictionIcon(String r) {
     switch (r) {
       case 'none':
-        return LucideIcons.ban;
+        return WaznIcons.blocked;
       case 'vegetarian':
-        return LucideIcons.leaf;
+        return WaznIcons.leaf;
       case 'vegan':
-        return LucideIcons.sprout;
+        return WaznIcons.sprout;
       case 'gluten-free':
-        return LucideIcons.wheat;
+        return WaznIcons.carbs;
       case 'keto':
-        return LucideIcons.flame;
+        return WaznIcons.calories;
       case 'halal':
-        return LucideIcons.checkCircle;
+        return WaznIcons.success;
       default:
-        return LucideIcons.utensils;
+        return WaznIcons.meal;
     }
   }
 
   IconData _getCuisineIcon(String c) {
     switch (c) {
       case 'international':
-        return LucideIcons.globe;
+        return WaznIcons.globe;
       case 'south asian':
-        return LucideIcons.soup;
+        return WaznIcons.soup;
       case 'mediterranean':
-        return LucideIcons.sun;
+        return WaznIcons.lunch;
       case 'east asian':
-        return LucideIcons.chefHat;
+        return WaznIcons.chefHat;
       case 'american':
-        return LucideIcons.beef;
+        return WaznIcons.protein;
       case 'middle eastern':
-        return LucideIcons.star;
+        return WaznIcons.star;
       default:
-        return LucideIcons.globe;
+        return WaznIcons.globe;
     }
   }
 }

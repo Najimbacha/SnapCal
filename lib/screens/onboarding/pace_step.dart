@@ -133,13 +133,21 @@ class PaceStepState extends State<PaceStep> {
     final system = widget.draft.measurementSystem;
     final unit = OnboardingPaceCalculator.weeklyRateUnit(system);
     final paces = <(Pace, String, String)>[
-      (Pace.gentle, l10n.onboarding_pace_gentle, l10n.onboarding_pace_gentle_desc),
+      (
+        Pace.gentle,
+        l10n.onboarding_pace_gentle,
+        l10n.onboarding_pace_gentle_desc,
+      ),
       (
         Pace.balanced,
         l10n.onboarding_pace_balanced,
         l10n.onboarding_pace_balanced_desc,
       ),
-      (Pace.faster, l10n.onboarding_pace_faster, l10n.onboarding_pace_faster_desc),
+      (
+        Pace.faster,
+        l10n.onboarding_pace_faster,
+        l10n.onboarding_pace_faster_desc,
+      ),
     ];
 
     return Column(
@@ -158,7 +166,9 @@ class PaceStepState extends State<PaceStep> {
               title: label,
               subtitle: description,
               badge:
-                  pace == Pace.balanced ? l10n.onboarding_pace_recommended : null,
+                  pace == Pace.balanced
+                      ? l10n.onboarding_pace_recommended
+                      : null,
               footer: _RatePill(
                 text: l10n.onboarding_pace_weekly_rate(
                   OnboardingPaceCalculator.formatWeeklyRateValue(

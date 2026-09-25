@@ -12,9 +12,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          settingsProvider.overrideWith(() => _FakeSettings()),
-        ],
+        overrides: [settingsProvider.overrideWith(() => _FakeSettings())],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

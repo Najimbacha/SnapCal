@@ -34,9 +34,9 @@ class PremiumPromptModal {
     var access = ref.read(proAccessProvider);
     if (access.isUnknown) {
       try {
-        await ref.read(settingsProvider.future).timeout(
-          const Duration(seconds: 6),
-        );
+        await ref
+            .read(settingsProvider.future)
+            .timeout(const Duration(seconds: 6));
       } catch (_) {
         return; // Still unknown, and unknown never sells.
       }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'wazn_icons.dart';
 
 import '../core/theme/app_colors.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -44,11 +44,7 @@ class HomeUpgradeChip extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    LucideIcons.crown,
-                    color: Colors.white,
-                    size: 13,
-                  ),
+                  const Icon(WaznIcons.pro, color: Colors.white, size: 13),
                   const SizedBox(width: 5),
                   Text(
                     l10n.home_upgrade_chip,

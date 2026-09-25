@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:snapcal/widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/data/services/gemini_service.dart';
 import 'package:snapcal/providers/settings_provider.dart';
@@ -530,7 +530,7 @@ void main() {
       find.text('Does this fit your day?', skipOffstage: false),
       findsNothing,
     );
-    expect(find.byIcon(LucideIcons.lock, skipOffstage: false), findsNothing);
+    expect(find.byIcon(WaznIcons.lock, skipOffstage: false), findsNothing);
   });
 
   testWidgets('free user sees remaining scan count on the save bar', (
@@ -609,7 +609,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('card-header')),
-        matching: find.byIcon(LucideIcons.plus),
+        matching: find.byIcon(WaznIcons.plus),
       ),
       findsNothing,
     );
@@ -618,7 +618,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Portion Size'), findsOneWidget);
-    expect(find.byIcon(LucideIcons.plus), findsAtLeastNWidgets(1));
+    expect(find.byIcon(WaznIcons.plus), findsAtLeastNWidgets(1));
   });
 
   testWidgets('expanded stepper adjusts the weight', (tester) async {
@@ -642,7 +642,7 @@ void main() {
     await tester.tap(find.text('Rice').last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(LucideIcons.plus).first);
+    await tester.tap(find.byIcon(WaznIcons.plus).first);
     await tester.pump();
 
     expect(find.text('180 g'), findsAtLeastNWidgets(1));

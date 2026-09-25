@@ -132,10 +132,7 @@ void main() {
     });
 
     test('an empty history returns null rather than an empty chart', () {
-      expect(
-        WeightTrend.from(days: 30, today: today, all: const []),
-        isNull,
-      );
+      expect(WeightTrend.from(days: 30, today: today, all: const []), isNull);
     });
   });
 }

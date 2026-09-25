@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -42,21 +42,21 @@ class MealListTile extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsetsDirectional.only(end: 18),
         color: AppColors.error.withValues(alpha: 0.08),
-        child: const Icon(LucideIcons.trash2, color: AppColors.error, size: 20),
+        child: const Icon(WaznIcons.delete, color: AppColors.error, size: 20),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 76),
+            constraints: const BoxConstraints(minHeight: 66),
             padding: const EdgeInsets.symmetric(vertical: 9),
             decoration: BoxDecoration(
               border:
                   showDivider
                       ? Border(
                         bottom: BorderSide(
-                          color: context.dividerColor.withValues(alpha: 0.5),
+                          color: context.dividerColor.withValues(alpha: 0.3),
                         ),
                       )
                       : null,
@@ -120,9 +120,9 @@ class MealListTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  LucideIcons.chevronRight,
-                  size: 18,
-                  color: context.textMutedColor,
+                  WaznIcons.chevronRight,
+                  size: 16,
+                  color: context.textMutedColor.withValues(alpha: 0.6),
                 ),
               ],
             ),
@@ -187,14 +187,10 @@ class _MealThumbnail extends StatelessWidget {
       child = fallback();
     }
 
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: context.cardBorderColor),
-      ),
-      child: ClipRRect(borderRadius: BorderRadius.circular(7), child: child),
+    return SizedBox(
+      width: 46,
+      height: 46,
+      child: ClipRRect(borderRadius: BorderRadius.circular(12), child: child),
     );
   }
 
@@ -219,20 +215,20 @@ class _MealThumbnail extends StatelessWidget {
   IconData _foodIcon(String foodName) {
     final name = foodName.toLowerCase();
     if (name.contains('coffee') || name.contains('tea')) {
-      return LucideIcons.coffee;
+      return WaznIcons.coffee;
     }
-    if (name.contains('egg')) return LucideIcons.egg;
+    if (name.contains('egg')) return WaznIcons.egg;
     if (name.contains('apple') ||
         name.contains('fruit') ||
         name.contains('salad')) {
-      return LucideIcons.apple;
+      return WaznIcons.snack;
     }
     if (name.contains('bread') || name.contains('toast')) {
-      return LucideIcons.croissant;
+      return WaznIcons.croissant;
     }
     if (name.contains('fish') || name.contains('shrimp')) {
-      return LucideIcons.fish;
+      return WaznIcons.fish;
     }
-    return LucideIcons.utensils;
+    return WaznIcons.meal;
   }
 }

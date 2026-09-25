@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'providers/connectivity_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'core/theme/app_theme.dart';
 import 'router.dart';
 import 'core/services/app_initializer.dart';
@@ -17,6 +16,7 @@ import 'providers/auth_state_provider.dart';
 import 'providers/auth_notifier_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/splash/splash_screen.dart';
+import 'widgets/wazn_icons.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -96,7 +96,7 @@ class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        LucideIcons.alertCircle,
+                        WaznIcons.error,
                         color: Colors.orangeAccent,
                         size: 64,
                       ),
@@ -124,7 +124,7 @@ class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.black,
                         ),
-                        icon: Icon(LucideIcons.refreshCw, size: 18),
+                        icon: Icon(WaznIcons.refresh, size: 18),
                         label: Text(l10n.startup_retry_launch),
                       ),
                     ],

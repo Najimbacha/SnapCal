@@ -4,7 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show NumberFormat;
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -71,7 +71,7 @@ class _NotConnectedCard extends ConsumerWidget {
       glass: true,
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
       child: AppEmptyState(
-        icon: LucideIcons.footprints,
+        icon: WaznIcons.steps,
         title: l10n.activity_not_connected_title,
         body: l10n.activity_not_connected_body,
         actionLabel: l10n.activity_connect,
@@ -158,7 +158,7 @@ class _GoalPill extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Icon(LucideIcons.pencil, size: 13, color: context.textMutedColor),
+              Icon(WaznIcons.edit, size: 13, color: context.textMutedColor),
             ],
           ),
         ),
@@ -198,7 +198,7 @@ class _TodayMetrics extends ConsumerWidget {
                         ? l10n.activity_calories_estimated_hint
                         : l10n.activity_calories_measured_hint,
                 accent: AppColors.fat,
-                icon: LucideIcons.flame,
+                icon: WaznIcons.calories,
               ),
             ),
             const SizedBox(width: 12),
@@ -208,7 +208,7 @@ class _TodayMetrics extends ConsumerWidget {
                 value: '$percent%',
                 hint: number.format(goal),
                 accent: AppColors.primary,
-                icon: LucideIcons.target,
+                icon: WaznIcons.goal,
               ),
             ),
           ],
@@ -306,7 +306,7 @@ class _WeekSection extends ConsumerWidget {
                 value: '$streak',
                 hint: l10n.common_days,
                 accent: AppColors.carbs,
-                icon: LucideIcons.flame,
+                icon: WaznIcons.calories,
               ),
             ),
             const SizedBox(width: 12),
@@ -489,7 +489,7 @@ class _WorkoutTile extends ConsumerWidget {
               ? l10n.activity_no_workout_today
               : l10n.activity_workout_minutes(workout.duration.inMinutes),
       accent: AppColors.violet,
-      icon: LucideIcons.dumbbell,
+      icon: WaznIcons.exercise,
     );
   }
 }
@@ -511,7 +511,7 @@ class _InsightCard extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            met ? LucideIcons.sparkles : LucideIcons.trendingUp,
+            met ? WaznIcons.ai : WaznIcons.trend,
             size: 18,
             color: met ? AppColors.primary : AppColors.sky,
           ),

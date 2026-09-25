@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -16,6 +15,7 @@ import '../../widgets/app_page_scaffold.dart';
 import '../sync/sync_data_screen.dart';
 
 import 'widgets/settings_kit.dart';
+import '../../widgets/wazn_icons.dart';
 
 class DataSyncScreen extends ConsumerWidget {
   const DataSyncScreen({super.key});
@@ -93,7 +93,7 @@ class _ExportRowState extends ConsumerState<_ExportRow> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return SettingsRow(
-      icon: LucideIcons.download,
+      icon: WaznIcons.download,
       title: l10n.settings_export_data,
       value: l10n.settings_export_desc,
       trailing:
@@ -126,7 +126,7 @@ class _CloudSyncRow extends ConsumerWidget {
 
     if (user == null || user.isAnonymous) {
       return SettingsRow(
-        icon: LucideIcons.cloud,
+        icon: WaznIcons.cloud,
         title: l10n.settings_data_sync_title,
         value: l10n.settings_cloud_sync_desc,
         onTap:
@@ -168,7 +168,7 @@ class _CloudSyncRow extends ConsumerWidget {
         }
 
         return SettingsRow(
-          icon: LucideIcons.cloud,
+          icon: WaznIcons.cloud,
           title: l10n.sync_status_title,
           subtitle: email == null ? null : l10n.sync_signed_in_as(email),
           value: status,

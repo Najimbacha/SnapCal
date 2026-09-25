@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:snapcal/widgets/wazn_icons.dart';
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/core/theme/app_typography.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -42,9 +42,8 @@ void main() {
         ),
       )).load();
     }
-    await (FontLoader('packages/lucide_icons/Lucide')..addFont(
-      rootBundle.load('packages/lucide_icons/assets/lucide.ttf'),
-    )).load();
+    await (FontLoader('WaznIcons')
+      ..addFont(rootBundle.load('assets/fonts/WaznIcons.ttf'))).load();
   });
 
   for (final (name, dark) in [('light', false), ('dark', true)]) {
@@ -249,6 +248,6 @@ class _ScanStandIn extends StatelessWidget {
         end: Alignment.bottomRight,
       ),
     ),
-    child: const Icon(LucideIcons.scan, color: Colors.white, size: 26),
+    child: const Icon(WaznIcons.scan, color: Colors.white, size: 26),
   );
 }

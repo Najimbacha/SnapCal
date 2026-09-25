@@ -156,6 +156,5 @@ class PromoOffer {
   }
 
   @override
-  String toString() =>
-      'PromoOffer($offeringId, $percentOff%, ends $endsAt)';
+  String toString() => 'PromoOffer($offeringId, $percentOff%, ends $endsAt)';
 }

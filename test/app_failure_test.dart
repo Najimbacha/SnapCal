@@ -32,7 +32,10 @@ void main() {
 
     test('maps Firebase quota errors', () {
       final failure = AppFailure.fromError(
-        FirebaseException(plugin: 'cloud_firestore', code: 'resource-exhausted'),
+        FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'resource-exhausted',
+        ),
       );
 
       expect(failure.type, AppFailureType.quotaExceeded);

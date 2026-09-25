@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -13,6 +12,7 @@ import '../../../providers/auth_notifier_provider.dart';
 import '../../../providers/metrics_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/ui_blocks.dart';
+import '../../../widgets/wazn_icons.dart';
 
 // Shared building blocks for the Settings area: one visual language for
 // sections, rows, switches, sheets and dialogs across the root screen and
@@ -442,6 +442,8 @@ Future<void> selectTime(
   final picked = await showTimePicker(
     context: context,
     initialTime: initial,
+    switchToInputEntryModeIcon: const Icon(WaznIcons.edit),
+    switchToTimerEntryModeIcon: const Icon(WaznIcons.clock),
     builder: (context, child) {
       return Theme(
         data: Theme.of(context).copyWith(
@@ -511,7 +513,7 @@ class SettingsSelectionSheet extends StatelessWidget {
               ),
               trailing:
                   opt == currentValue
-                      ? Icon(LucideIcons.check, color: kSettingsGreenText)
+                      ? Icon(WaznIcons.check, color: kSettingsGreenText)
                       : null,
               onTap: () {
                 onSelect(opt);
@@ -697,10 +699,7 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
             // Value row: nudge down, the number itself, nudge up.
             Row(
               children: [
-                _StepButton(
-                  icon: LucideIcons.minus,
-                  onTap: () => _nudge(-_step),
-                ),
+                _StepButton(icon: WaznIcons.minus, onTap: () => _nudge(-_step)),
                 Expanded(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -742,7 +741,7 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
                     ],
                   ),
                 ),
-                _StepButton(icon: LucideIcons.plus, onTap: () => _nudge(_step)),
+                _StepButton(icon: WaznIcons.plus, onTap: () => _nudge(_step)),
               ],
             ),
 
@@ -1086,8 +1085,7 @@ class LanguageTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (selected)
-              Icon(LucideIcons.checkCircle2, color: kSettingsGreenText),
+            if (selected) Icon(WaznIcons.success, color: kSettingsGreenText),
           ],
         ),
       ),
@@ -1211,7 +1209,7 @@ class SettingsRow extends StatelessWidget {
               ] else if (!destructive) ...[
                 const SizedBox(width: 8),
                 Icon(
-                  LucideIcons.chevronRight,
+                  WaznIcons.chevronRight,
                   size: 14,
                   color: settingsSubtext(context).withValues(alpha: 0.55),
                 ),
@@ -1316,17 +1314,17 @@ class SettingsThemeRow extends ConsumerWidget {
       (
         'system',
         AppLocalizations.of(context)!.settings_theme_system,
-        LucideIcons.smartphone,
+        WaznIcons.smartphone,
       ),
       (
         'light',
         AppLocalizations.of(context)!.settings_theme_light,
-        LucideIcons.sun,
+        WaznIcons.lunch,
       ),
       (
         'dark',
         AppLocalizations.of(context)!.settings_theme_dark,
-        LucideIcons.moon,
+        WaznIcons.dinner,
       ),
     ];
 
@@ -1349,7 +1347,7 @@ class SettingsThemeRow extends ConsumerWidget {
                 ),
                 child: Center(
                   child: Icon(
-                    LucideIcons.sunMoon,
+                    WaznIcons.theme,
                     color: kSettingsGreenText,
                     size: 16,
                   ),

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show NumberFormat;
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_typography.dart';
@@ -190,11 +190,7 @@ class _Header extends StatelessWidget {
             color: _hydrationAccent.withValues(alpha: isDark ? 0.22 : 0.13),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
-            LucideIcons.droplets,
-            color: _hydrationAccent,
-            size: 19,
-          ),
+          child: const Icon(WaznIcons.water, color: _hydrationAccent, size: 19),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -219,7 +215,7 @@ class _Header extends StatelessWidget {
             height: 44,
             child: Center(
               child: Icon(
-                LucideIcons.x,
+                WaznIcons.close,
                 size: 20,
                 color: isDark ? Colors.white54 : const Color(0xFF8E8E93),
               ),
@@ -517,7 +513,7 @@ class _AddButtonState extends State<_AddButton> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          LucideIcons.plus,
+                          WaznIcons.plus,
                           size: 18,
                           color: Colors.white,
                         ),

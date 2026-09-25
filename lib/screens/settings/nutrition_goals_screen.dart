@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/nutrition/plan_math.dart';
@@ -479,7 +479,7 @@ class _AdjustSection extends ConsumerWidget {
       title: l10n.settings_group_adjust,
       children: [
         SettingsRow(
-          icon: LucideIcons.flame,
+          icon: WaznIcons.calories,
           title: l10n.settings_daily_calories,
           value: '$calories ${l10n.settings_kcal_unit}',
           onTap:
@@ -498,7 +498,7 @@ class _AdjustSection extends ConsumerWidget {
               ),
         ),
         SettingsRow(
-          icon: LucideIcons.beef,
+          icon: WaznIcons.protein,
           title: l10n.settings_protein,
           subtitle: pct(shares.protein),
           value: '${split.protein}${l10n.settings_grams_unit}',
@@ -514,7 +514,7 @@ class _AdjustSection extends ConsumerWidget {
               ),
         ),
         SettingsRow(
-          icon: LucideIcons.wheat,
+          icon: WaznIcons.carbs,
           title: l10n.settings_carbs,
           subtitle: pct(shares.carbs),
           value: '${split.carbs}${l10n.settings_grams_unit}',
@@ -530,7 +530,7 @@ class _AdjustSection extends ConsumerWidget {
               ),
         ),
         SettingsRow(
-          icon: LucideIcons.droplet,
+          icon: WaznIcons.water,
           title: l10n.settings_fat,
           subtitle: pct(shares.fat),
           value: '${split.fat}${l10n.settings_grams_unit}',
@@ -596,7 +596,7 @@ class _DailyTargetsSection extends ConsumerWidget {
       title: l10n.settings_group_daily_targets,
       children: [
         SettingsRow(
-          icon: LucideIcons.droplet,
+          icon: WaznIcons.water,
           title: l10n.settings_water_goal,
           value: '$waterGoal ${l10n.settings_unit_ml}',
           onTap:
@@ -614,7 +614,7 @@ class _DailyTargetsSection extends ConsumerWidget {
               ),
         ),
         SettingsRow(
-          icon: LucideIcons.activity,
+          icon: WaznIcons.activity,
           title: l10n.settings_step_goal,
           value: '$stepGoal ${l10n.settings_unit_steps}',
           onTap:

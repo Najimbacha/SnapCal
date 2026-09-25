@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import '../core/state/async_ui_state.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/theme/theme_colors.dart';
 import '../l10n/generated/app_localizations.dart';
 import 'ui_blocks.dart';
+import 'wazn_icons.dart';
 
 class AppSkeletonBlock extends StatelessWidget {
   final double height;
@@ -79,7 +79,7 @@ class AppInlineFallback extends StatelessWidget {
 
   const AppInlineFallback({
     super.key,
-    this.icon = LucideIcons.alertCircle,
+    this.icon = WaznIcons.error,
     required this.title,
     required this.message,
     this.actionLabel,
@@ -194,7 +194,7 @@ class _RetryButtonState extends State<RetryButton> {
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-              : Icon(LucideIcons.refreshCw, size: 16),
+              : Icon(WaznIcons.refresh, size: 16),
       label: Text(widget.label),
     );
   }
@@ -210,7 +210,7 @@ class OfflineActionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return AppInlineFallback(
-      icon: LucideIcons.wifiOff,
+      icon: WaznIcons.offline,
       title: l10n.state_offline,
       message: message,
       actionLabel: onRetry == null ? null : l10n.state_retry,
@@ -248,7 +248,7 @@ class AppStateView extends StatelessWidget {
       case AsyncUiPhase.empty:
         return empty ??
             AppInlineFallback(
-              icon: LucideIcons.inbox,
+              icon: WaznIcons.inbox,
               title: l10n.state_empty_title,
               message: state.message ?? l10n.state_empty_message,
             );
@@ -279,7 +279,7 @@ class AppStateView extends StatelessWidget {
 void showFriendlyFallbackSnack(
   BuildContext context,
   String message, {
-  IconData icon = LucideIcons.info,
+  IconData icon = WaznIcons.info,
 }) {
   final messenger = ScaffoldMessenger.maybeOf(context);
   if (messenger == null) return;

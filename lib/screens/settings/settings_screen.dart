@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -78,7 +78,7 @@ class SettingsScreen extends ConsumerWidget {
               child: SettingsRow(
                 title: 'Wazn Pro',
                 value: l10n.settings_manage_plan,
-                icon: LucideIcons.gem,
+                icon: WaznIcons.pro,
                 onTap:
                     () => PremiumConversionService().openPaywall(
                       context,
@@ -99,13 +99,13 @@ class SettingsScreen extends ConsumerWidget {
             title: l10n.settings_core_config,
             children: [
               SettingsRow(
-                icon: LucideIcons.user,
+                icon: WaznIcons.profile,
                 title: l10n.settings_body_profile,
                 value: bodyValue,
                 onTap: () => context.push('/settings/body-profile'),
               ),
               SettingsRow(
-                icon: LucideIcons.flame,
+                icon: WaznIcons.calories,
                 title: l10n.settings_nutrition_goals,
                 value:
                     settings == null
@@ -114,7 +114,7 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => context.push('/settings/nutrition-goals'),
               ),
               SettingsRow(
-                icon: LucideIcons.settings,
+                icon: WaznIcons.settings,
                 title: l10n.settings_preferences,
                 value: settingsLanguageName(settings?.languageCode),
                 onTap: () => context.push('/settings/preferences'),
@@ -126,7 +126,7 @@ class SettingsScreen extends ConsumerWidget {
             title: l10n.settings_data_security,
             children: [
               SettingsRow(
-                icon: LucideIcons.watch,
+                icon: WaznIcons.watch,
                 title: 'Health Connect',
                 value:
                     healthConnected
@@ -135,12 +135,12 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => showActivityHealthConnectSheet(context),
               ),
               SettingsRow(
-                icon: LucideIcons.hardDrive,
+                icon: WaznIcons.hardDrive,
                 title: l10n.settings_data_sync,
                 onTap: () => context.push('/settings/data-sync'),
               ),
               SettingsRow(
-                icon: LucideIcons.userCircle,
+                icon: WaznIcons.profile,
                 title: l10n.settings_account,
                 // No "Create account" here: the profile card at the top of
                 // this same screen already makes that offer, and two doors to
@@ -154,20 +154,20 @@ class SettingsScreen extends ConsumerWidget {
             title: l10n.settings_information,
             children: [
               SettingsRow(
-                icon: LucideIcons.info,
+                icon: WaznIcons.info,
                 title: l10n.settings_about,
                 onTap: () => context.push('/settings/about'),
               ),
               // Google Play only: there is no App Store listing to open yet.
               if (defaultTargetPlatform == TargetPlatform.android)
                 SettingsRow(
-                  icon: LucideIcons.star,
+                  icon: WaznIcons.star,
                   title: l10n.settings_rate_app,
                   onTap:
                       () => AppReviewService.instance().openStoreRatingPage(),
                 ),
               SettingsRow(
-                icon: LucideIcons.mail,
+                icon: WaznIcons.mail,
                 title: l10n.settings_send_feedback,
                 onTap: () => FeedbackService.send(context),
               ),
@@ -178,7 +178,7 @@ class SettingsScreen extends ConsumerWidget {
             SettingsSurface(
               padding: EdgeInsets.zero,
               child: SettingsRow(
-                icon: LucideIcons.logOut,
+                icon: WaznIcons.logOut,
                 title: l10n.common_sign_out,
                 destructive: true,
                 onTap: () => confirmAndSignOut(context, ref),
@@ -219,7 +219,7 @@ class _DebugProToggle extends ConsumerWidget {
           child: Row(
             children: [
               Icon(
-                effectivePro ? LucideIcons.shieldCheck : LucideIcons.bug,
+                effectivePro ? WaznIcons.shieldCheck : WaznIcons.bug,
                 size: 20,
                 color:
                     effectivePro
@@ -255,7 +255,7 @@ class _DebugProToggle extends ConsumerWidget {
                 ),
               ),
               Icon(
-                LucideIcons.chevronRight,
+                WaznIcons.chevronRight,
                 size: 18,
                 color: const Color(0xFFA8A29E),
               ),
@@ -346,7 +346,7 @@ class _GuestCard extends StatelessWidget {
               ),
               child: Center(
                 child: Icon(
-                  LucideIcons.user,
+                  WaznIcons.profile,
                   color: kSettingsGreenText,
                   size: 20,
                 ),
@@ -385,7 +385,7 @@ class _GuestCard extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Icon(
-              LucideIcons.chevronRight,
+              WaznIcons.chevronRight,
               size: 18,
               color: settingsSubtext(context).withValues(alpha: 0.7),
             ),
@@ -499,7 +499,7 @@ class _MemberCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
-                                LucideIcons.gem,
+                                WaznIcons.pro,
                                 color: kSettingsGreenText,
                                 size: 8,
                               ),
@@ -536,7 +536,7 @@ class _MemberCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Icon(
-              LucideIcons.chevronRight,
+              WaznIcons.chevronRight,
               size: 14,
               color: settingsSubtext(context).withValues(alpha: 0.55),
             ),
@@ -639,11 +639,7 @@ class _ProUpsellCard extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Icon(
-                LucideIcons.crown,
-                size: 20,
-                color: Colors.white,
-              ),
+              child: const Icon(WaznIcons.pro, size: 20, color: Colors.white),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -703,7 +699,7 @@ class _ProUpsellCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 3),
                   const Icon(
-                    LucideIcons.chevronRight,
+                    WaznIcons.chevronRight,
                     size: 13,
                     color: Colors.white,
                   ),

@@ -28,8 +28,8 @@ void main() {
         ),
       );
       await font.load();
-      final icons = FontLoader('packages/lucide_icons/Lucide');
-      icons.addFont(rootBundle.load('packages/lucide_icons/assets/lucide.ttf'));
+      final icons = FontLoader('WaznIcons');
+      icons.addFont(rootBundle.load('assets/fonts/WaznIcons.ttf'));
       await icons.load();
     }
   });

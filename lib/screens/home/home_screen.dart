@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 
 import '../../widgets/notification_permission_prompt.dart';
 import '../../core/theme/app_colors.dart';
@@ -384,7 +384,7 @@ class _FirstMealGuideCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(13),
                   ),
                   child: const Icon(
-                    LucideIcons.camera,
+                    WaznIcons.camera,
                     size: 21,
                     color: AppColors.primary,
                   ),
@@ -423,7 +423,7 @@ class _FirstMealGuideCard extends StatelessWidget {
                   child: IconButton(
                     key: const ValueKey('first-meal-guide-dismiss'),
                     onPressed: onDismiss,
-                    icon: const Icon(LucideIcons.x, size: 18),
+                    icon: const Icon(WaznIcons.close, size: 18),
                     color: muted,
                     visualDensity: VisualDensity.compact,
                     constraints: const BoxConstraints(
@@ -456,7 +456,7 @@ class _FirstMealGuideCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(LucideIcons.camera, size: 19),
+                    const Icon(WaznIcons.camera, size: 19),
                     const SizedBox(width: 9),
                     Flexible(
                       child: Text(
@@ -503,8 +503,7 @@ const _minimalInk = Color(0xFF1C1917);
 /// 4.5:1 that small text needs, and far below the 6.1:1 the wellness and tools
 /// cards were already hitting. Same warm grey, deep enough to read: 4.56:1.
 const _minimalMuted = Color(0xFF777370);
-const _minimalGreen =
-    AppColors.primary; // Wazn emerald — brand progress color
+const _minimalGreen = AppColors.primary; // Wazn emerald — brand progress color
 const _minimalGreenText = AppColors.primaryDark;
 
 /// The green that reads on the current ground.
@@ -606,7 +605,7 @@ class _MinimalHomeTopBar extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(LucideIcons.flame, color: Colors.orange, size: 14),
+                Icon(WaznIcons.calories, color: Colors.orange, size: 14),
                 const SizedBox(width: 3),
                 Text(
                   '$streak',
@@ -633,7 +632,7 @@ class _MinimalHomeTopBar extends StatelessWidget {
                   width: 36,
                   height: 44,
                   child: Icon(
-                    LucideIcons.gem,
+                    WaznIcons.pro,
                     color:
                         isDark
                             ? const Color(0xFFFFD86B)
@@ -656,7 +655,7 @@ class _MinimalHomeTopBar extends StatelessWidget {
               width: 44,
               height: 44,
               child: Icon(
-                LucideIcons.settings,
+                WaznIcons.settings,
                 color: isDark ? Colors.white54 : const Color(0xFF8E8E93),
                 size: 20,
               ),
@@ -857,7 +856,7 @@ class _ActivityBonusPill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              LucideIcons.footprints,
+              WaznIcons.steps,
               size: 12,
               color: isDark ? _minimalGreen : _minimalGreenText,
             ),
@@ -1157,7 +1156,7 @@ class _MinimalEmptyMealRow extends StatelessWidget {
             SizedBox(
               width: 24,
               child: Icon(
-                LucideIcons.scanLine,
+                WaznIcons.scan,
                 color:
                     isDark
                         ? AppColors.primary.withValues(alpha: 0.86)

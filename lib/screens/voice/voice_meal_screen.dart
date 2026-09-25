@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/resilience/app_failure.dart';
@@ -417,33 +417,15 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
               backgroundColor: card,
               side: BorderSide(color: border),
             ),
-            icon: const Icon(LucideIcons.x, size: 20),
+            icon: const Icon(WaznIcons.close, size: 20),
           ),
           titleSpacing: 8,
-          title: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: const Icon(
-                  LucideIcons.waves,
-                  size: 18,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                l10n.voice_log_title,
-                style: AppTypography.titleMedium.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: textColor,
-                ),
-              ),
-            ],
+          title: Text(
+            l10n.voice_log_title,
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
           ),
           centerTitle: false,
         ),
@@ -483,95 +465,80 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                         ),
                         const SizedBox(height: 18),
                         Container(
-                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                          padding: const EdgeInsets.symmetric(vertical: 24),
                           decoration: BoxDecoration(
                             color: card,
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: border),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: dark ? 0.20 : 0.045,
-                                ),
-                                blurRadius: 24,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
                           ),
-                          child: Column(
-                            children: [
-                              _MicControl(
-                                listening: _isListening,
-                                analyzing: _isAnalyzing,
-                                soundLevel: _soundLevel,
-                                secondsLeft: _secondsLeft,
-                                onTap:
-                                    _isAnalyzing
-                                        ? null
-                                        : _isListening
-                                        ? _stopListening
-                                        : _startListening,
-                                readyLabel: l10n.voice_tap_to_speak,
-                                listeningLabel: l10n.voice_listening,
+                          child: _MicControl(
+                            listening: _isListening,
+                            analyzing: _isAnalyzing,
+                            soundLevel: _soundLevel,
+                            secondsLeft: _secondsLeft,
+                            onTap:
+                                _isAnalyzing
+                                    ? null
+                                    : _isListening
+                                    ? _stopListening
+                                    : _startListening,
+                            readyLabel: l10n.voice_tap_to_speak,
+                            listeningLabel: l10n.voice_listening,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          l10n.voice_transcript_label,
+                          style: AppTypography.titleSmall.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          key: const ValueKey('voice-transcript'),
+                          controller: _transcriptController,
+                          focusNode: _focusNode,
+                          enabled: !_isAnalyzing,
+                          minLines: 3,
+                          maxLines: 5,
+                          maxLength: 500,
+                          textCapitalization: TextCapitalization.sentences,
+                          onChanged: (_) => setState(() => _error = null),
+                          decoration: InputDecoration(
+                            hintText: l10n.voice_transcript_hint,
+                            helperText: l10n.voice_example,
+                            helperMaxLines: 2,
+                            filled: true,
+                            fillColor: card,
+                            contentPadding: const EdgeInsets.all(14),
+                            hintStyle: TextStyle(
+                              color: secondaryText.withValues(alpha: 0.72),
+                            ),
+                            helperStyle: TextStyle(
+                              color: secondaryText,
+                              height: 1.3,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: border),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: border),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: border),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
                               ),
-                              const SizedBox(height: 20),
-                              Container(
-                                padding: const EdgeInsets.fromLTRB(
-                                  14,
-                                  10,
-                                  14,
-                                  6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      dark
-                                          ? Colors.white.withValues(
-                                            alpha: 0.055,
-                                          )
-                                          : AppColors.background,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: border),
-                                ),
-                                child: TextField(
-                                  key: const ValueKey('voice-transcript'),
-                                  controller: _transcriptController,
-                                  focusNode: _focusNode,
-                                  enabled: !_isAnalyzing,
-                                  minLines: 3,
-                                  maxLines: 5,
-                                  maxLength: 500,
-                                  textCapitalization:
-                                      TextCapitalization.sentences,
-                                  onChanged:
-                                      (_) => setState(() => _error = null),
-                                  decoration: InputDecoration(
-                                    labelText: l10n.voice_transcript_label,
-                                    hintText: l10n.voice_transcript_hint,
-                                    helperText: l10n.voice_example,
-                                    helperMaxLines: 2,
-                                    labelStyle: TextStyle(
-                                      color: secondaryText,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    floatingLabelStyle: const TextStyle(
-                                      color: AppColors.primaryDark,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                    hintStyle: TextStyle(
-                                      color: secondaryText.withValues(
-                                        alpha: 0.72,
-                                      ),
-                                    ),
-                                    helperStyle: TextStyle(
-                                      color: secondaryText,
-                                      height: 1.3,
-                                    ),
-                                    border: InputBorder.none,
-                                    counterText: '',
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
+                            counterText: '',
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -579,7 +546,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              LucideIcons.shieldCheck,
+                              WaznIcons.shieldCheck,
                               size: 15,
                               color: AppColors.primary,
                             ),
@@ -619,7 +586,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                                     : AppColors.lightCardBorder,
                             disabledForegroundColor: secondaryText,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             elevation: 0,
                           ),
@@ -633,7 +600,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                                       color: Colors.white,
                                     ),
                                   )
-                                  : const Icon(LucideIcons.sparkles, size: 19),
+                                  : const Icon(WaznIcons.ai, size: 19),
                           label: Text(
                             _isAnalyzing
                                 ? l10n.voice_analyzing
@@ -650,7 +617,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                                 _speechUnavailable
                                     ? null
                                     : () => _startListening(clearFirst: true),
-                            icon: const Icon(LucideIcons.rotateCcw, size: 17),
+                            icon: const Icon(WaznIcons.rotateCcw, size: 17),
                             label: Text(l10n.voice_speak_again),
                             style: TextButton.styleFrom(
                               foregroundColor:
@@ -738,7 +705,7 @@ class _MicControl extends StatelessWidget {
                   ],
                 ),
                 child: Icon(
-                  listening ? LucideIcons.square : LucideIcons.mic,
+                  listening ? WaznIcons.square : WaznIcons.voice,
                   size: listening ? 25 : 31,
                   color: Colors.white,
                 ),
@@ -769,11 +736,13 @@ class _MicControl extends StatelessWidget {
                       );
                     }),
                   )
-                  : Icon(
-                    analyzing ? LucideIcons.loader : LucideIcons.activity,
+                  : analyzing
+                  ? Icon(
+                    WaznIcons.loader,
                     size: 18,
                     color: muted.withValues(alpha: 0.55),
-                  ),
+                  )
+                  : null,
         ),
         const SizedBox(height: 4),
         Text(
@@ -813,11 +782,7 @@ class _ErrorBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            LucideIcons.alertCircle,
-            color: scheme.onErrorContainer,
-            size: 18,
-          ),
+          Icon(WaznIcons.error, color: scheme.onErrorContainer, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

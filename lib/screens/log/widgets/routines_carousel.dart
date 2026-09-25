@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -11,6 +10,7 @@ import 'package:snapcal/data/models/meal_template.dart';
 import 'package:snapcal/providers/template_provider.dart';
 import 'package:snapcal/widgets/glass_card.dart';
 import 'package:snapcal/widgets/ui_blocks.dart';
+import '../../../widgets/wazn_icons.dart';
 
 class RoutinesCarousel extends ConsumerWidget {
   const RoutinesCarousel({super.key});
@@ -224,7 +224,7 @@ class _RoutineOptionsSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             ListTile(
-              leading: Icon(LucideIcons.trash2, color: AppColors.error),
+              leading: Icon(WaznIcons.delete, color: AppColors.error),
               title: Text(
                 AppLocalizations.of(context)!.common_delete,
                 style: AppTypography.bodyLarge.copyWith(

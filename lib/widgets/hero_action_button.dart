@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'wazn_icons.dart';
 
 import '../core/theme/app_colors.dart';
 
@@ -170,9 +170,7 @@ class _HeroActionButtonState extends State<HeroActionButton>
                           );
                         },
                         child: Icon(
-                          _showScanIcon
-                              ? LucideIcons.scanLine
-                              : LucideIcons.camera,
+                          _showScanIcon ? WaznIcons.scan : WaznIcons.camera,
                           key: ValueKey(_showScanIcon),
                           color: const Color(0xFFF0FDF4),
                           size: 34,

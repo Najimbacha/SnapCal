@@ -4,22 +4,15 @@ import 'package:snapcal/planner/planner_models.dart';
 
 /// Energy implied by the macros across a day: 4 kcal/g protein, 4 kcal/g carb,
 /// 9 kcal/g fat.
-int _macroEnergy(List<PlannedMeal> m) => m.fold(
-  0,
-  (s, x) => s + (x.protein * 4 + x.carbs * 4 + x.fat * 9),
-);
+int _macroEnergy(List<PlannedMeal> m) =>
+    m.fold(0, (s, x) => s + (x.protein * 4 + x.carbs * 4 + x.fat * 9));
 
-int _totCal(List<PlannedMeal> m) =>
-    m.fold(0, (s, x) => s + x.calories);
+int _totCal(List<PlannedMeal> m) => m.fold(0, (s, x) => s + x.calories);
 
-int _totProt(List<PlannedMeal> m) =>
-    m.fold(0, (s, x) => s + x.protein);
+int _totProt(List<PlannedMeal> m) => m.fold(0, (s, x) => s + x.protein);
 
-PlannedMeal _meal(String slot, String name, PlannedFood food) => PlannedMeal(
-  slot: slot,
-  name: name,
-  foods: [food],
-);
+PlannedMeal _meal(String slot, String name, PlannedFood food) =>
+    PlannedMeal(slot: slot, name: name, foods: [food]);
 
 // Coherent per-100g data (real-ish nutrition table values).
 PlannedFood _chicken(double grams) => PlannedFood.from(
@@ -62,10 +55,16 @@ void main() {
 
   group('fitDay', () {
     test('moves grams, never the nutrition table', () {
-      final meals = [_meal('Breakfast', 'Chicken', _chicken(200)), _meal('Lunch', 'Rice', _rice(250))];
+      final meals = [
+        _meal('Breakfast', 'Chicken', _chicken(200)),
+        _meal('Lunch', 'Rice', _rice(250)),
+      ];
       final per100gBefore = meals.map((m) => m.foods.first.per100g).toList();
 
-      final fitted = fitDay(meals, const DayTarget(calories: 1500, protein: 90, carbs: 40, fat: 20));
+      final fitted = fitDay(
+        meals,
+        const DayTarget(calories: 1500, protein: 90, carbs: 40, fat: 20),
+      );
 
       for (var i = 0; i < fitted.length; i++) {
         expect(
@@ -76,82 +75,136 @@ void main() {
       }
     });
 
-    test('preserves the macro↔calorie energy ratio (no independent rescale)', () {
-      // Old behaviour scaled P, C and F each by its own ratio, so the implied
-      // energy drifted away from the calorie figure. New behaviour scales only
-      // grams, so the ratio is invariant under a fit.
-      final meals = [_meal('Breakfast', 'Chicken', _chicken(200)), _meal('Lunch', 'Rice', _rice(250))];
-      double ratio(List<PlannedMeal> m) => _totCal(m) == 0 ? 0 : _macroEnergy(m) / _totCal(m).toDouble();
+    test(
+      'preserves the macro↔calorie energy ratio (no independent rescale)',
+      () {
+        // Old behaviour scaled P, C and F each by its own ratio, so the implied
+        // energy drifted away from the calorie figure. New behaviour scales only
+        // grams, so the ratio is invariant under a fit.
+        final meals = [
+          _meal('Breakfast', 'Chicken', _chicken(200)),
+          _meal('Lunch', 'Rice', _rice(250)),
+        ];
+        double ratio(List<PlannedMeal> m) =>
+            _totCal(m) == 0 ? 0 : _macroEnergy(m) / _totCal(m).toDouble();
 
-      final before = ratio(meals);
-      final fitted = fitDay(meals, const DayTarget(calories: 1500, protein: 80, carbs: 40, fat: 20), kcalTolerance: 80);
-      final after = ratio(fitted);
+        final before = ratio(meals);
+        final fitted = fitDay(
+          meals,
+          const DayTarget(calories: 1500, protein: 80, carbs: 40, fat: 20),
+          kcalTolerance: 80,
+        );
+        final after = ratio(fitted);
 
-      expect((after - before).abs(), lessThan(0.02), reason: 'energy ratio must not drift');
-    });
+        expect(
+          (after - before).abs(),
+          lessThan(0.02),
+          reason: 'energy ratio must not drift',
+        );
+      },
+    );
 
-    test('drives the day toward its calorie target and respects portion bounds', () {
-      final meals = [_meal('Breakfast', 'Chicken', _chicken(200)), _meal('Lunch', 'Rice', _rice(250))];
-      final initialCal = _totCal(meals);
-      const target = DayTarget(calories: 1500, protein: 80, carbs: 40, fat: 20);
+    test(
+      'drives the day toward its calorie target and respects portion bounds',
+      () {
+        final meals = [
+          _meal('Breakfast', 'Chicken', _chicken(200)),
+          _meal('Lunch', 'Rice', _rice(250)),
+        ];
+        final initialCal = _totCal(meals);
+        const target = DayTarget(
+          calories: 1500,
+          protein: 80,
+          carbs: 40,
+          fat: 20,
+        );
 
-      final fitted = fitDay(meals, target, kcalTolerance: 80);
-      final fitCal = _totCal(fitted);
+        final fitted = fitDay(meals, target, kcalTolerance: 80);
+        final fitCal = _totCal(fitted);
 
-      // Any move toward the target is a win; a feasible fit lands in band.
-      expect((fitCal - target.calories).abs(), lessThanOrEqualTo((initialCal - target.calories).abs()));
+        // Any move toward the target is a win; a feasible fit lands in band.
+        expect(
+          (fitCal - target.calories).abs(),
+          lessThanOrEqualTo((initialCal - target.calories).abs()),
+        );
 
-      for (final meal in fitted) {
-        for (final f in meal.foods) {
-          expect(f.grams, greaterThanOrEqualTo(f.minGrams));
-          expect(f.grams, lessThanOrEqualTo(f.maxGrams));
+        for (final meal in fitted) {
+          for (final f in meal.foods) {
+            expect(f.grams, greaterThanOrEqualTo(f.minGrams));
+            expect(f.grams, lessThanOrEqualTo(f.maxGrams));
+          }
         }
-      }
-    });
+      },
+    );
 
-    test('protein-first correction raises protein when the target asks for more', () {
-      final meals = [_meal('Breakfast', 'Chicken', _chicken(200)), _meal('Lunch', 'Rice', _rice(250))];
-      const target = DayTarget(calories: 1500, protein: 120, carbs: 40, fat: 20);
+    test(
+      'protein-first correction raises protein when the target asks for more',
+      () {
+        final meals = [
+          _meal('Breakfast', 'Chicken', _chicken(200)),
+          _meal('Lunch', 'Rice', _rice(250)),
+        ];
+        const target = DayTarget(
+          calories: 1500,
+          protein: 120,
+          carbs: 40,
+          fat: 20,
+        );
 
-      final before = _totProt(meals);
-      final fitted = fitDay(meals, target, kcalTolerance: 100, macroTolerance: 10);
-      final after = _totProt(fitted);
+        final before = _totProt(meals);
+        final fitted = fitDay(
+          meals,
+          target,
+          kcalTolerance: 100,
+          macroTolerance: 10,
+        );
+        final after = _totProt(fitted);
 
-      expect(after, greaterThan(before));
-    });
+        expect(after, greaterThan(before));
+      },
+    );
 
     test('returns unchanged meals when no food is resolved', () {
-      final unresolved = _meal('Breakfast', 'Chicken', PlannedFood.from(
-        name: 'Chicken',
-        per100g: const {},
-        grams: 150,
-        servingGrams: 150,
-      ));
-      final fitted = fitDay([unresolved], const DayTarget(calories: 1000, protein: 50, carbs: 50, fat: 50));
+      final unresolved = _meal(
+        'Breakfast',
+        'Chicken',
+        PlannedFood.from(
+          name: 'Chicken',
+          per100g: const {},
+          grams: 150,
+          servingGrams: 150,
+        ),
+      );
+      final fitted = fitDay([
+        unresolved,
+      ], const DayTarget(calories: 1000, protein: 50, carbs: 50, fat: 50));
       expect(fitted.single.foods.first.grams, 150);
     });
   });
 
   group('aggregateGroceries', () {
-    test('sums the same food across the horizon instead of first-amount-wins', () {
-      // 385 g of oats across three days must be one line, not "1 cup oats".
-      final meals = [
-        _meal('Breakfast', 'Mon', _oats(120)),
-        _meal('Breakfast', 'Tue', _oats(140)),
-        _meal('Breakfast', 'Wed', _oats(125)),
-        _meal('Lunch', 'Mon', _rice(300)),
-      ];
+    test(
+      'sums the same food across the horizon instead of first-amount-wins',
+      () {
+        // 385 g of oats across three days must be one line, not "1 cup oats".
+        final meals = [
+          _meal('Breakfast', 'Mon', _oats(120)),
+          _meal('Breakfast', 'Tue', _oats(140)),
+          _meal('Breakfast', 'Wed', _oats(125)),
+          _meal('Lunch', 'Mon', _rice(300)),
+        ];
 
-      final groceries = aggregateGroceries(meals);
-      expect(groceries, hasLength(2));
+        final groceries = aggregateGroceries(meals);
+        expect(groceries, hasLength(2));
 
-      final oats = groceries.firstWhere((g) => g.name == 'Rolled oats');
-      expect(oats.grams, closeTo(385, 0.5));
-      expect(oats.category, 'Grains');
+        final oats = groceries.firstWhere((g) => g.name == 'Rolled oats');
+        expect(oats.grams, closeTo(385, 0.5));
+        expect(oats.category, 'Grains');
 
-      final rice = groceries.firstWhere((g) => g.name == 'Brown rice');
-      expect(rice.grams, closeTo(300, 0.5));
-    });
+        final rice = groceries.firstWhere((g) => g.name == 'Brown rice');
+        expect(rice.grams, closeTo(300, 0.5));
+      },
+    );
 
     test('groups by nutrition id even when names differ in casing', () {
       final meals = [

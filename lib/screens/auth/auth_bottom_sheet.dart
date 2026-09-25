@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_errors.dart';
 import '../../core/theme/app_colors.dart';
@@ -11,6 +10,7 @@ import '../../core/theme/theme_colors.dart';
 import '../../providers/auth_notifier_provider.dart';
 import '../../widgets/ui_blocks.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/wazn_icons.dart';
 
 // Matched to the full sign-in screen, which is matched to the app.
 const _minimalBg = Color(0xFFFBFCFA);
@@ -588,7 +588,7 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet>
                                             )
                                             : _minimalLine,
                                     iconWidget: Icon(
-                                      LucideIcons.mail,
+                                      WaznIcons.mail,
                                       size: 14,
                                       color:
                                           isDark
@@ -748,8 +748,8 @@ class _AuthTextField extends StatelessWidget {
                     onPressed: onTogglePassword,
                     icon: Icon(
                       (showPassword ?? false)
-                          ? LucideIcons.eyeOff
-                          : LucideIcons.eye,
+                          ? WaznIcons.eyeOff
+                          : WaznIcons.eye,
                       size: 18,
                       color: context.textMutedColor,
                     ),

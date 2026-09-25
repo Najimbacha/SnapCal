@@ -20,9 +20,8 @@ void main() {
         ),
       ),
     )).load();
-    await (FontLoader('packages/lucide_icons/Lucide')..addFont(
-      rootBundle.load('packages/lucide_icons/assets/lucide.ttf'),
-    )).load();
+    await (FontLoader('WaznIcons')
+      ..addFont(rootBundle.load('assets/fonts/WaznIcons.ttf'))).load();
   });
   for (final scenario in [
     ('free', false, 390.0, 1.0, 'en', true),

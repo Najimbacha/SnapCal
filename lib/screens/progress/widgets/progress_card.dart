@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
+import '../../../widgets/wazn_icons.dart';
 
 class ProgressCard extends StatelessWidget {
   final dynamic metric;
@@ -83,7 +83,7 @@ class ProgressCard extends StatelessWidget {
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: onCompare,
-              icon: Icon(LucideIcons.slidersHorizontal, size: 16),
+              icon: Icon(WaznIcons.settings, size: 16),
               label: Text(
                 AppLocalizations.of(context)!.progress_compare_previous,
               ),
@@ -124,9 +124,9 @@ class _PhotoThumbnail extends StatelessWidget {
                       fit: BoxFit.cover,
                       errorBuilder:
                           (context, error, stackTrace) =>
-                              const Center(child: Icon(LucideIcons.imageOff)),
+                              const Center(child: Icon(WaznIcons.imageOff)),
                     )
-                    : const Center(child: Icon(LucideIcons.imageOff)),
+                    : const Center(child: Icon(WaznIcons.imageOff)),
           ),
         ),
         const SizedBox(height: 6),

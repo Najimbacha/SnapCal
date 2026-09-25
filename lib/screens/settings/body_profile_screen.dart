@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -34,7 +34,7 @@ class BodyProfileScreen extends ConsumerWidget {
             title: l10n.settings_group_about_you,
             children: [
               SettingsRow(
-                icon: LucideIcons.user,
+                icon: WaznIcons.profile,
                 title: l10n.settings_display_name_label,
                 value:
                     ref.watch(authStateProvider).valueOrNull?.displayName ??
@@ -53,7 +53,7 @@ class BodyProfileScreen extends ConsumerWidget {
                   return Column(
                     children: [
                       SettingsRow(
-                        icon: LucideIcons.calendar,
+                        icon: WaznIcons.calendar,
                         title: l10n.settings_age,
                         value: settings?.age?.toString() ?? '--',
                         onTap:
@@ -80,7 +80,7 @@ class BodyProfileScreen extends ConsumerWidget {
                             ),
                       ),
                       SettingsRow(
-                        icon: LucideIcons.userCircle,
+                        icon: WaznIcons.profile,
                         title: l10n.settings_sex,
                         subtitle: l10n.settings_sex_hint,
                         value:
@@ -117,7 +117,7 @@ class BodyProfileScreen extends ConsumerWidget {
                     shown = '${height.round()} ${localizeUnit(context, 'cm')}';
                   }
                   return SettingsRow(
-                    icon: LucideIcons.ruler,
+                    icon: WaznIcons.ruler,
                     title: l10n.settings_height,
                     value: shown,
                     onTap:
@@ -175,7 +175,7 @@ class BodyProfileScreen extends ConsumerWidget {
                     displayWeight = displayWeight * 2.20462;
                   }
                   return SettingsRow(
-                    icon: LucideIcons.scale,
+                    icon: WaznIcons.weight,
                     title: l10n.settings_current_weight,
                     value:
                         displayWeight != null
@@ -203,7 +203,7 @@ class BodyProfileScreen extends ConsumerWidget {
                     displayTarget = displayTarget * 2.20462;
                   }
                   return SettingsRow(
-                    icon: LucideIcons.target,
+                    icon: WaznIcons.goal,
                     title: l10n.settings_target_weight,
                     value:
                         displayTarget != null
@@ -253,7 +253,7 @@ class BodyProfileScreen extends ConsumerWidget {
                 builder: (context, ref, _) {
                   final settings = ref.watch(settingsProvider).valueOrNull;
                   return SettingsRow(
-                    icon: LucideIcons.settings,
+                    icon: WaznIcons.settings,
                     title: l10n.settings_units,
                     value:
                         '${localizeUnit(context, settings?.weightUnit ?? 'kg').toUpperCase()} / ${localizeUnit(context, settings?.heightUnit ?? 'cm').toUpperCase()}',

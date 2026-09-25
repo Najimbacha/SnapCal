@@ -6,6 +6,7 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/meal.dart';
+import '../../../widgets/wazn_icons.dart';
 import 'horizontal_day_calendar.dart' show DailySummary;
 
 /// Surfaces that only the Log screen can show.
@@ -306,8 +307,9 @@ class MealSplitBar extends StatelessWidget {
       _Slot.dinner: l10n.result_meal_dinner,
       _Slot.snack: l10n.result_meal_snack,
     };
-    final present =
-        _Slot.values.where((s) => (totals[s] ?? 0) > 0).toList(growable: false);
+    final present = _Slot.values
+        .where((s) => (totals[s] ?? 0) > 0)
+        .toList(growable: false);
 
     return Container(
       width: double.infinity,
@@ -439,10 +441,10 @@ class DayComparisonLine extends StatelessWidget {
       children: [
         Icon(
           same
-              ? Icons.remove_rounded
+              ? WaznIcons.minus
               : delta > 0
-              ? Icons.trending_up_rounded
-              : Icons.trending_down_rounded,
+              ? WaznIcons.trend
+              : WaznIcons.trendDown,
           size: 15,
           color: scheme.onSurface.withValues(alpha: isDark ? 0.40 : 0.42),
         ),

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/date_utils.dart' as app_date;
 import '../../../widgets/ui_blocks.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import '../../../widgets/wazn_icons.dart';
 
 /// Elite Date picker bar with navigation and today shortcut
 class DatePickerBar extends StatelessWidget {
@@ -50,7 +50,7 @@ class DatePickerBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Previous button
-          _EliteNavButton(icon: LucideIcons.chevronLeft, onTap: onPrevious),
+          _EliteNavButton(icon: WaznIcons.chevronLeft, onTap: onPrevious),
 
           // Date display
           Expanded(
@@ -75,7 +75,7 @@ class DatePickerBar extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            LucideIcons.calendarClock,
+                            WaznIcons.calendar,
                             size: 10,
                             color: context.primaryColor,
                           ),
@@ -99,7 +99,7 @@ class DatePickerBar extends StatelessWidget {
 
           // Next button
           _EliteNavButton(
-            icon: LucideIcons.chevronRight,
+            icon: WaznIcons.chevronRight,
             onTap: isFuture ? null : onNext,
             isDisabled: isFuture,
           ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_typography.dart';
@@ -190,13 +190,13 @@ class _MealPlannerSetupState extends State<MealPlannerSetup> {
         Row(
           children:
               [
-                    ('quick', l10n.planner_cooking_quick, LucideIcons.timer),
+                    ('quick', l10n.planner_cooking_quick, WaznIcons.timer),
                     (
                       'balanced',
                       l10n.planner_cooking_balanced,
-                      LucideIcons.scale,
+                      WaznIcons.weight,
                     ),
-                    ('enjoy', l10n.planner_cooking_enjoy, LucideIcons.chefHat),
+                    ('enjoy', l10n.planner_cooking_enjoy, WaznIcons.chefHat),
                   ]
                   .map(
                     (option) => Expanded(
@@ -221,10 +221,10 @@ class _MealPlannerSetupState extends State<MealPlannerSetup> {
         _OptionList(
           value: _planStyle,
           options: [
-            ('budget', l10n.planner_style_budget, LucideIcons.wallet),
-            ('protein', l10n.planner_style_protein, LucideIcons.dumbbell),
-            ('simple', l10n.planner_style_simple, LucideIcons.listChecks),
-            ('variety', l10n.planner_style_variety, LucideIcons.shuffle),
+            ('budget', l10n.planner_style_budget, WaznIcons.wallet),
+            ('protein', l10n.planner_style_protein, WaznIcons.exercise),
+            ('simple', l10n.planner_style_simple, WaznIcons.listChecks),
+            ('variety', l10n.planner_style_variety, WaznIcons.shuffle),
           ],
           onChanged: (value) {
             setState(() {
@@ -249,7 +249,7 @@ class _MealPlannerSetupState extends State<MealPlannerSetup> {
           decoration: InputDecoration(
             labelText: l10n.planner_foods_avoid,
             hintText: l10n.planner_foods_avoid_hint,
-            prefixIcon: const Icon(LucideIcons.circleSlash2, size: 18),
+            prefixIcon: const Icon(WaznIcons.blocked, size: 18),
           ),
         ),
       ],
@@ -326,19 +326,19 @@ class _MealPlannerSetupState extends State<MealPlannerSetup> {
         ),
         const SizedBox(height: 24),
         _SetupSwitch(
-          icon: LucideIcons.packageOpen,
+          icon: WaznIcons.package,
           label: l10n.planner_use_pantry,
           value: _usePantry,
           onChanged: (value) => setState(() => _usePantry = value),
         ),
         _SetupSwitch(
-          icon: LucideIcons.refrigerator,
+          icon: WaznIcons.refrigerator,
           label: l10n.planner_plan_leftovers,
           value: _planLeftovers,
           onChanged: (value) => setState(() => _planLeftovers = value),
         ),
         _SetupSwitch(
-          icon: LucideIcons.repeat2,
+          icon: WaznIcons.repeat,
           label: l10n.planner_repeat_breakfasts,
           value: _repeatBreakfasts,
           onChanged: (value) => setState(() => _repeatBreakfasts = value),
@@ -356,7 +356,7 @@ class _MealPlannerSetupState extends State<MealPlannerSetup> {
           child: Row(
             children: [
               Icon(
-                LucideIcons.shieldCheck,
+                WaznIcons.shieldCheck,
                 size: 18,
                 color: context.primaryColor,
               ),
@@ -400,7 +400,7 @@ class _SetupTopBar extends StatelessWidget {
               IconButton(
                 tooltip: l10n.common_cancel,
                 onPressed: onClose,
-                icon: const Icon(LucideIcons.x, size: 21),
+                icon: const Icon(WaznIcons.close, size: 21),
               ),
               Expanded(
                 child: Row(
@@ -655,7 +655,7 @@ class _OptionList extends StatelessWidget {
                         child: Text(option.$2, style: AppTypography.bodyMedium),
                       ),
                       Icon(
-                        selected ? LucideIcons.checkCircle : LucideIcons.circle,
+                        selected ? WaznIcons.success : WaznIcons.circle,
                         size: 19,
                         color:
                             selected
@@ -690,8 +690,9 @@ class _RestrictionPicker extends StatelessWidget {
     return DropdownButtonFormField<String>(
       initialValue: options.any((o) => o.$1 == value) ? value : 'none',
       decoration: const InputDecoration(
-        prefixIcon: Icon(LucideIcons.leaf, size: 18),
+        prefixIcon: Icon(WaznIcons.leaf, size: 18),
       ),
+      icon: const Icon(WaznIcons.chevronDown, size: 20),
       items:
           options
               .map(
@@ -791,7 +792,7 @@ class _SetupBottomBar extends StatelessWidget {
                     child: FilledButton.icon(
                       key: const ValueKey('planner-generate-plan'),
                       onPressed: onGenerate,
-                      icon: const Icon(LucideIcons.sparkles, size: 18),
+                      icon: const Icon(WaznIcons.ai, size: 18),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(52),
                         shape: RoundedRectangleBorder(
