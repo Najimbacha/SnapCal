@@ -13,6 +13,10 @@ import '../../../providers/metrics_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../widgets/ui_blocks.dart';
 import '../../../widgets/wazn_icons.dart';
+import '../../../core/theme/app_motion.dart';
+import '../../../widgets/motion/rolling_number.dart';
+import '../../../widgets/motion/theme_reveal.dart';
+import '../../../widgets/motion/visible_gate.dart';
 
 // Shared building blocks for the Settings area: one visual language for
 // sections, rows, switches, sheets and dialogs across the root screen and
@@ -577,10 +581,21 @@ class SettingsValueSheet extends StatefulWidget {
   State<SettingsValueSheet> createState() => _SettingsValueSheetState();
 }
 
-class _SettingsValueSheetState extends State<SettingsValueSheet> {
+class _SettingsValueSheetState extends State<SettingsValueSheet>
+    with SingleTickerProviderStateMixin {
   late TextEditingController _controller;
   late String _initialText;
   late double _step;
+
+  /// The number is shown rolling between values while it is stepped or slid,
+  /// and as a text field once it is tapped to type.
+  final _focus = FocusNode();
+  bool _typing = false;
+  bool _sliding = false;
+
+  /// Save draws in to a tick before the sheet closes.
+  bool _saving = false;
+  late final AnimationController _saveTick;
 
   @override
   void initState() {
@@ -588,12 +603,43 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
     _initialText = widget.initialValue.toStringAsFixed(widget.decimals);
     _controller = TextEditingController(text: _initialText);
     _step = widget.step ?? _defaultStep();
+    _saveTick = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 460),
+    );
+    _focus.addListener(() {
+      if (mounted) setState(() => _typing = _focus.hasFocus);
+    });
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _focus.dispose();
+    _saveTick.dispose();
     super.dispose();
+  }
+
+  Future<void> _confirm(double value) async {
+    if (_saving) return;
+    // Confirming an unchanged value is not an edit. Compared as displayed:
+    // 154.0 lb never equals its own round trip as a double, but is the same
+    // answer.
+    if (value.toStringAsFixed(widget.decimals) == _initialText) {
+      Navigator.pop(context);
+      return;
+    }
+    HapticFeedback.mediumImpact();
+    _focus.unfocus();
+    setState(() => _saving = true);
+    if (AppMotion.reduceMotion(context)) {
+      _saveTick.value = 1;
+    } else {
+      await _saveTick.forward();
+    }
+    if (!mounted) return;
+    Navigator.pop(context);
+    widget.onSave(value);
   }
 
   /// A step proportional to the span being edited: 1% of the range, rounded to
@@ -631,6 +677,8 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
   }
 
   void _nudge(double delta) {
+    HapticFeedback.selectionClick();
+    _focus.unfocus();
     final current = _value ?? widget.initialValue;
     var next = current + delta;
     if (widget.min != null) next = math.max(widget.min!, next);
@@ -708,26 +756,73 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
                     children: [
                       Flexible(
                         child: IntrinsicWidth(
-                          child: TextField(
-                            controller: _controller,
-                            keyboardType: TextInputType.numberWithOptions(
-                              decimal: widget.decimals > 0,
-                            ),
-                            textAlign: TextAlign.center,
-                            onChanged: (_) => setState(() {}),
-                            style: AppTypography.headlineSmall.copyWith(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 40,
-                              color:
-                                  showError
-                                      ? const Color(0xFFE05A47)
-                                      : kSettingsGreenText,
-                            ),
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Opacity(
+                                opacity: _typing || value == null ? 1 : 0,
+                                child: TextField(
+                                  controller: _controller,
+                                  focusNode: _focus,
+                                  keyboardType: TextInputType.numberWithOptions(
+                                    decimal: widget.decimals > 0,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  onChanged: (_) => setState(() {}),
+                                  style: AppTypography.headlineSmall.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 40,
+                                    color:
+                                        showError
+                                            ? const Color(0xFFE05A47)
+                                            : kSettingsGreenText,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              ),
+                              // Rolls to each value as it is stepped or slid;
+                              // tapping it opens the field for typing.
+                              if (!_typing && value != null)
+                                Positioned.fill(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: _focus.requestFocus,
+                                    child: Center(
+                                      child: RollingNumber(
+                                        value:
+                                            (value *
+                                                    math.pow(
+                                                      10,
+                                                      widget.decimals,
+                                                    ))
+                                                .round(),
+                                        duration: const Duration(
+                                          milliseconds: 420,
+                                        ),
+                                        format:
+                                            (v) => (v /
+                                                    math.pow(
+                                                      10,
+                                                      widget.decimals,
+                                                    ))
+                                                .toStringAsFixed(
+                                                  widget.decimals,
+                                                ),
+                                        style: AppTypography.headlineSmall
+                                            .copyWith(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 40,
+                                              color: kSettingsGreenText,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),
@@ -759,17 +854,40 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
                     overlayRadius: 16,
                   ),
                 ),
-                child: Slider(
-                  value: (value ?? widget.initialValue).clamp(
-                    widget.min!,
-                    widget.max!,
+                // Glides to a stepped or typed value; follows the finger
+                // exactly while dragged.
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(
+                    end: (value ?? widget.initialValue).clamp(
+                      widget.min!,
+                      widget.max!,
+                    ),
                   ),
-                  min: widget.min!,
-                  max: widget.max!,
-                  onChanged:
-                      (v) => setState(() {
-                        _controller.text = v.toStringAsFixed(widget.decimals);
-                      }),
+                  duration:
+                      _sliding
+                          ? Duration.zero
+                          : AppMotion.maybeZero(
+                            context,
+                            const Duration(milliseconds: 280),
+                          ),
+                  curve: Curves.easeOutCubic,
+                  builder:
+                      (context, shown, _) => Slider(
+                        value: shown.clamp(widget.min!, widget.max!),
+                        min: widget.min!,
+                        max: widget.max!,
+                        onChangeStart: (_) {
+                          _focus.unfocus();
+                          setState(() => _sliding = true);
+                        },
+                        onChangeEnd: (_) => setState(() => _sliding = false),
+                        onChanged:
+                            (v) => setState(() {
+                              _controller.text = v.toStringAsFixed(
+                                widget.decimals,
+                              );
+                            }),
+                      ),
                 ),
               ),
               Row(
@@ -808,36 +926,57 @@ class _SettingsValueSheetState extends State<SettingsValueSheet> {
             ],
 
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed:
-                    _isValid
-                        ? () {
-                          Navigator.pop(context);
-                          // Confirming an unchanged value is not an edit.
-                          // Compared as displayed: 154.0 lb never equals its
-                          // own round trip as a double, but is the same answer.
-                          if (value!.toStringAsFixed(widget.decimals) ==
-                              _initialText) {
-                            return;
-                          }
-                          widget.onSave(value);
-                        }
-                        : null,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            // On confirm the button draws in to a round tick, then the sheet
+            // closes and the row it came from shows the new value.
+            LayoutBuilder(
+              builder:
+                  (context, constraints) => Center(
+                    child: AnimatedContainer(
+                      duration: AppMotion.maybeZero(
+                        context,
+                        const Duration(milliseconds: 300),
+                      ),
+                      curve: Curves.easeOutCubic,
+                      width: _saving ? 54 : constraints.maxWidth,
+                      height: 54,
+                      child: FilledButton(
+                        onPressed: _isValid ? () => _confirm(value!) : null,
+                        style: FilledButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(54, 54),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              _saving ? 27 : 16,
+                            ),
+                          ),
+                          backgroundColor:
+                              _saving ? AppColors.primary : kSettingsGreen,
+                          disabledBackgroundColor: kSettingsGreen.withValues(
+                            alpha: 0.35,
+                          ),
+                          foregroundColor: const Color(0xFFF0FDF4),
+                        ),
+                        child:
+                            _saving
+                                ? ScaleTransition(
+                                  scale: CurvedAnimation(
+                                    parent: _saveTick,
+                                    curve: const Interval(
+                                      .35,
+                                      1,
+                                      curve: AppMotion.springCurve,
+                                    ),
+                                  ),
+                                  child: const Icon(WaznIcons.check, size: 24),
+                                )
+                                : Text(
+                                  l10n.common_confirm,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.clip,
+                                ),
+                      ),
+                    ),
                   ),
-                  backgroundColor: kSettingsGreen,
-                  disabledBackgroundColor: kSettingsGreen.withValues(
-                    alpha: 0.35,
-                  ),
-                  foregroundColor: const Color(0xFFF0FDF4),
-                ),
-                child: Text(l10n.common_confirm),
-              ),
             ),
             const SizedBox(height: 4),
             Center(
@@ -1125,99 +1264,193 @@ class SettingsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = destructive ? AppColors.error : kSettingsGreenText;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap:
-            onTap == null
-                ? null
-                : () {
-                  HapticFeedback.lightImpact();
-                  onTap!();
-                },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-          child: Row(
-            children: [
-              // A bare glyph, not a tinted well. Every row carrying the same
-              // mint square made the icons read as a texture down the left
-              // edge rather than as signposts — colour that marks everything
-              // marks nothing. The accent is kept for the destructive row,
-              // where it actually means something.
-              SizedBox(
-                width: 32,
-                child: Icon(
-                  icon,
-                  size: 19,
-                  color:
-                      destructive
-                          ? accent
-                          : settingsText(context).withValues(alpha: 0.55),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTypography.titleMedium.copyWith(
-                        color:
-                            destructive
-                                ? AppColors.error
-                                : settingsText(context),
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
-                        fontSize: 15,
-                      ),
-                    ),
-                    if (subtitle != null && subtitle!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          subtitle!,
-                          style: AppTypography.labelSmall.copyWith(
-                            color: settingsSubtext(context),
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (value != null && value!.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    value!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: settingsSubtext(context),
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                    ),
+    return _ValueFlash(
+      value: value,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap:
+              onTap == null
+                  ? null
+                  : () {
+                    HapticFeedback.lightImpact();
+                    onTap!();
+                  },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            child: Row(
+              children: [
+                // A bare glyph, not a tinted well. Every row carrying the same
+                // mint square made the icons read as a texture down the left
+                // edge rather than as signposts — colour that marks everything
+                // marks nothing. The accent is kept for the destructive row,
+                // where it actually means something.
+                SizedBox(
+                  width: 32,
+                  child: Icon(
+                    icon,
+                    size: 19,
+                    color:
+                        destructive
+                            ? accent
+                            : settingsText(context).withValues(alpha: 0.55),
                   ),
                 ),
-              ],
-              if (trailing != null) ...[
-                const SizedBox(width: 8),
-                trailing!,
-              ] else if (!destructive) ...[
-                const SizedBox(width: 8),
-                Icon(
-                  WaznIcons.chevronRight,
-                  size: 14,
-                  color: settingsSubtext(context).withValues(alpha: 0.55),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTypography.titleMedium.copyWith(
+                          color:
+                              destructive
+                                  ? AppColors.error
+                                  : settingsText(context),
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                          fontSize: 15,
+                        ),
+                      ),
+                      if (subtitle != null && subtitle!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            subtitle!,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: settingsSubtext(context),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
+                if (value != null && value!.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  // A new value slides up into place of the old.
+                  Flexible(
+                    child: AnimatedSwitcher(
+                      duration: AppMotion.maybeZero(
+                        context,
+                        const Duration(milliseconds: 380),
+                      ),
+                      switchInCurve: AppMotion.springCurve,
+                      switchOutCurve: Curves.easeIn,
+                      layoutBuilder:
+                          (current, previous) => Stack(
+                            alignment: AlignmentDirectional.centerEnd,
+                            children: [
+                              ...previous,
+                              if (current != null) current,
+                            ],
+                          ),
+                      transitionBuilder: (child, animation) {
+                        final incoming = child.key == ValueKey(value);
+                        return ClipRect(
+                          child: SlideTransition(
+                            position: Tween(
+                              begin: Offset(0, incoming ? .9 : -.9),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        value!,
+                        key: ValueKey(value),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: settingsSubtext(context),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (trailing != null) ...[
+                  const SizedBox(width: 8),
+                  trailing!,
+                ] else if (!destructive) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    WaznIcons.chevronRight,
+                    size: 14,
+                    color: settingsSubtext(context).withValues(alpha: 0.55),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A brief green wash over a row whose value just changed, so an edit made
+/// in a sheet is seen landing back on the row it came from.
+class _ValueFlash extends StatefulWidget {
+  const _ValueFlash({required this.value, required this.child});
+
+  final String? value;
+  final Widget child;
+
+  @override
+  State<_ValueFlash> createState() => _ValueFlashState();
+}
+
+class _ValueFlashState extends State<_ValueFlash>
+    with SingleTickerProviderStateMixin, VisibleGate {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+    value: 1,
+  );
+
+  @override
+  void didUpdateWidget(_ValueFlash oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value == oldWidget.value ||
+        oldWidget.value == null ||
+        widget.value == null) {
+      return;
+    }
+    runWhenVisible(() {
+      if (!AppMotion.reduceMotion(context)) _controller.forward(from: 0);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        final v = _controller.value;
+        final strength = v >= 1 ? 0.0 : (v < .2 ? v / .2 : 1 - (v - .2) / .8);
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: kSettingsGreenText.withValues(alpha: .14 * strength),
+          ),
+          child: child,
+        );
+      },
     );
   }
 }
@@ -1291,7 +1524,10 @@ class SettingsSwitchRow extends StatelessWidget {
           ),
           Switch.adaptive(
             value: value,
-            onChanged: onChanged,
+            onChanged: (next) {
+              HapticFeedback.selectionClick();
+              onChanged(next);
+            },
             activeThumbColor: kSettingsGreenText,
           ),
         ],
@@ -1369,6 +1605,8 @@ class SettingsThemeRow extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           // ─── Segmented picker — full width below, indented past icon ───
+          // One thumb slides to the option picked, and the new look spreads
+          // out in a circle from the tap.
           Padding(
             padding: const EdgeInsets.only(left: 46),
             child: Container(
@@ -1381,73 +1619,97 @@ class SettingsThemeRow extends ConsumerWidget {
                         : kSettingsLine.withValues(alpha: 0.65),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
-                children:
-                    options.map((opt) {
-                      final isSelected = currentMode == opt.$1;
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            settingsNotifier.setThemeMode(opt.$1);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeOutCubic,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color:
-                                  isSelected
-                                      ? (isDark
-                                          ? Colors.white.withValues(alpha: 0.09)
-                                          : kSettingsBgLight)
-                                      : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow:
-                                  isSelected
-                                      ? [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: isDark ? 0.15 : 0.05,
-                                          ),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 1),
-                                        ),
-                                      ]
-                                      : null,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  opt.$3,
-                                  size: 13,
-                                  color:
-                                      isSelected
-                                          ? kSettingsGreenText
-                                          : settingsSubtext(context),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: AnimatedAlign(
+                      alignment: switch (options.indexWhere(
+                        (o) => o.$1 == currentMode,
+                      )) {
+                        0 => AlignmentDirectional.centerStart,
+                        1 => AlignmentDirectional.center,
+                        _ => AlignmentDirectional.centerEnd,
+                      },
+                      duration: AppMotion.maybeZero(
+                        context,
+                        const Duration(milliseconds: 420),
+                      ),
+                      curve: AppMotion.springCurve,
+                      child: FractionallySizedBox(
+                        widthFactor: 1 / 3,
+                        heightFactor: 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color:
+                                isDark
+                                    ? Colors.white.withValues(alpha: 0.09)
+                                    : kSettingsBgLight,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.15 : 0.05,
                                 ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  opt.$2,
-                                  style: AppTypography.labelMedium.copyWith(
-                                    fontSize: 12,
-                                    fontWeight:
-                                        isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children:
+                        options.map((opt) {
+                          final isSelected = currentMode == opt.$1;
+                          return Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTapUp: (details) {
+                                if (isSelected) return;
+                                HapticFeedback.selectionClick();
+                                ThemeReveal.run(
+                                  context,
+                                  origin: details.globalPosition,
+                                  change:
+                                      () =>
+                                          settingsNotifier.setThemeMode(opt.$1),
+                                );
+                              },
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    opt.$3,
+                                    size: 13,
                                     color:
                                         isSelected
                                             ? kSettingsGreenText
                                             : settingsSubtext(context),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    opt.$2,
+                                    style: AppTypography.labelMedium.copyWith(
+                                      fontSize: 12,
+                                      fontWeight:
+                                          isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                      color:
+                                          isSelected
+                                              ? kSettingsGreenText
+                                              : settingsSubtext(context),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        }).toList(),
+                  ),
+                ],
               ),
             ),
           ),
