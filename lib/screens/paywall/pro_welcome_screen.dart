@@ -181,7 +181,18 @@ class _ProWelcomeScreenState extends State<ProWelcomeScreen> {
                             Padding(
                               padding: const EdgeInsets.fromLTRB(8, 0, 8, 14),
                               child: _enter(
-                                _BenefitRow(label: benefits[i], color: ink),
+                                _BenefitRow(
+                                  label: benefits[i],
+                                  color: ink,
+                                  // Each opens a moment after its row lands.
+                                  unlockAfter:
+                                      _reduceMotion
+                                          ? null
+                                          : Duration(
+                                            milliseconds:
+                                                _firstBenefitMs + 250 + i * 160,
+                                          ),
+                                ),
                                 _firstBenefitMs + i * 100,
                               ),
                             ),
@@ -340,16 +351,26 @@ class _Emblem extends StatelessWidget {
 }
 
 class _BenefitRow extends StatelessWidget {
-  const _BenefitRow({required this.label, required this.color});
+  const _BenefitRow({
+    required this.label,
+    required this.color,
+    this.unlockAfter,
+  });
 
   final String label;
   final Color color;
 
+  /// When set, the row starts locked and opens after this long.
+  final Duration? unlockAfter;
+
   @override
   Widget build(BuildContext context) {
+    final after = unlockAfter;
     return Row(
       children: [
-        const Icon(WaznIcons.success, size: 22, color: AppColors.primary),
+        after == null
+            ? const Icon(WaznIcons.success, size: 22, color: AppColors.primary)
+            : _Unlock(after: after, muted: color.withValues(alpha: .45)),
         const SizedBox(width: 12),
         Flexible(
           child: Text(
@@ -361,6 +382,86 @@ class _BenefitRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A padlock that flips away and gives way to a tick, the moment a Pro
+/// feature opens.
+class _Unlock extends StatefulWidget {
+  const _Unlock({required this.after, required this.muted});
+
+  final Duration after;
+  final Color muted;
+
+  @override
+  State<_Unlock> createState() => _UnlockState();
+}
+
+class _UnlockState extends State<_Unlock> with SingleTickerProviderStateMixin {
+  static const _open = Duration(milliseconds: 520);
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.after + _open,
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = (widget.after + _open).inMicroseconds;
+    final start = widget.after.inMicroseconds / total;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = Interval(start, 1).transform(_controller.value);
+        final away = Curves.easeIn.transform((t / .4).clamp(0.0, 1.0));
+        final pop = AppMotion.springCurve.transform(
+          ((t - .3) / .7).clamp(0.0, 1.0),
+        );
+        return SizedBox.square(
+          dimension: 22,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (away < 1)
+                Opacity(
+                  opacity: 1 - away,
+                  child: Transform.rotate(
+                    angle: -.5 * away,
+                    child: Transform.scale(
+                      scale: 1 - .4 * away,
+                      child: Icon(
+                        WaznIcons.lock,
+                        size: 19,
+                        color: widget.muted,
+                      ),
+                    ),
+                  ),
+                ),
+              if (pop > 0)
+                Transform.scale(
+                  scale: pop,
+                  child: const Icon(
+                    WaznIcons.success,
+                    size: 22,
+                    color: AppColors.primary,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

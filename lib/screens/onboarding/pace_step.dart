@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat, NumberFormat;
 
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../data/services/calorie_onboarding_service.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/motion/count_up_text.dart';
 import 'onboarding_body.dart';
 import 'onboarding_draft.dart';
 import 'onboarding_kit.dart';
@@ -68,6 +70,19 @@ class PaceStep extends StatelessWidget {
     };
     final chosen = planFor(pace);
     final chosenFinish = _finish(chosen);
+    // The chart runs to the slowest pace's finish, so a faster pace ends
+    // its line sooner and holds the target from there.
+    int? daysAt(Pace p) => daysToTarget(
+      currentKg: currentKg,
+      targetKg: targetKg,
+      weeklyRateKg: planFor(p).weeklyRateKg,
+    );
+    final longest = daysAt(Pace.gentle);
+    final chosenDays = daysAt(pace);
+    final reach =
+        longest == null || chosenDays == null || longest <= 0
+            ? 1.0
+            : (chosenDays / longest).clamp(0.2, 1.0);
 
     return OnbPage(
       child: Column(
@@ -90,6 +105,7 @@ class PaceStep extends StatelessWidget {
                 final finish = locked ? null : _finish(planFor(p));
                 return OnbOption(
                   key: ValueKey('onboarding-pace-${p.name}'),
+                  entranceIndex: p.index,
                   selected: pace == p,
                   enabled: !locked,
                   showTick: false,
@@ -182,12 +198,13 @@ class PaceStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  l10n.onb_pace_kcal(
-                    NumberFormat.decimalPattern(
-                      locale,
-                    ).format(chosen.dailyCalories),
-                  ),
+                CountUpText(
+                  value: chosen.dailyCalories,
+                  duration: const Duration(milliseconds: 700),
+                  format:
+                      (kcal) => l10n.onb_pace_kcal(
+                        NumberFormat.decimalPattern(locale).format(kcal),
+                      ),
                   style: TextStyle(
                     color: context.textPrimaryColor,
                     fontSize: 17,
@@ -200,23 +217,49 @@ class PaceStep extends StatelessWidget {
                     child: SizedBox(
                       height: 150,
                       width: double.infinity,
-                      child: CustomPaint(
-                        painter: _ProjectionPainter(
-                          start: kgToDisplay(currentKg, system),
-                          end: kgToDisplay(targetKg, system),
-                          unit: weightUnitLabel(l10n, system),
-                          startLabel: l10n.onb_chart_today,
-                          endLabel: dates.format(chosenFinish),
-                          line: context.primaryColor,
-                          surface: context.cardColor,
-                          grid: context.onbFill,
-                          strong: context.textPrimaryColor,
-                          muted: context.textSecondaryColor,
-                          textScaler: MediaQuery.textScalerOf(context),
-                          baseStyle:
-                              Theme.of(context).textTheme.bodyMedium ??
-                              const TextStyle(),
+                      // Draws itself in once, then glides to each new
+                      // finish as the pace changes.
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: 1),
+                        duration: AppMotion.maybeZero(
+                          context,
+                          const Duration(milliseconds: 1100),
                         ),
+                        curve: Curves.easeInOutCubic,
+                        builder:
+                            (context, grow, _) => TweenAnimationBuilder<double>(
+                              tween: Tween(end: reach),
+                              duration: AppMotion.maybeZero(
+                                context,
+                                const Duration(milliseconds: 700),
+                              ),
+                              curve: AppMotion.springCurve,
+                              builder:
+                                  (context, reach, _) => CustomPaint(
+                                    painter: _ProjectionPainter(
+                                      grow: grow,
+                                      reach: reach,
+                                      start: kgToDisplay(currentKg, system),
+                                      end: kgToDisplay(targetKg, system),
+                                      unit: weightUnitLabel(l10n, system),
+                                      startLabel: l10n.onb_chart_today,
+                                      endLabel: dates.format(chosenFinish),
+                                      line: context.primaryColor,
+                                      surface: context.cardColor,
+                                      grid: context.onbFill,
+                                      strong: context.textPrimaryColor,
+                                      muted: context.textSecondaryColor,
+                                      textScaler: MediaQuery.textScalerOf(
+                                        context,
+                                      ),
+                                      baseStyle:
+                                          Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium ??
+                                          const TextStyle(),
+                                    ),
+                                  ),
+                            ),
                       ),
                     ),
                   ),
@@ -233,6 +276,8 @@ class PaceStep extends StatelessWidget {
 /// A straight line from today's weight to the target, to scale.
 class _ProjectionPainter extends CustomPainter {
   _ProjectionPainter({
+    required this.grow,
+    required this.reach,
     required this.start,
     required this.end,
     required this.unit,
@@ -247,6 +292,11 @@ class _ProjectionPainter extends CustomPainter {
     required this.baseStyle,
   });
 
+  /// How much of the chart is drawn yet, 0 to 1, left to right.
+  final double grow;
+
+  /// Where along the width the target is reached, 0 to 1.
+  final double reach;
   final double start;
   final double end;
   final String unit;
@@ -274,26 +324,37 @@ class _ProjectionPainter extends CustomPainter {
         (1 - (v - (lo - pad)) / ((hi + pad) - (lo - pad))) *
             (size.height - top - bottom);
     final x0 = left, x1 = size.width - right;
+    final xr = x0 + (x1 - x0) * reach;
     final y0 = y(start), y1 = y(end);
     final base = size.height - bottom;
 
     canvas.drawLine(Offset(x0, base), Offset(x1, base), Paint()..color = grid);
+    canvas.save();
+    canvas.clipRect(
+      Rect.fromLTRB(0, 0, x0 + (x1 - x0 + right) * grow + 4, size.height),
+    );
     final area =
         Path()
           ..moveTo(x0, y0)
+          ..lineTo(xr, y1)
           ..lineTo(x1, y1)
           ..lineTo(x1, base)
           ..lineTo(x0, base)
           ..close();
     canvas.drawPath(area, Paint()..color = line.withValues(alpha: 0.12));
-    canvas.drawLine(
-      Offset(x0, y0),
-      Offset(x1, y1),
+    canvas.drawPath(
+      Path()
+        ..moveTo(x0, y0)
+        ..lineTo(xr, y1)
+        ..lineTo(x1, y1),
       Paint()
         ..color = line
+        ..style = PaintingStyle.stroke
         ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round,
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
     );
+    canvas.restore();
     canvas.drawCircle(Offset(x0, y0), 5, Paint()..color = surface);
     canvas.drawCircle(
       Offset(x0, y0),
@@ -303,24 +364,36 @@ class _ProjectionPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );
-    canvas.drawCircle(Offset(x1, y1), 6.5, Paint()..color = line);
+    // The finish dot and its words arrive once the line has reached it.
+    final settled = grow >= 1 ? 1.0 : ((grow - reach) * 6).clamp(0.0, 1.0);
+    if (settled > 0) {
+      canvas.drawCircle(Offset(xr, y1), 6.5 * settled, Paint()..color = line);
+    }
 
-    void text(
+    /// Paints [s] and returns where its right edge ended up.
+    double text(
       String s,
       Offset at, {
       required bool alignEnd,
       required TextStyle style,
+      bool centred = false,
+      double minX = 0,
     }) {
       final painter = TextPainter(
         text: TextSpan(text: s, style: style),
         textDirection: TextDirection.ltr,
         textScaler: textScaler,
       )..layout();
-      painter.paint(
-        canvas,
-        Offset(alignEnd ? at.dx - painter.width : at.dx, at.dy),
-      );
+      var dx =
+          centred
+              ? at.dx - painter.width / 2
+              : (alignEnd ? at.dx - painter.width : at.dx);
+      final maxX = (size.width - painter.width).clamp(0.0, size.width);
+      dx = dx.clamp(minX.clamp(0.0, maxX), maxX);
+      painter.paint(canvas, Offset(dx, at.dy));
+      final right = dx + painter.width;
       painter.dispose();
+      return right;
     }
 
     final bold = baseStyle.copyWith(
@@ -336,23 +409,39 @@ class _ProjectionPainter extends CustomPainter {
       alignEnd: false,
       style: bold,
     );
-    text(
-      '${end.toStringAsFixed(1)} $unit',
-      Offset(x1, y1 < y0 ? y1 - 24 : y1 + 10),
-      alignEnd: true,
-      style: bold,
-    );
-    text(
+    final todayEnd = text(
       startLabel,
       Offset(x0, size.height - 18),
       alignEnd: false,
       style: small,
     );
-    text(endLabel, Offset(x1, size.height - 18), alignEnd: true, style: small);
+    if (settled > 0) {
+      text(
+        '${end.toStringAsFixed(1)} $unit',
+        Offset(xr, y1 < y0 ? y1 - 24 : y1 + 10),
+        alignEnd: true,
+        centred: reach < 1,
+        style: bold.copyWith(
+          color: strong.withValues(alpha: settled * strong.a),
+        ),
+      );
+      text(
+        endLabel,
+        Offset(xr, size.height - 18),
+        alignEnd: true,
+        centred: reach < 1,
+        minX: todayEnd + 10,
+        style: small.copyWith(
+          color: muted.withValues(alpha: settled * muted.a),
+        ),
+      );
+    }
   }
 
   @override
   bool shouldRepaint(_ProjectionPainter old) =>
+      old.grow != grow ||
+      old.reach != reach ||
       old.start != start ||
       old.end != end ||
       old.unit != unit ||

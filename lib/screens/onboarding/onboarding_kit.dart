@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:snapcal/widgets/app_icon.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/theme_colors.dart';
+import '../../widgets/motion/reveal.dart';
 import 'onboarding_draft.dart';
 
 /// A quiet fill for switches, tracks and icon wells. Cards in this theme
@@ -95,13 +97,17 @@ class OnbTopBar extends StatelessWidget {
                     ),
                     TweenAnimationBuilder<double>(
                       tween: Tween(end: progress.clamp(0.0, 1.0)),
-                      duration: const Duration(milliseconds: 320),
-                      curve: Curves.easeOutCubic,
+                      // Springs a touch past the new mark and settles.
+                      duration: AppMotion.maybeZero(
+                        context,
+                        const Duration(milliseconds: 600),
+                      ),
+                      curve: AppMotion.springCurve,
                       builder:
                           (context, value, _) => FractionallySizedBox(
                             heightFactor: 1,
                             alignment: AlignmentDirectional.centerStart,
-                            widthFactor: value,
+                            widthFactor: value.clamp(0.0, 1.0),
                             child: ColoredBox(color: context.primaryColor),
                           ),
                     ),
@@ -126,14 +132,18 @@ class OnbQuestion extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       header: true,
-      child: Text(
-        text,
-        style: TextStyle(
-          color: context.textPrimaryColor,
-          fontSize: 28,
-          fontWeight: FontWeight.w800,
-          height: 1.15,
-          letterSpacing: -0.5,
+      child: Reveal(
+        offset: const Offset(0, 10),
+        duration: const Duration(milliseconds: 420),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: context.textPrimaryColor,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            height: 1.15,
+            letterSpacing: -0.5,
+          ),
         ),
       ),
     );
@@ -335,7 +345,11 @@ class OnbReadout extends StatelessWidget {
 }
 
 /// A selectable card. The whole card is the target; a tick shows the choice.
-class OnbOption extends StatelessWidget {
+///
+/// Picking it floods the card with the accent from where the finger landed,
+/// and the tick pops in and draws itself. With [entranceIndex] set, the card
+/// also rises into place a beat after the one before it.
+class OnbOption extends StatefulWidget {
   const OnbOption({
     super.key,
     required this.selected,
@@ -345,6 +359,7 @@ class OnbOption extends StatelessWidget {
     this.showTick = true,
     this.enabled = true,
     this.minHeight = 0,
+    this.entranceIndex,
   });
 
   final bool selected;
@@ -354,63 +369,158 @@ class OnbOption extends StatelessWidget {
   final bool showTick;
   final bool enabled;
   final double minHeight;
+  final int? entranceIndex;
+
+  @override
+  State<OnbOption> createState() => _OnbOptionState();
+}
+
+class _OnbOptionState extends State<OnbOption>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _wash;
+  Offset? _origin;
+
+  @override
+  void initState() {
+    super.initState();
+    _wash = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+      value: widget.selected ? 1 : 0,
+    );
+  }
+
+  @override
+  void didUpdateWidget(OnbOption oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected == oldWidget.selected) return;
+    if (widget.selected && !AppMotion.reduceMotion(context)) {
+      _wash.forward(from: 0);
+    } else if (widget.selected) {
+      _wash.value = 1;
+    } else {
+      _wash.animateBack(
+        0,
+        duration: AppMotion.maybeZero(context, AppMotion.standard),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _wash.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final accent = context.primaryColor;
-    return Semantics(
+    final tint = accent.withValues(alpha: context.isDarkMode ? 0.18 : 0.12);
+    final card = Semantics(
       button: true,
-      selected: selected,
-      enabled: enabled,
+      selected: widget.selected,
+      enabled: widget.enabled,
       inMutuallyExclusiveGroup: true,
       child: Opacity(
-        opacity: enabled ? 1 : 0.42,
+        opacity: widget.enabled ? 1 : 0.42,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
+          onTapDown: (details) => _origin = details.localPosition,
           onTap:
-              enabled
+              widget.enabled
                   ? () {
                     HapticFeedback.selectionClick();
-                    onTap();
+                    widget.onTap();
                   }
                   : null,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            constraints: BoxConstraints(minHeight: minHeight),
-            padding: padding,
+            constraints: BoxConstraints(minHeight: widget.minHeight),
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color:
-                  selected
-                      ? accent.withValues(
-                        alpha: context.isDarkMode ? 0.18 : 0.12,
-                      )
-                      : context.cardColor,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: selected ? accent : context.cardBorderColor,
+                color: widget.selected ? accent : context.cardBorderColor,
                 width: 2,
               ),
             ),
-            child:
-                showTick
-                    ? Stack(
-                      children: [
-                        child,
-                        PositionedDirectional(
-                          top: 0,
-                          end: 0,
-                          child: OnbTick(selected: selected),
-                        ),
-                      ],
-                    )
-                    : child,
+            child: CustomPaint(
+              painter: _WashPainter(
+                progress: _wash,
+                origin: _origin,
+                color: tint,
+              ),
+              child: Padding(
+                padding: widget.padding,
+                child:
+                    widget.showTick
+                        ? Stack(
+                          children: [
+                            widget.child,
+                            PositionedDirectional(
+                              top: 0,
+                              end: 0,
+                              child: OnbTick(selected: widget.selected),
+                            ),
+                          ],
+                        )
+                        : widget.child,
+              ),
+            ),
           ),
         ),
       ),
     );
+    final index = widget.entranceIndex;
+    if (index == null) return card;
+    return Reveal(
+      delay: Duration(milliseconds: 90 + 60 * index),
+      offset: const Offset(0, 18),
+      duration: const Duration(milliseconds: 480),
+      child: card,
+    );
   }
 }
 
+/// The accent spreading out from the tap until it fills the card.
+class _WashPainter extends CustomPainter {
+  _WashPainter({
+    required this.progress,
+    required this.origin,
+    required this.color,
+  }) : super(repaint: progress);
+
+  final Animation<double> progress;
+  final Offset? origin;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = Curves.easeOutCubic.transform(progress.value);
+    if (t <= 0) return;
+    final paint = Paint()..color = color;
+    if (t >= 1) {
+      canvas.drawRect(Offset.zero & size, paint);
+      return;
+    }
+    final from = origin ?? size.center(Offset.zero);
+    final reach = [
+      Offset.zero,
+      Offset(size.width, 0),
+      Offset(0, size.height),
+      Offset(size.width, size.height),
+    ].map((c) => (c - from).distance).reduce((a, b) => a > b ? a : b);
+    canvas.drawCircle(from, reach * t, paint);
+  }
+
+  @override
+  bool shouldRepaint(_WashPainter old) =>
+      old.origin != origin || old.color != color || old.progress != progress;
+}
+
+/// The round tick on a choice: it pops a little past full size and the
+/// check draws itself in.
 class OnbTick extends StatelessWidget {
   const OnbTick({super.key, required this.selected});
 
@@ -419,24 +529,69 @@ class OnbTick extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = context.primaryColor;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      width: 24,
-      height: 24,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: selected ? accent : Colors.transparent,
-        border: Border.all(
-          color: selected ? accent : context.cardBorderColor,
-          width: 2,
-        ),
-      ),
-      child:
-          selected
-              ? const Icon(AppSymbols.check, size: 15, color: Colors.white)
-              : null,
+    final border = context.cardBorderColor;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: selected ? 1 : 0),
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 420)),
+      builder: (context, t, _) {
+        final fill = (t / .35).clamp(0.0, 1.0);
+        final scale =
+            selected
+                ? .6 + .4 * AppMotion.springCurve.transform(t)
+                : .85 + .15 * t;
+        return Transform.scale(
+          scale: t == 0 || t == 1 ? 1 : scale,
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color.lerp(Colors.transparent, accent, fill),
+              border: Border.all(
+                color: Color.lerp(border, accent, fill)!,
+                width: 2,
+              ),
+            ),
+            child: CustomPaint(
+              painter: _CheckPainter(((t - .3) / .7).clamp(0.0, 1.0)),
+            ),
+          ),
+        );
+      },
     );
   }
+}
+
+class _CheckPainter extends CustomPainter {
+  const _CheckPainter(this.progress);
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final path =
+        Path()
+          ..moveTo(size.width * .27, size.height * .52)
+          ..lineTo(size.width * .44, size.height * .68)
+          ..lineTo(size.width * .74, size.height * .36);
+    final metric = path.computeMetrics().first;
+    canvas.drawPath(
+      metric.extractPath(
+        0,
+        metric.length * Curves.easeOutCubic.transform(progress),
+      ),
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_CheckPainter old) => old.progress != progress;
 }
 
 /// A square icon well, used on choice cards.
@@ -454,14 +609,23 @@ class OnbIconWell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: AppMotion.maybeZero(context, AppMotion.expansion),
       width: size,
       height: size,
       decoration: BoxDecoration(
         color: selected ? context.cardColor : context.onbFill,
         borderRadius: BorderRadius.circular(size * 0.31),
       ),
-      child: Icon(icon, size: size * 0.48, color: context.textPrimaryColor),
+      child: AnimatedScale(
+        scale: selected ? 1.08 : 1,
+        duration: AppMotion.maybeZero(
+          context,
+          const Duration(milliseconds: 420),
+        ),
+        curve: AppMotion.springCurve,
+        child: Icon(icon, size: size * 0.48, color: context.textPrimaryColor),
+      ),
     );
   }
 }

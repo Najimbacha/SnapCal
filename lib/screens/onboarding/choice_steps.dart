@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:snapcal/widgets/app_icon.dart';
 
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../l10n/generated/app_localizations.dart';
 import 'onboarding_draft.dart';
@@ -20,6 +21,7 @@ class GoalStep extends StatelessWidget {
       final on = selected == goal;
       return OnbOption(
         key: ValueKey('onboarding-goal-${goal.name}'),
+        entranceIndex: GoalType.values.indexOf(goal),
         selected: on,
         onTap: () => onChanged(goal),
         child: Column(
@@ -103,13 +105,15 @@ class SexStep extends StatelessWidget {
       final on = selected == sex;
       return OnbOption(
         key: ValueKey('onboarding-sex-${sex.name}'),
+        entranceIndex: sex == BiologicalSex.female ? 0 : 1,
         selected: on,
         showTick: false,
         padding: const EdgeInsets.fromLTRB(12, 26, 12, 22),
         onTap: () => onChanged(sex),
         child: Column(
           children: [
-            Container(
+            AnimatedContainer(
+              duration: AppMotion.maybeZero(context, AppMotion.expansion),
               width: 64,
               height: 64,
               decoration: BoxDecoration(
@@ -204,6 +208,7 @@ class ActivityStep extends StatelessWidget {
           for (var i = 0; i < levels.length; i++) ...[
             if (i > 0) const SizedBox(height: 10),
             _ActivityRow(
+              index: i,
               level: levels[i].$1,
               bars: i + 1,
               title: levels[i].$2,
@@ -220,6 +225,7 @@ class ActivityStep extends StatelessWidget {
 
 class _ActivityRow extends StatelessWidget {
   const _ActivityRow({
+    required this.index,
     required this.level,
     required this.bars,
     required this.title,
@@ -228,6 +234,7 @@ class _ActivityRow extends StatelessWidget {
     required this.onTap,
   });
 
+  final int index;
   final ActivityLevel level;
   final int bars;
   final String title;
@@ -239,6 +246,7 @@ class _ActivityRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return OnbOption(
       key: ValueKey('onboarding-activity-${level.name}'),
+      entranceIndex: index,
       selected: selected,
       showTick: false,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -297,13 +305,23 @@ class _LevelMeter extends StatelessWidget {
           children: [
             for (var i = 0; i < 4; i++) ...[
               if (i > 0) const SizedBox(width: 3),
-              Container(
-                width: 6,
-                height: 8 + i * 5.33,
-                decoration: BoxDecoration(
-                  color: i < filled ? on : context.onbFill,
-                  borderRadius: BorderRadius.circular(2),
+              // Lit bars change colour one after another, bottom to top.
+              TweenAnimationBuilder<Color?>(
+                tween: ColorTween(end: i < filled ? on : context.onbFill),
+                duration: AppMotion.maybeZero(
+                  context,
+                  Duration(milliseconds: 160 + 70 * i),
                 ),
+                curve: Interval(i * .18, 1, curve: Curves.easeOut),
+                builder:
+                    (context, color, _) => Container(
+                      width: 6,
+                      height: 8 + i * 5.33,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
               ),
             ],
           ],

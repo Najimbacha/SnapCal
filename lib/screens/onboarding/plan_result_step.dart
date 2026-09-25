@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' show DateFormat, NumberFormat;
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/motion/reveal.dart';
 import 'onboarding_body.dart';
 import 'onboarding_draft.dart';
 import 'onboarding_kit.dart';
@@ -98,9 +99,10 @@ class PlanResultStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
+          // The day's number counts all the way up from nothing.
           TweenAnimationBuilder<double>(
-            tween: Tween(begin: reduceMotion ? 1 : 0.6, end: 1),
-            duration: Duration(milliseconds: reduceMotion ? 0 : 700),
+            tween: Tween(begin: reduceMotion ? 1 : 0, end: 1),
+            duration: Duration(milliseconds: reduceMotion ? 0 : 1300),
             curve: Curves.easeOutCubic,
             builder:
                 (context, t, _) => Text(
@@ -124,33 +126,40 @@ class PlanResultStep extends StatelessWidget {
             style: TextStyle(color: context.textSecondaryColor, fontSize: 15),
           ),
           const SizedBox(height: 22),
-          OnbCard(
-            child: Column(
-              children: [
-                _MacroRow(
-                  label: l10n.onboarding_plan_protein,
-                  grams: plan.proteinGrams,
-                  percent: share(plan.proteinGrams, 4),
-                  color: AppColors.protein,
-                  animate: !reduceMotion,
-                ),
-                const SizedBox(height: 14),
-                _MacroRow(
-                  label: l10n.onboarding_plan_carbs,
-                  grams: plan.carbGrams,
-                  percent: share(plan.carbGrams, 4),
-                  color: AppColors.carbs,
-                  animate: !reduceMotion,
-                ),
-                const SizedBox(height: 14),
-                _MacroRow(
-                  label: l10n.onboarding_plan_fat,
-                  grams: plan.fatGrams,
-                  percent: share(plan.fatGrams, 9),
-                  color: AppColors.fat,
-                  animate: !reduceMotion,
-                ),
-              ],
+          Reveal(
+            delay: const Duration(milliseconds: 250),
+            offset: const Offset(0, 22),
+            child: OnbCard(
+              child: Column(
+                children: [
+                  _MacroRow(
+                    label: l10n.onboarding_plan_protein,
+                    grams: plan.proteinGrams,
+                    percent: share(plan.proteinGrams, 4),
+                    color: AppColors.protein,
+                    animate: !reduceMotion,
+                    delay: const Duration(milliseconds: 400),
+                  ),
+                  const SizedBox(height: 14),
+                  _MacroRow(
+                    label: l10n.onboarding_plan_carbs,
+                    grams: plan.carbGrams,
+                    percent: share(plan.carbGrams, 4),
+                    color: AppColors.carbs,
+                    animate: !reduceMotion,
+                    delay: const Duration(milliseconds: 560),
+                  ),
+                  const SizedBox(height: 14),
+                  _MacroRow(
+                    label: l10n.onboarding_plan_fat,
+                    grams: plan.fatGrams,
+                    percent: share(plan.fatGrams, 9),
+                    color: AppColors.fat,
+                    animate: !reduceMotion,
+                    delay: const Duration(milliseconds: 720),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -159,28 +168,32 @@ class PlanResultStep extends StatelessWidget {
               children: [
                 for (var i = 0; i < facts.length; i++) ...[
                   if (i > 0) const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          facts[i].$1,
-                          style: TextStyle(
-                            color: context.textSecondaryColor,
-                            fontSize: 14.5,
+                  Reveal(
+                    delay: Duration(milliseconds: 900 + 110 * i),
+                    offset: const Offset(0, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            facts[i].$1,
+                            style: TextStyle(
+                              color: context.textSecondaryColor,
+                              fontSize: 14.5,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        facts[i].$2,
-                        style: TextStyle(
-                          color: context.textPrimaryColor,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                        const SizedBox(width: 12),
+                        Text(
+                          facts[i].$2,
+                          style: TextStyle(
+                            color: context.textPrimaryColor,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ],
@@ -191,10 +204,14 @@ class PlanResultStep extends StatelessWidget {
             OnbNote(text: note.$1, tone: note.$2),
           ],
           const SizedBox(height: 16),
-          Text(
-            l10n.onb_plan_change_later,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: context.textMutedColor, fontSize: 13),
+          Reveal(
+            delay: const Duration(milliseconds: 1300),
+            offset: const Offset(0, 8),
+            child: Text(
+              l10n.onb_plan_change_later,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: context.textMutedColor, fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -209,6 +226,7 @@ class _MacroRow extends StatelessWidget {
     required this.percent,
     required this.color,
     required this.animate,
+    this.delay = Duration.zero,
   });
 
   final String label;
@@ -216,6 +234,9 @@ class _MacroRow extends StatelessWidget {
   final int percent;
   final Color color;
   final bool animate;
+
+  /// Rows fill one after another rather than all at once.
+  final Duration delay;
 
   @override
   Widget build(BuildContext context) {
@@ -242,8 +263,8 @@ class _MacroRow extends StatelessWidget {
                   Positioned.fill(child: ColoredBox(color: context.onbFill)),
                   TweenAnimationBuilder<double>(
                     tween: Tween(begin: animate ? 0 : 1, end: 1),
-                    duration: Duration(milliseconds: animate ? 600 : 0),
-                    curve: Curves.easeOutCubic,
+                    duration: animate ? delay + _fill : Duration.zero,
+                    curve: _curve,
                     builder:
                         (context, t, _) => FractionallySizedBox(
                           heightFactor: 1,
@@ -260,29 +281,50 @@ class _MacroRow extends StatelessWidget {
         const SizedBox(width: 12),
         SizedBox(
           width: 84,
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: AppLocalizations.of(
-                    context,
-                  )!.onboarding_plan_grams(grams),
-                  style: TextStyle(
-                    color: context.textPrimaryColor,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: animate ? 0 : 1, end: 1),
+            duration: animate ? delay + _fill : Duration.zero,
+            curve: _curve,
+            builder:
+                (context, t, _) => Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: AppLocalizations.of(
+                          context,
+                        )!.onboarding_plan_grams((grams * t).round()),
+                        style: TextStyle(
+                          color: context.textPrimaryColor,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' $percent%',
+                        style: TextStyle(
+                          color: context.textMutedColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
+                  textAlign: TextAlign.end,
                 ),
-                TextSpan(
-                  text: ' $percent%',
-                  style: TextStyle(color: context.textMutedColor, fontSize: 12),
-                ),
-              ],
-            ),
-            textAlign: TextAlign.end,
           ),
         ),
       ],
+    );
+  }
+
+  static const _fill = Duration(milliseconds: 700);
+
+  /// Waits out [delay], then eases the bar and its grams in together.
+  Curve get _curve {
+    final total = (delay + _fill).inMicroseconds;
+    return Interval(
+      total == 0 ? 0 : delay.inMicroseconds / total,
+      1,
+      curve: Curves.easeOutCubic,
     );
   }
 }

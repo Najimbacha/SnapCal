@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show BoxParentData;
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,9 @@ import 'package:snapcal/data/services/subscription_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import '../../widgets/wazn_icons.dart';
+import '../../core/theme/app_motion.dart';
+import '../../widgets/motion/reveal.dart';
+import '../../widgets/motion/shine_sweep.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PALETTE
@@ -439,6 +443,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     }
   }
 
+  /// Set once a purchase has gone through, for the button's tick.
+  bool _purchaseDone = false;
+
   Future<void> _handlePurchase() async {
     if (_isLoading) return;
     if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
@@ -510,7 +517,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         // `go`, not `pop`. A successful test purchase left the user on the
         // paywall with only a toast; replacing the whole stack means nothing
         // underneath can be left showing, however the paywall was opened.
-        context.go('/pro-welcome', extra: {'restore': isRestore});
+        if (isRestore || AppMotion.reduceMotion(context)) {
+          context.go('/pro-welcome', extra: {'restore': isRestore});
+          return;
+        }
+        // A bought plan first turns the button into a tick, so the moment
+        // of paying lands before the screen moves on.
+        HapticFeedback.heavyImpact();
+        setState(() => _purchaseDone = true);
+        Future.delayed(const Duration(milliseconds: 700), () {
+          if (mounted) context.go('/pro-welcome', extra: {'restore': false});
+        });
         return;
       case SubscriptionStatus.pending:
         final message = _purchaseCopy(
@@ -689,6 +706,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               key: _dockKey,
               palette: palette,
               hPad: hPad,
+              done: _purchaseDone,
               isLoading: _isLoading,
               package: _selectedPackage,
               loadingOfferings: _loadingOfferings,
@@ -810,7 +828,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   ],
                 ),
                 if (!inlineDock)
-                  Positioned(left: 0, right: 0, bottom: 0, child: dock),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Reveal(
+                      delay: const Duration(milliseconds: 1500),
+                      offset: const Offset(0, 30),
+                      duration: const Duration(milliseconds: 600),
+                      child: dock,
+                    ),
+                  ),
                 // Scrolled body text used to run straight through the status bar
                 // clock and icons: the list starts at y=0 and nothing sat behind
                 // the inset. This scrim fades in as the hero scrolls away.
@@ -898,26 +926,36 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          '${l10n.appTitle} Pro',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: palette.ink,
-            fontSize: 31,
-            height: 1.05,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.9,
+        // Below the scan, the page assembles in order: name, promise,
+        // benefits, plans, button.
+        Reveal(
+          delay: const Duration(milliseconds: 450),
+          offset: const Offset(0, 14),
+          child: Text(
+            '${l10n.appTitle} Pro',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: palette.ink,
+              fontSize: 31,
+              height: 1.05,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.9,
+            ),
           ),
         ),
         const SizedBox(height: 9),
-        Text(
-          general ? l10n.purchase_headline : title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: palette.muted,
-            fontSize: 16,
-            height: 1.35,
-            fontWeight: FontWeight.w500,
+        Reveal(
+          delay: const Duration(milliseconds: 600),
+          offset: const Offset(0, 10),
+          child: Text(
+            general ? l10n.purchase_headline : title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: palette.muted,
+              fontSize: 16,
+              height: 1.35,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
@@ -939,10 +977,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final savings = _savingsPercent(_monthlyPackage, _annualPackage);
     final annual = _annualPackage;
 
-    return Column(
-      children: [
-        for (var i = 0; i < _packages.length; i++) ...[
-          if (i > 0) const SizedBox(height: 10),
+    return _PlanChooser(
+      selectedIndex: _packages.indexWhere(
+        (p) => identical(p, _selectedPackage),
+      ),
+      badged: [
+        for (final p in _packages) annual != null && identical(p, annual),
+      ],
+      cards: [
+        for (var i = 0; i < _packages.length; i++)
           _PlanCard(
             palette: palette,
             label: _planLabel(_packages[i], l10n),
@@ -969,7 +1012,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               });
             },
           ),
-        ],
       ],
     );
   }
@@ -1809,57 +1851,191 @@ class _BenefitLedger extends StatelessWidget {
       l10n.purchase_coach_title,
     ];
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette.hairline),
-      ),
-      child: Column(
-        children: [
-          for (var i = 0; i < items.length; i++)
-            Padding(
-              padding: EdgeInsets.only(
-                top: i == 0 ? 0 : 10,
-                bottom: i == items.length - 1 ? 0 : 10,
+    return Reveal(
+      delay: const Duration(milliseconds: 800),
+      offset: const Offset(0, 16),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: palette.hairline),
+        ),
+        child: Column(
+          children: [
+            for (var i = 0; i < items.length; i++)
+              Padding(
+                padding: EdgeInsets.only(
+                  top: i == 0 ? 0 : 10,
+                  bottom: i == items.length - 1 ? 0 : 10,
+                ),
+                child: Row(
+                  children: [
+                    // Each tick pops in turn as its line fades up.
+                    Reveal(
+                      delay: Duration(milliseconds: 1000 + 170 * i),
+                      offset: Offset.zero,
+                      scale: .3,
+                      duration: const Duration(milliseconds: 480),
+                      curve: AppMotion.springCurve,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(
+                            alpha: palette.isDark ? 0.22 : 0.12,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          WaznIcons.check,
+                          size: 14,
+                          color: palette.accentInk,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Reveal(
+                        delay: Duration(milliseconds: 1000 + 170 * i),
+                        offset: const Offset(0, 6),
+                        child: Text(
+                          items[i],
+                          style: TextStyle(
+                            color: palette.ink,
+                            fontSize: 15.5,
+                            height: 1.25,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 24,
-                    height: 24,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The plans, with one outline that glides to whichever is chosen rather
+/// than each card lighting up on its own. The cards rise in one by one.
+class _PlanChooser extends StatefulWidget {
+  const _PlanChooser({
+    required this.cards,
+    required this.selectedIndex,
+    required this.badged,
+  });
+
+  final List<Widget> cards;
+  final int selectedIndex;
+
+  /// Which cards carry a badge above them, which sits in a strip on top.
+  final List<bool> badged;
+
+  @override
+  State<_PlanChooser> createState() => _PlanChooserState();
+}
+
+class _PlanChooserState extends State<_PlanChooser> {
+  static const _badgeStrip = 7.0;
+
+  final List<GlobalKey> _keys = [];
+  Rect? _ring;
+
+  Duration _delay(int i) => Duration(milliseconds: 1300 + 120 * i);
+
+  void _measure() {
+    if (!mounted) return;
+    final i = widget.selectedIndex;
+    Rect? next;
+    if (i >= 0 && i < _keys.length) {
+      final box = _keys[i].currentContext?.findRenderObject();
+      if (box is RenderBox && box.hasSize && box.parentData is BoxParentData) {
+        final offset = (box.parentData! as BoxParentData).offset;
+        final top = widget.badged[i] ? _badgeStrip : 0.0;
+        next = Rect.fromLTWH(
+          offset.dx,
+          offset.dy + top,
+          box.size.width,
+          box.size.height - top,
+        );
+      }
+    }
+    if (next != _ring) setState(() => _ring = next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    while (_keys.length < widget.cards.length) {
+      _keys.add(GlobalKey());
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    final ring = _ring;
+    return _RingScope(
+      active: ring != null,
+      child: Stack(
+        children: [
+          Column(
+            children: [
+              for (var i = 0; i < widget.cards.length; i++) ...[
+                if (i > 0) const SizedBox(height: 10),
+                KeyedSubtree(
+                  key: _keys[i],
+                  child: Reveal(
+                    delay: _delay(i),
+                    offset: const Offset(0, 22),
+                    child: widget.cards[i],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (ring != null)
+            AnimatedPositioned.fromRect(
+              rect: ring,
+              duration: AppMotion.maybeZero(
+                context,
+                const Duration(milliseconds: 500),
+              ),
+              curve: const Cubic(0.34, 1.3, 0.55, 1),
+              child: IgnorePointer(
+                child: Reveal(
+                  delay: _delay(widget.selectedIndex.clamp(0, 9)),
+                  offset: const Offset(0, 22),
+                  child: DecoratedBox(
+                    key: const ValueKey('paywall-plan-ring'),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(
-                        alpha: palette.isDark ? 0.22 : 0.12,
-                      ),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      WaznIcons.check,
-                      size: 14,
-                      color: palette.accentInk,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      items[i],
-                      style: TextStyle(
-                        color: palette.ink,
-                        fontSize: 15.5,
-                        height: 1.25,
-                        fontWeight: FontWeight.w600,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.62),
+                        width: 1.8,
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
         ],
       ),
     );
   }
+}
+
+/// Tells the plan cards the gliding outline is drawing the selection, so
+/// they don't draw their own as well.
+class _RingScope extends InheritedWidget {
+  const _RingScope({required this.active, required super.child});
+
+  final bool active;
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_RingScope>()?.active ?? false;
+
+  @override
+  bool updateShouldNotify(_RingScope old) => old.active != active;
 }
 
 class _PlanCard extends StatelessWidget {
@@ -1936,66 +2112,77 @@ class _PlanCard extends StatelessWidget {
           ),
       ],
     );
+    final outlined = selected && !_RingScope.of(context);
     final card = Semantics(
       button: true,
       selected: selected,
-      child: Material(
-        color:
-            selected
-                ? AppColors.primary.withValues(
-                  alpha: palette.isDark ? 0.13 : 0.07,
-                )
-                : palette.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(
-            color:
-                selected
-                    ? AppColors.primary.withValues(alpha: 0.62)
-                    : palette.hairline,
-            width: selected ? 1.8 : 1,
-          ),
+      child: TweenAnimationBuilder<Color?>(
+        tween: ColorTween(
+          end:
+              selected
+                  ? Color.alphaBlend(
+                    AppColors.primary.withValues(
+                      alpha: palette.isDark ? 0.13 : 0.07,
+                    ),
+                    palette.surface,
+                  )
+                  : palette.surface,
         ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            // The struck renewal price is the first line of the right column;
-            // when the discount badge straddles the top border it needs enough
-            // clearance not to sit on top of it.
-            padding: EdgeInsets.fromLTRB(
-              16,
-              introPrice != null ? 24 : 17,
-              16,
-              17,
-            ),
-            child: Row(
-              children: [
-                _Radio(selected: selected, palette: palette),
-                const SizedBox(width: 14),
-                Expanded(
-                  child:
-                      large
-                          ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              title,
-                              const SizedBox(height: 10),
-                              amount,
-                            ],
-                          )
-                          : Row(
-                            children: [
-                              Expanded(child: title),
-                              const SizedBox(width: 12),
-                              Flexible(child: amount),
-                            ],
-                          ),
+        duration: AppMotion.maybeZero(context, AppMotion.expansion),
+        builder:
+            (context, fill, child) => Material(
+              color: fill,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+                side: BorderSide(
+                  color:
+                      outlined
+                          ? AppColors.primary.withValues(alpha: 0.62)
+                          : palette.hairline,
+                  width: outlined ? 1.8 : 1,
                 ),
-              ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  // The struck renewal price is the first line of the right column;
+                  // when the discount badge straddles the top border it needs enough
+                  // clearance not to sit on top of it.
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    introPrice != null ? 24 : 17,
+                    16,
+                    17,
+                  ),
+                  child: Row(
+                    children: [
+                      _Radio(selected: selected, palette: palette),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child:
+                            large
+                                ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    title,
+                                    const SizedBox(height: 10),
+                                    amount,
+                                  ],
+                                )
+                                : Row(
+                                  children: [
+                                    Expanded(child: title),
+                                    const SizedBox(width: 12),
+                                    Flexible(child: amount),
+                                  ],
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
       ),
     );
 
@@ -2010,31 +2197,61 @@ class _PlanCard extends StatelessWidget {
         PositionedDirectional(
           end: 13,
           top: 0,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primaryDark,
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryDark.withValues(alpha: 0.18),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
+          child: _Wiggle(
+            active: selected,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryDark,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryDark.withValues(alpha: 0.18),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Text(
+                badge!,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  height: 1.35,
+                  fontWeight: FontWeight.w800,
                 ),
-              ],
-            ),
-            child: Text(
-              badge!,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                height: 1.35,
-                fontWeight: FontWeight.w800,
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Gives its child a quick shake when [active] turns on: the savings badge
+/// nodding as its plan is picked.
+class _Wiggle extends StatelessWidget {
+  const _Wiggle({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(active),
+      tween: Tween(begin: active ? 0 : 1, end: 1),
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 560)),
+      builder:
+          (context, t, child) => Transform.rotate(
+            angle: math.sin(t * math.pi * 3) * (1 - t) * 0.12,
+            child: Transform.scale(
+              scale: 1 + math.sin(t * math.pi) * 0.08,
+              child: child,
+            ),
+          ),
+      child: child,
     );
   }
 }
@@ -2046,7 +2263,8 @@ class _Radio extends StatelessWidget {
   final _Palette palette;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => AnimatedContainer(
+    duration: AppMotion.maybeZero(context, AppMotion.standard),
     width: 21,
     height: 21,
     decoration: BoxDecoration(
@@ -2059,19 +2277,25 @@ class _Radio extends StatelessWidget {
         width: selected ? 2 : 1.5,
       ),
     ),
-    child:
-        selected
-            ? Center(
-              child: Container(
-                width: 11,
-                height: 11,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary,
-                ),
-              ),
-            )
-            : null,
+    // The dot springs in, a touch past full size.
+    child: Center(
+      child: AnimatedScale(
+        scale: selected ? 1 : 0,
+        duration: AppMotion.maybeZero(
+          context,
+          const Duration(milliseconds: 420),
+        ),
+        curve: selected ? AppMotion.springCurve : Curves.easeIn,
+        child: Container(
+          width: 11,
+          height: 11,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.primary,
+          ),
+        ),
+      ),
+    ),
   );
 }
 
@@ -2172,6 +2396,7 @@ class _CtaDock extends StatelessWidget {
     super.key,
     required this.palette,
     required this.hPad,
+    required this.done,
     required this.isLoading,
     required this.restoring,
     required this.package,
@@ -2185,6 +2410,7 @@ class _CtaDock extends StatelessWidget {
 
   final _Palette palette;
   final double hPad;
+  final bool done;
   final bool isLoading;
   final bool restoring;
   final Package? package;
@@ -2231,26 +2457,43 @@ class _CtaDock extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _PrimaryCta(
-                label: _ctaLabel(l10n),
-                busy: isLoading,
-                enabled:
-                    !isLoading &&
-                    !restoring &&
-                    !loadingOfferings &&
-                    package != null,
-                onTap: onPurchase,
+              // A light crosses the button once the page has settled.
+              ShineSweep(
+                borderRadius: BorderRadius.circular(16),
+                delay: const Duration(milliseconds: 2600),
+                sweep: const Duration(milliseconds: 950),
+                child: _PrimaryCta(
+                  label: _ctaLabel(l10n),
+                  busy: isLoading,
+                  done: done,
+                  enabled:
+                      !done &&
+                      !isLoading &&
+                      !restoring &&
+                      !loadingOfferings &&
+                      package != null,
+                  onTap: onPurchase,
+                ),
               ),
               if (disclosure != null) ...[
                 const SizedBox(height: 10),
-                Text(
-                  disclosure!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: palette.muted,
-                    fontSize: 11.5,
-                    height: 1.35,
-                    fontWeight: FontWeight.w500,
+                AnimatedSwitcher(
+                  duration: AppMotion.maybeZero(context, AppMotion.expansion),
+                  layoutBuilder:
+                      (current, previous) => Stack(
+                        alignment: Alignment.topCenter,
+                        children: [...previous, if (current != null) current],
+                      ),
+                  child: Text(
+                    disclosure!,
+                    key: ValueKey(disclosure),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: palette.muted,
+                      fontSize: 11.5,
+                      height: 1.35,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ] else ...[
@@ -2281,10 +2524,14 @@ class _PrimaryCta extends StatefulWidget {
     required this.busy,
     required this.enabled,
     required this.onTap,
+    this.done = false,
   });
 
   final String label;
   final bool busy;
+
+  /// The purchase went through: the button shows a tick.
+  final bool done;
   final bool enabled;
   final VoidCallback onTap;
 
@@ -2336,32 +2583,109 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
                   ),
                 ],
               ),
-              child:
-                  widget.busy
-                      ? const SizedBox(
-                        width: 21,
-                        height: 21,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
+              // A new plan's words rise into the button; paying turns them
+              // into a spinner and then a tick.
+              child: AnimatedSwitcher(
+                duration: AppMotion.maybeZero(
+                  context,
+                  const Duration(milliseconds: 320),
+                ),
+                transitionBuilder:
+                    (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween(
+                          begin: const Offset(0, .6),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: AppMotion.springCurve,
+                            reverseCurve: Curves.easeIn,
+                          ),
                         ),
-                      )
-                      : Text(
-                        widget.label,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          letterSpacing: 0,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        child: child,
                       ),
+                    ),
+                child:
+                    widget.done
+                        ? const _DrawnTick(key: ValueKey('done'))
+                        : widget.busy
+                        ? const SizedBox(
+                          key: ValueKey('busy'),
+                          width: 21,
+                          height: 21,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        )
+                        : Text(
+                          widget.label,
+                          key: ValueKey(widget.label),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            letterSpacing: 0,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// A white check that draws itself from left to right.
+class _DrawnTick extends StatelessWidget {
+  const _DrawnTick({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 420)),
+      curve: Curves.easeOutCubic,
+      builder:
+          (context, t, _) => CustomPaint(
+            size: const Size.square(24),
+            painter: _TickPainter(t),
+          ),
+    );
+  }
+}
+
+class _TickPainter extends CustomPainter {
+  const _TickPainter(this.progress);
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final path =
+        Path()
+          ..moveTo(size.width * .2, size.height * .52)
+          ..lineTo(size.width * .41, size.height * .72)
+          ..lineTo(size.width * .8, size.height * .3);
+    final metric = path.computeMetrics().first;
+    canvas.drawPath(
+      metric.extractPath(0, metric.length * progress),
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TickPainter old) => old.progress != progress;
 }
 
 class _LegalFooter extends StatelessWidget {
