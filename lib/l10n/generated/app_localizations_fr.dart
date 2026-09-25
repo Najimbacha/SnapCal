@@ -2127,6 +2127,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get measurement_imperial => 'Impérial';
 
   @override
+  String get coach_thinking => 'Réflexion…';
+
+  @override
   String get coach_empty_title => 'Comment puis-je vous aider ?';
 
   @override

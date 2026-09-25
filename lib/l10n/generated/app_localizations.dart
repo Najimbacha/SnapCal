@@ -3954,6 +3954,12 @@ abstract class AppLocalizations {
   /// **'Imperial'**
   String get measurement_imperial;
 
+  /// No description provided for @coach_thinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking…'**
+  String get coach_thinking;
+
   /// No description provided for @coach_empty_title.
   ///
   /// In en, this message translates to:

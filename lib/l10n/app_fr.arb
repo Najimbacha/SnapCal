@@ -671,6 +671,7 @@
   "recipe_steps": "Étapes",
   "measurement_metric": "Métrique",
   "measurement_imperial": "Impérial",
+  "coach_thinking": "Réflexion…",
   "coach_empty_title": "Comment puis-je vous aider ?",
   "coach_empty_subtitle": "Posez une question sur un repas, vos macros ou quoi manger ensuite.",
   "coach_suggested": "SUGGÉRÉ",

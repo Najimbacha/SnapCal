@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:share_plus/share_plus.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/widgets/app_icon.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/grocery_item.dart';
@@ -23,12 +24,35 @@ import '../../providers/planner_provider.dart';
 import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
+import '../../widgets/motion/reveal.dart';
 import 'meal_planner_setup.dart';
 import 'meal_planner_widgets.dart';
 
 enum _PlannerTab { plan, grocery }
 
 enum _GroceryFilter { all, needed, checked }
+
+/// A swapped meal leaves towards the start and its replacement arrives from
+/// the end, overshooting a touch as it lands.
+Widget _swapTransition(Widget child, Animation<double> animation) {
+  return AnimatedBuilder(
+    animation: animation,
+    child: child,
+    builder: (context, child) {
+      final leaving = animation.status == AnimationStatus.reverse;
+      final t = animation.value;
+      final travel =
+          leaving
+              ? -(1 - Curves.easeIn.transform(t))
+              : 1 - AppMotion.springCurve.transform(t);
+      final rtl = Directionality.of(context) == TextDirection.rtl;
+      return FractionalTranslation(
+        translation: Offset(1.1 * travel * (rtl ? -1 : 1), 0),
+        child: Opacity(opacity: t.clamp(0.0, 1.0), child: child),
+      );
+    },
+  );
+}
 
 class MealPlannerScreen extends ConsumerStatefulWidget {
   const MealPlannerScreen({super.key});
@@ -303,17 +327,34 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
                 loggedOnPlanDay.contains(
                   PlannerProvider.logIdFor(meal.id, planDate),
                 );
+            // The day's meals rise in one after another, and a swapped meal
+            // slides out as its replacement slides in.
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: PlannerMealRow(
-                meal: meal,
-                isNext: index == 0 && !isLogged,
-                isLogged: isLogged,
-                interactive: isPro,
-                onOpen: () => _openMealDetails(meal, dayIndex, isPro),
-                onLog: isLogged ? null : () => _logPlannedMeal(meal),
-                onSwap:
-                    isPro ? () => _showSwapSheet(meal, dayIndex) : _openPaywall,
+              child: Reveal(
+                delay: Duration(milliseconds: 80 + 70 * index.clamp(0, 6)),
+                offset: const Offset(0, 22),
+                curve: AppMotion.springCurve,
+                child: AnimatedSwitcher(
+                  duration: AppMotion.maybeZero(
+                    context,
+                    const Duration(milliseconds: 480),
+                  ),
+                  transitionBuilder: _swapTransition,
+                  child: PlannerMealRow(
+                    key: ValueKey('meal-${meal.id}-${meal.foodName}'),
+                    meal: meal,
+                    isNext: index == 0 && !isLogged,
+                    isLogged: isLogged,
+                    interactive: isPro,
+                    onOpen: () => _openMealDetails(meal, dayIndex, isPro),
+                    onLog: isLogged ? null : () => _logPlannedMeal(meal),
+                    onSwap:
+                        isPro
+                            ? () => _showSwapSheet(meal, dayIndex)
+                            : _openPaywall,
+                  ),
+                ),
               ),
             );
           }),

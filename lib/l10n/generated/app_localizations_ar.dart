@@ -2093,6 +2093,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get measurement_imperial => 'إمبراطوري';
 
   @override
+  String get coach_thinking => 'يفكّر…';
+
+  @override
   String get coach_empty_title => 'كيف يمكنني المساعدة؟';
 
   @override

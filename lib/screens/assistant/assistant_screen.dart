@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/repository_providers.dart';
@@ -16,6 +17,7 @@ import '../../data/services/assistant_service.dart';
 import '../../data/services/premium_gate_service.dart';
 import '../../data/services/pro_feature_service.dart';
 import '../../data/services/premium_conversion_service.dart';
+import '../../widgets/motion/reveal.dart';
 
 // The coach was drawn in Zinc and iOS system greys -- #09090B, #18181B,
 // #F2F2F7, #8E8E93 -- while the rest of Wazn is warm paper and emerald.
@@ -44,6 +46,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   final _scroll = ScrollController();
   final _focus = FocusNode();
   final Set<int> _typedIndices = {};
+
+  /// Messages from here on arrived while the screen was open and slide in;
+  /// the ones before were restored and simply appear.
+  int _seenCount = 0;
+
+  /// Messages already brought in once, so scrolling back does not replay them.
+  final Set<int> _arrived = {};
   final List<dynamic> _messages = [];
 
   /// Turns of history sent with each request. Six covers a normal
@@ -91,6 +100,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         _messages.addAll(saved);
         // Already read: no typing animation replaying through the history.
         _typedIndices.addAll(List.generate(saved.length, (i) => i));
+        _seenCount = saved.length;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scroll.hasClients) {
@@ -128,6 +138,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     setState(() {
       _messages.clear();
       _typedIndices.clear();
+      _arrived.clear();
+      _seenCount = 0;
       _lastQuery = null;
     });
     unawaited(_saveChat());
@@ -268,6 +280,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     while (_messages.isNotEmpty && _parseContent(_messages.last) == _errorMsg) {
       _messages.removeLast();
     }
+    // The answer to the retry takes a freed place and should arrive afresh.
+    _typedIndices.removeWhere((i) => i >= _messages.length);
+    _arrived.removeWhere((i) => i >= _messages.length);
     setState(() {});
     _fetch(query: _lastQuery, echoUser: false);
   }
@@ -369,27 +384,51 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                   const SizedBox(height: 1),
                   Row(
                     children: [
-                      Container(
-                        width: 5,
-                        height: 5,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryDark,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                      _StatusDot(busy: _isLoading),
                       const SizedBox(width: 4),
+                      // While an answer is on its way the line says so.
                       Flexible(
-                        child: Text(
-                          'AI Nutritionist',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color:
-                                d
-                                    ? const Color(0xFF9DA19C)
-                                    : const Color(0xFF777370),
+                        child: AnimatedSwitcher(
+                          duration: AppMotion.maybeZero(
+                            context,
+                            AppMotion.standard,
+                          ),
+                          layoutBuilder:
+                              (current, previous) => Stack(
+                                alignment: AlignmentDirectional.centerStart,
+                                children: [
+                                  ...previous,
+                                  if (current != null) current,
+                                ],
+                              ),
+                          transitionBuilder:
+                              (child, animation) => FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween(
+                                    begin: const Offset(0, .5),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              ),
+                          child: Text(
+                            _isLoading
+                                ? AppLocalizations.of(context)!.coach_thinking
+                                : 'AI Nutritionist',
+                            key: ValueKey(_isLoading),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color:
+                                  _isLoading
+                                      ? AppColors.primaryDark
+                                      : d
+                                      ? const Color(0xFF9DA19C)
+                                      : const Color(0xFF777370),
+                            ),
                           ),
                         ),
                       ),
@@ -501,36 +540,40 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                             itemCount: _messages.length + (_isLoading ? 1 : 0),
                             itemBuilder: (context, i) {
                               if (i == _messages.length) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _buildAvatar(28),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 18,
-                                            vertical: 14,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                d
-                                                    ? const Color(0xFF121412)
-                                                    : Colors.white,
-                                            border: Border.all(
-                                              color: _coachLine(d),
+                                return Reveal(
+                                  key: const ValueKey('coach-typing'),
+                                  duration: const Duration(milliseconds: 320),
+                                  offset: const Offset(0, 8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _Breathing(child: _buildAvatar(28)),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 18,
+                                              vertical: 14,
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  d
+                                                      ? const Color(0xFF121412)
+                                                      : Colors.white,
+                                              border: Border.all(
+                                                color: _coachLine(d),
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
                                             ),
+                                            child: const _TypingDots(),
                                           ),
-                                          child: const _TypingDots(),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 );
                               }
@@ -562,162 +605,174 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
 
                               final showTyping =
                                   !user && !_typedIndices.contains(i);
-                              if (showTyping && text.isNotEmpty) {
-                                WidgetsBinding.instance.addPostFrameCallback((
-                                  _,
-                                ) {
-                                  if (mounted && !_typedIndices.contains(i)) {
-                                    setState(() => _typedIndices.add(i));
-                                  }
-                                });
-                              }
+                              // Only the first build of a new message
+                              // brings it in; later builds find it placed.
+                              final arriving =
+                                  i >= _seenCount && _arrived.add(i);
+                              final rtl =
+                                  Directionality.of(context) ==
+                                  TextDirection.rtl;
 
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      user
-                                          ? MainAxisAlignment.end
-                                          : MainAxisAlignment.start,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (!user) ...[
-                                      _buildAvatar(28),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    Flexible(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            user
-                                                ? CrossAxisAlignment.end
-                                                : CrossAxisAlignment.start,
-                                        children: [
-                                          if (!user)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                left: 2,
-                                                bottom: 4,
-                                              ),
-                                              child: Text(
-                                                'Fajar',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                  color:
-                                                      d
-                                                          ? const Color(
-                                                            0xFF9DA19C,
-                                                          )
-                                                          : const Color(
-                                                            0xFF777370,
-                                                          ),
+                              return Reveal(
+                                animate: arriving,
+                                duration: Duration(
+                                  milliseconds: user ? 460 : 380,
+                                ),
+                                // A sent question springs up from the send
+                                // button's side; an answer rises gently.
+                                offset:
+                                    user
+                                        ? Offset(rtl ? -28 : 28, 10)
+                                        : const Offset(0, 10),
+                                scale: user ? .96 : 1,
+                                curve:
+                                    user
+                                        ? AppMotion.springCurve
+                                        : AppMotion.entranceCurve,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        user
+                                            ? MainAxisAlignment.end
+                                            : MainAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (!user) ...[
+                                        _buildAvatar(28),
+                                        const SizedBox(width: 8),
+                                      ],
+                                      Flexible(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              user
+                                                  ? CrossAxisAlignment.end
+                                                  : CrossAxisAlignment.start,
+                                          children: [
+                                            if (!user)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  left: 2,
+                                                  bottom: 4,
+                                                ),
+                                                child: Text(
+                                                  'Fajar',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color:
+                                                        d
+                                                            ? const Color(
+                                                              0xFF9DA19C,
+                                                            )
+                                                            : const Color(
+                                                              0xFF777370,
+                                                            ),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 10,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  user
-                                                      ? AppColors.primaryDark
-                                                      : (d
-                                                          ? const Color(
-                                                            0xFF121412,
-                                                          )
-                                                          : Colors.white),
-                                              border:
-                                                  user
-                                                      ? null
-                                                      : Border.all(
-                                                        color: _coachLine(d),
-                                                      ),
-                                              borderRadius: BorderRadius.circular(
-                                                16,
-                                              ).copyWith(
-                                                bottomRight:
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 10,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color:
                                                     user
-                                                        ? const Radius.circular(
-                                                          4,
-                                                        )
-                                                        : null,
-                                                bottomLeft:
-                                                    !user
-                                                        ? const Radius.circular(
-                                                          4,
-                                                        )
-                                                        : null,
+                                                        ? AppColors.primaryDark
+                                                        : (d
+                                                            ? const Color(
+                                                              0xFF121412,
+                                                            )
+                                                            : Colors.white),
+                                                border:
+                                                    user
+                                                        ? null
+                                                        : Border.all(
+                                                          color: _coachLine(d),
+                                                        ),
+                                                borderRadius: BorderRadius.circular(
+                                                  16,
+                                                ).copyWith(
+                                                  bottomRight:
+                                                      user
+                                                          ? const Radius.circular(
+                                                            4,
+                                                          )
+                                                          : null,
+                                                  bottomLeft:
+                                                      !user
+                                                          ? const Radius.circular(
+                                                            4,
+                                                          )
+                                                          : null,
+                                                ),
                                               ),
+                                              child:
+                                                  showTyping
+                                                      ? _WordWave(
+                                                        text: text,
+                                                        color: _coachInk(d),
+                                                        onComplete: () {
+                                                          if (mounted) {
+                                                            setState(
+                                                              () =>
+                                                                  _typedIndices
+                                                                      .add(i),
+                                                            );
+                                                            _scroll.animateTo(
+                                                              _scroll
+                                                                  .position
+                                                                  .maxScrollExtent,
+                                                              duration:
+                                                                  const Duration(
+                                                                    milliseconds:
+                                                                        100,
+                                                                  ),
+                                                              curve:
+                                                                  Curves
+                                                                      .easeOut,
+                                                            );
+                                                          }
+                                                        },
+                                                      )
+                                                      : _buildRichText(
+                                                        text,
+                                                        user,
+                                                        d,
+                                                      ),
                                             ),
-                                            child:
-                                                showTyping
-                                                    ? _TypingText(
-                                                      text: text,
-                                                      color:
-                                                          d
-                                                              ? const Color(
-                                                                0xFFF1F4F2,
-                                                              )
-                                                              : const Color(
-                                                                0xFF1C1917,
-                                                              ),
-                                                      onComplete: () {
-                                                        if (mounted) {
-                                                          setState(
-                                                            () => _typedIndices
-                                                                .add(i),
-                                                          );
-                                                          _scroll.animateTo(
-                                                            _scroll
-                                                                .position
-                                                                .maxScrollExtent,
-                                                            duration:
-                                                                const Duration(
-                                                                  milliseconds:
-                                                                      100,
-                                                                ),
-                                                            curve:
-                                                                Curves.easeOut,
-                                                          );
-                                                        }
-                                                      },
-                                                    )
-                                                    : _buildRichText(
-                                                      text,
-                                                      user,
-                                                      d,
-                                                    ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (user) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        width: 28,
-                                        height: 28,
-                                        decoration: BoxDecoration(
-                                          color:
-                                              d
-                                                  ? const Color(0xFF1F241F)
-                                                  : const Color(0xFFE1E3DF),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          WaznIcons.profile,
-                                          size: 14,
-                                          color:
-                                              d
-                                                  ? const Color(0xFF9DA19C)
-                                                  : const Color(0xFF777370),
+                                          ],
                                         ),
                                       ),
+                                      if (user) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                d
+                                                    ? const Color(0xFF1F241F)
+                                                    : const Color(0xFFE1E3DF),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            WaznIcons.profile,
+                                            size: 14,
+                                            color:
+                                                d
+                                                    ? const Color(0xFF9DA19C)
+                                                    : const Color(0xFF777370),
+                                          ),
+                                        ),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
                               );
                             },
@@ -1101,64 +1156,265 @@ class _ActionGridTile extends StatelessWidget {
   }
 }
 
-class _TypingText extends StatefulWidget {
+/// An answer arriving word by word: each word fades in a moment after the one
+/// before, in a wave across the bubble. The whole text is laid out from the
+/// start, so the bubble does not grow line by line.
+class _WordWave extends StatefulWidget {
+  const _WordWave({required this.text, required this.color, this.onComplete});
+
   final String text;
   final Color color;
   final VoidCallback? onComplete;
 
-  const _TypingText({required this.text, required this.color, this.onComplete});
-
   @override
-  State<_TypingText> createState() => _TypingTextState();
+  State<_WordWave> createState() => _WordWaveState();
 }
 
-class _TypingTextState extends State<_TypingText> {
-  String _displayed = '';
-  int _charIndex = 0;
-  Timer? _timer;
+class _WordWaveState extends State<_WordWave>
+    with SingleTickerProviderStateMixin {
+  static const _fade = 340;
+
+  late final AnimationController _controller;
+  late List<(String, bool)> _words;
+  late int _stagger;
 
   @override
   void initState() {
     super.initState();
-    _startTyping();
+    _controller = AnimationController(vsync: this);
+    _controller.addStatusListener((status) {
+      if (status != AnimationStatus.completed) return;
+      // Finishing can happen mid-build (reduced motion lands at once), and
+      // the parent rebuilds in answer, so it hears after the frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onComplete?.call();
+      });
+    });
+    _prepare();
   }
 
   @override
-  void didUpdateWidget(_TypingText oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text) {
-      _timer?.cancel();
-      _displayed = '';
-      _charIndex = 0;
-      _startTyping();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_controller.isAnimating || _controller.isCompleted) return;
+    if (AppMotion.reduceMotion(context)) {
+      _controller.value = 1;
+    } else {
+      _controller.forward(from: 0);
     }
   }
 
-  void _startTyping() {
-    _timer = Timer.periodic(const Duration(milliseconds: 20), (timer) {
-      if (_charIndex < widget.text.length) {
-        setState(() {
-          _charIndex++;
-          _displayed = widget.text.substring(0, _charIndex);
-        });
-      } else {
-        timer.cancel();
-        widget.onComplete?.call();
+  @override
+  void didUpdateWidget(_WordWave oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) {
+      _prepare();
+      _controller.forward(from: 0);
+    }
+  }
+
+  /// Splits the text into words, each keeping its trailing space and whether
+  /// it sat inside **bold** markers.
+  void _prepare() {
+    final words = <(String, bool)>[];
+    final bold = RegExp(r'\*\*(.+?)\*\*');
+    final word = RegExp(r'\s*\S+\s*|\s+');
+    void add(String part, bool isBold) {
+      for (final m in word.allMatches(part)) {
+        words.add((m.group(0)!, isBold));
       }
-    });
+    }
+
+    var last = 0;
+    for (final m in bold.allMatches(widget.text)) {
+      if (m.start > last) add(widget.text.substring(last, m.start), false);
+      add(m.group(1)!, true);
+      last = m.end;
+    }
+    if (last < widget.text.length) add(widget.text.substring(last), false);
+    _words = words;
+    // A long answer waves faster, so none takes more than a couple of
+    // seconds to finish arriving.
+    _stagger = words.isEmpty ? 0 : math.min(32, 1900 ~/ words.length);
+    _controller.duration = Duration(
+      milliseconds: _fade + _stagger * words.length,
+    );
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      _displayed,
-      style: TextStyle(fontSize: 15, height: 1.5, color: widget.color),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final total = _controller.duration?.inMilliseconds ?? 0;
+        final now = _controller.value * total;
+        return RichText(
+          text: TextSpan(
+            style: TextStyle(fontSize: 15, height: 1.5, color: widget.color),
+            children: [
+              for (var k = 0; k < _words.length; k++)
+                TextSpan(
+                  text: _words[k].$1,
+                  style: TextStyle(
+                    color: widget.color.withValues(
+                      alpha:
+                          widget.color.a *
+                          Curves.easeOut.transform(
+                            ((now - k * _stagger) / _fade).clamp(0.0, 1.0),
+                          ),
+                    ),
+                    fontWeight: _words[k].$2 ? FontWeight.w700 : null,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The small dot beside the coach's name, which pulses while he is thinking.
+class _StatusDot extends StatefulWidget {
+  const _StatusDot({required this.busy});
+  final bool busy;
+
+  @override
+  State<_StatusDot> createState() => _StatusDotState();
+}
+
+class _StatusDotState extends State<_StatusDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_StatusDot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  void _sync() {
+    if (widget.busy && !AppMotion.reduceMotion(context)) {
+      if (!_controller.isAnimating) _controller.repeat(reverse: true);
+    } else if (_controller.value > 0) {
+      _controller.animateTo(0, duration: const Duration(milliseconds: 200));
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = Curves.easeInOut.transform(_controller.value);
+        return SizedBox(
+          width: 5,
+          height: 5,
+          child: OverflowBox(
+            maxWidth: 12,
+            maxHeight: 12,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 5 + 7 * t,
+                  height: 5 + 7 * t,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryDark.withValues(alpha: .3 * t),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryDark,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Gently swells and settles, over and over: the coach's picture while an
+/// answer is being written.
+class _Breathing extends StatefulWidget {
+  const _Breathing({required this.child});
+  final Widget child;
+
+  @override
+  State<_Breathing> createState() => _BreathingState();
+}
+
+class _BreathingState extends State<_Breathing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.reduceMotion(context)) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: Tween(
+        begin: 1.0,
+        end: 1.08,
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut)),
+      child: widget.child,
     );
   }
 }
