@@ -43,6 +43,20 @@ void celebrateGoal(
   overlay.insert(note);
 }
 
+/// Just the burst of confetti from [origin], a global position, with no
+/// note: for a screen that says its own words.
+void burstConfetti(BuildContext context, Offset origin) {
+  final overlay = Overlay.maybeOf(context, rootOverlay: true);
+  if (overlay == null) return;
+  if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return;
+  late final OverlayEntry burst;
+  burst = OverlayEntry(
+    builder:
+        (_) => _ConfettiBurst(origin: origin, onDone: () => burst.remove()),
+  );
+  overlay.insert(burst);
+}
+
 class _ConfettiBurst extends StatefulWidget {
   const _ConfettiBurst({required this.origin, required this.onDone});
 

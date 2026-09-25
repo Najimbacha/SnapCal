@@ -1858,6 +1858,35 @@ class AppLocalizationsAr extends AppLocalizations {
   String get feature_templates_logged => 'تم تسجيل الروتين بنجاح!';
 
   @override
+  String get settings_your_journey => 'رحلتك';
+
+  @override
+  String get settings_progress => 'التقدّم';
+
+  @override
+  String get settings_progress_empty => 'لا توجد أوزان بعد';
+
+  @override
+  String settings_achievements_earned(String count, String total) {
+    return '$count من $total مكتسبة';
+  }
+
+  @override
+  String progress_change_since(String change, String date) {
+    return '$change منذ $date';
+  }
+
+  @override
+  String achievement_to_go(String count) {
+    return 'بقي $count';
+  }
+
+  @override
+  String achievement_earned_on(String date) {
+    return 'حصلت عليها في $date';
+  }
+
+  @override
   String get feature_achievements_title => 'الإنجازات';
 
   @override

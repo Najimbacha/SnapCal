@@ -6,10 +6,14 @@ import 'package:snapcal/widgets/premium_prompt_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:snapcal/data/models/achievement.dart';
+import 'package:snapcal/data/models/body_metric.dart';
 import 'package:snapcal/data/models/user_settings.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import 'package:snapcal/providers/achievements_provider.dart';
 import 'package:snapcal/providers/activity_provider.dart';
 import 'package:snapcal/providers/auth_state_provider.dart';
+import 'package:snapcal/providers/metrics_provider.dart';
 import 'package:snapcal/providers/promo_offer_provider.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/screens/settings/about_screen.dart';
@@ -24,6 +28,16 @@ class _FakeSettings extends Settings {
 class _FakeActivity extends Activity {
   @override
   Future<ActivitySummary> build() async => ActivitySummary();
+}
+
+class _FakeAchievements extends Achievements {
+  @override
+  Future<List<Achievement>> build() async => const [];
+}
+
+class _FakeMetrics extends BodyMetrics {
+  @override
+  Future<List<BodyMetric>> build() async => const [];
 }
 
 class _FakeUser implements User {
@@ -69,6 +83,9 @@ Widget _host({
         [
           settingsProvider.overrideWith(() => _FakeSettings()),
           activityProvider.overrideWith(() => _FakeActivity()),
+          // The weight line and badges on the journey rows live in Hive.
+          achievementsProvider.overrideWith(() => _FakeAchievements()),
+          bodyMetricsProvider.overrideWith(() => _FakeMetrics()),
           // Without this the real provider runs, gets null back from an
           // unconfigured RevenueCat, and schedules a 20-second retry timer
           // that outlives the widget tree — which the test binding reports as

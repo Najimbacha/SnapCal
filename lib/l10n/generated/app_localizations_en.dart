@@ -1853,6 +1853,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feature_templates_logged => 'Routine logged successfully!';
 
   @override
+  String get settings_your_journey => 'Your journey';
+
+  @override
+  String get settings_progress => 'Progress';
+
+  @override
+  String get settings_progress_empty => 'No weigh-ins yet';
+
+  @override
+  String settings_achievements_earned(String count, String total) {
+    return '$count of $total earned';
+  }
+
+  @override
+  String progress_change_since(String change, String date) {
+    return '$change since $date';
+  }
+
+  @override
+  String achievement_to_go(String count) {
+    return '$count to go';
+  }
+
+  @override
+  String achievement_earned_on(String date) {
+    return 'Earned $date';
+  }
+
+  @override
   String get feature_achievements_title => 'Achievements';
 
   @override

@@ -9,6 +9,7 @@ import '../../providers/metrics_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/ui_blocks.dart';
+import '../../widgets/motion/arriving_item.dart';
 import 'widgets/photo_capture_flow.dart';
 import 'widgets/photo_comparison_sheet.dart';
 import 'widgets/progress_card.dart';
@@ -26,6 +27,10 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animController;
   final List<Animation<double>> _itemAnims = [];
+
+  /// Check-ins already here when the screen opened. Any others were just
+  /// taken, and slide in at the top rather than simply appearing.
+  Set<String>? _initialIds;
 
   @override
   void initState() {
@@ -73,6 +78,9 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
     final metrics =
         ref.watch(bodyMetricsProvider).valueOrNull ?? <BodyMetric>[];
     final photos = metrics.where((m) => m.photoFrontPath != null).toList();
+    if (ref.watch(bodyMetricsProvider).hasValue) {
+      _initialIds ??= {for (final m in photos) m.id};
+    }
     final trend = metrics.take(7).toList();
     final isPro = ref.watch(effectiveIsProProvider);
     final canAdd = isPro || photos.length < 3;
@@ -166,26 +174,30 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
 
         return _staggeredSlide(
           anim,
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: ProgressCard(
-              metric: metric,
-              onCompare:
-                  (i < photos.length - 1)
-                      ? () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          useSafeArea: true,
-                          backgroundColor: Colors.transparent,
-                          builder:
-                              (_) => PhotoComparisonSheet(
-                                current: metric,
-                                previous: photos[i + 1],
-                              ),
-                        );
-                      }
-                      : null,
+          ArrivingItem(
+            key: ValueKey(metric.id),
+            arrived: !(_initialIds?.contains(metric.id) ?? true),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: ProgressCard(
+                metric: metric,
+                onCompare:
+                    (i < photos.length - 1)
+                        ? () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            useSafeArea: true,
+                            backgroundColor: Colors.transparent,
+                            builder:
+                                (_) => PhotoComparisonSheet(
+                                  current: metric,
+                                  previous: photos[i + 1],
+                                ),
+                          );
+                        }
+                        : null,
+              ),
             ),
           ),
         );
