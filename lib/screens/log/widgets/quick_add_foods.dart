@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../widgets/wazn_icons.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/models/meal.dart';
@@ -164,6 +166,7 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
                 return _QuickFoodCard(
                   suggestion: suggestion,
                   languageCode: Localizations.localeOf(context).languageCode,
+                  addedCount: _addedCounts[_cardKey(suggestion)] ?? 0,
                   onTap: () => _selectSuggestion(suggestion),
                 );
               },
@@ -221,17 +224,34 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
     return result;
   }
 
+  /// How many times each card has added its food, so its + can tick.
+  final _addedCounts = <String, int>{};
+
+  String _cardKey(_QuickSuggestion s) => s.food?.nutritionId ?? s.meal!.id;
+
+  void _markAdded(_QuickSuggestion suggestion) => setState(
+    () => _addedCounts.update(
+      _cardKey(suggestion),
+      (n) => n + 1,
+      ifAbsent: () => 1,
+    ),
+  );
+
   Future<void> _selectSuggestion(_QuickSuggestion suggestion) async {
     if (suggestion.meal != null) {
       final saved = await widget.onRepeatMeal(suggestion.meal!);
       if (!mounted) return;
+      _markAdded(suggestion);
       _showAdded(saved.foodName, saved.id);
       return;
     }
-    await _showPortion(suggestion.food!);
+    if (await _showPortion(suggestion.food!) && mounted) {
+      _markAdded(suggestion);
+    }
   }
 
-  Future<void> _showPortion(QuickFood food) async {
+  /// Whether a portion was added.
+  Future<bool> _showPortion(QuickFood food) async {
     final saved = await showQuickFoodPortionSheet(
       context,
       food: food,
@@ -249,6 +269,7 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
       onAdd: widget.onAddCatalogFood,
     );
     if (saved != null && mounted) _showAdded(saved.foodName, saved.id);
+    return saved != null;
   }
 
   Future<void> _showBrowser(QuickFoodPreferences preferences) async {
@@ -1023,9 +1044,13 @@ class _QuickFoodCard extends StatelessWidget {
     required this.suggestion,
     required this.languageCode,
     required this.onTap,
+    this.addedCount = 0,
   });
 
   final _QuickSuggestion suggestion;
+
+  /// Goes up each time this card adds its food; the + ticks for each one.
+  final int addedCount;
   final String languageCode;
   final VoidCallback onTap;
 
@@ -1081,19 +1106,7 @@ class _QuickFoodCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: context.primaryColor.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          WaznIcons.plus,
-                          color: context.primaryColor,
-                          size: 18,
-                        ),
-                      ),
+                      _AddTick(count: addedCount),
                     ],
                   ),
                 ],
@@ -1102,6 +1115,97 @@ class _QuickFoodCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The card's +, which turns into a green tick for a moment each time the
+/// card adds its food, then turns back.
+class _AddTick extends StatefulWidget {
+  const _AddTick({required this.count});
+
+  final int count;
+
+  @override
+  State<_AddTick> createState() => _AddTickState();
+}
+
+class _AddTickState extends State<_AddTick>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+    value: 1,
+  );
+
+  @override
+  void didUpdateWidget(_AddTick oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.count > oldWidget.count) {
+      HapticFeedback.lightImpact();
+      if (AppMotion.reduceMotion(context)) return;
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = context.primaryColor;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final v = _controller.value;
+        // In over the first fifth, held, back over the last fifth.
+        final ticked =
+            v >= 1
+                ? 0.0
+                : (v < .2
+                    ? AppMotion.springCurve.transform(v / .2)
+                    : (v > .8
+                        ? 1 - Curves.easeIn.transform((v - .8) / .2)
+                        : 1.0));
+        return Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: Color.lerp(
+              primary.withValues(alpha: 0.12),
+              primary,
+              ticked.clamp(0.0, 1.0),
+            ),
+            shape: BoxShape.circle,
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.rotate(
+                angle: ticked * 1.6,
+                child: Transform.scale(
+                  scale: (1 - ticked).clamp(0.0, 1.0),
+                  child: Icon(WaznIcons.plus, color: primary, size: 18),
+                ),
+              ),
+              Transform.rotate(
+                angle: (1 - ticked) * -0.7,
+                child: Transform.scale(
+                  scale: ticked.clamp(0.0, 1.2),
+                  child: const Icon(
+                    WaznIcons.check,
+                    color: Colors.white,
+                    size: 17,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../data/models/body_metric.dart';
@@ -22,6 +25,8 @@ import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/async_state_widgets.dart';
+import '../../widgets/motion/reveal.dart';
+import '../../widgets/motion/rolling_number.dart';
 import '../../widgets/ui_blocks.dart';
 import '../settings/widgets/weight_entry_modal.dart';
 import 'stats_data.dart';
@@ -163,10 +168,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 4),
-        _RangeToggle(
-          days: _days,
-          isPro: isPro,
-          onPick: (days) => _pickRange(days, isPro),
+        Reveal(
+          child: _RangeToggle(
+            days: _days,
+            isPro: isPro,
+            onPick: (days) => _pickRange(days, isPro),
+          ),
         ),
         const SizedBox(height: 18),
         if (!summary.hasData)
@@ -176,44 +183,72 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             body: l10n.stats_no_data_body,
           )
         else ...[
-          _HeadlineCard(summary: summary, target: target),
-          const SizedBox(height: 18),
-          SectionLabel(title: l10n.report_calorie_trend),
-          const SizedBox(height: 10),
-          _CalorieChart(summary: summary, target: target, today: today),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: MetricTile(
-                  label: l10n.stats_days_logged_label,
-                  value: '${summary.loggedDays}/${summary.days}',
-                  hint: '${summary.consistencyPercent}%',
-                  accent: AppColors.primary,
-                  icon: WaznIcons.calendarCheck,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: MetricTile(
-                  label: l10n.stats_streak_label,
-                  value: '${settings.currentStreak}',
-                  hint: l10n.stats_streak_days(settings.currentStreak),
-                  accent: AppColors.warning,
-                  icon: WaznIcons.calories,
-                ),
-              ),
-            ],
+          Reveal(
+            delay: const Duration(milliseconds: 60),
+            child: _HeadlineCard(summary: summary, target: target),
           ),
           const SizedBox(height: 18),
-          SectionLabel(title: l10n.stats_macros_title),
+          Reveal(
+            delay: const Duration(milliseconds: 120),
+            child: SectionLabel(title: l10n.report_calorie_trend),
+          ),
           const SizedBox(height: 10),
-          _MacroBars(summary: summary, settings: settings),
+          Reveal(
+            delay: const Duration(milliseconds: 140),
+            child: _CalorieChart(
+              summary: summary,
+              target: target,
+              today: today,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Reveal(
+            delay: const Duration(milliseconds: 220),
+            child: Row(
+              children: [
+                Expanded(
+                  child: MetricTile(
+                    label: l10n.stats_days_logged_label,
+                    value: '${summary.loggedDays}/${summary.days}',
+                    hint: '${summary.consistencyPercent}%',
+                    accent: AppColors.primary,
+                    icon: WaznIcons.calendarCheck,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: MetricTile(
+                    label: l10n.stats_streak_label,
+                    value: '${settings.currentStreak}',
+                    hint: l10n.stats_streak_days(settings.currentStreak),
+                    accent: AppColors.warning,
+                    icon: WaznIcons.calories,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Reveal(
+            delay: const Duration(milliseconds: 280),
+            child: SectionLabel(title: l10n.stats_macros_title),
+          ),
+          const SizedBox(height: 10),
+          Reveal(
+            delay: const Duration(milliseconds: 300),
+            child: _MacroBars(summary: summary, settings: settings),
+          ),
         ],
         const SizedBox(height: 18),
-        SectionLabel(title: l10n.stats_weight_title),
+        Reveal(
+          delay: const Duration(milliseconds: 340),
+          child: SectionLabel(title: l10n.stats_weight_title),
+        ),
         const SizedBox(height: 10),
-        _WeightCard(trend: trend, settings: settings, days: _days),
+        Reveal(
+          delay: const Duration(milliseconds: 360),
+          child: _WeightCard(trend: trend, settings: settings, days: _days),
+        ),
       ],
     );
   }
@@ -241,24 +276,53 @@ class _RangeToggle extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: context.dividerColor.withValues(alpha: 0.5)),
       ),
-      child: Row(
+      // One thumb that slides between the two, landing with a small
+      // overshoot, instead of each option lighting up on its own.
+      child: Stack(
         children: [
-          Expanded(
-            child: _RangeOption(
-              label: l10n.stats_range_7,
-              selected: days == 7,
-              onTap: () => onPick(7),
+          Positioned.fill(
+            child: AnimatedAlign(
+              alignment:
+                  days == 7
+                      ? AlignmentDirectional.centerStart
+                      : AlignmentDirectional.centerEnd,
+              duration: AppMotion.maybeZero(
+                context,
+                const Duration(milliseconds: 450),
+              ),
+              curve: AppMotion.springCurve,
+              child: FractionallySizedBox(
+                widthFactor: .5,
+                heightFactor: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
             ),
           ),
-          Expanded(
-            child: _RangeOption(
-              label: l10n.stats_range_30,
-              selected: days == 30,
-              // Free users see the lock rather than a button that silently
-              // does nothing.
-              locked: !isPro,
-              onTap: () => onPick(30),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _RangeOption(
+                  label: l10n.stats_range_7,
+                  selected: days == 7,
+                  onTap: () => onPick(7),
+                ),
+              ),
+              Expanded(
+                child: _RangeOption(
+                  label: l10n.stats_range_30,
+                  selected: days == 30,
+                  // Free users see the lock rather than a button that silently
+                  // does nothing.
+                  locked: !isPro,
+                  onTap: () => onPick(30),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -281,18 +345,11 @@ class _RangeOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
+      child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: selected ? colorScheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -301,11 +358,8 @@ class _RangeOption extends StatelessWidget {
               const SizedBox(width: 6),
             ],
             Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
+              child: AnimatedDefaultTextStyle(
+                duration: AppMotion.maybeZero(context, AppMotion.standard),
                 style: AppTypography.labelLarge.copyWith(
                   fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
                   color:
@@ -314,6 +368,12 @@ class _RangeOption extends StatelessWidget {
                           : locked
                           ? context.textMutedColor
                           : context.textSecondaryColor,
+                ),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -354,8 +414,13 @@ class _HeadlineCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                number.format(summary.avgCalories),
+              // Rolls up from zero when Stats opens, and to the new
+              // average when the range changes.
+              RollingNumber(
+                value: summary.avgCalories,
+                from: 0,
+                delay: const Duration(milliseconds: 150),
+                format: number.format,
                 style: AppTypography.displaySmall.copyWith(
                   fontWeight: FontWeight.w900,
                   color: context.textPrimaryColor,
@@ -385,36 +450,56 @@ class _HeadlineCard extends StatelessWidget {
           ),
           if (verdict.isNotEmpty) ...[
             const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+            // Pops in, and pops again when the verdict changes.
+            AnimatedSwitcher(
+              duration: AppMotion.maybeZero(
+                context,
+                const Duration(milliseconds: 460),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    onTarget
-                        ? WaznIcons.check
-                        : over
-                        ? WaznIcons.trend
-                        : WaznIcons.trendDown,
-                    size: 14,
-                    color: accent,
+              switchInCurve: AppMotion.springCurve,
+              transitionBuilder:
+                  (child, animation) => ScaleTransition(
+                    scale: animation,
+                    alignment: AlignmentDirectional.centerStart.resolve(
+                      Directionality.of(context),
+                    ),
+                    child: FadeTransition(opacity: animation, child: child),
                   ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      verdict,
-                      maxLines: 2,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: accent,
-                        fontWeight: FontWeight.w800,
+              child: Container(
+                key: ValueKey(verdict),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      onTarget
+                          ? WaznIcons.check
+                          : over
+                          ? WaznIcons.trend
+                          : WaznIcons.trendDown,
+                      size: 14,
+                      color: accent,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        verdict,
+                        maxLines: 2,
+                        style: AppTypography.labelMedium.copyWith(
+                          color: accent,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -450,6 +535,14 @@ class _CalorieChart extends StatefulWidget {
 
 class _CalorieChartState extends State<_CalorieChart> {
   int? _selected;
+
+  @override
+  void didUpdateWidget(_CalorieChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A picked day is an index into the range; in another range it would
+    // point at a different day.
+    if (oldWidget.summary.days != widget.summary.days) _selected = null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -515,43 +608,118 @@ class _CalorieChartState extends State<_CalorieChart> {
           ),
           const SizedBox(height: 14),
           SizedBox(
-            height: 132,
-            child: Stack(
-              children: [
-                // The target line, behind the bars.
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 22 + (widget.target / ceiling) * 110,
-                  child: _DashedLine(color: context.dividerColor),
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+            // 36 above the tallest bar, so the picked day's bubble fits
+            // inside the card.
+            height: 168,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final rtl = Directionality.of(context) == TextDirection.rtl;
+                double barHeight(int i) =>
+                    days[i] <= 0
+                        ? 3
+                        : ((days[i] / ceiling) * 110).clamp(4, 110);
+                return Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    for (var i = 0; i < days.length; i++)
-                      Expanded(
-                        child: _Bar(
-                          kcal: days[i],
-                          height: (days[i] / ceiling) * 110,
-                          over: widget.target > 0 && days[i] > widget.target,
-                          selected: selected == i,
-                          narrow: days.length > 14,
-                          label:
-                              i % labelEvery == 0
-                                  ? DateFormat(
-                                    days.length > 14 ? 'd' : 'E',
-                                    l10n.localeName,
-                                  ).format(_dateFor(i))
-                                  : '',
-                          onTap:
-                              () => setState(
-                                () => _selected = selected == i ? null : i,
+                    // The target line draws itself across as the chart opens.
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 22 + (widget.target / ceiling) * 110,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: 1),
+                        duration: AppMotion.maybeZero(
+                          context,
+                          const Duration(milliseconds: 800),
+                        ),
+                        curve: Curves.easeOutCubic,
+                        builder:
+                            (context, t, child) => ClipRect(
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                widthFactor: t,
+                                child: child,
                               ),
+                            ),
+                        child: _DashedLine(color: context.dividerColor),
+                      ),
+                    ),
+                    Row(
+                      // A new range is a new set of bars, which grow in.
+                      key: ValueKey(days.length),
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (var i = 0; i < days.length; i++)
+                          Expanded(
+                            child: _Bar(
+                              key: ValueKey('stats-bar-$i'),
+                              index: i,
+                              count: days.length,
+                              kcal: days[i],
+                              height: barHeight(i),
+                              over:
+                                  widget.target > 0 && days[i] > widget.target,
+                              selected: selected == i,
+                              dimmed: selected != null && selected != i,
+                              narrow: days.length > 14,
+                              label:
+                                  i % labelEvery == 0
+                                      ? DateFormat(
+                                        days.length > 14 ? 'd' : 'E',
+                                        l10n.localeName,
+                                      ).format(_dateFor(i))
+                                      : '',
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(
+                                  () => _selected = selected == i ? null : i,
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                    // The picked day's figure in a bubble over its bar. The
+                    // bubble is aligned at the same fraction of its width as
+                    // the bar is of the chart's, so it stays inside the card
+                    // while its pointer sits over the bar.
+                    if (selected != null && selected < days.length)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 20 + barHeight(selected) + 8,
+                        child: Builder(
+                          builder: (context) {
+                            var fraction = (selected + .5) / days.length;
+                            if (rtl) fraction = 1 - fraction;
+                            return Align(
+                              alignment: Alignment(fraction * 2 - 1, 1),
+                              child: _BarBubble(
+                                key: ValueKey(selected),
+                                pointerAt: fraction,
+                                kcal: days[selected],
+                                title:
+                                    '${number.format(days[selected])} '
+                                    '${l10n.settings_kcal_unit}',
+                                detail: [
+                                  dayFormat.format(_dateFor(selected)),
+                                  if (widget.target > 0)
+                                    days[selected] > widget.target
+                                        ? l10n.stats_over_target(
+                                          days[selected] - widget.target,
+                                        )
+                                        : l10n.stats_under_target(
+                                          widget.target - days[selected],
+                                        ),
+                                ].join(' · '),
+                              ),
+                            );
+                          },
                         ),
                       ),
                   ],
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -569,62 +737,139 @@ class _CalorieChartState extends State<_CalorieChart> {
   }
 }
 
-class _Bar extends StatelessWidget {
+class _Bar extends StatefulWidget {
   const _Bar({
+    super.key,
+    required this.index,
+    required this.count,
     required this.kcal,
     required this.height,
     required this.over,
     required this.selected,
+    required this.dimmed,
     required this.narrow,
     required this.label,
     required this.onTap,
   });
 
+  final int index, count;
   final int kcal;
   final double height;
   final bool over;
   final bool selected;
+
+  /// Another day is picked: this one steps back.
+  final bool dimmed;
   final bool narrow;
   final String label;
   final VoidCallback onTap;
 
   @override
+  State<_Bar> createState() => _BarState();
+}
+
+class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
+  // Bars grow up from the baseline one after another, a beat apart, and
+  // overshoot a touch as they arrive.
+  late final Duration _stagger = Duration(
+    milliseconds: (widget.count > 14 ? 22 : 70) * widget.index,
+  );
+  late final AnimationController _grow = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 620) + _stagger,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_grow.isAnimating || _grow.value > 0) return;
+    if (AppMotion.reduceMotion(context)) {
+      _grow.value = 1;
+    } else {
+      _grow.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _grow.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final empty = kcal <= 0;
+    final empty = widget.kcal <= 0;
     final color =
         empty
             ? context.dividerColor.withValues(alpha: 0.6)
-            : over
+            : widget.over
             ? AppColors.warning
             : AppColors.primary;
+    final total = _grow.duration!.inMicroseconds;
+    final grow = CurvedAnimation(
+      parent: _grow,
+      curve: Interval(
+        total == 0 ? 0 : _stagger.inMicroseconds / total,
+        1,
+        curve: const Cubic(.3, 1.35, .5, 1),
+      ),
+    );
 
     return GestureDetector(
-      onTap: empty ? null : onTap,
+      onTap: empty ? null : widget.onTap,
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-            margin: EdgeInsets.symmetric(horizontal: narrow ? 1 : 4),
-            height: empty ? 3 : height.clamp(4, 110),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: selected ? 1 : 0.85),
-              borderRadius: BorderRadius.circular(narrow ? 3 : 6),
+          AnimatedOpacity(
+            opacity: widget.dimmed ? .35 : 1,
+            duration: AppMotion.maybeZero(context, AppMotion.standard),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: widget.height),
+              duration: AppMotion.maybeZero(
+                context,
+                const Duration(milliseconds: 320),
+              ),
+              curve: Curves.easeOutCubic,
+              builder:
+                  (context, height, _) => AnimatedBuilder(
+                    animation: grow,
+                    builder:
+                        (context, _) => Container(
+                          margin: EdgeInsets.symmetric(
+                            horizontal: widget.narrow ? 1 : 4,
+                          ),
+                          height: math.max(0, height * grow.value),
+                          decoration: BoxDecoration(
+                            color: color.withValues(
+                              alpha: widget.selected ? 1 : 0.85,
+                            ),
+                            borderRadius: BorderRadius.circular(
+                              widget.narrow ? 3 : 6,
+                            ),
+                          ),
+                        ),
+                  ),
             ),
           ),
           const SizedBox(height: 6),
           SizedBox(
             height: 14,
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.clip,
-              style: AppTypography.labelSmall.copyWith(
-                fontSize: 9,
-                color: selected ? AppColors.primary : context.textMutedColor,
-                fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+            child: FadeTransition(
+              opacity: grow.drive(Tween(begin: 0, end: 1)),
+              child: Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                style: AppTypography.labelSmall.copyWith(
+                  fontSize: 9,
+                  color:
+                      widget.selected
+                          ? AppColors.primary
+                          : context.textMutedColor,
+                  fontWeight:
+                      widget.selected ? FontWeight.w900 : FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -632,6 +877,103 @@ class _Bar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A dark bubble with the picked day's calories, popping up over its bar.
+class _BarBubble extends StatelessWidget {
+  const _BarBubble({
+    super.key,
+    required this.pointerAt,
+    required this.kcal,
+    required this.title,
+    required this.detail,
+  });
+
+  /// Where the pointer sits along the bubble, 0 to 1.
+  final double pointerAt;
+  final int kcal;
+  final String title, detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final fill = dark ? const Color(0xFFF1F2EE) : const Color(0xFF16181D);
+    final ink = dark ? const Color(0xFF0E100F) : Colors.white;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 380)),
+      curve: AppMotion.springCurve,
+      builder:
+          (context, t, child) => Opacity(
+            opacity: t.clamp(0.0, 1.0),
+            child: Transform.scale(
+              scale: .7 + .3 * t,
+              alignment: Alignment(pointerAt * 2 - 1, 1),
+              child: child,
+            ),
+          ),
+      child: IgnorePointer(
+        child: CustomPaint(
+          painter: _BubblePainter(color: fill, pointerAt: pointerAt),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.labelMedium.copyWith(
+                    color: ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  detail,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: ink.withValues(alpha: .7),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BubblePainter extends CustomPainter {
+  const _BubblePainter({required this.color, required this.pointerAt});
+
+  final Color color;
+  final double pointerAt;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const pointer = 6.0, radius = 10.0;
+    final body = Rect.fromLTWH(0, 0, size.width, size.height - pointer);
+    final x = (size.width * pointerAt).clamp(
+      radius + pointer,
+      size.width - radius - pointer,
+    );
+    final path =
+        Path()
+          ..addRRect(
+            RRect.fromRectAndRadius(body, const Radius.circular(radius)),
+          )
+          ..moveTo(x - pointer, body.bottom)
+          ..lineTo(x, size.height)
+          ..lineTo(x + pointer, body.bottom)
+          ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_BubblePainter old) =>
+      old.color != color || old.pointerAt != pointerAt;
 }
 
 class _DashedLine extends StatelessWidget {
@@ -693,10 +1035,11 @@ class _MacroBars extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
       child: Column(
         children: [
-          for (final (label, value, goal, color) in rows)
+          for (final (i, (label, value, goal, color)) in rows.indexed)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: _MacroBar(
+                index: i,
                 label: label,
                 value: value,
                 goal: goal,
@@ -711,12 +1054,15 @@ class _MacroBars extends StatelessWidget {
 
 class _MacroBar extends StatelessWidget {
   const _MacroBar({
+    this.index = 0,
     required this.label,
     required this.value,
     required this.goal,
     required this.color,
   });
 
+  /// Position in the list; each bar starts filling a beat after the last.
+  final int index;
   final String label;
   final int value;
   final int goal;
@@ -726,6 +1072,7 @@ class _MacroBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final share = goal <= 0 ? 0.0 : (value / goal).clamp(0.0, 1.0);
+    final delay = .12 * index;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -763,11 +1110,24 @@ class _MacroBar extends StatelessWidget {
                 height: 8,
                 color: context.dividerColor.withValues(alpha: 0.5),
               ),
-              AnimatedFractionallySizedBox(
-                duration: const Duration(milliseconds: 420),
-                curve: Curves.easeOutCubic,
-                widthFactor: share,
-                child: Container(height: 8, color: color),
+              // Fills from empty when Stats opens, then glides between
+              // values when the range changes.
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: share),
+                duration: AppMotion.maybeZero(
+                  context,
+                  Duration(milliseconds: 900 + 120 * index),
+                ),
+                curve: Interval(
+                  delay / (1 + delay),
+                  1,
+                  curve: Curves.easeOutCubic,
+                ),
+                builder:
+                    (context, fill, _) => FractionallySizedBox(
+                      widthFactor: fill,
+                      child: Container(height: 8, color: color),
+                    ),
               ),
             ],
           ),
@@ -888,7 +1248,11 @@ class _WeightCard extends StatelessWidget {
             const SizedBox(height: 16),
             SizedBox(
               height: 54,
-              child: _WeightSparkline(entries: current.entries),
+              // Redrawn for each range, so switching draws the new line.
+              child: _WeightSparkline(
+                key: ValueKey(days),
+                entries: current.entries,
+              ),
             ),
           ],
         ],
@@ -900,25 +1264,41 @@ class _WeightCard extends StatelessWidget {
 /// The shape of the weigh-ins, without axes or gridlines: at this size the
 /// direction is the only readable thing, so it is the only thing drawn.
 class _WeightSparkline extends StatelessWidget {
-  const _WeightSparkline({required this.entries});
+  const _WeightSparkline({super.key, required this.entries});
 
   final List<BodyMetric> entries;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    painter: _SparklinePainter(
-      values: entries.map((e) => e.weight).toList(),
-      color: AppColors.primary,
-    ),
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    // The line draws itself from the first weigh-in to the latest, then the
+    // latest pops in with a ring spreading from it.
+    tween: Tween(begin: 0, end: 1),
+    duration: AppMotion.maybeZero(context, const Duration(milliseconds: 1700)),
+    builder:
+        (context, t, child) => CustomPaint(
+          painter: _SparklinePainter(
+            values: entries.map((e) => e.weight).toList(),
+            color: AppColors.primary,
+            progress: t,
+          ),
+          child: child,
+        ),
     child: const SizedBox.expand(),
   );
 }
 
 class _SparklinePainter extends CustomPainter {
-  _SparklinePainter({required this.values, required this.color});
+  _SparklinePainter({
+    required this.values,
+    required this.color,
+    this.progress = 1,
+  });
 
   final List<double> values;
   final Color color;
+
+  /// 0 to 1 through the drawing: the line, then the end dot and its ring.
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -940,8 +1320,16 @@ class _SparklinePainter extends CustomPainter {
       }
     }
 
+    final line = Curves.easeInOutCubic.transform(
+      (progress / .65).clamp(0.0, 1.0),
+    );
+    final metrics = path.computeMetrics().toList();
+    final drawn = Path();
+    for (final metric in metrics) {
+      drawn.addPath(metric.extractPath(0, metric.length * line), Offset.zero);
+    }
     canvas.drawPath(
-      path,
+      drawn,
       Paint()
         ..color = color
         ..strokeWidth = 2.5
@@ -951,16 +1339,31 @@ class _SparklinePainter extends CustomPainter {
     );
 
     // A dot on the latest weigh-in, so the end of the line reads as now.
-    canvas.drawCircle(
-      Offset(size.width, size.height * (1 - (values.last - lowest) / span)),
-      3.5,
-      Paint()..color = color,
+    final end = Offset(
+      size.width,
+      size.height * (1 - (values.last - lowest) / span),
     );
+    final pop = ((progress - .6) / .2).clamp(0.0, 1.0);
+    if (pop > 0) {
+      canvas.drawCircle(
+        end,
+        3.5 * AppMotion.springCurve.transform(pop),
+        Paint()..color = color,
+      );
+    }
+    final ring = ((progress - .72) / .28).clamp(0.0, 1.0);
+    if (ring > 0 && ring < 1) {
+      canvas.drawCircle(
+        end,
+        3.5 + 10 * Curves.easeOut.transform(ring),
+        Paint()..color = color.withValues(alpha: .35 * (1 - ring)),
+      );
+    }
   }
 
   @override
   bool shouldRepaint(_SparklinePainter old) =>
-      old.values != values || old.color != color;
+      old.values != values || old.color != color || old.progress != progress;
 }
 
 class _ExportButton extends StatelessWidget {

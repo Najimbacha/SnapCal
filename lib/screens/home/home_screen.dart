@@ -28,6 +28,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/home_upgrade_chip.dart';
+import '../../widgets/motion/arriving_item.dart';
 import '../../widgets/motion/count_up_text.dart';
 import '../../widgets/motion/rolling_number.dart';
 import '../../widgets/motion/visible_gate.dart';
@@ -1185,96 +1186,13 @@ class _MinimalMealsSectionState extends State<_MinimalMealsSection> {
             ...meals
                 .take(3)
                 .map(
-                  (meal) => _ArrivingRow(
+                  (meal) => ArrivingItem(
                     key: ValueKey('home-meal-${meal.id}'),
                     arrived: _arrived.contains(meal.id),
                     child: _MinimalMealRow(meal: meal, onTap: onViewAll),
                   ),
                 ),
         ],
-      ),
-    );
-  }
-}
-
-/// A meal row that opens a space for itself and slides in, with a brief
-/// green wash, when the meal has just been logged. Rows already there when
-/// Home opened simply show.
-class _ArrivingRow extends StatefulWidget {
-  const _ArrivingRow({super.key, required this.arrived, required this.child});
-
-  final bool arrived;
-  final Widget child;
-
-  @override
-  State<_ArrivingRow> createState() => _ArrivingRowState();
-}
-
-class _ArrivingRowState extends State<_ArrivingRow>
-    with SingleTickerProviderStateMixin, VisibleGate {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1400),
-    value: widget.arrived ? 0 : 1,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.arrived) {
-      runWhenVisible(() {
-        if (AppMotion.reduceMotion(context)) {
-          _controller.value = 1;
-        } else {
-          _controller.forward();
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final open = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0, .32, curve: Curves.easeOutCubic),
-    );
-    final slide = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(.12, .5, curve: AppMotion.springCurve),
-    );
-    final wash = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(.35, 1, curve: Curves.easeIn),
-    );
-    return SizeTransition(
-      sizeFactor: open,
-      axisAlignment: -1,
-      child: AnimatedBuilder(
-        animation: _controller,
-        child: widget.child,
-        builder: (context, child) {
-          final washAlpha =
-              _controller.value >= 1 ? 0.0 : (1 - wash.value) * .10;
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: washAlpha),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Opacity(
-              opacity: slide.value.clamp(0.0, 1.0),
-              child: Transform.translate(
-                offset: Offset(0, -12 * (1 - slide.value)),
-                child: child,
-              ),
-            ),
-          );
-        },
       ),
     );
   }

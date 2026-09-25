@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../data/services/pro_feature_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -29,6 +29,10 @@ import 'widgets/horizontal_day_calendar.dart';
 import 'widgets/hydration_sheet.dart';
 import 'widgets/meal_list_tile.dart';
 import 'widgets/quick_add_foods.dart';
+import '../../core/theme/app_motion.dart';
+import '../../widgets/motion/arriving_item.dart';
+import '../../widgets/motion/count_up_text.dart';
+import '../../widgets/motion/delta_bubble.dart';
 
 class LogScreen extends ConsumerStatefulWidget {
   const LogScreen({super.key});
@@ -38,6 +42,15 @@ class LogScreen extends ConsumerStatefulWidget {
 }
 
 class _LogScreenState extends ConsumerState<LogScreen> {
+  /// The day and meal ids of the last build, to tell a meal that just
+  /// arrived from one that was already there.
+  String? _lastDate;
+  Set<String> _lastIds = const {};
+  bool _lastLoaded = false;
+
+  /// 1 when the day picked is later than the last, -1 when earlier.
+  int _dayDirection = 1;
+
   /// Meals swiped away whose Undo is still on screen: hidden from the list,
   /// not yet deleted.
   final Set<String> _pendingDeletes = {};
@@ -74,6 +87,26 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       context,
       selectedDateMeals.where((m) => !_pendingDeletes.contains(m.id)).toList(),
     );
+    // Meals that appeared since the last build of the same day -- added, or
+    // brought back by Undo -- slide into place. Switching days slides the
+    // whole diary instead.
+    final visibleIds = {
+      for (final group in groups)
+        for (final meal in group.meals) meal.id,
+    };
+    final sameDay = _lastDate == selectedDate;
+    // Meals showing up as the day first loads are not arrivals.
+    final loaded = mealRepository != null || todayMeals != null;
+    final arrived =
+        sameDay && _lastLoaded
+            ? visibleIds.difference(_lastIds)
+            : const <String>{};
+    _lastLoaded = loaded;
+    if (_lastDate != null && !sameDay) {
+      _dayDirection = selectedDate.compareTo(_lastDate!) > 0 ? 1 : -1;
+    }
+    _lastDate = selectedDate;
+    _lastIds = visibleIds;
     final isToday = app_date.DateUtils.isToday(selectedDate);
     final proteinRemaining = math.max(
       selectedSummary.proteinGoal - selectedSummary.protein,
@@ -156,6 +189,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
               ],
               _SectionHeading(
                 title: l10n.home_metric_meals,
+                announceChange: sameDay,
                 calories: selectedSummary.calories,
                 calorieGoal: selectedSummary.calorieGoal,
                 actionLabel: l10n.log_add_manually,
@@ -166,16 +200,21 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                     ),
               ),
               const SizedBox(height: 10),
-              _MealDiaryCard(
-                groups: groups,
-                isPro: isPro,
-                onAdd:
-                    (mealType) => _showNewMealSheet(
-                      dateString: selectedDate,
-                      mealType: mealType,
-                    ),
-                onEdit: _showEditMealSheet,
-                onDelete: _deleteWithUndo,
+              _DaySwitch(
+                day: selectedDate,
+                direction: _dayDirection,
+                child: _MealDiaryCard(
+                  groups: groups,
+                  arrived: arrived,
+                  isPro: isPro,
+                  onAdd:
+                      (mealType) => _showNewMealSheet(
+                        dateString: selectedDate,
+                        mealType: mealType,
+                      ),
+                  onEdit: _showEditMealSheet,
+                  onDelete: _deleteWithUndo,
+                ),
               ),
               const SizedBox(height: 24),
               _DailyHealthCard(
@@ -405,7 +444,10 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     messenger
         .showSnackBar(
           SnackBar(
-            content: Text(l10n.log_meal_deleted),
+            content: _UndoCountdown(
+              text: l10n.log_meal_deleted,
+              duration: const Duration(seconds: 4),
+            ),
             duration: const Duration(seconds: 4),
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(label: l10n.result_undo, onPressed: () {}),
@@ -708,6 +750,7 @@ BoxDecoration _softCard(BuildContext context, {double radius = 18}) {
 class _SectionHeading extends StatelessWidget {
   const _SectionHeading({
     required this.title,
+    this.announceChange = true,
     required this.calories,
     required this.calorieGoal,
     required this.actionLabel,
@@ -715,6 +758,10 @@ class _SectionHeading extends StatelessWidget {
   });
 
   final String title;
+
+  /// Whether a change in [calories] floats up as "+190" or "−610": yes for
+  /// a meal added or removed, no for switching days.
+  final bool announceChange;
   final int calories;
   final int calorieGoal;
   final String actionLabel;
@@ -766,39 +813,61 @@ class _SectionHeading extends StatelessWidget {
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 6,
-                  backgroundColor: context.primaryColor.withValues(alpha: 0.12),
-                  valueColor: AlwaysStoppedAnimation(
-                    over ? AppColors.warning : context.primaryColor,
-                  ),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: progress),
+                  duration: AppMotion.maybeZero(context, AppMotion.count),
+                  curve: Curves.easeOutCubic,
+                  builder:
+                      (context, value, _) => LinearProgressIndicator(
+                        value: value,
+                        minHeight: 6,
+                        backgroundColor: context.primaryColor.withValues(
+                          alpha: 0.12,
+                        ),
+                        valueColor: AlwaysStoppedAnimation(
+                          over ? AppColors.warning : context.primaryColor,
+                        ),
+                      ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            Text.rich(
-              key: const ValueKey('log-day-total'),
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: _formatInt(context, calories),
-                    style: TextStyle(
-                      color: context.textPrimaryColor,
-                      fontWeight: FontWeight.w700,
-                    ),
+            // The day's total counts to each new value, with the change
+            // floating up above it.
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                DefaultTextStyle.merge(
+                  style: AppTypography.bodySmall.copyWith(
+                    color: context.textMutedColor,
+                    fontSize: 12,
                   ),
-                  TextSpan(
-                    text:
+                  child: Row(
+                    key: const ValueKey('log-day-total'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CountUpText(
+                        value: calories,
+                        format: (v) => _formatInt(context, v),
+                        duration: const Duration(milliseconds: 700),
+                        style: TextStyle(
+                          color: context.textPrimaryColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
                         ' / ${_formatInt(context, calorieGoal)} '
                         '${l10n.settings_kcal_unit}',
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              style: AppTypography.bodySmall.copyWith(
-                color: context.textMutedColor,
-                fontSize: 12,
-              ),
+                ),
+                PositionedDirectional(
+                  top: -24,
+                  end: 0,
+                  child: DeltaBubble(value: calories, announce: announceChange),
+                ),
+              ],
             ),
           ],
         ),
@@ -812,6 +881,7 @@ class _SectionHeading extends StatelessWidget {
 class _MealDiaryCard extends StatelessWidget {
   const _MealDiaryCard({
     required this.groups,
+    this.arrived = const {},
     required this.isPro,
     required this.onAdd,
     required this.onEdit,
@@ -819,6 +889,9 @@ class _MealDiaryCard extends StatelessWidget {
   });
 
   final List<_MealGroupData> groups;
+
+  /// Meals that have just appeared, which slide in.
+  final Set<String> arrived;
   final bool isPro;
   final ValueChanged<String> onAdd;
   final ValueChanged<Meal> onEdit;
@@ -833,12 +906,103 @@ class _MealDiaryCard extends StatelessWidget {
           if (index != 0) const SizedBox(height: 12),
           _MealGroupSection(
             group: groups[index],
+            arrived: arrived,
             isPro: isPro,
             onAdd: () => onAdd(groups[index].key),
             onEdit: onEdit,
             onDelete: onDelete,
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// The day's diary, gliding in from the side of the day picked: a later day
+/// comes in from the right, an earlier one from the left.
+class _DaySwitch extends StatelessWidget {
+  const _DaySwitch({
+    required this.day,
+    required this.direction,
+    required this.child,
+  });
+
+  final String day;
+  final int direction;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final shift = 28.0 * direction * (rtl ? -1 : 1);
+    return AnimatedSwitcher(
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 320)),
+      reverseDuration: AppMotion.maybeZero(
+        context,
+        const Duration(milliseconds: 160),
+      ),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeIn,
+      layoutBuilder:
+          (current, previous) => Stack(
+            alignment: Alignment.topCenter,
+            children: [...previous, if (current != null) current],
+          ),
+      transitionBuilder: (child, animation) {
+        final incoming = child.key == ValueKey(day);
+        final dx = incoming ? shift : -shift;
+        return FadeTransition(
+          opacity: animation,
+          child: AnimatedBuilder(
+            animation: animation,
+            child: child,
+            builder:
+                (context, child) => Transform.translate(
+                  offset: Offset(dx * (1 - animation.value), 0),
+                  child: child,
+                ),
+          ),
+        );
+      },
+      child: KeyedSubtree(key: ValueKey(day), child: child),
+    );
+  }
+}
+
+/// The snackbar's message with a thin line under it that runs down over the
+/// time left to undo.
+class _UndoCountdown extends StatelessWidget {
+  const _UndoCountdown({required this.text, required this.duration});
+
+  final String text;
+  final Duration duration;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(text),
+        const SizedBox(height: 8),
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 1, end: 0),
+          duration: duration,
+          builder:
+              (context, left, _) => Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: FractionallySizedBox(
+                  widthFactor: left,
+                  child: Container(
+                    height: 2.5,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+        ),
       ],
     );
   }
@@ -875,6 +1039,7 @@ class _MealGroupData {
 class _MealGroupSection extends StatelessWidget {
   const _MealGroupSection({
     required this.group,
+    this.arrived = const {},
     required this.isPro,
     required this.onAdd,
     required this.onEdit,
@@ -882,6 +1047,7 @@ class _MealGroupSection extends StatelessWidget {
   });
 
   final _MealGroupData group;
+  final Set<String> arrived;
   final bool isPro;
   final VoidCallback onAdd;
   final ValueChanged<Meal> onEdit;
@@ -927,9 +1093,13 @@ class _MealGroupSection extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 1),
-                      Text(
-                        '${_formatInt(context, group.calories)} '
-                        '${l10n.settings_kcal_unit}',
+                      CountUpText(
+                        value: group.calories,
+                        duration: const Duration(milliseconds: 700),
+                        format:
+                            (v) =>
+                                '${_formatInt(context, v)} '
+                                '${l10n.settings_kcal_unit}',
                         style: AppTypography.bodySmall.copyWith(
                           color:
                               isEmpty
@@ -971,13 +1141,17 @@ class _MealGroupSection extends StatelessWidget {
               child: Column(
                 children: [
                   for (var index = 0; index < group.meals.length; index++)
-                    MealListTile(
-                      meal: group.meals[index],
-                      isPro: isPro,
-                      showTime: true,
-                      showDivider: index != group.meals.length - 1,
-                      onTap: () => onEdit(group.meals[index]),
-                      onDelete: () => onDelete(group.meals[index]),
+                    ArrivingItem(
+                      key: ValueKey('log-meal-${group.meals[index].id}'),
+                      arrived: arrived.contains(group.meals[index].id),
+                      child: MealListTile(
+                        meal: group.meals[index],
+                        isPro: isPro,
+                        showTime: true,
+                        showDivider: index != group.meals.length - 1,
+                        onTap: () => onEdit(group.meals[index]),
+                        onDelete: () => onDelete(group.meals[index]),
+                      ),
                     ),
                 ],
               ),
