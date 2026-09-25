@@ -1164,6 +1164,12 @@ abstract class AppLocalizations {
   /// **'Skip for now'**
   String get sync_skip;
 
+  /// No description provided for @splash_calorie_tracker.
+  ///
+  /// In en, this message translates to:
+  /// **'Calorie tracker'**
+  String get splash_calorie_tracker;
+
   /// No description provided for @splash_tagline.
   ///
   /// In en, this message translates to:

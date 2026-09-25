@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:snapcal/l10n/generated/app_localizations.dart';
+
+import '../../../core/theme/app_motion.dart';
+import '../../../widgets/motion/reveal.dart';
 import '../../../widgets/wazn_icons.dart';
 
 class BarcodeScannerView extends StatefulWidget {
@@ -16,14 +21,46 @@ class BarcodeScannerView extends StatefulWidget {
   State<BarcodeScannerView> createState() => _BarcodeScannerViewState();
 }
 
-class _BarcodeScannerViewState extends State<BarcodeScannerView> {
+class _BarcodeScannerViewState extends State<BarcodeScannerView>
+    with TickerProviderStateMixin {
   final MobileScannerController _controller = MobileScannerController(
     formats: [BarcodeFormat.all],
   );
   bool _isProcessing = false;
 
+  /// The red line sweeping the frame while it looks for a code.
+  late final AnimationController _laser;
+
+  /// The frame turning green and swelling once a code is read.
+  late final AnimationController _found;
+
+  @override
+  void initState() {
+    super.initState();
+    _laser = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+    _found = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.reduceMotion(context)) {
+      _laser.value = .5;
+    } else if (!_laser.isAnimating && !_isProcessing) {
+      _laser.repeat(reverse: true);
+    }
+  }
+
   @override
   void dispose() {
+    _laser.dispose();
+    _found.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -40,7 +77,10 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
               if (_isProcessing) return;
               final code = capture.barcodes.firstOrNull?.rawValue;
               if (code == null) return;
+              HapticFeedback.mediumImpact();
               setState(() => _isProcessing = true);
+              _laser.stop();
+              _found.forward(from: 0);
               widget.onBarcodeDetected(code);
             },
           ),
@@ -65,15 +105,100 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
             ),
           ),
 
-          // Barcode guide brackets
+          // Barcode guide brackets. They arrive tall, as the photo frame
+          // was, and settle into a wide strip for a barcode.
           Center(
-            child: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.72,
-              height: 170,
-              child: CustomPaint(
-                painter: _BarcodeBracketPainter(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  strokeWidth: 2,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: AppMotion.maybeZero(
+                context,
+                const Duration(milliseconds: 620),
+              ),
+              curve: AppMotion.springCurve,
+              builder: (context, settle, _) {
+                final width = MediaQuery.of(context).size.width;
+                return AnimatedBuilder(
+                  animation: Listenable.merge([_laser, _found]),
+                  builder: (context, _) {
+                    final found = _found.value;
+                    final swell = 1 + 0.06 * (found * (1 - found) * 4);
+                    return Transform.scale(
+                      scale: swell,
+                      child: SizedBox(
+                        key: const ValueKey('barcode-frame'),
+                        width: width * (0.8 - 0.08 * settle),
+                        height: 300 - 130 * settle,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: CustomPaint(
+                                painter: _BarcodeBracketPainter(
+                                  color:
+                                      Color.lerp(
+                                        Colors.white.withValues(alpha: 0.5),
+                                        const Color(0xFF34D399),
+                                        (found * 2).clamp(0.0, 1.0),
+                                      )!,
+                                  strokeWidth: 2 + found,
+                                ),
+                              ),
+                            ),
+                            if (!_isProcessing)
+                              Positioned(
+                                left: 14,
+                                right: 14,
+                                top:
+                                    18 +
+                                    (height(settle) - 36) *
+                                        Curves.easeInOut.transform(
+                                          _laser.value,
+                                        ),
+                                child: Container(
+                                  height: 2,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF5A4E),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFFFF5A4E,
+                                        ).withValues(alpha: 0.7),
+                                        blurRadius: 12,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          Align(
+            alignment: const Alignment(0, 0.32),
+            child: Reveal(
+              delay: const Duration(milliseconds: 300),
+              offset: const Offset(0, 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  AppLocalizations.of(context)!.snap_barcode_hint,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -119,6 +244,8 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
       ),
     );
   }
+
+  static double height(double settle) => 300 - 130 * settle;
 
   Widget _iconButton(IconData icon, VoidCallback onTap) {
     return GestureDetector(

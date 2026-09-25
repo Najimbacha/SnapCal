@@ -12,6 +12,7 @@ import '../../core/resilience/retry_policy.dart';
 import '../../core/resilience/safe_async.dart';
 import '../../core/resilience/timeout_policy.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/meal.dart';
@@ -24,6 +25,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../snap/widgets/result_modal.dart';
+import '../../widgets/motion/reveal.dart';
 
 enum _VoicePhase { ready, listening, analyzing }
 
@@ -35,7 +37,11 @@ class VoiceMealScreen extends ConsumerStatefulWidget {
 }
 
 class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  /// How far along the Analyze button's fill is: it creeps towards the end
+  /// while the meal is worked out, and fills the rest when it is done.
+  late final AnimationController _fill;
+  bool _analyzed = false;
   final _transcriptController = TextEditingController();
   final _focusNode = FocusNode();
   final _speech = SpeechRecognitionService();
@@ -62,6 +68,10 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
   @override
   void initState() {
     super.initState();
+    _fill = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -79,6 +89,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
     unawaited(_speech.cancel());
     _transcriptController.dispose();
     _focusNode.dispose();
+    _fill.dispose();
     super.dispose();
   }
 
@@ -235,7 +246,17 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
     setState(() {
       _phase = _VoicePhase.analyzing;
       _error = null;
+      _analyzed = false;
     });
+    if (!AppMotion.reduceMotion(context)) {
+      unawaited(
+        _fill.animateTo(
+          .9,
+          duration: const Duration(seconds: 7),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    }
 
     final language =
         ref.read(settingsProvider).valueOrNull?.languageCode ??
@@ -252,6 +273,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
 
     if (result.isFailure) {
       final failure = result.failure!;
+      _fill.value = 0;
       setState(() => _phase = _VoicePhase.ready);
       _analytics.logEvent(
         'voice_log_failed',
@@ -272,11 +294,27 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
     }
 
     final items = result.requireData;
-    setState(() => _phase = _VoicePhase.ready);
     if (items.isEmpty) {
-      setState(() => _error = l10n.voice_no_food);
+      _fill.value = 0;
+      setState(() {
+        _phase = _VoicePhase.ready;
+        _error = l10n.voice_no_food;
+      });
       return;
     }
+    // The fill completes and a tick lands before the meal opens.
+    if (!AppMotion.reduceMotion(context)) {
+      await _fill.animateTo(1, duration: const Duration(milliseconds: 250));
+      if (!mounted) return;
+      setState(() => _analyzed = true);
+      await Future<void>.delayed(const Duration(milliseconds: 380));
+      if (!mounted) return;
+    }
+    _fill.value = 0;
+    setState(() {
+      _phase = _VoicePhase.ready;
+      _analyzed = false;
+    });
 
     _analytics.logEvent(
       'voice_log_analyzed',
@@ -495,51 +533,76 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                           ),
                         ),
                         const SizedBox(height: 8),
-                        TextField(
-                          key: const ValueKey('voice-transcript'),
-                          controller: _transcriptController,
-                          focusNode: _focusNode,
-                          enabled: !_isAnalyzing,
-                          minLines: 3,
-                          maxLines: 5,
-                          maxLength: 500,
-                          textCapitalization: TextCapitalization.sentences,
-                          onChanged: (_) => setState(() => _error = null),
-                          decoration: InputDecoration(
-                            hintText: l10n.voice_transcript_hint,
-                            helperText: l10n.voice_example,
-                            helperMaxLines: 2,
-                            filled: true,
-                            fillColor: card,
-                            contentPadding: const EdgeInsets.all(14),
-                            hintStyle: TextStyle(
-                              color: secondaryText.withValues(alpha: 0.72),
-                            ),
-                            helperStyle: TextStyle(
-                              color: secondaryText,
-                              height: 1.3,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: border),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: border),
-                            ),
-                            disabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: border),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: AppColors.primary,
-                                width: 1.5,
+                        Stack(
+                          children: [
+                            TextField(
+                              key: const ValueKey('voice-transcript'),
+                              controller: _transcriptController,
+                              focusNode: _focusNode,
+                              enabled: !_isAnalyzing,
+                              minLines: 3,
+                              maxLines: 5,
+                              maxLength: 500,
+                              textCapitalization: TextCapitalization.sentences,
+                              onChanged: (_) => setState(() => _error = null),
+                              decoration: InputDecoration(
+                                hintText: l10n.voice_transcript_hint,
+                                helperText: l10n.voice_example,
+                                helperMaxLines: 2,
+                                filled: true,
+                                fillColor: card,
+                                contentPadding: const EdgeInsets.all(14),
+                                hintStyle: TextStyle(
+                                  color: secondaryText.withValues(alpha: 0.72),
+                                ),
+                                helperStyle: TextStyle(
+                                  color: secondaryText,
+                                  height: 1.3,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: border),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: border),
+                                ),
+                                disabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: border),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                counterText: '',
                               ),
                             ),
-                            counterText: '',
-                          ),
+                            // While listening, each word fades in as it is
+                            // heard; the field takes over again after.
+                            if (_isListening &&
+                                _transcriptController.text.trim().isNotEmpty)
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                top: 0,
+                                child: IgnorePointer(
+                                  child: _LiveWords(
+                                    text: _transcriptController.text,
+                                    background: card,
+                                    border: AppColors.primary,
+                                    style: TextStyle(
+                                      color: textColor,
+                                      fontSize: 16,
+                                      height: 1.45,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 14),
                         Row(
@@ -573,39 +636,69 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                           ),
                         ],
                         const SizedBox(height: 18),
-                        FilledButton.icon(
-                          key: const ValueKey('voice-analyze'),
-                          onPressed: _canAnalyze ? _analyze : null,
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(56),
-                            backgroundColor: AppColors.emeraldDark,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor:
-                                dark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : AppColors.lightCardBorder,
-                            disabledForegroundColor: secondaryText,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        _FillingButton(
+                          fill: _fill,
+                          child: FilledButton.icon(
+                            key: const ValueKey('voice-analyze'),
+                            onPressed: _canAnalyze ? _analyze : null,
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(56),
+                              backgroundColor: AppColors.emeraldDark,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor:
+                                  dark
+                                      ? Colors.white.withValues(alpha: 0.08)
+                                      : AppColors.lightCardBorder,
+                              disabledForegroundColor: secondaryText,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
                             ),
-                            elevation: 0,
-                          ),
-                          icon:
-                              _isAnalyzing
-                                  ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
+                            icon: AnimatedSwitcher(
+                              duration: AppMotion.maybeZero(
+                                context,
+                                const Duration(milliseconds: 320),
+                              ),
+                              transitionBuilder:
+                                  (child, animation) => ScaleTransition(
+                                    scale: CurvedAnimation(
+                                      parent: animation,
+                                      curve: AppMotion.springCurve,
                                     ),
-                                  )
-                                  : const Icon(WaznIcons.ai, size: 19),
-                          label: Text(
-                            _isAnalyzing
-                                ? l10n.voice_analyzing
-                                : l10n.voice_analyze,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                                    child: child,
+                                  ),
+                              child:
+                                  _analyzed
+                                      ? const Icon(
+                                        WaznIcons.success,
+                                        key: ValueKey('done'),
+                                        size: 20,
+                                      )
+                                      : _isAnalyzing
+                                      ? const SizedBox(
+                                        key: ValueKey('busy'),
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : const Icon(
+                                        WaznIcons.ai,
+                                        key: ValueKey('idle'),
+                                        size: 19,
+                                      ),
+                            ),
+                            label: Text(
+                              _isAnalyzing
+                                  ? l10n.voice_analyzing
+                                  : l10n.voice_analyze,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
                         if (_transcriptController.text.trim().isNotEmpty &&
@@ -638,7 +731,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
   }
 }
 
-class _MicControl extends StatelessWidget {
+class _MicControl extends StatefulWidget {
   const _MicControl({
     required this.listening,
     required this.analyzing,
@@ -658,9 +751,58 @@ class _MicControl extends StatelessWidget {
   final String listeningLabel;
 
   @override
+  State<_MicControl> createState() => _MicControlState();
+}
+
+class _MicControlState extends State<_MicControl>
+    with SingleTickerProviderStateMixin {
+  /// Rings rippling out from the microphone while it listens.
+  late final AnimationController _ripple;
+
+  @override
+  void initState() {
+    super.initState();
+    _ripple = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_MicControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  void _sync() {
+    if (widget.listening && !AppMotion.reduceMotion(context)) {
+      if (!_ripple.isAnimating) _ripple.repeat();
+    } else if (_ripple.isAnimating || _ripple.value != 0) {
+      _ripple
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ripple.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final label = listening ? '$listeningLabel · ${secondsLeft}s' : readyLabel;
+    final label =
+        widget.listening
+            ? '${widget.listeningLabel} · ${widget.secondsLeft}s'
+            : widget.readyLabel;
     final muted = dark ? AppColors.darkTextSecondary : AppColors.textSecondary;
 
     return Column(
@@ -670,44 +812,83 @@ class _MicControl extends StatelessWidget {
           label: label,
           child: InkResponse(
             key: const ValueKey('voice-mic'),
-            onTap: onTap,
+            onTap: widget.onTap,
             radius: 60,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              width: 108,
-              height: 108,
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary.withValues(
-                  alpha: listening ? 0.13 : 0.075,
-                ),
-                border: Border.all(
-                  color: AppColors.primary.withValues(
-                    alpha: listening ? 0.36 : 0.16,
-                  ),
-                ),
-              ),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppColors.primaryGradient,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(
-                        alpha: listening ? 0.30 : 0.18,
-                      ),
-                      blurRadius: listening ? 24 : 16,
-                      spreadRadius: listening ? 2 : 0,
-                      offset: const Offset(0, 7),
+            // Rings ripple out while listening, stronger the louder the
+            // voice, and the halo swells with it.
+            child: AnimatedBuilder(
+              animation: _ripple,
+              builder:
+                  (context, child) => CustomPaint(
+                    painter: _RipplePainter(
+                      progress: _ripple.value,
+                      level: widget.listening ? widget.soundLevel : 0,
+                      color: AppColors.primary,
                     ),
-                  ],
-                ),
-                child: Icon(
-                  listening ? WaznIcons.square : WaznIcons.voice,
-                  size: listening ? 25 : 31,
-                  color: Colors.white,
+                    child: child,
+                  ),
+              child: AnimatedScale(
+                scale: widget.listening ? 1 + widget.soundLevel * 0.1 : 1,
+                duration: const Duration(milliseconds: 120),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 108,
+                  height: 108,
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(
+                      alpha: widget.listening ? 0.13 : 0.075,
+                    ),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(
+                        alpha: widget.listening ? 0.36 : 0.16,
+                      ),
+                    ),
+                  ),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppColors.primaryGradient,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(
+                            alpha: widget.listening ? 0.30 : 0.18,
+                          ),
+                          blurRadius: widget.listening ? 24 : 16,
+                          spreadRadius: widget.listening ? 2 : 0,
+                          offset: const Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: AppMotion.maybeZero(
+                        context,
+                        const Duration(milliseconds: 360),
+                      ),
+                      transitionBuilder:
+                          (child, animation) => RotationTransition(
+                            turns: Tween(
+                              begin: -.125,
+                              end: 0.0,
+                            ).animate(animation),
+                            child: ScaleTransition(
+                              scale: CurvedAnimation(
+                                parent: animation,
+                                curve: AppMotion.springCurve,
+                              ),
+                              child: child,
+                            ),
+                          ),
+                      child: Icon(
+                        widget.listening ? WaznIcons.square : WaznIcons.voice,
+                        key: ValueKey(widget.listening),
+                        size: widget.listening ? 25 : 31,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -717,13 +898,13 @@ class _MicControl extends StatelessWidget {
         SizedBox(
           height: 22,
           child:
-              listening
+              widget.listening
                   ? Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(7, (index) {
                       final distance = (index - 3).abs();
                       final factor = 1 - distance * 0.12;
-                      final height = 5 + (17 * soundLevel * factor);
+                      final height = 5 + (17 * widget.soundLevel * factor);
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 100),
                         width: 3,
@@ -736,7 +917,7 @@ class _MicControl extends StatelessWidget {
                       );
                     }),
                   )
-                  : analyzing
+                  : widget.analyzing
                   ? Icon(
                     WaznIcons.loader,
                     size: 18,
@@ -749,7 +930,136 @@ class _MicControl extends StatelessWidget {
           label,
           style: AppTypography.labelMedium.copyWith(
             fontWeight: FontWeight.w600,
-            color: listening ? AppColors.primary : muted,
+            color: widget.listening ? AppColors.primary : muted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Three rings spreading from the microphone, each a third of a beat
+/// behind the last.
+class _RipplePainter extends CustomPainter {
+  const _RipplePainter({
+    required this.progress,
+    required this.level,
+    required this.color,
+  });
+
+  final double progress;
+  final double level;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (level <= 0) return;
+    final centre = size.center(Offset.zero);
+    final base = size.shortestSide / 2;
+    for (var i = 0; i < 3; i++) {
+      final t = (progress + i / 3) % 1;
+      canvas.drawCircle(
+        centre,
+        base * (1 + t * 0.7),
+        Paint()
+          ..color = color.withValues(
+            alpha: (1 - t) * 0.45 * (0.4 + level * 0.6),
+          )
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RipplePainter old) =>
+      old.progress != progress || old.level != level || old.color != color;
+}
+
+/// The words heard so far, each new one fading up into place.
+class _LiveWords extends StatelessWidget {
+  const _LiveWords({
+    required this.text,
+    required this.background,
+    required this.border,
+    required this.style,
+  });
+
+  final String text;
+  final Color background;
+  final Color border;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final words = text.trim().split(RegExp(r'\s+'));
+    return Container(
+      key: const ValueKey('voice-live-words'),
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 96),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border, width: 1.5),
+      ),
+      child: Text.rich(
+        TextSpan(
+          style: style,
+          children: [
+            for (var i = 0; i < words.length; i++) ...[
+              WidgetSpan(
+                alignment: PlaceholderAlignment.baseline,
+                baseline: TextBaseline.alphabetic,
+                child: Reveal(
+                  key: ValueKey('$i-${words[i]}'),
+                  offset: const Offset(0, 6),
+                  duration: const Duration(milliseconds: 380),
+                  child: Text(words[i], style: style),
+                ),
+              ),
+              if (i < words.length - 1) const TextSpan(text: ' '),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A button with a lighter band filling it from the start while its work
+/// goes on.
+class _FillingButton extends StatelessWidget {
+  const _FillingButton({required this.fill, required this.child});
+
+  final Animation<double> fill;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedBuilder(
+                animation: fill,
+                builder:
+                    (context, _) =>
+                        fill.value == 0
+                            ? const SizedBox.shrink()
+                            : FractionallySizedBox(
+                              key: const ValueKey('voice-analyze-fill'),
+                              alignment: AlignmentDirectional.centerStart,
+                              widthFactor: fill.value,
+                              child: ColoredBox(
+                                color: Colors.white.withValues(alpha: 0.16),
+                              ),
+                            ),
+              ),
+            ),
           ),
         ),
       ],

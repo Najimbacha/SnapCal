@@ -592,6 +592,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sync_skip => 'تخطي الآن';
 
   @override
+  String get splash_calorie_tracker => 'متتبع السعرات';
+
+  @override
   String get splash_tagline => 'صور. تتبع. ازدهر.';
 
   @override
