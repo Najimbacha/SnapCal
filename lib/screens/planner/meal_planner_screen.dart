@@ -109,7 +109,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     // And the viewed day's own diary: a meal logged on the day it was
     // planned for keeps its tick when that day is looked back on.
     final planDate = app_date.DateUtils.getDateString(
-      plan.startDate.add(Duration(days: selectedIndex)),
+      app_date.DateUtils.addDays(plan.startDate, selectedIndex),
     );
     final loggedOnPlanDay =
         ref
@@ -245,7 +245,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     required Set<String> loggedToday,
     required Set<String> loggedOnPlanDay,
   }) {
-    final date = plan.startDate.add(Duration(days: dayIndex));
+    final date = app_date.DateUtils.addDays(plan.startDate, dayIndex);
     final today = app_date.DateUtils.getTodayString();
     final planDate = app_date.DateUtils.getDateString(date);
     final totalCalories = meals.fold<int>(
@@ -544,7 +544,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       _showRegenLimit();
       return;
     }
-    final date = plan.startDate.add(Duration(days: dayIndex));
+    final date = app_date.DateUtils.addDays(plan.startDate, dayIndex);
     _showRegenerateDialog(
       body: AppLocalizations.of(context)!.planner_regenerate_body(
         DateFormat.EEEE(AppLocalizations.of(context)!.localeName).format(date),
@@ -746,7 +746,7 @@ MealPlan _buildFreePreviewPlan(UserSettings settings, BuildContext context) {
   return MealPlan(
     id: 'free-preview',
     startDate: start,
-    endDate: start.add(const Duration(days: 6)),
+    endDate: app_date.DateUtils.addDays(start, 6),
     weeklyMeals: weekly,
   );
 }

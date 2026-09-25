@@ -237,6 +237,27 @@ class SettingsRepository {
     final user = _authClient.currentUser;
     if (user == null) return;
 
+    // A change to either document still waiting in the sync queue is newer
+    // than anything the cloud holds. Merging the cloud copy over it reverted
+    // the edit on this phone -- a calorie goal changed offline snapped back
+    // on the next launch -- and then the queue pushed the edit up anyway, so
+    // the two copies disagreed until the following pull. The meal pull has
+    // had this guard per document; settings had none.
+    final queue = SyncQueueService();
+    try {
+      await queue.init();
+    } catch (e) {
+      debugPrint('SettingsRepository: sync queue unavailable: $e');
+    }
+    if (queue.hasPendingFor('users/${user.uid}/settings/app') ||
+        queue.hasPendingFor('users/${user.uid}/private/profile')) {
+      debugPrint(
+        'SettingsRepository: local settings still waiting to upload; '
+        'skipping the cloud pull.',
+      );
+      return;
+    }
+
     SharedPreferences? prefs;
     int? lastSyncMs;
     try {

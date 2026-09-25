@@ -15,6 +15,37 @@ class DateUtils {
     return getDateString(DateTime.now());
   }
 
+  /// [date] moved by [days] calendar days, keeping its time of day.
+  ///
+  /// Not `date.add(Duration(days: n))`: a Duration is a fixed number of
+  /// hours, and Dart documents `Duration(days: 1)` as exactly 24 of them.
+  /// Where daylight saving switches at midnight -- Egypt and Lebanon do --
+  /// midnight plus 24 hours is 23:00 the same day, or 01:00 the day after
+  /// next, and "yesterday" came out two days ago. That reset streaks every
+  /// April for anyone in Cairo. The constructor normalises an overflowed
+  /// day into the right month and resolves the wall-clock time in the
+  /// local zone, which is what a calendar day means.
+  static DateTime addDays(DateTime date, int days) => DateTime(
+    date.year,
+    date.month,
+    date.day + days,
+    date.hour,
+    date.minute,
+    date.second,
+    date.millisecond,
+    date.microsecond,
+  );
+
+  /// Whole calendar days from [from] to [to], ignoring the time of day.
+  ///
+  /// `DateTime.difference().inDays` counts 24-hour spans, so across a
+  /// daylight-saving change a day is 23 hours and counts as none. Done in
+  /// UTC, where every day is 24 hours, so the answer is the calendar's.
+  static int calendarDaysBetween(DateTime from, DateTime to) =>
+      DateTime.utc(to.year, to.month, to.day)
+          .difference(DateTime.utc(from.year, from.month, from.day))
+          .inDays;
+
   /// The meal a new entry most likely is, by the time of day. The gap before
   /// dinner, like the small hours, reads as a snack.
   static String suggestedMealType([DateTime? at]) {
@@ -62,11 +93,7 @@ class DateUtils {
     String? localeName,
   }) {
     final date = parseDate(dateString);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final targetDate = DateTime(date.year, date.month, date.day);
-
-    final difference = today.difference(targetDate).inDays;
+    final difference = calendarDaysBetween(date, DateTime.now());
 
     if (difference == 0) {
       return l10n?.common_today ?? 'Today';
@@ -81,16 +108,12 @@ class DateUtils {
 
   /// Get previous day
   static String getPreviousDay(String dateString) {
-    final date = parseDate(dateString);
-    final previousDay = date.subtract(const Duration(days: 1));
-    return getDateString(previousDay);
+    return getDateString(addDays(parseDate(dateString), -1));
   }
 
   /// Get next day
   static String getNextDay(String dateString) {
-    final date = parseDate(dateString);
-    final nextDay = date.add(const Duration(days: 1));
-    return getDateString(nextDay);
+    return getDateString(addDays(parseDate(dateString), 1));
   }
 
   /// Check if date is today

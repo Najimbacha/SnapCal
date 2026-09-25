@@ -8,6 +8,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/resilience/timeout_policy.dart';
 import '../../core/services/config_service.dart';
+import '../../core/utils/date_utils.dart' as app_date;
 import '../../core/utils/image_utils.dart';
 import '../models/meal.dart';
 import '../models/meal_plan.dart';
@@ -683,7 +684,7 @@ Keys 0-6 = Day 1 to Day 7. Each day must have exactly ${settings.mealsPerDay} me
       }
       if (dayIndex == null) return;
 
-      final dayDate = weekStart.add(Duration(days: dayIndex));
+      final dayDate = app_date.DateUtils.addDays(weekStart, dayIndex);
       final dateStr =
           '${dayDate.year.toString().padLeft(4, '0')}-'
           '${dayDate.month.toString().padLeft(2, '0')}-'

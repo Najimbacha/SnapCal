@@ -92,10 +92,13 @@ MetricPeriodRange metricRangeFor(LogMetricPeriod period, DateTime anchor) {
     case LogMetricPeriod.day:
       return MetricPeriodRange(start: date, end: date);
     case LogMetricPeriod.week:
-      final start = date.subtract(Duration(days: date.weekday % 7));
+      // Calendar days throughout this file, never `Duration(days: n)`: that
+      // is a fixed 24 hours, which across a midnight daylight-saving change
+      // lands on the wrong date and made a month's chart show one day twice.
+      final start = app_date.DateUtils.addDays(date, -(date.weekday % 7));
       return MetricPeriodRange(
         start: start,
-        end: start.add(const Duration(days: 6)),
+        end: app_date.DateUtils.addDays(start, 6),
       );
     case LogMetricPeriod.month:
       final start = DateTime(date.year, date.month);
@@ -119,9 +122,12 @@ DateTime shiftMetricAnchor(
 ) {
   switch (period) {
     case LogMetricPeriod.day:
-      return normalizeMetricDate(anchor).add(Duration(days: direction));
+      return app_date.DateUtils.addDays(normalizeMetricDate(anchor), direction);
     case LogMetricPeriod.week:
-      return normalizeMetricDate(anchor).add(Duration(days: direction * 7));
+      return app_date.DateUtils.addDays(
+        normalizeMetricDate(anchor),
+        direction * 7,
+      );
     case LogMetricPeriod.month:
       return DateTime(anchor.year, anchor.month + direction, anchor.day);
     case LogMetricPeriod.threeMonths:
@@ -174,7 +180,7 @@ Iterable<DateTime> eachMetricDay(DateTime start, DateTime end) sync* {
   final last = normalizeMetricDate(end);
   while (!current.isAfter(last)) {
     yield current;
-    current = current.add(const Duration(days: 1));
+    current = app_date.DateUtils.addDays(current, 1);
   }
 }
 
@@ -193,11 +199,11 @@ List<MetricBucket> _weeklyBuckets(MetricPeriodRange range) {
   final buckets = <MetricBucket>[];
   var start = range.start;
   while (!start.isAfter(range.end)) {
-    final end = start.add(const Duration(days: 6));
+    final end = app_date.DateUtils.addDays(start, 6);
     buckets.add(
       MetricBucket(start: start, end: end.isAfter(range.end) ? range.end : end),
     );
-    start = end.add(const Duration(days: 1));
+    start = app_date.DateUtils.addDays(end, 1);
   }
   return buckets;
 }

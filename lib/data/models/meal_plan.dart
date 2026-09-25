@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import '../../core/utils/date_utils.dart' as app_date;
 import 'meal.dart';
 
 part 'meal_plan.g.dart';
@@ -29,7 +30,7 @@ class MealPlan extends HiveObject {
   factory MealPlan.createEmpty({DateTime? start}) {
     // Logic to find start of week could go here, for now just simple init
     final s = start ?? DateTime.now();
-    final e = s.add(const Duration(days: 6));
+    final e = app_date.DateUtils.addDays(s, 6);
 
     return MealPlan(
       id: 'current_plan', // For now, single plan pattern? Or UUID

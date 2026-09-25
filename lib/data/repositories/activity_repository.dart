@@ -168,9 +168,7 @@ class ActivityRepository {
     final summaries = <ActivitySummary>[];
     for (int i = 6; i >= 0; i--) {
       summaries.add(
-        await fetchSummary(
-          DateTime(now.year, now.month, now.day).subtract(Duration(days: i)),
-        ),
+        await fetchSummary(DateTime(now.year, now.month, now.day - i)),
       );
     }
     return summaries;
@@ -217,12 +215,10 @@ class ActivityRepository {
     var streak = 0;
 
     for (int i = 0; i < maxStreakDays; i++) {
-      final date = DateTime(
-        today.year,
-        today.month,
-        today.day,
-      ).subtract(Duration(days: i));
-      final start = DateTime(date.year, date.month, date.day);
+      // Calendar arithmetic, not a 24-hour Duration: across a daylight-saving
+      // change the latter lands on the wrong day and counts it twice.
+      final date = DateTime(today.year, today.month, today.day - i);
+      final start = date;
       final end =
           _sameDay(start, today)
               ? today

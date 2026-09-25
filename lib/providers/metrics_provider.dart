@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/body_metric.dart';
 import '../data/services/cloud_record_sync.dart';
 import '../core/services/security_service.dart';
+import 'settings_provider.dart';
 
 part 'metrics_provider.g.dart';
 
@@ -163,9 +164,77 @@ class BodyMetrics extends _$BodyMetrics {
     });
   }
 
-  Future<void> logProgressPhoto(String filePath) async {
-    final list = state.valueOrNull ?? [];
-    final canAdd = list.where((m) => m.photoFrontPath != null).length < 3;
-    if (!canAdd) throw Exception('Free tier limit: max 3 progress photos');
+  /// How many photo check-ins the free tier keeps; Pro has no ceiling.
+  static const int freePhotoCheckIns = 3;
+
+  /// Saves a photo check-in.
+  ///
+  /// Nothing did before. The old `logProgressPhoto` checked the free-tier
+  /// limit and returned, so both photos were dropped the moment the capture
+  /// screen popped: the Progress screen never had a photo to show, the
+  /// comparison sheet had nothing to compare, and the check-in badges could
+  /// not be earned. It also refused a fourth check-in to Pro users.
+  ///
+  /// The photos join today's weigh-in when there is one. Otherwise a new
+  /// entry carries the last known weight forward, so the trend chart is not
+  /// handed a zero for the day.
+  Future<void> logProgressPhotos({String? frontPath, String? sidePath}) async {
+    if (frontPath == null && sidePath == null) return;
+    await future;
+    final box = _box;
+    if (box == null) return;
+
+    final metrics =
+        box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
+    final checkIns =
+        metrics
+            .where((m) => m.photoFrontPath != null || m.photoSidePath != null)
+            .length;
+    if (!ref.read(effectiveIsProProvider) && checkIns >= freePhotoCheckIns) {
+      throw StateError(
+        'Free tier limit: max $freePhotoCheckIns progress photo check-ins',
+      );
+    }
+
+    final now = DateTime.now();
+    final latest = metrics.isEmpty ? null : metrics.first;
+    final BodyMetric saved;
+    if (latest != null && _sameDay(latest.date, now)) {
+      saved = latest.copyWith(photoFrontPath: frontPath, photoSidePath: sidePath);
+      final key = _keyForId(latest.id);
+      if (key == null) {
+        await box.add(saved);
+      } else {
+        await box.put(key, saved);
+      }
+    } else {
+      // Awaited, not `valueOrNull`: settings may still be loading, and a
+      // check-in saved then was given a weight of 0.
+      double? profileWeight;
+      if (latest == null) {
+        try {
+          profileWeight = (await ref.read(settingsProvider.future)).startingWeight;
+        } catch (e) {
+          debugPrint('Check-in: settings unavailable: $e');
+        }
+      }
+      final weight = latest?.weight ?? profileWeight ?? 0;
+      saved = BodyMetric(
+        date: now,
+        weight: weight,
+        photoFrontPath: frontPath,
+        photoSidePath: sidePath,
+      );
+      await box.add(saved);
+    }
+    ref.invalidateSelf();
+    unawaited(
+      _cloud
+          .push(saved.id, toCloud(saved))
+          .catchError((Object e) => debugPrint('Check-in sync failed: $e')),
+    );
   }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 }
