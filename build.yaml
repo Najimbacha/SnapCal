@@ -5,3 +5,11 @@ targets:
         generate_for:
           - lib/providers/*.dart
           - lib/router.dart
+      # Only the providers are generated. The Hive adapters in
+      # lib/data/models/*.g.dart are committed and have no generator here, so
+      # the combining builder must not claim them: with
+      # --delete-conflicting-outputs it would delete them and write nothing.
+      source_gen:combining_builder:
+        generate_for:
+          - lib/providers/*.dart
+          - lib/router.dart
