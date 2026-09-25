@@ -1,11 +1,20 @@
+import '../../data/services/calorie_onboarding_service.dart';
 import 'onboarding_draft.dart';
+
+/// Wazn is for 13 and over.
+const int kMinimumAge = 13;
+const int kMaximumAge = 100;
+
+/// Under this age adult BMI bands don't apply and weight loss runs at the
+/// gentle pace only. The service enforces the same limit.
+const int kAdultAge = kMinorAgeLimit;
 
 enum OnboardingValidationError {
   ageRange,
   heightRange,
   weightRange,
   targetRange,
-  adultOnly,
+  belowMinimumAge,
   targetMustBeLower,
   targetMustBeHigher,
   targetExtreme,
@@ -16,8 +25,8 @@ class OnboardingValidation {
 
   static OnboardingValidationError? validateAge(int? age) {
     if (age == null) return null;
-    if (age < 18) return OnboardingValidationError.adultOnly;
-    if (age > 120) return OnboardingValidationError.ageRange;
+    if (age < kMinimumAge) return OnboardingValidationError.belowMinimumAge;
+    if (age > kMaximumAge) return OnboardingValidationError.ageRange;
     return null;
   }
 

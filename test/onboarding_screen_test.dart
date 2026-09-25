@@ -1,21 +1,23 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:snapcal/data/services/calorie_onboarding_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import 'package:snapcal/screens/onboarding/body_steps.dart';
 import 'package:snapcal/screens/onboarding/onboarding_conversions.dart';
-import 'package:snapcal/screens/onboarding/onboarding_validation.dart';
-import 'package:snapcal/screens/onboarding/onboarding_pace_calculator.dart';
 import 'package:snapcal/screens/onboarding/onboarding_draft.dart';
-import 'package:snapcal/screens/onboarding/profile_step.dart';
+import 'package:snapcal/screens/onboarding/onboarding_pace_calculator.dart';
+import 'package:snapcal/screens/onboarding/onboarding_validation.dart';
 import 'package:snapcal/screens/onboarding/pace_step.dart';
+import 'package:snapcal/screens/onboarding/target_step.dart';
+import 'package:snapcal/screens/onboarding/widgets/ruler_picker.dart';
 
 void main() {
-  Widget constrainedOnboardingHost(Widget child) {
+  Widget host(Widget child) {
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: SizedBox(height: 360, child: SingleChildScrollView(child: child)),
-      ),
+      home: Scaffold(body: child),
     );
   }
 
@@ -94,15 +96,17 @@ void main() {
       expect(OnboardingValidation.validateAge(25), isNull);
     });
 
-    test('validateAge returns adultOnly for age 17', () {
-      expect(
-        OnboardingValidation.validateAge(17),
-        equals(OnboardingValidationError.adultOnly),
-      );
+    // Wazn is for 13 and over.
+    test('validateAge accepts 13 to 17', () {
+      expect(OnboardingValidation.validateAge(13), isNull);
+      expect(OnboardingValidation.validateAge(17), isNull);
     });
 
-    test('validateAge returns null for age 18', () {
-      expect(OnboardingValidation.validateAge(18), isNull);
+    test('validateAge refuses under 13', () {
+      expect(
+        OnboardingValidation.validateAge(12),
+        equals(OnboardingValidationError.belowMinimumAge),
+      );
     });
 
     test('validateAge returns ageRange for age 121', () {
@@ -412,9 +416,18 @@ void main() {
   // ===== Unit Tests: OnboardingDraft =====
 
   group('OnboardingDraft', () {
-    test('defaults to metric system', () {
+    test('defaults to metric for height and weight', () {
       const draft = OnboardingDraft();
-      expect(draft.measurementSystem, equals(MeasurementSystem.metric));
+      expect(draft.heightSystem, equals(MeasurementSystem.metric));
+      expect(draft.weightSystem, equals(MeasurementSystem.metric));
+    });
+
+    test('height and weight units change independently', () {
+      final draft = const OnboardingDraft().copyWith(
+        weightSystem: MeasurementSystem.imperial,
+      );
+      expect(draft.heightSystem, equals(MeasurementSystem.metric));
+      expect(draft.weightSystem, equals(MeasurementSystem.imperial));
     });
 
     test('needsPaceStep is true for loseWeight', () {
@@ -590,258 +603,183 @@ void main() {
     });
   });
 
-  group('OnboardingLayout', () {
-    testWidgets('profile step renders default picker row values', (
-      tester,
-    ) async {
+  group('OnboardingScreens', () {
+    testWidgets('the ruler moves one step per arrow key', (tester) async {
+      double? value;
       await tester.pumpWidget(
-        constrainedOnboardingHost(
-          ProfileStep(draft: const OnboardingDraft(), onChanged: (_) {}),
-        ),
-      );
-
-      expect(find.text('28 years'), findsOneWidget);
-      expect(find.text('170 cm'), findsOneWidget);
-      expect(find.text('75 kg'), findsOneWidget);
-    });
-
-    testWidgets('profile step submits default numeric picker values', (
-      tester,
-    ) async {
-      final key = GlobalKey<ProfileStepState>();
-      OnboardingDraft? updated;
-
-      await tester.pumpWidget(
-        constrainedOnboardingHost(
-          ProfileStep(
-            key: key,
-            draft: const OnboardingDraft(),
-            onChanged: (draft) => updated = draft,
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('Male'));
-      await tester.pump();
-
-      expect(key.currentState!.validateAndSubmit(), isTrue);
-      expect(updated?.age, equals(28));
-      expect(updated?.heightCm, equals(170));
-      expect(updated?.currentWeightKg, equals(75));
-    });
-
-    testWidgets('profile step restores existing draft picker values', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        constrainedOnboardingHost(
-          ProfileStep(
-            draft: const OnboardingDraft(
-              age: 42,
-              heightCm: 180,
-              currentWeightKg: 90,
-            ),
-            onChanged: (_) {},
-          ),
-        ),
-      );
-
-      expect(find.text('42 years'), findsOneWidget);
-      expect(find.text('180 cm'), findsOneWidget);
-      expect(find.text('90 kg'), findsOneWidget);
-    });
-
-    testWidgets('profile unit toggle preserves equivalent picker values', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        constrainedOnboardingHost(
-          ProfileStep(draft: const OnboardingDraft(), onChanged: (_) {}),
-        ),
-      );
-
-      await tester.tap(find.text('Imperial'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('5′ 7″'), findsOneWidget);
-      expect(find.text('165 lb'), findsOneWidget);
-    });
-
-    testWidgets('profile age row opens picker sheet and done commits', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        constrainedOnboardingHost(
-          ProfileStep(draft: const OnboardingDraft(), onChanged: (_) {}),
-        ),
-      );
-
-      await tester.tap(find.byKey(const Key('onboarding_age_row')));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('onboarding_age_picker')), findsOneWidget);
-      await tester.drag(
-        find.byKey(const Key('onboarding_age_picker')),
-        const Offset(0, -42),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Done'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('29 years'), findsOneWidget);
-    });
-
-    testWidgets('profile height picker cancel keeps previous value', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        constrainedOnboardingHost(
-          ProfileStep(draft: const OnboardingDraft(), onChanged: (_) {}),
-        ),
-      );
-
-      await tester.tap(find.byKey(const Key('onboarding_height_row')));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('onboarding_height_picker')), findsOneWidget);
-      await tester.drag(
-        find.byKey(const Key('onboarding_height_picker')),
-        const Offset(0, -42),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('170 cm'), findsOneWidget);
-    });
-
-    testWidgets('profile weight row opens picker sheet', (tester) async {
-      await tester.pumpWidget(
-        constrainedOnboardingHost(
-          ProfileStep(draft: const OnboardingDraft(), onChanged: (_) {}),
-        ),
-      );
-
-      await tester.ensureVisible(
-        find.byKey(const Key('onboarding_weight_row')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('onboarding_weight_row')));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('onboarding_weight_picker')), findsOneWidget);
-      expect(find.text('Done'), findsOneWidget);
-      expect(find.text('Cancel'), findsOneWidget);
-    });
-
-    testWidgets('pace target wheel defaults lower for lose weight', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        constrainedOnboardingHost(
-          PaceStep(
-            draft: const OnboardingDraft(
-              goalType: GoalType.loseWeight,
-              measurementSystem: MeasurementSystem.metric,
-              currentWeightKg: 80,
-            ),
-            onChanged: (_) {},
-          ),
-        ),
-      );
-
-      expect(find.text('75 kg'), findsOneWidget);
-    });
-
-    testWidgets('pace target wheel defaults higher for build muscle', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        constrainedOnboardingHost(
-          PaceStep(
-            draft: const OnboardingDraft(
-              goalType: GoalType.buildMuscle,
-              measurementSystem: MeasurementSystem.metric,
-              currentWeightKg: 80,
-            ),
-            onChanged: (_) {},
-          ),
-        ),
-      );
-
-      expect(find.text('85 kg'), findsOneWidget);
-    });
-
-    testWidgets('pace target row opens picker sheet', (tester) async {
-      await tester.pumpWidget(
-        constrainedOnboardingHost(
-          PaceStep(
-            draft: const OnboardingDraft(
-              goalType: GoalType.loseWeight,
-              measurementSystem: MeasurementSystem.metric,
-              currentWeightKg: 80,
-            ),
-            onChanged: (_) {},
-          ),
-        ),
-      );
-
-      await tester.tap(find.byKey(const Key('onboarding_target_weight_row')));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.byKey(const Key('onboarding_target_weight_picker')),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets(
-      'profile step remains safe with validation errors in constrained height',
-      (tester) async {
-        final key = GlobalKey<ProfileStepState>();
-
-        await tester.pumpWidget(
-          constrainedOnboardingHost(
-            ProfileStep(
-              key: key,
-              draft: const OnboardingDraft(),
-              onChanged: (_) {},
-            ),
-          ),
-        );
-
-        expect(key.currentState!.validateAndSubmit(), isFalse);
-        await tester.pump();
-
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'pace step remains safe with validation errors in constrained height',
-      (tester) async {
-        final key = GlobalKey<PaceStepState>();
-
-        await tester.pumpWidget(
-          constrainedOnboardingHost(
-            PaceStep(
-              key: key,
-              draft: const OnboardingDraft(
-                goalType: GoalType.loseWeight,
-                measurementSystem: MeasurementSystem.metric,
-                currentWeightKg: 80,
+        host(
+          Center(
+            child: SizedBox(
+              width: 320,
+              height: 110,
+              child: RulerPicker(
+                value: 70,
+                min: 30,
+                max: 250,
+                step: 0.1,
+                majorEvery: 10,
+                labelFor: (v) => v.toStringAsFixed(0),
+                onChanged: (v) => value = v,
+                semanticLabel: 'Weight',
+                semanticValueFor: (v) => '$v',
               ),
-              onChanged: (_) {},
             ),
           ),
-        );
+        ),
+      );
 
-        expect(key.currentState!.validateAndSubmit(), isFalse);
-        await tester.pump();
+      await tester.tap(find.byType(RulerPicker));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(value, 70.1);
+      await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+      await tester.pump();
+      expect(value, 69.1);
+    });
 
-        expect(tester.takeException(), isNull);
-      },
-    );
+    testWidgets('dragging the ruler settles on a step', (tester) async {
+      final values = <double>[];
+      await tester.pumpWidget(
+        host(
+          Center(
+            child: SizedBox(
+              width: 320,
+              height: 110,
+              child: RulerPicker(
+                value: 70,
+                min: 30,
+                max: 250,
+                step: 0.1,
+                majorEvery: 10,
+                labelFor: (v) => v.toStringAsFixed(0),
+                onChanged: values.add,
+                semanticLabel: 'Weight',
+                semanticValueFor: (v) => '$v',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Dragging the scale left brings higher values under the pointer.
+      await tester.drag(find.byType(RulerPicker), const Offset(-120, 0));
+      await tester.pumpAndSettle();
+      expect(values, isNotEmpty);
+      final last = values.last;
+      expect(last, greaterThan(70));
+      expect((last * 10).roundToDouble(), closeTo(last * 10, 1e-6));
+    });
+
+    testWidgets('the age wheel starts at the given age and stops at 13', (
+      tester,
+    ) async {
+      var age = 28;
+      await tester.pumpWidget(
+        host(AgeStep(age: age, onChanged: (a) => age = a)),
+      );
+      expect(find.text('28'), findsOneWidget);
+
+      await tester.fling(
+        find.byKey(const ValueKey('onboarding-age-wheel')),
+        const Offset(0, 3000),
+        4000,
+      );
+      await tester.pumpAndSettle();
+      expect(age, kMinimumAge);
+    });
+
+    testWidgets('the BMI card labels adults but not teenagers', (
+      tester,
+    ) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      Widget weight(int age) => host(
+        WeightStep(
+          weightKg: 75,
+          heightCm: 170,
+          age: age,
+          system: MeasurementSystem.metric,
+          onSystemChanged: (_) {},
+          onChanged: (_) {},
+        ),
+      );
+
+      await tester.pumpWidget(weight(30));
+      expect(find.text('${l10n.onb_bmi} 26.0'), findsOneWidget);
+      expect(find.text(l10n.onb_bmi_above), findsOneWidget);
+      expect(find.text(l10n.onb_bmi_range('54–71 kg')), findsOneWidget);
+
+      await tester.pumpWidget(weight(15));
+      await tester.pump();
+      expect(find.text(l10n.onb_bmi_under_18), findsOneWidget);
+      expect(find.text(l10n.onb_bmi_teen), findsOneWidget);
+      expect(find.text(l10n.onb_bmi_above), findsNothing);
+    });
+
+    testWidgets('a target under the healthy range says the lowest one', (
+      tester,
+    ) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await tester.pumpWidget(
+        host(
+          TargetStep(
+            goal: GoalType.loseWeight,
+            currentKg: 70,
+            targetKg: 50,
+            heightCm: 170,
+            system: MeasurementSystem.metric,
+            onChanged: (_) {},
+          ),
+        ),
+      );
+      expect(find.text(l10n.onb_target_lowest('54 kg')), findsOneWidget);
+    });
+
+    testWidgets('a teenager losing weight can only pick the gentle pace', (
+      tester,
+    ) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      final picked = <Pace>[];
+      OnboardingRecommendation planFor(Pace pace) =>
+          CalorieOnboardingService().computeBasePlan(
+            OnboardingProfileInput(
+              age: 15,
+              gender: 'male',
+              heightCm: 172,
+              currentWeightKg: 80,
+              goalWeightKg: 72,
+              timelineMonths: 6,
+              activityLevel: 'active',
+              weightUnit: 'kg',
+              heightUnit: 'cm',
+              selectedWeeklyRateKg: OnboardingPaceCalculator.weeklyRateKgFor(
+                GoalType.loseWeight,
+                pace,
+              ),
+            ),
+          );
+
+      await tester.pumpWidget(
+        host(
+          PaceStep(
+            goal: GoalType.loseWeight,
+            age: 15,
+            pace: Pace.gentle,
+            currentKg: 80,
+            targetKg: 72,
+            system: MeasurementSystem.metric,
+            planFor: planFor,
+            onChanged: picked.add,
+            today: DateTime(2026, 9, 1),
+          ),
+        ),
+      );
+
+      expect(find.text(l10n.onb_pace_teen), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('onboarding-pace-faster')));
+      await tester.pump();
+      expect(picked, isEmpty);
+    });
   });
 
   // ===== Rounding Boundary Invariant Tests =====

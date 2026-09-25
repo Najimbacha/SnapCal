@@ -112,13 +112,18 @@ void main() {
     await settle(1500);
     await tapOn(find.byKey(const ValueKey('onboarding-get-started')));
     await tapOn(find.text(l10n.onboarding_goal_lose));
-    await tapOn(next);
+    await tapOn(next); // goal
     await tapOn(find.text(l10n.onboarding_male));
-    await tapOn(next);
+    await tapOn(next); // sex
+    await tapOn(next); // age
+    await tapOn(next); // height
+    await tapOn(next); // weight
+    await tapOn(find.text(l10n.onb_act_light));
+    await tapOn(next); // activity
+    await tapOn(next); // target
     await tapOn(find.text(l10n.onboarding_pace_balanced));
-    await tapOn(next);
-    await tapOn(find.text(l10n.onboarding_activity_light));
-    await tapOn(next);
+    await tapOn(next); // pace: builds the plan
+    await settle(2500); // the short "building your plan" screen
 
     await tapOn(find.byKey(const ValueKey('onboarding-start-plan')));
 

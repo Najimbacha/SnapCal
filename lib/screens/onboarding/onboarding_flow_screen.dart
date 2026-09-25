@@ -1,25 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../l10n/generated/app_localizations.dart';
-import '../../core/theme/app_colors.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../core/theme/theme_colors.dart';
 import '../../data/services/calorie_onboarding_service.dart';
 import '../../data/services/first_meal_guide_service.dart';
-import '../../providers/settings_provider.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers/metrics_provider.dart';
+import '../../providers/settings_provider.dart';
+import 'body_steps.dart';
+import 'building_step.dart';
+import 'choice_steps.dart';
+import 'onboarding_body.dart';
 import 'onboarding_draft.dart';
-import 'onboarding_components.dart';
+import 'onboarding_kit.dart';
 import 'onboarding_pace_calculator.dart';
-import 'onboarding_ui.dart';
-import 'welcome_step.dart';
-import 'goal_step.dart';
-import 'profile_step.dart';
+import 'onboarding_units.dart';
 import 'pace_step.dart';
-import 'activity_step.dart';
 import 'plan_result_step.dart';
+import 'target_step.dart';
+import 'welcome_step.dart';
 
+enum _Step {
+  welcome,
+  goal,
+  sex,
+  age,
+  height,
+  weight,
+  activity,
+  target,
+  pace,
+  building,
+  plan,
+}
+
+const _questions = {
+  _Step.goal,
+  _Step.sex,
+  _Step.age,
+  _Step.height,
+  _Step.weight,
+  _Step.activity,
+  _Step.target,
+  _Step.pace,
+};
+
+/// One question per screen: goal, sex, age, height, weight, activity, then
+/// target weight and pace for the two weight goals. Height comes before
+/// weight so the weight screen's BMI is right.
+///
+/// The screens only collect answers. The plan is built by
+/// [CalorieOnboardingService] and saved by `completeOnboarding`, exactly as
+/// before, so nothing downstream changes.
 class OnboardingFlowScreen extends ConsumerStatefulWidget {
   const OnboardingFlowScreen({super.key});
 
@@ -29,147 +63,192 @@ class OnboardingFlowScreen extends ConsumerStatefulWidget {
 }
 
 class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
-  int _stepIndex = 0;
-  OnboardingDraft _draft = const OnboardingDraft();
-  bool _isCompleting = false;
-  final GlobalKey<ProfileStepState> _profileKey = GlobalKey<ProfileStepState>();
-  final GlobalKey<PaceStepState> _paceKey = GlobalKey<PaceStepState>();
+  _Step _step = _Step.welcome;
+  bool _forward = true;
+  bool _completing = false;
 
-  bool get _needsPace => _draft.needsPaceStep;
+  // Rulers always show a value, so the body answers start filled in.
+  OnboardingDraft _draft = const OnboardingDraft(
+    age: 28,
+    heightCm: 170,
+    currentWeightKg: 75,
+  );
 
-  /// Welcome(0), goal(1), profile(2), pace(3, weight goals only), activity,
-  /// then the plan.
-  int get _lastStep => _needsPace ? 5 : 4;
+  List<_Step> get _steps => [
+    _Step.welcome,
+    _Step.goal,
+    _Step.sex,
+    _Step.age,
+    _Step.height,
+    _Step.weight,
+    _Step.activity,
+    if (_draft.needsPaceStep) ...[_Step.target, _Step.pace],
+    _Step.building,
+    _Step.plan,
+  ];
 
-  int get _activityStep => _needsPace ? 4 : 3;
+  List<_Step> get _questionSteps =>
+      _steps.where(_questions.contains).toList(growable: false);
 
-  bool get _isLastStep => _stepIndex == _lastStep;
+  bool get _isLastQuestion => _questionSteps.last == _step;
 
-  bool get _isQuestion => _stepIndex > 0 && !_isLastStep;
+  int get _age => _draft.age ?? 28;
 
-  /// Questions asked: goal, profile, pace when it applies, activity.
-  int get _questionCount => _needsPace ? 4 : 3;
+  TargetCheck? get _targetCheck {
+    final goal = _draft.goalType;
+    final target = _draft.targetWeightKg;
+    if (goal == null || target == null) return null;
+    return checkTarget(
+      goal: goal,
+      currentKg: _draft.currentWeightKg!,
+      targetKg: target,
+      heightCm: _draft.heightCm!,
+    );
+  }
 
-  bool get _canAdvance {
-    switch (_stepIndex) {
-      case 0:
-        return true;
-      case 1:
-        return _draft.goalType != null;
-      case 2:
-        return true; // validation happens on tap via ProfileStep
-      case 3:
-        if (_needsPace) return true; // validation happens on tap via PaceStep
-        return _draft.activityLevel != null;
-      case 4:
-        return _draft.activityLevel != null;
-      default:
-        return false;
+  bool get _canContinue => switch (_step) {
+    _Step.goal => _draft.goalType != null,
+    _Step.sex => _draft.sex != null,
+    _Step.activity => _draft.activityLevel != null,
+    _Step.target => _targetCheck?.isOk ?? false,
+    _ => true,
+  };
+
+  void _update(OnboardingDraft draft) =>
+      setState(() => _draft = draft.copyWith(clearRecommendation: true));
+
+  void _go(_Step step, {required bool forward}) {
+    _prepare(step);
+    setState(() {
+      _forward = forward;
+      _step = step;
+    });
+  }
+
+  /// Fills in what a screen needs before it is shown.
+  void _prepare(_Step step) {
+    final goal = _draft.goalType;
+    if (step == _Step.target && goal != null) {
+      final check = _targetCheck;
+      final directionWrong =
+          check?.issue == TargetIssue.mustBeLower ||
+          check?.issue == TargetIssue.mustBeHigher;
+      if (_draft.targetWeightKg == null || directionWrong) {
+        final guess = defaultTargetKg(
+          goal: goal,
+          currentKg: _draft.currentWeightKg!,
+          heightCm: _draft.heightCm!,
+        );
+        // A whole number in the unit on screen; up for weight loss, so the
+        // guess never lands under the healthy range.
+        final shown = kgToDisplay(guess, _draft.weightSystem);
+        final whole =
+            goal == GoalType.loseWeight
+                ? shown.ceilToDouble()
+                : shown.roundToDouble();
+        _draft = _draft.copyWith(
+          targetWeightKg: displayToKg(whole, _draft.weightSystem),
+          clearRecommendation: true,
+        );
+      }
+    }
+    if (step == _Step.pace) {
+      final pace =
+          gentlePaceOnly(age: _age, goal: goal)
+              ? Pace.gentle
+              : (_draft.pace ?? Pace.balanced);
+      _draft = _draft.copyWith(pace: pace, clearRecommendation: true);
     }
   }
 
-  void _handleNext() {
-    HapticFeedback.mediumImpact();
+  void _next() {
     FocusScope.of(context).unfocus();
-
-    if (_stepIndex == 2) {
-      if (!_profileKey.currentState!.validateAndSubmit()) {
-        setState(() {});
-        return;
-      }
-      setState(() => _stepIndex++);
+    if (_isLastQuestion) {
+      final plan = _buildPlan();
+      if (plan == null) return;
+      _draft = _draft.copyWith(recommendation: plan);
+      _go(_Step.building, forward: true);
       return;
     }
-
-    if (_stepIndex == 3 && _needsPace) {
-      if (!_paceKey.currentState!.validateAndSubmit()) {
-        setState(() {});
-        return;
-      }
-      setState(() => _stepIndex++);
-      return;
-    }
-
-    if (_stepIndex == _activityStep) {
-      _computeRecommendation();
-      return;
-    }
-
-    setState(() => _stepIndex++);
+    final steps = _steps;
+    final i = steps.indexOf(_step);
+    if (i < steps.length - 1) _go(steps[i + 1], forward: true);
   }
 
-  OnboardingProfileInput _profileInput() {
-    final selectedRate =
-        _needsPace && _draft.pace != null
-            ? OnboardingPaceCalculator.weeklyRateKgFor(
-              _draft.goalType!,
-              _draft.pace!,
-            )
-            : null;
+  void _back() {
+    if (_step == _Step.welcome || _step == _Step.building || _completing) {
+      return;
+    }
+    HapticFeedback.lightImpact();
+    final steps = _steps.where((s) => s != _Step.building).toList();
+    final i = steps.indexOf(_step);
+    if (i > 0) _go(steps[i - 1], forward: false);
+  }
+
+  Pace? get _effectivePace {
+    if (!_draft.needsPaceStep) return null;
+    if (gentlePaceOnly(age: _age, goal: _draft.goalType)) return Pace.gentle;
+    return _draft.pace ?? Pace.balanced;
+  }
+
+  OnboardingProfileInput? _profileInput({Pace? pace}) {
+    final goal = _draft.goalType;
+    final sex = _draft.sex;
+    final activity = _draft.activityLevel;
+    if (goal == null || sex == null || activity == null) return null;
+    final chosen = pace ?? _effectivePace;
+    final rate =
+        chosen == null
+            ? null
+            : OnboardingPaceCalculator.weeklyRateKgFor(goal, chosen);
     return OnboardingProfileInput(
-      age: _draft.age!,
-      gender: _draft.sex!.serviceValue,
+      age: _age,
+      gender: sex.serviceValue,
       heightCm: _draft.heightCm!,
       currentWeightKg: _draft.currentWeightKg!,
-      goalWeightKg: _draft.goalType!.resolveGoalWeightKg(
+      goalWeightKg: goal.resolveGoalWeightKg(
         currentWeightKg: _draft.currentWeightKg!,
         targetWeightKg: _draft.targetWeightKg,
       ),
       timelineMonths:
-          selectedRate != null
+          rate != null && rate > 0
               ? OnboardingPaceCalculator.deriveTimelineMonths(
                 _draft.weightDeltaKg,
-                selectedRate,
+                rate,
               )
               : 1,
-      activityLevel: _draft.activityLevel!.serviceValue,
+      activityLevel: activity.serviceValue,
       weightUnit:
-          _draft.measurementSystem == MeasurementSystem.metric ? 'kg' : 'lb',
+          _draft.weightSystem == MeasurementSystem.imperial ? 'lb' : 'kg',
       heightUnit:
-          _draft.measurementSystem == MeasurementSystem.metric ? 'cm' : 'in',
-      selectedWeeklyRateKg: selectedRate,
+          _draft.heightSystem == MeasurementSystem.imperial ? 'in' : 'cm',
+      selectedWeeklyRateKg: rate,
     );
   }
 
-  /// The plan is worked out on the phone, from the answers.
-  ///
-  /// An AI call used to follow it in the background, for a line of insight
-  /// and a tip that no screen showed. It cost a request against the user's
-  /// daily allowance on their first minute in the app, and when it finished
-  /// after "Adjust" it put the old answers' plan back over the new one.
-  void _computeRecommendation() {
-    if (_draft.age == null ||
-        _draft.sex == null ||
-        _draft.heightCm == null ||
-        _draft.currentWeightKg == null ||
-        _draft.activityLevel == null) {
-      return;
-    }
+  String get _languageCode =>
+      ref.read(settingsProvider).valueOrNull?.languageCode ?? 'en';
 
-    final languageCode =
-        ref.read(settingsProvider).valueOrNull?.languageCode ?? 'en';
-    final recommendation = CalorieOnboardingService().computeBasePlan(
-      _profileInput(),
-      languageCode: languageCode,
+  /// The plan, worked out on the phone from the answers.
+  OnboardingRecommendation? _buildPlan({Pace? pace}) {
+    final input = _profileInput(pace: pace);
+    if (input == null) return null;
+    return CalorieOnboardingService().computeBasePlan(
+      input,
+      languageCode: _languageCode,
     );
-
-    setState(() {
-      _draft = _draft.copyWith(recommendation: recommendation);
-      _stepIndex = _lastStep;
-    });
   }
 
-  Future<void> _handleFinish() async {
-    if (_isCompleting || !_draft.isComplete) return;
-    setState(() => _isCompleting = true);
+  Future<void> _finish() async {
+    if (_completing || !_draft.isComplete) return;
+    setState(() => _completing = true);
     HapticFeedback.heavyImpact();
 
     final settings = ref.read(settingsProvider.notifier);
     final metrics = ref.read(bodyMetricsProvider.notifier);
-
     try {
       await settings.completeOnboarding(
-        profile: _profileInput(),
+        profile: _profileInput()!,
         recommendation: _draft.recommendation!,
       );
       await metrics.logWeight(_draft.currentWeightKg!);
@@ -177,7 +256,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     } catch (e) {
       debugPrint('OnboardingFlow: Error completing onboarding: $e');
       if (!mounted) return;
-      setState(() => _isCompleting = false);
+      setState(() => _completing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.onboarding_finish_error),
@@ -185,268 +264,185 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       );
       return;
     }
-
-    await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return;
     context.go('/');
   }
 
-  void _handleAdjust() {
-    HapticFeedback.lightImpact();
-    setState(() => _stepIndex = _needsPace ? 3 : _activityStep);
+  String _section(AppLocalizations l10n) => switch (_step) {
+    _Step.goal => l10n.onb_section_goal,
+    _Step.target || _Step.pace => l10n.onb_section_target,
+    _Step.plan => l10n.onb_section_plan,
+    _ => l10n.onb_section_about,
+  };
+
+  double get _progress {
+    if (_step == _Step.plan) return 1;
+    final questions = _questionSteps;
+    return (questions.indexOf(_step) + 1) / questions.length;
   }
 
-  void _handleBack() {
-    if (_stepIndex == 0) return;
-    HapticFeedback.lightImpact();
-    setState(() => _stepIndex--);
+  Widget _body() {
+    final d = _draft;
+    return switch (_step) {
+      _Step.welcome => WelcomeStep(onGetStarted: _next),
+      _Step.goal => GoalStep(
+        selected: d.goalType,
+        onChanged:
+            (goal) => _update(
+              goal == d.goalType
+                  ? d
+                  : d.copyWith(
+                    goalType: goal,
+                    clearTargetWeightKg: true,
+                    clearPace: true,
+                  ),
+            ),
+      ),
+      _Step.sex => SexStep(
+        selected: d.sex,
+        onChanged: (sex) => _update(d.copyWith(sex: sex)),
+      ),
+      _Step.age => AgeStep(
+        age: _age,
+        onChanged: (age) => _update(_draft.copyWith(age: age)),
+      ),
+      _Step.height => HeightStep(
+        heightCm: d.heightCm!,
+        system: d.heightSystem,
+        onSystemChanged: (s) => _update(d.copyWith(heightSystem: s)),
+        onChanged: (cm) => _update(_draft.copyWith(heightCm: cm)),
+      ),
+      _Step.weight => WeightStep(
+        weightKg: d.currentWeightKg!,
+        heightCm: d.heightCm!,
+        age: _age,
+        system: d.weightSystem,
+        onSystemChanged: (s) => _update(d.copyWith(weightSystem: s)),
+        onChanged: (kg) => _update(_draft.copyWith(currentWeightKg: kg)),
+      ),
+      _Step.activity => ActivityStep(
+        selected: d.activityLevel,
+        onChanged: (level) => _update(d.copyWith(activityLevel: level)),
+      ),
+      _Step.target => TargetStep(
+        goal: d.goalType!,
+        currentKg: d.currentWeightKg!,
+        targetKg: d.targetWeightKg!,
+        heightCm: d.heightCm!,
+        system: d.weightSystem,
+        onChanged: (kg) => _update(_draft.copyWith(targetWeightKg: kg)),
+      ),
+      _Step.pace => PaceStep(
+        goal: d.goalType!,
+        age: _age,
+        pace: _effectivePace!,
+        currentKg: d.currentWeightKg!,
+        targetKg: d.targetWeightKg!,
+        system: d.weightSystem,
+        planFor: (pace) => _buildPlan(pace: pace)!,
+        onChanged: (pace) => _update(d.copyWith(pace: pace)),
+      ),
+      _Step.building => BuildingStep(
+        onDone: () => _go(_Step.plan, forward: true),
+      ),
+      _Step.plan => PlanResultStep(draft: d),
+    };
   }
 
-  (String, String?)? _headerFor(AppLocalizations l10n) {
-    if (!_isQuestion) return null;
-    if (_stepIndex == 1) {
-      return (l10n.onboarding_goal_title, l10n.onboarding_goal_sub);
+  Widget? _footer(AppLocalizations l10n) {
+    if (_step == _Step.plan) {
+      return OnbCta(
+        key: const ValueKey('onboarding-start-plan'),
+        label: l10n.onboarding_plan_start,
+        loading: _completing,
+        onTap: _completing ? null : _finish,
+      );
     }
-    if (_stepIndex == 2) {
-      return (l10n.onboarding_profile_title, l10n.onboarding_profile_sub);
-    }
-    if (_stepIndex == 3 && _needsPace) {
-      return (l10n.onboarding_pace_title, l10n.onboarding_pace_sub);
-    }
-    return (l10n.onboarding_activity_title, l10n.onboarding_activity_body);
+    if (!_questions.contains(_step)) return null;
+    return OnbCta(
+      key: const ValueKey('onboarding-continue'),
+      label: _isLastQuestion ? l10n.onb_build_plan : l10n.onboarding_continue,
+      onTap: _canContinue ? _next : null,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
-    final header = _headerFor(l10n);
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final showBar = _questions.contains(_step) || _step == _Step.plan;
+    final footer = _footer(l10n);
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    // New screens come in from the side the user is heading.
+    final enterFrom = (_forward ? 1.0 : -1.0) * (rtl ? -1 : 1) * 0.08;
 
-    final content =
-        header == null
-            ? _buildStep()
-            : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 10),
-                OnbHeader(
-                  eyebrow: l10n.onboarding_step_of(_stepIndex, _questionCount),
-                  title: header.$1,
-                  subtitle: header.$2,
-                ),
-                const SizedBox(height: 24),
-                _buildStep(),
-                const SizedBox(height: 16),
-              ],
-            );
-
-    // Android's back button used to leave onboarding altogether -- and with
-    // it every answer given so far. It now steps back, like the arrow.
     return PopScope(
-      canPop: _stepIndex == 0,
+      canPop: _step == _Step.welcome,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _handleBack();
+        if (!didPop) _back();
       },
       child: Scaffold(
-        resizeToAvoidBottomInset: true,
         backgroundColor: context.backgroundColor,
-        body: Stack(
-          children: [
-            const Positioned.fill(child: _OnboardingBackdrop()),
-            SafeArea(
-              child: Column(
-                children: [
-                  if (_isQuestion)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                      child: Row(
-                        children: [
-                          OnbBackButton(onTap: _handleBack),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: OnbProgress(
-                              count: _questionCount,
-                              current: _stepIndex,
-                            ),
-                          ),
-                        ],
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              if (showBar)
+                OnbTopBar(
+                  section: _section(l10n),
+                  progress: _progress,
+                  onBack: _back,
+                ),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: Duration(milliseconds: reduceMotion ? 0 : 260),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  layoutBuilder:
+                      (current, previous) => Stack(
+                        children: [...previous, if (current != null) current],
                       ),
-                    ),
-                  Expanded(
-                    child: StepPageTransition(
-                      child: KeyedSubtree(
-                        key: ValueKey('step$_stepIndex'),
-                        child: _StepScroll(
-                          center: header == null,
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 520),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                ),
-                                child: content,
-                              ),
-                            ),
-                          ),
-                        ),
+                  transitionBuilder: (child, animation) {
+                    final incoming = child.key == ValueKey(_step);
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween(
+                          begin: Offset(incoming ? enterFrom : -enterFrom, 0),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
                       ),
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey(_step),
+                    child: SizedBox.expand(child: _body()),
+                  ),
+                ),
+              ),
+              if (footer != null)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    10,
+                    20,
+                    (bottomInset + 14).clamp(18, 48).toDouble(),
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: footer,
                     ),
                   ),
-                  if (_isQuestion)
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        24,
-                        10,
-                        24,
-                        ((keyboardOpen ? 12 : bottomPadding + 14).clamp(
-                          16,
-                          48,
-                        )).toDouble(),
-                      ),
-                      child: OnbPrimaryButton(
-                        key: const ValueKey('onboarding-continue'),
-                        label: l10n.onboarding_continue,
-                        onTap: _canAdvance ? _handleNext : null,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStep() {
-    switch (_stepIndex) {
-      case 0:
-        return WelcomeStep(onGetStarted: _handleNext);
-      case 1:
-        return GoalStep(
-          selected: _draft.goalType,
-          onChanged:
-              (goal) => setState(
-                () =>
-                    _draft = _draft.copyWith(
-                      goalType: goal,
-                      clearRecommendation: true,
-                    ),
-              ),
-        );
-      case 2:
-        return ProfileStep(
-          key: _profileKey,
-          draft: _draft,
-          onChanged: (draft) => setState(() => _draft = draft),
-        );
-      case 3:
-        if (_needsPace) {
-          return PaceStep(
-            key: _paceKey,
-            draft: _draft,
-            onChanged: (draft) => setState(() => _draft = draft),
-          );
-        }
-        return _activity();
-      case 4:
-        if (_needsPace) return _activity();
-        return _plan();
-      case 5:
-        return _plan();
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-
-  Widget _activity() => ActivityStep(
-    selected: _draft.activityLevel,
-    onChanged:
-        (level) => setState(
-          () =>
-              _draft = _draft.copyWith(
-                activityLevel: level,
-                clearRecommendation: true,
-              ),
-        ),
-  );
-
-  Widget _plan() => PlanResultStep(
-    draft: _draft,
-    onStart: _handleFinish,
-    onAdjust: _handleAdjust,
-    completing: _isCompleting,
-  );
-}
-
-/// Scrolls a step, and centres the ones without a header (welcome, plan)
-/// when they are shorter than the screen.
-class _StepScroll extends StatelessWidget {
-  const _StepScroll({required this.child, required this.center});
-
-  final Widget child;
-  final bool center;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Align(
-              alignment: center ? Alignment.center : Alignment.topCenter,
-              child: child,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _OnboardingBackdrop extends StatelessWidget {
-  const _OnboardingBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = context.isDarkMode;
-
-    Widget glow(Color color, double alpha, double size) => IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              color.withValues(alpha: alpha),
-              color.withValues(alpha: 0),
+                )
+              else
+                SizedBox(height: bottomInset),
             ],
           ),
         ),
       ),
-    );
-
-    return Stack(
-      clipBehavior: Clip.hardEdge,
-      children: [
-        Positioned.fill(child: ColoredBox(color: context.backgroundColor)),
-        Positioned(
-          top: -140,
-          right: -110,
-          child: glow(AppColors.primary, isDark ? 0.22 : 0.16, 360),
-        ),
-        Positioned(
-          top: 280,
-          left: -150,
-          child: glow(AppColors.tertiarySeed, isDark ? 0.10 : 0.07, 320),
-        ),
-      ],
     );
   }
 }

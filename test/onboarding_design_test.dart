@@ -119,45 +119,63 @@ void main() {
 
       final next = find.byKey(const ValueKey('onboarding-continue'));
 
-      await settle(2500);
-      await shot('1-welcome');
+      await settle(1500);
+      await shot('01-welcome');
 
       await tapOn(find.byKey(const ValueKey('onboarding-get-started')));
       await settle();
       await tapOn(find.text(l10n.onboarding_goal_lose));
       await settle(500);
-      await shot('2-goal');
+      await shot('02-goal');
 
       await tapOn(next);
       await settle();
       await tapOn(find.text(l10n.onboarding_male));
       await settle(500);
-      await shot('3-profile');
+      await shot('03-sex');
+
+      await tapOn(next);
+      await settle();
+      await shot('04-age');
+
+      await tapOn(next);
+      await settle();
+      await shot('05-height');
+
+      await tapOn(next);
+      await settle();
+      await shot('06-weight');
+
+      await tapOn(next);
+      await settle();
+      await tapOn(find.text(l10n.onb_act_light));
+      await settle(500);
+      await shot('07-activity');
+
+      await tapOn(next);
+      await settle();
+      await shot('08-target');
 
       await tapOn(next);
       await settle();
       await tapOn(find.text(l10n.onboarding_pace_balanced));
       await settle(500);
-      await shot('4-pace');
+      await shot('09-pace');
+      // The pace chosen is the pace shown, and the pace in the plan.
+      if (locale == 'en') {
+        expect(find.text('0.5 kg a week'), findsOneWidget);
+      }
 
       await tapOn(next);
-      await settle();
-      await tapOn(find.text(l10n.onboarding_activity_light));
-      await settle(500);
-      await shot('5-activity');
-
-      await tapOn(next);
-      await settle(2000);
-      await shot('6-plan');
+      await settle(800);
+      await shot('10-building');
+      await settle(2500);
+      await shot('11-plan');
 
       expect(
         find.byKey(const ValueKey('onboarding-start-plan')),
         findsOneWidget,
       );
-      // The pace chosen on the pace step is the pace in the plan.
-      if (locale == 'en') {
-        expect(find.textContaining('0.5 kg/week'), findsWidgets);
-      }
 
       await tester.pumpWidget(const SizedBox.shrink());
       await settle(2000);

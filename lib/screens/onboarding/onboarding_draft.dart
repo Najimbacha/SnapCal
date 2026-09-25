@@ -52,7 +52,10 @@ extension BiologicalSexAdapter on BiologicalSex {
 @immutable
 class OnboardingDraft {
   final GoalType? goalType;
-  final MeasurementSystem measurementSystem;
+
+  /// Height and weight each keep their own unit: someone can use cm and lb.
+  final MeasurementSystem heightSystem;
+  final MeasurementSystem weightSystem;
   final int? age;
   final BiologicalSex? sex;
   final double? heightCm;
@@ -64,7 +67,8 @@ class OnboardingDraft {
 
   const OnboardingDraft({
     this.goalType,
-    this.measurementSystem = MeasurementSystem.metric,
+    this.heightSystem = MeasurementSystem.metric,
+    this.weightSystem = MeasurementSystem.metric,
     this.age,
     this.sex,
     this.heightCm,
@@ -102,7 +106,8 @@ class OnboardingDraft {
 
   OnboardingDraft copyWith({
     GoalType? goalType,
-    MeasurementSystem? measurementSystem,
+    MeasurementSystem? heightSystem,
+    MeasurementSystem? weightSystem,
     int? age,
     BiologicalSex? sex,
     double? heightCm,
@@ -123,7 +128,8 @@ class OnboardingDraft {
   }) {
     return OnboardingDraft(
       goalType: clearGoalType ? null : (goalType ?? this.goalType),
-      measurementSystem: measurementSystem ?? this.measurementSystem,
+      heightSystem: heightSystem ?? this.heightSystem,
+      weightSystem: weightSystem ?? this.weightSystem,
       age: clearAge ? null : (age ?? this.age),
       sex: clearSex ? null : (sex ?? this.sex),
       heightCm: clearHeightCm ? null : (heightCm ?? this.heightCm),

@@ -51,6 +51,55 @@ void main() {
       expect(result.safetyNote, isNotEmpty);
     });
 
+    // Wazn is for 13 and over. Under 18 a weight-loss plan is held to the
+    // gentle pace whatever was asked for, and counts as a minor's.
+    test('holds a minor to the gentle pace', () {
+      final plan = CalorieOnboardingService().computeBasePlan(
+        const OnboardingProfileInput(
+          age: 15,
+          gender: 'male',
+          heightCm: 172,
+          currentWeightKg: 80,
+          goalWeightKg: 70,
+          timelineMonths: 3,
+          activityLevel: 'active',
+          weightUnit: 'kg',
+          heightUnit: 'cm',
+          selectedWeeklyRateKg: 0.75,
+        ),
+      );
+      expect(plan.isMinor, isTrue);
+      expect(plan.paceAdjusted, isTrue);
+      expect(plan.weeklyRateKg, lessThanOrEqualTo(kMinorMaxWeeklyLossKg + 0.02));
+    });
+
+    test('leaves a minor already at the gentle pace alone', () {
+      final plan = CalorieOnboardingService().computeBasePlan(
+        const OnboardingProfileInput(
+          age: 17,
+          gender: 'female',
+          heightCm: 165,
+          currentWeightKg: 70,
+          goalWeightKg: 64,
+          timelineMonths: 6,
+          activityLevel: 'light_mover',
+          weightUnit: 'kg',
+          heightUnit: 'cm',
+          selectedWeeklyRateKg: 0.25,
+        ),
+      );
+      expect(plan.isMinor, isTrue);
+      expect(plan.paceAdjusted, isFalse);
+      expect(plan.weeklyRateKg, 0.25);
+    });
+
+    test('an 18-year-old is not a minor', () {
+      final plan = CalorieOnboardingService().computeBasePlan(
+        baseInput.copyWithAge(18),
+      );
+      expect(plan.isMinor, isFalse);
+    });
+
     test('caps bulk surplus at five hundred calories', () async {
       final service = CalorieOnboardingService(
         aiBuilder: (p0, p1, p2, p3) async => null,
@@ -107,4 +156,19 @@ void main() {
       expect(result.tip, isNotEmpty);
     });
   });
+}
+
+extension on OnboardingProfileInput {
+  OnboardingProfileInput copyWithAge(int age) => OnboardingProfileInput(
+    age: age,
+    gender: gender,
+    heightCm: heightCm,
+    currentWeightKg: currentWeightKg,
+    goalWeightKg: goalWeightKg,
+    timelineMonths: timelineMonths,
+    activityLevel: activityLevel,
+    weightUnit: weightUnit,
+    heightUnit: heightUnit,
+    selectedWeeklyRateKg: selectedWeeklyRateKg,
+  );
 }
