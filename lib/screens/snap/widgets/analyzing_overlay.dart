@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../widgets/motion/reveal.dart';
 import '../snap_controller.dart';
 
 class AnalyzingOverlay extends StatefulWidget {
@@ -93,9 +94,17 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                           child: Center(
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 520),
-                              child: _PhotoScan(
-                                bytes: widget.controller.capturedImageBytes,
-                                motion: _motion,
+                              // The photo just taken shrinks from the full
+                              // screen into its place here.
+                              child: Reveal(
+                                offset: const Offset(0, -24),
+                                scale: 1.35,
+                                duration: const Duration(milliseconds: 620),
+                                curve: Curves.easeOutCubic,
+                                child: _PhotoScan(
+                                  bytes: widget.controller.capturedImageBytes,
+                                  motion: _motion,
+                                ),
                               ),
                             ),
                           ),
@@ -163,66 +172,71 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 480),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ExcludeSemantics(
-                              child: _ActivityRibbon(motion: _motion),
-                            ),
-                            const SizedBox(height: 22),
-                            Semantics(
-                              liveRegion: true,
-                              child: Text(
-                                l10n.scan_overlay_scanning,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: ink,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.2,
-                                  letterSpacing: 0,
-                                ),
+                        child: Reveal(
+                          delay: const Duration(milliseconds: 350),
+                          offset: const Offset(0, 14),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ExcludeSemantics(
+                                child: _ActivityRibbon(motion: _motion),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            AnimatedSwitcher(
-                              duration: Duration(
-                                milliseconds: _reducedMotion ? 0 : 300,
-                              ),
-                              child: Text(
-                                _longWait
-                                    ? l10n.scan_wait_longer
-                                    : l10n.scan_wait_stay,
-                                key: ValueKey(_longWait),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: muted,
-                                  fontSize: 14,
-                                  height: 1.5,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                            ),
-                            if (_longWait && widget.onManualEntry != null) ...[
-                              const SizedBox(height: 16),
-                              OutlinedButton.icon(
-                                key: const ValueKey('analyzing-manual-entry'),
-                                onPressed: widget.onManualEntry,
-                                icon: const Icon(WaznIcons.edit, size: 16),
-                                label: Text(
-                                  l10n.scan_overlay_manual,
+                              const SizedBox(height: 22),
+                              Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  l10n.scan_overlay_scanning,
                                   textAlign: TextAlign.center,
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: ink,
-                                  minimumSize: const Size(0, 48),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                  style: TextStyle(
+                                    color: ink,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.2,
+                                    letterSpacing: 0,
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 12),
+                              AnimatedSwitcher(
+                                duration: Duration(
+                                  milliseconds: _reducedMotion ? 0 : 300,
+                                ),
+                                child: Text(
+                                  _longWait
+                                      ? l10n.scan_wait_longer
+                                      : l10n.scan_wait_stay,
+                                  key: ValueKey(_longWait),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: muted,
+                                    fontSize: 14,
+                                    height: 1.5,
+                                    letterSpacing: 0,
+                                  ),
+                                ),
+                              ),
+                              if (_longWait &&
+                                  widget.onManualEntry != null) ...[
+                                const SizedBox(height: 16),
+                                OutlinedButton.icon(
+                                  key: const ValueKey('analyzing-manual-entry'),
+                                  onPressed: widget.onManualEntry,
+                                  icon: const Icon(WaznIcons.edit, size: 16),
+                                  label: Text(
+                                    l10n.scan_overlay_manual,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: ink,
+                                    minimumSize: const Size(0, 48),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),

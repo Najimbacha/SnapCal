@@ -589,6 +589,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sync_skip => 'Omitir por ahora';
 
   @override
+  String get splash_calorie_tracker => 'Contador de calorías';
+
+  @override
   String get splash_tagline => 'Captura. Registra. Prospera.';
 
   @override

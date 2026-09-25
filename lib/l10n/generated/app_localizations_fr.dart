@@ -589,6 +589,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sync_skip => 'Ignorer pour l\'instant';
 
   @override
+  String get splash_calorie_tracker => 'Suivi des calories';
+
+  @override
   String get splash_tagline => 'Photographiez. Suivez. Progressez.';
 
   @override

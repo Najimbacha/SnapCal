@@ -12,6 +12,7 @@ import 'package:permission_handler/permission_handler.dart'
     show openAppSettings;
 import 'package:shimmer/shimmer.dart';
 
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/meal.dart';
@@ -31,6 +32,7 @@ import 'widgets/shutter_button.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../data/services/camera_service.dart';
 import '../../router.dart';
+import '../../widgets/motion/reveal.dart';
 
 enum SnapInitialMode { food, barcode }
 
@@ -48,6 +50,9 @@ class SnapScreen extends ConsumerStatefulWidget {
 class _SnapScreenState extends ConsumerState<SnapScreen>
     with WidgetsBindingObserver, RouteAware, TickerProviderStateMixin {
   late final SnapController _controller;
+
+  /// A soft white flash as the photo is taken.
+  late final AnimationController _flash;
   bool _hasInitializedOnce = false;
   bool _isTickerActive = true;
   bool _isSavingResult = false;
@@ -67,6 +72,10 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     _focusAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
+    );
+    _flash = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
     );
     _focusOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
@@ -143,6 +152,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     routeObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     _focusAnimController?.dispose();
+    _flash.dispose();
     _controller.onStateChanged = null;
     _controller.dispose();
     CameraService().stop(); // Stop camera when leaving the screen
@@ -182,6 +192,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   }
 
   void _capture() {
+    if (!AppMotion.reduceMotion(context)) _flash.forward(from: 0);
     _controller.captureAndAnalyze(
       mealProvider: ref.read(mealLogProvider.notifier),
       settingsProvider: _settings,
@@ -580,12 +591,20 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
               _focusAnimController?.reset();
               _focusAnimController?.forward();
             },
-            child:
-                (_controller.cameraController?.value.isInitialized ?? false)
-                    ? _InlineCameraPreview(
-                      controller: _controller.cameraController!,
-                    )
-                    : const _CameraShimmerSkeleton(),
+            // The picture fades in over the placeholder once it is live.
+            child: AnimatedSwitcher(
+              duration: AppMotion.maybeZero(
+                context,
+                const Duration(milliseconds: 450),
+              ),
+              child:
+                  (_controller.cameraController?.value.isInitialized ?? false)
+                      ? _InlineCameraPreview(
+                        key: const ValueKey('preview'),
+                        controller: _controller.cameraController!,
+                      )
+                      : const _CameraShimmerSkeleton(),
+            ),
           );
         },
       );
@@ -697,11 +716,15 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             top: topSafe + 14,
             left: 18,
             right: 18,
-            child: _InlineCameraHeader(
-              isReady: cameraReady,
-              flashMode: _controller.flashMode,
-              onClose: () => context.go('/'),
-              onFlash: _controller.toggleFlash,
+            child: Reveal(
+              delay: const Duration(milliseconds: 150),
+              offset: const Offset(0, -14),
+              child: _InlineCameraHeader(
+                isReady: cameraReady,
+                flashMode: _controller.flashMode,
+                onClose: () => context.go('/'),
+                onFlash: _controller.toggleFlash,
+              ),
             ),
           ),
 
@@ -710,19 +733,24 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
               left: 20,
               right: 20,
               bottom: bottomSafe + 16,
-              child: _InlineCameraControls(
-                isCapturing: _controller.isCapturing,
-                onCapture: cameraReady ? _capture : null,
-                onGallery: _pickFromGallery,
-                onBarcode:
-                    cameraReady
-                        ? () => _controller.isScanningBarcode = true
-                        : null,
-                onManual: _openManualEntry,
-                galleryLabel: l10n.snap_gallery,
-                barcodeLabel: l10n.snap_barcode,
-                manualLabel: l10n.log_add_manually,
-                isCameraReady: cameraReady,
+              child: Reveal(
+                delay: const Duration(milliseconds: 250),
+                offset: const Offset(0, 60),
+                duration: const Duration(milliseconds: 620),
+                child: _InlineCameraControls(
+                  isCapturing: _controller.isCapturing,
+                  onCapture: cameraReady ? _capture : null,
+                  onGallery: _pickFromGallery,
+                  onBarcode:
+                      cameraReady
+                          ? () => _controller.isScanningBarcode = true
+                          : null,
+                  onManual: _openManualEntry,
+                  galleryLabel: l10n.snap_gallery,
+                  barcodeLabel: l10n.snap_barcode,
+                  manualLabel: l10n.log_add_manually,
+                  isCameraReady: cameraReady,
+                ),
               ),
             ),
 
@@ -734,6 +762,23 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
                 onManualEntry: _manualInsteadOfWaiting,
               ),
             ),
+
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _flash,
+                builder: (context, _) {
+                  final t = _flash.value;
+                  if (t == 0 || t == 1) return const SizedBox.shrink();
+                  final opacity = t < .15 ? t / .15 * .85 : (1 - t) / .85 * .85;
+                  return ColoredBox(
+                    key: const ValueKey('snap-flash'),
+                    color: Colors.white.withValues(alpha: opacity),
+                  );
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -741,7 +786,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
 }
 
 class _InlineCameraPreview extends StatelessWidget {
-  const _InlineCameraPreview({required this.controller});
+  const _InlineCameraPreview({super.key, required this.controller});
 
   final CameraController controller;
 
@@ -934,36 +979,40 @@ class _ScanGuide extends StatelessWidget {
                   alignment: Alignment.bottomCenter,
                   child: Transform.translate(
                     offset: const Offset(0, 42),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.32),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.10),
+                    child: Reveal(
+                      delay: const Duration(milliseconds: 650),
+                      offset: const Offset(0, 10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            WaznIcons.ai,
-                            color: Color(0xFF63E6BE),
-                            size: 15,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.32),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.10),
                           ),
-                          const SizedBox(width: 7),
-                          Text(
-                            label,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              WaznIcons.ai,
+                              color: Color(0xFF63E6BE),
+                              size: 15,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 7),
+                            Text(
+                              label,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -992,41 +1041,48 @@ class _ScanCorners extends StatelessWidget {
       required bool flipX,
       required bool flipY,
     }) {
+      // Each corner arrives from nearer the middle and settles outwards.
       return Align(
         alignment: alignment,
-        child: Transform.scale(
-          scaleX: flipX ? -1.0 : 1.0,
-          scaleY: flipY ? -1.0 : 1.0,
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Stack(
-              children: [
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  width: size,
-                  height: width,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(radius),
+        child: Reveal(
+          delay: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 620),
+          offset: Offset(flipX ? -26 : 26, flipY ? -26 : 26),
+          curve: AppMotion.springCurve,
+          child: Transform.scale(
+            scaleX: flipX ? -1.0 : 1.0,
+            scaleY: flipY ? -1.0 : 1.0,
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    width: size,
+                    height: width,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(radius),
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  width: width,
-                  height: size,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(radius),
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    width: width,
+                    height: size,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(radius),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1085,25 +1141,34 @@ class _InlineCameraControls extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: _CameraActionButton(
-                      icon: WaznIcons.image,
-                      label: galleryLabel,
-                      onTap: onGallery,
+                    child: _Pop(
+                      order: 0,
+                      child: _CameraActionButton(
+                        icon: WaznIcons.image,
+                        label: galleryLabel,
+                        onTap: onGallery,
+                      ),
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: ShutterButton(
-                      onPressed: onCapture,
-                      isLoading: isCapturing,
+                    child: _Pop(
+                      order: 1,
+                      child: ShutterButton(
+                        onPressed: onCapture,
+                        isLoading: isCapturing,
+                      ),
                     ),
                   ),
                   Expanded(
-                    child: _CameraActionButton(
-                      icon: WaznIcons.scan,
-                      label: barcodeLabel,
-                      onTap: onBarcode,
-                      enabled: isCameraReady,
+                    child: _Pop(
+                      order: 2,
+                      child: _CameraActionButton(
+                        icon: WaznIcons.scan,
+                        label: barcodeLabel,
+                        onTap: onBarcode,
+                        enabled: isCameraReady,
+                      ),
                     ),
                   ),
                 ],
@@ -1420,4 +1485,21 @@ class _StatePanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A camera control that pops in a beat after the one before.
+class _Pop extends StatelessWidget {
+  const _Pop({required this.order, required this.child});
+
+  final int order;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Reveal(
+    delay: Duration(milliseconds: 480 + 80 * order),
+    offset: Offset.zero,
+    scale: .6,
+    curve: AppMotion.springCurve,
+    child: child,
+  );
 }

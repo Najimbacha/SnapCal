@@ -69,76 +69,113 @@ class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _initFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const MaterialApp(
-            debugShowCheckedModeBanner: false,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: SplashScreen(),
-          );
-        }
-
-        if (snapshot.hasError) {
-          final l10n = _startupLocalizations();
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.darkTheme,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              backgroundColor: const Color(0xFF0F172A),
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        WaznIcons.error,
-                        color: Colors.orangeAccent,
-                        size: 64,
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        l10n.startup_launch_issue,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        snapshot.error is TimeoutException
-                            ? l10n.startup_initialization_slow
-                            : l10n.startup_setup_failed,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white60),
-                      ),
-                      const SizedBox(height: 32),
-                      FilledButton.icon(
-                        onPressed: _runInit,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                        ),
-                        icon: Icon(WaznIcons.refresh, size: 18),
-                        label: Text(l10n.startup_retry_launch),
-                      ),
-                    ],
-                  ),
+    // The loading screen fades and lifts away as the app arrives beneath it,
+    // rather than cutting to it.
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: FutureBuilder(
+        future: _initFuture,
+        builder:
+            (context, snapshot) => AnimatedSwitcher(
+              duration: const Duration(milliseconds: 520),
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: _handOff,
+              child: KeyedSubtree(
+                key: ValueKey(
+                  snapshot.connectionState != ConnectionState.done
+                      ? 'loading'
+                      : snapshot.hasError
+                      ? 'error'
+                      : 'app',
                 ),
+                child: _gate(context, snapshot),
               ),
             ),
-          );
-        }
-
-        return const AppTree();
-      },
+      ),
     );
+  }
+
+  static Widget _handOff(Widget child, Animation<double> animation) {
+    return FadeTransition(
+      opacity: animation,
+      child: AnimatedBuilder(
+        animation: animation,
+        child: child,
+        builder: (context, child) {
+          final leaving = animation.status == AnimationStatus.reverse;
+          if (!leaving) return child!;
+          final t = 1 - animation.value;
+          return Transform.translate(
+            offset: Offset(0, -30 * t),
+            child: Transform.scale(scale: 1 + .05 * t, child: child),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _gate(BuildContext context, AsyncSnapshot<void> snapshot) {
+    if (snapshot.connectionState != ConnectionState.done) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SplashScreen(),
+      );
+    }
+
+    if (snapshot.hasError) {
+      final l10n = _startupLocalizations();
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          backgroundColor: const Color(0xFF0F172A),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(WaznIcons.error, color: Colors.orangeAccent, size: 64),
+                  const SizedBox(height: 24),
+                  Text(
+                    l10n.startup_launch_issue,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    snapshot.error is TimeoutException
+                        ? l10n.startup_initialization_slow
+                        : l10n.startup_setup_failed,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white60),
+                  ),
+                  const SizedBox(height: 32),
+                  FilledButton.icon(
+                    onPressed: _runInit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                    ),
+                    icon: Icon(WaznIcons.refresh, size: 18),
+                    label: Text(l10n.startup_retry_launch),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const AppTree();
   }
 }
 

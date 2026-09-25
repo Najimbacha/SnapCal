@@ -1,4 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -13,6 +15,9 @@ import '../../providers/auth_state_provider.dart';
 import '../../widgets/ui_blocks.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/wazn_icons.dart';
+import 'package:snapcal/core/theme/app_motion.dart';
+import 'package:snapcal/widgets/motion/reveal.dart';
+import 'package:snapcal/widgets/motion/word_rise.dart';
 
 // These were close to the app's colours without being them: #F9F8F5 against
 // the paper the rest of the app uses, a card line two steps off, and two
@@ -51,35 +56,24 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   bool _emailLoading = false;
   bool _showEmailForm = false;
 
-  late final AnimationController _animController;
-  List<Animation<double>>? _staggeredAnims;
+  /// A small shake of the form when the details are wrong.
+  late final AnimationController _shake;
+
+  /// Signed in: the button shows a tick before the screen moves on.
+  bool _emailDone = false;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
+    _shake = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 420),
     );
-    _animController.forward();
-  }
-
-  void _ensureAnims(int count) {
-    if (_staggeredAnims == null || _staggeredAnims!.length < count) {
-      _staggeredAnims = List.generate(count, (index) {
-        final start = (index * 0.08).clamp(0.0, 1.0);
-        final end = (start + 0.4).clamp(0.0, 1.0);
-        return CurvedAnimation(
-          parent: _animController,
-          curve: Interval(start, end, curve: Curves.easeOutCubic),
-        );
-      });
-    }
   }
 
   @override
   void dispose() {
-    _animController.dispose();
+    _shake.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -103,6 +97,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         margin: const EdgeInsets.all(24),
       ),
     );
+  }
+
+  void _shakeForm() {
+    HapticFeedback.mediumImpact();
+    if (!AppMotion.reduceMotion(context)) _shake.forward(from: 0);
   }
 
   void _showAuthError(Object e) {
@@ -150,7 +149,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   Future<void> _handleEmailSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final calm = AppMotion.reduceMotion(context);
+    if (!_formKey.currentState!.validate()) {
+      _shakeForm();
+      return;
+    }
     HapticFeedback.lightImpact();
     setState(() => _emailLoading = true);
     final authNotifier = ref.read(authNotifierProvider.notifier);
@@ -167,8 +170,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         );
       }
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null && !user.isAnonymous) _onAuthSuccess();
+      if (user != null && !user.isAnonymous) {
+        if (!calm) {
+          setState(() => _emailDone = true);
+          await Future<void>.delayed(const Duration(milliseconds: 450));
+        }
+        _onAuthSuccess();
+      }
     } catch (e) {
+      _shakeForm();
       _showAuthError(e);
     } finally {
       if (mounted) setState(() => _emailLoading = false);
@@ -204,8 +214,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
   @override
   Widget build(BuildContext context) {
-    _ensureAnims(10);
-
     // Failsafe Redirection for logged-in users
     final authState = ref.watch(authStateProvider).valueOrNull;
     final isAuthenticated = authState != null;
@@ -235,8 +243,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // ── Logo ──
-                  _StaggeredFade(
-                    animation: _staggeredAnims![0],
+                  Reveal(
+                    offset: Offset.zero,
+                    scale: .3,
+                    curve: AppMotion.springCurve,
+                    duration: const Duration(milliseconds: 700),
                     child: Container(
                       width: 80,
                       height: 80,
@@ -268,26 +279,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                   const SizedBox(height: 32),
 
                   // ── Title ──
-                  _StaggeredFade(
-                    animation: _staggeredAnims![1],
-                    child: Text(
-                      _showEmailForm
-                          ? (_isSignUp
-                              ? l10n.auth_create_account
-                              : l10n.auth_welcome_back_title)
-                          : l10n.auth_lets_dive,
-                      style: AppTypography.displayMedium.copyWith(
-                        color: context.textPrimaryColor,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1.5,
-                        height: 1.1,
-                      ),
-                      textAlign: TextAlign.center,
+                  // The title rises a word at a time, and again when it changes.
+                  WordRise(
+                    _showEmailForm
+                        ? (_isSignUp
+                            ? l10n.auth_create_account
+                            : l10n.auth_welcome_back_title)
+                        : l10n.auth_lets_dive,
+                    key: ValueKey(
+                      _showEmailForm ? (_isSignUp ? 'up' : 'in') : 'start',
+                    ),
+                    delay: const Duration(milliseconds: 220),
+                    textAlign: TextAlign.center,
+                    style: AppTypography.displayMedium.copyWith(
+                      color: context.textPrimaryColor,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1.5,
+                      height: 1.1,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _StaggeredFade(
-                    animation: _staggeredAnims![1],
+                  Reveal(
+                    delay: const Duration(milliseconds: 450),
+                    offset: const Offset(0, 16),
                     child: Text(
                       l10n.auth_intro_body,
                       style: AppTypography.bodyMedium.copyWith(
@@ -306,174 +320,230 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                         _showEmailForm
                             ? Form(
                               key: _formKey,
-                              child: Column(
-                                children: [
-                                  _StaggeredFade(
-                                    animation: _staggeredAnims![5],
-                                    child: _AuthTextField(
-                                      controller: _emailController,
-                                      hint: l10n.auth_hint_email,
-                                      keyboardType: TextInputType.emailAddress,
-                                      validator: (v) => validateEmail(l10n, v),
+                              child: AnimatedBuilder(
+                                animation: _shake,
+                                builder: (context, child) {
+                                  final t = _shake.value;
+                                  return Transform.translate(
+                                    key: const ValueKey('auth-form-shake'),
+                                    offset: Offset(
+                                      math.sin(t * math.pi * 5) * 9 * (1 - t),
+                                      0,
                                     ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _StaggeredFade(
-                                    animation: _staggeredAnims![6],
-                                    child: _AuthTextField(
-                                      controller: _passwordController,
-                                      hint: l10n.auth_hint_password,
-                                      isPassword: true,
-                                      showPassword: _showPassword,
-                                      onTogglePassword:
-                                          () => setState(
-                                            () =>
-                                                _showPassword = !_showPassword,
-                                          ),
-                                      validator:
-                                          (value) => validatePassword(
-                                            l10n,
-                                            value,
-                                            isSignUp: _isSignUp,
-                                          ),
+                                    child: child,
+                                  );
+                                },
+                                child: Column(
+                                  children: [
+                                    Reveal(
+                                      delay: const Duration(milliseconds: 0),
+                                      offset: const Offset(0, 16),
+                                      child: _AuthTextField(
+                                        controller: _emailController,
+                                        hint: l10n.auth_hint_email,
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        validator:
+                                            (v) => validateEmail(l10n, v),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 24),
+                                    const SizedBox(height: 16),
+                                    Reveal(
+                                      delay: const Duration(milliseconds: 60),
+                                      offset: const Offset(0, 16),
+                                      child: _AuthTextField(
+                                        controller: _passwordController,
+                                        hint: l10n.auth_hint_password,
+                                        isPassword: true,
+                                        showPassword: _showPassword,
+                                        onTogglePassword:
+                                            () => setState(
+                                              () =>
+                                                  _showPassword =
+                                                      !_showPassword,
+                                            ),
+                                        validator:
+                                            (value) => validatePassword(
+                                              l10n,
+                                              value,
+                                              isSignUp: _isSignUp,
+                                            ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
 
-                                  if (!_isSignUp)
-                                    Align(
-                                      alignment: AlignmentDirectional.centerEnd,
-                                      child: TextButton(
-                                        onPressed:
-                                            _emailLoading
-                                                ? null
-                                                : _handleForgotPassword,
-                                        child: Text(
-                                          l10n.auth_forgot_password,
-                                          style: AppTypography.bodyMedium
-                                              .copyWith(
-                                                color: _minimalGreenText,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                        ),
-                                      ),
-                                    ),
-                                  _StaggeredFade(
-                                    animation: _staggeredAnims![7],
-                                    child: AppScaleTap(
-                                      onTap:
-                                          _emailLoading
-                                              ? () {}
-                                              : _handleEmailSubmit,
-                                      child: Container(
-                                        height: 54,
-                                        width: double.infinity,
-                                        decoration: BoxDecoration(
-                                          color:
-                                              isDark
-                                                  ? Colors.white.withValues(
-                                                    alpha: 0.10,
-                                                  )
-                                                  : _minimalGreen,
-                                          borderRadius: BorderRadius.circular(
-                                            100,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child:
+                                    if (!_isSignUp)
+                                      Align(
+                                        alignment:
+                                            AlignmentDirectional.centerEnd,
+                                        child: TextButton(
+                                          onPressed:
                                               _emailLoading
-                                                  ? SizedBox(
-                                                    width: 20,
-                                                    height: 20,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          color:
-                                                              isDark
-                                                                  ? Colors.white
-                                                                  : Colors
-                                                                      .white,
-                                                          strokeWidth: 2,
-                                                        ),
-                                                  )
-                                                  : Text(
-                                                    _isSignUp
-                                                        ? l10n
-                                                            .auth_sign_up_short
-                                                        : l10n.auth_log_in,
-                                                    style: AppTypography
-                                                        .titleMedium
-                                                        .copyWith(
-                                                          color:
-                                                              isDark
-                                                                  ? Colors.white
-                                                                  : Colors
-                                                                      .white,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                        ),
-                                                  ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  // ── Footer ──
-                                  _StaggeredFade(
-                                    animation: _staggeredAnims![8],
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          _isSignUp
-                                              ? l10n.auth_have_account
-                                              : l10n.auth_no_account,
-                                          style: AppTypography.bodyMedium
-                                              .copyWith(
-                                                color:
-                                                    context.textSecondaryColor,
-                                              ),
-                                        ),
-                                        AppScaleTap(
-                                          onTap:
-                                              () => setState(
-                                                () => _isSignUp = !_isSignUp,
-                                              ),
+                                                  ? null
+                                                  : _handleForgotPassword,
                                           child: Text(
-                                            _isSignUp
-                                                ? l10n.auth_log_in
-                                                : l10n.auth_sign_up_short,
-                                            style: AppTypography.titleMedium
+                                            l10n.auth_forgot_password,
+                                            style: AppTypography.bodyMedium
                                                 .copyWith(
                                                   color: _minimalGreenText,
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  TextButton(
-                                    onPressed:
-                                        () => setState(
-                                          () => _showEmailForm = false,
+                                      ),
+                                    Reveal(
+                                      delay: const Duration(milliseconds: 120),
+                                      offset: const Offset(0, 16),
+                                      child: AppScaleTap(
+                                        onTap:
+                                            _emailLoading
+                                                ? () {}
+                                                : _handleEmailSubmit,
+                                        child: Container(
+                                          height: 54,
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                isDark
+                                                    ? Colors.white.withValues(
+                                                      alpha: 0.10,
+                                                    )
+                                                    : _minimalGreen,
+                                            borderRadius: BorderRadius.circular(
+                                              100,
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: AnimatedSwitcher(
+                                              duration: AppMotion.maybeZero(
+                                                context,
+                                                const Duration(
+                                                  milliseconds: 300,
+                                                ),
+                                              ),
+                                              transitionBuilder:
+                                                  (child, animation) =>
+                                                      ScaleTransition(
+                                                        scale: CurvedAnimation(
+                                                          parent: animation,
+                                                          curve:
+                                                              AppMotion
+                                                                  .springCurve,
+                                                        ),
+                                                        child: child,
+                                                      ),
+                                              child:
+                                                  _emailDone
+                                                      ? const Icon(
+                                                        WaznIcons.check,
+                                                        key: ValueKey('done'),
+                                                        color: Colors.white,
+                                                        size: 26,
+                                                      )
+                                                      : KeyedSubtree(
+                                                        key: ValueKey(
+                                                          _emailLoading,
+                                                        ),
+                                                        child:
+                                                            _emailLoading
+                                                                ? SizedBox(
+                                                                  width: 20,
+                                                                  height: 20,
+                                                                  child: CircularProgressIndicator(
+                                                                    color:
+                                                                        isDark
+                                                                            ? Colors.white
+                                                                            : Colors.white,
+                                                                    strokeWidth:
+                                                                        2,
+                                                                  ),
+                                                                )
+                                                                : Text(
+                                                                  _isSignUp
+                                                                      ? l10n
+                                                                          .auth_sign_up_short
+                                                                      : l10n
+                                                                          .auth_log_in,
+                                                                  style: AppTypography.titleMedium.copyWith(
+                                                                    color:
+                                                                        isDark
+                                                                            ? Colors.white
+                                                                            : Colors.white,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w700,
+                                                                  ),
+                                                                ),
+                                                      ),
+                                            ),
+                                          ),
                                         ),
-                                    child: Text(
-                                      l10n.auth_back_to_social,
-                                      style: AppTypography.bodyMedium.copyWith(
-                                        color: context.textMutedColor,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 24),
+                                    // ── Footer ──
+                                    Reveal(
+                                      delay: const Duration(milliseconds: 180),
+                                      offset: const Offset(0, 16),
+                                      child: Wrap(
+                                        alignment: WrapAlignment.center,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        children: [
+                                          Text(
+                                            _isSignUp
+                                                ? l10n.auth_have_account
+                                                : l10n.auth_no_account,
+                                            style: AppTypography.bodyMedium
+                                                .copyWith(
+                                                  color:
+                                                      context
+                                                          .textSecondaryColor,
+                                                ),
+                                          ),
+                                          AppScaleTap(
+                                            onTap:
+                                                () => setState(
+                                                  () => _isSignUp = !_isSignUp,
+                                                ),
+                                            child: Text(
+                                              _isSignUp
+                                                  ? l10n.auth_log_in
+                                                  : l10n.auth_sign_up_short,
+                                              style: AppTypography.titleMedium
+                                                  .copyWith(
+                                                    color: _minimalGreenText,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    TextButton(
+                                      onPressed:
+                                          () => setState(
+                                            () => _showEmailForm = false,
+                                          ),
+                                      child: Text(
+                                        l10n.auth_back_to_social,
+                                        style: AppTypography.bodyMedium
+                                            .copyWith(
+                                              color: context.textMutedColor,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             )
                             : Column(
                               children: [
                                 // ── Google (Primary) ──
-                                _StaggeredFade(
-                                  animation: _staggeredAnims![2],
+                                Reveal(
+                                  delay: const Duration(milliseconds: 450),
+                                  offset: const Offset(0, 16),
                                   child: _AuthSocialButton(
                                     label: l10n.sync_google,
                                     backgroundColor:
@@ -498,8 +568,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                 const SizedBox(height: 16),
 
                                 // ── Divider ──
-                                _StaggeredFade(
-                                  animation: _staggeredAnims![3],
+                                Reveal(
+                                  delay: const Duration(milliseconds: 520),
+                                  offset: const Offset(0, 16),
                                   child: Row(
                                     children: [
                                       Expanded(
@@ -539,8 +610,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                 // its own label needed and sat cramped against
                                 // its icon. Three stacked choices also match
                                 // the bottom sheet, which already stacks them.
-                                _StaggeredFade(
-                                  animation: _staggeredAnims![4],
+                                Reveal(
+                                  delay: const Duration(milliseconds: 590),
+                                  offset: const Offset(0, 16),
                                   child: Column(
                                     children: [
                                       SizedBox(
@@ -781,27 +853,6 @@ class _AuthTextField extends StatelessWidget {
             vertical: 16,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _StaggeredFade extends StatelessWidget {
-  final Animation<double> animation;
-  final Widget child;
-
-  const _StaggeredFade({required this.animation, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: animation,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.02),
-          end: Offset.zero,
-        ).animate(animation),
-        child: child,
       ),
     );
   }
