@@ -17,6 +17,7 @@ class Reveal extends StatefulWidget {
     this.offset = const Offset(0, 16),
     this.scale = 1,
     this.curve = AppMotion.entranceCurve,
+    this.animate = true,
   });
 
   final Widget child;
@@ -29,6 +30,10 @@ class Reveal extends StatefulWidget {
   /// The child's starting scale; 1 for none.
   final double scale;
   final Curve curve;
+
+  /// False to start already in place: for something seen before, such as a
+  /// chat message scrolled back into view. Only read when first built.
+  final bool animate;
 
   @override
   State<Reveal> createState() => _RevealState();
@@ -44,6 +49,10 @@ class _RevealState extends State<Reveal>
   @override
   void initState() {
     super.initState();
+    if (!widget.animate) {
+      _controller.value = 1;
+      return;
+    }
     runWhenVisible(() {
       if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
         _controller.value = 1;

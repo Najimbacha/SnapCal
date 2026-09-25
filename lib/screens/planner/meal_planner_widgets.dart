@@ -3,17 +3,19 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/grocery_item.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/meal_plan.dart';
+import '../../widgets/motion/count_up_text.dart';
 
 class PlannerTopBar extends StatelessWidget {
   const PlannerTopBar({
@@ -155,19 +157,49 @@ class PlannerTabs extends StatelessWidget {
           color: context.cardSoftColor,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            _TabButton(
-              label: l10n.planner_plan_tab,
-              icon: WaznIcons.calendar,
-              selected: !grocerySelected,
-              onTap: onPlan,
+            // One card slides between the two halves rather than each half
+            // lighting up on its own.
+            AnimatedAlign(
+              duration: AppMotion.maybeZero(
+                context,
+                const Duration(milliseconds: 380),
+              ),
+              curve: AppMotion.springCurve,
+              alignment:
+                  grocerySelected
+                      ? AlignmentDirectional.centerEnd
+                      : AlignmentDirectional.centerStart,
+              child: FractionallySizedBox(
+                key: const ValueKey('planner-tab-thumb'),
+                widthFactor: .5,
+                heightFactor: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: context.cardColor,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: context.cardBorderColor),
+                  ),
+                ),
+              ),
             ),
-            _TabButton(
-              label: l10n.planner_tab_grocery,
-              icon: WaznIcons.grocery,
-              selected: grocerySelected,
-              onTap: onGrocery,
+            Row(
+              children: [
+                _TabButton(
+                  label: l10n.planner_plan_tab,
+                  icon: WaznIcons.calendar,
+                  selected: !grocerySelected,
+                  onTap: onPlan,
+                ),
+                _TabButton(
+                  label: l10n.planner_tab_grocery,
+                  icon: WaznIcons.grocery,
+                  selected: grocerySelected,
+                  onTap: onGrocery,
+                ),
+              ],
             ),
           ],
         ),
@@ -356,11 +388,15 @@ class PlannerDayHeading extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 3),
-              Text(
-                l10n.planner_meals_kcal_summary(
-                  mealCount,
-                  NumberFormat.decimalPattern(l10n.localeName).format(calories),
-                ),
+              CountUpText(
+                value: calories,
+                format:
+                    (value) => l10n.planner_meals_kcal_summary(
+                      mealCount,
+                      NumberFormat.decimalPattern(
+                        l10n.localeName,
+                      ).format(value),
+                    ),
                 style: AppTypography.bodySmall.copyWith(
                   color: context.textMutedColor,
                 ),
@@ -416,9 +452,8 @@ class PlannerNutritionBand extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
+            child: _GlidingProgress(
               value: progress,
-              minHeight: 5,
               backgroundColor: context.cardSoftColor,
               color: context.primaryColor,
             ),
@@ -426,18 +461,25 @@ class PlannerNutritionBand extends StatelessWidget {
           const SizedBox(height: 13),
           Row(
             children: [
-              _MacroValue(
-                label: 'kcal',
-                value: '$calories',
-                goal: '$calorieGoal',
-              ),
+              _MacroValue(label: 'kcal', value: calories, goal: '$calorieGoal'),
               _MacroValue(
                 label: 'P',
-                value: '${protein}g',
+                value: protein,
+                unit: 'g',
                 goal: '${proteinGoal}g',
               ),
-              _MacroValue(label: 'C', value: '${carbs}g', goal: '${carbGoal}g'),
-              _MacroValue(label: 'F', value: '${fat}g', goal: '${fatGoal}g'),
+              _MacroValue(
+                label: 'C',
+                value: carbs,
+                unit: 'g',
+                goal: '${carbGoal}g',
+              ),
+              _MacroValue(
+                label: 'F',
+                value: fat,
+                unit: 'g',
+                goal: '${fatGoal}g',
+              ),
             ],
           ),
         ],
@@ -502,7 +544,46 @@ class PlannerMealRow extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              PlannerMealImage(meal: meal, width: 64, height: 64),
+              SizedBox(
+                width: 64,
+                height: 64,
+                child: Stack(
+                  children: [
+                    PlannerMealImage(meal: meal, width: 64, height: 64),
+                    // A tick settles onto the photo once the meal is logged.
+                    PositionedDirectional(
+                      end: 4,
+                      bottom: 4,
+                      child: AnimatedScale(
+                        key: const ValueKey('planner-logged-badge'),
+                        scale: isLogged ? 1 : 0,
+                        duration: AppMotion.maybeZero(
+                          context,
+                          const Duration(milliseconds: 420),
+                        ),
+                        curve: isLogged ? AppMotion.springCurve : Curves.easeIn,
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: context.primaryColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: context.cardColor,
+                              width: 2,
+                            ),
+                          ),
+                          child: const Icon(
+                            WaznIcons.check,
+                            size: 11,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -595,13 +676,21 @@ class PlannerMealRow extends StatelessWidget {
                         height: 40,
                       ),
                       padding: const EdgeInsets.all(8),
-                      icon: Icon(
-                        isLogged ? WaznIcons.success : WaznIcons.plus,
-                        size: 19,
-                        color:
-                            isLogged
-                                ? context.primaryColor
-                                : context.textPrimaryColor,
+                      icon: AnimatedSwitcher(
+                        duration: AppMotion.maybeZero(
+                          context,
+                          const Duration(milliseconds: 420),
+                        ),
+                        transitionBuilder: _pop,
+                        child: Icon(
+                          isLogged ? WaznIcons.success : WaznIcons.plus,
+                          key: ValueKey(isLogged),
+                          size: 19,
+                          color:
+                              isLogged
+                                  ? context.primaryColor
+                                  : context.textPrimaryColor,
+                        ),
                       ),
                     ),
                     IconButton(
@@ -931,14 +1020,29 @@ class _PlannerGeneratingScreenState extends State<PlannerGeneratingScreen> {
                             assetOverride:
                                 'assets/images/paywall/onboarding_grilled_chicken_bowl.png',
                           ),
-                          SizedBox(
-                            width: 142,
-                            height: 142,
-                            child: CircularProgressIndicator(
-                              value: (_stage + 1) / 4,
-                              strokeWidth: 4,
-                              backgroundColor: context.cardBorderColor,
+                          // The ring keeps creeping forward through each
+                          // stage instead of jumping a quarter at a time.
+                          TweenAnimationBuilder<double>(
+                            duration: AppMotion.maybeZero(
+                              context,
+                              const Duration(milliseconds: 3600),
                             ),
+                            curve: Curves.easeOutCubic,
+                            tween: Tween(begin: 0, end: (_stage + 1) / 4),
+                            builder:
+                                (context, value, _) => SizedBox(
+                                  key: const ValueKey(
+                                    'planner-generating-ring',
+                                  ),
+                                  width: 142,
+                                  height: 142,
+                                  child: CircularProgressIndicator(
+                                    value: value,
+                                    strokeWidth: 4,
+                                    strokeCap: StrokeCap.round,
+                                    backgroundColor: context.cardBorderColor,
+                                  ),
+                                ),
                           ),
                         ],
                       ),
@@ -963,26 +1067,39 @@ class _PlannerGeneratingScreenState extends State<PlannerGeneratingScreen> {
                           SizedBox(
                             width: 24,
                             height: 24,
-                            child:
-                                active
-                                    ? const CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                    )
-                                    : Icon(
-                                      complete
-                                          ? WaznIcons.success
-                                          : WaznIcons.circle,
-                                      size: 21,
-                                      color:
-                                          complete
-                                              ? context.primaryColor
-                                              : context.textMutedColor,
-                                    ),
+                            // Each step's tick pops in as it finishes.
+                            child: AnimatedSwitcher(
+                              duration: AppMotion.maybeZero(
+                                context,
+                                const Duration(milliseconds: 420),
+                              ),
+                              transitionBuilder: _pop,
+                              child:
+                                  active
+                                      ? const CircularProgressIndicator(
+                                        key: ValueKey('active'),
+                                        strokeWidth: 2.5,
+                                      )
+                                      : Icon(
+                                        complete
+                                            ? WaznIcons.success
+                                            : WaznIcons.circle,
+                                        key: ValueKey(complete),
+                                        size: 21,
+                                        color:
+                                            complete
+                                                ? context.primaryColor
+                                                : context.textMutedColor,
+                                      ),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              steps[index],
+                            child: AnimatedDefaultTextStyle(
+                              duration: AppMotion.maybeZero(
+                                context,
+                                AppMotion.expansion,
+                              ),
                               style: AppTypography.bodyMedium.copyWith(
                                 color:
                                     active || complete
@@ -991,6 +1108,7 @@ class _PlannerGeneratingScreenState extends State<PlannerGeneratingScreen> {
                                 fontWeight:
                                     active ? FontWeight.w800 : FontWeight.w500,
                               ),
+                              child: Text(steps[index]),
                             ),
                           ),
                         ],
@@ -1097,8 +1215,12 @@ class GroceryPlannerView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    l10n.planner_grocery_progress(checked, items.length),
+                  CountUpText(
+                    value: checked,
+                    duration: const Duration(milliseconds: 400),
+                    format:
+                        (value) =>
+                            l10n.planner_grocery_progress(value, items.length),
                     style: AppTypography.bodySmall.copyWith(
                       color: context.textMutedColor,
                     ),
@@ -1116,9 +1238,8 @@ class GroceryPlannerView extends StatelessWidget {
         const SizedBox(height: 12),
         ClipRRect(
           borderRadius: BorderRadius.circular(2),
-          child: LinearProgressIndicator(
+          child: _GlidingProgress(
             value: items.isEmpty ? 0 : checked / items.length,
-            minHeight: 5,
             backgroundColor: context.cardSoftColor,
           ),
         ),
@@ -1372,22 +1493,25 @@ class _PlannerMealDetailScreenState extends State<PlannerMealDetailScreen> {
               children: [
                 _MacroValue(
                   label: 'kcal',
-                  value: '${meal.calories * _servings}',
+                  value: meal.calories * _servings,
                   goal: '',
                 ),
                 _MacroValue(
                   label: 'P',
-                  value: '${meal.macros.protein * _servings}g',
+                  value: meal.macros.protein * _servings,
+                  unit: 'g',
                   goal: '',
                 ),
                 _MacroValue(
                   label: 'C',
-                  value: '${meal.macros.carbs * _servings}g',
+                  value: meal.macros.carbs * _servings,
+                  unit: 'g',
                   goal: '',
                 ),
                 _MacroValue(
                   label: 'F',
-                  value: '${meal.macros.fat * _servings}g',
+                  value: meal.macros.fat * _servings,
+                  unit: 'g',
                   goal: '',
                 ),
               ],
@@ -1758,25 +1882,21 @@ class _TabButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(6),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          decoration: BoxDecoration(
-            color: selected ? context.cardColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            border:
-                selected ? Border.all(color: context.cardBorderColor) : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: selected ? context.primaryColor : context.textMutedColor,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TweenAnimationBuilder<Color?>(
+              duration: AppMotion.maybeZero(context, AppMotion.standard),
+              tween: ColorTween(
+                end: selected ? context.primaryColor : context.textMutedColor,
               ),
-              const SizedBox(width: 7),
-              Text(
-                label,
+              builder:
+                  (context, color, _) => Icon(icon, size: 16, color: color),
+            ),
+            const SizedBox(width: 7),
+            Flexible(
+              child: AnimatedDefaultTextStyle(
+                duration: AppMotion.maybeZero(context, AppMotion.standard),
                 style: AppTypography.labelMedium.copyWith(
                   color:
                       selected
@@ -1784,9 +1904,14 @@ class _TabButton extends StatelessWidget {
                           : context.textMutedColor,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                 ),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1839,14 +1964,55 @@ class _MenuLabel extends StatelessWidget {
   }
 }
 
+/// Pops a new icon in with a little overshoot while the old one shrinks away.
+Widget _pop(Widget child, Animation<double> animation) => ScaleTransition(
+  scale: CurvedAnimation(
+    parent: animation,
+    curve: AppMotion.springCurve,
+    reverseCurve: Curves.easeIn,
+  ),
+  child: FadeTransition(opacity: animation, child: child),
+);
+
+/// A thin progress bar that glides to a new value instead of jumping, so a
+/// swapped or logged meal visibly moves the day's total.
+class _GlidingProgress extends StatelessWidget {
+  const _GlidingProgress({
+    required this.value,
+    required this.backgroundColor,
+    this.color,
+  });
+  final double value;
+  final Color backgroundColor;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      duration: AppMotion.maybeZero(context, AppMotion.count),
+      curve: Curves.easeOutCubic,
+      tween: Tween(end: value),
+      builder:
+          (context, value, _) => LinearProgressIndicator(
+            value: value,
+            minHeight: 5,
+            backgroundColor: backgroundColor,
+            color: color,
+          ),
+    );
+  }
+}
+
 class _MacroValue extends StatelessWidget {
   const _MacroValue({
     required this.label,
     required this.value,
     required this.goal,
+    this.unit = '',
   });
   final String label;
-  final String value;
+  final int value;
+  final String unit;
   final String goal;
 
   @override
@@ -1854,8 +2020,9 @@ class _MacroValue extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Text(
-            value,
+          CountUpText(
+            value: value,
+            format: (value) => '$value$unit',
             maxLines: 1,
             style: AppTypography.titleSmall.copyWith(
               color: context.textPrimaryColor,
@@ -1937,35 +2104,177 @@ class _GroceryGroup extends StatelessWidget {
             ),
             child: Column(
               children:
-                  items.map((item) {
-                    return CheckboxListTile(
-                      value: item.isChecked,
-                      onChanged: (_) => onToggle(item.id),
-                      dense: true,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      title: Text(
-                        item.name,
-                        style: AppTypography.bodyMedium.copyWith(
-                          decoration:
-                              item.isChecked
-                                  ? TextDecoration.lineThrough
-                                  : null,
+                  items
+                      .map(
+                        (item) => _GroceryRow(
+                          key: ValueKey(item.id),
+                          item: item,
+                          onToggle: () => onToggle(item.id),
                         ),
-                      ),
-                      secondary: Text(
-                        item.amount,
-                        style: AppTypography.labelMedium.copyWith(
-                          color: context.textMutedColor,
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                      )
+                      .toList(),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+/// A shopping list line: ticking it bounces the box, draws the tick in and
+/// strikes the name through from start to end.
+class _GroceryRow extends StatelessWidget {
+  const _GroceryRow({super.key, required this.item, required this.onToggle});
+  final GroceryItem item;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = context.primaryColor;
+    final ink = context.textPrimaryColor;
+    final muted = context.textMutedColor;
+    final border = context.cardBorderColor;
+    return MergeSemantics(
+      child: Semantics(
+        checked: item.isChecked,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onToggle();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: TweenAnimationBuilder<double>(
+              duration: AppMotion.maybeZero(
+                context,
+                const Duration(milliseconds: 420),
+              ),
+              tween: Tween(end: item.isChecked ? 1 : 0),
+              builder: (context, t, _) {
+                // Squeezes in a touch, then springs back slightly past size.
+                final scale =
+                    t < .3
+                        ? 1 - .2 * (t / .3)
+                        : .8 +
+                            .2 * AppMotion.springCurve.transform((t - .3) / .7);
+                final fill = Curves.easeOut.transform((t / .4).clamp(0.0, 1.0));
+                final tick = Curves.easeOutCubic.transform(
+                  ((t - .2) / .8).clamp(0.0, 1.0),
+                );
+                final strike = Curves.easeInOutCubic.transform(t);
+                return Row(
+                  children: [
+                    Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        key: const ValueKey('grocery-box'),
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: Color.lerp(Colors.transparent, primary, fill),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: Color.lerp(border, primary, fill)!,
+                            width: 1.6,
+                          ),
+                        ),
+                        child: CustomPaint(painter: _TickPainter(tick)),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: CustomPaint(
+                          foregroundPainter: _StrikePainter(
+                            progress: strike,
+                            color: muted,
+                            direction: Directionality.of(context),
+                          ),
+                          child: Text(
+                            item.name,
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: Color.lerp(ink, muted, strike),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      item.amount,
+                      style: AppTypography.labelMedium.copyWith(color: muted),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TickPainter extends CustomPainter {
+  const _TickPainter(this.progress);
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final path =
+        Path()
+          ..moveTo(size.width * .26, size.height * .52)
+          ..lineTo(size.width * .43, size.height * .68)
+          ..lineTo(size.width * .75, size.height * .34);
+    final metric = path.computeMetrics().first;
+    canvas.drawPath(
+      metric.extractPath(0, metric.length * progress),
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TickPainter old) => old.progress != progress;
+}
+
+class _StrikePainter extends CustomPainter {
+  const _StrikePainter({
+    required this.progress,
+    required this.color,
+    required this.direction,
+  });
+  final double progress;
+  final Color color;
+  final TextDirection direction;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final y = size.height / 2;
+    final length = size.width * progress;
+    final rtl = direction == TextDirection.rtl;
+    canvas.drawLine(
+      Offset(rtl ? size.width : 0, y),
+      Offset(rtl ? size.width - length : length, y),
+      Paint()
+        ..color = color
+        ..strokeWidth = 1.4
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_StrikePainter old) =>
+      old.progress != progress ||
+      old.color != color ||
+      old.direction != direction;
 }
 
 class _Stepper extends StatelessWidget {

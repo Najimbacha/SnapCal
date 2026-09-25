@@ -2090,6 +2090,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get measurement_imperial => 'Imperial';
 
   @override
+  String get coach_thinking => 'Thinking…';
+
+  @override
   String get coach_empty_title => 'What can I help with?';
 
   @override
