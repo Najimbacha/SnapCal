@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:snapcal/data/models/meal.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/screens/home/widgets/home_nutrition_dashboard.dart';
+import 'package:snapcal/screens/log/widgets/horizontal_day_calendar.dart';
+import 'package:snapcal/widgets/motion/delta_bubble.dart';
 import 'package:snapcal/widgets/motion/count_up_text.dart';
 import 'package:snapcal/widgets/motion/reveal.dart';
 import 'package:snapcal/widgets/motion/rolling_number.dart';
@@ -228,6 +230,77 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Protein goal reached today'), findsNothing);
     });
+  });
+
+  testWidgets('the day highlight slides to the day picked', (tester) async {
+    final today = DateTime.now();
+    String day(int back) {
+      final d = DateTime(today.year, today.month, today.day - back);
+      return '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+    }
+
+    final summaries = [
+      for (var i = 6; i >= 0; i--)
+        DailySummary(
+          dateString: day(i),
+          calories: 1800,
+          calorieGoal: 2000,
+          protein: 0,
+          proteinGoal: 120,
+          carbs: 0,
+          carbGoal: 220,
+          fat: 0,
+          fatGoal: 70,
+          waterMl: 0,
+          waterGoal: 2000,
+          steps: 0,
+          stepGoal: 8000,
+          mealCount: 1,
+        ),
+    ];
+    Widget strip(String selected) => _app(
+      SizedBox(
+        width: 360,
+        child: HorizontalDayCalendar(
+          selectedDate: selected,
+          dailySummaries: summaries,
+          onDateSelected: (_) {},
+        ),
+      ),
+    );
+    double highlightX() =>
+        tester.getTopLeft(find.byKey(const ValueKey('day-highlight'))).dx;
+
+    await tester.pumpWidget(strip(day(0)));
+    await tester.pumpAndSettle();
+    final start = highlightX();
+
+    await tester.pumpWidget(strip(day(3)));
+    await tester.pump(const Duration(milliseconds: 150));
+    final midway = highlightX();
+    await tester.pumpAndSettle();
+    final end = highlightX();
+    expect(end, closeTo(start - 3 * 50, 1));
+    // It travelled there rather than jumping.
+    expect(midway, lessThan(start));
+    expect(midway, greaterThan(end));
+  });
+
+  testWidgets('DeltaBubble floats a signed change and clears', (tester) async {
+    await tester.pumpWidget(_app(const DeltaBubble(value: 1220)));
+    await tester.pumpWidget(_app(const DeltaBubble(value: 610)));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('\u2212610'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('\u2212610'), findsNothing);
+
+    // A change that is not an add or removal passes quietly.
+    await tester.pumpWidget(
+      _app(const DeltaBubble(value: 1980, announce: false)),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.textContaining('1,370'), findsNothing);
   });
 }
 

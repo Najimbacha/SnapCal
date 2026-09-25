@@ -10,7 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/models/meal.dart';
 
-class MealListTile extends StatelessWidget {
+class MealListTile extends StatefulWidget {
   const MealListTile({
     super.key,
     required this.meal,
@@ -29,20 +29,62 @@ class MealListTile extends StatelessWidget {
   final bool showDivider;
 
   @override
+  State<MealListTile> createState() => _MealListTileState();
+}
+
+class _MealListTileState extends State<MealListTile> {
+  /// How far the row has been swiped, 0 to 1 of the way to deleting.
+  final _swipe = ValueNotifier<double>(0);
+  bool _armed = false;
+
+  Meal get meal => widget.meal;
+
+  @override
+  void dispose() {
+    _swipe.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final onTap = widget.onTap;
+    final showDivider = widget.showDivider;
     return Dismissible(
       key: Key(meal.id),
       direction: DismissDirection.endToStart,
+      onUpdate: (details) {
+        _swipe.value = (details.progress / 0.4).clamp(0.0, 1.0);
+        // A tick as the swipe goes far enough to delete, and back.
+        if (details.reached != _armed) {
+          _armed = details.reached;
+          HapticFeedback.selectionClick();
+        }
+      },
       onDismissed: (_) {
         HapticFeedback.mediumImpact();
-        onDelete();
+        widget.onDelete();
       },
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsetsDirectional.only(end: 18),
-        color: AppColors.error.withValues(alpha: 0.08),
-        child: const Icon(WaznIcons.delete, color: AppColors.error, size: 20),
+      // The bin grows and the red deepens as the row is pulled away.
+      background: ValueListenableBuilder<double>(
+        valueListenable: _swipe,
+        builder:
+            (context, pull, _) => Container(
+              alignment: AlignmentDirectional.centerEnd,
+              padding: const EdgeInsetsDirectional.only(end: 18),
+              color: AppColors.error.withValues(alpha: 0.08 + 0.12 * pull),
+              child: Transform.scale(
+                scale: 0.7 + 0.5 * pull,
+                child: Transform.rotate(
+                  angle: pull >= 1 ? -0.12 : 0,
+                  child: const Icon(
+                    WaznIcons.delete,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -133,8 +175,9 @@ class MealListTile extends StatelessWidget {
   }
 
   String get _detailText {
+    final isPro = widget.isPro;
     final details = <String>[];
-    if (showTime) details.add(meal.formattedTime);
+    if (widget.showTime) details.add(meal.formattedTime);
     final portion = meal.portion?.trim();
     if (portion != null && portion.isNotEmpty) details.add(portion);
     if (details.isEmpty && isPro) {
