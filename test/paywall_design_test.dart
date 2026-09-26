@@ -118,10 +118,8 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
       if (capture) {
-        // Past the rest point (0.92 of an 8.2s reveal), so the captured frame
-        // is the one people actually sit in front of: every label placed and
-        // the total counted, rather than a third of the way through.
-        await tester.pump(const Duration(seconds: 8));
+        // Past the opening and the first flip to Pro.
+        await tester.pump(const Duration(seconds: 3));
         await tester.runAsync(() async {
           final image = await (key.currentContext!.findRenderObject()
                   as RenderRepaintBoundary)
@@ -134,62 +132,21 @@ void main() {
         });
       }
       if (scenario.$5 == 'en') {
-        // The scan demo now runs full width at the top of the screen instead
-        // of in a compact box beside the macro bars. Same widget, same job --
-        // the key is what changed.
-        final hero = find.byKey(const ValueKey('paywall-scan-hero'));
-        expect(hero, findsOneWidget);
-        // The scan plays once over a single still: the photo never cycles.
-        final settledAsset =
-            tester
-                .widgetList<Image>(find.byType(Image))
-                .map((i) => i.image)
-                .toList();
-        await tester.pump(const Duration(seconds: 9));
+        // One card compares Free and Pro, and moves to Pro by itself once.
+        expect(find.byKey(const ValueKey('paywall-compare')), findsOneWidget);
+        expect(find.text('Wazn Pro'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 2));
         await tester.pump(const Duration(seconds: 1));
-        expect(
-          tester
-              .widgetList<Image>(find.byType(Image))
-              .map((i) => i.image)
-              .toList(),
-          settledAsset,
-          reason: 'the scan plays once over a single still, not a carousel',
-        );
-        // Once it has settled, the reveal names the food on the plate and
-        // reports the calories.
-        expect(
-          find.descendant(of: hero, matching: find.text('Grilled Chicken')),
-          findsOneWidget,
-        );
-        expect(
-          find.descendant(of: hero, matching: find.textContaining('590')),
-          findsWidgets,
-          reason: 'the scan should report the meal calories in the hero',
-        );
-        final scrollableState = tester.state<ScrollableState>(
-          find.byType(Scrollable).first,
-        );
-        scrollableState.position.jumpTo(0);
+        expect(find.text('Full week'), findsOneWidget);
+        expect(find.text('1 day'), findsNothing);
+
+        // Both plans are in view beside the button, with no scrolling.
+        await tester.ensureVisible(find.text('Monthly'));
         await tester.pump();
-        await tester.scrollUntilVisible(
-          find.text('Monthly'),
-          120,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await Scrollable.ensureVisible(
-          tester.element(find.text('Monthly')),
-          alignment: 0.15,
-        );
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 400));
         await tester.tap(find.text('Monthly'));
-        await tester.pump(const Duration(milliseconds: 300));
-        scrollableState.position.jumpTo(
-          scrollableState.position.maxScrollExtent,
-        );
-        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
         expect(find.textContaining('Start Monthly'), findsOneWidget);
-        expect(find.textContaining('Start Free Trial'), findsNothing);
+        expect(find.textContaining('free trial'), findsNothing);
         expect(tester.takeException(), isNull);
       }
       await tester.pumpWidget(const SizedBox());

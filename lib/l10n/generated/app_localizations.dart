@@ -9335,6 +9335,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Under 18? Check with a parent or doctor.'**
   String get onb_plan_teen;
+
+  /// No description provided for @paywall_compare_free.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get paywall_compare_free;
+
+  /// No description provided for @paywall_compare_pro.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro'**
+  String get paywall_compare_pro;
+
+  /// No description provided for @paywall_row_scans.
+  ///
+  /// In en, this message translates to:
+  /// **'Food scans'**
+  String get paywall_row_scans;
+
+  /// No description provided for @paywall_row_meal_plans.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal plans'**
+  String get paywall_row_meal_plans;
+
+  /// No description provided for @paywall_row_coach.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Coach'**
+  String get paywall_row_coach;
+
+  /// No description provided for @paywall_row_photos.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress photos'**
+  String get paywall_row_photos;
+
+  /// No description provided for @paywall_row_history.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get paywall_row_history;
+
+  /// No description provided for @paywall_free_scans_month.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} a month'**
+  String paywall_free_scans_month(String count);
+
+  /// No description provided for @paywall_free_scans_left.
+  ///
+  /// In en, this message translates to:
+  /// **'{left} of {limit} left'**
+  String paywall_free_scans_left(String left, String limit);
+
+  /// No description provided for @paywall_free_meal_plan.
+  ///
+  /// In en, this message translates to:
+  /// **'1 day'**
+  String get paywall_free_meal_plan;
+
+  /// No description provided for @paywall_pro_meal_plan.
+  ///
+  /// In en, this message translates to:
+  /// **'Full week'**
+  String get paywall_pro_meal_plan;
+
+  /// No description provided for @paywall_free_coach.
+  ///
+  /// In en, this message translates to:
+  /// **'1 question a day'**
+  String get paywall_free_coach;
+
+  /// No description provided for @paywall_pro_coach.
+  ///
+  /// In en, this message translates to:
+  /// **'Any time'**
+  String get paywall_pro_coach;
+
+  /// No description provided for @paywall_free_photos.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} check-ins'**
+  String paywall_free_photos(String count);
+
+  /// No description provided for @paywall_free_history.
+  ///
+  /// In en, this message translates to:
+  /// **'Last {days} days'**
+  String paywall_free_history(String days);
+
+  /// No description provided for @paywall_pro_history.
+  ///
+  /// In en, this message translates to:
+  /// **'All of it'**
+  String get paywall_pro_history;
+
+  /// No description provided for @paywall_see_everything.
+  ///
+  /// In en, this message translates to:
+  /// **'See everything in Pro'**
+  String get paywall_see_everything;
+
+  /// No description provided for @paywall_everything_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in Pro'**
+  String get paywall_everything_title;
+
+  /// No description provided for @paywall_all_scans_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited food scans'**
+  String get paywall_all_scans_title;
+
+  /// No description provided for @paywall_all_scans_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Instead of {count} a month'**
+  String paywall_all_scans_detail(String count);
+
+  /// No description provided for @paywall_all_coach_title.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Coach, any time'**
+  String get paywall_all_coach_title;
+
+  /// No description provided for @paywall_all_coach_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Instead of one question a day'**
+  String get paywall_all_coach_detail;
+
+  /// No description provided for @paywall_all_plans_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly meal plans'**
+  String get paywall_all_plans_title;
+
+  /// No description provided for @paywall_all_plans_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'With a grocery list built for you, instead of one day'**
+  String get paywall_all_plans_detail;
+
+  /// No description provided for @paywall_all_history_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Full history and reports'**
+  String get paywall_all_history_title;
+
+  /// No description provided for @paywall_all_history_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Instead of the last {days} days'**
+  String paywall_all_history_detail(String days);
+
+  /// No description provided for @paywall_all_photos_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited progress photos'**
+  String get paywall_all_photos_title;
+
+  /// No description provided for @paywall_all_photos_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'With side-by-side comparisons, instead of {count} check-ins'**
+  String paywall_all_photos_detail(String count);
+
+  /// No description provided for @paywall_plan_per_year.
+  ///
+  /// In en, this message translates to:
+  /// **'per year'**
+  String get paywall_plan_per_year;
+
+  /// No description provided for @paywall_plan_per_month.
+  ///
+  /// In en, this message translates to:
+  /// **'per month'**
+  String get paywall_plan_per_month;
+
+  /// No description provided for @paywall_plan_days_free.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days free'**
+  String paywall_plan_days_free(String days);
+
+  /// No description provided for @paywall_plan_then.
+  ///
+  /// In en, this message translates to:
+  /// **'then {price}'**
+  String paywall_plan_then(String price);
+
+  /// No description provided for @paywall_start_trial_days.
+  ///
+  /// In en, this message translates to:
+  /// **'Start {days}-day free trial'**
+  String paywall_start_trial_days(String days);
+
+  /// No description provided for @paywall_disclosure_trial_until_year.
+  ///
+  /// In en, this message translates to:
+  /// **'Free until {date}, then {price} per year. Cancel before then and you pay nothing.'**
+  String paywall_disclosure_trial_until_year(String date, String price);
+
+  /// No description provided for @paywall_disclosure_trial_until_month.
+  ///
+  /// In en, this message translates to:
+  /// **'Free until {date}, then {price} per month. Cancel before then and you pay nothing.'**
+  String paywall_disclosure_trial_until_month(String date, String price);
 }
 
 class _AppLocalizationsDelegate
