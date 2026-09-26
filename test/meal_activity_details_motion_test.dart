@@ -22,6 +22,8 @@ import 'package:snapcal/screens/settings/widgets/weight_entry_modal.dart';
 import 'package:snapcal/widgets/motion/arriving_item.dart';
 import 'package:snapcal/widgets/wazn_icons.dart';
 
+import 'helpers/metric_history_fakes.dart';
+
 Meal _salad({int calories = 520}) => Meal(
   id: 'salad',
   timestamp: DateTime(2026, 9, 26, 13, 5).millisecondsSinceEpoch,
@@ -306,6 +308,7 @@ void main() {
             waterProvider.overrideWith(_FakeWater.new),
             activityProvider.overrideWith(_FakeActivity.new),
             effectiveIsProProvider.overrideWithValue(true),
+            ...metricHistoryOverrides(),
           ],
         ),
       );

@@ -139,6 +139,12 @@ Future<void> setStepGoal(WidgetRef ref, int goal) async {
   ref.invalidate(stepGoalProvider);
 }
 
+/// Reads the steps taken between two moments, for the history charts.
+final metricStepsLoaderProvider =
+    Provider<Future<int> Function(DateTime start, DateTime end)>(
+      (ref) => _activityRepository.stepsBetween,
+    );
+
 /// The last seven days of steps, for the week chart.
 ///
 /// The chart used to be drawn from a week of zeros -- `ActivitySummary.empty`

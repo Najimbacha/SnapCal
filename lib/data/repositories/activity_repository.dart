@@ -139,6 +139,17 @@ class ActivityRepository {
     );
   }
 
+  /// Steps taken from [start] up to [end], never past now; 0 without
+  /// Health Connect permission. One query for the whole range, so a year
+  /// can be read month by month rather than day by day.
+  Future<int> stepsBetween(DateTime start, DateTime end) async {
+    final now = DateTime.now();
+    final until = end.isAfter(now) ? now : end;
+    if (!until.isAfter(start)) return 0;
+    if (!await _service.hasPermissions()) return 0;
+    return _service.getStepsForDateRange(start, until);
+  }
+
   /// Steps for each of the last seven days, oldest first.
   ///
   /// [fetchSummary] is the whole picture for a single day and it scans for the

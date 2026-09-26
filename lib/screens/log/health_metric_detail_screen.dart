@@ -15,9 +15,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/date_utils.dart' as app_date;
+import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
+import '../../data/repositories/activity_repository.dart';
+import '../../data/repositories/meal_repository.dart';
+import '../../data/repositories/water_repository.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/activity_provider.dart';
+import '../../providers/meal_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/motion/count_up_text.dart';
@@ -94,7 +100,7 @@ class _HealthMetricDetailScreenState
                         ),
                   )
                   : FutureBuilder<_MetricDetailData>(
-                    future: _buildData(context),
+                    future: _dataFor(context),
                     builder: (context, snapshot) {
                       final data = snapshot.data;
                       return ListView(
@@ -277,87 +283,167 @@ class _HealthMetricDetailScreenState
     }
   }
 
-  Future<_MetricDetailData> _buildData(BuildContext context) async {
+  Future<_MetricDetailData>? _data;
+  int? _dataKey;
+
+  /// Watches what the page is drawn from, and loads it again only when one
+  /// of those changes. The chart used to be rebuilt from scratch on every
+  /// frame the screen rebuilt -- and the steps come from Health Connect.
+  Future<_MetricDetailData> _dataFor(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final locale = l10n.localeName;
-    final settingsVal =
+    final settings =
         ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
-    final waterState =
+    final water =
         ref.watch(waterProvider).valueOrNull ?? const WaterState(todayTotal: 0);
     final isPro = ref.watch(effectiveIsProProvider);
-    final buckets = metricBucketsFor(_period, _anchor);
+    final meals = ref.watch(mealRepositoryProvider).valueOrNull;
+    // Not read, only watched: a meal saved or edited redraws the chart.
+    final todayMeals = ref.watch(todaysMealsProvider).valueOrNull;
+    final waterLog = ref.watch(waterRepositoryProvider).valueOrNull;
+    final activity = ref.watch(activityProvider).valueOrNull;
+    final stepGoal =
+        ref.watch(stepGoalProvider).valueOrNull ??
+        ActivityRepository.defaultStepGoal;
+    final loadSteps = ref.watch(metricStepsLoaderProvider);
 
-    final points = <MetricPoint>[];
-    var totalValue = 0;
-    var elapsedDays = 0;
+    final key = Object.hashAll([
+      widget.metric,
+      _period,
+      metricDateString(_anchor),
+      l10n.localeName,
+      settings,
+      water.todayTotal,
+      water.goal,
+      isPro,
+      meals,
+      todayMeals,
+      waterLog,
+      activity,
+      stepGoal,
+      loadSteps,
+    ]);
+    final cached = _data;
+    if (cached != null && key == _dataKey) return cached;
+    _dataKey = key;
+    return _data = _load(
+      l10n: l10n,
+      settings: settings,
+      water: water,
+      isPro: isPro,
+      meals: meals,
+      waterLog: waterLog,
+      activity: activity,
+      stepGoal: stepGoal,
+      loadSteps: loadSteps,
+    );
+  }
 
-    for (final bucket in buckets) {
-      var value = 0;
-      var goal = 0;
-      var locked = false;
-      var bucketElapsedDays = 0;
+  /// Every point of the period, read from what was actually logged: meals
+  /// for calories and macros, the water log, and Health Connect for steps.
+  ///
+  /// This returned zero for every day of every metric but steps, and for
+  /// steps it gave today's count to every day of the year.
+  Future<_MetricDetailData> _load({
+    required AppLocalizations l10n,
+    required UserSettings settings,
+    required WaterState water,
+    required bool isPro,
+    required MealRepository? meals,
+    required WaterRepository? waterLog,
+    required ActivitySummary? activity,
+    required int stepGoal,
+    required Future<int> Function(DateTime, DateTime) loadSteps,
+  }) async {
+    final type = widget.metric;
+    final period = _period;
+    final buckets = metricBucketsFor(period, _anchor);
+    final today = normalizeMetricDate(DateTime.now());
+    final dailyGoal = _dailyGoal(type, settings, water, stepGoal);
+    final fromActivity =
+        type == LogMetricType.steps || type == LogMetricType.energy;
+    final connected = activity?.healthConnected ?? false;
 
-      for (final day in eachMetricDay(bucket.start, bucket.end)) {
-        final today = normalizeMetricDate(DateTime.now());
-        if (day.isAfter(today)) {
-          goal += _dailyGoal(widget.metric, settingsVal, waterState, ref);
-          continue;
-        }
+    final values = List<int>.filled(buckets.length, 0);
+    final goals = List<int>.filled(buckets.length, 0);
+    final locked = List<bool>.filled(buckets.length, false);
+    final elapsed = List<int>.filled(buckets.length, 0);
 
-        bucketElapsedDays++;
+    for (var i = 0; i < buckets.length; i++) {
+      for (final day in eachMetricDay(buckets[i].start, buckets[i].end)) {
+        goals[i] += dailyGoal;
+        if (day.isAfter(today)) continue;
+        elapsed[i]++;
         final dateString = metricDateString(day);
-        goal += _dailyGoal(widget.metric, settingsVal, waterState, ref);
         if (isMetricDateLocked(
-          widget.metric,
+          type,
           dateString,
           (date) => ProFeatureService.canViewHistoryDate(date, isPro: isPro),
         )) {
-          locked = true;
+          locked[i] = true;
           continue;
         }
-
-        value += _valueForDate(
-          type: widget.metric,
-          dateString: dateString,
-          ref: ref,
-        );
+        if (!fromActivity) {
+          values[i] += _loggedValue(type, dateString, meals, waterLog, water);
+        }
       }
+    }
 
-      totalValue += value;
-      elapsedDays += bucketElapsedDays;
+    // Steps come from Health Connect, one query per point: a year is twelve
+    // months, not three hundred and sixty-five days.
+    if (fromActivity && connected) {
+      final steps = await Future.wait([
+        for (var i = 0; i < buckets.length; i++)
+          elapsed[i] == 0
+              ? Future.value(0)
+              : loadSteps(
+                buckets[i].start,
+                app_date.DateUtils.addDays(buckets[i].end, 1),
+              ),
+      ]);
+      for (var i = 0; i < buckets.length; i++) {
+        values[i] =
+            type == LogMetricType.steps
+                ? steps[i]
+                : _burned(steps[i], buckets[i], today, activity!);
+      }
+    }
+
+    var total = 0;
+    var elapsedDays = 0;
+    final points = <MetricPoint>[];
+    for (var i = 0; i < buckets.length; i++) {
+      total += values[i];
+      elapsedDays += elapsed[i];
       points.add(
         MetricPoint(
-          start: bucket.start,
-          end: bucket.end,
-          value: value,
-          goal: goal,
-          locked: locked,
+          start: buckets[i].start,
+          end: buckets[i].end,
+          value: values[i],
+          goal: goals[i],
+          locked: locked[i],
         ),
       );
     }
 
-    final average = elapsedDays == 0 ? 0 : (totalValue / elapsedDays).round();
-    final dailyGoal = _dailyGoal(widget.metric, settingsVal, waterState, ref);
-    final unit = _unitForMetric(l10n, widget.metric);
+    final average = elapsedDays == 0 ? 0 : (total / elapsedDays).round();
+    final unit = _unitForMetric(l10n, type);
     return _MetricDetailData(
-      type: widget.metric,
-      period: _period,
+      type: type,
+      period: period,
       points: points,
       averageValue: average,
-      totalValue: totalValue,
+      totalValue: total,
       dailyGoal: dailyGoal,
       unit: unit,
       perDayUnit:
-          widget.metric == LogMetricType.steps
-              ? l10n.log_metric_steps_unit
-              : unit,
-      title: _metricTitle(l10n, widget.metric),
-      periodTitle: _periodTitle(l10n, _period),
+          type == LogMetricType.steps ? l10n.log_metric_steps_unit : unit,
+      title: _metricTitle(l10n, type),
+      periodTitle: _periodTitle(l10n, period),
       goalStatus:
           average >= dailyGoal
               ? l10n.log_metric_goal_hit
               : l10n.log_metric_goal_miss,
-      localeName: locale,
+      localeName: l10n.localeName,
       isPro: isPro,
     );
   }
@@ -860,129 +946,137 @@ class _MetricHero extends StatelessWidget {
                   ),
                 ),
               ),
-              // Goal hit badge, turning over when the verdict changes.
-              AnimatedSwitcher(
-                duration: AppMotion.maybeZero(
-                  context,
-                  const Duration(milliseconds: 420),
-                ),
-                transitionBuilder:
-                    (child, animation) => ScaleTransition(
-                      scale: CurvedAnimation(
-                        parent: animation,
-                        curve: AppMotion.springCurve,
-                      ),
-                      child: FadeTransition(opacity: animation, child: child),
-                    ),
-                child: Container(
-                  key: ValueKey('metric-goal-$isGoalHit'),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+              // Goal hit badge, turning over when the verdict changes. A
+              // metric with no goal (energy burned) has no verdict to give.
+              if (data.dailyGoal > 0)
+                AnimatedSwitcher(
+                  duration: AppMotion.maybeZero(
+                    context,
+                    const Duration(milliseconds: 420),
                   ),
-                  decoration: BoxDecoration(
-                    color:
-                        isGoalHit
-                            ? accent.withValues(alpha: 0.10)
-                            : Colors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
+                  transitionBuilder:
+                      (child, animation) => ScaleTransition(
+                        scale: CurvedAnimation(
+                          parent: animation,
+                          curve: AppMotion.springCurve,
+                        ),
+                        child: FadeTransition(opacity: animation, child: child),
+                      ),
+                  child: Container(
+                    key: ValueKey('metric-goal-$isGoalHit'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
                       color:
                           isGoalHit
-                              ? accent.withValues(alpha: 0.28)
-                              : Colors.orange.withValues(alpha: 0.22),
+                              ? accent.withValues(alpha: 0.10)
+                              : Colors.orange.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color:
+                            isGoalHit
+                                ? accent.withValues(alpha: 0.28)
+                                : Colors.orange.withValues(alpha: 0.22),
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isGoalHit ? WaznIcons.success : WaznIcons.goal,
-                        size: 12,
-                        color: isGoalHit ? accent : Colors.orange,
-                      ),
-                      const SizedBox(width: 5),
-                      // The badge is a non-flexible sibling of an Expanded, so
-                      // it is laid out at its intrinsic width first: a long
-                      // goal string pushed it past the card edge instead of
-                      // shortening.
-                      Flexible(
-                        child: Text(
-                          data.goalStatus,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.labelSmall.copyWith(
-                            color: isGoalHit ? accent : Colors.orange,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 11,
-                            letterSpacing: 0,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Progress towards daily goal
-          Row(
-            children: [
-              CountUpText(
-                value: (progress * 100).round(),
-                from: 0,
-                format: (value) => '$value%',
-                style: AppTypography.labelSmall.copyWith(
-                  color: accent,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: SizedBox(
-                    height: 6,
-                    child: Stack(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
+                        Icon(
+                          isGoalHit ? WaznIcons.success : WaznIcons.goal,
+                          size: 12,
+                          color: isGoalHit ? accent : Colors.orange,
                         ),
-                        // Fills on arrival and glides to each new share.
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0, end: progress),
-                          duration: AppMotion.maybeZero(
-                            context,
-                            AppMotion.count,
+                        const SizedBox(width: 5),
+                        // The badge is a non-flexible sibling of an Expanded, so
+                        // it is laid out at its intrinsic width first: a long
+                        // goal string pushed it past the card edge instead of
+                        // shortening.
+                        Flexible(
+                          child: Text(
+                            data.goalStatus,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: isGoalHit ? accent : Colors.orange,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                              letterSpacing: 0,
+                            ),
                           ),
-                          curve: Curves.easeOutCubic,
-                          builder:
-                              (context, fill, _) => FractionallySizedBox(
-                                key: const ValueKey('metric-goal-fill'),
-                                widthFactor: fill,
-                                child: Container(color: accent),
-                              ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                l10n.log_metric_goal_value(_formatInt(context, data.dailyGoal)),
-                style: AppTypography.labelSmall.copyWith(
-                  color: _healthText(context).withValues(alpha: 0.48),
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
-                  letterSpacing: 0,
-                ),
-              ),
             ],
           ),
+          if (data.dailyGoal > 0) ...[
+            const SizedBox(height: 16),
+            // Progress towards daily goal
+            Row(
+              children: [
+                CountUpText(
+                  value: (progress * 100).round(),
+                  from: 0,
+                  format: (value) => '$value%',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: SizedBox(
+                      height: 6,
+                      child: Stack(
+                        children: [
+                          Container(
+                            color: accent.withValues(
+                              alpha: isDark ? 0.18 : 0.12,
+                            ),
+                          ),
+                          // Fills on arrival and glides to each new share.
+                          TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0, end: progress),
+                            duration: AppMotion.maybeZero(
+                              context,
+                              AppMotion.count,
+                            ),
+                            curve: Curves.easeOutCubic,
+                            builder:
+                                (context, fill, _) => FractionallySizedBox(
+                                  key: const ValueKey('metric-goal-fill'),
+                                  widthFactor: fill,
+                                  child: Container(color: accent),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.log_metric_goal_value(
+                    _formatInt(context, data.dailyGoal),
+                  ),
+                  style: AppTypography.labelSmall.copyWith(
+                    color: _healthText(context).withValues(alpha: 0.48),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1660,31 +1754,57 @@ class _MetricDetailData {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-int _valueForDate({
-  required LogMetricType type,
-  required String dateString,
-  required WidgetRef ref,
-}) {
+/// One day's logged amount of a meal or water metric.
+int _loggedValue(
+  LogMetricType type,
+  String dateString,
+  MealRepository? meals,
+  WaterRepository? waterLog,
+  WaterState water,
+) {
   switch (type) {
     case LogMetricType.water:
-      return 0;
-    case LogMetricType.energy:
-      return 0;
-    case LogMetricType.steps:
-      return ref.watch(activityProvider).valueOrNull?.steps ?? 0;
+      if (app_date.DateUtils.isToday(dateString)) return water.todayTotal;
+      return waterLog?.getTotalWater(dateString) ?? 0;
     case LogMetricType.calories:
+    case LogMetricType.protein:
     case LogMetricType.carbs:
     case LogMetricType.fat:
-    case LogMetricType.protein:
+      final day = meals?.getMealsByDate(dateString) ?? const <Meal>[];
+      return day.fold<int>(0, (sum, meal) => sum + _mealAmount(type, meal));
+    case LogMetricType.energy:
+    case LogMetricType.steps:
       return 0;
   }
 }
 
+int _mealAmount(LogMetricType type, Meal meal) => switch (type) {
+  LogMetricType.protein => meal.macros.protein,
+  LogMetricType.carbs => meal.macros.carbs,
+  LogMetricType.fat => meal.macros.fat,
+  _ => meal.calories,
+};
+
+/// Energy burned over a point, the way the Activity screen counts it:
+/// estimated from steps, except today, which uses today's own figure.
+int _burned(
+  int steps,
+  MetricBucket bucket,
+  DateTime today,
+  ActivitySummary activity,
+) {
+  final hasToday = !today.isBefore(bucket.start) && !today.isAfter(bucket.end);
+  final earlierSteps = math.max(0, steps - (hasToday ? activity.steps : 0));
+  final earlier = (earlierSteps * ActivityRepository.caloriesPerStep).round();
+  return earlier + (hasToday ? activity.activeCalories.round() : 0);
+}
+
+/// The daily target for a metric; 0 where there is none (energy burned).
 int _dailyGoal(
   LogMetricType type,
   UserSettings settings,
   WaterState water,
-  WidgetRef ref,
+  int stepGoal,
 ) {
   switch (type) {
     case LogMetricType.water:
@@ -1692,7 +1812,7 @@ int _dailyGoal(
     case LogMetricType.energy:
       return 0;
     case LogMetricType.steps:
-      return 0;
+      return stepGoal;
     case LogMetricType.calories:
       return settings.dailyCalorieGoal;
     case LogMetricType.carbs:
