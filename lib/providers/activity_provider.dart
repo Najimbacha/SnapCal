@@ -124,6 +124,11 @@ class Activity extends _$Activity {
   }
 }
 
+/// Health Connect, for screens that read history rather than today.
+final healthConnectServiceProvider = Provider<HealthConnectService>(
+  (ref) => HealthConnectService(),
+);
+
 /// The daily step goal, saved on the phone.
 ///
 /// Every screen hardcoded 10,000 while the activity store kept a goal that
@@ -138,12 +143,6 @@ Future<void> setStepGoal(WidgetRef ref, int goal) async {
   await _activityRepository.setStepGoal(goal);
   ref.invalidate(stepGoalProvider);
 }
-
-/// Reads the steps taken between two moments, for the history charts.
-final metricStepsLoaderProvider =
-    Provider<Future<int> Function(DateTime start, DateTime end)>(
-      (ref) => _activityRepository.stepsBetween,
-    );
 
 /// The last seven days of steps, for the week chart.
 ///
