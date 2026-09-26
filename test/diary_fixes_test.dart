@@ -133,6 +133,8 @@ void main() {
 
       await tester.tap(find.text(l10n.log_save_entry));
       await tester.pump();
+      // Save shows its tick before handing the meal over.
+      await tester.pump(const Duration(milliseconds: 600));
       expect(saved?.foodName, 'Black coffee');
       expect(saved?.calories, 0);
     });
@@ -171,6 +173,8 @@ void main() {
       await tester.pump();
       await tester.tap(find.text(l10n.log_save_entry));
       await tester.pump();
+      // Save shows its tick before handing the meal over.
+      await tester.pump(const Duration(milliseconds: 600));
 
       expect(saved?.calories, 250);
       expect(saved?.userCorrected, isTrue);
@@ -192,6 +196,8 @@ void main() {
       await tester.pump();
       await tester.tap(find.text(l10n.log_save_entry));
       await tester.pump();
+      // Save shows its tick before handing the meal over.
+      await tester.pump(const Duration(milliseconds: 600));
 
       expect(saved?.foodName, 'Basmati rice');
       expect(saved?.userCorrected, isFalse);

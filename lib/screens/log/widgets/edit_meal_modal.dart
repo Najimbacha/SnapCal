@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
+import '../../../widgets/motion/reveal.dart';
+import '../../../widgets/motion/lift_when_ready.dart';
 import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -31,7 +34,8 @@ class EditMealModal extends StatefulWidget {
   State<EditMealModal> createState() => _EditMealModalState();
 }
 
-class _EditMealModalState extends State<EditMealModal> {
+class _EditMealModalState extends State<EditMealModal>
+    with TickerProviderStateMixin {
   late TextEditingController _nameController;
   late TextEditingController _caloriesController;
   late TextEditingController _portionController;
@@ -39,6 +43,16 @@ class _EditMealModalState extends State<EditMealModal> {
   late TextEditingController _carbsController;
   late TextEditingController _fatController;
   late String _mealType;
+
+  /// The meal's numbers count up from zero as the sheet opens. Touching any
+  /// field, or saving, puts them straight at their real values.
+  late final AnimationController _countIn;
+  late final Map<TextEditingController, int> _countTargets;
+  bool _countStarted = false;
+
+  /// The tick on Save, shown before the sheet goes.
+  late final AnimationController _saved;
+  Meal? _pendingSave;
 
   @override
   void initState() {
@@ -63,6 +77,58 @@ class _EditMealModalState extends State<EditMealModal> {
       (type) => type.toLowerCase() == initialType,
       orElse: () => 'Snack',
     );
+    _countTargets = {
+      if (!widget.isNew) ...{
+        _caloriesController: widget.meal.calories,
+        _proteinController: widget.meal.macros.protein,
+        _carbsController: widget.meal.macros.carbs,
+        _fatController: widget.meal.macros.fat,
+      },
+    }..removeWhere((_, value) => value <= 0);
+    _countIn = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1150),
+    )..addListener(_showCount);
+    _saved = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    )..addStatusListener((status) {
+      final meal = _pendingSave;
+      if (status == AnimationStatus.completed && meal != null && mounted) {
+        widget.onSave(meal);
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_countStarted) return;
+    _countStarted = true;
+    if (_countTargets.isEmpty || AppMotion.reduceMotion(context)) return;
+    for (final controller in _countTargets.keys) {
+      controller.text = '0';
+    }
+    _countIn.forward();
+  }
+
+  void _showCount() {
+    final t = const Interval(
+      .2,
+      1,
+      curve: Curves.easeOutCubic,
+    ).transform(_countIn.value);
+    for (final MapEntry(key: controller, value: target)
+        in _countTargets.entries) {
+      controller.text = '${(target * t).round()}';
+    }
+  }
+
+  /// Puts every counting number at its real value at once.
+  void _finishCount() {
+    if (!_countIn.isAnimating) return;
+    _countIn.stop();
+    _countIn.value = 1;
   }
 
   String _initialNumber(int value) {
@@ -77,10 +143,14 @@ class _EditMealModalState extends State<EditMealModal> {
     _proteinController.dispose();
     _carbsController.dispose();
     _fatController.dispose();
+    _countIn.dispose();
+    _saved.dispose();
     super.dispose();
   }
 
   void _handleSave() {
+    if (_pendingSave != null) return;
+    _finishCount();
     final name = _nameController.text.trim();
     final calories = int.tryParse(_caloriesController.text.trim()) ?? 0;
     final macros = widget.meal.macros.copyWith(
@@ -108,7 +178,14 @@ class _EditMealModalState extends State<EditMealModal> {
       userCorrected: corrected ? true : null,
       clearNutritionBasis: corrected,
     );
-    widget.onSave(updatedMeal);
+    // A tick first, then the sheet goes.
+    if (AppMotion.reduceMotion(context)) {
+      widget.onSave(updatedMeal);
+      return;
+    }
+    HapticFeedback.lightImpact();
+    setState(() => _pendingSave = updatedMeal);
+    _saved.forward();
   }
 
   /// A name and a calorie figure -- and zero is a figure: water, black coffee
@@ -160,18 +237,24 @@ class _EditMealModalState extends State<EditMealModal> {
               padding: const EdgeInsets.fromLTRB(20, 12, 14, 14),
               child: Row(
                 children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: context.primaryColor.withValues(alpha: 0.09),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      widget.isNew ? WaznIcons.plus : WaznIcons.edit,
-                      size: 19,
-                      color: context.primaryColor,
+                  Reveal(
+                    delay: const Duration(milliseconds: 150),
+                    offset: Offset.zero,
+                    scale: .4,
+                    curve: AppMotion.springCurve,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: context.primaryColor.withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        widget.isNew ? WaznIcons.plus : WaznIcons.edit,
+                        size: 19,
+                        color: context.primaryColor,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -202,72 +285,81 @@ class _EditMealModalState extends State<EditMealModal> {
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _MealTypeSelector(
-                      selectedType: _mealType,
-                      onSelected: (type) => setState(() => _mealType = type),
-                    ),
-                    const SizedBox(height: 20),
-                    _MealTextField(
-                      controller: _nameController,
-                      label: l10n.log_food_name,
-                      hint: l10n.log_food_hint,
-                      icon: WaznIcons.meal,
-                      textInputAction: TextInputAction.next,
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 14),
-                    _MealTextField(
-                      controller: _portionController,
-                      label: l10n.log_portion_desc,
-                      hint: l10n.log_portion_hint,
-                      icon: WaznIcons.weight,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 22),
-                    Row(
-                      children: [
-                        Icon(
-                          WaznIcons.activity,
-                          size: 17,
-                          color: context.primaryColor,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          l10n.result_macronutrients,
-                          style: AppTypography.titleSmall.copyWith(
-                            color: context.textPrimaryColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                // Any field taken in hand stops the numbers counting in.
+                child: Focus(
+                  canRequestFocus: false,
+                  skipTraversal: true,
+                  onFocusChange: (focused) {
+                    if (focused) _finishCount();
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _cascade([
+                      _MealTypeSelector(
+                        selectedType: _mealType,
+                        onSelected: (type) => setState(() => _mealType = type),
+                      ),
+                      const SizedBox(height: 20),
+                      _MealTextField(
+                        controller: _nameController,
+                        label: l10n.log_food_name,
+                        hint: l10n.log_food_hint,
+                        icon: WaznIcons.meal,
+                        textInputAction: TextInputAction.next,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 14),
+                      _MealTextField(
+                        controller: _portionController,
+                        label: l10n.log_portion_desc,
+                        hint: l10n.log_portion_hint,
+                        icon: WaznIcons.weight,
+                        textInputAction: TextInputAction.next,
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        children: [
+                          Icon(
+                            WaznIcons.activity,
+                            size: 17,
+                            color: context.primaryColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            l10n.result_macronutrients,
+                            style: AppTypography.titleSmall.copyWith(
+                              color: context.textPrimaryColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _NutritionPanel(
+                        caloriesController: _caloriesController,
+                        proteinController: _proteinController,
+                        carbsController: _carbsController,
+                        fatController: _fatController,
+                        onCaloriesChanged: (_) => setState(() {}),
+                      ),
+                      if (!widget.isNew &&
+                          widget.meal.id != 'temp' &&
+                          widget.meal.id != 'new') ...[
+                        const SizedBox(height: 16),
+                        TextButton.icon(
+                          onPressed: () => _showDeleteConfirmation(context),
+                          icon: const Icon(WaznIcons.delete, size: 17),
+                          label: Text(l10n.log_delete_entry),
+                          style: TextButton.styleFrom(
+                            foregroundColor:
+                                Theme.of(context).colorScheme.error,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 10),
-                    _NutritionPanel(
-                      caloriesController: _caloriesController,
-                      proteinController: _proteinController,
-                      carbsController: _carbsController,
-                      fatController: _fatController,
-                      onCaloriesChanged: (_) => setState(() {}),
-                    ),
-                    if (!widget.isNew &&
-                        widget.meal.id != 'temp' &&
-                        widget.meal.id != 'new') ...[
-                      const SizedBox(height: 16),
-                      TextButton.icon(
-                        onPressed: () => _showDeleteConfirmation(context),
-                        icon: const Icon(WaznIcons.delete, size: 17),
-                        label: Text(l10n.log_delete_entry),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.error,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ],
-                  ],
+                    ]),
+                  ),
                 ),
               ),
             ),
@@ -282,28 +374,60 @@ class _EditMealModalState extends State<EditMealModal> {
                 color: surfaceColor,
                 border: Border(top: BorderSide(color: context.dividerColor)),
               ),
-              child: SizedBox(
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _canSave ? _handleSave : null,
-                  icon: const Icon(WaznIcons.check, size: 19),
-                  label: Text(l10n.log_save_entry),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: context.primaryColor,
-                    disabledBackgroundColor: context.primaryColor.withValues(
-                      alpha: 0.28,
+              child: LiftWhenReady(
+                ready: _canSave,
+                child: SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _canSave ? _handleSave : null,
+                    style: ElevatedButton.styleFrom(
+                      animationDuration: AppMotion.standard,
+                      backgroundColor: context.primaryColor,
+                      disabledBackgroundColor: context.primaryColor.withValues(
+                        alpha: 0.28,
+                      ),
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: Colors.white.withValues(
+                        alpha: 0.8,
+                      ),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      textStyle: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
                     ),
-                    foregroundColor: Colors.white,
-                    disabledForegroundColor: Colors.white.withValues(
-                      alpha: 0.8,
-                    ),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    textStyle: AppTypography.titleSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
+                    child: AnimatedSwitcher(
+                      duration: AppMotion.standard,
+                      transitionBuilder:
+                          (child, animation) => ScaleTransition(
+                            scale: CurvedAnimation(
+                              parent: animation,
+                              curve: AppMotion.springCurve,
+                            ),
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          ),
+                      child:
+                          _pendingSave != null
+                              ? const Icon(
+                                WaznIcons.check,
+                                key: ValueKey('edit-meal-saved'),
+                                size: 24,
+                              )
+                              : Row(
+                                key: const ValueKey('edit-meal-save'),
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(WaznIcons.check, size: 19),
+                                  const SizedBox(width: 8),
+                                  Text(l10n.log_save_entry),
+                                ],
+                              ),
                     ),
                   ),
                 ),
@@ -315,12 +439,43 @@ class _EditMealModalState extends State<EditMealModal> {
     );
   }
 
+  /// The form's rows rise into place one after another.
+  List<Widget> _cascade(List<Widget> children) => [
+    for (var i = 0; i < children.length; i++)
+      Reveal(
+        delay: Duration(milliseconds: 90 + 40 * i),
+        offset: const Offset(0, 18),
+        child: children[i],
+      ),
+  ];
+
   void _showDeleteConfirmation(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    showDialog(
+    final calm = AppMotion.reduceMotion(context);
+    // The question pops up gently instead of just fading in.
+    showGeneralDialog<void>(
       context: context,
-      builder:
-          (context) => AlertDialog(
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: Duration(milliseconds: calm ? 0 : 420),
+      transitionBuilder:
+          (context, animation, _, child) => FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: ScaleTransition(
+              scale: Tween(begin: .86, end: 1.0).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: AppMotion.springCurve,
+                  reverseCurve: Curves.easeIn,
+                ),
+              ),
+              child: child,
+            ),
+          ),
+      pageBuilder:
+          (context, _, _) => AlertDialog(
+            icon: const _WobblingBin(),
             backgroundColor: context.surfaceContainerColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -376,6 +531,11 @@ class _MealTypeSelector extends StatelessWidget {
       ('Snack', l10n.result_meal_snack, WaznIcons.snack),
     ];
 
+    final selectedIndex = math.max(
+      0,
+      options.indexWhere((option) => option.$1 == selectedType),
+    );
+
     return Container(
       height: 54,
       padding: const EdgeInsets.all(4),
@@ -386,74 +546,136 @@ class _MealTypeSelector extends StatelessWidget {
                 : const Color(0xFFF1F2EF),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          for (final option in options)
-            Expanded(
-              child: Semantics(
-                selected: selectedType == option.$1,
-                button: true,
-                child: InkWell(
-                  onTap: () => onSelected(option.$1),
+          // One pill that glides to the choice, rather than each option
+          // lighting up in place.
+          AnimatedAlign(
+            key: const ValueKey('meal-type-pill'),
+            alignment: AlignmentDirectional(-1 + 2 * selectedIndex / 3, 0),
+            duration: AppMotion.maybeZero(
+              context,
+              const Duration(milliseconds: 480),
+            ),
+            curve: AppMotion.springCurve,
+            child: FractionallySizedBox(
+              widthFactor: 1 / 4,
+              heightFactor: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: context.surfaceContainerColor,
                   borderRadius: BorderRadius.circular(6),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    decoration: BoxDecoration(
-                      color:
-                          selectedType == option.$1
-                              ? context.surfaceContainerColor
-                              : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow:
-                          selectedType == option.$1
-                              ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.06),
-                                  blurRadius: 5,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ]
-                              : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 5,
+                      offset: const Offset(0, 1),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          option.$3,
-                          size: 15,
-                          color:
-                              selectedType == option.$1
-                                  ? context.primaryColor
-                                  : context.textMutedColor,
-                        ),
-                        const SizedBox(height: 3),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            option.$2,
-                            style: AppTypography.labelSmall.copyWith(
-                              color:
-                                  selectedType == option.$1
-                                      ? context.textPrimaryColor
-                                      : context.textSecondaryColor,
-                              fontWeight:
-                                  selectedType == option.$1
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ),
+          ),
+          Row(
+            children: [
+              for (final option in options)
+                Expanded(
+                  child: Semantics(
+                    selected: selectedType == option.$1,
+                    button: true,
+                    child: InkWell(
+                      onTap: () => onSelected(option.$1),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _Bounce(
+                            active: selectedType == option.$1,
+                            child: Icon(
+                              option.$3,
+                              size: 15,
+                              color:
+                                  selectedType == option.$1
+                                      ? context.primaryColor
+                                      : context.textMutedColor,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              option.$2,
+                              style: AppTypography.labelSmall.copyWith(
+                                color:
+                                    selectedType == option.$1
+                                        ? context.textPrimaryColor
+                                        : context.textSecondaryColor,
+                                fontWeight:
+                                    selectedType == option.$1
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
   }
+}
+
+/// Gives its child a small springy bounce each time it becomes [active].
+class _Bounce extends StatefulWidget {
+  const _Bounce({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  State<_Bounce> createState() => _BounceState();
+}
+
+class _BounceState extends State<_Bounce> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 460),
+  );
+
+  @override
+  void didUpdateWidget(_Bounce oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active &&
+        !oldWidget.active &&
+        !AppMotion.reduceMotion(context)) {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    child: widget.child,
+    builder: (context, child) {
+      final wave = math.sin(_controller.value * math.pi);
+      return Transform.rotate(
+        angle: -.14 * wave,
+        child: Transform.scale(scale: 1 + .3 * wave, child: child),
+      );
+    },
+  );
 }
 
 class _MealTextField extends StatelessWidget {
@@ -622,8 +844,107 @@ class _NutritionPanel extends StatelessWidget {
               ),
             ],
           ),
+          _MacroSplit(
+            protein: proteinController,
+            carbs: carbsController,
+            fat: fatController,
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// How the meal's calories divide between protein, carbs and fat, as one
+/// thin bar that reshapes while the numbers are typed.
+class _MacroSplit extends StatelessWidget {
+  const _MacroSplit({
+    required this.protein,
+    required this.carbs,
+    required this.fat,
+  });
+
+  final TextEditingController protein;
+  final TextEditingController carbs;
+  final TextEditingController fat;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return ListenableBuilder(
+      listenable: Listenable.merge([protein, carbs, fat]),
+      builder: (context, _) {
+        final kcal = [
+          (int.tryParse(protein.text) ?? 0) * 4,
+          (int.tryParse(carbs.text) ?? 0) * 4,
+          (int.tryParse(fat.text) ?? 0) * 9,
+        ];
+        final total = kcal.fold<int>(0, (a, b) => a + b);
+        if (total == 0) return const SizedBox.shrink();
+        final shares = [for (final k in kcal) k / total];
+        const colors = [AppColors.protein, AppColors.carbs, AppColors.fat];
+        final labels = [
+          l10n.result_protein,
+          l10n.result_carbs,
+          l10n.result_fat,
+        ];
+        final duration = AppMotion.maybeZero(
+          context,
+          const Duration(milliseconds: 520),
+        );
+        return Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Column(
+            children: [
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  // Two 2px gaps between three segments.
+                  final width = constraints.maxWidth - 4;
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: SizedBox(
+                      height: 6,
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < 3; i++) ...[
+                            if (i > 0) const SizedBox(width: 2),
+                            AnimatedContainer(
+                              key: ValueKey('macro-split-$i'),
+                              duration: duration,
+                              curve: Curves.easeOutCubic,
+                              width: width * shares[i],
+                              color: colors[i],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (var i = 0; i < 3; i++)
+                    Flexible(
+                      child: Text(
+                        '${labels[i]} ${(shares[i] * 100).round()}%',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: context.textSecondaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -722,6 +1043,41 @@ class _NumberField extends StatelessWidget {
         ),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      ),
+    );
+  }
+}
+
+/// The bin on the delete question, which gives a small shake as it appears.
+class _WobblingBin extends StatelessWidget {
+  const _WobblingBin();
+
+  @override
+  Widget build(BuildContext context) {
+    final error = Theme.of(context).colorScheme.error;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 760)),
+      builder:
+          (context, t, child) => Transform.rotate(
+            // Starts after the dialog has landed, then dies away.
+            angle:
+                t < .35
+                    ? 0
+                    : math.sin((t - .35) / .65 * math.pi * 3) *
+                        .22 *
+                        (1 - (t - .35) / .65),
+            child: child,
+          ),
+      child: Container(
+        width: 44,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: error.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(WaznIcons.delete, color: error, size: 21),
       ),
     );
   }

@@ -7,18 +7,29 @@ import 'visible_gate.dart';
 /// A list row that opens a space for itself and slides in, with a brief
 /// green wash, when [arrived] -- a meal just logged or brought back. Rows
 /// that were already there simply show.
+///
+/// Set [leaving] to send it the other way: it slides out and the list closes
+/// the gap, then [onLeft] is called.
 class ArrivingItem extends StatefulWidget {
-  const ArrivingItem({super.key, required this.arrived, required this.child});
+  const ArrivingItem({
+    super.key,
+    required this.arrived,
+    required this.child,
+    this.leaving = false,
+    this.onLeft,
+  });
 
   final bool arrived;
   final Widget child;
+  final bool leaving;
+  final VoidCallback? onLeft;
 
   @override
   State<ArrivingItem> createState() => _ArrivingItemState();
 }
 
 class _ArrivingItemState extends State<ArrivingItem>
-    with SingleTickerProviderStateMixin, VisibleGate {
+    with TickerProviderStateMixin, VisibleGate {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
@@ -39,9 +50,29 @@ class _ArrivingItemState extends State<ArrivingItem>
     }
   }
 
+  late final AnimationController _leave = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 640),
+  );
+
+  @override
+  void didUpdateWidget(ArrivingItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.leaving && !oldWidget.leaving) {
+      if (AppMotion.reduceMotion(context)) {
+        widget.onLeft?.call();
+      } else {
+        _leave.forward().whenComplete(() {
+          if (mounted) widget.onLeft?.call();
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
+    _leave.dispose();
     super.dispose();
   }
 
@@ -59,7 +90,16 @@ class _ArrivingItemState extends State<ArrivingItem>
       parent: _controller,
       curve: const Interval(.35, 1, curve: Curves.easeIn),
     );
-    return SizeTransition(
+    final away = CurvedAnimation(
+      parent: _leave,
+      curve: const Interval(0, .45, curve: Curves.easeIn),
+    );
+    final close = CurvedAnimation(
+      parent: _leave,
+      curve: const Interval(.45, 1, curve: Curves.easeInOutCubic),
+    );
+    final side = Directionality.of(context) == TextDirection.rtl ? 1 : -1;
+    final arriving = SizeTransition(
       sizeFactor: open,
       axisAlignment: -1,
       child: AnimatedBuilder(
@@ -83,6 +123,23 @@ class _ArrivingItemState extends State<ArrivingItem>
           );
         },
       ),
+    );
+    return AnimatedBuilder(
+      animation: _leave,
+      child: arriving,
+      builder: (context, child) {
+        return SizeTransition(
+          sizeFactor: ReverseAnimation(close),
+          axisAlignment: -1,
+          child: Opacity(
+            opacity: 1 - away.value,
+            child: Transform.translate(
+              offset: Offset(side * 60 * away.value, 0),
+              child: child,
+            ),
+          ),
+        );
+      },
     );
   }
 }

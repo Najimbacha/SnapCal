@@ -1,12 +1,12 @@
 import 'dart:math' as math;
 
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../widgets/wazn_icons.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../data/repositories/activity_repository.dart';
@@ -17,6 +17,8 @@ import '../../screens/settings/widgets/settings_kit.dart';
 import '../../widgets/activity_ring_gauge.dart';
 import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/async_state_widgets.dart';
+import '../../widgets/motion/reveal.dart';
+import '../../widgets/motion/visible_gate.dart';
 import '../../widgets/ui_blocks.dart';
 
 /// The activity screen, on the app's own paper.
@@ -47,11 +49,16 @@ class ActivityScreen extends ConsumerWidget {
           if (!connected)
             const _NotConnectedCard()
           else ...[
-            const _TodayCard(),
+            const Reveal(offset: Offset(0, 20), child: _TodayCard()),
             const SizedBox(height: 12),
             const _TodayMetrics(),
             const SizedBox(height: 28),
-            if (isPro) const _WeekSection(),
+            if (isPro)
+              const Reveal(
+                delay: Duration(milliseconds: 900),
+                offset: Offset(0, 20),
+                child: _WeekSection(),
+              ),
           ],
         ],
       ),
@@ -111,7 +118,11 @@ class _TodayCard extends ConsumerWidget {
           const SizedBox(height: 18),
           // The goal is editable where it is shown; it was a line of text
           // fixed at 10,000 with no way to change it.
-          _GoalPill(goal: goal),
+          Reveal(
+            delay: const Duration(milliseconds: 700),
+            offset: const Offset(0, 10),
+            child: _GoalPill(goal: goal),
+          ),
         ],
       ),
     );
@@ -147,14 +158,20 @@ class _GoalPill extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Flexible(
-                child: Text(
-                  l10n.activity_steps_goal(goal),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.labelMedium.copyWith(
-                    color: context.textSecondaryColor,
-                    fontWeight: FontWeight.w700,
-                  ),
+                // A new goal rolls into place.
+                child: _Counting(
+                  value: goal,
+                  initial: goal,
+                  builder:
+                      (value) => Text(
+                        l10n.activity_steps_goal(value),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.labelMedium.copyWith(
+                          color: context.textSecondaryColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                 ),
               ),
               const SizedBox(width: 6),
@@ -190,25 +207,48 @@ class _TodayMetrics extends ConsumerWidget {
         Row(
           children: [
             Expanded(
-              child: MetricTile(
-                label: l10n.activity_calories_label,
-                value: '$calories',
-                hint:
-                    estimated
-                        ? l10n.activity_calories_estimated_hint
-                        : l10n.activity_calories_measured_hint,
-                accent: AppColors.fat,
-                icon: WaznIcons.calories,
+              child: Reveal(
+                delay: const Duration(milliseconds: 450),
+                offset: const Offset(0, 20),
+                child: _Counting(
+                  value: calories,
+                  delay: const Duration(milliseconds: 450),
+                  builder:
+                      (value) => MetricTile(
+                        label: l10n.activity_calories_label,
+                        value: '$value',
+                        hint:
+                            estimated
+                                ? l10n.activity_calories_estimated_hint
+                                : l10n.activity_calories_measured_hint,
+                        accent: AppColors.fat,
+                        icon: WaznIcons.calories,
+                      ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: MetricTile(
-                label: l10n.activity_goal_label,
-                value: '$percent%',
-                hint: number.format(goal),
-                accent: AppColors.primary,
-                icon: WaznIcons.goal,
+              child: Reveal(
+                delay: const Duration(milliseconds: 530),
+                offset: const Offset(0, 20),
+                child: _Counting(
+                  value: percent,
+                  delay: const Duration(milliseconds: 530),
+                  builder:
+                      (value) => _Counting(
+                        value: goal,
+                        initial: goal,
+                        builder:
+                            (shownGoal) => MetricTile(
+                              label: l10n.activity_goal_label,
+                              value: '$value%',
+                              hint: number.format(shownGoal),
+                              accent: AppColors.primary,
+                              icon: WaznIcons.goal,
+                            ),
+                      ),
+                ),
               ),
             ),
           ],
@@ -217,14 +257,18 @@ class _TodayMetrics extends ConsumerWidget {
           const SizedBox(height: 10),
           // The caveat, once and quietly, where the number it qualifies is --
           // not a yellow warning box shouting it on every visit.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              l10n.activity_calorie_estimate_disclaimer,
-              style: AppTypography.labelSmall.copyWith(
-                color: context.textMutedColor,
-                fontWeight: FontWeight.w600,
-                height: 1.35,
+          Reveal(
+            delay: const Duration(milliseconds: 800),
+            offset: const Offset(0, 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                l10n.activity_calorie_estimate_disclaimer,
+                style: AppTypography.labelSmall.copyWith(
+                  color: context.textMutedColor,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
               ),
             ),
           ),
@@ -271,7 +315,7 @@ class _WeekSection extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(18, 20, 18, 14),
           child: Column(
             children: [
-              SizedBox(height: 170, child: _WeekChart(week: week, goal: goal)),
+              SizedBox(height: 170, child: _WeekBars(week: week, goal: goal)),
               const SizedBox(height: 16),
               Divider(
                 height: 1,
@@ -282,15 +326,18 @@ class _WeekSection extends ConsumerWidget {
                 children: [
                   _WeekStat(
                     label: l10n.activity_avg_per_day,
-                    value: number.format(average),
+                    value: average,
+                    format: number.format,
                   ),
                   _WeekStat(
                     label: l10n.activity_best_day,
-                    value: number.format(best),
+                    value: best,
+                    format: number.format,
                   ),
                   _WeekStat(
                     label: l10n.activity_days_goal_met,
-                    value: '$daysMet/7',
+                    value: daysMet,
+                    format: (value) => '$value/7',
                   ),
                 ],
               ),
@@ -301,12 +348,17 @@ class _WeekSection extends ConsumerWidget {
         Row(
           children: [
             Expanded(
-              child: MetricTile(
-                label: l10n.activity_step_streak,
-                value: '$streak',
-                hint: l10n.common_days,
-                accent: AppColors.carbs,
-                icon: WaznIcons.calories,
+              child: _Counting(
+                value: streak,
+                initial: streak,
+                builder:
+                    (streak) => MetricTile(
+                      label: l10n.activity_step_streak,
+                      value: '$streak',
+                      hint: l10n.common_days,
+                      accent: AppColors.carbs,
+                      icon: WaznIcons.calories,
+                    ),
               ),
             ),
             const SizedBox(width: 12),
@@ -320,141 +372,336 @@ class _WeekSection extends ConsumerWidget {
   }
 }
 
-class _WeekChart extends StatelessWidget {
-  const _WeekChart({required this.week, required this.goal});
+/// The week's steps as seven bars under a dashed goal line.
+///
+/// The line draws across and the bars grow one day at a time; days that
+/// reach the goal turn full green as they get there. A new goal slides the
+/// line and recolours the bars. Tap a bar to see its steps.
+class _WeekBars extends StatefulWidget {
+  const _WeekBars({required this.week, required this.goal});
 
   final List<DailySteps> week;
   final int goal;
 
   @override
+  State<_WeekBars> createState() => _WeekBarsState();
+}
+
+class _WeekBarsState extends State<_WeekBars>
+    with SingleTickerProviderStateMixin, VisibleGate {
+  late final AnimationController _grow = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1300),
+  );
+  int? _picked;
+
+  @override
+  void initState() {
+    super.initState();
+    runWhenVisible(() {
+      if (AppMotion.reduceMotion(context)) {
+        _grow.value = 1;
+      } else {
+        _grow.forward();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _grow.dispose();
+    super.dispose();
+  }
+
+  /// Day [i]'s share of the growth, each starting a little after the last.
+  double _barT(int i) {
+    final start = .12 + i * .07;
+    return Curves.easeOutBack.transform(
+      ((_grow.value - start) / .45).clamp(0.0, 1.0),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final week = widget.week;
+    final goal = widget.goal;
     final maxSteps = week.fold<int>(
       0,
       (best, day) => math.max(best, day.steps),
     );
     final maxY = math.max(goal, maxSteps) * 1.15;
     final today = DateTime.now();
+    final number = NumberFormat.decimalPattern(
+      AppLocalizations.of(context)!.localeName,
+    );
+    final slide = AppMotion.maybeZero(
+      context,
+      const Duration(milliseconds: 700),
+    );
 
-    return BarChart(
-      BarChartData(
-        maxY: maxY,
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-        barTouchData: BarTouchData(
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipColor:
-                (_) => Theme.of(context).colorScheme.surfaceContainerHigh,
-            getTooltipItem:
-                (group, groupIndex, rod, rodIndex) => BarTooltipItem(
-                  '${rod.toY.round()}',
-                  AppTypography.labelLarge.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-          ),
-        ),
-        // The goal, drawn once, so a bar means something without a legend.
-        extraLinesData: ExtraLinesData(
-          horizontalLines: [
-            HorizontalLine(
-              y: goal.toDouble(),
-              color: AppColors.primary.withValues(alpha: 0.35),
-              strokeWidth: 1,
-              dashArray: [4, 4],
+    return AnimatedBuilder(
+      animation: _grow,
+      builder: (context, _) {
+        return Column(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final height = constraints.maxHeight;
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // The goal line, drawn across and gliding to a new goal.
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(end: goal / maxY),
+                        duration: slide,
+                        curve: AppMotion.springCurve,
+                        builder:
+                            (context, share, _) => Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: height * share,
+                              child: CustomPaint(
+                                key: const ValueKey('week-goal-line'),
+                                size: const Size.fromHeight(1.5),
+                                painter: _DashedLine(
+                                  color: AppColors.primary.withValues(
+                                    alpha: .4,
+                                  ),
+                                  drawn: Curves.easeInOut.transform(
+                                    (_grow.value / .45).clamp(0.0, 1.0),
+                                  ),
+                                ),
+                              ),
+                            ),
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          for (var i = 0; i < week.length; i++)
+                            Expanded(
+                              child: _bar(
+                                context,
+                                index: i,
+                                height: height * week[i].steps / maxY,
+                                met: week[i].steps >= goal,
+                                label: number.format(week[i].steps),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ],
-        ),
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 22,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= week.length) {
-                  return const SizedBox.shrink();
-                }
-                final date = week[index].date;
-                final isToday =
-                    date.year == today.year &&
-                    date.month == today.month &&
-                    date.day == today.day;
-                return Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    _weekdayInitial(context, date),
-                    style: AppTypography.labelSmall.copyWith(
-                      color:
-                          isToday
-                              ? context.textPrimaryColor
-                              : context.textMutedColor,
-                      fontWeight: isToday ? FontWeight.w900 : FontWeight.w600,
-                      fontSize: 11,
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                for (final day in week)
+                  Expanded(
+                    child: Text(
+                      MaterialLocalizations.of(
+                        context,
+                      ).narrowWeekdays[day.date.weekday % 7],
+                      textAlign: TextAlign.center,
+                      style: AppTypography.labelSmall.copyWith(
+                        color:
+                            _sameDay(day.date, today)
+                                ? context.textPrimaryColor
+                                : context.textMutedColor,
+                        fontWeight:
+                            _sameDay(day.date, today)
+                                ? FontWeight.w900
+                                : FontWeight.w600,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-        ),
-        barGroups: [
-          for (var i = 0; i < week.length; i++)
-            BarChartGroupData(
-              x: i,
-              barRods: [
-                BarChartRodData(
-                  toY: week[i].steps.toDouble(),
-                  width: 16,
-                  borderRadius: BorderRadius.circular(6),
-                  color:
-                      week[i].steps >= goal
-                          ? AppColors.primary
-                          : AppColors.primary.withValues(alpha: 0.35),
-                ),
               ],
             ),
-        ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _bar(
+    BuildContext context, {
+    required int index,
+    required double height,
+    required bool met,
+    required String label,
+  }) {
+    final t = _barT(index);
+    // A bar turns full green once it has grown past the goal.
+    final lit = met && t >= .75;
+    final picked = _picked == index;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _picked = picked ? null : index),
+      child: Semantics(
+        button: true,
+        label: label,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            AnimatedOpacity(
+              opacity: _picked == null || picked ? 1 : .45,
+              duration: AppMotion.standard,
+              child: SizedBox(
+                width: 16,
+                height: math.max(0.0, height * t),
+                child: AnimatedContainer(
+                  key: ValueKey('week-bar-$index'),
+                  duration: AppMotion.maybeZero(
+                    context,
+                    const Duration(milliseconds: 380),
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    color:
+                        lit
+                            ? AppColors.primary
+                            : AppColors.primary.withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+            ),
+            if (picked)
+              Positioned(
+                bottom: height * t + 8,
+                child: Reveal(
+                  key: ValueKey('week-bubble-$index'),
+                  duration: const Duration(milliseconds: 380),
+                  offset: const Offset(0, 6),
+                  scale: .7,
+                  curve: AppMotion.springCurve,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.textPrimaryColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      label,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: Theme.of(context).colorScheme.surface,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  /// The first letter of the weekday in the app's language, not a hardcoded
-  /// English "M T W T F S S".
-  static String _weekdayInitial(BuildContext context, DateTime date) {
-    final localizations = MaterialLocalizations.of(context);
-    final name = localizations.narrowWeekdays[date.weekday % 7];
-    return name;
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+/// A dashed horizontal line, drawn from the start edge [drawn] of the way.
+class _DashedLine extends CustomPainter {
+  const _DashedLine({required this.color, required this.drawn});
+
+  final Color color;
+  final double drawn;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..strokeWidth = 1;
+    final end = size.width * drawn;
+    for (var x = 0.0; x < end; x += 8) {
+      canvas.drawLine(Offset(x, 0), Offset(math.min(x + 4, end), 0), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedLine old) =>
+      old.color != color || old.drawn != drawn;
+}
+
+/// Shows [value] counting to it: from [initial] (zero by default) after
+/// [delay] the first time, and from the old value whenever it changes.
+class _Counting extends StatefulWidget {
+  const _Counting({
+    required this.value,
+    required this.builder,
+    this.initial = 0,
+    this.delay = Duration.zero,
+  });
+
+  final int value;
+  final int initial;
+  final Duration delay;
+  final Widget Function(int value) builder;
+
+  @override
+  State<_Counting> createState() => _CountingState();
+}
+
+class _CountingState extends State<_Counting> {
+  bool _opening = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final calm = AppMotion.reduceMotion(context);
+    final value = widget.value.toDouble();
+    final wait = _opening ? widget.delay : Duration.zero;
+    final total = wait + AppMotion.count;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: calm ? value : widget.initial.toDouble(), end: value),
+      duration: calm ? Duration.zero : total,
+      curve: Interval(
+        wait.inMicroseconds / total.inMicroseconds,
+        1,
+        curve: Curves.easeOutCubic,
+      ),
+      onEnd: () {
+        if (_opening && mounted) setState(() => _opening = false);
+      },
+      builder: (context, shown, _) => widget.builder(shown.round()),
+    );
   }
 }
 
 class _WeekStat extends StatelessWidget {
-  const _WeekStat({required this.label, required this.value});
+  const _WeekStat({
+    required this.label,
+    required this.value,
+    required this.format,
+  });
 
   final String label;
-  final String value;
+  final int value;
+  final String Function(int value) format;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Column(
         children: [
-          Text(
-            value,
-            style: AppTypography.titleMedium.copyWith(
-              color: context.textPrimaryColor,
-              fontWeight: FontWeight.w900,
-              fontSize: 17,
-            ),
+          _Counting(
+            value: value,
+            builder:
+                (shown) => Text(
+                  format(shown),
+                  style: AppTypography.titleMedium.copyWith(
+                    color: context.textPrimaryColor,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 17,
+                  ),
+                ),
           ),
           const SizedBox(height: 2),
           Text(

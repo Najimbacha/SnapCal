@@ -55,6 +55,10 @@ class _LogScreenState extends ConsumerState<LogScreen> {
   /// not yet deleted.
   final Set<String> _pendingDeletes = {};
 
+  /// Meals deleted from the edit sheet, sliding out of the list before
+  /// their Undo shows.
+  final Set<String> _leaving = {};
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -206,6 +210,8 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                 child: _MealDiaryCard(
                   groups: groups,
                   arrived: arrived,
+                  leaving: _leaving,
+                  onLeft: _left,
                   isPro: isPro,
                   onAdd:
                       (mealType) => _showNewMealSheet(
@@ -293,9 +299,9 @@ class _LogScreenState extends ConsumerState<LogScreen> {
               await ref.read(mealLogProvider.notifier).updateMeal(updatedMeal);
               if (mounted) setState(() {});
             },
-            onDelete: () async {
+            onDelete: () {
               Navigator.of(modalContext).pop();
-              await _deleteMeal(meal);
+              _leaveThenDelete(meal);
             },
             onCancel: () => Navigator.of(modalContext).pop(),
           ),
@@ -424,9 +430,17 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     ).millisecondsSinceEpoch;
   }
 
-  Future<void> _deleteMeal(Meal meal) async {
-    await ref.read(mealLogProvider.notifier).deleteMeal(meal.id);
-    if (mounted) setState(() {});
+  /// A meal deleted from its sheet slides out once the sheet has dropped,
+  /// then goes the way a swiped one does, with Undo.
+  Future<void> _leaveThenDelete(Meal meal) async {
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
+    setState(() => _leaving.add(meal.id));
+  }
+
+  void _left(Meal meal) {
+    if (!mounted || !_leaving.remove(meal.id)) return;
+    _deleteWithUndo(meal);
   }
 
   /// A swipe deleted the meal on the spot, with no way back from a slip of
@@ -882,6 +896,8 @@ class _MealDiaryCard extends StatelessWidget {
   const _MealDiaryCard({
     required this.groups,
     this.arrived = const {},
+    this.leaving = const {},
+    required this.onLeft,
     required this.isPro,
     required this.onAdd,
     required this.onEdit,
@@ -892,6 +908,10 @@ class _MealDiaryCard extends StatelessWidget {
 
   /// Meals that have just appeared, which slide in.
   final Set<String> arrived;
+
+  /// Meals on their way out, which slide away.
+  final Set<String> leaving;
+  final ValueChanged<Meal> onLeft;
   final bool isPro;
   final ValueChanged<String> onAdd;
   final ValueChanged<Meal> onEdit;
@@ -907,6 +927,8 @@ class _MealDiaryCard extends StatelessWidget {
           _MealGroupSection(
             group: groups[index],
             arrived: arrived,
+            leaving: leaving,
+            onLeft: onLeft,
             isPro: isPro,
             onAdd: () => onAdd(groups[index].key),
             onEdit: onEdit,
@@ -1040,6 +1062,8 @@ class _MealGroupSection extends StatelessWidget {
   const _MealGroupSection({
     required this.group,
     this.arrived = const {},
+    this.leaving = const {},
+    required this.onLeft,
     required this.isPro,
     required this.onAdd,
     required this.onEdit,
@@ -1048,6 +1072,8 @@ class _MealGroupSection extends StatelessWidget {
 
   final _MealGroupData group;
   final Set<String> arrived;
+  final Set<String> leaving;
+  final ValueChanged<Meal> onLeft;
   final bool isPro;
   final VoidCallback onAdd;
   final ValueChanged<Meal> onEdit;
@@ -1144,6 +1170,8 @@ class _MealGroupSection extends StatelessWidget {
                     ArrivingItem(
                       key: ValueKey('log-meal-${group.meals[index].id}'),
                       arrived: arrived.contains(group.meals[index].id),
+                      leaving: leaving.contains(group.meals[index].id),
+                      onLeft: () => onLeft(group.meals[index]),
                       child: MealListTile(
                         meal: group.meals[index],
                         isPro: isPro,
