@@ -1055,29 +1055,35 @@ class _WobblingBin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final error = Theme.of(context).colorScheme.error;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 760)),
-      builder:
-          (context, t, child) => Transform.rotate(
-            // Starts after the dialog has landed, then dies away.
-            angle:
-                t < .35
-                    ? 0
-                    : math.sin((t - .35) / .65 * math.pi * 3) *
-                        .22 *
-                        (1 - (t - .35) / .65),
-            child: child,
-          ),
-      child: Container(
-        width: 44,
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: error.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
+    // AlertDialog stretches its icon to the dialog's width; keep the square.
+    return Center(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: AppMotion.maybeZero(
+          context,
+          const Duration(milliseconds: 760),
         ),
-        child: Icon(WaznIcons.delete, color: error, size: 21),
+        builder:
+            (context, t, child) => Transform.rotate(
+              // Starts after the dialog has landed, then dies away.
+              angle:
+                  t < .35
+                      ? 0
+                      : math.sin((t - .35) / .65 * math.pi * 3) *
+                          .22 *
+                          (1 - (t - .35) / .65),
+              child: child,
+            ),
+        child: Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: error.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(WaznIcons.delete, color: error, size: 21),
+        ),
       ),
     );
   }

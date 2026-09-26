@@ -1820,5 +1820,11 @@
   "paywall_plan_then": "después {price}",
   "paywall_start_trial_days": "Empieza la prueba gratis de {days} días",
   "paywall_disclosure_trial_until_year": "Gratis hasta el {date}, después {price} al año. Cancela antes y no pagas nada.",
-  "paywall_disclosure_trial_until_month": "Gratis hasta el {date}, después {price} al mes. Cancela antes y no pagas nada."
+  "paywall_disclosure_trial_until_month": "Gratis hasta el {date}, después {price} al mes. Cancela antes y no pagas nada.",
+  "settings_restore_checking": "Comprobando tus compras…",
+  "settings_restore_back": "Pro ha vuelto a este teléfono",
+  "settings_export_making": "Creando tu informe…",
+  "settings_export_ready": "Informe listo para compartir",
+  "about_tagline": "Contador de calorías con IA",
+  "about_follow_us": "Síguenos"
 }

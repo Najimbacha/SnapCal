@@ -1823,5 +1823,11 @@
   "paywall_plan_then": "ثم {price}",
   "paywall_start_trial_days": "ابدأ تجربة مجانية لمدة {days} أيام",
   "paywall_disclosure_trial_until_year": "مجاني حتى {date}، ثم {price} سنويًا. ألغِ قبل ذلك ولن تدفع شيئًا.",
-  "paywall_disclosure_trial_until_month": "مجاني حتى {date}، ثم {price} شهريًا. ألغِ قبل ذلك ولن تدفع شيئًا."
+  "paywall_disclosure_trial_until_month": "مجاني حتى {date}، ثم {price} شهريًا. ألغِ قبل ذلك ولن تدفع شيئًا.",
+  "settings_restore_checking": "جارٍ التحقق من مشترياتك…",
+  "settings_restore_back": "عاد Pro إلى هذا الهاتف",
+  "settings_export_making": "جارٍ إعداد تقريرك…",
+  "settings_export_ready": "التقرير جاهز للمشاركة",
+  "about_tagline": "متتبع السعرات بالذكاء الاصطناعي",
+  "about_follow_us": "تابعنا"
 }

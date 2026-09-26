@@ -5385,4 +5385,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String paywall_disclosure_trial_until_month(String date, String price) {
     return 'Gratis hasta el $date, después $price al mes. Cancela antes y no pagas nada.';
   }
+
+  @override
+  String get settings_restore_checking => 'Comprobando tus compras…';
+
+  @override
+  String get settings_restore_back => 'Pro ha vuelto a este teléfono';
+
+  @override
+  String get settings_export_making => 'Creando tu informe…';
+
+  @override
+  String get settings_export_ready => 'Informe listo para compartir';
+
+  @override
+  String get about_tagline => 'Contador de calorías con IA';
+
+  @override
+  String get about_follow_us => 'Síguenos';
 }

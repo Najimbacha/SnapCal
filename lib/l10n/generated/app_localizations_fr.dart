@@ -5419,4 +5419,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String paywall_disclosure_trial_until_month(String date, String price) {
     return 'Gratuit jusqu’au $date, puis $price par mois. Annulez avant et vous ne payez rien.';
   }
+
+  @override
+  String get settings_restore_checking => 'Vérification de vos achats…';
+
+  @override
+  String get settings_restore_back => 'Pro est de retour sur ce téléphone';
+
+  @override
+  String get settings_export_making => 'Création de votre rapport…';
+
+  @override
+  String get settings_export_ready => 'Rapport prêt à partager';
+
+  @override
+  String get about_tagline => 'Suivi des calories par IA';
+
+  @override
+  String get about_follow_us => 'Suivez-nous';
 }
