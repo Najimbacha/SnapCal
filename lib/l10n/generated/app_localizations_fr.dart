@@ -5289,4 +5289,134 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get onb_plan_teen =>
       'Moins de 18 ans ? Parlez-en à un parent ou un médecin.';
+
+  @override
+  String get paywall_compare_free => 'Gratuit';
+
+  @override
+  String get paywall_compare_pro => 'Pro';
+
+  @override
+  String get paywall_row_scans => 'Scans de repas';
+
+  @override
+  String get paywall_row_meal_plans => 'Plans de repas';
+
+  @override
+  String get paywall_row_coach => 'Coach IA';
+
+  @override
+  String get paywall_row_photos => 'Photos de progrès';
+
+  @override
+  String get paywall_row_history => 'Historique';
+
+  @override
+  String paywall_free_scans_month(String count) {
+    return '$count par mois';
+  }
+
+  @override
+  String paywall_free_scans_left(String left, String limit) {
+    return 'Il en reste $left sur $limit';
+  }
+
+  @override
+  String get paywall_free_meal_plan => '1 jour';
+
+  @override
+  String get paywall_pro_meal_plan => 'Semaine complète';
+
+  @override
+  String get paywall_free_coach => '1 question par jour';
+
+  @override
+  String get paywall_pro_coach => 'À tout moment';
+
+  @override
+  String paywall_free_photos(String count) {
+    return '$count bilans';
+  }
+
+  @override
+  String paywall_free_history(String days) {
+    return '$days derniers jours';
+  }
+
+  @override
+  String get paywall_pro_history => 'Tout';
+
+  @override
+  String get paywall_see_everything => 'Voir tout ce qu’inclut Pro';
+
+  @override
+  String get paywall_everything_title => 'Tout ce qu’inclut Pro';
+
+  @override
+  String get paywall_all_scans_title => 'Scans illimités';
+
+  @override
+  String paywall_all_scans_detail(String count) {
+    return 'Au lieu de $count par mois';
+  }
+
+  @override
+  String get paywall_all_coach_title => 'Coach IA à tout moment';
+
+  @override
+  String get paywall_all_coach_detail => 'Au lieu d’une question par jour';
+
+  @override
+  String get paywall_all_plans_title => 'Plans de repas hebdomadaires';
+
+  @override
+  String get paywall_all_plans_detail =>
+      'Avec une liste de courses prête, au lieu d’un jour';
+
+  @override
+  String get paywall_all_history_title => 'Historique complet et rapports';
+
+  @override
+  String paywall_all_history_detail(String days) {
+    return 'Au lieu des $days derniers jours';
+  }
+
+  @override
+  String get paywall_all_photos_title => 'Photos de progrès illimitées';
+
+  @override
+  String paywall_all_photos_detail(String count) {
+    return 'Avec comparaisons côte à côte, au lieu de $count bilans';
+  }
+
+  @override
+  String get paywall_plan_per_year => 'par an';
+
+  @override
+  String get paywall_plan_per_month => 'par mois';
+
+  @override
+  String paywall_plan_days_free(String days) {
+    return '$days jours gratuits';
+  }
+
+  @override
+  String paywall_plan_then(String price) {
+    return 'puis $price';
+  }
+
+  @override
+  String paywall_start_trial_days(String days) {
+    return 'Commencer l’essai gratuit de $days jours';
+  }
+
+  @override
+  String paywall_disclosure_trial_until_year(String date, String price) {
+    return 'Gratuit jusqu’au $date, puis $price par an. Annulez avant et vous ne payez rien.';
+  }
+
+  @override
+  String paywall_disclosure_trial_until_month(String date, String price) {
+    return 'Gratuit jusqu’au $date, puis $price par mois. Annulez avant et vous ne payez rien.';
+  }
 }

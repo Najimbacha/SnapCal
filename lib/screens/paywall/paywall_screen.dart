@@ -1,71 +1,56 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show BoxParentData;
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:snapcal/core/services/config_service.dart';
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/data/services/premium_conversion_service.dart';
+import 'package:snapcal/data/services/pro_feature_service.dart';
 import 'package:snapcal/data/services/app_prompt_session_coordinator.dart';
 import 'package:snapcal/data/services/promotional_paywall_service.dart';
 import 'package:snapcal/data/services/scan_gate_service.dart';
 import 'package:snapcal/data/services/subscription_service.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
+import 'package:snapcal/providers/metrics_provider.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import '../../widgets/wazn_icons.dart';
 import '../../core/theme/app_motion.dart';
 import '../../widgets/motion/reveal.dart';
-import '../../widgets/motion/shine_sweep.dart';
+import '../../widgets/wazn_mark.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PALETTE
 //
-// The paywall photography is bright, top-down and shot on white marble, so the
-// screen is built light-first: a warm paper ground that the plate can sit on
-// without a seam, hairline rules instead of borders, and one accent — emerald,
-// the app's own — spent only on the things you can act on. Dark mode keeps the
-// same structure on a near-black ground biased green, so the marble reads as
-// deliberate rather than blown out.
+// The purchase screen is dark in both themes: the launch screen's ground,
+// with the app icon's green spent only on what matters -- the Pro values, the
+// chosen plan and the button. One green, one row style, no glows.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _paywallSage = AppColors.primary;
-const _paperLight = Color(0xFFFFFFFF);
-const _paperDark = Color(0xFF000000);
-const _surfaceLight = Color(0xFFFFFFFF);
-const _surfaceDark = Color(0xFF0D0F0E);
-const _hairlineLight = Color(0xFFDDDFDD);
-const _hairlineDark = Color(0xFF242C28);
-const _inkLight = Color(0xFF16181D);
-const _inkDark = Color(0xFFF1F4F2);
-const _mutedLight = Color(0xFF76766E);
-const _mutedDark = Color(0xFFA0A3A1);
+const _bg = Color(0xFF0B110E);
+const _card = Color(0xFF111915);
+const _line = Color(0xFF22302A);
+const _ink = Color(0xFFEEF3EF);
+const _muted = Color(0xFF93A198);
+const _faint = Color(0xFF5E6B63);
+const _em = Color(0xFF34D399);
+const _onEm = Color(0xFF04150D);
+const _amber = Color(0xFFF5A524);
 
-/// Resolves the palette once per build instead of threading `isDark` through
-/// every widget in the file.
+/// The few colours the notice and footer read, on the one dark ground.
 class _Palette {
-  const _Palette(this.isDark);
+  const _Palette();
 
-  final bool isDark;
-
-  Color get paper => isDark ? _paperDark : _paperLight;
-  Color get surface => isDark ? _surfaceDark : _surfaceLight;
-  Color get hairline => isDark ? _hairlineDark : _hairlineLight;
-  Color get ink => isDark ? _inkDark : _inkLight;
-  Color get muted => isDark ? _mutedDark : _mutedLight;
-
-  /// Emerald that stays legible as text on the current ground.
-  Color get accentInk => isDark ? _paywallSage : const Color(0xFF47613E);
-
-  Color get accentWash =>
-      AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.10);
+  bool get isDark => true;
+  Color get ink => _ink;
+  Color get muted => _muted;
+  Color get accentInk => _em;
 }
 
 // The legal pages are hosted by the backend (see `backend/legal/`), and the
@@ -143,15 +128,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   /// tapping "Restore Purchases" looked like a payment being processed.
   bool _restoring = false;
 
-  final GlobalKey _dockKey = GlobalKey();
-  final ScrollController _scrollController = ScrollController();
-
-  /// Real rendered height of the CTA dock, measured after first paint.
-  double? _dockHeight;
-
-  /// 0 while the hero still covers the status bar, 1 once it has scrolled
-  /// away. Drives the scrim that stops body text drawing through the clock.
-  double _statusBarScrim = 0;
   bool _promotionPresented = false;
 
   @override
@@ -167,8 +143,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         );
       });
     }
-    _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureDock());
     _loadOfferings();
   }
 
@@ -180,34 +154,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             .recordPromotionalPaywallDismissed(),
       );
     }
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
     super.dispose();
   }
-
-  void _measureDock() {
-    if (!mounted) return;
-    final box = _dockKey.currentContext?.findRenderObject();
-    if (box is! RenderBox || !box.hasSize) return;
-    final height = box.size.height;
-    if (_dockHeight != null && (_dockHeight! - height).abs() < 0.5) return;
-    setState(() => _dockHeight = height);
-  }
-
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    final topInset = MediaQuery.of(context).padding.top;
-    // Fade the scrim in over the last stretch of the hero, so it is fully
-    // opaque by the time the headline reaches the status bar.
-    final travel = math.max(1.0, _heroExtent - topInset);
-    final next = (_scrollController.offset / travel).clamp(0.0, 1.0);
-    if ((next - _statusBarScrim).abs() < 0.01) return;
-    setState(() => _statusBarScrim = next);
-  }
-
-  /// Height handed to the hero on the last build, so the scroll listener can
-  /// work out when the hero has cleared the status bar.
-  double _heroExtent = 240;
 
   Future<void> _loadOfferings() async {
     if (mounted) {
@@ -332,30 +280,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     }
   }
 
-  /// "SAR 12.50/month", in the user's language, with the separator the
-  /// store's own priceString uses.
-  ///
-  /// Derived from the introductory price when there is one, so every number on
-  /// an annual card describes the same period: the year the user is buying.
-  /// The renewal price is stated in full by the disclosure under the CTA.
-  String? _monthlyEquivalent(Package package) {
-    try {
-      final price = _introFor(package)?.price ?? package.storeProduct.price;
-      if (price <= 0) return null;
-      final priceString = package.storeProduct.priceString;
-      final symbol = priceString.replaceAll(RegExp(r'[0-9.,\s]+'), '').trim();
-      if (symbol.isEmpty) return null;
-      final formatted = (price / 12.0).toStringAsFixed(2);
-      final monthly =
-          priceString.trim().startsWith(symbol)
-              ? '$symbol $formatted'
-              : '$formatted $symbol';
-      return AppLocalizations.of(context)!.pro_offer_per_month(monthly);
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// The billing disclosure shown directly beneath the CTA.
   ///
   /// Apple 3.1.2 and Google Play both require the trial length, the price
@@ -374,7 +298,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     switch (package.packageType) {
       case PackageType.annual:
         if (trial != null) {
-          return l10n.paywall_disclosure_trial_year(trial.days, priceString);
+          return l10n.paywall_disclosure_trial_until_year(
+            _trialEnds(trial, l10n),
+            priceString,
+          );
         }
         // The introductory year has to be named before the user commits: the
         // disclosure previously quoted only the renewal price.
@@ -386,7 +313,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             );
       case PackageType.monthly:
         if (trial != null) {
-          return l10n.paywall_disclosure_trial_month(trial.days, priceString);
+          return l10n.paywall_disclosure_trial_until_month(
+            _trialEnds(trial, l10n),
+            priceString,
+          );
         }
         return intro == null
             ? l10n.paywall_disclosure_month(priceString)
@@ -402,6 +332,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             : l10n.paywall_disclosure_trial_month(trial.days, priceString);
     }
   }
+
+  /// The day the free trial ends, so the line under the button can say
+  /// exactly when the first payment happens.
+  String _trialEnds(_TrialInfo trial, AppLocalizations l10n) => DateFormat.MMMd(
+    l10n.localeName,
+  ).format(DateTime.now().add(Duration(days: trial.days)));
 
   /// Deliberately switches on only the three package types the previous
   /// screen already used. Anything else falls through to the generic label
@@ -660,9 +596,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = _Palette(Theme.of(context).brightness == Brightness.dark);
     final l10n = AppLocalizations.of(context)!;
-    final media = MediaQuery.of(context);
 
     // Close the screen if Pro arrives late.
     //
@@ -670,10 +604,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     // comes back as `pending`: the user has been charged, and the paywall
     // stays up with an amber "processing" notice. SubscriptionService retries
     // the verification at 8s and 30s, so the entitlement usually does land --
-    // but nothing on this screen was listening for it. The paywall sat there
-    // with the notice still showing and the buy button live, which is how
-    // someone who has already paid ends up buying twice, or writing in to say
-    // nothing happened.
+    // and this is what notices it, rather than leaving the buy button live
+    // for someone who has already paid.
     //
     // Guarded by _closed so this and the success path cannot both navigate.
     ref.listen<bool>(effectiveIsProProvider, (previous, isPro) {
@@ -682,277 +614,230 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       context.go('/pro-welcome', extra: {'restore': !_purchaseStarted});
     });
 
-    // Hold the screen while a purchase is in flight.
-    //
-    // Without this, the back gesture and the hero's close button stay live
-    // during the store sheet. Leaving then hits `if (!mounted) return;` right
-    // after the await, and the entire result is discarded -- success included.
-    // The entitlement still lands, so nobody is charged for nothing, but they
-    // are told nothing either, which is exactly the "did that go through?"
-    // message you do not want to receive about a payment.
+    final package = _selectedPackage;
+    final trial = _trialFor(package);
+    final disclosure = _disclosureFor(package, l10n);
+
+    // Hold the screen while a purchase is in flight: leaving during the store
+    // sheet threw the result away, success included.
     return PopScope(
       canPop: !_isLoading && !_restoring,
-      child: Scaffold(
-        backgroundColor: palette.paper,
-        body: LayoutBuilder(
-          builder: (context, viewport) {
-            _heroExtent = viewport.maxHeight < 680 ? 210 : 228;
-            final dense = viewport.maxHeight < 720;
-            const hPad = 20.0;
-            final inlineDock =
-                viewport.maxHeight < 700 ||
-                MediaQuery.textScalerOf(context).scale(14) > 19;
-            final dock = _CtaDock(
-              key: _dockKey,
-              palette: palette,
-              hPad: hPad,
-              done: _purchaseDone,
-              isLoading: _isLoading,
-              package: _selectedPackage,
-              loadingOfferings: _loadingOfferings,
-              trialDays: _trialFor(_selectedPackage)?.days,
-              introPriceString: _introFor(_selectedPackage)?.priceString,
-              planLabel:
-                  _selectedPackage == null
-                      ? null
-                      : _planLabel(_selectedPackage!, l10n),
-              disclosure: _disclosureFor(_selectedPackage, l10n),
-              onPurchase: _handlePurchase,
-              restoring: _restoring,
-            );
-
-            // The dock's height depends on the disclosure text, which changes
-            // with the selected plan and the locale. Re-measure after each build.
-            WidgetsBinding.instance.addPostFrameCallback((_) => _measureDock());
-
-            return Stack(
-              children: [
-                ListView(
-                  controller: _scrollController,
-                  // The dock is measured, not guessed. The old constant
-                  // (236/252) under-shot its real height, so the last benefit
-                  // row was sliced in half by the CTA and could never be
-                  // scrolled clear of it -- which reads as a rendering bug
-                  // rather than as "there is more below".
-                  padding: EdgeInsets.only(
-                    bottom:
-                        inlineDock
-                            ? 16
-                            : (_dockHeight ?? (dense ? 236.0 : 252.0)) +
-                                (_dockHeight == null
-                                    ? media.padding.bottom
-                                    : 0.0) +
-                                16,
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light.copyWith(
+          statusBarColor: Colors.transparent,
+          systemNavigationBarColor: _bg,
+        ),
+        child: Scaffold(
+          backgroundColor: _bg,
+          body: Stack(
+            children: [
+              // A soft light behind the name, and nothing else glowing.
+              const Positioned(
+                top: -170,
+                left: -60,
+                right: -60,
+                height: 380,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        colors: [Color(0x1F34D399), Color(0x0034D399)],
+                      ),
+                    ),
                   ),
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  children: [
-                    // The scan, full width and running under the status
-                    // bar. This is the only proof on the screen that the
-                    // product works, and it was rendered in `compact` mode at
-                    // about a third of the width, boxed in beside a second
-                    // set of macro bars that repeated it. The full-size hero
-                    // already draws its own close button and its own fade
-                    // into the page -- the machinery was here all along.
-                    _ScanHero(
-                      height: _heroExtent,
-                      palette: palette,
-                      topInset: media.padding.top,
-                      onClose: () {
-                        if (_isLoading || _restoring) return;
-                        if (context.canPop()) context.pop();
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: hPad),
-                      child: _buildTitleBlock(context, palette),
-                    ),
-                    const SizedBox(height: 18),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: hPad),
-                      child: _BenefitLedger(palette: palette),
-                    ),
-                    SizedBox(height: dense ? 20 : 26),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: hPad),
-                      child: _buildPlans(context, palette, l10n),
-                    ),
-                    if (_purchaseNotice != null) ...[
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: hPad),
-                        child: _NoticeBanner(
-                          message: _purchaseNotice!,
-                          palette: palette,
-                          // A warning with nothing to do about it is a dead
-                          // end. Every purchase notice is a state the user can
-                          // reasonably try again from.
-                          onRetry: _isLoading ? null : _handlePurchase,
+                ),
+              ),
+              SafeArea(
+                // One screen on most phones: the column fills the height, and
+                // only a short phone or large text makes it scroll.
+                child: CustomScrollView(
+                  slivers: [
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildTop(context),
+                            const SizedBox(height: 10),
+                            _buildHeader(context, l10n),
+                            const SizedBox(height: 18),
+                            Reveal(
+                              delay: const Duration(milliseconds: 520),
+                              offset: const Offset(0, 24),
+                              duration: const Duration(milliseconds: 640),
+                              child: _CompareCard(rows: _compareRows(l10n)),
+                            ),
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Reveal(
+                                delay: const Duration(milliseconds: 800),
+                                offset: const Offset(0, 8),
+                                child: _EverythingLink(
+                                  label: l10n.paywall_see_everything,
+                                  onTap: () => _showEverything(context),
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            ..._buildNotices(),
+                            const SizedBox(height: 10),
+                            _buildPlans(l10n),
+                            const SizedBox(height: 12),
+                            Reveal(
+                              delay: const Duration(milliseconds: 1050),
+                              offset: const Offset(0, 24),
+                              duration: const Duration(milliseconds: 620),
+                              child: _PrimaryCta(
+                                key: const ValueKey('paywall-cta'),
+                                label: _ctaLabel(l10n, package, trial),
+                                busy: _isLoading,
+                                done: _purchaseDone,
+                                enabled:
+                                    !_purchaseDone &&
+                                    !_isLoading &&
+                                    !_restoring &&
+                                    !_loadingOfferings &&
+                                    package != null,
+                                onTap: _handlePurchase,
+                              ),
+                            ),
+                            const SizedBox(height: 9),
+                            // Store rules want the trial, the price after it
+                            // and the billing period right beside the button.
+                            AnimatedSwitcher(
+                              duration: AppMotion.maybeZero(
+                                context,
+                                AppMotion.expansion,
+                              ),
+                              layoutBuilder:
+                                  (current, previous) => Stack(
+                                    alignment: Alignment.topCenter,
+                                    children: [
+                                      ...previous,
+                                      if (current != null) current,
+                                    ],
+                                  ),
+                              child: Text(
+                                disclosure ?? l10n.paywall_cancel_anytime,
+                                key: ValueKey(disclosure),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: _muted,
+                                  fontSize: 12.5,
+                                  height: 1.35,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            _LegalFooter(
+                              palette: const _Palette(),
+                              onTerms: () => _openUrl(_termsUrl),
+                              onPrivacy: () => _openUrl(_privacyPolicyUrl),
+                              onRestore:
+                                  (_isLoading || _restoring)
+                                      ? null
+                                      : _handleRestore,
+                              restoring: _restoring,
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                    if (_offeringsNotice != null && !_loadingOfferings) ...[
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: hPad),
-                        child: _NoticeBanner(
-                          message: _offeringsNotice!,
-                          palette: palette,
-                          onRetry: _loadOfferings,
-                        ),
-                      ),
-                    ],
-                    if (inlineDock) dock,
-                    // Store review wants Terms and Privacy reachable from the
-                    // purchase screen, but they are not part of the buy action.
-                    // They sit at the tail of the scroll as fine print so the
-                    // sticky CTA stays one clean object.
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        hPad,
-                        dense ? 24 : 30,
-                        hPad,
-                        8,
-                      ),
-                      child: _LegalFooter(
-                        palette: palette,
-                        onTerms: () => _openUrl(_termsUrl),
-                        onPrivacy: () => _openUrl(_privacyPolicyUrl),
-                        onRestore:
-                            (_isLoading || _restoring) ? null : _handleRestore,
-                        restoring: _restoring,
                       ),
                     ),
                   ],
                 ),
-                if (!inlineDock)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Reveal(
-                      delay: const Duration(milliseconds: 1500),
-                      offset: const Offset(0, 30),
-                      duration: const Duration(milliseconds: 600),
-                      child: dock,
-                    ),
-                  ),
-                // Scrolled body text used to run straight through the status bar
-                // clock and icons: the list starts at y=0 and nothing sat behind
-                // the inset. This scrim fades in as the hero scrolls away.
-                if (media.padding.top > 0)
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: _statusBarScrim,
-                        child: Container(
-                          height: media.padding.top,
-                          decoration: BoxDecoration(
-                            color: palette.paper,
-                            border: Border(
-                              bottom: BorderSide(
-                                color: palette.hairline.withValues(
-                                  alpha: _statusBarScrim,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// The headline, chosen by where the user came from.
-  ///
-  /// Same mapping as before: the promise on the screen has to match the door
-  /// they walked through, or the purchase feels like a bait and switch.
-  Widget _buildTitleBlock(BuildContext context, _Palette palette) {
-    final l10n = AppLocalizations.of(context)!;
-    String title;
-
-    if (widget.featureName == 'barcode') {
-      title = l10n.paywall_barcode_title;
-    } else if (widget.limitReached) {
-      // Real numbers, not a hardcoded "3/3 today". The allowance is monthly and
-      // the server owns it, so the copy asks the same gate that blocked the
-      // scan rather than repeating a figure that has been wrong since the
-      // limit moved off 3.
-      final gate = ScanGateService();
-      final limit = gate.getMonthlyLimit();
-      title = l10n.paywall_free_scans_used_title(
-        gate.getPeriodScanCount(),
-        limit,
-      );
-    } else if (widget.entryPoint == PaywallEntryPoint.scanLimit) {
-      title = l10n.paywall_unlimited_scanning_title;
-    } else if (widget.entryPoint == PaywallEntryPoint.aiCoachLimit) {
-      title = l10n.paywall_ai_coaching_title;
-    } else if (widget.entryPoint == PaywallEntryPoint.plannerLockedDay ||
-        widget.entryPoint == PaywallEntryPoint.plannerPreferences) {
-      title = l10n.paywall_smart_planning_title;
-    } else if (widget.entryPoint == PaywallEntryPoint.groceryList) {
-      title = l10n.paywall_shopping_lists_title;
-    } else if (widget.entryPoint == PaywallEntryPoint.progressPhotoLimit) {
-      title = l10n.paywall_progress_journey_title;
-    } else if (widget.entryPoint == PaywallEntryPoint.reportInsight ||
-        widget.entryPoint == PaywallEntryPoint.macroDetails ||
-        widget.entryPoint == PaywallEntryPoint.mealInsight) {
-      title = l10n.paywall_analytics_title;
-    } else {
-      title = l10n.paywall_upgrade_experience_title;
-    }
-
-    final general = title == l10n.paywall_upgrade_experience_title;
-
-    // One headline -- the product name -- and one line of context under it.
-    //
-    // The headline used to name the three things the benefit list names
-    // directly below it, so the screen introduced itself twice. The entry
-    // point's own message becomes the supporting line, and the second
-    // subtitle goes: "Upgrade to unlock unlimited scanning" under "You used
-    // 15/15 free scans this month" added nothing the reader did not have.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Below the scan, the page assembles in order: name, promise,
-        // benefits, plans, button.
-        Reveal(
-          delay: const Duration(milliseconds: 450),
-          offset: const Offset(0, 14),
-          child: Text(
-            '${l10n.appTitle} Pro',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: palette.ink,
-              fontSize: 31,
-              height: 1.05,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.9,
+  Widget _buildTop(BuildContext context) {
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Reveal(
+        offset: const Offset(0, -8),
+        duration: const Duration(milliseconds: 400),
+        child: Semantics(
+          button: true,
+          label: MaterialLocalizations.of(context).closeButtonTooltip,
+          child: GestureDetector(
+            key: const ValueKey('paywall-close'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (_isLoading || _restoring) return;
+              if (context.canPop()) context.pop();
+            },
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(WaznIcons.close, size: 17, color: _muted),
             ),
           ),
         ),
-        const SizedBox(height: 9),
+      ),
+    );
+  }
+
+  /// The icon beside the name, and one line chosen by where the user came
+  /// from, so the promise matches the door they walked through.
+  Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+    final headline = _headline(l10n);
+    final general = headline == l10n.purchase_headline;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Reveal(
+              delay: Duration(milliseconds: 80),
+              offset: Offset.zero,
+              scale: .4,
+              curve: AppMotion.springCurve,
+              duration: Duration(milliseconds: 760),
+              child: WaznMark(size: 46),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Reveal(
+                delay: const Duration(milliseconds: 220),
+                offset: const Offset(0, 14),
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: '${l10n.appTitle} '),
+                      const TextSpan(text: 'Pro', style: TextStyle(color: _em)),
+                    ],
+                  ),
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 30,
+                    height: 1.05,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.9,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
         Reveal(
-          delay: const Duration(milliseconds: 600),
+          delay: const Duration(milliseconds: 400),
           offset: const Offset(0, 10),
           child: Text(
-            general ? l10n.purchase_headline : title,
-            textAlign: TextAlign.center,
+            headline,
             style: TextStyle(
-              color: palette.muted,
-              fontSize: 16,
+              color: general ? _muted : _ink,
+              fontSize: 15.5,
               height: 1.35,
               fontWeight: FontWeight.w500,
             ),
@@ -962,58 +847,205 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     );
   }
 
-  Widget _buildPlans(
-    BuildContext context,
-    _Palette palette,
-    AppLocalizations l10n,
-  ) {
-    if (_loadingOfferings) {
-      return _PlanSkeleton(palette: palette);
+  /// Same mapping as before: each door into the screen has its own line.
+  String _headline(AppLocalizations l10n) {
+    if (widget.featureName == 'barcode') return l10n.paywall_barcode_title;
+    if (widget.limitReached) {
+      // Real numbers from the gate that blocked the scan, never a figure
+      // hardcoded here.
+      final gate = ScanGateService();
+      return l10n.paywall_free_scans_used_title(
+        gate.getPeriodScanCount(),
+        gate.getMonthlyLimit(),
+      );
     }
-    if (_packages.isEmpty) {
-      return const SizedBox.shrink();
+    switch (widget.entryPoint) {
+      case PaywallEntryPoint.scanLimit:
+        return l10n.paywall_unlimited_scanning_title;
+      case PaywallEntryPoint.aiCoachLimit:
+        return l10n.paywall_ai_coaching_title;
+      case PaywallEntryPoint.plannerLockedDay:
+      case PaywallEntryPoint.plannerPreferences:
+        return l10n.paywall_smart_planning_title;
+      case PaywallEntryPoint.groceryList:
+        return l10n.paywall_shopping_lists_title;
+      case PaywallEntryPoint.progressPhotoLimit:
+        return l10n.paywall_progress_journey_title;
+      case PaywallEntryPoint.reportInsight:
+      case PaywallEntryPoint.macroDetails:
+      case PaywallEntryPoint.mealInsight:
+        return l10n.paywall_analytics_title;
+      default:
+        return l10n.purchase_headline;
     }
+  }
+
+  /// What Free allows and what Pro gives, with Free's real limits.
+  List<_CompareRowData> _compareRows(AppLocalizations l10n) {
+    final gate = ScanGateService();
+    final limit = gate.getMonthlyLimit();
+    final used = gate.getPeriodScanCount();
+    final out = widget.limitReached || used >= limit;
+    return [
+      _CompareRowData(
+        icon: WaznIcons.scan,
+        label: l10n.paywall_row_scans,
+        free:
+            out
+                ? l10n.paywall_free_scans_left('0', '$limit')
+                : l10n.paywall_free_scans_month('$limit'),
+        pro: l10n.paywall_feature_unlimited,
+        warning: out,
+      ),
+      _CompareRowData(
+        icon: WaznIcons.calendar,
+        label: l10n.paywall_row_meal_plans,
+        free: l10n.paywall_free_meal_plan,
+        pro: l10n.paywall_pro_meal_plan,
+      ),
+      _CompareRowData(
+        icon: WaznIcons.coach,
+        label: l10n.paywall_row_coach,
+        free: l10n.paywall_free_coach,
+        pro: l10n.paywall_pro_coach,
+      ),
+      _CompareRowData(
+        icon: WaznIcons.image,
+        label: l10n.paywall_row_photos,
+        free: l10n.paywall_free_photos('${BodyMetrics.freePhotoCheckIns}'),
+        pro: l10n.paywall_feature_unlimited,
+      ),
+      _CompareRowData(
+        icon: WaznIcons.history,
+        label: l10n.paywall_row_history,
+        free: l10n.paywall_free_history('${ProFeatureService.freeHistoryDays}'),
+        pro: l10n.paywall_pro_history,
+      ),
+    ];
+  }
+
+  void _showEverything(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final limit = ScanGateService().getMonthlyLimit();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF131C17),
+      showDragHandle: true,
+      builder:
+          (_) => _EverythingSheet(
+            title: l10n.paywall_everything_title,
+            items: [
+              (
+                l10n.paywall_all_scans_title,
+                l10n.paywall_all_scans_detail('$limit'),
+              ),
+              (l10n.paywall_all_coach_title, l10n.paywall_all_coach_detail),
+              (l10n.paywall_all_plans_title, l10n.paywall_all_plans_detail),
+              (
+                l10n.paywall_all_history_title,
+                l10n.paywall_all_history_detail(
+                  '${ProFeatureService.freeHistoryDays}',
+                ),
+              ),
+              (
+                l10n.paywall_all_photos_title,
+                l10n.paywall_all_photos_detail(
+                  '${BodyMetrics.freePhotoCheckIns}',
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
+  List<Widget> _buildNotices() {
+    return [
+      if (_purchaseNotice != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: _NoticeBanner(
+            message: _purchaseNotice!,
+            palette: const _Palette(),
+            // Every purchase notice is a state the user can try again from.
+            onRetry: _isLoading ? null : _handlePurchase,
+          ),
+        ),
+      if (_offeringsNotice != null && !_loadingOfferings)
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: _NoticeBanner(
+            message: _offeringsNotice!,
+            palette: const _Palette(),
+            onRetry: _loadOfferings,
+          ),
+        ),
+    ];
+  }
+
+  /// "Start 7-day free trial" when the store has a free trial for this plan;
+  /// otherwise the plan and what is charged first.
+  String _ctaLabel(AppLocalizations l10n, Package? package, _TrialInfo? trial) {
+    if (_loadingOfferings) return l10n.premium_loading;
+    if (package == null) return l10n.paywall_unlock_snapcal_pro;
+    if (trial != null) return l10n.paywall_start_trial_days('${trial.days}');
+    try {
+      return l10n.premium_start_plan(
+        _planLabel(package, l10n),
+        _introFor(package)?.priceString ?? package.storeProduct.priceString,
+      );
+    } catch (_) {
+      return l10n.paywall_unlock_snapcal_pro;
+    }
+  }
+
+  Widget _buildPlans(AppLocalizations l10n) {
+    if (_loadingOfferings) return const _PlanSkeleton();
+    if (_packages.isEmpty) return const SizedBox.shrink();
 
     final savings = _savingsPercent(_monthlyPackage, _annualPackage);
     final annual = _annualPackage;
-
-    return _PlanChooser(
+    return _PlanTiles(
       selectedIndex: _packages.indexWhere(
         (p) => identical(p, _selectedPackage),
       ),
-      badged: [
-        for (final p in _packages) annual != null && identical(p, annual),
-      ],
-      cards: [
-        for (var i = 0; i < _packages.length; i++)
-          _PlanCard(
-            palette: palette,
-            label: _planLabel(_packages[i], l10n),
-            price: _safePriceString(_packages[i]),
-            introPrice: _introFor(_packages[i])?.priceString,
-            perMonth:
-                _packages[i].packageType == PackageType.annual
-                    ? _monthlyEquivalent(_packages[i])
-                    : null,
+      onSelect: (i) {
+        HapticFeedback.selectionClick();
+        setState(() {
+          _selectedPackage = _packages[i];
+          _purchaseNotice = null;
+        });
+      },
+      plans: [
+        for (final p in _packages)
+          _PlanData(
+            label: _planLabel(p, l10n),
+            // What is actually charged first is the biggest number: the store
+            // rules ask for exactly this.
+            price: _introFor(p)?.priceString ?? _safePriceString(p),
+            note: _planNote(p, l10n),
+            noteIsOffer: _trialFor(p) != null,
             badge:
-                (annual != null &&
-                        identical(_packages[i], annual) &&
-                        savings != null)
+                annual != null && identical(p, annual) && savings != null
                     ? l10n.paywall_save_percent(savings)
-                    : (annual != null && identical(_packages[i], annual)
-                        ? l10n.paywall_best_value
-                        : null),
-            selected: identical(_packages[i], _selectedPackage),
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() {
-                _selectedPackage = _packages[i];
-                _purchaseNotice = null;
-              });
-            },
+                    : null,
           ),
       ],
     );
+  }
+
+  /// The line under a plan's price: the free days, the price after a
+  /// first-period discount, or simply the period.
+  String _planNote(Package package, AppLocalizations l10n) {
+    final trial = _trialFor(package);
+    if (trial != null) return l10n.paywall_plan_days_free('${trial.days}');
+    if (_introFor(package) != null) {
+      return l10n.paywall_plan_then(_safePriceString(package));
+    }
+    return switch (package.packageType) {
+      PackageType.annual => l10n.paywall_plan_per_year,
+      PackageType.monthly => l10n.paywall_plan_per_month,
+      _ => '',
+    };
   }
 
   String _safePriceString(Package package) {
@@ -1026,595 +1058,327 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HERO
+// FREE / PRO
 //
-// A purchase screen needs a first impression that proves the product. The plate
-// photo is the proof; a single scan sweep and labelled callouts turn it into
-// "this app reads your food and counts the calories". The sequence plays once,
-// settles on the caught plate, then breathes very slowly so the screen still
-// feels alive without ever pulling attention away from the offer below.
+// One card, one row style. The switch moves to Pro once by itself, so the
+// difference is the first thing seen, then it is the reader's to flip.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const double _heroChromeTop = 8;
-const String _heroAsset = 'assets/images/paywall/hero_slide_1.png';
-const double _heroImageExtent = 1024;
-const int _heroCalories = 590;
-
-/// One item detected on the plate. [anchor] is a fraction of the square source
-/// image, mapped onto the cover-cropped box when the hero is laid out.
-class _HeroIngredient {
-  const _HeroIngredient({
-    required this.anchor,
+class _CompareRowData {
+  const _CompareRowData({
+    required this.icon,
     required this.label,
-    required this.portion,
+    required this.free,
+    required this.pro,
+    this.warning = false,
   });
 
-  final Offset anchor;
+  final IconData icon;
   final String label;
-  final String portion;
+  final String free;
+  final String pro;
+
+  /// The Free value is a limit already reached: shown in amber.
+  final bool warning;
 }
 
-class _ScanHero extends StatefulWidget {
-  const _ScanHero({
-    required this.height,
-    required this.palette,
-    required this.topInset,
-    required this.onClose,
-  });
+class _CompareCard extends StatefulWidget {
+  const _CompareCard({required this.rows});
 
-  final double height;
-  final _Palette palette;
-  final double topInset;
-  final VoidCallback onClose;
+  final List<_CompareRowData> rows;
 
   @override
-  State<_ScanHero> createState() => _ScanHeroState();
+  State<_CompareCard> createState() => _CompareCardState();
 }
 
-class _ScanHeroState extends State<_ScanHero> with TickerProviderStateMixin {
-  static const Duration _revealDuration = Duration(milliseconds: 2400);
-  static const Duration _ambientDuration = Duration(milliseconds: 2600);
+class _CompareCardState extends State<_CompareCard>
+    with SingleTickerProviderStateMixin {
+  bool _pro = false;
+  bool _touched = false;
 
-  late final AnimationController _reveal;
-  late final AnimationController _ambient;
-  late final Animation<double> _scan;
-  late final Animation<double> _pillFade;
-  late final Animation<double> _badgeFade;
-  late final Animation<double> _count;
-  late final Animation<double> _badgeScale;
-  late final List<Animation<double>> _ringFade;
-  late final List<Animation<double>> _chipFade;
-  bool _reduced = false;
+  /// Waits for the card to arrive before the first flip.
+  late final AnimationController _wait = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1700),
+  );
 
   @override
   void initState() {
     super.initState();
-    _reduced =
-        WidgetsBinding
-            .instance
-            .platformDispatcher
-            .accessibilityFeatures
-            .reduceMotion;
-
-    _reveal = AnimationController(
-      vsync: this,
-      duration: _reduced ? const Duration(milliseconds: 200) : _revealDuration,
-    );
-    _ambient = AnimationController(vsync: this, duration: _ambientDuration);
-
-    _scan = _segment(0.10, 0.45, Curves.easeInOut);
-    _pillFade = Tween<double>(
-      begin: 1,
-      end: 0,
-    ).animate(_segment(0.38, 0.52, Curves.easeIn));
-    _badgeFade = _segment(0.52, 0.64, Curves.easeOut);
-    _count = Tween<double>(
-      begin: 0,
-      end: _heroCalories.toDouble(),
-    ).animate(_segment(0.55, 0.90, Curves.easeOutCubic));
-    _badgeScale = Tween<double>(
-      begin: 0.86,
-      end: 1,
-    ).animate(_segment(0.72, 0.88, Curves.easeOutBack));
-    _ringFade = [
-      for (final start in const [0.14, 0.19, 0.24, 0.29])
-        _segment(start, start + 0.16, Curves.easeOut),
-    ];
-    _chipFade = [
-      for (final start in const [0.50, 0.57, 0.64, 0.71])
-        _segment(start, start + 0.12, Curves.easeOut),
-    ];
-
-    if (_reduced) {
-      _reveal.value = 1;
-    } else {
-      _reveal.forward().whenComplete(() {
-        if (mounted) _ambient.repeat(reverse: true);
-      });
-    }
+    _wait.addStatusListener((status) {
+      if (status == AnimationStatus.completed && !_touched && mounted) {
+        setState(() => _pro = true);
+      }
+    });
   }
 
-  Animation<double> _segment(double begin, double end, Curve curve) {
-    return CurvedAnimation(
-      parent: _reveal,
-      curve: Interval(begin, end, curve: curve),
-    );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_wait.isAnimating || _wait.isCompleted || _touched) return;
+    if (AppMotion.reduceMotion(context)) {
+      _pro = true;
+      _wait.value = 1;
+    } else {
+      _wait.forward();
+    }
   }
 
   @override
   void dispose() {
-    _reveal.dispose();
-    _ambient.dispose();
+    _wait.dispose();
     super.dispose();
   }
 
-  List<_HeroIngredient> _ingredients(AppLocalizations l10n) {
-    return [
-      _HeroIngredient(
-        anchor: const Offset(0.33, 0.34),
-        label: l10n.paywall_slide_grilled_chicken,
-        portion: l10n.paywall_slide_chicken_portion,
-      ),
-      _HeroIngredient(
-        anchor: const Offset(0.65, 0.36),
-        label: l10n.paywall_slide_rice,
-        portion: l10n.paywall_slide_rice_portion,
-      ),
-      _HeroIngredient(
-        anchor: const Offset(0.31, 0.68),
-        label: l10n.paywall_slide_avocado,
-        portion: l10n.paywall_slide_avocado_portion,
-      ),
-      _HeroIngredient(
-        anchor: const Offset(0.68, 0.70),
-        label: l10n.paywall_slide_cherry_tomatoes,
-        portion: l10n.paywall_slide_tomatoes_portion,
-      ),
-    ];
-  }
-
-  /// Maps a fraction of the square source image onto the cover-cropped box so
-  /// callouts stay glued to the food whatever the viewport aspect is.
-  Offset _coverPoint(Size box, Offset fraction) {
-    final scale = math.max(
-      box.width / _heroImageExtent,
-      box.height / _heroImageExtent,
-    );
-    final rendered = _heroImageExtent * scale;
-    return Offset(
-      fraction.dx * rendered + (box.width - rendered) / 2,
-      fraction.dy * rendered + (box.height - rendered) / 2,
-    );
-  }
-
-  double _textWidth(
-    String text,
-    TextStyle base,
-    double fontSize,
-    FontWeight weight,
-  ) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: base.merge(TextStyle(fontSize: fontSize, fontWeight: weight)),
-      ),
-      maxLines: 1,
-      textScaler: TextScaler.noScaling,
-      textDirection: TextDirection.ltr,
-    )..layout();
-    return painter.width;
-  }
-
-  /// Each chip hugs its own text so a short name like "Rice" reads as one tidy
-  /// pill rather than a wide box with dead space. Chips are pinned to the near
-  /// edge, which keeps two foods on the same row from ever colliding.
-  List<Rect> _chipRects(
-    Size box,
-    List<Offset> dots,
-    List<_HeroIngredient> ingredients,
-    TextStyle base, {
-    required bool rtl,
-  }) {
-    const chipHeight = 36.0;
-    // The close button sits at the top of the leading edge -- the left in
-    // English, the right in Arabic -- so the top chip on that side keeps
-    // clear of it.
-    const closeClearance = 56.0;
-    const edge = 12.0;
-    const dotSize = 6.0;
-    const dotGap = 8.0;
-    const hPad = 9.0;
-    final maxWidth = math.max(48.0, (box.width - 86) / 2);
-    final rects = <Rect>[];
-    for (var i = 0; i < dots.length; i++) {
-      final dot = dots[i];
-      final item = ingredients[i];
-      final isTop = item.anchor.dy < 0.5;
-      final isLeft = item.anchor.dx < 0.5;
-      final content = math.max(
-        _textWidth(item.label, base, 10, FontWeight.w700),
-        _textWidth(item.portion, base, 8.5, FontWeight.w600),
-      );
-      // A couple of pixels of slack: sizing to the exact glyph width makes the
-      // text ellipsize over sub-pixel rounding, which drops a whole word.
-      final width = math.min(
-        maxWidth,
-        content + dotSize + dotGap + hPad * 2 + 4,
-      );
-      final besideClose = isTop && (isLeft != rtl);
-      final inset = besideClose ? closeClearance : edge;
-      final left = isLeft ? inset : box.width - inset - width;
-      final rawTop = isTop ? dot.dy + 12 : dot.dy - chipHeight - 12;
-      final top =
-          rawTop
-              .clamp(edge, math.max(edge, box.height - chipHeight - edge))
-              .toDouble();
-      rects.add(Rect.fromLTWH(left, top, width, chipHeight));
-    }
-    return rects;
+  void _set(bool pro) {
+    _touched = true;
+    if (pro == _pro) return;
+    HapticFeedback.selectionClick();
+    setState(() => _pro = pro);
   }
 
   @override
   Widget build(BuildContext context) {
-    final palette = widget.palette;
     final l10n = AppLocalizations.of(context)!;
-    final ingredients = _ingredients(l10n);
-
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-      child: SizedBox(
-        key: const ValueKey('paywall-scan-hero'),
-        height: widget.height,
-        width: double.infinity,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final size = Size(constraints.maxWidth, constraints.maxHeight);
-            final dots = [
-              for (final item in ingredients) _coverPoint(size, item.anchor),
-            ];
-            final rects = _chipRects(
-              size,
-              dots,
-              ingredients,
-              DefaultTextStyle.of(context).style,
-              rtl: Directionality.of(context) == TextDirection.rtl,
-            );
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  _heroAsset,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                  gaplessPlayback: true,
-                  cacheWidth: 900,
-                  errorBuilder:
-                      (context, error, stack) =>
-                          ColoredBox(color: palette.accentWash),
-                ),
-                if (palette.isDark)
-                  const Positioned.fill(
-                    child: ColoredBox(color: Color(0x44000000)),
-                  ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.22),
-                          Colors.transparent,
-                          palette.paper.withValues(
-                            alpha: palette.isDark ? 0.32 : 0.18,
-                          ),
-                        ],
-                        stops: const [0, 0.48, 1],
-                      ),
-                    ),
-                  ),
-                ),
-                // The beam only needs the one-shot reveal, so it is kept out of
-                // the ambient rebuild below.
-                AnimatedBuilder(
-                  animation: _scan,
-                  builder: (context, _) => _scanBeam(),
-                ),
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: RepaintBoundary(
-                      child: AnimatedBuilder(
-                        animation: Listenable.merge([_reveal, _ambient]),
-                        builder:
-                            (context, _) =>
-                                _overlay(l10n, dots, rects, ingredients),
-                      ),
-                    ),
-                  ),
-                ),
-                PositionedDirectional(
-                  start: 12,
-                  top: widget.topInset + _heroChromeTop,
-                  child: _HeroIconButton(
-                    icon: WaznIcons.close,
-                    onTap: widget.onClose,
-                    semanticLabel:
-                        MaterialLocalizations.of(context).closeButtonTooltip,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+    return AnimatedContainer(
+      key: const ValueKey('paywall-compare'),
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 450)),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _pro ? _em.withValues(alpha: 0.4) : _line),
+      ),
+      child: Column(
+        children: [
+          _Switch(
+            pro: _pro,
+            onChanged: _set,
+            free: l10n.paywall_compare_free,
+            proLabel: l10n.paywall_compare_pro,
+          ),
+          const SizedBox(height: 6),
+          for (var i = 0; i < widget.rows.length; i++)
+            _CompareRow(
+              data: widget.rows[i],
+              pro: _pro,
+              order: i,
+              first: i == 0,
+            ),
+        ],
       ),
     );
-  }
-
-  Widget _scanBeam() {
-    final progress = _scan.value;
-    if (progress <= 0 || progress >= 1) return const SizedBox.shrink();
-    final opacity =
-        progress < 0.15
-            ? progress / 0.15
-            : (progress > 0.85 ? (1 - progress) / 0.15 : 1.0);
-    return Positioned(
-      top: progress * widget.height - 3,
-      left: 0,
-      right: 0,
-      height: 6,
-      child: Opacity(
-        opacity: opacity,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary.withValues(alpha: 0),
-                  AppColors.primary.withValues(alpha: 0.55),
-                  AppColors.primary.withValues(alpha: 0),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _overlay(
-    AppLocalizations l10n,
-    List<Offset> dots,
-    List<Rect> rects,
-    List<_HeroIngredient> ingredients,
-  ) {
-    final pulse = _reduced ? 1.0 : 0.72 + 0.28 * _ambient.value;
-    final palette = widget.palette;
-    // On the bright marble a white hairline disappears; a soft dark line reads
-    // as a leader without competing with the food.
-    final lineColor =
-        palette.isDark
-            ? Colors.white.withValues(alpha: 0.5)
-            : Colors.black.withValues(alpha: 0.24);
-
-    final children = <Widget>[
-      Positioned.fill(
-        child: CustomPaint(
-          painter: _CalloutConnectorPainter(
-            dots: dots,
-            rects: rects,
-            opacities: [for (final fade in _chipFade) fade.value],
-            color: lineColor,
-          ),
-        ),
-      ),
-    ];
-
-    for (var i = 0; i < dots.length; i++) {
-      final dot = dots[i];
-      final ring = _ringFade[i].value;
-      final diameter = 18 + 10 * ring;
-      children.add(
-        Positioned(
-          left: dot.dx - diameter / 2,
-          top: dot.dy - diameter / 2,
-          child: Opacity(
-            opacity: (ring * (0.35 + 0.65 * pulse)).clamp(0, 1),
-            child: Container(
-              width: diameter,
-              height: diameter,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color:
-                      palette.isDark
-                          ? Colors.white.withValues(alpha: 0.85)
-                          : Colors.black.withValues(alpha: 0.32),
-                  width: 1.5,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      children.add(
-        Positioned(
-          left: dot.dx - 5,
-          top: dot.dy - 5,
-          child: Opacity(
-            opacity: (_chipFade[i].value * pulse).clamp(0, 1),
-            child: Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary,
-                border: Border.all(color: Colors.white, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.5 * pulse),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    for (var i = 0; i < ingredients.length; i++) {
-      final fade = _chipFade[i].value;
-      final rect = rects[i];
-      children.add(
-        Positioned(
-          left: rect.left,
-          top: rect.top,
-          width: rect.width,
-          height: rect.height,
-          child: Opacity(
-            opacity: fade.clamp(0, 1),
-            child: Transform.scale(
-              scale: 0.94 + 0.06 * fade,
-              child: _IngredientChip(item: ingredients[i], palette: palette),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // The spinner drives its own ticker, so it must leave the tree once the
-    // scan is done rather than merely fade out.
-    if (_pillFade.value > 0.01) {
-      children.add(
-        Positioned.fill(
-          child: Center(
-            child: Opacity(
-              opacity: _pillFade.value.clamp(0, 1),
-              child: _AnalyzingPill(label: l10n.onboarding_scan_scanning),
-            ),
-          ),
-        ),
-      );
-    }
-
-    children.add(
-      Positioned(
-        left: 0,
-        right: 0,
-        bottom: 10,
-        child: Center(
-          child: Opacity(
-            opacity: _badgeFade.value.clamp(0, 1),
-            child: Transform.scale(
-              scale: _badgeScale.value,
-              child: _CalorieBadge(
-                calories: _count.value.round(),
-                kcalLabel: l10n.onboarding_scan_kcal,
-                aiLabel: l10n.onboarding_scan_ai_label,
-                pulse: pulse,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    return Stack(fit: StackFit.expand, children: children);
   }
 }
 
-class _IngredientChip extends StatelessWidget {
-  const _IngredientChip({required this.item, required this.palette});
+class _Switch extends StatelessWidget {
+  const _Switch({
+    required this.pro,
+    required this.onChanged,
+    required this.free,
+    required this.proLabel,
+  });
 
-  final _HeroIngredient item;
-  final _Palette palette;
+  final bool pro;
+  final ValueChanged<bool> onChanged;
+  final String free;
+  final String proLabel;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = palette.isDark;
-    final labelColor = isDark ? Colors.white : palette.ink;
-    final portionColor =
-        isDark ? Colors.white.withValues(alpha: 0.7) : palette.muted;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      alignment: AlignmentDirectional.centerStart,
-      decoration: BoxDecoration(
-        // Frosted paper in light mode so the pill sits on the marble instead of
-        // punching a black hole in it; the HUD-dark pill only in dark mode.
-        color:
-            isDark
-                ? Colors.black.withValues(alpha: 0.58)
-                : Colors.white.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color:
-              isDark ? Colors.white.withValues(alpha: 0.18) : palette.hairline,
+    Widget option(String text, bool value) => Expanded(
+      child: Semantics(
+        button: true,
+        selected: pro == value,
+        child: GestureDetector(
+          key: ValueKey('paywall-switch-${value ? 'pro' : 'free'}'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onChanged(value),
+          child: Center(
+            child: AnimatedDefaultTextStyle(
+              duration: AppMotion.standard,
+              // Merged, not replaced: a bare style here dropped the font.
+              style: DefaultTextStyle.of(context).style.copyWith(
+                color: pro == value ? (value ? _onEm : _ink) : _muted,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+              child: Text(text),
+            ),
+          ),
         ),
-        boxShadow:
-            isDark
-                ? null
-                : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
       ),
-      child: Row(
+    );
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Stack(
         children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primary,
+          AnimatedAlign(
+            alignment:
+                pro
+                    ? AlignmentDirectional.centerEnd
+                    : AlignmentDirectional.centerStart,
+            duration: AppMotion.maybeZero(
+              context,
+              const Duration(milliseconds: 450),
+            ),
+            curve: AppMotion.springCurve,
+            child: FractionallySizedBox(
+              widthFactor: .5,
+              heightFactor: 1,
+              child: AnimatedContainer(
+                duration: AppMotion.standard,
+                decoration: BoxDecoration(
+                  color: pro ? _em : Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+            ),
+          ),
+          Row(children: [option(free, false), option(proLabel, true)]),
+        ],
+      ),
+    );
+  }
+}
+
+/// One line of the comparison. Its value turns over, top to bottom a
+/// moment after the one above, when the switch moves.
+class _CompareRow extends StatefulWidget {
+  const _CompareRow({
+    required this.data,
+    required this.pro,
+    required this.order,
+    required this.first,
+  });
+
+  final _CompareRowData data;
+  final bool pro;
+  final int order;
+  final bool first;
+
+  @override
+  State<_CompareRow> createState() => _CompareRowState();
+}
+
+class _CompareRowState extends State<_CompareRow>
+    with SingleTickerProviderStateMixin {
+  static const _turn = Duration(milliseconds: 520);
+  static const _step = Duration(milliseconds: 70);
+
+  late final AnimationController _flip = AnimationController(
+    vsync: this,
+    duration: _turn + _step * widget.order,
+    value: widget.pro ? 1 : 0,
+  );
+
+  @override
+  void didUpdateWidget(_CompareRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.pro == oldWidget.pro) return;
+    if (AppMotion.reduceMotion(context)) {
+      _flip.value = widget.pro ? 1 : 0;
+    } else if (widget.pro) {
+      _flip.forward();
+    } else {
+      _flip.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _flip.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = widget.data;
+    final total = _turn + _step * widget.order;
+    final wait = (_step * widget.order).inMicroseconds / total.inMicroseconds;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 43),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        border:
+            widget.first ? null : const Border(top: BorderSide(color: _line)),
+      ),
+      // Name on the start edge, value on the end edge; each takes the room
+      // it needs, and both wrap rather than overflow on a narrow phone.
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            flex: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: widget.pro ? _em : _faint),
+                  duration: AppMotion.maybeZero(context, AppMotion.expansion),
+                  builder:
+                      (context, color, _) =>
+                          Icon(data.icon, size: 18, color: color),
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    data.label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _ink,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textScaler: TextScaler.noScaling,
-                  strutStyle: const StrutStyle(
-                    fontSize: 10,
-                    height: 1.15,
-                    forceStrutHeight: true,
+          Flexible(
+            flex: 2,
+            child: AnimatedBuilder(
+              animation: _flip,
+              builder: (context, _) {
+                final t = Curves.easeInOut.transform(
+                  ((_flip.value - wait) / (1 - wait)).clamp(0.0, 1.0),
+                );
+                final showPro = t >= .5;
+                // Turns away on one side and comes round on the other.
+                final angle =
+                    showPro
+                        ? -(1 - t) / .5 * math.pi / 2
+                        : t / .5 * math.pi / 2;
+                return Transform(
+                  alignment: Alignment.center,
+                  transform:
+                      Matrix4.identity()
+                        ..setEntry(3, 2, 0.002)
+                        ..rotateX(angle),
+                  child: Text(
+                    showPro ? data.pro : data.free,
+                    key: ValueKey('paywall-row-${widget.order}'),
+                    maxLines: 2,
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: showPro ? _em : (data.warning ? _amber : _muted),
+                      fontSize: 14,
+                      fontWeight:
+                          showPro || data.warning
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                    ),
                   ),
-                  style: TextStyle(
-                    color: labelColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  item.portion,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textScaler: TextScaler.noScaling,
-                  strutStyle: const StrutStyle(
-                    fontSize: 8.5,
-                    height: 1.1,
-                    forceStrutHeight: true,
-                  ),
-                  style: TextStyle(
-                    color: portionColor,
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w600,
-                    height: 1.1,
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -1623,204 +1387,28 @@ class _IngredientChip extends StatelessWidget {
   }
 }
 
-class _CalorieBadge extends StatelessWidget {
-  const _CalorieBadge({
-    required this.calories,
-    required this.kcalLabel,
-    required this.aiLabel,
-    required this.pulse,
-  });
-
-  final int calories;
-  final String kcalLabel;
-  final String aiLabel;
-  final double pulse;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.62),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.34 * pulse),
-            blurRadius: 24 * pulse,
-            spreadRadius: 0.5,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              aiLabel,
-              textScaler: TextScaler.noScaling,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.96),
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ),
-          const SizedBox(width: 9),
-          Text(
-            '$calories',
-            textScaler: TextScaler.noScaling,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              height: 1.0,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            kcalLabel,
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AnalyzingPill extends StatelessWidget {
-  const _AnalyzingPill({required this.label});
+class _EverythingLink extends StatelessWidget {
+  const _EverythingLink({required this.label, required this.onTap});
 
   final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-          const SizedBox(width: 9),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textScaler: TextScaler.noScaling,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CalloutConnectorPainter extends CustomPainter {
-  _CalloutConnectorPainter({
-    required this.dots,
-    required this.rects,
-    required this.opacities,
-    required this.color,
-  });
-
-  final List<Offset> dots;
-  final List<Rect> rects;
-  final List<double> opacities;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (var i = 0; i < dots.length; i++) {
-      final opacity = opacities[i].clamp(0.0, 1.0);
-      if (opacity <= 0.01) continue;
-      final dot = dots[i];
-      final rect = rects[i];
-      final target = Offset(
-        dot.dx.clamp(rect.left + 12, rect.right - 12).toDouble(),
-        dot.dy < rect.top
-            ? rect.top
-            : (dot.dy > rect.bottom ? rect.bottom : rect.center.dy),
-      );
-      final paint =
-          Paint()
-            ..color = color.withValues(alpha: color.a * opacity)
-            ..strokeWidth = 1.4
-            ..strokeCap = StrokeCap.round;
-      canvas.drawLine(target, dot, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _CalloutConnectorPainter oldDelegate) => true;
-}
-
-class _HeroIconButton extends StatelessWidget {
-  const _HeroIconButton({
-    required this.icon,
-    required this.onTap,
-    this.semanticLabel,
-  });
-
-  final IconData icon;
   final VoidCallback onTap;
-  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: ClipOval(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.34),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.22),
-                  ),
-                ),
-                child: Icon(icon, size: 18, color: Colors.white),
-              ),
-            ),
+    return GestureDetector(
+      key: const ValueKey('paywall-see-everything'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: _muted,
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            decoration: TextDecoration.underline,
+            decorationColor: _muted.withValues(alpha: 0.4),
           ),
         ),
       ),
@@ -1828,89 +1416,72 @@ class _HeroIconButton extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PAGE FURNITURE
-// ─────────────────────────────────────────────────────────────────────────────
+/// The full list of what Pro includes, for anyone who wants it, without it
+/// taking space on the screen.
+class _EverythingSheet extends StatelessWidget {
+  const _EverythingSheet({required this.title, required this.items});
 
-class _BenefitLedger extends StatelessWidget {
-  const _BenefitLedger({required this.palette});
-
-  final _Palette palette;
+  final String title;
+  final List<(String, String)> items;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    // Titles only. Each row used to carry a second sentence underneath --
-    // "Unlimited scans" followed by "Log meals without the daily limit",
-    // which said the same thing again and said it wrongly, since the limit
-    // is monthly. A tick and a phrase is the pattern people already read on
-    // every other subscription screen.
-    final items = <String>[
-      l10n.paywall_benefit_unlimited_scans,
-      l10n.purchase_planner_title,
-      l10n.purchase_coach_title,
-    ];
-
-    return Reveal(
-      delay: const Duration(milliseconds: 800),
-      offset: const Offset(0, 16),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(
-          color: palette.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: palette.hairline),
-        ),
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 14),
             for (var i = 0; i < items.length; i++)
-              Padding(
-                padding: EdgeInsets.only(
-                  top: i == 0 ? 0 : 10,
-                  bottom: i == items.length - 1 ? 0 : 10,
-                ),
-                child: Row(
-                  children: [
-                    // Each tick pops in turn as its line fades up.
-                    Reveal(
-                      delay: Duration(milliseconds: 1000 + 170 * i),
-                      offset: Offset.zero,
-                      scale: .3,
-                      duration: const Duration(milliseconds: 480),
-                      curve: AppMotion.springCurve,
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(
-                            alpha: palette.isDark ? 0.22 : 0.12,
-                          ),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          WaznIcons.check,
-                          size: 14,
-                          color: palette.accentInk,
+              Reveal(
+                delay: Duration(milliseconds: 120 + 60 * i),
+                offset: const Offset(0, 12),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 1),
+                        child: Icon(WaznIcons.success, size: 20, color: _em),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              items[i].$1,
+                              style: const TextStyle(
+                                color: _ink,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              items[i].$2,
+                              style: const TextStyle(
+                                color: _muted,
+                                fontSize: 13,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Reveal(
-                        delay: Duration(milliseconds: 1000 + 170 * i),
-                        offset: const Offset(0, 6),
-                        child: Text(
-                          items[i],
-                          style: TextStyle(
-                            color: palette.ink,
-                            fontSize: 15.5,
-                            height: 1.25,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
           ],
@@ -1920,98 +1491,103 @@ class _BenefitLedger extends StatelessWidget {
   }
 }
 
-/// The plans, with one outline that glides to whichever is chosen rather
-/// than each card lighting up on its own. The cards rise in one by one.
-class _PlanChooser extends StatefulWidget {
-  const _PlanChooser({
-    required this.cards,
-    required this.selectedIndex,
-    required this.badged,
+// ─────────────────────────────────────────────────────────────────────────────
+// PLANS
+//
+// Side by side above the button, so the price is always in view. One outline
+// glides to the chosen plan.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PlanData {
+  const _PlanData({
+    required this.label,
+    required this.price,
+    required this.note,
+    this.noteIsOffer = false,
+    this.badge,
   });
 
-  final List<Widget> cards;
-  final int selectedIndex;
+  final String label;
+  final String price;
+  final String note;
 
-  /// Which cards carry a badge above them, which sits in a strip on top.
-  final List<bool> badged;
-
-  @override
-  State<_PlanChooser> createState() => _PlanChooserState();
+  /// The note names a free trial: shown in green.
+  final bool noteIsOffer;
+  final String? badge;
 }
 
-class _PlanChooserState extends State<_PlanChooser> {
-  static const _badgeStrip = 7.0;
+class _PlanTiles extends StatelessWidget {
+  const _PlanTiles({
+    required this.plans,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
 
-  final List<GlobalKey> _keys = [];
-  Rect? _ring;
+  final List<_PlanData> plans;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
 
-  Duration _delay(int i) => Duration(milliseconds: 1300 + 120 * i);
-
-  void _measure() {
-    if (!mounted) return;
-    final i = widget.selectedIndex;
-    Rect? next;
-    if (i >= 0 && i < _keys.length) {
-      final box = _keys[i].currentContext?.findRenderObject();
-      if (box is RenderBox && box.hasSize && box.parentData is BoxParentData) {
-        final offset = (box.parentData! as BoxParentData).offset;
-        final top = widget.badged[i] ? _badgeStrip : 0.0;
-        next = Rect.fromLTWH(
-          offset.dx,
-          offset.dy + top,
-          box.size.width,
-          box.size.height - top,
-        );
-      }
-    }
-    if (next != _ring) setState(() => _ring = next);
-  }
+  static const _gap = 10.0;
 
   @override
   Widget build(BuildContext context) {
-    while (_keys.length < widget.cards.length) {
-      _keys.add(GlobalKey());
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
-    final ring = _ring;
-    return _RingScope(
-      active: ring != null,
+    final count = plans.length;
+    final i = selectedIndex;
+    final slide = AppMotion.maybeZero(
+      context,
+      const Duration(milliseconds: 450),
+    );
+    return IntrinsicHeight(
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Column(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (var i = 0; i < widget.cards.length; i++) ...[
-                if (i > 0) const SizedBox(height: 10),
-                KeyedSubtree(
-                  key: _keys[i],
+              for (var k = 0; k < count; k++) ...[
+                if (k > 0) const SizedBox(width: _gap),
+                Expanded(
                   child: Reveal(
-                    delay: _delay(i),
-                    offset: const Offset(0, 22),
-                    child: widget.cards[i],
+                    delay: Duration(milliseconds: 850 + 80 * k),
+                    offset: const Offset(0, 20),
+                    child: _PlanTile(
+                      data: plans[k],
+                      selected: k == i,
+                      onTap: () => onSelect(k),
+                    ),
                   ),
                 ),
               ],
             ],
           ),
-          if (ring != null)
-            AnimatedPositioned.fromRect(
-              rect: ring,
-              duration: AppMotion.maybeZero(
-                context,
-                const Duration(milliseconds: 500),
-              ),
-              curve: const Cubic(0.34, 1.3, 0.55, 1),
+          // The outline takes one equal slot of the row and trims the gaps
+          // off its sides, so it sits exactly on the chosen tile.
+          if (i >= 0 && count > 0)
+            Positioned.fill(
               child: IgnorePointer(
-                child: Reveal(
-                  delay: _delay(widget.selectedIndex.clamp(0, 9)),
-                  offset: const Offset(0, 22),
-                  child: DecoratedBox(
-                    key: const ValueKey('paywall-plan-ring'),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.62),
-                        width: 1.8,
+                child: AnimatedAlign(
+                  alignment: AlignmentDirectional(
+                    count == 1 ? 0 : -1 + 2 * i / (count - 1),
+                    0,
+                  ),
+                  duration: slide,
+                  curve: AppMotion.springCurve,
+                  child: FractionallySizedBox(
+                    widthFactor: 1 / count,
+                    heightFactor: 1,
+                    child: AnimatedPadding(
+                      duration: slide,
+                      curve: AppMotion.springCurve,
+                      padding: EdgeInsetsDirectional.only(
+                        start: _gap * i / count,
+                        end: _gap * (count - 1 - i) / count,
+                      ),
+                      child: DecoratedBox(
+                        key: const ValueKey('paywall-plan-ring'),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: _em, width: 2),
+                        ),
                       ),
                     ),
                   ),
@@ -2024,300 +1600,140 @@ class _PlanChooserState extends State<_PlanChooser> {
   }
 }
 
-/// Tells the plan cards the gliding outline is drawing the selection, so
-/// they don't draw their own as well.
-class _RingScope extends InheritedWidget {
-  const _RingScope({required this.active, required super.child});
-
-  final bool active;
-
-  static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_RingScope>()?.active ?? false;
-
-  @override
-  bool updateShouldNotify(_RingScope old) => old.active != active;
-}
-
-class _PlanCard extends StatelessWidget {
-  const _PlanCard({
-    required this.palette,
-    required this.label,
-    required this.price,
-    required this.introPrice,
-    required this.perMonth,
-    required this.badge,
+class _PlanTile extends StatelessWidget {
+  const _PlanTile({
+    required this.data,
     required this.selected,
     required this.onTap,
   });
 
-  final _Palette palette;
-  final String label;
-  final String price;
-
-  /// Set when the store returns a discounted first period. [price] then becomes
-  /// the struck-through renewal price and this is what the user pays now.
-  final String? introPrice;
-  final String? perMonth;
-  final String? badge;
+  final _PlanData data;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final large =
-        MediaQuery.sizeOf(context).width < 360 ||
-        MediaQuery.textScalerOf(context).scale(15) > 18;
-    final title = Text(
-      label,
-      style: TextStyle(
-        color: palette.ink,
-        fontSize: 17,
-        height: 1.3,
-        fontWeight: FontWeight.w800,
-      ),
-    );
-    final amount = Column(
-      crossAxisAlignment:
-          large ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-      children: [
-        if (introPrice != null)
-          Text(
-            price,
-            style: TextStyle(
-              color: palette.muted,
-              fontSize: 12,
-              decoration: TextDecoration.lineThrough,
-              decorationColor: palette.muted,
-            ),
-          ),
-        Text(
-          introPrice ?? price,
-          style: TextStyle(
-            color: palette.ink,
-            fontSize: 22,
-            height: 1.25,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.4,
-          ),
-        ),
-        if (perMonth != null)
-          Text(
-            perMonth!,
-            style: TextStyle(
-              color: palette.muted,
-              fontSize: 12.5,
-              height: 1.3,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-      ],
-    );
-    final outlined = selected && !_RingScope.of(context);
-    final card = Semantics(
+    return Semantics(
       button: true,
       selected: selected,
-      child: TweenAnimationBuilder<Color?>(
-        tween: ColorTween(
-          end:
-              selected
-                  ? Color.alphaBlend(
-                    AppColors.primary.withValues(
-                      alpha: palette.isDark ? 0.13 : 0.07,
-                    ),
-                    palette.surface,
-                  )
-                  : palette.surface,
-        ),
-        duration: AppMotion.maybeZero(context, AppMotion.expansion),
-        builder:
-            (context, fill, child) => Material(
-              color: fill,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-                side: BorderSide(
-                  color:
-                      outlined
-                          ? AppColors.primary.withValues(alpha: 0.62)
-                          : palette.hairline,
-                  width: outlined ? 1.8 : 1,
-                ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
+              decoration: BoxDecoration(
+                color: _card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _line),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: onTap,
-                child: Padding(
-                  // The struck renewal price is the first line of the right column;
-                  // when the discount badge straddles the top border it needs enough
-                  // clearance not to sit on top of it.
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    introPrice != null ? 24 : 17,
-                    16,
-                    17,
-                  ),
-                  child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // The name, with the saving beside it rather than on the
+                  // edge, where the chosen outline would run through it.
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      _Radio(selected: selected, palette: palette),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child:
-                            large
-                                ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    title,
-                                    const SizedBox(height: 10),
-                                    amount,
-                                  ],
-                                )
-                                : Row(
-                                  children: [
-                                    Expanded(child: title),
-                                    const SizedBox(width: 12),
-                                    Flexible(child: amount),
-                                  ],
-                                ),
+                      Text(
+                        data.label,
+                        style: const TextStyle(
+                          color: _muted,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                      if (data.badge != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _em,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            data.badge!,
+                            style: const TextStyle(
+                              color: _onEm,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: .3,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-                ),
-              ),
-            ),
-      ),
-    );
-
-    if (badge == null) return card;
-
-    // The badge straddles the top border rather than sitting inside next to
-    // the plan name, so the discount and the price read as one object.
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Padding(padding: const EdgeInsets.only(top: 7), child: card),
-        PositionedDirectional(
-          end: 13,
-          top: 0,
-          child: _Wiggle(
-            active: selected,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primaryDark,
-                borderRadius: BorderRadius.circular(999),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryDark.withValues(alpha: 0.18),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
+                  const SizedBox(height: 3),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      data.price,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
                   ),
+                  if (data.note.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      data.note,
+                      maxLines: 2,
+                      style: TextStyle(
+                        color: data.noteIsOffer ? _em : _faint,
+                        fontSize: 11.5,
+                        height: 1.25,
+                        fontWeight:
+                            data.noteIsOffer
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              child: Text(
-                badge!,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  height: 1.35,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Gives its child a quick shake when [active] turns on: the savings badge
-/// nodding as its plan is picked.
-class _Wiggle extends StatelessWidget {
-  const _Wiggle({required this.active, required this.child});
-
-  final bool active;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      key: ValueKey(active),
-      tween: Tween(begin: active ? 0 : 1, end: 1),
-      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 560)),
-      builder:
-          (context, t, child) => Transform.rotate(
-            angle: math.sin(t * math.pi * 3) * (1 - t) * 0.12,
-            child: Transform.scale(
-              scale: 1 + math.sin(t * math.pi) * 0.08,
-              child: child,
-            ),
-          ),
-      child: child,
-    );
-  }
-}
-
-class _Radio extends StatelessWidget {
-  const _Radio({required this.selected, required this.palette});
-
-  final bool selected;
-  final _Palette palette;
-
-  @override
-  Widget build(BuildContext context) => AnimatedContainer(
-    duration: AppMotion.maybeZero(context, AppMotion.standard),
-    width: 21,
-    height: 21,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      border: Border.all(
-        color:
-            selected
-                ? AppColors.primary
-                : palette.muted.withValues(alpha: 0.72),
-        width: selected ? 2 : 1.5,
-      ),
-    ),
-    // The dot springs in, a touch past full size.
-    child: Center(
-      child: AnimatedScale(
-        scale: selected ? 1 : 0,
-        duration: AppMotion.maybeZero(
-          context,
-          const Duration(milliseconds: 420),
-        ),
-        curve: selected ? AppMotion.springCurve : Curves.easeIn,
-        child: Container(
-          width: 11,
-          height: 11,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.primary,
-          ),
+          ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _PlanSkeleton extends StatelessWidget {
-  const _PlanSkeleton({required this.palette});
-
-  final _Palette palette;
+  const _PlanSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    Widget bar() => Container(
-      height: 66,
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: palette.hairline),
-      ),
+    return Row(
+      children: [
+        for (var i = 0; i < 2; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              height: 84,
+              decoration: BoxDecoration(
+                color: _card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _line),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
-
-    return Column(children: [bar(), const SizedBox(height: 10), bar()])
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .fadeIn(duration: 700.ms, begin: 0.45);
   }
 }
 
@@ -2383,143 +1799,10 @@ class _NoticeBanner extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CTA DOCK
-//
-// Pinned, because the decision should never be more than a thumb away, and
-// because the store requires the billing disclosure to sit beside the button
-// rather than somewhere up the scroll.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CtaDock extends StatelessWidget {
-  const _CtaDock({
-    super.key,
-    required this.palette,
-    required this.hPad,
-    required this.done,
-    required this.isLoading,
-    required this.restoring,
-    required this.package,
-    required this.loadingOfferings,
-    required this.trialDays,
-    required this.introPriceString,
-    required this.planLabel,
-    required this.disclosure,
-    required this.onPurchase,
-  });
-
-  final _Palette palette;
-  final double hPad;
-  final bool done;
-  final bool isLoading;
-  final bool restoring;
-  final Package? package;
-  final bool loadingOfferings;
-  final int? trialDays;
-
-  /// The discounted first-period price, when the store offers one. The button
-  /// used to name the renewal price, which is not what the user is charged.
-  final String? introPriceString;
-  final String? planLabel;
-  final String? disclosure;
-  final VoidCallback onPurchase;
-
-  String _ctaLabel(AppLocalizations l10n) {
-    if (loadingOfferings) return l10n.premium_loading;
-    if (trialDays != null) return l10n.premium_start_trial;
-    if (package != null && planLabel != null) {
-      try {
-        return l10n.premium_start_plan(
-          planLabel!,
-          introPriceString ?? package!.storeProduct.priceString,
-        );
-      } catch (_) {
-        return l10n.paywall_unlock_snapcal_pro;
-      }
-    }
-    return l10n.paywall_unlock_snapcal_pro;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: palette.paper.withValues(alpha: 0.97),
-            border: Border(top: BorderSide(color: palette.hairline)),
-          ),
-          padding: EdgeInsets.fromLTRB(hPad, 14, hPad, bottomInset + 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // A light crosses the button once the page has settled.
-              ShineSweep(
-                borderRadius: BorderRadius.circular(16),
-                delay: const Duration(milliseconds: 2600),
-                sweep: const Duration(milliseconds: 950),
-                child: _PrimaryCta(
-                  label: _ctaLabel(l10n),
-                  busy: isLoading,
-                  done: done,
-                  enabled:
-                      !done &&
-                      !isLoading &&
-                      !restoring &&
-                      !loadingOfferings &&
-                      package != null,
-                  onTap: onPurchase,
-                ),
-              ),
-              if (disclosure != null) ...[
-                const SizedBox(height: 10),
-                AnimatedSwitcher(
-                  duration: AppMotion.maybeZero(context, AppMotion.expansion),
-                  layoutBuilder:
-                      (current, previous) => Stack(
-                        alignment: Alignment.topCenter,
-                        children: [...previous, if (current != null) current],
-                      ),
-                  child: Text(
-                    disclosure!,
-                    key: ValueKey(disclosure),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: palette.muted,
-                      fontSize: 11.5,
-                      height: 1.35,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ] else ...[
-                const SizedBox(height: 10),
-                Text(
-                  l10n.paywall_cancel_anytime,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: palette.muted,
-                    fontSize: 11.5,
-                    height: 1.35,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// The one filled object on the screen.
 class _PrimaryCta extends StatefulWidget {
   const _PrimaryCta({
+    super.key,
     required this.label,
     required this.busy,
     required this.enabled,
@@ -2568,20 +1851,13 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
             opacity: enabled ? 1 : 0.55,
             duration: const Duration(milliseconds: 160),
             child: Container(
-              constraints: const BoxConstraints(minHeight: 48),
+              constraints: const BoxConstraints(minHeight: 56),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               width: double.infinity,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: _em,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.26),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
               ),
               // A new plan's words rise into the button; paying turns them
               // into a spinner and then a tick.
@@ -2617,7 +1893,7 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
                           height: 21,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.2,
-                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                            valueColor: AlwaysStoppedAnimation(_onEm),
                           ),
                         )
                         : Text(
@@ -2625,8 +1901,8 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
                           key: ValueKey(widget.label),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
+                            color: _onEm,
+                            fontSize: 16,
                             letterSpacing: 0,
                             fontWeight: FontWeight.w800,
                           ),
@@ -2640,7 +1916,7 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
   }
 }
 
-/// A white check that draws itself from left to right.
+/// A check that draws itself from left to right.
 class _DrawnTick extends StatelessWidget {
   const _DrawnTick({super.key});
 
@@ -2676,7 +1952,7 @@ class _TickPainter extends CustomPainter {
     canvas.drawPath(
       metric.extractPath(0, metric.length * progress),
       Paint()
-        ..color = Colors.white
+        ..color = _onEm
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3
         ..strokeCap = StrokeCap.round
@@ -2715,6 +1991,12 @@ class _LegalFooter extends StatelessWidget {
       runSpacing: 2,
       children: [
         _FooterLink(
+          label: l10n.paywall_restore,
+          onTap: onRestore,
+          palette: palette,
+          busy: restoring,
+        ),
+        _FooterLink(
           label: l10n.paywall_terms_conditions,
           onTap: onTerms,
           palette: palette,
@@ -2723,12 +2005,6 @@ class _LegalFooter extends StatelessWidget {
           label: l10n.settings_privacy,
           onTap: onPrivacy,
           palette: palette,
-        ),
-        _FooterLink(
-          label: l10n.paywall_restore,
-          onTap: onRestore,
-          palette: palette,
-          busy: restoring,
         ),
       ],
     );

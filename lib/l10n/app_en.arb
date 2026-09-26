@@ -2492,5 +2492,133 @@
   },
   "onb_plan_stay": "Stay around",
   "onb_plan_change_later": "You can change this anytime in Settings.",
-  "onb_plan_teen": "Under 18? Check with a parent or doctor."
+  "onb_plan_teen": "Under 18? Check with a parent or doctor.",
+  "paywall_compare_free": "Free",
+  "paywall_compare_pro": "Pro",
+  "paywall_row_scans": "Food scans",
+  "paywall_row_meal_plans": "Meal plans",
+  "paywall_row_coach": "AI Coach",
+  "paywall_row_photos": "Progress photos",
+  "paywall_row_history": "History",
+  "paywall_free_scans_month": "{count} a month",
+  "@paywall_free_scans_month": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_free_scans_left": "{left} of {limit} left",
+  "@paywall_free_scans_left": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_free_meal_plan": "1 day",
+  "paywall_pro_meal_plan": "Full week",
+  "paywall_free_coach": "1 question a day",
+  "paywall_pro_coach": "Any time",
+  "paywall_free_photos": "{count} check-ins",
+  "@paywall_free_photos": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_free_history": "Last {days} days",
+  "@paywall_free_history": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_pro_history": "All of it",
+  "paywall_see_everything": "See everything in Pro",
+  "paywall_everything_title": "Everything in Pro",
+  "paywall_all_scans_title": "Unlimited food scans",
+  "paywall_all_scans_detail": "Instead of {count} a month",
+  "@paywall_all_scans_detail": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_all_coach_title": "AI Coach, any time",
+  "paywall_all_coach_detail": "Instead of one question a day",
+  "paywall_all_plans_title": "Weekly meal plans",
+  "paywall_all_plans_detail": "With a grocery list built for you, instead of one day",
+  "paywall_all_history_title": "Full history and reports",
+  "paywall_all_history_detail": "Instead of the last {days} days",
+  "@paywall_all_history_detail": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_all_photos_title": "Unlimited progress photos",
+  "paywall_all_photos_detail": "With side-by-side comparisons, instead of {count} check-ins",
+  "@paywall_all_photos_detail": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_plan_per_year": "per year",
+  "paywall_plan_per_month": "per month",
+  "paywall_plan_days_free": "{days} days free",
+  "@paywall_plan_days_free": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_plan_then": "then {price}",
+  "@paywall_plan_then": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_start_trial_days": "Start {days}-day free trial",
+  "@paywall_start_trial_days": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_disclosure_trial_until_year": "Free until {date}, then {price} per year. Cancel before then and you pay nothing.",
+  "@paywall_disclosure_trial_until_year": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "paywall_disclosure_trial_until_month": "Free until {date}, then {price} per month. Cancel before then and you pay nothing.",
+  "@paywall_disclosure_trial_until_month": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  }
 }

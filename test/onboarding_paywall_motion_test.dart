@@ -223,26 +223,22 @@ void main() {
           ),
         ),
       );
-      // The scan at the top keeps breathing, so time is stepped rather
-      // than settled.
       await tester.pump();
-      await tester.pump(const Duration(seconds: 3));
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       final ring = find.byKey(const ValueKey('paywall-plan-ring'));
       expect(ring, findsOneWidget);
-      final start = tester.getTopLeft(ring).dy;
       expect(find.text('Start Yearly — SAR 119.99'), findsOneWidget);
 
-      await tester.ensureVisible(find.text('Monthly'));
-      await tester.pump(const Duration(milliseconds: 400));
-      final before = tester.getTopLeft(ring).dy;
+      // The plans sit side by side, so the outline glides sideways.
+      final before = tester.getTopLeft(ring).dx;
       await tester.tap(find.text('Monthly'));
       await tester.pump();
-      await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
-      final midway = tester.getTopLeft(ring).dy;
+      final midway = tester.getTopLeft(ring).dx;
       await tester.pump(const Duration(seconds: 1));
-      final end = tester.getTopLeft(ring).dy;
-      expect(start, isNonZero);
+      final end = tester.getTopLeft(ring).dx;
       expect(end, greaterThan(before));
       expect(midway, greaterThan(before));
       expect(midway, lessThan(end + 12));
