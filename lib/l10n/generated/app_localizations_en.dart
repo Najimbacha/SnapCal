@@ -5329,4 +5329,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String paywall_disclosure_trial_until_month(String date, String price) {
     return 'Free until $date, then $price per month. Cancel before then and you pay nothing.';
   }
+
+  @override
+  String get settings_restore_checking => 'Checking your purchases…';
+
+  @override
+  String get settings_restore_back => 'Pro is back on this phone';
+
+  @override
+  String get settings_export_making => 'Making your report…';
+
+  @override
+  String get settings_export_ready => 'Report ready to share';
+
+  @override
+  String get about_tagline => 'AI-Powered Calorie Tracker';
+
+  @override
+  String get about_follow_us => 'Follow us';
 }

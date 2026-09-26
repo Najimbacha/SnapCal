@@ -1820,5 +1820,11 @@
   "paywall_plan_then": "puis {price}",
   "paywall_start_trial_days": "Commencer l’essai gratuit de {days} jours",
   "paywall_disclosure_trial_until_year": "Gratuit jusqu’au {date}, puis {price} par an. Annulez avant et vous ne payez rien.",
-  "paywall_disclosure_trial_until_month": "Gratuit jusqu’au {date}, puis {price} par mois. Annulez avant et vous ne payez rien."
+  "paywall_disclosure_trial_until_month": "Gratuit jusqu’au {date}, puis {price} par mois. Annulez avant et vous ne payez rien.",
+  "settings_restore_checking": "Vérification de vos achats…",
+  "settings_restore_back": "Pro est de retour sur ce téléphone",
+  "settings_export_making": "Création de votre rapport…",
+  "settings_export_ready": "Rapport prêt à partager",
+  "about_tagline": "Suivi des calories par IA",
+  "about_follow_us": "Suivez-nous"
 }

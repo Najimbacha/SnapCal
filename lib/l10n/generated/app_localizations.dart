@@ -9545,6 +9545,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Free until {date}, then {price} per month. Cancel before then and you pay nothing.'**
   String paywall_disclosure_trial_until_month(String date, String price);
+
+  /// No description provided for @settings_restore_checking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking your purchases…'**
+  String get settings_restore_checking;
+
+  /// No description provided for @settings_restore_back.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro is back on this phone'**
+  String get settings_restore_back;
+
+  /// No description provided for @settings_export_making.
+  ///
+  /// In en, this message translates to:
+  /// **'Making your report…'**
+  String get settings_export_making;
+
+  /// No description provided for @settings_export_ready.
+  ///
+  /// In en, this message translates to:
+  /// **'Report ready to share'**
+  String get settings_export_ready;
+
+  /// No description provided for @about_tagline.
+  ///
+  /// In en, this message translates to:
+  /// **'AI-Powered Calorie Tracker'**
+  String get about_tagline;
+
+  /// No description provided for @about_follow_us.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow us'**
+  String get about_follow_us;
 }
 
 class _AppLocalizationsDelegate

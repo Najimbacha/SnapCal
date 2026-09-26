@@ -23,6 +23,9 @@ import '../../providers/planner_provider.dart';
 import '../../widgets/auth_modal.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../widgets/app_page_scaffold.dart';
+import '../../widgets/motion/done_tick.dart';
+import '../../widgets/motion/reveal.dart';
+import '../../widgets/motion/spring_dialog.dart';
 
 import 'widgets/settings_kit.dart';
 
@@ -39,69 +42,129 @@ class AccountScreen extends ConsumerWidget {
       backgroundColor: settingsBg(context),
       child: Column(
         children: [
-          SettingsSection(
-            title: l10n.settings_account, // "Account"
-            children: [
-              Consumer(
-                builder: (context, ref, _) {
-                  final isPro = ref.watch(effectiveIsProProvider);
-                  return SettingsRow(
-                    icon: WaznIcons.pro,
-                    title: l10n.settings_subscription,
-                    value:
-                        isPro
-                            ? l10n.settings_pro_active
-                            : l10n.settings_manage_plan,
-                    // A Pro user was shown the buy screen again. What they
-                    // need is the plan they already have, in the store.
-                    onTap:
-                        isPro
-                            ? manageSubscription
-                            : () => PremiumConversionService().openPaywall(
-                              context,
-                              PaywallEntryPoint.settings,
-                              featureName: 'subscription',
-                            ),
-                  );
-                },
-              ),
-              SettingsRow(
-                icon:
-                    ref.watch(isAnonymousProvider)
-                        ? WaznIcons.userPlus
-                        : WaznIcons.logOut,
-                title:
-                    ref.watch(isAnonymousProvider)
-                        ? l10n.settings_create_account
-                        : l10n.common_sign_out,
-                value:
-                    ref.watch(isAnonymousProvider)
-                        ? l10n.settings_sync_data_desc
-                        : l10n.settings_sign_out_desc,
-                onTap: () => confirmAndSignOut(context, ref),
-              ),
-              if (!ref.watch(isAnonymousProvider))
-                SettingsRow(
-                  icon: WaznIcons.delete,
-                  title: l10n.common_delete_account,
-                  value: l10n.common_delete_account_confirm,
-                  onTap: () => confirmAndDeleteAccount(context, ref),
+          Reveal(
+            child: SettingsSection(
+              title: l10n.settings_account, // "Account"
+              children: [
+                Consumer(
+                  builder: (context, ref, _) {
+                    final isPro = ref.watch(effectiveIsProProvider);
+                    return SettingsRow(
+                      icon: WaznIcons.pro,
+                      title: l10n.settings_subscription,
+                      value:
+                          isPro
+                              ? l10n.settings_pro_active
+                              : l10n.settings_manage_plan,
+                      // A Pro user was shown the buy screen again. What they
+                      // need is the plan they already have, in the store.
+                      onTap:
+                          isPro
+                              ? manageSubscription
+                              : () => PremiumConversionService().openPaywall(
+                                context,
+                                PaywallEntryPoint.settings,
+                                featureName: 'subscription',
+                              ),
+                    );
+                  },
                 ),
-              SettingsRow(
-                icon: WaznIcons.refresh,
-                title: l10n.paywall_restore,
-                // This said "Purchases Restored!" before anything was tapped.
-                value: l10n.settings_restore_desc,
-                onTap: () => _handleRestore(context, ref),
-              ),
-            ],
+                Builder(
+                  builder:
+                      (row) => SettingsRow(
+                        icon:
+                            ref.watch(isAnonymousProvider)
+                                ? WaznIcons.userPlus
+                                : WaznIcons.logOut,
+                        title:
+                            ref.watch(isAnonymousProvider)
+                                ? l10n.settings_create_account
+                                : l10n.common_sign_out,
+                        value:
+                            ref.watch(isAnonymousProvider)
+                                ? l10n.settings_sync_data_desc
+                                : l10n.settings_sign_out_desc,
+                        onTap: () => confirmAndSignOut(context, ref, from: row),
+                      ),
+                ),
+                if (!ref.watch(isAnonymousProvider))
+                  Builder(
+                    builder:
+                        (row) => SettingsRow(
+                          icon: WaznIcons.delete,
+                          title: l10n.common_delete_account,
+                          value: l10n.common_delete_account_confirm,
+                          onTap:
+                              () => confirmAndDeleteAccount(
+                                context,
+                                ref,
+                                from: row,
+                              ),
+                        ),
+                  ),
+                const _RestoreRow(),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Future<void> _handleRestore(BuildContext context, WidgetRef ref) async {
+enum _RestorePhase { idle, checking, restored }
+
+/// Restore purchases, showing its own progress: a spinner and "Checking…"
+/// while the store answers, then a tick and "Pro is back" when it does.
+/// Anything short of a restore still explains itself in a snack bar.
+class _RestoreRow extends ConsumerStatefulWidget {
+  const _RestoreRow();
+
+  @override
+  ConsumerState<_RestoreRow> createState() => _RestoreRowState();
+}
+
+class _RestoreRowState extends ConsumerState<_RestoreRow> {
+  _RestorePhase _phase = _RestorePhase.idle;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final Widget? trailing = switch (_phase) {
+      _RestorePhase.idle => null,
+      _RestorePhase.checking => const SizedBox(
+        key: ValueKey('restore-checking'),
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.4,
+          color: kSettingsGreenText,
+        ),
+      ),
+      _RestorePhase.restored => const DoneTick(
+        key: ValueKey('restore-done'),
+        color: kSettingsGreenText,
+      ),
+    };
+    return SettingsRow(
+      icon: WaznIcons.refresh,
+      title: l10n.paywall_restore,
+      // This said "Purchases Restored!" before anything was tapped.
+      value: switch (_phase) {
+        _RestorePhase.idle => l10n.settings_restore_desc,
+        _RestorePhase.checking => l10n.settings_restore_checking,
+        _RestorePhase.restored => l10n.settings_restore_back,
+      },
+      trailing: trailing,
+      onTap: () => _handleRestore(context),
+    );
+  }
+
+  void _set(_RestorePhase phase) {
+    if (mounted) setState(() => _phase = phase);
+  }
+
+  Future<void> _handleRestore(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context)!;
     final subService = SubscriptionService();
@@ -114,27 +177,21 @@ class AccountScreen extends ConsumerWidget {
 
     HapticFeedback.mediumImpact();
 
-    // This row has no busy state of its own, and a restore can take several
-    // seconds against the store. Say something immediately so the tap is
-    // visibly acknowledged.
-    _showSubscriptionSnackBar(
-      messenger,
-      l10n.premium_loading,
-      color: AppColors.primary,
-      icon: WaznIcons.refresh,
-    );
+    // A restore can take several seconds against the store; the row says it
+    // is checking straight away so the tap is visibly acknowledged.
+    _set(_RestorePhase.checking);
 
     final result = await subService.restorePurchasesDetailed();
     if (!context.mounted) return;
+    if (result.status == SubscriptionStatus.active) {
+      ref.invalidate(settingsProvider);
+      HapticFeedback.mediumImpact();
+      _set(_RestorePhase.restored);
+      return;
+    }
+    _set(_RestorePhase.idle);
     switch (result.status) {
       case SubscriptionStatus.active:
-        ref.invalidate(settingsProvider);
-        _showSubscriptionSnackBar(
-          messenger,
-          l10n.premium_restore_success,
-          color: AppColors.primary,
-          icon: WaznIcons.ai,
-        );
         return;
       case SubscriptionStatus.pending:
         _showSubscriptionSnackBar(
@@ -291,7 +348,11 @@ void _showSubscriptionSnackBar(
   );
 }
 
-Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
+Future<void> confirmAndSignOut(
+  BuildContext context,
+  WidgetRef ref, {
+  BuildContext? from,
+}) async {
   // Top-level so the Settings root's destructive zone reuses one flow.
   final isAnonymousUser = ref.read(isAnonymousProvider);
   if (isAnonymousUser) {
@@ -299,10 +360,15 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
     return;
   }
 
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showSpringDialog<bool>(
     context: context,
+    from: from,
     builder:
         (context) => AlertDialog(
+          icon: DialogBadge(
+            icon: WaznIcons.logOut,
+            color: settingsText(context),
+          ),
           title: Text(AppLocalizations.of(context)!.common_sign_out),
           content: Text(AppLocalizations.of(context)!.common_sign_out_confirm),
           actions: [
@@ -362,14 +428,21 @@ Future<void> manageSubscription() async {
 
 Future<void> confirmAndDeleteAccount(
   BuildContext context,
-  WidgetRef ref,
-) async {
+  WidgetRef ref, {
+  BuildContext? from,
+}) async {
   final isPro = ref.read(effectiveIsProProvider);
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showSpringDialog<bool>(
     context: context,
+    from: from,
     builder: (context) {
       final l10n = AppLocalizations.of(context)!;
       return AlertDialog(
+        icon: const DialogBadge(
+          icon: WaznIcons.delete,
+          color: AppColors.error,
+          shake: true,
+        ),
         title: Text(l10n.common_delete_account),
         // Deleting the account leaves a store subscription running, and
         // charging, until it is cancelled there.

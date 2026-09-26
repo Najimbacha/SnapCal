@@ -5312,4 +5312,22 @@ class AppLocalizationsAr extends AppLocalizations {
   String paywall_disclosure_trial_until_month(String date, String price) {
     return 'مجاني حتى $date، ثم $price شهريًا. ألغِ قبل ذلك ولن تدفع شيئًا.';
   }
+
+  @override
+  String get settings_restore_checking => 'جارٍ التحقق من مشترياتك…';
+
+  @override
+  String get settings_restore_back => 'عاد Pro إلى هذا الهاتف';
+
+  @override
+  String get settings_export_making => 'جارٍ إعداد تقريرك…';
+
+  @override
+  String get settings_export_ready => 'التقرير جاهز للمشاركة';
+
+  @override
+  String get about_tagline => 'متتبع السعرات بالذكاء الاصطناعي';
+
+  @override
+  String get about_follow_us => 'تابعنا';
 }
