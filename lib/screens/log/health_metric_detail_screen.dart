@@ -15,9 +15,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/date_utils.dart' as app_date;
+import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
+import '../../data/repositories/meal_repository.dart';
+import '../../data/repositories/water_repository.dart';
+import '../../data/services/health_connect_service.dart';
 import '../../data/services/premium_conversion_service.dart';
 import '../../providers/activity_provider.dart';
+import '../../providers/meal_provider.dart';
+import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/motion/count_up_text.dart';
@@ -94,7 +100,7 @@ class _HealthMetricDetailScreenState
                         ),
                   )
                   : FutureBuilder<_MetricDetailData>(
-                    future: _buildData(context),
+                    future: _dataFor(context),
                     builder: (context, snapshot) {
                       final data = snapshot.data;
                       return ListView(
@@ -277,15 +283,61 @@ class _HealthMetricDetailScreenState
     }
   }
 
-  Future<_MetricDetailData> _buildData(BuildContext context) async {
+  /// The current period's data, built once per change rather than once per
+  /// frame: steps come from Health Connect, and a rebuild must not query it
+  /// again for the same days.
+  Future<_MetricDetailData>? _data;
+  Object? _dataKey;
+
+  Future<_MetricDetailData> _dataFor(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final inputs = _MetricInputs(
+      settings:
+          ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults(),
+      water:
+          ref.watch(waterProvider).valueOrNull ??
+          const WaterState(todayTotal: 0),
+      isPro: ref.watch(effectiveIsProProvider),
+      meals: ref.watch(mealRepositoryProvider).valueOrNull,
+      waterLogs: ref.watch(waterRepositoryProvider).valueOrNull,
+      activity: ref.watch(activityProvider).valueOrNull,
+      health: ref.watch(healthConnectServiceProvider),
+    );
+    // Meal writes land in the repository in place; this stream is what
+    // announces them, as it does for the log screen.
+    final todaysMeals = ref.watch(todaysMealsProvider).valueOrNull;
+    final key = Object.hash(
+      _period,
+      metricDateString(_anchor),
+      l10n.localeName,
+      inputs.settings,
+      inputs.water,
+      inputs.isPro,
+      inputs.meals,
+      inputs.waterLogs,
+      inputs.activity,
+      todaysMeals,
+    );
+    if (_data == null || key != _dataKey) {
+      _dataKey = key;
+      _data = _buildData(l10n, inputs);
+    }
+    return _data!;
+  }
+
+  Future<_MetricDetailData> _buildData(
+    AppLocalizations l10n,
+    _MetricInputs inputs,
+  ) async {
     final locale = l10n.localeName;
-    final settingsVal =
-        ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
-    final waterState =
-        ref.watch(waterProvider).valueOrNull ?? const WaterState(todayTotal: 0);
-    final isPro = ref.watch(effectiveIsProProvider);
-    final buckets = metricBucketsFor(_period, _anchor);
+    final settingsVal = inputs.settings;
+    final waterState = inputs.water;
+    final isPro = inputs.isPro;
+    // Read before the Health Connect awaits, which the period can change
+    // during.
+    final period = _period;
+    final buckets = metricBucketsFor(period, _anchor);
+    final today = normalizeMetricDate(DateTime.now());
 
     final points = <MetricPoint>[];
     var totalValue = 0;
@@ -298,15 +350,11 @@ class _HealthMetricDetailScreenState
       var bucketElapsedDays = 0;
 
       for (final day in eachMetricDay(bucket.start, bucket.end)) {
-        final today = normalizeMetricDate(DateTime.now());
-        if (day.isAfter(today)) {
-          goal += _dailyGoal(widget.metric, settingsVal, waterState, ref);
-          continue;
-        }
+        goal += _dailyGoal(widget.metric, settingsVal, waterState, ref);
+        if (day.isAfter(today)) continue;
 
         bucketElapsedDays++;
         final dateString = metricDateString(day);
-        goal += _dailyGoal(widget.metric, settingsVal, waterState, ref);
         if (isMetricDateLocked(
           widget.metric,
           dateString,
@@ -319,8 +367,12 @@ class _HealthMetricDetailScreenState
         value += _valueForDate(
           type: widget.metric,
           dateString: dateString,
-          ref: ref,
+          inputs: inputs,
         );
+      }
+
+      if (_isActivityMetric(widget.metric) && bucketElapsedDays > 0) {
+        value += await _activityForBucket(bucket, today, inputs);
       }
 
       totalValue += value;
@@ -341,7 +393,7 @@ class _HealthMetricDetailScreenState
     final unit = _unitForMetric(l10n, widget.metric);
     return _MetricDetailData(
       type: widget.metric,
-      period: _period,
+      period: period,
       points: points,
       averageValue: average,
       totalValue: totalValue,
@@ -352,7 +404,7 @@ class _HealthMetricDetailScreenState
               ? l10n.log_metric_steps_unit
               : unit,
       title: _metricTitle(l10n, widget.metric),
-      periodTitle: _periodTitle(l10n, _period),
+      periodTitle: _periodTitle(l10n, period),
       goalStatus:
           average >= dailyGoal
               ? l10n.log_metric_goal_hit
@@ -360,6 +412,43 @@ class _HealthMetricDetailScreenState
       localeName: locale,
       isPro: isPro,
     );
+  }
+
+  /// Steps, or the energy they burned, over one bar of the chart, read from
+  /// Health Connect in a single query rather than one per day.
+  Future<int> _activityForBucket(
+    MetricBucket bucket,
+    DateTime today,
+    _MetricInputs inputs,
+  ) async {
+    final activity = inputs.activity;
+    if (activity == null || !activity.healthConnected) return 0;
+    final health = inputs.health;
+    final now = DateTime.now();
+    final dayAfter = app_date.DateUtils.addDays(bucket.end, 1);
+    final includesToday = !bucket.end.isBefore(today);
+    try {
+      if (widget.metric == LogMetricType.steps) {
+        return await health.getStepsForDateRange(
+          bucket.start,
+          includesToday ? now : dayAfter,
+        );
+      }
+      // Past days are estimated from steps, as the activity screen does for
+      // them; today uses the live figure, which may be measured.
+      var energy = 0;
+      if (bucket.start.isBefore(today)) {
+        final pastSteps = await health.getStepsForDateRange(
+          bucket.start,
+          includesToday ? today : dayAfter,
+        );
+        energy += (pastSteps * HealthConnectService.caloriesPerStep).round();
+      }
+      if (includesToday) energy += activity.activeCalories.round();
+      return energy;
+    } catch (_) {
+      return 0;
+    }
   }
 
   void _openHistoryPaywall() {
@@ -1660,23 +1749,61 @@ class _MetricDetailData {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/// What the screen reads from, captured once per build so the data future
+/// never watches providers after an await.
+class _MetricInputs {
+  final UserSettings settings;
+  final WaterState water;
+  final bool isPro;
+  final MealRepository? meals;
+  final WaterRepository? waterLogs;
+  final ActivitySummary? activity;
+  final HealthConnectService health;
+
+  const _MetricInputs({
+    required this.settings,
+    required this.water,
+    required this.isPro,
+    required this.meals,
+    required this.waterLogs,
+    required this.activity,
+    required this.health,
+  });
+}
+
+bool _isActivityMetric(LogMetricType type) =>
+    type == LogMetricType.steps || type == LogMetricType.energy;
+
+/// One day's logged value. Steps and energy come from Health Connect per bar
+/// instead, so they are zero here.
 int _valueForDate({
   required LogMetricType type,
   required String dateString,
-  required WidgetRef ref,
+  required _MetricInputs inputs,
 }) {
   switch (type) {
     case LogMetricType.water:
-      return 0;
+      return inputs.waterLogs?.getTotalWater(dateString) ?? 0;
     case LogMetricType.energy:
-      return 0;
     case LogMetricType.steps:
-      return ref.watch(activityProvider).valueOrNull?.steps ?? 0;
+      return 0;
     case LogMetricType.calories:
     case LogMetricType.carbs:
     case LogMetricType.fat:
     case LogMetricType.protein:
-      return 0;
+      final meals = inputs.meals?.getMealsByDate(dateString) ?? const <Meal>[];
+      return meals.fold<int>(0, (sum, meal) {
+        switch (type) {
+          case LogMetricType.calories:
+            return sum + meal.calories;
+          case LogMetricType.carbs:
+            return sum + meal.macros.carbs;
+          case LogMetricType.fat:
+            return sum + meal.macros.fat;
+          default:
+            return sum + meal.macros.protein;
+        }
+      });
   }
 }
 
