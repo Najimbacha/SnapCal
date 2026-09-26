@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,9 +10,13 @@ import 'package:snapcal/data/models/body_metric.dart';
 import 'package:snapcal/data/models/meal.dart';
 import 'package:snapcal/data/models/user_settings.dart';
 import 'package:snapcal/data/repositories/activity_repository.dart';
+import 'package:snapcal/data/repositories/meal_repository.dart';
+import 'package:snapcal/data/repositories/water_repository.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/providers/activity_provider.dart';
+import 'package:snapcal/providers/meal_provider.dart';
 import 'package:snapcal/providers/metrics_provider.dart';
+import 'package:snapcal/providers/repository_providers.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/providers/water_provider.dart';
 import 'package:snapcal/screens/home/activity_screen.dart';
@@ -306,6 +312,13 @@ void main() {
             waterProvider.overrideWith(_FakeWater.new),
             activityProvider.overrideWith(_FakeActivity.new),
             effectiveIsProProvider.overrideWithValue(true),
+            todaysMealsProvider.overrideWith((ref) => Stream.value(const [])),
+            mealRepositoryProvider.overrideWith(
+              (ref) => Completer<MealRepository>().future,
+            ),
+            waterRepositoryProvider.overrideWith(
+              (ref) => Completer<WaterRepository>().future,
+            ),
           ],
         ),
       );

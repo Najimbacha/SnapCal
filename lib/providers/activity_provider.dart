@@ -124,6 +124,11 @@ class Activity extends _$Activity {
   }
 }
 
+/// Health Connect, for screens that read history rather than today.
+final healthConnectServiceProvider = Provider<HealthConnectService>(
+  (ref) => HealthConnectService(),
+);
+
 /// The daily step goal, saved on the phone.
 ///
 /// Every screen hardcoded 10,000 while the activity store kept a goal that
