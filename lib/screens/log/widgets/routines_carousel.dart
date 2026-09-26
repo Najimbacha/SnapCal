@@ -11,6 +11,7 @@ import 'package:snapcal/providers/template_provider.dart';
 import 'package:snapcal/widgets/glass_card.dart';
 import 'package:snapcal/widgets/ui_blocks.dart';
 import '../../../widgets/wazn_icons.dart';
+import '../../../widgets/app_toast.dart';
 
 class RoutinesCarousel extends ConsumerWidget {
   const RoutinesCarousel({super.key});
@@ -26,18 +27,20 @@ class RoutinesCarousel extends ConsumerWidget {
     try {
       await templateProvider.logFromTemplate(template);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.feature_templates_logged),
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppToastOf(
+        context,
+        kind: ToastKind.success,
+        title: AppLocalizations.of(context)!.feature_templates_logged,
       );
     } catch (e) {
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(
+      showAppToastOf(
         context,
-      ).showSnackBar(SnackBar(content: Text('${l10n.error_generic}: $e')));
+        kind: ToastKind.error,
+        title: l10n.error_generic,
+        detail: '$e',
+      );
     }
   }
 
@@ -242,7 +245,12 @@ class _RoutineOptionsSheet extends ConsumerWidget {
                     .read(templatesProvider.notifier)
                     .deleteTemplate(template.id);
                 router.pop();
-                messenger.showSnackBar(SnackBar(content: Text(deletedMessage)));
+                showAppToast(
+                  messenger,
+                  kind: ToastKind.info,
+                  icon: WaznIcons.delete,
+                  title: deletedMessage,
+                );
               },
             ),
             const SizedBox(height: 24),

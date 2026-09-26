@@ -2626,5 +2626,6 @@
   "settings_export_making": "Making your report…",
   "settings_export_ready": "Report ready to share",
   "about_tagline": "AI-Powered Calorie Tracker",
-  "about_follow_us": "Follow us"
+  "about_follow_us": "Follow us",
+  "progress_take_first_photo": "Take your first photo"
 }

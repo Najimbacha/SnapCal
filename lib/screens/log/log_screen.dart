@@ -33,6 +33,7 @@ import '../../core/theme/app_motion.dart';
 import '../../widgets/motion/arriving_item.dart';
 import '../../widgets/motion/count_up_text.dart';
 import '../../widgets/motion/delta_bubble.dart';
+import '../../widgets/app_toast.dart';
 
 class LogScreen extends ConsumerStatefulWidget {
   const LogScreen({super.key});
@@ -455,26 +456,19 @@ class _LogScreenState extends ConsumerState<LogScreen> {
 
     // A second swipe closes the first snackbar, which deletes its meal.
     messenger.hideCurrentSnackBar();
-    messenger
-        .showSnackBar(
-          SnackBar(
-            content: _UndoCountdown(
-              text: l10n.log_meal_deleted,
-              duration: const Duration(seconds: 4),
-            ),
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(label: l10n.result_undo, onPressed: () {}),
-          ),
-        )
-        .closed
-        .then((reason) async {
-          if (reason != SnackBarClosedReason.action) {
-            await mealLog.deleteMeal(meal.id);
-          }
-          _pendingDeletes.remove(meal.id);
-          if (mounted) setState(() {});
-        });
+    showAppToast(
+      messenger,
+      kind: ToastKind.undo,
+      title: l10n.log_meal_deleted,
+      detail: meal.foodName,
+      actionLabel: l10n.result_undo,
+    ).closed.then((reason) async {
+      if (reason != SnackBarClosedReason.action) {
+        await mealLog.deleteMeal(meal.id);
+      }
+      _pendingDeletes.remove(meal.id);
+      if (mounted) setState(() {});
+    });
   }
 
   List<_MealGroupData> _groupMeals(BuildContext context, List<Meal> meals) {
@@ -987,45 +981,6 @@ class _DaySwitch extends StatelessWidget {
         );
       },
       child: KeyedSubtree(key: ValueKey(day), child: child),
-    );
-  }
-}
-
-/// The snackbar's message with a thin line under it that runs down over the
-/// time left to undo.
-class _UndoCountdown extends StatelessWidget {
-  const _UndoCountdown({required this.text, required this.duration});
-
-  final String text;
-  final Duration duration;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(text),
-        const SizedBox(height: 8),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 1, end: 0),
-          duration: duration,
-          builder:
-              (context, left, _) => Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: FractionallySizedBox(
-                  widthFactor: left,
-                  child: Container(
-                    height: 2.5,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-              ),
-        ),
-      ],
     );
   }
 }

@@ -28,6 +28,7 @@ import '../../widgets/motion/reveal.dart';
 import '../../widgets/motion/spring_dialog.dart';
 
 import 'widgets/settings_kit.dart';
+import '../../widgets/app_toast.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -332,19 +333,11 @@ void _showSubscriptionSnackBar(
   required Color color,
   required IconData icon,
 }) {
-  messenger.hideCurrentSnackBar();
-  messenger.showSnackBar(
-    SnackBar(
-      content: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 18),
-          const SizedBox(width: 10),
-          Expanded(child: Text(message)),
-        ],
-      ),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-    ),
+  showAppToast(
+    messenger,
+    kind: toastKindFor(color),
+    icon: icon,
+    title: message,
   );
 }
 
@@ -391,8 +384,10 @@ Future<void> confirmAndSignOut(
     await ref.read(authNotifierProvider.notifier).signOut();
   } catch (_) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.error_generic)),
+      showAppToastOf(
+        context,
+        kind: ToastKind.error,
+        title: AppLocalizations.of(context)!.error_generic,
       );
     }
     return;
@@ -505,11 +500,10 @@ Future<void> confirmAndDeleteAccount(
     // had happened.
     debugPrint('Account deletion failed: $e');
     navigator.pop();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(l10n.settings_delete_failed),
-        backgroundColor: AppColors.error,
-      ),
+    showAppToast(
+      messenger,
+      kind: ToastKind.error,
+      title: l10n.settings_delete_failed,
     );
     return;
   }
@@ -525,8 +519,10 @@ Future<void> confirmAndDeleteAccount(
     ref.invalidate(achievementsProvider);
     ref.invalidate(stepGoalProvider);
   }
-  messenger.showSnackBar(
-    SnackBar(content: Text(l10n.settings_account_deleted)),
+  showAppToast(
+    messenger,
+    kind: ToastKind.success,
+    title: l10n.settings_account_deleted,
   );
   // Same as sign-out above: a deleted account is signed back in
   // anonymously, and an anonymous user cannot leave '/auth'.

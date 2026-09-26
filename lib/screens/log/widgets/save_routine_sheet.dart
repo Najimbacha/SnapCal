@@ -9,6 +9,7 @@ import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/providers/template_provider.dart';
 import 'package:snapcal/widgets/glass_card.dart';
 import '../../../widgets/wazn_icons.dart';
+import '../../../widgets/app_toast.dart';
 
 class SaveRoutineSheet extends ConsumerStatefulWidget {
   final List<Meal> meals;
@@ -64,10 +65,10 @@ class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
 
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.feature_templates_logged),
-        ),
+      showAppToastOf(
+        context,
+        kind: ToastKind.success,
+        title: AppLocalizations.of(context)!.feature_templates_logged,
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);

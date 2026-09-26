@@ -30,6 +30,7 @@ import '../../widgets/motion/rolling_number.dart';
 import '../../widgets/ui_blocks.dart';
 import '../settings/widgets/weight_entry_modal.dart';
 import 'stats_data.dart';
+import '../../widgets/app_toast.dart';
 
 /// What the user's own numbers say about the last week or month.
 ///
@@ -86,8 +87,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       // The raw exception meant nothing to the user; it belongs in the log.
       debugPrint('PDF report failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.report_failed)),
+        showAppToastOf(
+          context,
+          kind: ToastKind.error,
+          title: AppLocalizations.of(context)!.report_failed,
         );
       }
     } finally {
@@ -132,7 +135,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           settingsAsync.isLoading || repoAsync.isLoading
               ? const Padding(
                 padding: EdgeInsets.only(top: 16),
-                child: AppSectionSkeleton(rows: 4),
+                child: AppStatsSkeleton(),
               )
               : _body(
                 context,

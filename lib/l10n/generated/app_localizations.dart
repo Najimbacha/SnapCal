@@ -9581,6 +9581,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Follow us'**
   String get about_follow_us;
+
+  /// No description provided for @progress_take_first_photo.
+  ///
+  /// In en, this message translates to:
+  /// **'Take your first photo'**
+  String get progress_take_first_photo;
 }
 
 class _AppLocalizationsDelegate

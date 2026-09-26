@@ -17,6 +17,7 @@ import '../../../providers/settings_provider.dart';
 import '../../../widgets/macro_display.dart';
 import '../../../widgets/motion/reveal.dart';
 import '../../settings/widgets/settings_kit.dart';
+import '../../../widgets/app_toast.dart';
 
 const _presetWeights = <int>[50, 100, 150, 200, 250, 300, 400, 500];
 
@@ -321,30 +322,22 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     final index = i;
     setState(() => _items.removeAt(i));
     if (!withUndo) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-        content: Text(
-          l10n.result_removed(
-            removed.name.trim().isEmpty
-                ? l10n.result_food_item
-                : _capitalize(removed.name),
-          ),
-          style: const TextStyle(fontSize: 13),
-        ),
-        action: SnackBarAction(
-          label: l10n.result_undo,
-          onPressed: () {
-            if (!mounted) return;
-            setState(() {
-              final idx = index.clamp(0, _items.length).toInt();
-              _items.insert(idx, removed);
-            });
-          },
-        ),
+    showAppToastOf(
+      context,
+      kind: ToastKind.undo,
+      title: l10n.result_removed(
+        removed.name.trim().isEmpty
+            ? l10n.result_food_item
+            : _capitalize(removed.name),
       ),
+      actionLabel: l10n.result_undo,
+      onAction: () {
+        if (!mounted) return;
+        setState(() {
+          final idx = index.clamp(0, _items.length).toInt();
+          _items.insert(idx, removed);
+        });
+      },
     );
   }
 
@@ -458,11 +451,12 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     if (savable.isEmpty) {
       final l10n = AppLocalizations.of(context)!;
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.result_not_matched),
-          duration: const Duration(seconds: 3),
-        ),
+      showAppToastOf(
+        context,
+        kind: ToastKind.warning,
+        icon: WaznIcons.info,
+        title: l10n.result_not_matched,
+        duration: const Duration(seconds: 3),
       );
       return;
     }

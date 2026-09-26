@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/theme/theme_colors.dart';
 import '../core/utils/responsive_utils.dart';
+import 'empty_state_art.dart';
+import 'motion/reveal.dart';
 
 class AppSectionCard extends StatelessWidget {
   final Widget child;
@@ -249,6 +250,8 @@ class MetricTile extends StatelessWidget {
   }
 }
 
+/// An empty page: a small picture that draws itself and floats, one short
+/// line of what belongs here, and at most one clear thing to do about it.
 class AppEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -267,81 +270,78 @@ class AppEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasAction = actionLabel != null && onAction != null;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      context.primaryColor.withValues(alpha: 0.15),
-                      context.primaryColor.withValues(alpha: 0.05),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: context.primaryColor.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: Icon(icon, size: 48, color: context.primaryColor),
-              )
-              .animate(onPlay: (c) => c.repeat())
-              .shimmer(
-                duration: 3.seconds,
-                color: Colors.white.withValues(alpha: 0.2),
+          EmptyStateArt(icon: icon, showPlus: hasAction),
+          const SizedBox(height: 22),
+          Reveal(
+            delay: const Duration(milliseconds: 650),
+            offset: const Offset(0, 12),
+            child: Text(
+              title,
+              style: AppTypography.heading3.copyWith(
+                color: context.textPrimaryColor,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
               ),
-          const SizedBox(height: 32),
-          Text(
-            title,
-            style: AppTypography.heading2.copyWith(
-              color: context.textPrimaryColor,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1,
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          Text(
-            body,
-            style: AppTypography.bodyMedium.copyWith(
-              color: context.textSecondaryColor,
-              height: 1.6,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 40),
-            AppScaleTap(
-              onTap: onAction!,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 18,
+          const SizedBox(height: 8),
+          Reveal(
+            delay: const Duration(milliseconds: 740),
+            offset: const Offset(0, 12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 300),
+              child: Text(
+                body,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: context.textSecondaryColor,
+                  height: 1.5,
                 ),
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          if (hasAction) ...[
+            const SizedBox(height: 24),
+            Reveal(
+              delay: const Duration(milliseconds: 830),
+              offset: const Offset(0, 12),
+              child: AppScaleTap(
+                onTap: onAction!,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 50),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF047857),
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(
+                          0xFF047857,
+                        ).withValues(alpha: context.isDarkMode ? 0.4 : 0.28),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    actionLabel!,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.labelLarge.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15.5,
                     ),
-                  ],
-                ),
-                child: Text(
-                  actionLabel!,
-                  style: AppTypography.labelLarge.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
                   ),
                 ),
               ),

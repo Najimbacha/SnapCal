@@ -18,6 +18,7 @@ import '../../../providers/metrics_provider.dart';
 import '../../../widgets/app_page_scaffold.dart';
 import '../../../widgets/motion/reveal.dart';
 import '../../../widgets/motion/lift_when_ready.dart';
+import '../../../widgets/app_toast.dart';
 
 class PhotoCaptureFlow extends ConsumerStatefulWidget {
   const PhotoCaptureFlow({super.key});
@@ -66,10 +67,10 @@ class _PhotoCaptureFlowState extends ConsumerState<PhotoCaptureFlow> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.progress_failed_camera),
-          ),
+        showAppToastOf(
+          context,
+          kind: ToastKind.error,
+          title: AppLocalizations.of(context)!.progress_failed_camera,
         );
       }
     } finally {
@@ -102,10 +103,10 @@ class _PhotoCaptureFlowState extends ConsumerState<PhotoCaptureFlow> {
       if (mounted) Navigator.pop(context);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.progress_failed_camera),
-          ),
+        showAppToastOf(
+          context,
+          kind: ToastKind.error,
+          title: AppLocalizations.of(context)!.progress_failed_camera,
         );
       }
     } finally {

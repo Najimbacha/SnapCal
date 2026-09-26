@@ -151,7 +151,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
         icon: WaznIcons.image,
         title: l10n.progress_no_photos_title,
         body: l10n.progress_take_photos_desc,
-        actionLabel: l10n.progress_tap_to_snap,
+        actionLabel: l10n.progress_take_first_photo,
         onAction: () => _handleCapture(context, canAdd),
       ),
     );

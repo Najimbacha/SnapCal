@@ -33,6 +33,7 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../data/services/camera_service.dart';
 import '../../router.dart';
 import '../../widgets/motion/reveal.dart';
+import '../../widgets/app_toast.dart';
 
 enum SnapInitialMode { food, barcode }
 
@@ -435,7 +436,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
       await mealNotifier.addMeal(meal, mealDate: meal.dateString);
     } catch (error) {
       debugPrint('Saving manual meal failed: $error');
-      messenger.showSnackBar(SnackBar(content: Text(l10n.meal_save_failed)));
+      showAppToast(
+        messenger,
+        kind: ToastKind.error,
+        title: l10n.meal_save_failed,
+      );
     }
   }
 
@@ -491,7 +496,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
       // not be there.
       debugPrint('Saving scanned meal failed: $error');
       _savedResultFingerprint = null;
-      messenger.showSnackBar(SnackBar(content: Text(l10n.meal_save_failed)));
+      showAppToast(
+        messenger,
+        kind: ToastKind.error,
+        title: l10n.meal_save_failed,
+      );
     } finally {
       _isSavingResult = false;
     }

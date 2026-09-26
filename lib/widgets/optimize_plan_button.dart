@@ -8,6 +8,7 @@ import '../core/theme/app_typography.dart';
 import '../providers/assistant_provider.dart';
 import '../providers/metrics_provider.dart';
 import '../providers/settings_provider.dart';
+import 'app_toast.dart';
 
 class OptimizePlanButton extends ConsumerStatefulWidget {
   final bool compact;
@@ -27,12 +28,10 @@ class _OptimizePlanButtonState extends ConsumerState<OptimizePlanButton> {
     final currentWeight = metricsNotifier.currentWeight;
 
     if (currentWeight == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(context)!.settings_log_weight_first,
-          ),
-        ),
+      showAppToastOf(
+        context,
+        kind: ToastKind.info,
+        title: AppLocalizations.of(context)!.settings_log_weight_first,
       );
       return;
     }
@@ -54,12 +53,10 @@ class _OptimizePlanButtonState extends ConsumerState<OptimizePlanButton> {
             AppLocalizations.of(context)!.settings_recalculate_query,
           );
     } else if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(context)!.settings_complete_profile_first,
-          ),
-        ),
+      showAppToastOf(
+        context,
+        kind: ToastKind.info,
+        title: AppLocalizations.of(context)!.settings_complete_profile_first,
       );
     }
   }

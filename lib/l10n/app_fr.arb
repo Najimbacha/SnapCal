@@ -1826,5 +1826,6 @@
   "settings_export_making": "Création de votre rapport…",
   "settings_export_ready": "Rapport prêt à partager",
   "about_tagline": "Suivi des calories par IA",
-  "about_follow_us": "Suivez-nous"
+  "about_follow_us": "Suivez-nous",
+  "progress_take_first_photo": "Prenez votre première photo"
 }
