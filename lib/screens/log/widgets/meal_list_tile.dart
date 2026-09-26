@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../data/models/meal.dart';
@@ -32,16 +34,44 @@ class MealListTile extends StatefulWidget {
   State<MealListTile> createState() => _MealListTileState();
 }
 
-class _MealListTileState extends State<MealListTile> {
+class _MealListTileState extends State<MealListTile>
+    with SingleTickerProviderStateMixin {
   /// How far the row has been swiped, 0 to 1 of the way to deleting.
   final _swipe = ValueNotifier<double>(0);
   bool _armed = false;
 
+  /// An edited meal glows softly while its calories roll to the new number,
+  /// with the difference floating up beside them.
+  late final AnimationController _changed;
+  int _delta = 0;
+
   Meal get meal => widget.meal;
+
+  @override
+  void initState() {
+    super.initState();
+    _changed = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+  }
+
+  @override
+  void didUpdateWidget(MealListTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final before = oldWidget.meal;
+    if (before.id == meal.id &&
+        before.calories != meal.calories &&
+        !AppMotion.reduceMotion(context)) {
+      _delta = meal.calories - before.calories;
+      _changed.forward(from: 0);
+    }
+  }
 
   @override
   void dispose() {
     _swipe.dispose();
+    _changed.dispose();
     super.dispose();
   }
 
@@ -86,87 +116,121 @@ class _MealListTileState extends State<MealListTile> {
               ),
             ),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 66),
-            padding: const EdgeInsets.symmetric(vertical: 9),
+      child: AnimatedBuilder(
+        animation: _changed,
+        builder: (context, child) {
+          final t = _changed.value;
+          final glow = t == 0 || t == 1 ? 0.0 : math.sin(t * math.pi) * .12;
+          return DecoratedBox(
             decoration: BoxDecoration(
-              border:
-                  showDivider
-                      ? Border(
-                        bottom: BorderSide(
-                          color: context.dividerColor.withValues(alpha: 0.3),
-                        ),
-                      )
-                      : null,
+              color: AppColors.primary.withValues(alpha: glow),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
-              children: [
-                _MealThumbnail(meal: meal),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        meal.foodName,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: context.textPrimaryColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (_detailText.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          _detailText,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: context.textMutedColor,
-                            fontSize: 11,
+            child: child,
+          );
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 66),
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              decoration: BoxDecoration(
+                border:
+                    showDivider
+                        ? Border(
+                          bottom: BorderSide(
+                            color: context.dividerColor.withValues(alpha: 0.3),
                           ),
-                          maxLines: 1,
+                        )
+                        : null,
+              ),
+              child: Row(
+                children: [
+                  _MealThumbnail(meal: meal),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          meal.foodName,
+                          style: AppTypography.titleMedium.copyWith(
+                            color: context.textPrimaryColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (_detailText.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            _detailText,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: context.textMutedColor,
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text.rich(
-                  TextSpan(
+                  const SizedBox(width: 8),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    alignment: AlignmentDirectional.centerEnd,
                     children: [
-                      TextSpan(
-                        text: '${meal.calories}',
-                        style: AppTypography.titleMedium.copyWith(
-                          color: context.textPrimaryColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(end: meal.calories.toDouble()),
+                        duration: AppMotion.maybeZero(
+                          context,
+                          const Duration(milliseconds: 800),
                         ),
+                        curve: Curves.easeOutCubic,
+                        builder:
+                            (context, calories, _) => Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '${calories.round()}',
+                                    style: AppTypography.titleMedium.copyWith(
+                                      color: context.textPrimaryColor,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: ' ${l10n.settings_kcal_unit}',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: context.textMutedColor,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                            ),
                       ),
-                      TextSpan(
-                        text: ' ${l10n.settings_kcal_unit}',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: context.textMutedColor,
-                          fontSize: 10,
-                        ),
+                      PositionedDirectional(
+                        end: 0,
+                        top: -20,
+                        child: _DeltaChip(animation: _changed, delta: _delta),
                       ),
                     ],
                   ),
-                  maxLines: 1,
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  WaznIcons.chevronRight,
-                  size: 16,
-                  color: context.textMutedColor.withValues(alpha: 0.6),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Icon(
+                    WaznIcons.chevronRight,
+                    size: 16,
+                    color: context.textMutedColor.withValues(alpha: 0.6),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -186,6 +250,56 @@ class _MealListTileState extends State<MealListTile> {
       );
     }
     return details.join('  ·  ');
+  }
+}
+
+/// The change in calories, floating up beside the new number and fading.
+class _DeltaChip extends StatelessWidget {
+  const _DeltaChip({required this.animation, required this.delta});
+
+  final Animation<double> animation;
+  final int delta;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, child) {
+          final t = animation.value;
+          if (t == 0 || t == 1 || delta == 0) return const SizedBox.shrink();
+          final opacity =
+              t < .2
+                  ? t / .2
+                  : t > .75
+                  ? (1 - t) / .25
+                  : 1.0;
+          return Opacity(
+            opacity: opacity.clamp(0.0, 1.0),
+            child: Transform.translate(
+              offset: Offset(0, 8 - 18 * Curves.easeOut.transform(t)),
+              child: child,
+            ),
+          );
+        },
+        child: Container(
+          key: const ValueKey('meal-delta'),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            '${delta > 0 ? '+' : '−'}${delta.abs()}',
+            style: AppTypography.labelSmall.copyWith(
+              color: context.primaryColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/theme/app_colors.dart';
+import '../core/theme/app_motion.dart';
+import 'motion/celebration.dart';
 
 class ActivityRingGauge extends StatefulWidget {
   final double progress;
@@ -21,8 +24,13 @@ class ActivityRingGauge extends StatefulWidget {
 }
 
 class _ActivityRingGaugeState extends State<ActivityRingGauge>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _controller;
+
+  /// The tip's pop once the ring lands, and the ring's swell when the goal
+  /// is reached.
+  late final AnimationController _pop;
+  bool _reached = false;
   Animation<double>? _progressAnimation;
   Animation<double>? _stepsAnimation;
 
@@ -33,8 +41,39 @@ class _ActivityRingGaugeState extends State<ActivityRingGauge>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     );
+    _pop = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 620),
+    );
+    _controller.addStatusListener(_landed);
     _initAnimations();
     _controller.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.reduceMotion(context) && _controller.isAnimating) {
+      _controller.value = 1;
+    }
+  }
+
+  void _landed(AnimationStatus status) {
+    if (status != AnimationStatus.completed || !mounted) return;
+    if (AppMotion.reduceMotion(context)) return;
+    _pop.forward(from: 0);
+    if (!_reached) return;
+    _reached = false;
+    // Reaching the goal: a buzz and a burst from the top of the ring, where
+    // the ring closes.
+    HapticFeedback.mediumImpact();
+    final box = context.findRenderObject() as RenderBox?;
+    if (box != null && box.hasSize) {
+      burstConfetti(
+        context,
+        box.localToGlobal(Offset(box.size.width / 2, box.size.width * .04)),
+      );
+    }
   }
 
   void _initAnimations() {
@@ -55,6 +94,7 @@ class _ActivityRingGaugeState extends State<ActivityRingGauge>
         oldWidget.steps != widget.steps) {
       final beginProgress = _progressAnimation?.value ?? oldWidget.progress;
       final beginSteps = _stepsAnimation?.value ?? oldWidget.steps.toDouble();
+      _reached = beginProgress < 1 && widget.progress >= 1;
 
       _progressAnimation = Tween<double>(
         begin: beginProgress,
@@ -68,13 +108,18 @@ class _ActivityRingGaugeState extends State<ActivityRingGauge>
       ).animate(
         CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
       );
-      _controller.forward(from: 0);
+      if (AppMotion.reduceMotion(context)) {
+        _controller.value = 1;
+      } else {
+        _controller.forward(from: 0);
+      }
     }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _pop.dispose();
     super.dispose();
   }
 
@@ -88,20 +133,30 @@ class _ActivityRingGaugeState extends State<ActivityRingGauge>
       width: widget.size,
       height: widget.size,
       child: AnimatedBuilder(
-        animation: _controller,
+        animation: Listenable.merge([_controller, _pop]),
         builder: (context, child) {
           final animatedProgress = _progressAnimation?.value ?? currentProgress;
           final animatedSteps = _stepsAnimation?.value.round() ?? currentSteps;
+          final pop = math.sin(_pop.value * math.pi);
+          final full = animatedProgress >= 1;
 
           return Stack(
             alignment: Alignment.center,
             children: [
-              CustomPaint(
-                size: Size(widget.size, widget.size),
-                painter: _RingPainter(
-                  progress: animatedProgress,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                  gradient: AppColors.wellnessGlow,
+              Transform.scale(
+                scale: full ? 1 + .05 * pop : 1,
+                child: CustomPaint(
+                  key: const ValueKey('activity-ring'),
+                  size: Size(widget.size, widget.size),
+                  painter: _RingPainter(
+                    progress: animatedProgress,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    gradient: AppColors.wellnessGlow,
+                    // A glowing tip leads the ring round, and pops as it
+                    // lands.
+                    tipGlow: _controller.isAnimating ? .35 : .18 + .2 * pop,
+                    tipScale: 1 + .6 * pop,
+                  ),
                 ),
               ),
               Column(
@@ -141,11 +196,15 @@ class _RingPainter extends CustomPainter {
   final double progress;
   final Color backgroundColor;
   final Gradient gradient;
+  final double tipGlow;
+  final double tipScale;
 
   _RingPainter({
     required this.progress,
     required this.backgroundColor,
     required this.gradient,
+    this.tipGlow = 0,
+    this.tipScale = 1,
   });
 
   @override
@@ -182,10 +241,27 @@ class _RingPainter extends CustomPainter {
     if (progressSweep > 0) {
       canvas.drawArc(rect, startAngle, progressSweep, false, fgPaint);
     }
+
+    if (progress > .01) {
+      final angle = startAngle + progressSweep;
+      final tip = center + Offset(math.cos(angle), math.sin(angle)) * radius;
+      canvas.drawCircle(
+        tip,
+        strokeWidth * .9,
+        Paint()..color = const Color(0xFFB8E23C).withValues(alpha: tipGlow),
+      );
+      canvas.drawCircle(
+        tip,
+        strokeWidth * .28 * tipScale,
+        Paint()..color = Colors.white,
+      );
+    }
   }
 
   @override
   bool shouldRepaint(covariant _RingPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+    return oldDelegate.progress != progress ||
+        oldDelegate.tipGlow != tipGlow ||
+        oldDelegate.tipScale != tipScale;
   }
 }

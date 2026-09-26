@@ -8,10 +8,11 @@ import '../../core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../widgets/wazn_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/date_utils.dart' as app_date;
 import '../../data/models/user_settings.dart';
@@ -19,6 +20,8 @@ import '../../data/services/premium_conversion_service.dart';
 import '../../providers/activity_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
+import '../../widgets/motion/count_up_text.dart';
+import '../../widgets/motion/reveal.dart';
 import '../../widgets/ui_blocks.dart';
 import 'models/log_metric_models.dart';
 import 'widgets/health_metric_dashboard.dart';
@@ -41,6 +44,10 @@ class _HealthMetricDetailScreenState
     extends ConsumerState<HealthMetricDetailScreen> {
   LogMetricPeriod _period = LogMetricPeriod.week;
   DateTime _anchor = DateTime.now();
+
+  /// Which way the last change went: 0 for a new period, -1 back in time,
+  /// 1 forward. The chart and heading slide in from that side.
+  int _move = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -117,17 +124,20 @@ class _HealthMetricDetailScreenState
                             onChanged:
                                 (period) => setState(() {
                                   _period = period;
+                                  _move = 0;
                                 }),
                           ),
                           const SizedBox(height: 20),
                           _PeriodNavigation(
-                            title: _periodTitle(l10n, _period),
+                            title: _heading(l10n),
+                            move: _move,
                             canMoveNext: canMoveMetricPeriodForward(
                               _period,
                               _anchor,
                             ),
                             onPrevious:
                                 () => setState(() {
+                                  _move = -1;
                                   _anchor = shiftMetricAnchor(
                                     _period,
                                     _anchor,
@@ -136,6 +146,7 @@ class _HealthMetricDetailScreenState
                                 }),
                             onNext:
                                 () => setState(() {
+                                  _move = 1;
                                   _anchor = shiftMetricAnchor(
                                     _period,
                                     _anchor,
@@ -157,47 +168,61 @@ class _HealthMetricDetailScreenState
                               isDark: isDark,
                             ),
                             const SizedBox(height: 20),
-                            // Chart card
-                            Container(
-                              height: 248,
-                              decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? Colors.white.withValues(alpha: 0.04)
-                                        : const Color(0x00FFFFFF),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .outlineVariant
-                                      .withValues(alpha: isDark ? 0.08 : 0.18),
-                                ),
+                            _SlideOnChange(
+                              changeKey:
+                                  '${_period.name} '
+                                  '${metricDateString(metricRangeFor(_period, _anchor).start)}',
+                              move: _move,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Chart card
+                                  Container(
+                                    height: 248,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isDark
+                                              ? Colors.white.withValues(
+                                                alpha: 0.04,
+                                              )
+                                              : const Color(0x00FFFFFF),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.outlineVariant.withValues(
+                                          alpha: isDark ? 0.08 : 0.18,
+                                        ),
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      20,
+                                      16,
+                                      14,
+                                    ),
+                                    child: _HealthMetricDetailChart(
+                                      data: data,
+                                      accent: accent,
+                                      isDark: isDark,
+                                      isPro: data.isPro,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 28),
+                                  // Section header
+                                  _SectionHeader(
+                                    title: l10n.log_metric_detail_list_title,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _MetricPointList(
+                                    data: data,
+                                    accent: accent,
+                                    isDark: isDark,
+                                    isPro: data.isPro,
+                                    onLockedTap: _openHistoryPaywall,
+                                  ),
+                                ],
                               ),
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                20,
-                                16,
-                                14,
-                              ),
-                              child: _HealthMetricDetailChart(
-                                data: data,
-                                accent: accent,
-                                isDark: isDark,
-                                isPro: data.isPro,
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                            // Section header
-                            _SectionHeader(
-                              title: l10n.log_metric_detail_list_title,
-                            ),
-                            const SizedBox(height: 12),
-                            _MetricPointList(
-                              data: data,
-                              accent: accent,
-                              isDark: isDark,
-                              isPro: data.isPro,
-                              onLockedTap: _openHistoryPaywall,
                             ),
                           ],
                         ],
@@ -223,8 +248,33 @@ class _HealthMetricDetailScreenState
     );
     if (picked == null || !mounted) return;
     setState(() {
+      _move = picked.isBefore(_anchor) ? -1 : 1;
       _anchor = picked;
     });
+  }
+
+  /// "This week" while looking at this week; once moved back, the dates
+  /// being looked at, where it used to say "This week" for every week.
+  String _heading(AppLocalizations l10n) {
+    if (!canMoveMetricPeriodForward(_period, _anchor)) {
+      return _periodTitle(l10n, _period);
+    }
+    final locale = l10n.localeName;
+    final range = metricRangeFor(_period, _anchor);
+    switch (_period) {
+      case LogMetricPeriod.day:
+        return DateFormat.MMMEd(locale).format(range.start);
+      case LogMetricPeriod.week:
+        final day = DateFormat.MMMd(locale);
+        return '${day.format(range.start)} – ${day.format(range.end)}';
+      case LogMetricPeriod.month:
+        return DateFormat.yMMMM(locale).format(range.start);
+      case LogMetricPeriod.threeMonths:
+        return '${DateFormat.MMM(locale).format(range.start)} – '
+            '${DateFormat.yMMM(locale).format(range.end)}';
+      case LogMetricPeriod.year:
+        return DateFormat.y(locale).format(range.start);
+    }
   }
 
   Future<_MetricDetailData> _buildData(BuildContext context) async {
@@ -542,48 +592,74 @@ class _PeriodSelector extends StatelessWidget {
                   : Colors.black.withValues(alpha: 0.04),
         ),
       ),
-      child: Row(
-        children:
-            LogMetricPeriod.values.map((period) {
-              final active = selected == period;
-              return Expanded(
-                child: AppScaleTap(
-                  onTap: () => onChanged(period),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    height: double.infinity,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: active ? accent : null,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow:
-                          active
-                              ? [
-                                BoxShadow(
-                                  color: accent.withValues(alpha: 0.28),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                              : null,
+      child: Stack(
+        children: [
+          // One coloured pill that slides to the choice.
+          AnimatedAlign(
+            key: const ValueKey('metric-period-pill'),
+            alignment: AlignmentDirectional(
+              -1 +
+                  2 *
+                      LogMetricPeriod.values.indexOf(selected) /
+                      (LogMetricPeriod.values.length - 1),
+              0,
+            ),
+            duration: AppMotion.maybeZero(
+              context,
+              const Duration(milliseconds: 500),
+            ),
+            curve: AppMotion.springCurve,
+            child: FractionallySizedBox(
+              widthFactor: 1 / LogMetricPeriod.values.length,
+              heightFactor: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.28),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                    child: Text(
-                      _periodCode(l10n, period),
-                      style: AppTypography.titleMedium.copyWith(
-                        color:
-                            active
-                                ? Colors.white
-                                : _healthText(context).withValues(alpha: 0.52),
-                        fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                        fontSize: 14,
-                        letterSpacing: 0,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Row(
+            children:
+                LogMetricPeriod.values.map((period) {
+                  final active = selected == period;
+                  return Expanded(
+                    child: AppScaleTap(
+                      onTap: () => onChanged(period),
+                      child: Container(
+                        height: double.infinity,
+                        alignment: Alignment.center,
+                        color: Colors.transparent,
+                        child: AnimatedDefaultTextStyle(
+                          duration: AppMotion.standard,
+                          style: AppTypography.titleMedium.copyWith(
+                            color:
+                                active
+                                    ? Colors.white
+                                    : _healthText(
+                                      context,
+                                    ).withValues(alpha: 0.52),
+                            fontWeight:
+                                active ? FontWeight.w600 : FontWeight.w500,
+                            fontSize: 14,
+                            letterSpacing: 0,
+                          ),
+                          child: Text(_periodCode(l10n, period)),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -593,6 +669,7 @@ class _PeriodSelector extends StatelessWidget {
 
 class _PeriodNavigation extends StatelessWidget {
   final String title;
+  final int move;
   final bool canMoveNext;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
@@ -601,6 +678,7 @@ class _PeriodNavigation extends StatelessWidget {
 
   const _PeriodNavigation({
     required this.title,
+    required this.move,
     required this.canMoveNext,
     required this.onPrevious,
     required this.onNext,
@@ -616,13 +694,23 @@ class _PeriodNavigation extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: AppTypography.heading2.copyWith(
-                  color: _healthText(context),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 28,
-                  letterSpacing: 0,
+              // A new period rises in; a step in time slides in from the
+              // side it came from.
+              _SlideOnChange(
+                changeKey: title,
+                move: move,
+                vertical: move == 0,
+                child: Text(
+                  title,
+                  key: const ValueKey('metric-period-title'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.heading2.copyWith(
+                    color: _healthText(context),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 28,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
             ],
@@ -706,7 +794,6 @@ class _MetricHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final number = _formatInt(context, data.averageValue);
     final progress =
         data.dailyGoal > 0
             ? (data.averageValue / data.dailyGoal).clamp(0.0, 1.0)
@@ -742,8 +829,12 @@ class _MetricHero extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      Text(
-                        number,
+                      // Counts up on arrival and rolls to each new average.
+                      CountUpText(
+                        key: const ValueKey('metric-average'),
+                        value: data.averageValue,
+                        from: 0,
+                        format: (value) => _formatInt(context, value),
                         style: AppTypography.displayLarge.copyWith(
                           color: _healthText(context),
                           fontWeight: FontWeight.w600,
@@ -769,52 +860,67 @@ class _MetricHero extends StatelessWidget {
                   ),
                 ),
               ),
-              // Goal hit badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
+              // Goal hit badge, turning over when the verdict changes.
+              AnimatedSwitcher(
+                duration: AppMotion.maybeZero(
+                  context,
+                  const Duration(milliseconds: 420),
                 ),
-                decoration: BoxDecoration(
-                  color:
-                      isGoalHit
-                          ? accent.withValues(alpha: 0.10)
-                          : Colors.orange.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
+                transitionBuilder:
+                    (child, animation) => ScaleTransition(
+                      scale: CurvedAnimation(
+                        parent: animation,
+                        curve: AppMotion.springCurve,
+                      ),
+                      child: FadeTransition(opacity: animation, child: child),
+                    ),
+                child: Container(
+                  key: ValueKey('metric-goal-$isGoalHit'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
                     color:
                         isGoalHit
-                            ? accent.withValues(alpha: 0.28)
-                            : Colors.orange.withValues(alpha: 0.22),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isGoalHit ? WaznIcons.success : WaznIcons.goal,
-                      size: 12,
-                      color: isGoalHit ? accent : Colors.orange,
+                            ? accent.withValues(alpha: 0.10)
+                            : Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color:
+                          isGoalHit
+                              ? accent.withValues(alpha: 0.28)
+                              : Colors.orange.withValues(alpha: 0.22),
                     ),
-                    const SizedBox(width: 5),
-                    // The badge is a non-flexible sibling of an Expanded, so
-                    // it is laid out at its intrinsic width first: a long
-                    // goal string pushed it past the card edge instead of
-                    // shortening.
-                    Flexible(
-                      child: Text(
-                        data.goalStatus,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: isGoalHit ? accent : Colors.orange,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 11,
-                          letterSpacing: 0,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isGoalHit ? WaznIcons.success : WaznIcons.goal,
+                        size: 12,
+                        color: isGoalHit ? accent : Colors.orange,
+                      ),
+                      const SizedBox(width: 5),
+                      // The badge is a non-flexible sibling of an Expanded, so
+                      // it is laid out at its intrinsic width first: a long
+                      // goal string pushed it past the card edge instead of
+                      // shortening.
+                      Flexible(
+                        child: Text(
+                          data.goalStatus,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: isGoalHit ? accent : Colors.orange,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 11,
+                            letterSpacing: 0,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -823,8 +929,10 @@ class _MetricHero extends StatelessWidget {
           // Progress towards daily goal
           Row(
             children: [
-              Text(
-                '${(progress * 100).round()}%',
+              CountUpText(
+                value: (progress * 100).round(),
+                from: 0,
+                format: (value) => '$value%',
                 style: AppTypography.labelSmall.copyWith(
                   color: accent,
                   fontWeight: FontWeight.w600,
@@ -843,9 +951,20 @@ class _MetricHero extends StatelessWidget {
                         Container(
                           color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
                         ),
-                        FractionallySizedBox(
-                          widthFactor: progress,
-                          child: Container(color: accent),
+                        // Fills on arrival and glides to each new share.
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: progress),
+                          duration: AppMotion.maybeZero(
+                            context,
+                            AppMotion.count,
+                          ),
+                          curve: Curves.easeOutCubic,
+                          builder:
+                              (context, fill, _) => FractionallySizedBox(
+                                key: const ValueKey('metric-goal-fill'),
+                                widthFactor: fill,
+                                child: Container(color: accent),
+                              ),
                         ),
                       ],
                     ),
@@ -872,7 +991,10 @@ class _MetricHero extends StatelessWidget {
 
 // ── Chart ─────────────────────────────────────────────────────────────────────
 
-class _HealthMetricDetailChart extends StatelessWidget {
+/// The period's bars, growing in a wave from the start edge under a goal
+/// line that draws across. Each new period gets a new chart, so it grows
+/// again.
+class _HealthMetricDetailChart extends StatefulWidget {
   final _MetricDetailData data;
   final Color accent;
   final bool isDark;
@@ -886,18 +1008,53 @@ class _HealthMetricDetailChart extends StatelessWidget {
   });
 
   @override
+  State<_HealthMetricDetailChart> createState() =>
+      _HealthMetricDetailChartState();
+}
+
+class _HealthMetricDetailChartState extends State<_HealthMetricDetailChart>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _grow = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_grow.isAnimating || _grow.value > 0) return;
+    if (AppMotion.reduceMotion(context)) {
+      _grow.value = 1;
+    } else {
+      _grow.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _grow.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _DetailChartPainter(
-        points: data.points,
-        accent: accent,
-        labelColor: _healthText(context).withValues(alpha: 0.55),
-        guideColor: accent.withValues(alpha: 0.55),
-        localeName: data.localeName,
-        isDark: isDark,
-        isPro: isPro,
-      ),
-      size: Size.infinite,
+    return AnimatedBuilder(
+      animation: _grow,
+      builder:
+          (context, _) => CustomPaint(
+            key: const ValueKey('metric-chart'),
+            painter: _DetailChartPainter(
+              points: widget.data.points,
+              accent: widget.accent,
+              labelColor: _healthText(context).withValues(alpha: 0.55),
+              guideColor: widget.accent.withValues(alpha: 0.55),
+              localeName: widget.data.localeName,
+              isDark: widget.isDark,
+              isPro: widget.isPro,
+              grow: _grow.value,
+            ),
+            size: Size.infinite,
+          ),
     );
   }
 }
@@ -911,6 +1068,9 @@ class _DetailChartPainter extends CustomPainter {
   final bool isDark;
   final bool isPro;
 
+  /// 0 to 1 through the chart's arrival.
+  final double grow;
+
   const _DetailChartPainter({
     required this.points,
     required this.accent,
@@ -919,7 +1079,15 @@ class _DetailChartPainter extends CustomPainter {
     required this.localeName,
     required this.isDark,
     required this.isPro,
+    this.grow = 1,
   });
+
+  /// Bar [i] of [count]'s share of the arrival: each starts a little after
+  /// the one before, and overshoots slightly as it lands.
+  double _barGrow(int i, int count) {
+    final start = .1 + (count <= 1 ? 0 : i / (count - 1)) * .4;
+    return Curves.easeOutBack.transform(((grow - start) / .5).clamp(0.0, 1.0));
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -989,7 +1157,10 @@ class _DetailChartPainter extends CustomPainter {
     _drawDashedLine(
       canvas,
       Offset(0, goalY),
-      Offset(chartW, goalY),
+      Offset(
+        chartW * Curves.easeInOut.transform((grow / .5).clamp(0.0, 1.0)),
+        goalY,
+      ),
       Paint()
         ..color = guideColor
         ..strokeWidth = 2
@@ -1018,8 +1189,10 @@ class _DetailChartPainter extends CustomPainter {
       final safePoint = safePoints[i];
       final point = safePoint.point;
       final normalized = (safePoint.value / yMax).clamp(0.0, 1.0);
+      final barGrow = _barGrow(i, count);
       final barH =
-          safePoint.value == 0 ? 4.0 : math.max(8.0, normalized * chartH);
+          (safePoint.value == 0 ? 4.0 : math.max(8.0, normalized * chartH)) *
+          barGrow;
       final left = startX + i * (barWidth + gap);
       if (!left.isFinite || !barH.isFinite || barH <= 0) continue;
       final rect = Rect.fromLTWH(left, chartH - barH, barWidth, barH);
@@ -1033,7 +1206,7 @@ class _DetailChartPainter extends CustomPainter {
       if (isLocked && !isPro) {
         // ── Free user: heavily muted + frosted look ──
         // Draw a very faint stub bar (25% height minimum so it's visible)
-        final stubH = math.min(chartH, math.max(barH * 0.4, 14.0));
+        final stubH = math.min(chartH, math.max(barH * 0.4, 14.0)) * barGrow;
         if (!stubH.isFinite || stubH <= 0) continue;
         final stubRect = Rect.fromLTWH(left, chartH - stubH, barWidth, stubH);
         final stubRRect = RRect.fromRectAndRadius(
@@ -1094,7 +1267,12 @@ class _DetailChartPainter extends CustomPainter {
           canvas,
           label,
           Offset(left + barWidth / 2, chartH + 10),
-          isLocked && !isPro ? labelColor.withValues(alpha: 0.35) : labelColor,
+          labelColor.withValues(
+            alpha:
+                labelColor.a *
+                (isLocked && !isPro ? 0.35 : 1) *
+                barGrow.clamp(0.0, 1.0),
+          ),
           11,
           FontWeight.w700,
           center: true,
@@ -1151,7 +1329,8 @@ class _DetailChartPainter extends CustomPainter {
         oldDelegate.accent != accent ||
         oldDelegate.labelColor != labelColor ||
         oldDelegate.guideColor != guideColor ||
-        oldDelegate.isPro != isPro;
+        oldDelegate.isPro != isPro ||
+        oldDelegate.grow != grow;
   }
 }
 
@@ -1185,177 +1364,205 @@ class _MetricPointList extends StatelessWidget {
               : 0.0;
       final isFirst = index == 0;
 
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: AppScaleTap(
-          onTap: locked ? onLockedTap : null,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: BoxDecoration(
-              color:
-                  isDark
-                      ? (isFirst
-                          ? const Color(0xFF1E1D1A)
-                          : const Color(0xFF181714))
-                      : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
+      // The rows arrive one after another, their bars filling as they land.
+      return Reveal(
+        key: ValueKey('metric-row-${point.start.millisecondsSinceEpoch}'),
+        delay: Duration(milliseconds: 150 + 60 * math.min(index, 8)),
+        offset: const Offset(0, 18),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: AppScaleTap(
+            onTap: locked ? onLockedTap : null,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              decoration: BoxDecoration(
                 color:
-                    isFirst
-                        ? accent.withValues(alpha: isDark ? 0.35 : 0.45)
-                        : (isDark
-                            ? Colors.white.withValues(alpha: 0.06)
-                            : Theme.of(context).colorScheme.outlineVariant
-                                .withValues(alpha: 0.28)),
-                width: isFirst ? 1.4 : 1.0,
+                    isDark
+                        ? (isFirst
+                            ? const Color(0xFF1E1D1A)
+                            : const Color(0xFF181714))
+                        : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color:
+                      isFirst
+                          ? accent.withValues(alpha: isDark ? 0.35 : 0.45)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Theme.of(context).colorScheme.outlineVariant
+                                  .withValues(alpha: 0.28)),
+                  width: isFirst ? 1.4 : 1.0,
+                ),
+                boxShadow: [
+                  if (isFirst)
+                    BoxShadow(
+                      color: accent.withValues(alpha: isDark ? 0.08 : 0.06),
+                      blurRadius: 18,
+                      offset: const Offset(0, 4),
+                    )
+                  else if (!isDark)
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.015),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                ],
               ),
-              boxShadow: [
-                if (isFirst)
-                  BoxShadow(
-                    color: accent.withValues(alpha: isDark ? 0.08 : 0.06),
-                    blurRadius: 18,
-                    offset: const Offset(0, 4),
-                  )
-                else if (!isDark)
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.015),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Styled double-ring glowing dot
-                Container(
-                  width: isFirst ? 14 : 12,
-                  height: isFirst ? 14 : 12,
-                  margin: EdgeInsets.only(right: isFirst ? 10 : 12),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color:
-                        locked
-                            ? _healthText(context).withValues(alpha: 0.12)
-                            : (isFirst
-                                ? accent.withValues(alpha: 0.2)
-                                : accent.withValues(alpha: 0.12)),
-                    border: Border.all(
+              child: Row(
+                children: [
+                  // Styled double-ring glowing dot
+                  Container(
+                    width: isFirst ? 14 : 12,
+                    height: isFirst ? 14 : 12,
+                    margin: EdgeInsets.only(right: isFirst ? 10 : 12),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
                       color:
                           locked
-                              ? _healthText(context).withValues(alpha: 0.3)
+                              ? _healthText(context).withValues(alpha: 0.12)
                               : (isFirst
-                                  ? accent
-                                  : accent.withValues(alpha: 0.4)),
-                      width: isFirst ? 3.5 : 2.5,
+                                  ? accent.withValues(alpha: 0.2)
+                                  : accent.withValues(alpha: 0.12)),
+                      border: Border.all(
+                        color:
+                            locked
+                                ? _healthText(context).withValues(alpha: 0.3)
+                                : (isFirst
+                                    ? accent
+                                    : accent.withValues(alpha: 0.4)),
+                        width: isFirst ? 3.5 : 2.5,
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _pointLabel(context, point, data),
-                        style: AppTypography.titleMedium.copyWith(
-                          color: _healthText(
-                            context,
-                          ).withValues(alpha: isFirst ? 0.95 : 0.72),
-                          fontWeight:
-                              isFirst ? FontWeight.w700 : FontWeight.w600,
-                          fontSize: isFirst ? 16 : 15,
-                          letterSpacing: 0,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _pointLabel(context, point, data),
+                          style: AppTypography.titleMedium.copyWith(
+                            color: _healthText(
+                              context,
+                            ).withValues(alpha: isFirst ? 0.95 : 0.72),
+                            fontWeight:
+                                isFirst ? FontWeight.w700 : FontWeight.w600,
+                            fontSize: isFirst ? 16 : 15,
+                            letterSpacing: 0,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (!locked && data.dailyGoal > 0) ...[
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: SizedBox(
-                            height:
-                                5, // Increased thickness for modern capsule/pill indicator
-                            child: Stack(
-                              children: [
-                                Container(
-                                  color: accent.withValues(
-                                    alpha: isDark ? 0.12 : 0.08,
+                        if (!locked && data.dailyGoal > 0) ...[
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: SizedBox(
+                              height:
+                                  5, // Increased thickness for modern capsule/pill indicator
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    color: accent.withValues(
+                                      alpha: isDark ? 0.12 : 0.08,
+                                    ),
                                   ),
-                                ),
-                                FractionallySizedBox(
-                                  widthFactor: progress,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(999),
-                                      color: accent.withValues(
-                                        alpha: isFirst ? 1.0 : 0.6,
+                                  TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 0, end: progress),
+                                    duration: AppMotion.maybeZero(
+                                      context,
+                                      Duration(
+                                        milliseconds:
+                                            750 + 60 * math.min(index, 8),
+                                      ),
+                                    ),
+                                    curve: Interval(
+                                      .3,
+                                      1,
+                                      curve: Curves.easeOutCubic,
+                                    ),
+                                    builder:
+                                        (context, fill, child) =>
+                                            FractionallySizedBox(
+                                              widthFactor: fill,
+                                              child: child,
+                                            ),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        color: accent.withValues(
+                                          alpha: isFirst ? 1.0 : 0.6,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                if (locked)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : const Color(0xFFEDE9E1).withValues(alpha: 0.56),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Icon(
-                      WaznIcons.lock,
-                      size: 14,
-                      color: _healthText(context).withValues(alpha: 0.40),
-                    ),
-                  )
-                else
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: _formatInt(context, point.value),
-                          style: AppTypography.heading3.copyWith(
-                            color:
-                                isFirst
-                                    ? accent
-                                    : _healthText(
-                                      context,
-                                    ).withValues(alpha: 0.85),
-                            fontWeight:
-                                isFirst ? FontWeight.bold : FontWeight.w600,
-                            fontSize: isFirst ? 22 : 19,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        if (data.unit.isNotEmpty)
+                  const SizedBox(width: 12),
+                  if (locked)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : const Color(
+                                  0xFFEDE9E1,
+                                ).withValues(alpha: 0.56),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Icon(
+                        WaznIcons.lock,
+                        size: 14,
+                        color: _healthText(context).withValues(alpha: 0.40),
+                      ),
+                    )
+                  else
+                    RichText(
+                      text: TextSpan(
+                        children: [
                           TextSpan(
-                            text: ' ${data.unit}',
-                            style: AppTypography.labelMedium.copyWith(
-                              color: _healthText(
-                                context,
-                              ).withValues(alpha: 0.52),
-                              fontWeight: FontWeight.w500,
-                              fontSize: 13,
-                              letterSpacing: 0,
+                            text: _formatInt(context, point.value),
+                            style: AppTypography.heading3.copyWith(
+                              color:
+                                  isFirst
+                                      ? accent
+                                      : _healthText(
+                                        context,
+                                      ).withValues(alpha: 0.85),
+                              fontWeight:
+                                  isFirst ? FontWeight.bold : FontWeight.w600,
+                              fontSize: isFirst ? 22 : 19,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                      ],
+                          if (data.unit.isNotEmpty)
+                            TextSpan(
+                              text: ' ${data.unit}',
+                              style: AppTypography.labelMedium.copyWith(
+                                color: _healthText(
+                                  context,
+                                ).withValues(alpha: 0.52),
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1647,4 +1854,58 @@ bool _isMacroMetric(LogMetricType type) {
   return type == LogMetricType.protein ||
       type == LogMetricType.carbs ||
       type == LogMetricType.fat;
+}
+
+/// Swaps its child when [changeKey] changes: sliding in from the side the
+/// user moved to when [move] is -1 or 1, rising in when [vertical], and
+/// otherwise simply fading across.
+class _SlideOnChange extends StatelessWidget {
+  const _SlideOnChange({
+    required this.changeKey,
+    required this.move,
+    required this.child,
+    this.vertical = false,
+  });
+
+  final String changeKey;
+  final int move;
+  final bool vertical;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    // Back in time comes in from the start edge; forward from the end.
+    final side = (move < 0 ? -1.0 : 1.0) * (rtl ? -1 : 1);
+    final current = ValueKey(changeKey);
+    return AnimatedSwitcher(
+      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 460)),
+      switchInCurve: AppMotion.entranceCurve,
+      switchOutCurve: Curves.easeIn,
+      layoutBuilder:
+          (currentChild, previous) => Stack(
+            alignment: AlignmentDirectional.topStart,
+            children: [...previous, if (currentChild != null) currentChild],
+          ),
+      transitionBuilder: (child, animation) {
+        final entering = child.key == current;
+        final Offset from;
+        if (vertical) {
+          from = Offset(0, entering ? .6 : -.6);
+        } else if (move == 0) {
+          from = Offset.zero;
+        } else {
+          from = Offset(entering ? .15 * side : -.15 * side, 0);
+        }
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween(begin: from, end: Offset.zero).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: KeyedSubtree(key: current, child: child),
+    );
+  }
 }
