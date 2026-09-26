@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Simple dark background - Flutter splash handles all animations -->
+<!-- The Wazn loading screen's own dark background, so the phone's launch
+     screen and the app's animated one read as a single moment. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splash_background" />
 </layer-list>
