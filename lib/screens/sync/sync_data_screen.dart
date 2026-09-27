@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_errors.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../providers/auth_notifier_provider.dart';
@@ -34,20 +35,15 @@ class SyncDataScreen extends ConsumerStatefulWidget {
 class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
     with TickerProviderStateMixin {
   late AnimationController _mainController;
-  late AnimationController _pulseController;
-  late AnimationController _syncController;
 
   // Animations
-  late Animation<double> _iconScale;
-  late Animation<double> _iconOpacity;
   late Animation<double> _titleOpacity;
   late Animation<Offset> _titleSlide;
   late Animation<double> _subtitleOpacity;
   late List<Animation<double>> _benefitAnimations;
   late List<Animation<Offset>> _benefitSlides;
+  late List<Animation<double>> _benefitTicks;
   late Animation<double> _buttonsOpacity;
-  late Animation<double> _syncRotation;
-  late Animation<double> _pulseAnimation;
 
   bool _isLoading = false;
 
@@ -86,42 +82,6 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
       duration: const Duration(milliseconds: 2000),
     );
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-
-    _syncController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3000),
-    )..repeat();
-
-    _iconScale = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 0.0,
-          end: 1.1,
-        ).chain(CurveTween(curve: Curves.easeOutBack)),
-        weight: 70,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 1.1,
-          end: 1.0,
-        ).chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 30,
-      ),
-    ]).animate(
-      CurvedAnimation(parent: _mainController, curve: const Interval(0.0, 0.4)),
-    );
-
-    _iconOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _mainController,
-        curve: const Interval(0.0, 0.2, curve: Curves.easeOut),
-      ),
-    );
-
     _titleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _mainController,
@@ -148,6 +108,7 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
 
     _benefitAnimations = [];
     _benefitSlides = [];
+    _benefitTicks = [];
     final benefitCount = _benefitCount;
     for (int i = 0; i < benefitCount; i++) {
       final start = (0.35 + (i * 0.08)).clamp(0.0, 1.0);
@@ -168,6 +129,16 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
           ),
         ),
       );
+      _benefitTicks.add(
+        CurvedAnimation(
+          parent: _mainController,
+          curve: Interval(
+            end,
+            (end + 0.12).clamp(0.0, 1.0),
+            curve: AppMotion.springCurve,
+          ),
+        ),
+      );
     }
 
     _buttonsOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -176,22 +147,20 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
         curve: const Interval(0.7, 1.0, curve: Curves.easeOut),
       ),
     );
+  }
 
-    _syncRotation = Tween<double>(
-      begin: 0.0,
-      end: 2 * math.pi,
-    ).animate(_syncController);
-
-    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Arrive already in place for someone who has asked for less motion.
+    if (AppMotion.reduceMotion(context) && !_mainController.isCompleted) {
+      _mainController.value = 1;
+    }
   }
 
   @override
   void dispose() {
     _mainController.dispose();
-    _pulseController.dispose();
-    _syncController.dispose();
     super.dispose();
   }
 
@@ -271,106 +240,9 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
               children: [
                 const SizedBox(height: 48),
 
-                // Animated Cloud Icon with Sync
-                AnimatedBuilder(
-                  animation: Listenable.merge([
-                    _mainController,
-                    _pulseController,
-                    _syncController,
-                  ]),
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _iconScale.value,
-                      child: Opacity(
-                        opacity: _iconOpacity.value,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Outer glow
-                            Opacity(
-                              opacity: _pulseAnimation.value * 0.5,
-                              child: Container(
-                                width: 140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: colorScheme.primary.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      blurRadius: 50 * _pulseAnimation.value,
-                                      spreadRadius: 15 * _pulseAnimation.value,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            // Icon container
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: context.cardColor,
-                                border: Border.all(
-                                  color: colorScheme.primary.withValues(
-                                    alpha: 0.2,
-                                  ),
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 10),
-                                  ),
-                                ],
-                              ),
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Icon(
-                                    WaznIcons.cloud,
-                                    size: 40,
-                                    color: colorScheme.onSurface,
-                                  ),
-                                  Positioned(
-                                    bottom: 18,
-                                    right: 18,
-                                    child: Transform.rotate(
-                                      angle: _syncRotation.value,
-                                      child: Container(
-                                        width: 28,
-                                        height: 28,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: colorScheme.primary,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: colorScheme.primary
-                                                  .withValues(alpha: 0.4),
-                                              blurRadius: 8,
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Icon(
-                                          WaznIcons.refresh,
-                                          size: 14,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                // A cloud that draws itself, with a meal, a weigh-in and a
+                // photo drifting up into it.
+                const _BackupCloudArt(),
 
                 const SizedBox(height: 32),
 
@@ -469,6 +341,12 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
                                             ),
                                       ),
                                     ),
+                                    const SizedBox(width: 10),
+                                    // A tick lands once the row is in.
+                                    _BenefitTick(
+                                      t: _benefitTicks[index].value,
+                                      color: colorScheme.primary,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -486,77 +364,83 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
                 AnimatedBuilder(
                   animation: _mainController,
                   builder: (context, child) {
-                    return Opacity(
-                      opacity: _buttonsOpacity.value,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Google Sign In
-                          _AuthButton(
-                            label: AppLocalizations.of(context)!.sync_google,
-                            icon: FontAwesomeIcons.google,
-                            onPressed: _handleGoogleSignIn,
-                            backgroundColor: colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            isLoading: _isLoading,
-                            isFaIcon: true,
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Secondary Buttons (Email/Facebook)
-                          AppSectionCard(
-                            glass: true,
-                            padding: const EdgeInsets.all(4),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _AuthButton(
-                                  label:
-                                      AppLocalizations.of(
-                                        context,
-                                      )!.sync_facebook,
-                                  icon: FontAwesomeIcons.facebook,
-                                  onPressed: _handleFacebookSignIn,
-                                  backgroundColor: Colors.transparent,
-                                  foregroundColor: context.textPrimaryColor,
-                                  isFaIcon: true,
-                                ),
-                                Divider(
-                                  height: 1,
-                                  color: context.dividerColor.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                ),
-                                _AuthButton(
-                                  label:
-                                      AppLocalizations.of(context)!.sync_email,
-                                  icon: WaznIcons.mail,
-                                  onPressed: _handleEmailSignIn,
-                                  backgroundColor: Colors.transparent,
-                                  foregroundColor: context.textPrimaryColor,
-                                ),
-                              ],
+                    // The buttons rise into place as they appear.
+                    return Transform.translate(
+                      offset: Offset(0, 24 * (1 - _buttonsOpacity.value)),
+                      child: Opacity(
+                        opacity: _buttonsOpacity.value,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Google Sign In
+                            _AuthButton(
+                              label: AppLocalizations.of(context)!.sync_google,
+                              icon: FontAwesomeIcons.google,
+                              onPressed: _handleGoogleSignIn,
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              isLoading: _isLoading,
+                              isFaIcon: true,
                             ),
-                          ),
+                            const SizedBox(height: 12),
 
-                          const SizedBox(height: 24),
-
-                          // Skip Button
-                          if (widget.onSkip != null)
-                            _ScaleTap(
-                              onTap: () {
-                                HapticFeedback.lightImpact();
-                                widget.onSkip?.call();
-                              },
-                              child: Text(
-                                AppLocalizations.of(context)!.sync_skip,
-                                style: AppTypography.titleSmall.copyWith(
-                                  color: context.textMutedColor,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            // Secondary Buttons (Email/Facebook)
+                            AppSectionCard(
+                              glass: true,
+                              padding: const EdgeInsets.all(4),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _AuthButton(
+                                    label:
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.sync_facebook,
+                                    icon: FontAwesomeIcons.facebook,
+                                    onPressed: _handleFacebookSignIn,
+                                    backgroundColor: Colors.transparent,
+                                    foregroundColor: context.textPrimaryColor,
+                                    isFaIcon: true,
+                                  ),
+                                  Divider(
+                                    height: 1,
+                                    color: context.dividerColor.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                  ),
+                                  _AuthButton(
+                                    label:
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.sync_email,
+                                    icon: WaznIcons.mail,
+                                    onPressed: _handleEmailSignIn,
+                                    backgroundColor: Colors.transparent,
+                                    foregroundColor: context.textPrimaryColor,
+                                  ),
+                                ],
                               ),
                             ),
-                        ],
+
+                            const SizedBox(height: 24),
+
+                            // Skip Button
+                            if (widget.onSkip != null)
+                              _ScaleTap(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  widget.onSkip?.call();
+                                },
+                                child: Text(
+                                  AppLocalizations.of(context)!.sync_skip,
+                                  style: AppTypography.titleSmall.copyWith(
+                                    color: context.textMutedColor,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -704,4 +588,252 @@ class _Benefit {
   final IconData icon;
   final String text;
   _Benefit({required this.icon, required this.text});
+}
+
+/// A benefit's tick, popping in and drawing itself as [t] runs 0 to 1.
+class _BenefitTick extends StatelessWidget {
+  const _BenefitTick({required this.t, required this.color});
+
+  final double t;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.scale(
+      scale: t.clamp(0.0, 1.2),
+      child: Container(
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          shape: BoxShape.circle,
+        ),
+        child: CustomPaint(
+          painter: _TickPainter(
+            progress: ((t - .3) / .7).clamp(0.0, 1.0),
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TickPainter extends CustomPainter {
+  const _TickPainter({required this.progress, required this.color});
+
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final path =
+        Path()
+          ..moveTo(size.width * .28, size.height * .52)
+          ..lineTo(size.width * .44, size.height * .67)
+          ..lineTo(size.width * .73, size.height * .36);
+    final metric = path.computeMetrics().first;
+    canvas.drawPath(
+      metric.extractPath(0, metric.length * progress),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TickPainter old) =>
+      old.progress != progress || old.color != color;
+}
+
+/// The cloud at the top: its outline draws itself, it fills, an upload
+/// arrow springs up inside, and a meal, a weigh-in and a photo drift up into
+/// it one after another. Then it floats gently.
+class _BackupCloudArt extends StatefulWidget {
+  const _BackupCloudArt();
+
+  @override
+  State<_BackupCloudArt> createState() => _BackupCloudArtState();
+}
+
+class _BackupCloudArtState extends State<_BackupCloudArt>
+    with TickerProviderStateMixin {
+  late final AnimationController _enter = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  );
+  late final AnimationController _float = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3200),
+  );
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    if (AppMotion.reduceMotion(context)) {
+      _enter.value = 1;
+      return;
+    }
+    _enter.forward().whenComplete(() {
+      if (mounted) _float.repeat();
+    });
+  }
+
+  @override
+  void dispose() {
+    _enter.dispose();
+    _float.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    const items = [WaznIcons.lunch, WaznIcons.weight, WaznIcons.camera];
+    return SizedBox(
+      width: 180,
+      height: 140,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_enter, _float]),
+        builder: (context, _) {
+          final t = _enter.value;
+          double part(double a, double b, [Curve c = Curves.linear]) =>
+              c.transform(((t - a) / (b - a)).clamp(0.0, 1.0));
+          final bob = math.sin(_float.value * math.pi * 2) * 3;
+          return Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Transform.translate(
+                offset: Offset(0, bob - 8),
+                child: CustomPaint(
+                  size: const Size(150, 110),
+                  painter: _CloudPainter(
+                    outline: part(0, .4, Curves.easeInOut),
+                    fill: part(.25, .5),
+                    arrow: part(.35, .55, AppMotion.springCurve),
+                    color: primary,
+                  ),
+                ),
+              ),
+              // Three things drifting up into the cloud.
+              for (var i = 0; i < items.length; i++)
+                Builder(
+                  builder: (context) {
+                    final p = part(.35 + i * .12, .75 + i * .08);
+                    if (p <= 0 || p >= 1) return const SizedBox.shrink();
+                    final x = (i - 1) * 56.0 * (1 - p);
+                    final y = 62 - 70 * Curves.easeInOut.transform(p);
+                    final opacity =
+                        p < .2 ? p / .2 : (p > .75 ? (1 - p) / .25 : 1.0);
+                    return Transform.translate(
+                      offset: Offset(x, y),
+                      child: Opacity(
+                        opacity: opacity.clamp(0.0, 1.0),
+                        child: Transform.scale(
+                          scale: 1 - .45 * p,
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: context.cardColor,
+                              borderRadius: BorderRadius.circular(11),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Icon(items[i], size: 17, color: primary),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CloudPainter extends CustomPainter {
+  const _CloudPainter({
+    required this.outline,
+    required this.fill,
+    required this.arrow,
+    required this.color,
+  });
+
+  final double outline;
+  final double fill;
+  final double arrow;
+  final Color color;
+
+  Path _cloud(Size s) {
+    final w = s.width / 150, h = s.height / 110;
+    return Path()
+      ..moveTo(40 * w, 92 * h)
+      ..arcToPoint(
+        Offset(37 * w, 40.2 * h),
+        radius: Radius.elliptical(26 * w, 26 * h),
+      )
+      ..arcToPoint(
+        Offset(102 * w, 30 * h),
+        radius: Radius.elliptical(34 * w, 34 * h),
+      )
+      ..arcToPoint(
+        Offset(114 * w, 92 * h),
+        radius: Radius.elliptical(24 * w, 24 * h),
+      )
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cloud = _cloud(size);
+    if (fill > 0) {
+      canvas.drawPath(
+        cloud,
+        Paint()..color = color.withValues(alpha: 0.14 * fill),
+      );
+    }
+    final stroke =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.5
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
+    if (outline > 0) {
+      for (final metric in cloud.computeMetrics()) {
+        canvas.drawPath(metric.extractPath(0, metric.length * outline), stroke);
+      }
+    }
+    if (arrow > 0) {
+      final cx = size.width / 2, base = size.height * .7;
+      final top = base - 26 * arrow;
+      canvas.drawLine(Offset(cx, base), Offset(cx, top), stroke);
+      canvas.drawLine(Offset(cx - 11, top + 11), Offset(cx, top), stroke);
+      canvas.drawLine(Offset(cx + 11, top + 11), Offset(cx, top), stroke);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CloudPainter old) =>
+      old.outline != outline ||
+      old.fill != fill ||
+      old.arrow != arrow ||
+      old.color != color;
 }
