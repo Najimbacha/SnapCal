@@ -1848,5 +1848,18 @@
   "coach_ask_eat": "ماذا آكل اليوم؟",
   "coach_ask_track": "كيف أدائي مقارنة بأهدافي اليوم؟",
   "coach_ask_week": "أنشئ لي خطة وجبات",
-  "coach_ask_protein": "اقترح وجبة غنية بالبروتين"
+  "coach_ask_protein": "اقترح وجبة غنية بالبروتين",
+  "routine_save_as": "احفظها كروتين",
+  "routine_save_body": "{count, plural, =1{سجّل هذا الطعام مرة أخرى بلمسة واحدة.} other{سجّل هذه الأطعمة الـ {count} مرة أخرى بلمسة واحدة.}}",
+  "routine_limit_title": "لديك {used} من {limit} روتينات مجانية",
+  "routine_limit_body": "مع Pro احفظ ما تشاء.",
+  "routine_get_pro": "احصل على Pro",
+  "routine_saved": "تم حفظ الروتين",
+  "routine_logged": "تم تسجيل الروتين",
+  "routine_logged_detail": "{count, plural, =1{أُضيف طعام واحد إلى {meal}} other{أُضيفت {count} أطعمة إلى {meal}}}",
+  "routine_summary": "{count, plural, =1{طعام واحد} other{{count} أطعمة}} · {kcal} سعرة",
+  "routine_new": "جديد",
+  "routine_rename": "إعادة تسمية",
+  "routine_delete": "حذف الروتين",
+  "routine_name_default": "{meal} المعتاد"
 }

@@ -1,200 +1,226 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import 'package:snapcal/core/theme/app_colors.dart';
-import 'package:snapcal/core/theme/theme_colors.dart';
+import 'package:snapcal/core/theme/app_motion.dart';
 import 'package:snapcal/core/theme/app_typography.dart';
+import 'package:snapcal/core/theme/theme_colors.dart';
 import 'package:snapcal/data/models/meal_template.dart';
 import 'package:snapcal/providers/template_provider.dart';
-import 'package:snapcal/widgets/glass_card.dart';
-import 'package:snapcal/widgets/ui_blocks.dart';
-import '../../../widgets/wazn_icons.dart';
 import '../../../widgets/app_toast.dart';
+import '../../../widgets/wazn_icons.dart';
 
-class RoutinesCarousel extends ConsumerWidget {
-  const RoutinesCarousel({super.key});
+/// A saved routine in the Quick add row: its emoji, name, how many foods and
+/// how many calories. Tapping logs it all at once, with a tick on the card;
+/// pressing and holding offers rename and delete. A routine saved a moment
+/// ago pops in with a "New" tag.
+class RoutineCard extends StatefulWidget {
+  const RoutineCard({
+    super.key,
+    required this.template,
+    required this.onLog,
+    required this.onOptions,
+    this.isNew = false,
+  });
 
-  void _logRoutine(
-    BuildContext context,
-    WidgetRef ref,
-    MealTemplate template,
-  ) async {
-    HapticFeedback.mediumImpact();
-    final templateProvider = ref.read(templatesProvider.notifier);
+  final MealTemplate template;
+  final Future<void> Function() onLog;
+  final VoidCallback onOptions;
+  final bool isNew;
 
-    try {
-      await templateProvider.logFromTemplate(template);
-      if (!context.mounted) return;
-      showAppToastOf(
-        context,
-        kind: ToastKind.success,
-        title: AppLocalizations.of(context)!.feature_templates_logged,
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      showAppToastOf(
-        context,
-        kind: ToastKind.error,
-        title: l10n.error_generic,
-        detail: '$e',
-      );
-    }
+  @override
+  State<RoutineCard> createState() => _RoutineCardState();
+}
+
+class _RoutineCardState extends State<RoutineCard> {
+  bool _done = false;
+  bool _busy = false;
+  Timer? _reset;
+
+  @override
+  void dispose() {
+    _reset?.cancel();
+    super.dispose();
   }
 
-  void _showOptions(BuildContext context, MealTemplate template) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _RoutineOptionsSheet(template: template),
-    );
+  Future<void> _tap() async {
+    if (_busy) return;
+    _busy = true;
+    try {
+      await widget.onLog();
+      if (!mounted) return;
+      setState(() => _done = true);
+      _reset?.cancel();
+      _reset = Timer(const Duration(milliseconds: 1600), () {
+        if (mounted) setState(() => _done = false);
+      });
+    } finally {
+      _busy = false;
+    }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final templatesAsync = ref.watch(templatesProvider);
-    final templates = templatesAsync.valueOrNull ?? [];
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDark = context.isDarkMode;
+    final t = widget.template;
+    final accent = isDark ? const Color(0xFF6EE7B7) : const Color(0xFF047857);
 
-    if (templates.isEmpty) {
-      return const SizedBox.shrink(); // Hide if no routines
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            l10n.feature_templates_title.toUpperCase(),
-            style: AppTypography.labelSmall.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              letterSpacing: 2.0,
-              fontWeight: FontWeight.w500,
-              fontSize: 10,
+    Widget card = Container(
+      width: 176,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+          colors: [
+            Color.alphaBlend(
+              AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.12),
+              context.cardColor,
+            ),
+            context.cardColor,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(t.emoji, style: const TextStyle(fontSize: 22, height: 1)),
+              if (widget.isNew) ...[
+                const SizedBox(width: 6),
+                Container(
+                  key: const ValueKey('routine-new-tag'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF047857),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    l10n.routine_new.toUpperCase(),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 10,
+                      letterSpacing: .6,
+                    ),
+                  ),
+                ),
+              ],
+              const Spacer(),
+              // Plus, turning into a tick once the routine is logged.
+              AnimatedSwitcher(
+                duration: AppMotion.maybeZero(
+                  context,
+                  const Duration(milliseconds: 320),
+                ),
+                transitionBuilder:
+                    (child, animation) => ScaleTransition(
+                      scale: CurvedAnimation(
+                        parent: animation,
+                        curve: AppMotion.springCurve,
+                      ),
+                      child: RotationTransition(
+                        turns: Tween(begin: -.25, end: 0.0).animate(animation),
+                        child: child,
+                      ),
+                    ),
+                child: Container(
+                  key: ValueKey(_done),
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: _done ? AppColors.primary : accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _done ? WaznIcons.check : WaznIcons.plus,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            t.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.titleSmall.copyWith(
+              color: context.textPrimaryColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 110,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            scrollDirection: Axis.horizontal,
-            itemCount: templates.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 16),
-            itemBuilder: (context, index) {
-              final template = templates[index];
-              return _RoutineCard(
-                template: template,
-                onTap: () => _logRoutine(context, ref, template),
-                onLongPress: () => _showOptions(context, template),
-              );
-            },
+          const SizedBox(height: 2),
+          Text(
+            l10n.routine_summary(t.items.length, '${t.totalCalories}'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.labelSmall.copyWith(
+              color: context.textSecondaryColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
+        ],
+      ),
+    );
+
+    if (widget.isNew) {
+      // Arrives with a little spring.
+      card = TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: AppMotion.maybeZero(
+          context,
+          const Duration(milliseconds: 520),
         ),
-        const SizedBox(height: 32),
-      ],
+        curve: AppMotion.springCurve,
+        builder:
+            (context, v, child) => Opacity(
+              opacity: v.clamp(0.0, 1.0),
+              child: Transform.scale(scale: .6 + .4 * v, child: child),
+            ),
+        child: card,
+      );
+    }
+
+    return Semantics(
+      button: true,
+      label: '${t.emoji} ${t.name}',
+      child: GestureDetector(
+        key: ValueKey('routine-${t.id}'),
+        behavior: HitTestBehavior.opaque,
+        onTap: _tap,
+        onLongPress: () {
+          HapticFeedback.mediumImpact();
+          widget.onOptions();
+        },
+        child: card,
+      ),
     );
   }
 }
 
-class _RoutineCard extends StatelessWidget {
-  final MealTemplate template;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-
-  const _RoutineCard({
-    required this.template,
-    required this.onTap,
-    required this.onLongPress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AppScaleTap(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Container(
-        width: 160,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.cardColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : Colors.black.withValues(alpha: 0.03),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: context.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    template.emoji,
-                    style: const TextStyle(fontSize: 20),
-                  ),
-                ),
-                Text(
-                  '${template.totalCalories}',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: context.primaryColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              template.name,
-              style: AppTypography.bodyMedium.copyWith(
-                fontWeight: FontWeight.w600,
-                color: context.textPrimaryColor,
-                letterSpacing: -0.2,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              AppLocalizations.of(
-                context,
-              )!.common_items_count(template.items.length),
-              style: AppTypography.labelSmall.copyWith(
-                color: context.textMutedColor,
-                fontWeight: FontWeight.w500,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+/// Rename or delete a routine. Deleting offers Undo.
+void showRoutineOptions(BuildContext context, MealTemplate template) {
+  showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _RoutineOptionsSheet(template: template),
+  );
 }
 
 class _RoutineOptionsSheet extends ConsumerWidget {
@@ -204,59 +230,143 @@ class _RoutineOptionsSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return GlassCard(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = context.isDarkMode;
+    Widget row(IconData icon, String label, Color color, VoidCallback onTap) =>
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
+            child: Row(
+              children: [
+                Icon(icon, size: 19, color: color),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        10,
+        20,
+        20 + MediaQuery.paddingOf(context).bottom,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1B1F) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
               width: 40,
               height: 4,
+              margin: const EdgeInsets.only(bottom: 14),
               decoration: BoxDecoration(
                 color: context.textMutedColor.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              '${template.emoji} ${template.name}',
-              style: AppTypography.heading3.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          ),
+          Text(
+            '${template.emoji} ${template.name}',
+            style: AppTypography.titleLarge.copyWith(
+              fontWeight: FontWeight.w800,
+              color: context.textPrimaryColor,
             ),
-            const SizedBox(height: 24),
-            ListTile(
-              leading: Icon(WaznIcons.delete, color: AppColors.error),
-              title: Text(
-                AppLocalizations.of(context)!.common_delete,
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.error,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onTap: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                final router = Navigator.of(context);
-                final deletedMessage =
-                    AppLocalizations.of(context)!.feature_templates_deleted;
-
-                await ref
-                    .read(templatesProvider.notifier)
-                    .deleteTemplate(template.id);
-                router.pop();
-                showAppToast(
-                  messenger,
-                  kind: ToastKind.info,
-                  icon: WaznIcons.delete,
-                  title: deletedMessage,
-                );
-              },
+          ),
+          const SizedBox(height: 2),
+          Text(
+            l10n.routine_summary(
+              template.items.length,
+              '${template.totalCalories}',
             ),
-            const SizedBox(height: 24),
-          ],
-        ),
+            style: AppTypography.bodySmall.copyWith(
+              color: context.textSecondaryColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          row(
+            WaznIcons.edit,
+            l10n.routine_rename,
+            context.textPrimaryColor,
+            () {
+              Navigator.pop(context);
+              _rename(context, ref, template);
+            },
+          ),
+          Divider(height: 1, color: context.dividerColor.withValues(alpha: .3)),
+          row(WaznIcons.delete, l10n.routine_delete, AppColors.error, () async {
+            final messenger = ScaffoldMessenger.of(context);
+            final notifier = ref.read(templatesProvider.notifier);
+            Navigator.pop(context);
+            await notifier.deleteTemplate(template.id);
+            showAppToast(
+              messenger,
+              kind: ToastKind.undo,
+              title: l10n.feature_templates_deleted,
+              detail: template.name,
+              actionLabel: l10n.result_undo,
+              onAction: () => notifier.restoreTemplate(template),
+            );
+          }),
+        ],
       ),
     );
   }
+}
+
+Future<void> _rename(
+  BuildContext context,
+  WidgetRef ref,
+  MealTemplate template,
+) async {
+  final l10n = AppLocalizations.of(context)!;
+  final controller = TextEditingController(text: template.name);
+  final name = await showDialog<String>(
+    context: context,
+    builder:
+        (context) => AlertDialog(
+          title: Text(l10n.routine_rename),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.sentences,
+            maxLength: 40,
+            decoration: InputDecoration(
+              hintText: l10n.feature_templates_name_hint,
+            ),
+            onSubmitted: (v) => Navigator.pop(context, v),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.common_cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: Text(l10n.common_save),
+            ),
+          ],
+        ),
+  );
+  controller.dispose();
+  final trimmed = name?.trim() ?? '';
+  if (trimmed.isEmpty || trimmed == template.name) return;
+  await ref
+      .read(templatesProvider.notifier)
+      .updateTemplate(template.id, name: trimmed);
 }

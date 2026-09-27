@@ -5508,4 +5508,72 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coach_ask_protein => 'Propose-moi un repas riche en protéines';
+
+  @override
+  String get routine_save_as => 'Enregistrer comme routine';
+
+  @override
+  String routine_save_body(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Enregistrez à nouveau ces $count aliments d’un seul geste.',
+      one: 'Enregistrez à nouveau cet aliment d’un seul geste.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routine_limit_title(String used, String limit) {
+    return 'Vous avez $used routines gratuites sur $limit';
+  }
+
+  @override
+  String get routine_limit_body =>
+      'Avec Pro, gardez-en autant que vous voulez.';
+
+  @override
+  String get routine_get_pro => 'Passer à Pro';
+
+  @override
+  String get routine_saved => 'Routine enregistrée';
+
+  @override
+  String get routine_logged => 'Routine enregistrée dans le journal';
+
+  @override
+  String routine_logged_detail(int count, String meal) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count aliments ajoutés au $meal',
+      one: '1 aliment ajouté au $meal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routine_summary(int count, String kcal) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count aliments',
+      one: '1 aliment',
+    );
+    return '$_temp0 · $kcal kcal';
+  }
+
+  @override
+  String get routine_new => 'Nouveau';
+
+  @override
+  String get routine_rename => 'Renommer';
+
+  @override
+  String get routine_delete => 'Supprimer la routine';
+
+  @override
+  String routine_name_default(String meal) {
+    return 'Mon $meal habituel';
+  }
 }

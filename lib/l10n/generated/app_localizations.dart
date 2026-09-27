@@ -9695,6 +9695,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Suggest a high-protein meal'**
   String get coach_ask_protein;
+
+  /// No description provided for @routine_save_as.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as a routine'**
+  String get routine_save_as;
+
+  /// No description provided for @routine_save_body.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Log this food again with one tap.} other{Log these {count} foods again with one tap.}}'**
+  String routine_save_body(int count);
+
+  /// No description provided for @routine_limit_title.
+  ///
+  /// In en, this message translates to:
+  /// **'You have {used} of {limit} free routines'**
+  String routine_limit_title(String used, String limit);
+
+  /// No description provided for @routine_limit_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro keeps as many as you like.'**
+  String get routine_limit_body;
+
+  /// No description provided for @routine_get_pro.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Pro'**
+  String get routine_get_pro;
+
+  /// No description provided for @routine_saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Routine saved'**
+  String get routine_saved;
+
+  /// No description provided for @routine_logged.
+  ///
+  /// In en, this message translates to:
+  /// **'Routine logged'**
+  String get routine_logged;
+
+  /// No description provided for @routine_logged_detail.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 food added to {meal}} other{{count} foods added to {meal}}}'**
+  String routine_logged_detail(int count, String meal);
+
+  /// No description provided for @routine_summary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 food} other{{count} foods}} · {kcal} kcal'**
+  String routine_summary(int count, String kcal);
+
+  /// No description provided for @routine_new.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get routine_new;
+
+  /// No description provided for @routine_rename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get routine_rename;
+
+  /// No description provided for @routine_delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete routine'**
+  String get routine_delete;
+
+  /// No description provided for @routine_name_default.
+  ///
+  /// In en, this message translates to:
+  /// **'My usual {meal}'**
+  String routine_name_default(String meal);
 }
 
 class _AppLocalizationsDelegate

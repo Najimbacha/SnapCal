@@ -1,4 +1,5 @@
 ﻿import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/meal_template.dart';
@@ -16,14 +17,25 @@ class Templates extends _$Templates {
 
   @override
   Future<List<MealTemplate>> build() async {
-    await _repo.init();
-    return _repo.getAll();
+    // Routines sit in the Log's Quick add row; if their store cannot be
+    // opened the Log still has to, just without them.
+    try {
+      await _repo.init();
+      return _repo.getAll();
+    } catch (e) {
+      debugPrint('Routines unavailable: $e');
+      return const [];
+    }
   }
 
-  Future<void> saveTemplate({
+  /// How many routines a free account keeps; Pro keeps any number.
+  static const freeLimit = 3;
+
+  Future<MealTemplate> saveTemplate({
     required String name,
     required String emoji,
     required List<Meal> meals,
+    String? mealType,
   }) async {
     final items =
         meals
@@ -38,13 +50,19 @@ class Templates extends _$Templates {
               ),
             )
             .toList();
-    await saveTemplateFromItems(name: name, emoji: emoji, items: items);
+    return saveTemplateFromItems(
+      name: name,
+      emoji: emoji,
+      items: items,
+      mealType: mealType,
+    );
   }
 
-  Future<void> saveTemplateFromItems({
+  Future<MealTemplate> saveTemplateFromItems({
     required String name,
     required String emoji,
     required List<TemplateItem> items,
+    String? mealType,
   }) async {
     final template = MealTemplate(
       id: _uuid.v4(),
@@ -52,17 +70,36 @@ class Templates extends _$Templates {
       emoji: emoji,
       items: items,
       createdAt: DateTime.now().millisecondsSinceEpoch,
+      mealType: mealType,
     );
+    await _repo.save(template);
+    state = AsyncData(_repo.getAll());
+    return template;
+  }
+
+  /// Puts a just-deleted routine back, as it was.
+  Future<void> restoreTemplate(MealTemplate template) async {
     await _repo.save(template);
     state = AsyncData(_repo.getAll());
   }
 
-  Future<void> logFromTemplate(MealTemplate template) async {
+  /// Logs every food in [template] on [dateString] (today by default), into
+  /// [mealType] or else the meal it was saved from. Returns the new meals'
+  /// ids, so the whole routine can be undone at once.
+  Future<List<String>> logFromTemplate(
+    MealTemplate template, {
+    String? dateString,
+    String? mealType,
+  }) async {
     final mealLog = ref.read(mealLogProvider.notifier);
-    for (final item in template.items) {
+    final ids = <String>[];
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final (i, item) in template.items.indexed) {
+      final id = _uuid.v4();
+      ids.add(id);
       await mealLog.addMeal(
         Meal(
-          id: _uuid.v4(),
+          id: id,
           foodName: item.foodName,
           calories: item.calories,
           macros: Macros(
@@ -71,14 +108,17 @@ class Templates extends _$Templates {
             fat: item.fat,
           ),
           portion: item.servingSize,
-          dateString: app_date.DateUtils.getTodayString(),
-          timestamp: DateTime.now().millisecondsSinceEpoch,
+          dateString: dateString ?? app_date.DateUtils.getTodayString(),
+          // A millisecond apart, so they keep the routine's order.
+          timestamp: now + i,
+          mealType: mealType ?? template.mealType,
         ),
       );
     }
     template.usageCount++;
     await _repo.save(template);
     state = AsyncData(_repo.getAll());
+    return ids;
   }
 
   Future<void> deleteTemplate(String id) async {
@@ -99,6 +139,7 @@ class Templates extends _$Templates {
       items: template.items,
       createdAt: template.createdAt,
       usageCount: template.usageCount,
+      mealType: template.mealType,
     );
     await _repo.save(updated);
     state = AsyncData(_repo.getAll());
@@ -107,7 +148,7 @@ class Templates extends _$Templates {
   bool canAddTemplate(bool isPro) {
     final count = state.valueOrNull?.length ?? 0;
     if (isPro) return true;
-    return count < 3;
+    return count < freeLimit;
   }
 
   /// Applies templates changed on the user's other devices.

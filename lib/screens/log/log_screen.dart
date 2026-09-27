@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../data/services/pro_feature_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -29,11 +30,15 @@ import 'widgets/horizontal_day_calendar.dart';
 import 'widgets/hydration_sheet.dart';
 import 'widgets/meal_list_tile.dart';
 import 'widgets/quick_add_foods.dart';
+import 'widgets/routines_carousel.dart';
+import 'widgets/save_routine_sheet.dart';
 import '../../core/theme/app_motion.dart';
 import '../../widgets/motion/arriving_item.dart';
 import '../../widgets/motion/count_up_text.dart';
 import '../../widgets/motion/delta_bubble.dart';
 import '../../widgets/app_toast.dart';
+import '../../data/models/meal_template.dart';
+import '../../providers/template_provider.dart';
 
 class LogScreen extends ConsumerStatefulWidget {
   const LogScreen({super.key});
@@ -189,6 +194,17 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                   onUndo:
                       (mealId) =>
                           ref.read(mealLogProvider.notifier).deleteMeal(mealId),
+                  // Saved routines come first, the newest leading.
+                  leading: [
+                    for (final routine in _orderedRoutines())
+                      RoutineCard(
+                        key: ValueKey('routine-card-${routine.id}'),
+                        template: routine,
+                        isNew: routine.id == _newRoutineId,
+                        onLog: () => _logRoutine(routine, selectedDate),
+                        onOptions: () => showRoutineOptions(context, routine),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 24),
               ],
@@ -221,6 +237,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                       ),
                   onEdit: _showEditMealSheet,
                   onDelete: _deleteWithUndo,
+                  onSaveRoutine: _saveRoutine,
                 ),
               ),
               const SizedBox(height: 24),
@@ -524,6 +541,74 @@ class _LogScreenState extends ConsumerState<LogScreen> {
   }
 
   String _suggestedMealType() => app_date.DateUtils.suggestedMealType();
+
+  /// The routine saved most recently here, which shows a "New" tag.
+  String? _newRoutineId;
+
+  List<MealTemplate> _orderedRoutines() {
+    final routines = [
+      ...ref.watch(templatesProvider).valueOrNull ?? const <MealTemplate>[],
+    ];
+    routines.sort((a, b) {
+      if (a.id == _newRoutineId) return -1;
+      if (b.id == _newRoutineId) return 1;
+      final used = b.usageCount.compareTo(a.usageCount);
+      return used != 0 ? used : b.createdAt.compareTo(a.createdAt);
+    });
+    return routines;
+  }
+
+  Future<void> _saveRoutine(_MealGroupData group) async {
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final saved = await showSaveRoutineSheet(
+      context,
+      meals: group.meals,
+      mealType: group.key,
+      mealLabel: group.label,
+    );
+    if (saved == null || !mounted) return;
+    setState(() => _newRoutineId = saved.id);
+    showAppToast(
+      messenger,
+      kind: ToastKind.success,
+      icon: WaznIcons.bookmarkPlus,
+      title: l10n.routine_saved,
+      detail: '${saved.emoji} ${saved.name}',
+    );
+  }
+
+  /// Logs every food in [routine] on [dateString] at once, into the meal it
+  /// was saved from, with one Undo for all of them.
+  Future<void> _logRoutine(MealTemplate routine, String dateString) async {
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final mealLog = ref.read(mealLogProvider.notifier);
+    HapticFeedback.mediumImpact();
+    final mealType = routine.mealType ?? _suggestedMealType();
+    final ids = await ref
+        .read(templatesProvider.notifier)
+        .logFromTemplate(routine, dateString: dateString, mealType: mealType);
+    if (!mounted) return;
+    final label = switch (mealType) {
+      'Breakfast' => l10n.result_meal_breakfast,
+      'Lunch' => l10n.result_meal_lunch,
+      'Dinner' => l10n.result_meal_dinner,
+      _ => l10n.result_meal_snack,
+    };
+    showAppToast(
+      messenger,
+      kind: ToastKind.success,
+      title: l10n.routine_logged,
+      detail: l10n.routine_logged_detail(ids.length, label),
+      actionLabel: l10n.result_undo,
+      onAction: () async {
+        for (final id in ids) {
+          await mealLog.deleteMeal(id);
+        }
+      },
+    );
+  }
 
   List<DailySummary> _buildDailySummaries({required bool isPro}) {
     final now = DateTime.now();
@@ -896,9 +981,13 @@ class _MealDiaryCard extends StatelessWidget {
     required this.onAdd,
     required this.onEdit,
     required this.onDelete,
+    required this.onSaveRoutine,
   });
 
   final List<_MealGroupData> groups;
+
+  /// Saves a meal's foods as a routine.
+  final ValueChanged<_MealGroupData> onSaveRoutine;
 
   /// Meals that have just appeared, which slide in.
   final Set<String> arrived;
@@ -925,6 +1014,7 @@ class _MealDiaryCard extends StatelessWidget {
             onLeft: onLeft,
             isPro: isPro,
             onAdd: () => onAdd(groups[index].key),
+            onSaveRoutine: () => onSaveRoutine(groups[index]),
             onEdit: onEdit,
             onDelete: onDelete,
           ),
@@ -1016,6 +1106,7 @@ class _MealGroupData {
 class _MealGroupSection extends StatelessWidget {
   const _MealGroupSection({
     required this.group,
+    required this.onSaveRoutine,
     this.arrived = const {},
     this.leaving = const {},
     required this.onLeft,
@@ -1025,6 +1116,7 @@ class _MealGroupSection extends StatelessWidget {
     required this.onDelete,
   });
 
+  final VoidCallback onSaveRoutine;
   final _MealGroupData group;
   final Set<String> arrived;
   final Set<String> leaving;
@@ -1093,6 +1185,23 @@ class _MealGroupSection extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Save this meal's foods as a routine, once it has some.
+                if (!isEmpty) ...[
+                  IconButton.outlined(
+                    key: ValueKey('log-save-${group.key.toLowerCase()}'),
+                    tooltip: l10n.routine_save_as,
+                    onPressed: onSaveRoutine,
+                    style: IconButton.styleFrom(
+                      foregroundColor: context.textSecondaryColor,
+                      side: BorderSide(
+                        color: context.dividerColor.withValues(alpha: 0.5),
+                      ),
+                      minimumSize: const Size(40, 40),
+                    ),
+                    icon: const Icon(WaznIcons.bookmarkPlus, size: 18),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 IconButton.filledTonal(
                   key: ValueKey('log-add-${group.key.toLowerCase()}'),
                   tooltip: l10n.log_add_meal_type(group.label),
