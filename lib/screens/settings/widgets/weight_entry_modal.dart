@@ -1,3 +1,4 @@
+import '../../../widgets/pinned_footer_sheet.dart';
 import 'dart:math' as math;
 
 import '../../../widgets/app_text_field.dart';
@@ -189,20 +190,22 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal>
       localizeUnit(context, weightUnit),
     );
     final done = _saved.isAnimating || _saved.isCompleted;
-    return Container(
-      decoration: BoxDecoration(
-        color: _settingsBg(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      // Use standard bottom sheet padding + keyboard insets
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          child: Column(
+    final typing = PinnedFooterSheet.keyboardOpen(context);
+    // While typing, the card around the fields goes and Save progress stays
+    // right above the keyboard.
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+        ),
+        decoration: BoxDecoration(
+          color: _settingsBg(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: PinnedFooterSheet(
+          topPadding: 16,
+          body: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
@@ -216,11 +219,12 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal>
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: typing ? 12 : 24),
               Reveal(
                 delay: const Duration(milliseconds: 120),
                 offset: const Offset(0, 16),
-                child: AppSectionCard(
+                child: _FieldsCard(
+                  plain: typing,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -364,51 +368,60 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal>
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              Reveal(
-                delay: const Duration(milliseconds: 220),
-                offset: const Offset(0, 16),
-                child: FilledButton(
-                  onPressed: _save,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(appButtonHeight),
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: AppMotion.standard,
-                    transitionBuilder:
-                        (child, animation) => ScaleTransition(
-                          scale: CurvedAnimation(
-                            parent: animation,
-                            curve: AppMotion.springCurve,
-                          ),
-                          child: FadeTransition(
-                            opacity: animation,
-                            child: child,
-                          ),
-                        ),
-                    child:
-                        done
-                            ? const Icon(
-                              WaznIcons.check,
-                              key: ValueKey('weight-saved'),
-                              size: 24,
-                            )
-                            : Text(
-                              AppLocalizations.of(
-                                context,
-                              )!.common_save_progress,
-                              key: const ValueKey('weight-save'),
-                            ),
-                  ),
-                ),
-              ),
-              // Extra space for bottom safe area when keyboard is closed
-              if (MediaQuery.of(context).viewInsets.bottom == 0)
-                SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
             ],
+          ),
+          footer: Reveal(
+            delay: const Duration(milliseconds: 220),
+            offset: const Offset(0, 16),
+            child: FilledButton(
+              onPressed: _save,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(appButtonHeight),
+              ),
+              child: AnimatedSwitcher(
+                duration: AppMotion.standard,
+                transitionBuilder:
+                    (child, animation) => ScaleTransition(
+                      scale: CurvedAnimation(
+                        parent: animation,
+                        curve: AppMotion.springCurve,
+                      ),
+                      child: FadeTransition(opacity: animation, child: child),
+                    ),
+                child:
+                    done
+                        ? const Icon(
+                          WaznIcons.check,
+                          key: ValueKey('weight-saved'),
+                          size: 24,
+                        )
+                        : Text(
+                          AppLocalizations.of(context)!.common_save_progress,
+                          key: const ValueKey('weight-save'),
+                        ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+/// The card around the weight fields, dropped while typing so the fields
+/// and Save progress fit above the keyboard.
+class _FieldsCard extends StatelessWidget {
+  const _FieldsCard({required this.plain, required this.child});
+
+  final bool plain;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      plain
+          ? Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: child,
+          )
+          : AppSectionCard(child: child);
 }

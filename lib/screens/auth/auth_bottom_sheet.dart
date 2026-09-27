@@ -367,6 +367,11 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet>
                                         controller: _passwordController,
                                         hint: l10n.auth_hint_password,
                                         isPassword: true,
+                                        onSubmitted:
+                                            (_) =>
+                                                _emailLoading
+                                                    ? null
+                                                    : _handleEmailSubmit(),
                                         showPassword: _showPassword,
                                         onTogglePassword:
                                             () => setState(
@@ -768,6 +773,7 @@ class _AuthTextField extends StatelessWidget {
   final VoidCallback? onTogglePassword;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
+  final ValueChanged<String>? onSubmitted;
 
   const _AuthTextField({
     required this.controller,
@@ -777,6 +783,7 @@ class _AuthTextField extends StatelessWidget {
     this.onTogglePassword,
     this.keyboardType,
     this.validator,
+    this.onSubmitted,
   });
 
   @override
@@ -787,6 +794,9 @@ class _AuthTextField extends StatelessWidget {
       obscureText: isPassword && !(showPassword ?? false),
       keyboardType: keyboardType,
       validator: validator,
+      // Next moves from email to password; Go on the password signs in.
+      textInputAction: isPassword ? TextInputAction.go : TextInputAction.next,
+      onSubmitted: onSubmitted,
       autofillHints:
           isPassword
               ? const [AutofillHints.password]
