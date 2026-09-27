@@ -26,6 +26,7 @@ Widget _host({
   required Future<Meal> Function(QuickFood, double) onAdd,
   required Future<Meal> Function(Meal) onRepeat,
   required Future<void> Function(String) onUndo,
+  ValueChanged<String>? onCustom,
 }) {
   return ProviderScope(
     child: MaterialApp(
@@ -52,6 +53,7 @@ Widget _host({
             onAddCatalogFood: onAdd,
             onRepeatMeal: onRepeat,
             onUndo: onUndo,
+            onCustomFood: onCustom ?? (_) {},
           ),
         ),
       ),
@@ -82,7 +84,7 @@ void main() {
     expect(find.byKey(const ValueKey('quick-add-foods')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byKey(const ValueKey('quick-add-see-all')));
+    await tester.tap(find.byKey(const ValueKey('quick-add-search')));
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('quick-food-search-field')),
@@ -143,7 +145,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('quick-add-see-all')));
+    await tester.tap(find.byKey(const ValueKey('quick-add-search')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('quick-food-region-button')));
     await tester.pumpAndSettle();
@@ -172,7 +174,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('quick-add-see-all')));
+    await tester.tap(find.byKey(const ValueKey('quick-add-search')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('quick-food-search-field')),
@@ -194,5 +196,65 @@ void main() {
     expect(find.byKey(const ValueKey('quick-food-search-field')), findsNothing);
     expect(find.text('Chicken biryani added'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a food of your own is one tap from the row and from search, '
+      'which passes on what was typed', (tester) async {
+    final asked = <String>[];
+    await tester.pumpWidget(
+      _host(
+        onAdd: (food, grams) async => _meal('catalog', name: food.name),
+        onRepeat: (meal) async => _meal('repeat', name: meal.foodName),
+        onUndo: (_) async {},
+        onCustom: asked.add,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('quick-add-custom')));
+    await tester.pump();
+    expect(asked, ['']);
+
+    await tester.tap(find.byKey(const ValueKey('quick-add-search')));
+    await tester.pumpAndSettle();
+    expect(find.text('Add your own food'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('quick-food-search-field')),
+      'Nani’s dal',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('quick-food-add-own')));
+    await tester.pumpAndSettle();
+    expect(asked, ['', 'Nani’s dal']);
+    expect(find.byKey(const ValueKey('quick-food-search-field')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('search finds a food the user logged long ago, not only the '
+      'top few', (tester) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final meals = [
+      for (var i = 0; i < 8; i++)
+        for (var n = 0; n < 3; n++)
+          _meal('m$i-$n', name: 'Common food $i').copyWith(timestamp: now - i),
+      _meal('rare', name: 'Grandma soup').copyWith(timestamp: now - 99),
+    ];
+    await tester.pumpWidget(
+      _host(
+        meals: meals,
+        onAdd: (food, grams) async => _meal('catalog', name: food.name),
+        onRepeat: (meal) async => _meal('repeat', name: meal.foodName),
+        onUndo: (_) async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('quick-add-search')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('quick-food-search-field')),
+      'grandma',
+    );
+    await tester.pump();
+    expect(find.text('Grandma soup'), findsOneWidget);
   });
 }

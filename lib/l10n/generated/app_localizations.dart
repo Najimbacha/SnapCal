@@ -9773,6 +9773,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'My usual {meal}'**
   String routine_name_default(String meal);
+
+  /// No description provided for @log_add_food.
+  ///
+  /// In en, this message translates to:
+  /// **'Add food'**
+  String get log_add_food;
+
+  /// No description provided for @log_custom_food.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom food'**
+  String get log_custom_food;
+
+  /// No description provided for @log_add_own.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your own food'**
+  String get log_add_own;
+
+  /// No description provided for @log_add_named.
+  ///
+  /// In en, this message translates to:
+  /// **'Add “{name}” yourself'**
+  String log_add_named(String name);
+
+  /// No description provided for @log_add_own_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Can’t find it? Type the calories yourself.'**
+  String get log_add_own_hint;
+
+  /// No description provided for @log_no_match.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches in your foods or the food list.'**
+  String get log_no_match;
+
+  /// No description provided for @custom_food_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your own food'**
+  String get custom_food_title;
+
+  /// No description provided for @custom_food_name.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get custom_food_name;
+
+  /// No description provided for @custom_food_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get custom_food_amount;
+
+  /// No description provided for @custom_food_amount_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'1 bowl'**
+  String get custom_food_amount_hint;
+
+  /// No description provided for @custom_food_macros.
+  ///
+  /// In en, this message translates to:
+  /// **'Protein, carbs and fat (optional)'**
+  String get custom_food_macros;
+
+  /// No description provided for @custom_food_add_to.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to {meal}'**
+  String custom_food_add_to(String meal);
+
+  /// No description provided for @custom_food_note.
+  ///
+  /// In en, this message translates to:
+  /// **'Next time it shows up in search and Recent.'**
+  String get custom_food_note;
+
+  /// No description provided for @log_find_food.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a food'**
+  String get log_find_food;
 }
 
 class _AppLocalizationsDelegate

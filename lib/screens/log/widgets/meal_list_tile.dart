@@ -21,7 +21,12 @@ class MealListTile extends StatefulWidget {
     required this.onDelete,
     this.showTime = true,
     this.showDivider = false,
+    this.compact = false,
   });
+
+  /// A plain row for the Food Log: no picture and no arrow, the calories in
+  /// grey without their unit, which the meal's heading already shows.
+  final bool compact;
 
   final Meal meal;
   final bool isPro;
@@ -134,8 +139,8 @@ class _MealListTileState extends State<MealListTile>
           child: InkWell(
             onTap: onTap,
             child: Container(
-              constraints: const BoxConstraints(minHeight: 66),
-              padding: const EdgeInsets.symmetric(vertical: 9),
+              constraints: BoxConstraints(minHeight: widget.compact ? 48 : 66),
+              padding: EdgeInsets.symmetric(vertical: widget.compact ? 7 : 9),
               decoration: BoxDecoration(
                 border:
                     showDivider
@@ -148,8 +153,10 @@ class _MealListTileState extends State<MealListTile>
               ),
               child: Row(
                 children: [
-                  _MealThumbnail(meal: meal),
-                  const SizedBox(width: 12),
+                  if (!widget.compact) ...[
+                    _MealThumbnail(meal: meal),
+                    const SizedBox(width: 12),
+                  ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,7 +167,7 @@ class _MealListTileState extends State<MealListTile>
                           style: AppTypography.titleMedium.copyWith(
                             color: context.textPrimaryColor,
                             fontWeight: FontWeight.w600,
-                            fontSize: 15,
+                            fontSize: widget.compact ? 14 : 15,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -199,18 +206,22 @@ class _MealListTileState extends State<MealListTile>
                                   TextSpan(
                                     text: '${calories.round()}',
                                     style: AppTypography.titleMedium.copyWith(
-                                      color: context.textPrimaryColor,
+                                      color:
+                                          widget.compact
+                                              ? context.textSecondaryColor
+                                              : context.textPrimaryColor,
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 15,
+                                      fontSize: widget.compact ? 14 : 15,
                                     ),
                                   ),
-                                  TextSpan(
-                                    text: ' ${l10n.settings_kcal_unit}',
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: context.textMutedColor,
-                                      fontSize: 10,
+                                  if (!widget.compact)
+                                    TextSpan(
+                                      text: ' ${l10n.settings_kcal_unit}',
+                                      style: AppTypography.bodySmall.copyWith(
+                                        color: context.textMutedColor,
+                                        fontSize: 10,
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                               maxLines: 1,
@@ -223,12 +234,14 @@ class _MealListTileState extends State<MealListTile>
                       ),
                     ],
                   ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    WaznIcons.chevronRight,
-                    size: 16,
-                    color: context.textMutedColor.withValues(alpha: 0.6),
-                  ),
+                  if (!widget.compact) ...[
+                    const SizedBox(width: 8),
+                    Icon(
+                      WaznIcons.chevronRight,
+                      size: 16,
+                      color: context.textMutedColor.withValues(alpha: 0.6),
+                    ),
+                  ],
                 ],
               ),
             ),

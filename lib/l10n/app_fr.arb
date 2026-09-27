@@ -1858,5 +1858,19 @@
   "routine_new": "Nouveau",
   "routine_rename": "Renommer",
   "routine_delete": "Supprimer la routine",
-  "routine_name_default": "Mon {meal} habituel"
+  "routine_name_default": "Mon {meal} habituel",
+  "log_add_food": "Ajouter un aliment",
+  "log_custom_food": "Aliment perso",
+  "log_add_own": "Ajouter votre propre aliment",
+  "log_add_named": "Ajouter « {name} » vous-même",
+  "log_add_own_hint": "Introuvable ? Saisissez les calories vous-même.",
+  "log_no_match": "Aucun résultat dans vos aliments ni dans la liste.",
+  "custom_food_title": "Votre aliment",
+  "custom_food_name": "Nom",
+  "custom_food_amount": "Quantité",
+  "custom_food_amount_hint": "1 bol",
+  "custom_food_macros": "Protéines, glucides et lipides (facultatif)",
+  "custom_food_add_to": "Ajouter : {meal}",
+  "custom_food_note": "La prochaine fois, il apparaîtra dans la recherche et Récents.",
+  "log_find_food": "Trouver un aliment"
 }
