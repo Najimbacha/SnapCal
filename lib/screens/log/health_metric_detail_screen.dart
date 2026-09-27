@@ -950,65 +950,69 @@ class _MetricHero extends StatelessWidget {
                 ),
               ),
               // Goal hit badge, turning over when the verdict changes.
-              AnimatedSwitcher(
-                duration: AppMotion.maybeZero(
-                  context,
-                  const Duration(milliseconds: 420),
-                ),
-                transitionBuilder:
-                    (child, animation) => ScaleTransition(
-                      scale: CurvedAnimation(
-                        parent: animation,
-                        curve: AppMotion.springCurve,
-                      ),
-                      child: FadeTransition(opacity: animation, child: child),
-                    ),
-                child: Container(
-                  key: ValueKey('metric-goal-$isGoalHit'),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+              // Flexible, so on a narrow phone with large text it shortens
+              // instead of pushing past the card's edge.
+              Flexible(
+                child: AnimatedSwitcher(
+                  duration: AppMotion.maybeZero(
+                    context,
+                    const Duration(milliseconds: 420),
                   ),
-                  decoration: BoxDecoration(
-                    color:
-                        isGoalHit
-                            ? accent.withValues(alpha: 0.10)
-                            : Colors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
+                  transitionBuilder:
+                      (child, animation) => ScaleTransition(
+                        scale: CurvedAnimation(
+                          parent: animation,
+                          curve: AppMotion.springCurve,
+                        ),
+                        child: FadeTransition(opacity: animation, child: child),
+                      ),
+                  child: Container(
+                    key: ValueKey('metric-goal-$isGoalHit'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
                       color:
                           isGoalHit
-                              ? accent.withValues(alpha: 0.28)
-                              : Colors.orange.withValues(alpha: 0.22),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isGoalHit ? WaznIcons.success : WaznIcons.goal,
-                        size: 12,
-                        color: isGoalHit ? accent : Colors.orange,
+                              ? accent.withValues(alpha: 0.10)
+                              : Colors.orange.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color:
+                            isGoalHit
+                                ? accent.withValues(alpha: 0.28)
+                                : Colors.orange.withValues(alpha: 0.22),
                       ),
-                      const SizedBox(width: 5),
-                      // The badge is a non-flexible sibling of an Expanded, so
-                      // it is laid out at its intrinsic width first: a long
-                      // goal string pushed it past the card edge instead of
-                      // shortening.
-                      Flexible(
-                        child: Text(
-                          data.goalStatus,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.labelSmall.copyWith(
-                            color: isGoalHit ? accent : Colors.orange,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 11,
-                            letterSpacing: 0,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isGoalHit ? WaznIcons.success : WaznIcons.goal,
+                          size: 12,
+                          color: isGoalHit ? accent : Colors.orange,
+                        ),
+                        const SizedBox(width: 5),
+                        // The badge is a non-flexible sibling of an Expanded, so
+                        // it is laid out at its intrinsic width first: a long
+                        // goal string pushed it past the card edge instead of
+                        // shortening.
+                        Flexible(
+                          child: Text(
+                            data.goalStatus,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: isGoalHit ? accent : Colors.orange,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                              letterSpacing: 0,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

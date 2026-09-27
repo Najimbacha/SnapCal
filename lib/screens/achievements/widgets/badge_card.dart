@@ -262,29 +262,35 @@ class _Face extends StatelessWidget {
           else
             emoji,
           const SizedBox(height: 8),
-          Text(
-            badgeTitle(context, achievement.titleKey),
-            textAlign: TextAlign.center,
-            style: AppTypography.titleSmall.copyWith(
-              fontWeight: FontWeight.bold,
-              color:
-                  unlocked
-                      ? colorScheme.onSurface
-                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          Flexible(
+            child: Text(
+              badgeTitle(context, achievement.titleKey),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.titleSmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color:
+                    unlocked
+                        ? colorScheme.onSurface
+                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+              ),
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            badgeDescription(context, achievement.descriptionKey),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.bodySmall.copyWith(
-              color:
-                  unlocked
-                      ? colorScheme.onSurfaceVariant
-                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-              fontSize: 10,
+          Flexible(
+            child: Text(
+              badgeDescription(context, achievement.descriptionKey),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodySmall.copyWith(
+                color:
+                    unlocked
+                        ? colorScheme.onSurfaceVariant
+                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                fontSize: 10,
+              ),
             ),
           ),
           const Spacer(),

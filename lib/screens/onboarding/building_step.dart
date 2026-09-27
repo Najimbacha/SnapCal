@@ -69,60 +69,66 @@ class _BuildingStepState extends State<BuildingStep> {
       l10n.onb_building_macros,
     ];
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // A ring that keeps filling towards the next line's tick.
-              Center(
-                child: ExcludeSemantics(
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: ((_done + 1) / 3).clamp(0, 1)),
-                    duration: AppMotion.maybeZero(
-                      context,
-                      BuildingStep.lineDuration,
+      // Scrolls rather than cutting off on a small phone with large text.
+      child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // A ring that keeps filling towards the next line's tick.
+                Center(
+                  child: ExcludeSemantics(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(
+                        begin: 0,
+                        end: ((_done + 1) / 3).clamp(0, 1),
+                      ),
+                      duration: AppMotion.maybeZero(
+                        context,
+                        BuildingStep.lineDuration,
+                      ),
+                      curve: Curves.easeInOut,
+                      builder:
+                          (context, t, _) => _Ring(
+                            key: const ValueKey('onboarding-building-ring'),
+                            progress: t,
+                          ),
                     ),
-                    curve: Curves.easeInOut,
-                    builder:
-                        (context, t, _) => _Ring(
-                          key: const ValueKey('onboarding-building-ring'),
-                          progress: t,
-                        ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              Semantics(
-                header: true,
-                liveRegion: true,
-                child: Text(
-                  l10n.onb_building_title,
-                  style: TextStyle(
-                    color: context.textPrimaryColor,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.4,
+                const SizedBox(height: 32),
+                Semantics(
+                  header: true,
+                  liveRegion: true,
+                  child: Text(
+                    l10n.onb_building_title,
+                    style: TextStyle(
+                      color: context.textPrimaryColor,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 28),
-              for (var i = 0; i < lines.length; i++) ...[
-                if (i > 0) const SizedBox(height: 18),
-                _BuildLine(
-                  text: lines[i],
-                  state:
-                      i < _done
-                          ? _LineState.done
-                          : (i == _done
-                              ? _LineState.running
-                              : _LineState.waiting),
-                ),
+                const SizedBox(height: 28),
+                for (var i = 0; i < lines.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 18),
+                  _BuildLine(
+                    text: lines[i],
+                    state:
+                        i < _done
+                            ? _LineState.done
+                            : (i == _done
+                                ? _LineState.running
+                                : _LineState.waiting),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

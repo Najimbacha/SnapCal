@@ -1192,13 +1192,19 @@ class _WeightCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                convert(current.latestKg).toStringAsFixed(1),
-                style: AppTypography.heading1.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: context.textPrimaryColor,
-                  letterSpacing: -1,
-                  height: 1,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    convert(current.latestKg).toStringAsFixed(1),
+                    style: AppTypography.heading1.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: context.textPrimaryColor,
+                      letterSpacing: -1,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 6),

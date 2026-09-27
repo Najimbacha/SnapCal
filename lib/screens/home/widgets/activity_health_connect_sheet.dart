@@ -43,58 +43,61 @@ class _SheetScaffold extends ConsumerWidget {
           color: isDark ? const Color(0xFF1C1B1F) : const Color(0xFFFEFCF7),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 4),
-              child: Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: (isDark ? Colors.white : Colors.black).withValues(
-                      alpha: 0.12,
+        // Scrolls on a small phone with large text rather than cutting off.
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 4),
+                child: Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.white : Colors.black).withValues(
+                        alpha: 0.12,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
                     ),
-                    borderRadius: BorderRadius.circular(999),
                   ),
                 ),
               ),
-            ),
-            // Connecting hands over to today's activity with a fade and a
-            // small rise, and the sheet eases to its new height.
-            AnimatedSize(
-              duration: AppMotion.maybeZero(
-                context,
-                const Duration(milliseconds: 320),
-              ),
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.topCenter,
-              child: AnimatedSwitcher(
+              // Connecting hands over to today's activity with a fade and a
+              // small rise, and the sheet eases to its new height.
+              AnimatedSize(
                 duration: AppMotion.maybeZero(
                   context,
-                  const Duration(milliseconds: 380),
+                  const Duration(milliseconds: 320),
                 ),
-                transitionBuilder:
-                    (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween(
-                          begin: const Offset(0, .06),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    ),
-                child:
-                    isConnected
-                        ? const _ConnectedState(key: ValueKey('connected'))
-                        : const _DisconnectedState(
-                          key: ValueKey('disconnected'),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: AnimatedSwitcher(
+                  duration: AppMotion.maybeZero(
+                    context,
+                    const Duration(milliseconds: 380),
+                  ),
+                  transitionBuilder:
+                      (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween(
+                            begin: const Offset(0, .06),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
                         ),
+                      ),
+                  child:
+                      isConnected
+                          ? const _ConnectedState(key: ValueKey('connected'))
+                          : const _DisconnectedState(
+                            key: ValueKey('disconnected'),
+                          ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

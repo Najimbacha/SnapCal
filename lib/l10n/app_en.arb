@@ -2686,5 +2686,9 @@
         "type": "String"
       }
     }
-  }
+  },
+  "coach_ask_eat": "What should I eat today?",
+  "coach_ask_track": "How am I doing against my goals today?",
+  "coach_ask_week": "Create a meal plan for me",
+  "coach_ask_protein": "Suggest a high-protein meal"
 }

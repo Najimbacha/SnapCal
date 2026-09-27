@@ -517,12 +517,19 @@ class _AuthButton extends StatelessWidget {
                   ? FaIcon(icon as FaIconData, size: 16, color: foregroundColor)
                   : Icon(icon as IconData, size: 18, color: foregroundColor),
               const SizedBox(width: 12),
-              Text(
-                label,
-                style: AppTypography.titleSmall.copyWith(
-                  color: foregroundColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
+              // Shrinks rather than running off a narrow button.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: AppTypography.titleSmall.copyWith(
+                      color: foregroundColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
               ),
             ],

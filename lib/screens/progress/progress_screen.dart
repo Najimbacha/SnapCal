@@ -146,13 +146,16 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen>
 
   Widget _buildEmpty(BuildContext context, bool canAdd) {
     final l10n = AppLocalizations.of(context)!;
+    // Scrolls on a small phone with large text instead of cutting off.
     return Center(
-      child: AppEmptyState(
-        icon: WaznIcons.image,
-        title: l10n.progress_no_photos_title,
-        body: l10n.progress_take_photos_desc,
-        actionLabel: l10n.progress_take_first_photo,
-        onAction: () => _handleCapture(context, canAdd),
+      child: SingleChildScrollView(
+        child: AppEmptyState(
+          icon: WaznIcons.image,
+          title: l10n.progress_no_photos_title,
+          body: l10n.progress_take_photos_desc,
+          actionLabel: l10n.progress_take_first_photo,
+          onAction: () => _handleCapture(context, canAdd),
+        ),
       ),
     );
   }

@@ -603,36 +603,43 @@ class _ProgressCardState extends State<_ProgressCard>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Reveal(
-                    delay: const Duration(milliseconds: 300),
-                    offset: const Offset(0, 10),
-                    child: _WeightLabel(
-                      label: l10n.settings_weight_start,
-                      value: '${widget.start.toStringAsFixed(1)} $unit',
-                      alignment: CrossAxisAlignment.start,
-                    ),
-                  ),
-                  Reveal(
-                    delay: const Duration(milliseconds: 390),
-                    offset: const Offset(0, 10),
-                    child: Transform.scale(
-                      scale: 1 + 0.08 * math.sin(math.pi * _pop.value),
+                  Expanded(
+                    child: Reveal(
+                      delay: const Duration(milliseconds: 300),
+                      offset: const Offset(0, 10),
                       child: _WeightLabel(
-                        key: const ValueKey('weight-progress-current'),
-                        label: l10n.settings_weight_current,
-                        value: '${_weightNow(widget).toStringAsFixed(1)} $unit',
-                        isHighlight: true,
-                        alignment: CrossAxisAlignment.center,
+                        label: l10n.settings_weight_start,
+                        value: '${widget.start.toStringAsFixed(1)} $unit',
+                        alignment: CrossAxisAlignment.start,
                       ),
                     ),
                   ),
-                  Reveal(
-                    delay: const Duration(milliseconds: 480),
-                    offset: const Offset(0, 10),
-                    child: _WeightLabel(
-                      label: l10n.settings_weight_target,
-                      value: '${widget.target.toStringAsFixed(1)} $unit',
-                      alignment: CrossAxisAlignment.end,
+                  Expanded(
+                    child: Reveal(
+                      delay: const Duration(milliseconds: 390),
+                      offset: const Offset(0, 10),
+                      child: Transform.scale(
+                        scale: 1 + 0.08 * math.sin(math.pi * _pop.value),
+                        child: _WeightLabel(
+                          key: const ValueKey('weight-progress-current'),
+                          label: l10n.settings_weight_current,
+                          value:
+                              '${_weightNow(widget).toStringAsFixed(1)} $unit',
+                          isHighlight: true,
+                          alignment: CrossAxisAlignment.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Reveal(
+                      delay: const Duration(milliseconds: 480),
+                      offset: const Offset(0, 10),
+                      child: _WeightLabel(
+                        label: l10n.settings_weight_target,
+                        value: '${widget.target.toStringAsFixed(1)} $unit',
+                        alignment: CrossAxisAlignment.end,
+                      ),
                     ),
                   ),
                 ],
@@ -745,13 +752,19 @@ class _WeightLabel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        Text(
-          value,
-          style: AppTypography.bodyMedium.copyWith(
-            fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w600,
-            color:
-                isHighlight ? settingsText(context) : settingsSubtext(context),
-            fontSize: 13,
+        // Shrinks rather than overflowing on a narrow phone with large text.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: AppTypography.bodyMedium.copyWith(
+              fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w600,
+              color:
+                  isHighlight
+                      ? settingsText(context)
+                      : settingsSubtext(context),
+              fontSize: 13,
+            ),
           ),
         ),
       ],
