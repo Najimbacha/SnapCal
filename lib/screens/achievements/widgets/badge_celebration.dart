@@ -255,12 +255,6 @@ class _BadgeCelebrationState extends State<_BadgeCelebration>
                         child: FilledButton(
                           key: const ValueKey('badge-celebration-done'),
                           onPressed: () => Navigator.of(context).pop(),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
                           child: Text(l10n.common_done),
                         ),
                       ),

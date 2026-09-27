@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:snapcal/widgets/app_icon.dart';
 
+import '../../core/theme/app_button_theme.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/theme/theme_colors.dart';
@@ -150,7 +151,8 @@ class OnbQuestion extends StatelessWidget {
   }
 }
 
-/// The dark, full-width button at the bottom of every screen.
+/// The full-width button at the bottom of every screen: the app's main
+/// button, warm grey until the answer is given.
 class OnbCta extends StatelessWidget {
   const OnbCta({
     super.key,
@@ -166,51 +168,51 @@ class OnbCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null && !loading;
-    final background = context.textPrimaryColor;
-    final foreground = context.backgroundColor;
+    final on = enabled || loading;
+    final off = AppButtonColors.of(context);
+    final background = on ? context.primaryColor : off.off;
+    final foreground = on ? context.onPrimaryColor : off.offText;
+    final radius = BorderRadius.circular(appButtonRadius);
     return Semantics(
       button: true,
       enabled: enabled,
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 180),
-        opacity: enabled || loading ? 1 : 0.28,
-        child: Material(
-          color: background,
-          borderRadius: BorderRadius.circular(99),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(99),
-            onTap:
-                enabled
-                    ? () {
-                      HapticFeedback.mediumImpact();
-                      onTap!();
-                    }
-                    : null,
-            child: SizedBox(
-              height: 58,
-              width: double.infinity,
-              child: Center(
-                child:
-                    loading
-                        ? SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: foreground,
-                          ),
-                        )
-                        : Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: foreground,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
+      child: Material(
+        color: background,
+        borderRadius: radius,
+        animationDuration: const Duration(milliseconds: 180),
+        child: InkWell(
+          borderRadius: radius,
+          onTap:
+              enabled
+                  ? () {
+                    HapticFeedback.mediumImpact();
+                    onTap!();
+                  }
+                  : null,
+          child: SizedBox(
+            height: appButtonHeight,
+            width: double.infinity,
+            child: Center(
+              child:
+                  loading
+                      ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: foreground,
                         ),
-              ),
+                      )
+                      : Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: foreground,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
             ),
           ),
         ),

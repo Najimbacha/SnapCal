@@ -1,3 +1,4 @@
+import '../../core/theme/app_button_theme.dart';
 import 'dart:async';
 
 import '../../core/theme/app_field_theme.dart';
@@ -631,18 +632,9 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                             key: const ValueKey('voice-analyze'),
                             onPressed: _canAnalyze ? _analyze : null,
                             style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(56),
-                              backgroundColor: AppColors.emeraldDark,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor:
-                                  dark
-                                      ? Colors.white.withValues(alpha: 0.08)
-                                      : AppColors.lightCardBorder,
-                              disabledForegroundColor: secondaryText,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                              minimumSize: const Size.fromHeight(
+                                appButtonHeight,
                               ),
-                              elevation: 0,
                             ),
                             icon: AnimatedSwitcher(
                               duration: AppMotion.maybeZero(
@@ -665,13 +657,16 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                                         size: 20,
                                       )
                                       : _isAnalyzing
-                                      ? const SizedBox(
-                                        key: ValueKey('busy'),
+                                      ? SizedBox(
+                                        key: const ValueKey('busy'),
                                         width: 18,
                                         height: 18,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          color: Colors.white,
+                                          color:
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.onPrimary,
                                         ),
                                       )
                                       : const Icon(
@@ -701,12 +696,6 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                                     : () => _startListening(clearFirst: true),
                             icon: const Icon(WaznIcons.rotateCcw, size: 17),
                             label: Text(l10n.voice_speak_again),
-                            style: TextButton.styleFrom(
-                              foregroundColor:
-                                  dark
-                                      ? AppColors.emeraldLight
-                                      : AppColors.primaryDark,
-                            ),
                           ),
                         ],
                       ],
@@ -1032,7 +1021,7 @@ class _FillingButton extends StatelessWidget {
         Positioned.fill(
           child: IgnorePointer(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(appButtonRadius),
               child: AnimatedBuilder(
                 animation: fill,
                 builder:

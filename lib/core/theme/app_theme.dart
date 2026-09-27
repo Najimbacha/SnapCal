@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_button_theme.dart';
 import 'app_field_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -97,28 +98,10 @@ class AppTheme {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       ),
 
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colorScheme.primary,
-          foregroundColor: colorScheme.onPrimary,
-          elevation: 0,
-          animationDuration: const Duration(milliseconds: 180),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        ),
-      ),
-
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          animationDuration: const Duration(milliseconds: 180),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        ),
-      ),
+      elevatedButtonTheme: appElevatedButtonTheme(colorScheme),
+      filledButtonTheme: appFilledButtonTheme(colorScheme),
+      outlinedButtonTheme: appOutlinedButtonTheme(colorScheme),
+      textButtonTheme: appTextButtonTheme(colorScheme),
 
       inputDecorationTheme: appInputDecorationTheme(colorScheme),
       actionIconTheme: _actionIcons,
@@ -224,28 +207,10 @@ class AppTheme {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       ),
 
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colorScheme.primary,
-          foregroundColor: colorScheme.onPrimary,
-          elevation: 0,
-          animationDuration: const Duration(milliseconds: 180),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        ),
-      ),
-
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          animationDuration: const Duration(milliseconds: 180),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        ),
-      ),
+      elevatedButtonTheme: appElevatedButtonTheme(colorScheme),
+      filledButtonTheme: appFilledButtonTheme(colorScheme),
+      outlinedButtonTheme: appOutlinedButtonTheme(colorScheme),
+      textButtonTheme: appTextButtonTheme(colorScheme),
 
       inputDecorationTheme: appInputDecorationTheme(colorScheme),
       actionIconTheme: _actionIcons,

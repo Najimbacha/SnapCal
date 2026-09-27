@@ -1,3 +1,4 @@
+import '../../core/theme/app_button_theme.dart';
 import 'dart:async';
 import '../../widgets/app_text_field.dart';
 import 'dart:io';
@@ -747,7 +748,7 @@ class PlannerBottomActions extends StatelessWidget {
           child: FilledButton(
             onPressed: onGrocery,
             style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
+              minimumSize: const Size.fromHeight(appButtonHeight),
             ),
             child: Text(l10n.planner_unlock_week, textAlign: TextAlign.center),
           ),
@@ -791,13 +792,11 @@ class PlannerBottomActions extends StatelessWidget {
   ButtonStyle _buttonStyle(BuildContext context, {bool outlined = false}) {
     if (outlined) {
       return OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        minimumSize: const Size.fromHeight(appButtonHeight),
       );
     }
     return FilledButton.styleFrom(
-      minimumSize: const Size.fromHeight(50),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      minimumSize: const Size.fromHeight(appButtonHeight),
     );
   }
 }
@@ -864,10 +863,7 @@ class PlannerLockedWeekCard extends StatelessWidget {
             child: FilledButton(
               onPressed: onUpgrade,
               style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                minimumSize: const Size.fromHeight(appButtonHeight),
               ),
               child: Text(l10n.planner_unlock_pro),
             ),
@@ -1324,10 +1320,7 @@ class GroceryPlannerView extends StatelessWidget {
                     size: 17,
                   ),
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    minimumSize: const Size.fromHeight(appButtonHeight),
                   ),
                   label: Text(l10n.planner_shopping_mode),
                 ),
@@ -1411,10 +1404,7 @@ class _PlannerMealDetailScreenState extends State<PlannerMealDetailScreen> {
                             size: 17,
                           ),
                           style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            minimumSize: const Size.fromHeight(appButtonHeight),
                           ),
                           label: Text(l10n.planner_swap_meal),
                         ),
@@ -1425,10 +1415,7 @@ class _PlannerMealDetailScreenState extends State<PlannerMealDetailScreen> {
                           onPressed: widget.isPro ? _log : null,
                           icon: const Icon(WaznIcons.plus, size: 17),
                           style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            minimumSize: const Size.fromHeight(appButtonHeight),
                           ),
                           label: Text(l10n.planner_log_meal),
                         ),
@@ -1771,10 +1758,7 @@ class _PlannerSwapSheetState extends State<PlannerSwapSheet> {
                   },
                   icon: const Icon(WaznIcons.ai, size: 18),
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    minimumSize: const Size.fromHeight(appButtonHeight),
                   ),
                   label: Text(l10n.planner_find_replacement),
                 ),
