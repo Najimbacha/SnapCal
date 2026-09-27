@@ -278,9 +278,11 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
                   style: FilledButton.styleFrom(
                     backgroundColor: primary,
                     disabledBackgroundColor: primary.withValues(alpha: 0.28),
-                    foregroundColor: Colors.white,
+                    foregroundColor: context.onPrimaryColor,
+                    // Greyed out, the button sits on a faded green: white text
+                    // reads on it in both modes.
                     disabledForegroundColor: Colors.white.withValues(
-                      alpha: 0.85,
+                      alpha: context.isDarkMode ? 0.5 : 0.85,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -457,7 +459,10 @@ class _MealChoice extends StatelessWidget {
               label,
               maxLines: 1,
               style: AppTypography.labelLarge.copyWith(
-                color: selected ? Colors.white : context.textSecondaryColor,
+                color:
+                    selected
+                        ? context.onPrimaryColor
+                        : context.textSecondaryColor,
                 fontWeight: FontWeight.w700,
               ),
             ),

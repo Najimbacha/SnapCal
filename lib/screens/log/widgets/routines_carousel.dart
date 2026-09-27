@@ -149,7 +149,9 @@ class _RoutineCardState extends State<RoutineCard> {
               child: Icon(
                 _done ? WaznIcons.check : WaznIcons.plus,
                 size: 14,
-                color: Colors.white,
+                // The dark-mode mint needs dark ink, not white.
+                color:
+                    !_done && isDark ? const Color(0xFF053B2B) : Colors.white,
               ),
             ),
           ),

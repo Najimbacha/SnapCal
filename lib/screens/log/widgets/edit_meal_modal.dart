@@ -386,9 +386,11 @@ class _EditMealModalState extends State<EditMealModal>
                       disabledBackgroundColor: context.primaryColor.withValues(
                         alpha: 0.28,
                       ),
-                      foregroundColor: Colors.white,
+                      foregroundColor: context.onPrimaryColor,
+                      // Greyed out, the button sits on a faded green: white text
+                      // reads on it in both modes.
                       disabledForegroundColor: Colors.white.withValues(
-                        alpha: 0.8,
+                        alpha: context.isDarkMode ? 0.5 : 0.8,
                       ),
                       elevation: 0,
                       shape: RoundedRectangleBorder(

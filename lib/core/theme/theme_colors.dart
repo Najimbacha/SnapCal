@@ -14,6 +14,10 @@ extension ThemeColors on BuildContext {
   Color get cardSoftColor => Theme.of(this).colorScheme.surfaceContainerHigh;
 
   Color get primaryColor => Theme.of(this).colorScheme.primary;
+
+  /// Text and icons on [primaryColor]: white on the deep green of light
+  /// mode, dark green on the light mint that dark mode uses.
+  Color get onPrimaryColor => Theme.of(this).colorScheme.onPrimary;
   Color get primaryContainer => Theme.of(this).colorScheme.primaryContainer;
 
   Color get dividerColor => Theme.of(this).dividerColor;
