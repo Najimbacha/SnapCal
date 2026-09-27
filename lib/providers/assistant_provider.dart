@@ -1,3 +1,4 @@
+import 'calorie_budget_provider.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -59,7 +60,9 @@ class Assistant extends _$Assistant {
     String prompt(List<Map<String, String>> turns) =>
         AssistantService().buildCoachPrompt(
           currentCalories: sum((m) => m.calories),
-          targetCalories: settings?.dailyCalorieGoal ?? 2000,
+          // The same goal Home and the Food Log show, walking calories
+          // included for Pro.
+          targetCalories: ref.read(calorieBudgetProvider).goal,
           currentMacros: {
             'protein': sum((m) => m.macros.protein),
             'carbs': sum((m) => m.macros.carbs),

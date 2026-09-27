@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/repositories/activity_repository.dart';
 import '../data/services/health_connect_service.dart';
 import '../core/services/app_lifecycle_service.dart';
+import 'calorie_budget_provider.dart';
+import 'current_day_provider.dart';
 
 part 'activity_provider.g.dart';
 
@@ -73,6 +77,13 @@ class Activity extends _$Activity {
       final steps = await _health.getTodaySteps();
       final calories = await _health.getTodayActiveCaloriesBurned(
         fallbackSteps: steps,
+      );
+      // Remembered so the next opening starts from today's figure.
+      unawaited(
+        ActivityBonusMemory.write(
+          ref.read(currentDayProvider),
+          calories.calories,
+        ),
       );
       return ActivitySummary(
         steps: steps,

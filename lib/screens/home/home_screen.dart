@@ -1,3 +1,4 @@
+import '../../providers/calorie_budget_provider.dart';
 import 'package:snapcal/data/services/force_update_service.dart';
 import '../../data/repositories/activity_repository.dart';
 import '../../providers/achievements_provider.dart';
@@ -178,10 +179,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget build(BuildContext context) {
     final todaysMealsAsync = ref.watch(todaysMealsProvider);
     final todaysMeals = todaysMealsAsync.valueOrNull ?? [];
-    final totalCalories = todaysMeals.fold<int>(
-      0,
-      (sum, m) => sum + m.calories,
-    );
+    // Eaten, goal and left come from the one budget every screen reads.
+    final budget = ref.watch(calorieBudgetProvider);
+    final totalCalories = budget.eaten;
     final mealCount = todaysMeals.length;
     final macros = Macros(
       protein: todaysMeals.fold<int>(0, (sum, m) => sum + m.macros.protein),
@@ -190,7 +190,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
 
     final settings = ref.watch(settingsProvider).valueOrNull;
-    final calorieGoal = math.max(settings?.dailyCalorieGoal ?? 2000, 1);
     final proteinGoal = settings?.dailyProteinGoal ?? 50;
     final carbGoal = settings?.dailyCarbGoal ?? 250;
     final fatGoal = settings?.dailyFatGoal ?? 65;
@@ -214,14 +213,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         todaysMealsAsync.isLoading || todaysMealsAsync.isRefreshing;
     final isRefreshing = todaysMealsAsync.isRefreshing;
 
-    final adjustedGoal = isPro ? calorieGoal + activeCalories : calorieGoal;
-    final remaining = adjustedGoal - totalCalories;
-    final calorieProgress = (totalCalories / math.max(adjustedGoal, 1)).clamp(
-      0.0,
-      1.4,
-    );
+    final adjustedGoal = budget.goal;
+    final remaining = budget.left;
+    final calorieProgress = budget.progress;
+    // Until a Pro user's walking calories are known the goal isn't either;
+    // the outline holds the place rather than showing a figure that jumps.
     final showFirstLoadSkeleton =
-        isLoading && totalCalories == 0 && todaysMeals.isEmpty;
+        (isLoading && totalCalories == 0 && todaysMeals.isEmpty) ||
+        !budget.settled;
     return AppPageScaffold(
       title: '',
       padding: EdgeInsets.zero,
@@ -264,10 +263,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   remaining: remaining,
                   mealCount: mealCount,
                   progress: calorieProgress,
-                  // Pro's goal grows with movement (see adjustedGoal above).
+                  // Pro's goal grows with movement (see CalorieBudget).
                   // That was folded silently into one number, so the feature
                   // people pay for looked like an arbitrary target.
-                  activityBonus: isPro ? activeCalories : 0,
+                  activityBonus: budget.activityBonus,
                   animateIn: _firstOpen,
                 ),
           ),
