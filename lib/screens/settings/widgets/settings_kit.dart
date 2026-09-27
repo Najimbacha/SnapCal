@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../../../widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -242,7 +243,6 @@ class _SettingsTextSheetState extends State<SettingsTextSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -287,7 +287,7 @@ class _SettingsTextSheetState extends State<SettingsTextSheet> {
               ),
             ],
             const SizedBox(height: 22),
-            TextField(
+            AppTextField(
               controller: _controller,
               focusNode: _focusNode,
               autofocus: true,
@@ -296,37 +296,7 @@ class _SettingsTextSheetState extends State<SettingsTextSheet> {
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _submit(),
               onChanged: (_) => setState(() {}),
-              cursorColor: kSettingsGreenText,
-              style: AppTypography.headlineSmall.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 26,
-                letterSpacing: -0.5,
-                color: settingsText(context),
-              ),
-              decoration: InputDecoration(
-                isDense: true,
-                counterText: '',
-                hintText: widget.hintText,
-                hintStyle: AppTypography.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 26,
-                  letterSpacing: -0.5,
-                  color: settingsSubtext(context).withValues(alpha: 0.45),
-                ),
-                contentPadding: const EdgeInsets.only(bottom: 10),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(
-                    color:
-                        isDark
-                            ? Colors.white.withValues(alpha: 0.16)
-                            : kSettingsLine,
-                    width: 1.5,
-                  ),
-                ),
-                focusedBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: kSettingsGreenText, width: 2),
-                ),
-              ),
+              hint: widget.hintText,
             ),
             const SizedBox(height: 24),
             SizedBox(

@@ -9857,6 +9857,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Find a food'**
   String get log_find_food;
+
+  /// No description provided for @auth_show_password.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get auth_show_password;
+
+  /// No description provided for @auth_hide_password.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get auth_hide_password;
 }
 
 class _AppLocalizationsDelegate

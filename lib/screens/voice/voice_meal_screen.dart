@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../core/theme/app_field_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -550,38 +551,21 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                               maxLength: 500,
                               textCapitalization: TextCapitalization.sentences,
                               onChanged: (_) => setState(() => _error = null),
+                              style: TextStyle(
+                                color: AppFieldColors.of(context).text,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              // The shared field style; it keeps its helper
+                              // line, so it stays a plain TextField.
                               decoration: InputDecoration(
                                 hintText: l10n.voice_transcript_hint,
                                 helperText: l10n.voice_example,
                                 helperMaxLines: 2,
-                                filled: true,
-                                fillColor: card,
                                 contentPadding: const EdgeInsets.all(14),
-                                hintStyle: TextStyle(
-                                  color: secondaryText.withValues(alpha: 0.72),
-                                ),
                                 helperStyle: TextStyle(
                                   color: secondaryText,
                                   height: 1.3,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: border),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: border),
-                                ),
-                                disabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: border),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.primary,
-                                    width: 1.5,
-                                  ),
                                 ),
                                 counterText: '',
                               ),

@@ -5530,4 +5530,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get log_find_food => 'Find a food';
+
+  @override
+  String get auth_show_password => 'Show password';
+
+  @override
+  String get auth_hide_password => 'Hide password';
 }

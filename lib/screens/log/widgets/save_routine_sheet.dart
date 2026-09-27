@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/app_text_field.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -275,18 +276,13 @@ class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      key: const ValueKey('routine-name'),
+                    AppTextField(
+                      fieldKey: const ValueKey('routine-name'),
                       controller: _name,
                       maxLength: 40,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        hintText: l10n.feature_templates_name_hint,
-                        counterText: '',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+                      label: l10n.custom_food_name,
+                      hint: l10n.feature_templates_name_hint,
                     ),
                     const SizedBox(height: 12),
                     // The foods, each of which can be left out.

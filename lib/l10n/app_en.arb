@@ -2775,5 +2775,7 @@
     }
   },
   "custom_food_note": "Next time it shows up in search and Recent.",
-  "log_find_food": "Find a food"
+  "log_find_food": "Find a food",
+  "auth_show_password": "Show password",
+  "auth_hide_password": "Hide password"
 }

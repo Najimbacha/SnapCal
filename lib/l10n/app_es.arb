@@ -1872,5 +1872,7 @@
   "custom_food_macros": "Proteínas, carbohidratos y grasas (opcional)",
   "custom_food_add_to": "Añadir a {meal}",
   "custom_food_note": "La próxima vez aparecerá en la búsqueda y en Recientes.",
-  "log_find_food": "Buscar una comida"
+  "log_find_food": "Buscar una comida",
+  "auth_show_password": "Mostrar contraseña",
+  "auth_hide_password": "Ocultar contraseña"
 }

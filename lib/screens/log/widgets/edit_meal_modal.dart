@@ -7,6 +7,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../widgets/motion/reveal.dart';
 import '../../../widgets/motion/lift_when_ready.dart';
+import '../../../widgets/app_text_field.dart';
+import '../../../core/theme/app_field_theme.dart';
 import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
@@ -304,7 +306,6 @@ class _EditMealModalState extends State<EditMealModal>
                         controller: _nameController,
                         label: l10n.log_food_name,
                         hint: l10n.log_food_hint,
-                        icon: WaznIcons.meal,
                         textInputAction: TextInputAction.next,
                         onChanged: (_) => setState(() {}),
                       ),
@@ -313,7 +314,6 @@ class _EditMealModalState extends State<EditMealModal>
                         controller: _portionController,
                         label: l10n.log_portion_desc,
                         hint: l10n.log_portion_hint,
-                        icon: WaznIcons.weight,
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 22),
@@ -685,7 +685,6 @@ class _MealTextField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.hint,
-    required this.icon,
     this.textInputAction,
     this.onChanged,
   });
@@ -693,58 +692,17 @@ class _MealTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final String hint;
-  final IconData icon;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTypography.labelMedium.copyWith(
-            color: context.textSecondaryColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(height: 7),
-        TextField(
-          controller: controller,
-          textInputAction: textInputAction,
-          onChanged: onChanged,
-          style: AppTypography.bodyMedium.copyWith(
-            color: context.textPrimaryColor,
-            fontWeight: FontWeight.w500,
-            fontSize: 15,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: Icon(icon, size: 18, color: context.textMutedColor),
-            filled: true,
-            fillColor:
-                context.isDarkMode
-                    ? Colors.white.withValues(alpha: 0.035)
-                    : Colors.white,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: context.cardBorderColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: context.primaryColor, width: 1.4),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 14,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => AppTextField(
+    controller: controller,
+    label: label,
+    hint: hint,
+    textInputAction: textInputAction,
+    onChanged: onChanged,
+  );
 }
 
 class _NutritionPanel extends StatelessWidget {
@@ -805,12 +763,11 @@ class _NutritionPanel extends StatelessWidget {
                 ),
               ),
               SizedBox(
-                width: 112,
+                width: 124,
                 child: _NumberField(
                   controller: caloriesController,
                   suffix: l10n.settings_kcal_unit,
                   onChanged: onCaloriesChanged,
-                  emphasized: true,
                 ),
               ),
             ],
@@ -980,10 +937,10 @@ class _MacroNumberField extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.labelSmall.copyWith(
-                  color: context.textSecondaryColor,
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppFieldColors.of(context).label,
                   fontWeight: FontWeight.w600,
-                  fontSize: 10,
+                  fontSize: 12.5,
                 ),
               ),
             ),
@@ -1001,53 +958,22 @@ class _NumberField extends StatelessWidget {
     required this.controller,
     required this.suffix,
     this.onChanged,
-    this.emphasized = false,
   });
 
   final TextEditingController controller;
   final String suffix;
   final ValueChanged<String>? onChanged;
-  final bool emphasized;
 
   @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      textInputAction: TextInputAction.next,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      onChanged: onChanged,
-      textAlign: TextAlign.center,
-      style: AppTypography.titleSmall.copyWith(
-        color: context.textPrimaryColor,
-        fontWeight: emphasized ? FontWeight.w700 : FontWeight.w600,
-        fontSize: emphasized ? 16 : 14,
-      ),
-      decoration: InputDecoration(
-        hintText: '0',
-        suffixText: suffix,
-        suffixStyle: AppTypography.labelSmall.copyWith(
-          color: context.textMutedColor,
-          fontSize: 10,
-        ),
-        filled: true,
-        fillColor:
-            context.isDarkMode
-                ? Colors.black.withValues(alpha: 0.12)
-                : Colors.white,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: context.cardBorderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: context.primaryColor, width: 1.4),
-        ),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppTextField(
+    controller: controller,
+    hint: '0',
+    unit: suffix,
+    keyboardType: TextInputType.number,
+    textInputAction: TextInputAction.next,
+    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    onChanged: onChanged,
+  );
 }
 
 /// The bin on the delete question, which gives a small shake as it appears.
