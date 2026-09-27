@@ -16,6 +16,7 @@ import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/core/theme/app_motion.dart';
 import 'package:snapcal/widgets/motion/reveal.dart';
 import 'package:snapcal/widgets/motion/word_rise.dart';
+import '../../widgets/app_toast.dart';
 
 // Matched to the full sign-in screen, which is matched to the app.
 const _minimalBg = Color(0xFFFBFCFA);
@@ -77,20 +78,10 @@ class _AuthBottomSheetState extends ConsumerState<AuthBottomSheet>
   void _showStyledSnackBar(String message, {bool isError = true}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: AppTypography.bodySmall.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: isError ? AppColors.error : AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(24),
-      ),
+    showAppToastOf(
+      context,
+      kind: isError ? ToastKind.error : ToastKind.success,
+      title: message,
     );
   }
 

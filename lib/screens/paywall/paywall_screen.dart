@@ -24,6 +24,7 @@ import '../../widgets/wazn_icons.dart';
 import '../../core/theme/app_motion.dart';
 import '../../widgets/motion/reveal.dart';
 import '../../widgets/wazn_mark.dart';
+import '../../widgets/app_toast.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PALETTE
@@ -573,20 +574,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     required Color backgroundColor,
     required IconData icon,
   }) {
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: backgroundColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+    showAppToast(
+      messenger,
+      kind: toastKindFor(backgroundColor),
+      icon: icon,
+      title: message,
     );
   }
 

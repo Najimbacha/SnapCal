@@ -14,6 +14,7 @@ import '../../../data/models/quick_food.dart';
 import '../../../data/quick_food_catalog.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/quick_food_provider.dart';
+import '../../../widgets/app_toast.dart';
 
 typedef AddCatalogFood = Future<Meal> Function(QuickFood food, double grams);
 typedef RepeatLoggedMeal = Future<Meal> Function(Meal meal);
@@ -296,15 +297,12 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
     final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(l10n.quick_add_added(foodName)),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: l10n.quick_add_undo,
-          onPressed: () => widget.onUndo(mealId),
-        ),
-      ),
+    showAppToast(
+      messenger,
+      kind: ToastKind.success,
+      title: l10n.quick_add_added(foodName),
+      actionLabel: l10n.quick_add_undo,
+      onAction: () => widget.onUndo(mealId),
     );
   }
 }

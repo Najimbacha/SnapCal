@@ -22,6 +22,7 @@ import '../sync/sync_data_screen.dart';
 
 import 'widgets/settings_kit.dart';
 import '../../widgets/wazn_icons.dart';
+import '../../widgets/app_toast.dart';
 
 class DataSyncScreen extends ConsumerWidget {
   const DataSyncScreen({super.key});
@@ -100,7 +101,7 @@ class _ExportRowState extends ConsumerState<_ExportRow> {
       ok = true;
     } catch (e) {
       debugPrint('PDF export failed: $e');
-      messenger.showSnackBar(SnackBar(content: Text(l10n.report_failed)));
+      showAppToast(messenger, kind: ToastKind.error, title: l10n.report_failed);
     } finally {
       if (mounted) {
         setState(() {
@@ -169,7 +170,11 @@ class _CloudSyncRowState extends ConsumerState<_CloudSyncRow> {
     final ok = await ref.read(cloudSyncProvider.notifier).syncNow(manual: true);
     if (!mounted) return;
     if (!ok) {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.sync_status_failed)));
+      showAppToast(
+        messenger,
+        kind: ToastKind.error,
+        title: l10n.sync_status_failed,
+      );
       return;
     }
     HapticFeedback.lightImpact();

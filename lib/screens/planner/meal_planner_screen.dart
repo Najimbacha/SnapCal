@@ -9,7 +9,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:snapcal/widgets/app_icon.dart';
 
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
@@ -27,6 +26,9 @@ import '../../widgets/app_page_scaffold.dart';
 import '../../widgets/motion/reveal.dart';
 import 'meal_planner_setup.dart';
 import 'meal_planner_widgets.dart';
+import '../../widgets/app_toast.dart';
+import '../../widgets/async_state_widgets.dart';
+import '../../widgets/wazn_icons.dart';
 
 enum _PlannerTab { plan, grocery }
 
@@ -87,9 +89,7 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       final error = next.error;
       if (error == null || next.currentPlan == null) return;
       next.clearError();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: AppColors.error),
-      );
+      showAppToastOf(context, kind: ToastKind.error, title: error);
     });
 
     if (access.isUnknown) {
@@ -97,7 +97,31 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
         title: '',
         showHeader: false,
         padding: EdgeInsets.zero,
-        child: const Center(child: CircularProgressIndicator()),
+        // The outline of a day of meals while access is checked.
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    for (var i = 0; i < 7; i++) ...[
+                      if (i > 0) const SizedBox(width: 8),
+                      const Expanded(
+                        child: AppSkeletonBlock(
+                          height: 56,
+                          borderRadius: BorderRadius.all(Radius.circular(14)),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const AppListSkeleton(),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -443,8 +467,10 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     if (!mounted) return;
     setState(() => _editingSetup = false);
     if (!ConnectivityService().hasInternetAccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.error_offline)),
+      showAppToastOf(
+        context,
+        kind: ToastKind.warning,
+        title: AppLocalizations.of(context)!.error_offline,
       );
       return;
     }
@@ -474,15 +500,19 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
       await mealLog.addMeal(logged, mealDate: today);
     } catch (e) {
       debugPrint('Logging planned meal failed: $e');
-      messenger.showSnackBar(SnackBar(content: Text(l10n.meal_save_failed)));
+      showAppToast(
+        messenger,
+        kind: ToastKind.error,
+        title: l10n.meal_save_failed,
+      );
       return;
     }
     planner.markPlannedMealLogged(meal.id);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(l10n.result_save_success),
-        backgroundColor: AppColors.success,
-      ),
+    showAppToast(
+      messenger,
+      kind: ToastKind.success,
+      title: l10n.result_save_success,
+      detail: meal.foodName,
     );
   }
 
@@ -510,8 +540,10 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
 
   Future<void> _showSwapSheet(Meal meal, int dayIndex) async {
     if (!ConnectivityService().hasInternetAccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.error_offline)),
+      showAppToastOf(
+        context,
+        kind: ToastKind.warning,
+        title: AppLocalizations.of(context)!.error_offline,
       );
       return;
     }
@@ -545,22 +577,20 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
     final error = _planner.error;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          error ?? AppLocalizations.of(context)!.planner_swap_success,
-        ),
-        backgroundColor: error == null ? AppColors.success : AppColors.error,
-      ),
+    showAppToastOf(
+      context,
+      kind: error == null ? ToastKind.success : ToastKind.error,
+      title: error ?? AppLocalizations.of(context)!.planner_swap_success,
     );
     if (error != null) _planner.clearError();
   }
 
   void _showRegenLimit() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(AppLocalizations.of(context)!.planner_regen_limit),
-      ),
+    showAppToastOf(
+      context,
+      kind: ToastKind.info,
+      icon: WaznIcons.clock,
+      title: AppLocalizations.of(context)!.planner_regen_limit,
     );
   }
 
@@ -599,8 +629,10 @@ class _MealPlannerScreenState extends ConsumerState<MealPlannerScreen> {
     required Future<void> Function() onConfirm,
   }) {
     if (!ConnectivityService().hasInternetAccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.error_offline)),
+      showAppToastOf(
+        context,
+        kind: ToastKind.warning,
+        title: AppLocalizations.of(context)!.error_offline,
       );
       return;
     }

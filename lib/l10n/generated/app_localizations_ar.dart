@@ -5330,4 +5330,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get about_follow_us => 'تابعنا';
+
+  @override
+  String get progress_take_first_photo => 'التقط صورتك الأولى';
 }

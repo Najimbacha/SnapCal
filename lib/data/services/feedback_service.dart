@@ -6,6 +6,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/app_toast.dart';
+import '../../widgets/wazn_icons.dart';
 
 /// "Send feedback" in Settings: an email to the developer, with the app
 /// version and platform filled in so a report can be acted on.
@@ -59,8 +61,11 @@ class FeedbackService {
 
     // No mail app on the phone: hand them the address instead.
     await Clipboard.setData(const ClipboardData(text: supportEmail));
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.feedback_email_copied(supportEmail))),
+    showAppToast(
+      messenger,
+      kind: ToastKind.success,
+      icon: WaznIcons.mail,
+      title: l10n.feedback_email_copied(supportEmail),
     );
   }
 }

@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import '../core/state/async_ui_state.dart';
 import '../core/theme/app_colors.dart';
+import '../core/theme/app_motion.dart';
 import '../core/theme/app_typography.dart';
 import '../core/theme/theme_colors.dart';
 import '../l10n/generated/app_localizations.dart';
 import 'ui_blocks.dart';
 import 'wazn_icons.dart';
+import 'app_toast.dart';
 
-class AppSkeletonBlock extends StatelessWidget {
+/// A soft placeholder in the shape of what is loading, with a band of light
+/// gliding across it so the wait reads as progress. Still with reduced
+/// motion.
+class AppSkeletonBlock extends StatefulWidget {
   final double height;
   final double? width;
   final BorderRadiusGeometry borderRadius;
@@ -20,28 +25,77 @@ class AppSkeletonBlock extends StatelessWidget {
   });
 
   @override
+  State<AppSkeletonBlock> createState() => _AppSkeletonBlockState();
+}
+
+class _AppSkeletonBlockState extends State<AppSkeletonBlock>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sweep = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1300),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.reduceMotion(context)) {
+      _sweep.stop();
+    } else if (!_sweep.isAnimating) {
+      _sweep.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _sweep.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.35, end: 0.75),
-      duration: const Duration(milliseconds: 900),
-      curve: Curves.easeInOut,
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Container(
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(
-                alpha: 0.55,
+    final dark = context.isDarkMode;
+    final base =
+        dark
+            ? Colors.white.withValues(alpha: 0.07)
+            : const Color(0xFF16181D).withValues(alpha: 0.06);
+    final light = Colors.white.withValues(alpha: dark ? 0.07 : 0.55);
+    return ClipRRect(
+      borderRadius: widget.borderRadius,
+      child: SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: base),
+            AnimatedBuilder(
+              animation: _sweep,
+              builder:
+                  (context, child) =>
+                      _sweep.isAnimating
+                          ? FractionalTranslation(
+                            translation: Offset(
+                              -1 + 2 * Curves.easeInOut.transform(_sweep.value),
+                              0,
+                            ),
+                            child: child,
+                          )
+                          : const SizedBox.shrink(),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      light.withValues(alpha: 0),
+                      light,
+                      light.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
               ),
-              borderRadius: borderRadius,
             ),
-          ),
-        );
-      },
-      onEnd: () {},
+          ],
+        ),
+      ),
     );
   }
 }
@@ -66,6 +120,122 @@ class AppSectionSkeleton extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The outline of a stats page while it loads: three figures, a week of
+/// bars and a line of text, in the places the real ones will take.
+class AppStatsSkeleton extends StatelessWidget {
+  const AppStatsSkeleton({super.key});
+
+  static const _bars = [.55, .75, .45, .85, .65, .7, .5];
+
+  @override
+  Widget build(BuildContext context) {
+    Widget tile() => Expanded(
+      child: AppSectionCard(
+        glass: true,
+        padding: const EdgeInsets.all(12),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppSkeletonBlock(height: 10, width: 54),
+            SizedBox(height: 8),
+            AppSkeletonBlock(height: 20, width: 70),
+          ],
+        ),
+      ),
+    );
+    return Column(
+      children: [
+        Row(
+          children: [
+            tile(),
+            const SizedBox(width: 10),
+            tile(),
+            const SizedBox(width: 10),
+            tile(),
+          ],
+        ),
+        const SizedBox(height: 12),
+        AppSectionCard(
+          glass: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppSkeletonBlock(height: 14, width: 150),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 120,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final (i, h) in _bars.indexed) ...[
+                      if (i > 0) const SizedBox(width: 9),
+                      Expanded(
+                        child: AppSkeletonBlock(
+                          height: 120 * h,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(7),
+                            bottom: Radius.circular(3),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const AppSectionSkeleton(rows: 2),
+      ],
+    );
+  }
+}
+
+/// The outline of a list of cards, such as a day of planned meals.
+class AppListSkeleton extends StatelessWidget {
+  final int rows;
+
+  const AppListSkeleton({super.key, this.rows = 4});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (var i = 0; i < rows; i++) ...[
+          AppSectionCard(
+            glass: true,
+            padding: const EdgeInsets.all(14),
+            child: const Row(
+              children: [
+                AppSkeletonBlock(
+                  height: 52,
+                  width: 52,
+                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                ),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppSkeletonBlock(height: 14, width: 160),
+                      SizedBox(height: 8),
+                      AppSkeletonBlock(height: 11, width: 100),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 12),
+                AppSkeletonBlock(height: 18, width: 44),
+              ],
+            ),
+          ),
+          if (i < rows - 1) const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }
@@ -281,19 +451,5 @@ void showFriendlyFallbackSnack(
   String message, {
   IconData icon = WaznIcons.info,
 }) {
-  final messenger = ScaffoldMessenger.maybeOf(context);
-  if (messenger == null) return;
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(icon, size: 18, color: Colors.white),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-          ],
-        ),
-      ),
-    );
+  showAppToastOf(context, kind: ToastKind.info, icon: icon, title: message);
 }

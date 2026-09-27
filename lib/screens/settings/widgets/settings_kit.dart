@@ -17,6 +17,7 @@ import '../../../core/theme/app_motion.dart';
 import '../../../widgets/motion/rolling_number.dart';
 import '../../../widgets/motion/theme_reveal.dart';
 import '../../../widgets/motion/visible_gate.dart';
+import '../../../widgets/app_toast.dart';
 
 // Shared building blocks for the Settings area: one visual language for
 // sections, rows, switches, sheets and dialogs across the root screen and
@@ -159,8 +160,10 @@ void showSettingsNameDialog(
                 .updateDisplayName(name);
             if (!context.mounted) return;
             if (ref.read(authNotifierProvider).hasError) {
-              messenger.showSnackBar(
-                SnackBar(content: Text(l10n.settings_name_failed)),
+              showAppToast(
+                messenger,
+                kind: ToastKind.error,
+                title: l10n.settings_name_failed,
               );
             }
           },

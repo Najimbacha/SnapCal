@@ -26,6 +26,7 @@ import '../../providers/meal_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../snap/widgets/result_modal.dart';
 import '../../widgets/motion/reveal.dart';
+import '../../widgets/app_toast.dart';
 
 enum _VoicePhase { ready, listening, analyzing }
 
@@ -417,7 +418,11 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
       );
     } catch (error) {
       debugPrint('Saving voice meal failed: $error');
-      messenger.showSnackBar(SnackBar(content: Text(l10n.meal_save_failed)));
+      showAppToast(
+        messenger,
+        kind: ToastKind.error,
+        title: l10n.meal_save_failed,
+      );
     } finally {
       _saving = false;
     }

@@ -21,6 +21,7 @@ import 'pace_step.dart';
 import 'plan_result_step.dart';
 import 'target_step.dart';
 import 'welcome_step.dart';
+import '../../widgets/app_toast.dart';
 
 enum _Step {
   welcome,
@@ -257,10 +258,10 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       debugPrint('OnboardingFlow: Error completing onboarding: $e');
       if (!mounted) return;
       setState(() => _completing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.onboarding_finish_error),
-        ),
+      showAppToastOf(
+        context,
+        kind: ToastKind.error,
+        title: AppLocalizations.of(context)!.onboarding_finish_error,
       );
       return;
     }

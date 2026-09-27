@@ -12,6 +12,7 @@ import '../../widgets/auth_modal.dart';
 import '../../widgets/ui_blocks.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../widgets/wazn_icons.dart';
+import '../../widgets/app_toast.dart';
 
 /// ============================================================================
 /// SYNC DATA SCREEN - WITH DIRECT AUTH OPTIONS
@@ -246,9 +247,7 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
     if (!mounted) return;
     final message = authErrorMessage(AppLocalizations.of(context)!, e);
     if (message == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
-    );
+    showAppToastOf(context, kind: ToastKind.error, title: message);
   }
 
   /// A guest session is a signed-in Firebase user too; only a real account

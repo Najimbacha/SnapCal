@@ -5347,4 +5347,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get about_follow_us => 'Follow us';
+
+  @override
+  String get progress_take_first_photo => 'Take your first photo';
 }
