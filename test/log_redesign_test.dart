@@ -17,6 +17,8 @@ import 'package:snapcal/providers/repository_providers.dart';
 import 'package:snapcal/providers/settings_provider.dart';
 import 'package:snapcal/providers/water_provider.dart';
 import 'package:snapcal/screens/log/log_screen.dart';
+import 'package:snapcal/data/models/meal_template.dart';
+import 'package:snapcal/providers/template_provider.dart';
 
 class _FakeSettings extends Settings {
   @override
@@ -26,6 +28,12 @@ class _FakeSettings extends Settings {
 class _FakeActivity extends Activity {
   @override
   Future<ActivitySummary> build() async => const ActivitySummary(steps: 6842);
+}
+
+/// No saved routines; the real store lives in Hive.
+class _FakeTemplates extends Templates {
+  @override
+  Future<List<MealTemplate>> build() async => const [];
 }
 
 class _FakeWater extends Water {
@@ -107,6 +115,7 @@ Widget _host({Locale locale = const Locale('en')}) {
 
   return ProviderScope(
     overrides: [
+      templatesProvider.overrideWith(_FakeTemplates.new),
       settingsProvider.overrideWith(() => _FakeSettings()),
       waterProvider.overrideWith(() => _FakeWater()),
       activityProvider.overrideWith(() => _FakeActivity()),

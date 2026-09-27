@@ -31,7 +31,12 @@ class QuickAddFoods extends ConsumerStatefulWidget {
     required this.onAddCatalogFood,
     required this.onRepeatMeal,
     required this.onUndo,
+    this.leading = const [],
   });
+
+  /// Cards shown first in the row, before the food suggestions: the user's
+  /// saved routines.
+  final List<Widget> leading;
 
   final List<Meal> meals;
   final String mealType;
@@ -146,6 +151,19 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
           ),
         ),
         const SizedBox(height: 10),
+        if (suggestions.isEmpty && widget.leading.isNotEmpty) ...[
+          SizedBox(
+            height: 112,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: widget.leading.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, index) => widget.leading[index],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         if (suggestions.isEmpty)
           _EmptyQuickFoods(
             text:
@@ -160,10 +178,13 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
               key: const ValueKey('quick-add-carousel'),
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
-              itemCount: suggestions.length,
+              itemCount: widget.leading.length + suggestions.length,
               separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
-                final suggestion = suggestions[index];
+                if (index < widget.leading.length) {
+                  return widget.leading[index];
+                }
+                final suggestion = suggestions[index - widget.leading.length];
                 return _QuickFoodCard(
                   suggestion: suggestion,
                   languageCode: Localizations.localeOf(context).languageCode,

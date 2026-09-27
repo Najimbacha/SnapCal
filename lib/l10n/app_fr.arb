@@ -1845,5 +1845,18 @@
   "coach_ask_eat": "Que devrais-je manger aujourd’hui ?",
   "coach_ask_track": "Où en suis-je par rapport à mes objectifs aujourd’hui ?",
   "coach_ask_week": "Crée-moi un plan de repas",
-  "coach_ask_protein": "Propose-moi un repas riche en protéines"
+  "coach_ask_protein": "Propose-moi un repas riche en protéines",
+  "routine_save_as": "Enregistrer comme routine",
+  "routine_save_body": "{count, plural, =1{Enregistrez à nouveau cet aliment d’un seul geste.} other{Enregistrez à nouveau ces {count} aliments d’un seul geste.}}",
+  "routine_limit_title": "Vous avez {used} routines gratuites sur {limit}",
+  "routine_limit_body": "Avec Pro, gardez-en autant que vous voulez.",
+  "routine_get_pro": "Passer à Pro",
+  "routine_saved": "Routine enregistrée",
+  "routine_logged": "Routine enregistrée dans le journal",
+  "routine_logged_detail": "{count, plural, =1{1 aliment ajouté au {meal}} other{{count} aliments ajoutés au {meal}}}",
+  "routine_summary": "{count, plural, =1{1 aliment} other{{count} aliments}} · {kcal} kcal",
+  "routine_new": "Nouveau",
+  "routine_rename": "Renommer",
+  "routine_delete": "Supprimer la routine",
+  "routine_name_default": "Mon {meal} habituel"
 }

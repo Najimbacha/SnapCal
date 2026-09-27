@@ -1845,5 +1845,18 @@
   "coach_ask_eat": "¿Qué debería comer hoy?",
   "coach_ask_track": "¿Cómo voy con mis objetivos hoy?",
   "coach_ask_week": "Crea un plan de comidas para mí",
-  "coach_ask_protein": "Sugiere una comida alta en proteínas"
+  "coach_ask_protein": "Sugiere una comida alta en proteínas",
+  "routine_save_as": "Guardar como rutina",
+  "routine_save_body": "{count, plural, =1{Registra este alimento otra vez con un toque.} other{Registra estos {count} alimentos otra vez con un toque.}}",
+  "routine_limit_title": "Tienes {used} de {limit} rutinas gratis",
+  "routine_limit_body": "Con Pro guarda todas las que quieras.",
+  "routine_get_pro": "Obtener Pro",
+  "routine_saved": "Rutina guardada",
+  "routine_logged": "Rutina registrada",
+  "routine_logged_detail": "{count, plural, =1{1 alimento añadido a {meal}} other{{count} alimentos añadidos a {meal}}}",
+  "routine_summary": "{count, plural, =1{1 alimento} other{{count} alimentos}} · {kcal} kcal",
+  "routine_new": "Nuevo",
+  "routine_rename": "Renombrar",
+  "routine_delete": "Eliminar rutina",
+  "routine_name_default": "Mi {meal} de siempre"
 }

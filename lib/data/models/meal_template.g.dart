@@ -72,13 +72,14 @@ class MealTemplateAdapter extends TypeAdapter<MealTemplate> {
       items: (fields[3] as List).cast<TemplateItem>(),
       createdAt: fields[4] as int,
       usageCount: fields[5] as int,
+      mealType: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, MealTemplate obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -90,7 +91,9 @@ class MealTemplateAdapter extends TypeAdapter<MealTemplate> {
       ..writeByte(4)
       ..write(obj.createdAt)
       ..writeByte(5)
-      ..write(obj.usageCount);
+      ..write(obj.usageCount)
+      ..writeByte(6)
+      ..write(obj.mealType);
   }
 
   @override

@@ -2690,5 +2690,62 @@
   "coach_ask_eat": "What should I eat today?",
   "coach_ask_track": "How am I doing against my goals today?",
   "coach_ask_week": "Create a meal plan for me",
-  "coach_ask_protein": "Suggest a high-protein meal"
+  "coach_ask_protein": "Suggest a high-protein meal",
+  "routine_save_as": "Save as a routine",
+  "routine_save_body": "{count, plural, =1{Log this food again with one tap.} other{Log these {count} foods again with one tap.}}",
+  "@routine_save_body": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routine_limit_title": "You have {used} of {limit} free routines",
+  "@routine_limit_title": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "routine_limit_body": "Pro keeps as many as you like.",
+  "routine_get_pro": "Get Pro",
+  "routine_saved": "Routine saved",
+  "routine_logged": "Routine logged",
+  "routine_logged_detail": "{count, plural, =1{1 food added to {meal}} other{{count} foods added to {meal}}}",
+  "@routine_logged_detail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "meal": {
+        "type": "String"
+      }
+    }
+  },
+  "routine_summary": "{count, plural, =1{1 food} other{{count} foods}} · {kcal} kcal",
+  "@routine_summary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "kcal": {
+        "type": "String"
+      }
+    }
+  },
+  "routine_new": "New",
+  "routine_rename": "Rename",
+  "routine_delete": "Delete routine",
+  "routine_name_default": "My usual {meal}",
+  "@routine_name_default": {
+    "placeholders": {
+      "meal": {
+        "type": "String"
+      }
+    }
+  }
 }

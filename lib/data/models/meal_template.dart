@@ -72,6 +72,12 @@ class MealTemplate extends HiveObject {
   @HiveField(5)
   int usageCount;
 
+  /// The meal it was saved from ("Breakfast", "Lunch", "Dinner" or "Snack"),
+  /// so logging it puts the foods back there. Null for routines saved before
+  /// this was kept.
+  @HiveField(6)
+  final String? mealType;
+
   MealTemplate({
     required this.id,
     required this.name,
@@ -79,6 +85,7 @@ class MealTemplate extends HiveObject {
     required this.items,
     required this.createdAt,
     this.usageCount = 0,
+    this.mealType,
   });
 
   int get totalCalories => items.fold(0, (sum, i) => sum + i.calories);
@@ -93,6 +100,7 @@ class MealTemplate extends HiveObject {
     'items': items.map((i) => i.toJson()).toList(),
     'createdAt': createdAt,
     'usageCount': usageCount,
+    if (mealType != null) 'mealType': mealType,
   };
 
   factory MealTemplate.fromJson(Map<String, dynamic> json) => MealTemplate(
@@ -103,5 +111,6 @@ class MealTemplate extends HiveObject {
         (json['items'] as List).map((i) => TemplateItem.fromJson(i)).toList(),
     createdAt: json['createdAt'] as int,
     usageCount: json['usageCount'] as int? ?? 0,
+    mealType: json['mealType'] as String?,
   );
 }
