@@ -60,7 +60,8 @@ class WaznMarkPainter extends CustomPainter {
               ..arcToPoint(
                 Offset(corner.dx - dx * 16, corner.dy),
                 radius: const Radius.circular(16),
-                clockwise: dx * dy < 0,
+                // Rounded outward, as on the app icon.
+                clockwise: dx * dy > 0,
               )
               ..lineTo(corner.dx - dx * 30, corner.dy);
         final metric = path.computeMetrics().first;
