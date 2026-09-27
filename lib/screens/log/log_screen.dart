@@ -1,3 +1,4 @@
+import '../../providers/calorie_budget_provider.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -119,6 +120,8 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     _lastDate = selectedDate;
     _lastIds = visibleIds;
     final isToday = app_date.DateUtils.isToday(selectedDate);
+    // Today's goal and "left" match Home's, walking calories included.
+    final budget = ref.watch(calorieBudgetProvider);
     final proteinRemaining = math.max(
       selectedSummary.proteinGoal - selectedSummary.protein,
       0,
@@ -219,7 +222,9 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                 title: l10n.home_metric_meals,
                 announceChange: sameDay,
                 calories: selectedSummary.calories,
-                calorieGoal: selectedSummary.calorieGoal,
+                calorieGoal:
+                    isToday ? budget.goal : selectedSummary.calorieGoal,
+                activityBonus: isToday ? budget.activityBonus : 0,
               ),
               const SizedBox(height: 8),
               _DaySwitch(
@@ -843,9 +848,13 @@ class _MealsHeading extends StatelessWidget {
     this.announceChange = true,
     required this.calories,
     required this.calorieGoal,
+    this.activityBonus = 0,
   });
 
   final String title;
+
+  /// Walking calories already in [calorieGoal], named under the bar.
+  final int activityBonus;
 
   /// Whether a change in [calories] floats up as "+190" or "−610": yes for
   /// a meal added or removed, no for switching days.
@@ -962,6 +971,18 @@ class _MealsHeading extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (activityBonus > 0) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    l10n.home_goal_activity_bonus(activityBonus),
+                    key: const ValueKey('log-activity-bonus'),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: context.primaryColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

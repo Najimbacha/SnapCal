@@ -3,64 +3,46 @@ import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/services/widget_service.dart';
 import '../l10n/generated/app_localizations.dart';
-import 'meal_provider.dart';
 import 'settings_provider.dart';
-import 'activity_provider.dart';
+import 'calorie_budget_provider.dart';
 
 part 'widget_sync_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 class WidgetSync extends _$WidgetSync {
   Timer? _debounceTimer;
-  DateTime? _lastSyncTime;
 
   @override
   FutureOr<void> build() {
-    ref.listen(todaysMealsProvider, (_, _) => _scheduleSync());
+    // The widget shows the same "left" as Home, from the one budget, and
+    // follows it within a moment: it used to wait up to 10 seconds after a
+    // meal was logged, and to check Pro its own way.
+    ref.listen(calorieBudgetProvider, (_, _) => _scheduleSync());
     ref.listen(settingsProvider, (_, _) => _scheduleSync());
+    ref.onDispose(() => _debounceTimer?.cancel());
     _scheduleSync();
   }
 
+  /// A burst of changes, as when a routine logs several foods, writes once.
   void _scheduleSync() {
-    if (_debounceTimer?.isActive ?? false) return;
-    final now = DateTime.now();
-    final diff =
-        _lastSyncTime == null
-            ? const Duration(days: 1)
-            : now.difference(_lastSyncTime!);
-    if (diff >= const Duration(seconds: 10)) {
-      _performSync();
-    } else {
-      _debounceTimer = Timer(const Duration(seconds: 10) - diff, _performSync);
-    }
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 600), _performSync);
   }
 
   void _performSync() {
-    _debounceTimer?.cancel();
-    _lastSyncTime = DateTime.now();
-
     final settings = ref.read(settingsProvider).valueOrNull;
-    final activity = ref.read(activityProvider).valueOrNull;
     if (settings == null) return;
-
-    final eaten =
-        ref
-            .read(todaysMealsProvider)
-            .valueOrNull
-            ?.fold<int>(0, (s, m) => s + m.calories) ??
-        0;
-    final burned = activity?.activeCalories.toInt() ?? 0;
-    final goal = settings.dailyCalorieGoal;
+    final budget = ref.read(calorieBudgetProvider);
     final lang = settings.languageCode ?? 'en';
-    final isPro = settings.isPro;
+    final isPro = ref.read(effectiveIsProProvider);
 
-    final netGoal = isPro ? goal + burned : goal;
-    final remaining = netGoal - eaten;
-    final progress = netGoal > 0 ? (eaten / netGoal).clamp(0.0, 1.0) : 0.0;
+    final remaining = budget.left;
+    final progress =
+        budget.goal > 0 ? (budget.eaten / budget.goal).clamp(0.0, 1.0) : 0.0;
     final status = _getStatus(remaining.toDouble(), progress, lang);
 
     WidgetService.updateWidgetData(
-      remainingCalories: remaining.toInt(),
+      remainingCalories: remaining,
       progress: progress,
       status: status,
       isLocked: !isPro,
