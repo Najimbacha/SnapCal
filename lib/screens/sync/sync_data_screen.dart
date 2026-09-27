@@ -1,3 +1,4 @@
+import '../../core/theme/app_button_theme.dart';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -477,28 +478,14 @@ class _AuthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAccent = backgroundColor == Theme.of(context).colorScheme.primary;
-
     return _ScaleTap(
       onTap: isLoading ? () {} : onPressed,
       child: Container(
         width: double.infinity,
-        height: 54,
+        height: appButtonHeight,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(appButtonRadius),
           color: backgroundColor,
-          boxShadow:
-              isAccent
-                  ? [
-                    BoxShadow(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.35),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                  : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

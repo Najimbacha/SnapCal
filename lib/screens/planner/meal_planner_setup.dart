@@ -1,3 +1,4 @@
+import '../../core/theme/app_button_theme.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/app_text_field.dart';
 import 'package:flutter/services.dart';
@@ -764,10 +765,7 @@ class _SetupBottomBar extends StatelessWidget {
                 key: const ValueKey('planner-setup-continue'),
                 onPressed: onNext,
                 style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  minimumSize: const Size.fromHeight(appButtonHeight),
                 ),
                 child: Text(l10n.common_continue),
               )
@@ -777,10 +775,7 @@ class _SetupBottomBar extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: onBack,
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        minimumSize: const Size.fromHeight(appButtonHeight),
                       ),
                       child: Text(l10n.common_back),
                     ),
@@ -793,10 +788,7 @@ class _SetupBottomBar extends StatelessWidget {
                       onPressed: onGenerate,
                       icon: const Icon(WaznIcons.ai, size: 18),
                       style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        minimumSize: const Size.fromHeight(appButtonHeight),
                       ),
                       label: Text(l10n.planner_generate_plan),
                     ),

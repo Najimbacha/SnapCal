@@ -4,6 +4,7 @@ import '../../../widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import '../../../core/theme/app_button_theme.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../widgets/motion/reveal.dart';
 import '../../../widgets/wazn_icons.dart';
@@ -22,7 +23,6 @@ const _settingsBgLight = Color(0xFFF9F8F5);
 const _settingsBgDark = Color(0xFF14130F);
 const _settingsInk = Color(0xFF1C1917);
 const _settingsLine = Color(0xFFE8E4DC);
-const _settingsGreen = Color(0xFF1A3D2B);
 const _settingsGreenText = Color(0xFF16733A);
 
 Color _settingsBg(BuildContext context) {
@@ -371,9 +371,7 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal>
                 child: FilledButton(
                   onPressed: _save,
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                    backgroundColor: _settingsGreen,
-                    foregroundColor: const Color(0xFFF0FDF4),
+                    minimumSize: const Size.fromHeight(appButtonHeight),
                   ),
                   child: AnimatedSwitcher(
                     duration: AppMotion.standard,

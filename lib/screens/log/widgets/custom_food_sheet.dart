@@ -1,3 +1,4 @@
+import '../../../core/theme/app_button_theme.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -113,7 +114,6 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final media = MediaQuery.of(context);
-    final primary = context.primaryColor;
     final hasName = widget.initialName.trim().isNotEmpty;
 
     return Padding(
@@ -243,12 +243,8 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
                             icon: const Icon(WaznIcons.plus, size: 16),
                             label: Text(l10n.custom_food_macros),
                             style: TextButton.styleFrom(
-                              foregroundColor: primary,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 4,
-                              ),
-                              textStyle: AppTypography.labelLarge.copyWith(
-                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
@@ -271,27 +267,10 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
               ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 52,
+                height: appButtonHeight,
                 child: FilledButton(
                   key: const ValueKey('custom-food-add'),
                   onPressed: _canAdd ? _add : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: primary,
-                    disabledBackgroundColor: primary.withValues(alpha: 0.28),
-                    foregroundColor: context.onPrimaryColor,
-                    // Greyed out, the button sits on a faded green: white text
-                    // reads on it in both modes.
-                    disabledForegroundColor: Colors.white.withValues(
-                      alpha: context.isDarkMode ? 0.5 : 0.85,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    textStyle: AppTypography.titleSmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                    ),
-                  ),
                   child: AnimatedSwitcher(
                     duration: AppMotion.standard,
                     transitionBuilder:

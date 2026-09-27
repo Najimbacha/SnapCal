@@ -1,3 +1,4 @@
+import '../../../core/theme/app_button_theme.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -354,7 +355,6 @@ class _EditMealModalState extends State<EditMealModal>
                           style: TextButton.styleFrom(
                             foregroundColor:
                                 Theme.of(context).colorScheme.error,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ],
@@ -377,30 +377,9 @@ class _EditMealModalState extends State<EditMealModal>
               child: LiftWhenReady(
                 ready: _canSave,
                 child: SizedBox(
-                  height: 52,
-                  child: ElevatedButton(
+                  height: appButtonHeight,
+                  child: FilledButton(
                     onPressed: _canSave ? _handleSave : null,
-                    style: ElevatedButton.styleFrom(
-                      animationDuration: AppMotion.standard,
-                      backgroundColor: context.primaryColor,
-                      disabledBackgroundColor: context.primaryColor.withValues(
-                        alpha: 0.28,
-                      ),
-                      foregroundColor: context.onPrimaryColor,
-                      // Greyed out, the button sits on a faded green: white text
-                      // reads on it in both modes.
-                      disabledForegroundColor: Colors.white.withValues(
-                        alpha: context.isDarkMode ? 0.5 : 0.8,
-                      ),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      textStyle: AppTypography.titleSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
                     child: AnimatedSwitcher(
                       duration: AppMotion.standard,
                       transitionBuilder:

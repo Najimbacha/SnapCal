@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import '../../../widgets/app_button.dart';
+import '../../../core/theme/app_button_theme.dart';
 import '../../../widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -299,32 +301,16 @@ class _SettingsTextSheetState extends State<SettingsTextSheet> {
               hint: widget.hintText,
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _isValid ? _submit : null,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  backgroundColor: kSettingsGreen,
-                  disabledBackgroundColor: kSettingsGreen.withValues(
-                    alpha: 0.35,
-                  ),
-                  foregroundColor: const Color(0xFFF0FDF4),
-                ),
-                child: Text(l10n.common_save),
-              ),
+            AppButton(
+              label: l10n.common_save,
+              onPressed: _isValid ? _submit : null,
             ),
             const SizedBox(height: 4),
             Center(
-              child: TextButton(
+              child: AppButton.text(
+                label: l10n.common_cancel,
+                quiet: true,
                 onPressed: () => Navigator.pop(context),
-                child: Text(
-                  l10n.common_cancel,
-                  style: TextStyle(color: settingsSubtext(context)),
-                ),
               ),
             ),
           ],
@@ -910,24 +896,18 @@ class _SettingsValueSheetState extends State<SettingsValueSheet>
                         const Duration(milliseconds: 300),
                       ),
                       curve: Curves.easeOutCubic,
-                      width: _saving ? 54 : constraints.maxWidth,
-                      height: 54,
+                      width: _saving ? appButtonHeight : constraints.maxWidth,
+                      height: appButtonHeight,
                       child: FilledButton(
                         onPressed: _isValid ? () => _confirm(value!) : null,
                         style: FilledButton.styleFrom(
                           padding: EdgeInsets.zero,
-                          minimumSize: const Size(54, 54),
+                          minimumSize: const Size.square(appButtonHeight),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
-                              _saving ? 27 : 16,
+                              _saving ? appButtonHeight / 2 : appButtonRadius,
                             ),
                           ),
-                          backgroundColor:
-                              _saving ? AppColors.primary : kSettingsGreen,
-                          disabledBackgroundColor: kSettingsGreen.withValues(
-                            alpha: 0.35,
-                          ),
-                          foregroundColor: const Color(0xFFF0FDF4),
                         ),
                         child:
                             _saving
@@ -953,12 +933,10 @@ class _SettingsValueSheetState extends State<SettingsValueSheet>
             ),
             const SizedBox(height: 4),
             Center(
-              child: TextButton(
+              child: AppButton.text(
+                label: l10n.common_cancel,
+                quiet: true,
                 onPressed: () => Navigator.pop(context),
-                child: Text(
-                  l10n.common_cancel,
-                  style: TextStyle(color: settingsSubtext(context)),
-                ),
               ),
             ),
           ],

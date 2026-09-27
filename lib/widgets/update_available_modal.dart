@@ -1,3 +1,4 @@
+import '../core/theme/app_button_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:snapcal/core/theme/app_colors.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
@@ -88,30 +89,16 @@ class UpdateAvailableModal {
                         width: double.infinity,
                         child: FilledButton(
                           onPressed: () => Navigator.pop(dialogContext, true),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.legacyDeepForest,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: Text(
-                            l10n.update_now,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
+                          child: Text(l10n.update_now),
                         ),
                       ),
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: () => Navigator.pop(dialogContext, false),
-                        child: Text(
-                          l10n.update_later,
-                          style: TextStyle(
-                            color: textColor.withValues(alpha: 0.5),
-                            fontWeight: FontWeight.w500,
-                          ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppButtonColors.of(context).quiet,
                         ),
+                        child: Text(l10n.update_later),
                       ),
                     ],
                   ),

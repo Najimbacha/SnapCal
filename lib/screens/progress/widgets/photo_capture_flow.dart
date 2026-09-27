@@ -1,3 +1,4 @@
+import '../../../core/theme/app_button_theme.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
@@ -168,10 +169,7 @@ class _PhotoCaptureFlowState extends ConsumerState<PhotoCaptureFlow> {
                           ? _save
                           : null,
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    minimumSize: const Size.fromHeight(appButtonHeight),
                   ),
                   child: AnimatedSwitcher(
                     duration: AppMotion.standard,

@@ -1,3 +1,4 @@
+import '../../../core/theme/app_button_theme.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -88,10 +89,7 @@ class ProgressCard extends StatelessWidget {
                 AppLocalizations.of(context)!.progress_compare_previous,
               ),
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(44),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                minimumSize: const Size.fromHeight(appButtonHeight),
               ),
             ),
           ],

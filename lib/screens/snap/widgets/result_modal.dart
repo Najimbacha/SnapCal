@@ -1,3 +1,4 @@
+import '../../../core/theme/app_button_theme.dart';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -1053,7 +1054,7 @@ class _SaveButton extends StatelessWidget {
   final String label, doneLabel;
   final VoidCallback onPressed;
 
-  static const _height = 56.0;
+  static const _height = appButtonHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -1061,6 +1062,7 @@ class _SaveButton extends StatelessWidget {
       context,
       const Duration(milliseconds: 320),
     );
+    final scheme = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
       enabled: !saving,
@@ -1075,8 +1077,10 @@ class _SaveButton extends StatelessWidget {
                 width: saving ? _height : constraints.maxWidth,
                 height: _height,
                 decoration: BoxDecoration(
-                  color: saving ? AppColors.primary : AppColors.emeraldDark,
-                  borderRadius: BorderRadius.circular(saving ? _height / 2 : 8),
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(
+                    saving ? _height / 2 : appButtonRadius,
+                  ),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Material(
@@ -1091,17 +1095,20 @@ class _SaveButton extends StatelessWidget {
                       ),
                       child:
                           saving
-                              ? const _DrawnTick(key: ValueKey('tick'))
+                              ? _DrawnTick(
+                                key: const ValueKey('tick'),
+                                color: scheme.onPrimary,
+                              )
                               : OverflowBox(
                                 key: const ValueKey('label'),
                                 maxWidth: constraints.maxWidth,
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       WaznIcons.bookmarkPlus,
                                       size: 20,
-                                      color: Colors.white,
+                                      color: scheme.onPrimary,
                                     ),
                                     const SizedBox(width: 10),
                                     Flexible(
@@ -1113,7 +1120,7 @@ class _SaveButton extends StatelessWidget {
                                         style: Theme.of(
                                           context,
                                         ).textTheme.labelLarge?.copyWith(
-                                          color: Colors.white,
+                                          color: scheme.onPrimary,
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                           letterSpacing: 0,
@@ -1135,7 +1142,9 @@ class _SaveButton extends StatelessWidget {
 
 /// A tick that draws itself, stroke first to last.
 class _DrawnTick extends StatelessWidget {
-  const _DrawnTick({super.key});
+  const _DrawnTick({super.key, required this.color});
+
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -1148,17 +1157,20 @@ class _DrawnTick extends StatelessWidget {
         ),
         curve: Curves.easeOutCubic,
         builder:
-            (context, t, _) =>
-                CustomPaint(size: const Size(24, 24), painter: _TickPainter(t)),
+            (context, t, _) => CustomPaint(
+              size: const Size(24, 24),
+              painter: _TickPainter(t, color),
+            ),
       ),
     );
   }
 }
 
 class _TickPainter extends CustomPainter {
-  const _TickPainter(this.progress);
+  const _TickPainter(this.progress, this.color);
 
   final double progress;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1171,7 +1183,7 @@ class _TickPainter extends CustomPainter {
     canvas.drawPath(
       metric.extractPath(0, metric.length * progress),
       Paint()
-        ..color = Colors.white
+        ..color = color
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3
         ..strokeCap = StrokeCap.round
@@ -1180,7 +1192,8 @@ class _TickPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TickPainter old) => old.progress != progress;
+  bool shouldRepaint(_TickPainter old) =>
+      old.progress != progress || old.color != color;
 }
 
 class _CountUp extends StatefulWidget {

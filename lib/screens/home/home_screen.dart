@@ -449,18 +449,6 @@ class _FirstMealGuideCard extends StatelessWidget {
               child: FilledButton(
                 key: const ValueKey('first-meal-guide-scan'),
                 onPressed: onScan,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(50),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
@@ -472,8 +460,8 @@ class _FirstMealGuideCard extends StatelessWidget {
                         l10n.first_meal_guide_action,
                         textAlign: TextAlign.center,
                         style: AppTypography.labelLarge.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),

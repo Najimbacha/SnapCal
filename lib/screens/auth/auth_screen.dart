@@ -1,3 +1,4 @@
+import '../../core/theme/app_button_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../widgets/app_text_field.dart';
 import 'dart:math' as math;
@@ -8,7 +9,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_errors.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../providers/auth_notifier_provider.dart';
@@ -36,7 +36,6 @@ const _minimalMuted = Color(0xFF777370);
 const _facebookBlue = Color(0xFF1877F2);
 const _minimalLine = Color(0xFFE1E3DF);
 const _minimalGreen = Color(0xFF04543E);
-const _minimalGreenText = AppColors.primaryDark;
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -377,7 +376,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                             l10n.auth_forgot_password,
                                             style: AppTypography.bodyMedium
                                                 .copyWith(
-                                                  color: _minimalGreenText,
+                                                  color: context.primaryColor,
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                           ),
@@ -392,17 +391,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                                 ? () {}
                                                 : _handleEmailSubmit,
                                         child: Container(
-                                          height: 54,
+                                          height: appButtonHeight,
                                           width: double.infinity,
                                           decoration: BoxDecoration(
-                                            color:
-                                                isDark
-                                                    ? Colors.white.withValues(
-                                                      alpha: 0.10,
-                                                    )
-                                                    : _minimalGreen,
+                                            color: context.primaryColor,
                                             borderRadius: BorderRadius.circular(
-                                              100,
+                                              appButtonRadius,
                                             ),
                                           ),
                                           child: Center(
@@ -426,11 +420,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                                       ),
                                               child:
                                                   _emailDone
-                                                      ? const Icon(
+                                                      ? Icon(
                                                         WaznIcons.check,
-                                                        key: ValueKey('done'),
-                                                        color: Colors.white,
-                                                        size: 26,
+                                                        key: const ValueKey(
+                                                          'done',
+                                                        ),
+                                                        color:
+                                                            context
+                                                                .onPrimaryColor,
+                                                        size: 24,
                                                       )
                                                       : KeyedSubtree(
                                                         key: ValueKey(
@@ -443,9 +441,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                                                   height: 20,
                                                                   child: CircularProgressIndicator(
                                                                     color:
-                                                                        isDark
-                                                                            ? Colors.white
-                                                                            : Colors.white,
+                                                                        context
+                                                                            .onPrimaryColor,
                                                                     strokeWidth:
                                                                         2,
                                                                   ),
@@ -456,15 +453,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                                                           .auth_sign_up_short
                                                                       : l10n
                                                                           .auth_log_in,
-                                                                  style: AppTypography.titleMedium.copyWith(
-                                                                    color:
-                                                                        isDark
-                                                                            ? Colors.white
-                                                                            : Colors.white,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w700,
-                                                                  ),
+                                                                  style: AppTypography
+                                                                      .titleMedium
+                                                                      .copyWith(
+                                                                        color:
+                                                                            context.onPrimaryColor,
+                                                                        fontWeight:
+                                                                            FontWeight.w700,
+                                                                      ),
                                                                 ),
                                                       ),
                                             ),
@@ -504,7 +500,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                                   : l10n.auth_sign_up_short,
                                               style: AppTypography.titleMedium
                                                   .copyWith(
-                                                    color: _minimalGreenText,
+                                                    color: context.primaryColor,
                                                     fontWeight: FontWeight.w700,
                                                   ),
                                             ),
@@ -522,7 +518,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                         l10n.auth_back_to_social,
                                         style: AppTypography.bodyMedium
                                             .copyWith(
-                                              color: context.textMutedColor,
+                                              color: context.textSecondaryColor,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                       ),
                                     ),
@@ -709,8 +706,7 @@ class _AuthSocialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDarkMode;
-    // The app is built from 12px cards; these were fully round pills.
-    final radius = BorderRadius.circular(12);
+    final radius = BorderRadius.circular(appButtonRadius);
 
     return Material(
       color: Colors.transparent,
@@ -718,7 +714,7 @@ class _AuthSocialButton extends StatelessWidget {
         onTap: isLoading ? null : onTap,
         borderRadius: radius,
         child: Ink(
-          height: 56,
+          height: appButtonHeight,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color:

@@ -1,3 +1,4 @@
+import '../../../core/theme/app_button_theme.dart';
 import 'package:flutter/material.dart';
 import '../../../widgets/app_text_field.dart';
 import 'package:flutter/services.dart';
@@ -385,20 +386,25 @@ class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
                         const Duration(milliseconds: 340),
                       ),
                       curve: Curves.easeOutCubic,
-                      width: _saved ? 52 : constraints.maxWidth,
-                      height: 52,
+                      width: _saved ? appButtonHeight : constraints.maxWidth,
+                      height: appButtonHeight,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: context.primaryColor,
+                        borderRadius: BorderRadius.circular(
+                          _saved ? appButtonHeight / 2 : appButtonRadius,
+                        ),
+                      ),
                       child: Material(
-                        color: const Color(0xFF047857),
-                        borderRadius: BorderRadius.circular(26),
+                        type: MaterialType.transparency,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(26),
                           onTap: canAdd ? _save : _openPro,
                           child: Center(
                             child:
                                 _saved
-                                    ? const Icon(
+                                    ? Icon(
                                       WaznIcons.check,
-                                      color: Colors.white,
+                                      color: context.onPrimaryColor,
                                       size: 24,
                                     )
                                     : FittedBox(
@@ -409,8 +415,8 @@ class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
                                             : l10n.routine_get_pro,
                                         style: AppTypography.titleSmall
                                             .copyWith(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w800,
+                                              color: context.onPrimaryColor,
+                                              fontWeight: FontWeight.w700,
                                               fontSize: 16,
                                             ),
                                       ),

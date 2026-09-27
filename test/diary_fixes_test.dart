@@ -84,8 +84,8 @@ void main() {
     Finder field(int index) => find.byType(TextField).at(index);
     bool canSave(WidgetTester tester) =>
         tester
-            .widget<ElevatedButton>(
-              find.byWidgetPredicate((w) => w is ElevatedButton),
+            .widget<FilledButton>(
+              find.byWidgetPredicate((w) => w is FilledButton),
             )
             .onPressed !=
         null;

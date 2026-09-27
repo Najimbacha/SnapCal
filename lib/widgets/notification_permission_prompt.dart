@@ -1,3 +1,4 @@
+import '../core/theme/app_button_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -112,26 +113,16 @@ class _PromptSheet extends StatelessWidget {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
                 child: Text(l10n.notif_prompt_allow),
               ),
             ),
             const SizedBox(height: 4),
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: Text(
-                l10n.notif_prompt_later,
-                style: TextStyle(
-                  color: scheme.onSurface.withValues(alpha: 0.6),
-                ),
+              style: TextButton.styleFrom(
+                foregroundColor: AppButtonColors.of(context).quiet,
               ),
+              child: Text(l10n.notif_prompt_later),
             ),
           ],
         ),

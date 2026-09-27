@@ -226,12 +226,11 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                                     l10n.scan_overlay_manual,
                                     textAlign: TextAlign.center,
                                   ),
+                                  // On the overlay the button stays see-through,
+                                  // with the overlay's own ink.
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: ink,
-                                    minimumSize: const Size(0, 48),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
+                                    backgroundColor: Colors.transparent,
                                   ),
                                 ),
                               ],
