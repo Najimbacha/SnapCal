@@ -94,15 +94,12 @@ class SnapController {
     onStateChanged?.call();
   }
 
+  /// The light is simply on or off. It cycled off, auto, always and torch,
+  /// so nothing visibly lit until the third tap and the icon showed "on" for
+  /// two settings that did nothing until the photo was taken.
   Future<void> toggleFlash() async {
-    final modes = [
-      FlashMode.off,
-      FlashMode.auto,
-      FlashMode.always,
-      FlashMode.torch,
-    ];
-    final nextIndex = (modes.indexOf(_flashMode) + 1) % modes.length;
-    _flashMode = modes[nextIndex];
+    _flashMode =
+        _flashMode == FlashMode.torch ? FlashMode.off : FlashMode.torch;
 
     try {
       await CameraService().controller?.setFlashMode(_flashMode);
@@ -125,6 +122,9 @@ class SnapController {
 
   Future<void> initializeCamera() async {
     _cameraProblem = null;
+    // A camera that starts afresh starts with its light off, so the button
+    // never shows "on" over a dark lens.
+    _flashMode = FlashMode.off;
     final warmup = CameraService().warmup();
     var slow = false;
     await warmup.timeout(
