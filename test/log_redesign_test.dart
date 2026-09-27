@@ -36,6 +36,24 @@ class _FakeTemplates extends Templates {
   Future<List<MealTemplate>> build() async => const [];
 }
 
+/// Records meals instead of writing them to Hive.
+class _FakeMealLog extends MealLog {
+  final added = <Meal>[];
+
+  @override
+  FutureOr<void> build() {}
+
+  @override
+  Future<void> addMeal(
+    Meal meal, {
+    bool rebalancePlanner = true,
+    String? mealDate,
+  }) async => added.add(meal);
+
+  @override
+  Future<void> deleteMeal(String mealId) async {}
+}
+
 class _FakeWater extends Water {
   @override
   Future<WaterState> build() async =>
@@ -101,7 +119,7 @@ List<Meal> _meals() {
   ];
 }
 
-Widget _host({Locale locale = const Locale('en')}) {
+Widget _host({Locale locale = const Locale('en'), _FakeMealLog? mealLog}) {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
@@ -116,6 +134,7 @@ Widget _host({Locale locale = const Locale('en')}) {
   return ProviderScope(
     overrides: [
       templatesProvider.overrideWith(_FakeTemplates.new),
+      mealLogProvider.overrideWith(() => mealLog ?? _FakeMealLog()),
       settingsProvider.overrideWith(() => _FakeSettings()),
       waterProvider.overrideWith(() => _FakeWater()),
       activityProvider.overrideWith(() => _FakeActivity()),
@@ -152,9 +171,8 @@ void main() {
 
     expect(find.text('Food Log'), findsOneWidget);
     expect(find.text('Daily balance'), findsNothing);
-    expect(find.text('Meals'), findsOneWidget);
-    // Meals are one diary card in eating order, each meal with
-    // its own add button instead of a dashed placeholder box.
+    expect(find.text('MEALS'), findsOneWidget);
+    // Meals are one card in eating order, each meal with a single plus.
     expect(find.byKey(const ValueKey('log-day-total')), findsOneWidget);
     expect(find.byKey(const ValueKey('log-meal-diary')), findsOneWidget);
     final mealOrder =
@@ -168,17 +186,19 @@ void main() {
             .toList();
     expect(mealOrder, orderedEquals([...mealOrder]..sort()));
     expect(find.textContaining('Add Breakfast'), findsNothing);
-    // Personalized Quick Add sits above the diary and repeats frequently
-    // logged names.
+    // Add food sits above the meals: a big search bar, then pills that
+    // repeat frequently logged names.
+    expect(find.byKey(const ValueKey('quick-add-search')), findsOneWidget);
+    expect(find.byKey(const ValueKey('quick-add-custom')), findsOneWidget);
     expect(find.text('Avocado toast and eggs'), findsWidgets);
     expect(find.text('Chicken rice bowl'), findsWidgets);
     expect(find.text('Greek yogurt and berries'), findsWidgets);
-    // The floating scan/pencil dock is gone -- it hovered over the meal rows
-    // and covered "Add Dinner". Scanning is the camera button in the nav bar
-    // and adding by hand is the action on the Meals heading, both of which
-    // were already there.
+    // No floating scan dock, and no separate "Add manually": a food of
+    // your own is the Custom food pill or a meal's plus.
     expect(find.byKey(const ValueKey('log-scan-meal')), findsNothing);
-    expect(find.byKey(const ValueKey('log-add-manually')), findsOneWidget);
+    expect(find.byKey(const ValueKey('log-add-manually')), findsNothing);
+    // Every meal here has one food, so none offers "Save as routine".
+    expect(find.text('Save as routine'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.drag(
@@ -186,8 +206,17 @@ void main() {
       const Offset(0, -900),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Daily health'), findsOneWidget);
-    expect(find.text('6,842'), findsOneWidget);
+    // Water, steps and the Pro protein line share one card.
+    expect(find.text('Daily health'), findsNothing);
+    final health = find.byKey(const ValueKey('log-health-card'));
+    expect(
+      find.descendant(of: health, matching: find.text('6,842')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: health, matching: find.text('PRO')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -199,29 +228,83 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.byKey(const ValueKey('daily-balance-card')), findsNothing);
-    expect(find.byKey(const ValueKey('log-add-manually')), findsOneWidget);
+    expect(find.byKey(const ValueKey('quick-add-search')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'manual meal sheet stays above the log and shows its save action',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(390, 844));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets('each meal plus opens the short own-food form for that meal, '
+      'which needs only a name and calories', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final mealLog = _FakeMealLog();
 
-      await tester.pumpWidget(_host());
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.tap(find.byKey(const ValueKey('log-add-manually')));
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(_host(mealLog: mealLog));
+    await tester.pump(const Duration(milliseconds: 500));
+    final plus = find.byKey(const ValueKey('log-add-dinner'));
+    await tester.ensureVisible(plus);
+    await tester.tap(plus);
+    await tester.pumpAndSettle();
 
-      expect(find.text('Log New Meal'), findsOneWidget);
-      expect(find.text('Food Name'), findsOneWidget);
-      expect(find.text('Portion Description'), findsOneWidget);
-      expect(find.text('Save Entry'), findsOneWidget);
-      expect(find.text('Breakfast'), findsWidgets);
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(find.text('Your own food'), findsOneWidget);
+    expect(find.text('Add to Dinner'), findsOneWidget);
+    // Protein, carbs and fat wait behind a link.
+    expect(find.text('Protein, carbs and fat (optional)'), findsOneWidget);
+    final add = find.byKey(const ValueKey('custom-food-add'));
+    expect(tester.widget<FilledButton>(add).onPressed, isNull);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-food-name')),
+      'chickpea curry',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-food-kcal')),
+      '450',
+    );
+    await tester.pump();
+    expect(tester.widget<FilledButton>(add).onPressed, isNotNull);
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+
+    final meal = mealLog.added.single;
+    expect(meal.foodName, 'Chickpea curry');
+    expect(meal.calories, 450);
+    expect(meal.mealType, 'Dinner');
+    expect(meal.dateString, _today());
+    expect(find.text('Chickpea curry added'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('a search that finds nothing offers to add it yourself, '
+      'keeping what was typed', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final mealLog = _FakeMealLog();
+
+    await tester.pumpWidget(_host(mealLog: mealLog));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('quick-add-search')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('quick-food-search-field')),
+      'zzqx stew',
+    );
+    await tester.pump();
+    expect(
+      find.text('No matches in your foods or the food list.'),
+      findsOneWidget,
+    );
+    expect(find.text('Add “zzqx stew” yourself'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('quick-food-add-own')));
+    await tester.pumpAndSettle();
+    expect(find.text('Your own food'), findsOneWidget);
+    final name = tester.widget<TextField>(
+      find.byKey(const ValueKey('custom-food-name')),
+    );
+    expect(name.controller!.text, 'zzqx stew');
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('food log remains stable in Arabic', (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 640));
@@ -232,7 +315,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('daily-balance-card')), findsNothing);
     expect(find.byKey(const ValueKey('log-scan-meal')), findsNothing);
-    expect(find.byKey(const ValueKey('log-add-manually')), findsOneWidget);
+    expect(find.byKey(const ValueKey('quick-add-search')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

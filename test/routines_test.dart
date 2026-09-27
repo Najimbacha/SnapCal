@@ -154,6 +154,13 @@ List<Meal> _meals() {
       calories: 420,
     ),
     meal(
+      id: 'coffee',
+      hour: 8,
+      type: 'Breakfast',
+      name: 'Flat white',
+      calories: 95,
+    ),
+    meal(
       id: 'lunch',
       hour: 13,
       type: 'Lunch',
@@ -233,7 +240,14 @@ void main() {
 
     final card = find.byKey(const ValueKey('routine-r1'));
     expect(card, findsOneWidget);
-    expect(find.text('2 foods · 415 kcal'), findsOneWidget);
+    // A pill in the Add food row, right after "Custom food".
+    final custom = tester.getRect(
+      find.byKey(const ValueKey('quick-add-custom')),
+    );
+    final pill = tester.getRect(card);
+    expect(pill.top, closeTo(custom.top, 1));
+    expect(pill.left, greaterThan(custom.right));
+    expect(pill.height, 40);
 
     await tester.tap(card);
     await tester.pump();
@@ -255,11 +269,15 @@ void main() {
     await tester.pumpWidget(_host(routines));
     await _run(tester, 1500);
 
+    // Only a meal with two or more foods offers it.
+    expect(find.byKey(const ValueKey('log-save-lunch')), findsNothing);
     final save = find.byKey(const ValueKey('log-save-breakfast'));
     await tester.ensureVisible(save);
     await tester.tap(save);
     await _run(tester, 800);
-    expect(find.text('Save as a routine'), findsOneWidget);
+    // The sheet, titled like the link that opened it.
+    expect(find.text('Save as a routine'), findsNWidgets(2));
+    expect(find.byKey(const ValueKey('routine-save')), findsOneWidget);
     expect(find.text('My usual breakfast'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('routine-save')));

@@ -2747,5 +2747,33 @@
         "type": "String"
       }
     }
-  }
+  },
+  "log_add_food": "Add food",
+  "log_custom_food": "Custom food",
+  "log_add_own": "Add your own food",
+  "log_add_named": "Add “{name}” yourself",
+  "@log_add_named": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "log_add_own_hint": "Can’t find it? Type the calories yourself.",
+  "log_no_match": "No matches in your foods or the food list.",
+  "custom_food_title": "Your own food",
+  "custom_food_name": "Name",
+  "custom_food_amount": "Amount",
+  "custom_food_amount_hint": "1 bowl",
+  "custom_food_macros": "Protein, carbs and fat (optional)",
+  "custom_food_add_to": "Add to {meal}",
+  "@custom_food_add_to": {
+    "placeholders": {
+      "meal": {
+        "type": "String"
+      }
+    }
+  },
+  "custom_food_note": "Next time it shows up in search and Recent.",
+  "log_find_food": "Find a food"
 }

@@ -5484,4 +5484,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String routine_name_default(String meal) {
     return 'My usual $meal';
   }
+
+  @override
+  String get log_add_food => 'Add food';
+
+  @override
+  String get log_custom_food => 'Custom food';
+
+  @override
+  String get log_add_own => 'Add your own food';
+
+  @override
+  String log_add_named(String name) {
+    return 'Add “$name” yourself';
+  }
+
+  @override
+  String get log_add_own_hint => 'Can’t find it? Type the calories yourself.';
+
+  @override
+  String get log_no_match => 'No matches in your foods or the food list.';
+
+  @override
+  String get custom_food_title => 'Your own food';
+
+  @override
+  String get custom_food_name => 'Name';
+
+  @override
+  String get custom_food_amount => 'Amount';
+
+  @override
+  String get custom_food_amount_hint => '1 bowl';
+
+  @override
+  String get custom_food_macros => 'Protein, carbs and fat (optional)';
+
+  @override
+  String custom_food_add_to(String meal) {
+    return 'Add to $meal';
+  }
+
+  @override
+  String get custom_food_note => 'Next time it shows up in search and Recent.';
+
+  @override
+  String get log_find_food => 'Find a food';
 }

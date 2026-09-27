@@ -1861,5 +1861,19 @@
   "routine_new": "جديد",
   "routine_rename": "إعادة تسمية",
   "routine_delete": "حذف الروتين",
-  "routine_name_default": "{meal} المعتاد"
+  "routine_name_default": "{meal} المعتاد",
+  "log_add_food": "إضافة طعام",
+  "log_custom_food": "طعام مخصص",
+  "log_add_own": "أضف طعامك بنفسك",
+  "log_add_named": "أضف «{name}» بنفسك",
+  "log_add_own_hint": "لم تجده؟ اكتب السعرات بنفسك.",
+  "log_no_match": "لا نتائج في أطعمتك أو قائمة الأطعمة.",
+  "custom_food_title": "طعامك الخاص",
+  "custom_food_name": "الاسم",
+  "custom_food_amount": "الكمية",
+  "custom_food_amount_hint": "وعاء واحد",
+  "custom_food_macros": "البروتين والكربوهيدرات والدهون (اختياري)",
+  "custom_food_add_to": "أضف إلى {meal}",
+  "custom_food_note": "في المرة القادمة سيظهر في البحث والأخيرة.",
+  "log_find_food": "ابحث عن طعام"
 }

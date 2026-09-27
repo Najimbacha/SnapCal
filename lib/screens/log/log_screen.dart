@@ -25,6 +25,7 @@ import '../../providers/repository_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/water_provider.dart';
 import '../../widgets/app_page_scaffold.dart';
+import 'widgets/custom_food_sheet.dart';
 import 'widgets/edit_meal_modal.dart';
 import 'widgets/horizontal_day_calendar.dart';
 import 'widgets/hydration_sheet.dart';
@@ -170,7 +171,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               if (ConfigService().quickFoodsEnabled) ...[
                 QuickAddFoods(
                   meals: allMeals,
@@ -194,6 +195,12 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                   onUndo:
                       (mealId) =>
                           ref.read(mealLogProvider.notifier).deleteMeal(mealId),
+                  onCustomFood:
+                      (name) => _showCustomFood(
+                        dateString: selectedDate,
+                        mealType: _suggestedMealType(),
+                        name: name,
+                      ),
                   // Saved routines come first, the newest leading.
                   leading: [
                     for (final routine in _orderedRoutines())
@@ -206,21 +213,15 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
               ],
-              _SectionHeading(
+              _MealsHeading(
                 title: l10n.home_metric_meals,
                 announceChange: sameDay,
                 calories: selectedSummary.calories,
                 calorieGoal: selectedSummary.calorieGoal,
-                actionLabel: l10n.log_add_manually,
-                onAction:
-                    () => _showNewMealSheet(
-                      dateString: selectedDate,
-                      mealType: _suggestedMealType(),
-                    ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               _DaySwitch(
                 day: selectedDate,
                 direction: _dayDirection,
@@ -231,7 +232,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                   onLeft: _left,
                   isPro: isPro,
                   onAdd:
-                      (mealType) => _showNewMealSheet(
+                      (mealType) => _showCustomFood(
                         dateString: selectedDate,
                         mealType: mealType,
                       ),
@@ -240,7 +241,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                   onSaveRoutine: _saveRoutine,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               _DailyHealthCard(
                 waterMl: selectedSummary.waterMl,
                 waterGoal: selectedSummary.waterGoal,
@@ -250,15 +251,14 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                         ? () => showHydrationSheet(context)
                         : () => context.push('/log/metric/water'),
                 onStepsTap: () => context.push('/log/metric/steps'),
+                protein:
+                    proAccess.isPro
+                        ? _ProteinInsightTile(
+                          proteinRemaining: proteinRemaining,
+                          onTap: () => context.push('/assistant'),
+                        )
+                        : null,
               ),
-              if (proAccess.isPro) ...[
-                const SizedBox(height: 10),
-                _ProteinInsightTile(
-                  proteinRemaining: proteinRemaining,
-                  showUpgrade: false,
-                  onTap: () => context.push('/assistant'),
-                ),
-              ],
             ],
           ),
         ],
@@ -326,52 +326,46 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     );
   }
 
-  Future<void> _showNewMealSheet({
+  /// The short form for a food of the user's own. The food lands in the
+  /// meal chosen there, with Undo.
+  Future<void> _showCustomFood({
     required String dateString,
     required String mealType,
+    String name = '',
   }) async {
-    final now = DateTime.now();
-    final date = app_date.DateUtils.parseDate(dateString);
-    final eatenAt = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      now.hour,
-      now.minute,
-    );
-    final draft = Meal(
-      id: 'new',
-      timestamp: eatenAt.millisecondsSinceEpoch,
-      dateString: dateString,
-      foodName: '',
-      calories: 0,
-      macros: Macros.empty(),
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final mealLog = ref.read(mealLogProvider.notifier);
+    final entry = await showCustomFoodSheet(
+      context,
+      initialName: name,
       mealType: mealType,
-      portion: '',
     );
-
-    await showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (modalContext) => EditMealModal(
-            meal: draft,
-            isNew: true,
-            onSave: (meal) async {
-              Navigator.of(modalContext).pop();
-              final savedMeal = meal.copyWith(
-                id: ref.read(mealLogProvider.notifier).generateMealId(),
-              );
-              await ref
-                  .read(mealLogProvider.notifier)
-                  .addMeal(savedMeal, mealDate: dateString);
-              if (mounted) setState(() {});
-            },
-            onDelete: () => Navigator.of(modalContext).pop(),
-            onCancel: () => Navigator.of(modalContext).pop(),
-          ),
+    if (entry == null || !mounted) return;
+    final meal = Meal(
+      id: mealLog.generateMealId(),
+      timestamp: _mealTimestamp(dateString),
+      dateString: dateString,
+      foodName: entry.name,
+      calories: entry.calories,
+      macros: Macros(
+        protein: entry.protein,
+        carbs: entry.carbs,
+        fat: entry.fat,
+      ),
+      mealType: entry.mealType,
+      portion: entry.portion,
+    );
+    await mealLog.addMeal(meal, mealDate: dateString);
+    if (!mounted) return;
+    setState(() {});
+    messenger.hideCurrentSnackBar();
+    showAppToast(
+      messenger,
+      kind: ToastKind.success,
+      title: l10n.quick_add_added(meal.foodName),
+      actionLabel: l10n.quick_add_undo,
+      onAction: () => mealLog.deleteMeal(meal.id),
     );
   }
 
@@ -840,14 +834,15 @@ BoxDecoration _softCard(BuildContext context, {double radius = 18}) {
   );
 }
 
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading({
+/// "Meals", with the day's total beside it on one quiet line and a thin
+/// bar under it. The big day summary lives on Home; this line keeps the
+/// total in view when looking back at other days.
+class _MealsHeading extends StatelessWidget {
+  const _MealsHeading({
     required this.title,
     this.announceChange = true,
     required this.calories,
     required this.calorieGoal,
-    required this.actionLabel,
-    required this.onAction,
   });
 
   final String title;
@@ -857,8 +852,6 @@ class _SectionHeading extends StatelessWidget {
   final bool announceChange;
   final int calories;
   final int calorieGoal;
-  final String actionLabel;
-  final VoidCallback onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -866,111 +859,120 @@ class _SectionHeading extends StatelessWidget {
     final progress =
         calorieGoal <= 0 ? 0.0 : (calories / calorieGoal).clamp(0.0, 1.0);
     final over = calorieGoal > 0 && calories > calorieGoal;
+    final remaining = (calorieGoal - calories).abs();
+    final accent = over ? AppColors.warning : context.primaryColor;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: AppTypography.titleLarge.copyWith(
-                  color: context.textPrimaryColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 20,
-                ),
-              ),
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: AppTypography.labelSmall.copyWith(
+              color: context.textSecondaryColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              letterSpacing: 1,
             ),
-            TextButton.icon(
-              key: const ValueKey('log-add-manually'),
-              onPressed: onAction,
-              icon: const Icon(WaznIcons.plus, size: 16),
-              label: Text(actionLabel),
-              style: TextButton.styleFrom(
-                foregroundColor: context.primaryColor,
-                minimumSize: const Size(44, 40),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                shape: const StadiumBorder(),
-                textStyle: AppTypography.titleSmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: progress),
-                  duration: AppMotion.maybeZero(context, AppMotion.count),
-                  curve: Curves.easeOutCubic,
-                  builder:
-                      (context, value, _) => LinearProgressIndicator(
-                        value: value,
-                        minHeight: 6,
-                        backgroundColor: context.primaryColor.withValues(
-                          alpha: 0.12,
-                        ),
-                        valueColor: AlwaysStoppedAnimation(
-                          over ? AppColors.warning : context.primaryColor,
-                        ),
-                      ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // The day's total counts to each new value, with the change
-            // floating up above it.
-            Stack(
-              clipBehavior: Clip.none,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                DefaultTextStyle.merge(
-                  style: AppTypography.bodySmall.copyWith(
-                    color: context.textMutedColor,
-                    fontSize: 12,
-                  ),
-                  child: Row(
-                    key: const ValueKey('log-day-total'),
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CountUpText(
-                        value: calories,
-                        format: (v) => _formatInt(context, v),
-                        duration: const Duration(milliseconds: 700),
-                        style: TextStyle(
-                          color: context.textPrimaryColor,
-                          fontWeight: FontWeight.w700,
+                // The day's total counts to each new value, with the change
+                // floating up above it.
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    DefaultTextStyle.merge(
+                      style: AppTypography.bodySmall.copyWith(
+                        color: context.textMutedColor,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: Row(
+                          key: const ValueKey('log-day-total'),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CountUpText(
+                              value: calories,
+                              format: (v) => _formatInt(context, v),
+                              duration: const Duration(milliseconds: 700),
+                              style: TextStyle(
+                                color: context.textPrimaryColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              ' / ${_formatInt(context, calorieGoal)} '
+                              '${l10n.settings_kcal_unit} · ',
+                            ),
+                            Text(
+                              over
+                                  ? l10n.log_calories_over(
+                                    _formatInt(context, remaining),
+                                  )
+                                  : l10n.log_calories_left(
+                                    _formatInt(context, remaining),
+                                  ),
+                              style: TextStyle(
+                                color: accent,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        ' / ${_formatInt(context, calorieGoal)} '
-                        '${l10n.settings_kcal_unit}',
+                    ),
+                    PositionedDirectional(
+                      top: -24,
+                      end: 0,
+                      child: DeltaBubble(
+                        value: calories,
+                        announce: announceChange,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                PositionedDirectional(
-                  top: -24,
-                  end: 0,
-                  child: DeltaBubble(value: calories, announce: announceChange),
+                const SizedBox(height: 5),
+                SizedBox(
+                  width: 150,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: progress),
+                      duration: AppMotion.maybeZero(context, AppMotion.count),
+                      curve: Curves.easeOutCubic,
+                      builder:
+                          (context, value, _) => LinearProgressIndicator(
+                            value: value,
+                            minHeight: 4,
+                            backgroundColor: context.primaryColor.withValues(
+                              alpha: 0.12,
+                            ),
+                            valueColor: AlwaysStoppedAnimation(
+                              over ? AppColors.warning : context.primaryColor,
+                            ),
+                          ),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
 
-/// The day's meals as a stack of cards, one per meal: an icon, the meal's
-/// calorie total and an add button, with that meal's entries under it.
+/// The day's meals in one card, split by thin lines: each meal's name, its
+/// calorie total and a single plus, with its foods under it.
 class _MealDiaryCard extends StatelessWidget {
   const _MealDiaryCard({
     required this.groups,
@@ -1002,24 +1004,33 @@ class _MealDiaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Container(
       key: const ValueKey('log-meal-diary'),
-      children: [
-        for (var index = 0; index < groups.length; index++) ...[
-          if (index != 0) const SizedBox(height: 12),
-          _MealGroupSection(
-            group: groups[index],
-            arrived: arrived,
-            leaving: leaving,
-            onLeft: onLeft,
-            isPro: isPro,
-            onAdd: () => onAdd(groups[index].key),
-            onSaveRoutine: () => onSaveRoutine(groups[index]),
-            onEdit: onEdit,
-            onDelete: onDelete,
-          ),
+      clipBehavior: Clip.antiAlias,
+      decoration: _softCard(context),
+      child: Column(
+        children: [
+          for (var index = 0; index < groups.length; index++) ...[
+            if (index != 0)
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: context.dividerColor.withValues(alpha: 0.35),
+              ),
+            _MealGroupSection(
+              group: groups[index],
+              arrived: arrived,
+              leaving: leaving,
+              onLeft: onLeft,
+              isPro: isPro,
+              onAdd: () => onAdd(groups[index].key),
+              onSaveRoutine: () => onSaveRoutine(groups[index]),
+              onEdit: onEdit,
+              onDelete: onDelete,
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -1131,104 +1142,79 @@ class _MealGroupSection extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final isEmpty = group.meals.isEmpty;
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: _softCard(context),
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 4, 4, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 10, 12),
+          SizedBox(
+            height: 44,
             child: Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: group.accent.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(group.icon, size: 19, color: group.accent),
+                Icon(
+                  group.icon,
+                  size: 18,
+                  color:
+                      isEmpty
+                          ? group.accent.withValues(alpha: 0.6)
+                          : group.accent,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        group.label,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: context.textPrimaryColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 1),
-                      CountUpText(
-                        value: group.calories,
-                        duration: const Duration(milliseconds: 700),
-                        format:
-                            (v) =>
-                                '${_formatInt(context, v)} '
-                                '${l10n.settings_kcal_unit}',
-                        style: AppTypography.bodySmall.copyWith(
-                          color:
-                              isEmpty
-                                  ? context.textMutedColor
-                                  : context.textSecondaryColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    group.label,
+                    style: AppTypography.titleMedium.copyWith(
+                      color:
+                          isEmpty
+                              ? context.textMutedColor
+                              : context.textPrimaryColor,
+                      fontWeight: isEmpty ? FontWeight.w600 : FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                // Save this meal's foods as a routine, once it has some.
-                if (!isEmpty) ...[
-                  IconButton.outlined(
-                    key: ValueKey('log-save-${group.key.toLowerCase()}'),
-                    tooltip: l10n.routine_save_as,
-                    onPressed: onSaveRoutine,
-                    style: IconButton.styleFrom(
-                      foregroundColor: context.textSecondaryColor,
-                      side: BorderSide(
-                        color: context.dividerColor.withValues(alpha: 0.5),
-                      ),
-                      minimumSize: const Size(40, 40),
+                if (!isEmpty)
+                  CountUpText(
+                    value: group.calories,
+                    duration: const Duration(milliseconds: 700),
+                    format: (v) => _formatInt(context, v),
+                    style: AppTypography.titleSmall.copyWith(
+                      color: context.textPrimaryColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
                     ),
-                    icon: const Icon(WaznIcons.bookmarkPlus, size: 18),
                   ),
-                  const SizedBox(width: 6),
-                ],
-                IconButton.filledTonal(
+                if (!isEmpty)
+                  Text(
+                    ' ${l10n.settings_kcal_unit}',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.textMutedColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                IconButton(
                   key: ValueKey('log-add-${group.key.toLowerCase()}'),
                   tooltip: l10n.log_add_meal_type(group.label),
                   onPressed: onAdd,
-                  style: IconButton.styleFrom(
-                    backgroundColor: context.primaryColor.withValues(
-                      alpha: 0.10,
-                    ),
-                    foregroundColor: context.primaryColor,
-                    minimumSize: const Size(40, 40),
+                  color: context.primaryColor,
+                  iconSize: 20,
+                  constraints: const BoxConstraints(
+                    minWidth: 44,
+                    minHeight: 44,
                   ),
-                  icon: const Icon(WaznIcons.plus, size: 20),
+                  icon: const Icon(WaznIcons.plus),
                 ),
               ],
             ),
           ),
-          if (!isEmpty) ...[
-            Divider(
-              height: 1,
-              thickness: 1,
-              indent: 14,
-              endIndent: 14,
-              color: context.dividerColor.withValues(alpha: 0.35),
-            ),
+          if (!isEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 2, 10, 4),
+              padding: const EdgeInsetsDirectional.only(start: 28, end: 10),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (var index = 0; index < group.meals.length; index++)
                     ArrivingItem(
@@ -1239,22 +1225,47 @@ class _MealGroupSection extends StatelessWidget {
                       child: MealListTile(
                         meal: group.meals[index],
                         isPro: isPro,
+                        compact: true,
                         showTime: true,
-                        showDivider: index != group.meals.length - 1,
                         onTap: () => onEdit(group.meals[index]),
                         onDelete: () => onDelete(group.meals[index]),
                       ),
                     ),
+                  // Worth saving once a meal has a few foods in it.
+                  if (group.meals.length >= 2)
+                    TextButton.icon(
+                      key: ValueKey('log-save-${group.key.toLowerCase()}'),
+                      onPressed: onSaveRoutine,
+                      icon: const Icon(WaznIcons.bookmarkPlus, size: 15),
+                      label: Text(l10n.routine_save_as),
+                      style: TextButton.styleFrom(
+                        foregroundColor: context.textSecondaryColor,
+                        minimumSize: const Size(0, 40),
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          0,
+                          0,
+                          10,
+                          0,
+                        ),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        textStyle: AppTypography.labelMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
                 ],
               ),
             ),
-          ],
         ],
       ),
     );
   }
 }
 
+/// Water and steps side by side in one card, with the Pro protein line
+/// under them when there is one.
 class _DailyHealthCard extends StatelessWidget {
   const _DailyHealthCard({
     required this.waterMl,
@@ -1262,6 +1273,7 @@ class _DailyHealthCard extends StatelessWidget {
     required this.steps,
     required this.onWaterTap,
     required this.onStepsTap,
+    this.protein,
   });
 
   final int waterMl;
@@ -1269,53 +1281,49 @@ class _DailyHealthCard extends StatelessWidget {
   final int steps;
   final VoidCallback onWaterTap;
   final VoidCallback onStepsTap;
+  final Widget? protein;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l10n.log_daily_health,
-          style: AppTypography.titleMedium.copyWith(
-            color: context.textPrimaryColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          height: 76,
-          decoration: _softCard(context),
-          child: Row(
-            children: [
-              Expanded(
-                child: _HealthValue(
-                  icon: WaznIcons.water,
-                  label: l10n.log_metric_water,
-                  value:
-                      '${_formatLiters(context, waterMl)} / ${_formatLiters(context, waterGoal)} L',
-                  onTap: onWaterTap,
+    final line = context.dividerColor.withValues(alpha: 0.35);
+    return Container(
+      key: const ValueKey('log-health-card'),
+      clipBehavior: Clip.antiAlias,
+      decoration: _softCard(context),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 68,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _HealthValue(
+                    icon: WaznIcons.water,
+                    label: l10n.log_metric_water,
+                    value:
+                        '${_formatLiters(context, waterMl)} / ${_formatLiters(context, waterGoal)} L',
+                    onTap: onWaterTap,
+                  ),
                 ),
-              ),
-              Container(
-                width: 1,
-                height: 48,
-                color: context.dividerColor.withValues(alpha: 0.65),
-              ),
-              Expanded(
-                child: _HealthValue(
-                  icon: WaznIcons.steps,
-                  label: l10n.log_metric_steps,
-                  value: _formatInt(context, steps),
-                  onTap: onStepsTap,
+                Container(width: 1, height: 40, color: line),
+                Expanded(
+                  child: _HealthValue(
+                    icon: WaznIcons.steps,
+                    label: l10n.log_metric_steps,
+                    value: _formatInt(context, steps),
+                    onTap: onStepsTap,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+          if (protein != null) ...[
+            Divider(height: 1, thickness: 1, color: line),
+            protein!,
+          ],
+        ],
+      ),
     );
   }
 }
@@ -1393,12 +1401,10 @@ class _HealthValue extends StatelessWidget {
 class _ProteinInsightTile extends StatelessWidget {
   const _ProteinInsightTile({
     required this.proteinRemaining,
-    required this.showUpgrade,
     required this.onTap,
   });
 
   final int proteinRemaining;
-  final bool showUpgrade;
   final VoidCallback onTap;
 
   @override
@@ -1409,61 +1415,53 @@ class _ProteinInsightTile extends StatelessWidget {
             ? l10n.log_protein_left_today(_formatInt(context, proteinRemaining))
             : l10n.log_protein_goal_met_today;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 54),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: _softCard(context),
-          child: Row(
-            children: [
-              Icon(WaznIcons.coach, size: 20, color: context.primaryColor),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Text(
-                  label,
-                  style: AppTypography.titleSmall.copyWith(
-                    color: context.textPrimaryColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 50),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            Icon(WaznIcons.coach, size: 18, color: context.primaryColor),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.titleSmall.copyWith(
+                  color: context.textPrimaryColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: context.primaryColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: context.primaryColor.withValues(alpha: 0.55),
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color:
-                      showUpgrade
-                          ? Colors.transparent
-                          : context.primaryColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(
-                    color: context.primaryColor.withValues(alpha: 0.55),
-                  ),
-                ),
-                child: Text(
-                  'PRO',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: context.primaryColor,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                  ),
+              child: Text(
+                'PRO',
+                style: AppTypography.labelSmall.copyWith(
+                  color: context.primaryColor,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
                 ),
               ),
-              const SizedBox(width: 8),
-              Icon(
-                WaznIcons.chevronRight,
-                size: 18,
-                color: context.textMutedColor,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 6),
+            Icon(
+              WaznIcons.chevronRight,
+              size: 18,
+              color: context.textMutedColor,
+            ),
+          ],
         ),
       ),
     );

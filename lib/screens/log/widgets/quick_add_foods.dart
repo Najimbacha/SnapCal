@@ -31,12 +31,17 @@ class QuickAddFoods extends ConsumerStatefulWidget {
     required this.onAddCatalogFood,
     required this.onRepeatMeal,
     required this.onUndo,
+    required this.onCustomFood,
     this.leading = const [],
   });
 
-  /// Cards shown first in the row, before the food suggestions: the user's
-  /// saved routines.
+  /// Pills shown in the row after "Custom food", before the food
+  /// suggestions: the user's saved routines.
   final List<Widget> leading;
+
+  /// Opens the form for a food of the user's own, with [name] filled in
+  /// when they had already typed it into the search.
+  final ValueChanged<String> onCustomFood;
 
   final List<Meal> meals;
   final String mealType;
@@ -50,8 +55,6 @@ class QuickAddFoods extends ConsumerStatefulWidget {
 }
 
 class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
-  _QuickFoodFilter _filter = _QuickFoodFilter.forYou;
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -59,61 +62,54 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
         ref.watch(quickFoodPreferencesProvider).valueOrNull ??
         const QuickFoodPreferences();
     final suggestions = _suggestions(preferences);
+    final languageCode = Localizations.localeOf(context).languageCode;
 
     return Column(
       key: const ValueKey('quick-add-foods'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                l10n.quick_add_title,
-                style: AppTypography.titleMedium.copyWith(
-                  color: context.textPrimaryColor,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 2, bottom: 8),
+          child: Text(
+            l10n.log_add_food.toUpperCase(),
+            style: AppTypography.labelSmall.copyWith(
+              color: context.textSecondaryColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              letterSpacing: 1,
             ),
-            TextButton(
-              key: const ValueKey('quick-add-see-all'),
-              onPressed: () => _showBrowser(preferences),
-              child: Text(l10n.quick_add_see_all),
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: 6),
+        // Search stays big: the first thing to reach for.
         Semantics(
           button: true,
           label: l10n.quick_add_search,
           child: InkWell(
             key: const ValueKey('quick-add-search'),
             onTap: () => _showBrowser(preferences),
-            borderRadius: BorderRadius.circular(99),
+            borderRadius: BorderRadius.circular(14),
             child: Container(
-              height: 50,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              decoration: _softSurface(context, radius: 99),
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: _softSurface(context, radius: 14),
               child: Row(
                 children: [
                   Icon(
                     WaznIcons.search,
-                    size: 18,
+                    size: 19,
                     color: context.textMutedColor,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       l10n.quick_add_search,
-                      style: AppTypography.bodyMedium.copyWith(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodyLarge.copyWith(
                         color: context.textMutedColor,
+                        fontSize: 15,
                       ),
                     ),
-                  ),
-                  Icon(
-                    WaznIcons.chevronRight,
-                    size: 18,
-                    color: context.textMutedColor,
                   ),
                 ],
               ),
@@ -121,79 +117,30 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
           ),
         ),
         const SizedBox(height: 10),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
+        // One row of small pills: a food of your own, your routines, then
+        // the foods you eat most.
+        SizedBox(
+          height: 40,
+          child: ListView(
+            key: const ValueKey('quick-add-carousel'),
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            clipBehavior: Clip.none,
             children: [
-              _FilterChip(
-                label: l10n.quick_add_for_you,
-                selected: _filter == _QuickFoodFilter.forYou,
-                onTap: () => setState(() => _filter = _QuickFoodFilter.forYou),
-              ),
-              _FilterChip(
-                label: l10n.quick_add_recent,
-                selected: _filter == _QuickFoodFilter.recent,
-                onTap: () => setState(() => _filter = _QuickFoodFilter.recent),
-              ),
-              _FilterChip(
-                label: l10n.quick_add_local,
-                selected: _filter == _QuickFoodFilter.local,
-                onTap: () => setState(() => _filter = _QuickFoodFilter.local),
-              ),
-              _FilterChip(
-                label: l10n.quick_add_favorites,
-                selected: _filter == _QuickFoodFilter.favorites,
-                onTap:
-                    () => setState(() => _filter = _QuickFoodFilter.favorites),
-              ),
+              for (final pill in [
+                _CustomFoodPill(onTap: () => widget.onCustomFood('')),
+                ...widget.leading,
+                for (final suggestion in suggestions)
+                  _QuickFoodPill(
+                    suggestion: suggestion,
+                    languageCode: languageCode,
+                    addedCount: _addedCounts[_cardKey(suggestion)] ?? 0,
+                    onTap: () => _selectSuggestion(suggestion),
+                  ),
+              ]) ...[pill, const SizedBox(width: 8)],
             ],
           ),
         ),
-        const SizedBox(height: 10),
-        if (suggestions.isEmpty && widget.leading.isNotEmpty) ...[
-          SizedBox(
-            height: 112,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: widget.leading.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
-              itemBuilder: (context, index) => widget.leading[index],
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
-        if (suggestions.isEmpty)
-          _EmptyQuickFoods(
-            text:
-                _filter == _QuickFoodFilter.favorites
-                    ? l10n.quick_add_empty_favorites
-                    : l10n.quick_add_empty,
-          )
-        else
-          SizedBox(
-            height: 112,
-            child: ListView.separated(
-              key: const ValueKey('quick-add-carousel'),
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: widget.leading.length + suggestions.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                if (index < widget.leading.length) {
-                  return widget.leading[index];
-                }
-                final suggestion = suggestions[index - widget.leading.length];
-                return _QuickFoodCard(
-                  suggestion: suggestion,
-                  languageCode: Localizations.localeOf(context).languageCode,
-                  addedCount: _addedCounts[_cardKey(suggestion)] ?? 0,
-                  onTap: () => _selectSuggestion(suggestion),
-                );
-              },
-            ),
-          ),
       ],
     );
   }
@@ -205,23 +152,16 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
       cuisinePreference: widget.cuisinePreference,
       mealType: widget.mealType,
     );
-    final region = QuickFoodCatalog.resolvedRegion(preferences.region);
-
-    return switch (_filter) {
-      _QuickFoodFilter.recent => _recentHistory(widget.meals).take(10).toList(),
-      _QuickFoodFilter.local =>
-        rankedCatalog
-            .where((food) => food.regions.contains(region))
-            .take(12)
-            .map(_QuickSuggestion.catalog)
-            .toList(),
-      _QuickFoodFilter.favorites =>
-        rankedCatalog
-            .where((food) => preferences.favoriteIds.contains(food.nutritionId))
-            .map(_QuickSuggestion.catalog)
-            .toList(),
-      _ => _forYou(history, rankedCatalog),
-    };
+    // Favorites the user starred lead, then what they eat most.
+    final favorites = rankedCatalog
+        .where((food) => preferences.favoriteIds.contains(food.nutritionId))
+        .map(_QuickSuggestion.catalog);
+    final picks = _forYou(history, rankedCatalog);
+    final ids = {for (final f in favorites) _cardKey(f)};
+    return [
+      ...favorites,
+      ...picks.where((p) => !ids.contains(_cardKey(p))),
+    ].take(10).toList();
   }
 
   List<_QuickSuggestion> _forYou(
@@ -309,6 +249,10 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
             onAddCatalogFood: widget.onAddCatalogFood,
             onRepeatMeal: widget.onRepeatMeal,
             onAdded: _showAdded,
+            onAddOwn: (name) {
+              Navigator.pop(sheetContext);
+              widget.onCustomFood(name);
+            },
           ),
     );
   }
@@ -337,8 +281,11 @@ class _QuickFoodBrowserSheet extends ConsumerStatefulWidget {
     required this.onAddCatalogFood,
     required this.onRepeatMeal,
     required this.onAdded,
+    required this.onAddOwn,
   });
 
+  /// Opens the form for a food of the user's own, keeping what they typed.
+  final ValueChanged<String> onAddOwn;
   final List<_QuickSuggestion> history;
   final List<_QuickSuggestion> recentHistory;
   final String mealType;
@@ -371,6 +318,7 @@ class _QuickFoodBrowserSheetState
         ref.watch(quickFoodPreferencesProvider).valueOrNull ??
         const QuickFoodPreferences();
     final items = _items(preferences);
+    final query = _searchController.text.trim();
 
     return SafeArea(
       top: false,
@@ -391,7 +339,7 @@ class _QuickFoodBrowserSheetState
                     children: [
                       Expanded(
                         child: Text(
-                          l10n.quick_add_title,
+                          l10n.log_find_food,
                           style: AppTypography.titleLarge.copyWith(
                             color: context.textPrimaryColor,
                             fontWeight: FontWeight.w700,
@@ -414,6 +362,7 @@ class _QuickFoodBrowserSheetState
                   child: TextField(
                     key: const ValueKey('quick-food-search-field'),
                     controller: _searchController,
+                    autofocus: true,
                     textInputAction: TextInputAction.search,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
@@ -530,21 +479,24 @@ class _QuickFoodBrowserSheetState
                 Expanded(
                   child:
                       items.isEmpty
-                          ? _EmptyQuickFoods(
-                            text:
-                                _filter == _QuickFoodFilter.favorites
-                                    ? l10n.quick_add_empty_favorites
-                                    : l10n.quick_add_empty,
+                          ? Align(
+                            alignment: Alignment.topCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                              child: _EmptyQuickFoods(
+                                text:
+                                    query.isNotEmpty
+                                        ? l10n.log_no_match
+                                        : _filter == _QuickFoodFilter.favorites
+                                        ? l10n.quick_add_empty_favorites
+                                        : l10n.quick_add_empty,
+                              ),
+                            ),
                           )
                           : ListView.separated(
                             keyboardDismissBehavior:
                                 ScrollViewKeyboardDismissBehavior.onDrag,
-                            padding: EdgeInsets.fromLTRB(
-                              20,
-                              10,
-                              20,
-                              math.max(20, media.padding.bottom),
-                            ),
+                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
                             itemCount: items.length,
                             separatorBuilder:
                                 (_, _) => Divider(
@@ -581,6 +533,21 @@ class _QuickFoodBrowserSheetState
                             },
                           ),
                 ),
+                // Always one tap away: a food of your own. It keeps what was
+                // typed, and stands out when the search found nothing.
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    8,
+                    20,
+                    math.max(14, media.padding.bottom + 6),
+                  ),
+                  child: _AddOwnRow(
+                    query: query,
+                    highlight: query.isNotEmpty && items.isEmpty,
+                    onTap: () => widget.onAddOwn(query),
+                  ),
+                ),
               ],
             ),
           ),
@@ -606,7 +573,13 @@ class _QuickFoodBrowserSheetState
           .where((food) => preferences.favoriteIds.contains(food.nutritionId))
           .map(_QuickSuggestion.catalog),
       _QuickFoodFilter.all => catalog.map(_QuickSuggestion.catalog),
-      _ => _mergeForYou(widget.history, catalog),
+      // A search looks through everything the user has ever logged, so a
+      // food they typed in themselves is found again.
+      _ => _mergeForYou(
+        widget.history,
+        catalog,
+        historyLimit: query.isEmpty ? 6 : widget.history.length,
+      ),
     };
     if (query.isNotEmpty) {
       values = values.where((item) {
@@ -1033,11 +1006,12 @@ List<_QuickSuggestion> _recentHistory(List<Meal> meals) {
 
 Iterable<_QuickSuggestion> _mergeForYou(
   List<_QuickSuggestion> history,
-  List<QuickFood> catalog,
-) sync* {
+  List<QuickFood> catalog, {
+  int historyLimit = 6,
+}) sync* {
   final identities = <String>{};
   final names = <String>{};
-  for (final item in history.take(6)) {
+  for (final item in history.take(historyLimit)) {
     identities.add(_mealIdentity(item.meal!));
     names.add(_normalizedFoodName(item.meal!.foodName));
     yield item;
@@ -1058,8 +1032,54 @@ String _mealIdentity(Meal meal) =>
 String _normalizedFoodName(String value) =>
     value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 
-class _QuickFoodCard extends StatelessWidget {
-  const _QuickFoodCard({
+/// The first pill in the row: a food of the user's own.
+class _CustomFoodPill extends StatelessWidget {
+  const _CustomFoodPill({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final primary = context.primaryColor;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey('quick-add-custom'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(99),
+        child: Container(
+          height: 40,
+          padding: const EdgeInsetsDirectional.fromSTEB(10, 0, 14, 0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(99),
+            border: Border.all(color: primary.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(WaznIcons.plus, size: 16, color: primary),
+              const SizedBox(width: 6),
+              Text(
+                l10n.log_custom_food,
+                style: AppTypography.labelLarge.copyWith(
+                  color: primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A food the user eats often: its name and calories. One tap adds it --
+/// a food from the list asks for the portion first -- and the + ticks.
+class _QuickFoodPill extends StatelessWidget {
+  const _QuickFoodPill({
     required this.suggestion,
     required this.languageCode,
     required this.onTap,
@@ -1068,68 +1088,55 @@ class _QuickFoodCard extends StatelessWidget {
 
   final _QuickSuggestion suggestion;
 
-  /// Goes up each time this card adds its food; the + ticks for each one.
+  /// Goes up each time this pill adds its food; the + ticks for each one.
   final int addedCount;
   final String languageCode;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final food = suggestion.food;
     final meal = suggestion.meal;
     final name = food?.displayName(languageCode) ?? meal!.foodName;
     final calories = food?.caloriesFor(food.defaultServingG) ?? meal!.calories;
 
-    return SizedBox(
-      width: 158,
-      child: DecoratedBox(
-        decoration: _softSurface(context, radius: 18),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            key: ValueKey('quick-food-${food?.nutritionId ?? meal!.id}'),
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(18),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 13, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: context.textPrimaryColor,
-                        fontWeight: FontWeight.w700,
-                      ),
+    return DecoratedBox(
+      decoration: _softSurface(context, radius: 99),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: ValueKey('quick-food-${food?.nutritionId ?? meal!.id}'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(99),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(14, 0, 6, 0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 150),
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelLarge.copyWith(
+                      color: context.textPrimaryColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
                     ),
                   ),
-                  Row(
-                    children: [
-                      const Icon(
-                        WaznIcons.calories,
-                        size: 14,
-                        color: AppColors.warning,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          l10n.quick_add_calories(calories),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.labelMedium.copyWith(
-                            color: context.textSecondaryColor,
-                          ),
-                        ),
-                      ),
-                      _AddTick(count: addedCount),
-                    ],
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$calories',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: context.textMutedColor,
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 6),
+                _AddTick(count: addedCount, size: 26),
+              ],
             ),
           ),
         ),
@@ -1141,9 +1148,10 @@ class _QuickFoodCard extends StatelessWidget {
 /// The card's +, which turns into a green tick for a moment each time the
 /// card adds its food, then turns back.
 class _AddTick extends StatefulWidget {
-  const _AddTick({required this.count});
+  const _AddTick({required this.count, this.size = 32});
 
   final int count;
+  final double size;
 
   @override
   State<_AddTick> createState() => _AddTickState();
@@ -1189,9 +1197,10 @@ class _AddTickState extends State<_AddTick>
                     : (v > .8
                         ? 1 - Curves.easeIn.transform((v - .8) / .2)
                         : 1.0));
+        final size = widget.size;
         return Container(
-          width: 32,
-          height: 32,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             color: Color.lerp(
               primary.withValues(alpha: 0.12),
@@ -1207,17 +1216,17 @@ class _AddTickState extends State<_AddTick>
                 angle: ticked * 1.6,
                 child: Transform.scale(
                   scale: (1 - ticked).clamp(0.0, 1.0),
-                  child: Icon(WaznIcons.plus, color: primary, size: 18),
+                  child: Icon(WaznIcons.plus, color: primary, size: size * .56),
                 ),
               ),
               Transform.rotate(
                 angle: (1 - ticked) * -0.7,
                 child: Transform.scale(
                   scale: ticked.clamp(0.0, 1.2),
-                  child: const Icon(
+                  child: Icon(
                     WaznIcons.check,
                     color: Colors.white,
-                    size: 17,
+                    size: size * .53,
                   ),
                 ),
               ),
@@ -1451,7 +1460,6 @@ class _EmptyQuickFoods extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: context.surfaceContainerColor,
         borderRadius: BorderRadius.circular(14),
@@ -1462,6 +1470,84 @@ class _EmptyQuickFoods extends StatelessWidget {
         textAlign: TextAlign.center,
         style: AppTypography.bodyMedium.copyWith(
           color: context.textSecondaryColor,
+        ),
+      ),
+    );
+  }
+}
+
+/// "Add your own food" at the foot of the search, naming what was typed.
+class _AddOwnRow extends StatelessWidget {
+  const _AddOwnRow({
+    required this.query,
+    required this.highlight,
+    required this.onTap,
+  });
+
+  final String query;
+
+  /// The search found nothing: the row fills in, the way forward.
+  final bool highlight;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final primary = context.primaryColor;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey('quick-food-add-own'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: AppMotion.maybeZero(context, AppMotion.standard),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            color:
+                highlight
+                    ? primary.withValues(alpha: 0.10)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: primary.withValues(alpha: highlight ? 0.7 : 0.4),
+              width: highlight ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(WaznIcons.plus, size: 19, color: primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      query.isEmpty
+                          ? l10n.log_add_own
+                          : l10n.log_add_named(query),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.titleSmall.copyWith(
+                        color: primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      l10n.log_add_own_hint,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: context.textSecondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

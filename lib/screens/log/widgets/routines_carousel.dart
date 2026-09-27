@@ -14,8 +14,8 @@ import 'package:snapcal/providers/template_provider.dart';
 import '../../../widgets/app_toast.dart';
 import '../../../widgets/wazn_icons.dart';
 
-/// A saved routine in the Quick add row: its emoji, name, how many foods and
-/// how many calories. Tapping logs it all at once, with a tick on the card;
+/// A saved routine in the Add food row: a pill with its emoji and name.
+/// Tapping logs every food in it at once, with a tick on the pill;
 /// pressing and holding offers rename and delete. A routine saved a moment
 /// ago pops in with a "New" tag.
 class RoutineCard extends StatefulWidget {
@@ -70,108 +70,87 @@ class _RoutineCardState extends State<RoutineCard> {
     final t = widget.template;
     final accent = isDark ? const Color(0xFF6EE7B7) : const Color(0xFF047857);
 
+    final summary = l10n.routine_summary(t.items.length, '${t.totalCalories}');
     Widget card = Container(
-      width: 176,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      height: 40,
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 6, 0),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [
-            Color.alphaBlend(
-              AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.12),
-              context.cardColor,
-            ),
-            context.cardColor,
-          ],
+        color: Color.alphaBlend(
+          AppColors.primary.withValues(alpha: isDark ? 0.18 : 0.12),
+          context.cardColor,
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(99),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(t.emoji, style: const TextStyle(fontSize: 22, height: 1)),
-              if (widget.isNew) ...[
-                const SizedBox(width: 6),
-                Container(
-                  key: const ValueKey('routine-new-tag'),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF047857),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: Text(
-                    l10n.routine_new.toUpperCase(),
-                    style: AppTypography.labelSmall.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 10,
-                      letterSpacing: .6,
-                    ),
-                  ),
-                ),
-              ],
-              const Spacer(),
-              // Plus, turning into a tick once the routine is logged.
-              AnimatedSwitcher(
-                duration: AppMotion.maybeZero(
-                  context,
-                  const Duration(milliseconds: 320),
-                ),
-                transitionBuilder:
-                    (child, animation) => ScaleTransition(
-                      scale: CurvedAnimation(
-                        parent: animation,
-                        curve: AppMotion.springCurve,
-                      ),
-                      child: RotationTransition(
-                        turns: Tween(begin: -.25, end: 0.0).animate(animation),
-                        child: child,
-                      ),
-                    ),
-                child: Container(
-                  key: ValueKey(_done),
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: _done ? AppColors.primary : accent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _done ? WaznIcons.check : WaznIcons.plus,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                ),
+          Text(t.emoji, style: const TextStyle(fontSize: 16, height: 1)),
+          const SizedBox(width: 7),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 170),
+            child: Text(
+              t.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.labelLarge.copyWith(
+                color: context.textPrimaryColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
               ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            t.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.titleSmall.copyWith(
-              color: context.textPrimaryColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            l10n.routine_summary(t.items.length, '${t.totalCalories}'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.labelSmall.copyWith(
-              color: context.textSecondaryColor,
-              fontWeight: FontWeight.w600,
+          if (widget.isNew) ...[
+            const SizedBox(width: 6),
+            Container(
+              key: const ValueKey('routine-new-tag'),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFF047857),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text(
+                l10n.routine_new.toUpperCase(),
+                style: AppTypography.labelSmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 9.5,
+                  letterSpacing: .5,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(width: 7),
+          // Plus, turning into a tick once the routine is logged.
+          AnimatedSwitcher(
+            duration: AppMotion.maybeZero(
+              context,
+              const Duration(milliseconds: 320),
+            ),
+            transitionBuilder:
+                (child, animation) => ScaleTransition(
+                  scale: CurvedAnimation(
+                    parent: animation,
+                    curve: AppMotion.springCurve,
+                  ),
+                  child: RotationTransition(
+                    turns: Tween(begin: -.25, end: 0.0).animate(animation),
+                    child: child,
+                  ),
+                ),
+            child: Container(
+              key: ValueKey(_done),
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: _done ? AppColors.primary : accent,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _done ? WaznIcons.check : WaznIcons.plus,
+                size: 14,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -198,7 +177,7 @@ class _RoutineCardState extends State<RoutineCard> {
 
     return Semantics(
       button: true,
-      label: '${t.emoji} ${t.name}',
+      label: '${t.emoji} ${t.name}, $summary',
       child: GestureDetector(
         key: ValueKey('routine-${t.id}'),
         behavior: HitTestBehavior.opaque,

@@ -1858,5 +1858,19 @@
   "routine_new": "Nuevo",
   "routine_rename": "Renombrar",
   "routine_delete": "Eliminar rutina",
-  "routine_name_default": "Mi {meal} de siempre"
+  "routine_name_default": "Mi {meal} de siempre",
+  "log_add_food": "Añadir comida",
+  "log_custom_food": "Comida propia",
+  "log_add_own": "Añade tu propia comida",
+  "log_add_named": "Añade «{name}» tú mismo",
+  "log_add_own_hint": "¿No lo encuentras? Escribe tú las calorías.",
+  "log_no_match": "Sin resultados en tus comidas ni en la lista.",
+  "custom_food_title": "Tu propia comida",
+  "custom_food_name": "Nombre",
+  "custom_food_amount": "Cantidad",
+  "custom_food_amount_hint": "1 bol",
+  "custom_food_macros": "Proteínas, carbohidratos y grasas (opcional)",
+  "custom_food_add_to": "Añadir a {meal}",
+  "custom_food_note": "La próxima vez aparecerá en la búsqueda y en Recientes.",
+  "log_find_food": "Buscar una comida"
 }
