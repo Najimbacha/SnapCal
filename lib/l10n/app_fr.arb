@@ -1827,5 +1827,19 @@
   "settings_export_ready": "Rapport prêt à partager",
   "about_tagline": "Suivi des calories par IA",
   "about_follow_us": "Suivez-nous",
-  "progress_take_first_photo": "Prenez votre première photo"
+  "progress_take_first_photo": "Prenez votre première photo",
+  "hc_sync_body": "Synchronisez automatiquement vos pas, entraînements et calories.",
+  "hc_status_connected": "Connecté",
+  "hc_status_checking": "Vérification…",
+  "hc_status_not_connected": "Non connecté",
+  "hc_activity_title": "Activité",
+  "hc_steps_today": "Pas aujourd’hui",
+  "hc_kcal_burned": "{kcal} kcal brûlées",
+  "hc_kcal_estimated": "~{kcal} kcal brûlées · estimation",
+  "hc_goal_progress": "{percent} % de votre objectif de {goal} pas",
+  "hc_last_synced": "Dernière synchro {when}",
+  "hc_synced_never": "jamais",
+  "hc_synced_just_now": "à l’instant",
+  "hc_synced_min_ago": "il y a {minutes} min",
+  "hc_synced_hours_ago": "il y a {hours} h"
 }

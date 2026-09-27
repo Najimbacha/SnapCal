@@ -5350,4 +5350,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get progress_take_first_photo => 'Take your first photo';
+
+  @override
+  String get hc_sync_body =>
+      'Automatically sync your steps, workouts and calories.';
+
+  @override
+  String get hc_status_connected => 'Connected';
+
+  @override
+  String get hc_status_checking => 'Checking…';
+
+  @override
+  String get hc_status_not_connected => 'Not connected';
+
+  @override
+  String get hc_activity_title => 'Activity';
+
+  @override
+  String get hc_steps_today => 'Steps today';
+
+  @override
+  String hc_kcal_burned(String kcal) {
+    return '$kcal kcal burned';
+  }
+
+  @override
+  String hc_kcal_estimated(String kcal) {
+    return '~$kcal kcal burned · estimated';
+  }
+
+  @override
+  String hc_goal_progress(String percent, String goal) {
+    return '$percent% of your $goal step goal';
+  }
+
+  @override
+  String hc_last_synced(String when) {
+    return 'Last synced $when';
+  }
+
+  @override
+  String get hc_synced_never => 'never';
+
+  @override
+  String get hc_synced_just_now => 'just now';
+
+  @override
+  String hc_synced_min_ago(String minutes) {
+    return '$minutes min ago';
+  }
+
+  @override
+  String hc_synced_hours_ago(String hours) {
+    return '$hours h ago';
+  }
 }

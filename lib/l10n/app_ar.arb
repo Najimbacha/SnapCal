@@ -1830,5 +1830,19 @@
   "settings_export_ready": "التقرير جاهز للمشاركة",
   "about_tagline": "متتبع السعرات بالذكاء الاصطناعي",
   "about_follow_us": "تابعنا",
-  "progress_take_first_photo": "التقط صورتك الأولى"
+  "progress_take_first_photo": "التقط صورتك الأولى",
+  "hc_sync_body": "زامن خطواتك وتمارينك وسعراتك تلقائيًا.",
+  "hc_status_connected": "متصل",
+  "hc_status_checking": "جارٍ التحقق…",
+  "hc_status_not_connected": "غير متصل",
+  "hc_activity_title": "النشاط",
+  "hc_steps_today": "خطوات اليوم",
+  "hc_kcal_burned": "{kcal} سعرة محروقة",
+  "hc_kcal_estimated": "~{kcal} سعرة محروقة · تقديري",
+  "hc_goal_progress": "{percent}% من هدفك البالغ {goal} خطوة",
+  "hc_last_synced": "آخر مزامنة {when}",
+  "hc_synced_never": "أبدًا",
+  "hc_synced_just_now": "الآن",
+  "hc_synced_min_ago": "قبل {minutes} د",
+  "hc_synced_hours_ago": "قبل {hours} س"
 }

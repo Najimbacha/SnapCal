@@ -9587,6 +9587,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Take your first photo'**
   String get progress_take_first_photo;
+
+  /// No description provided for @hc_sync_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically sync your steps, workouts and calories.'**
+  String get hc_sync_body;
+
+  /// No description provided for @hc_status_connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get hc_status_connected;
+
+  /// No description provided for @hc_status_checking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get hc_status_checking;
+
+  /// No description provided for @hc_status_not_connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get hc_status_not_connected;
+
+  /// No description provided for @hc_activity_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get hc_activity_title;
+
+  /// No description provided for @hc_steps_today.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps today'**
+  String get hc_steps_today;
+
+  /// No description provided for @hc_kcal_burned.
+  ///
+  /// In en, this message translates to:
+  /// **'{kcal} kcal burned'**
+  String hc_kcal_burned(String kcal);
+
+  /// No description provided for @hc_kcal_estimated.
+  ///
+  /// In en, this message translates to:
+  /// **'~{kcal} kcal burned · estimated'**
+  String hc_kcal_estimated(String kcal);
+
+  /// No description provided for @hc_goal_progress.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% of your {goal} step goal'**
+  String hc_goal_progress(String percent, String goal);
+
+  /// No description provided for @hc_last_synced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced {when}'**
+  String hc_last_synced(String when);
+
+  /// No description provided for @hc_synced_never.
+  ///
+  /// In en, this message translates to:
+  /// **'never'**
+  String get hc_synced_never;
+
+  /// No description provided for @hc_synced_just_now.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get hc_synced_just_now;
+
+  /// No description provided for @hc_synced_min_ago.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min ago'**
+  String hc_synced_min_ago(String minutes);
+
+  /// No description provided for @hc_synced_hours_ago.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h ago'**
+  String hc_synced_hours_ago(String hours);
 }
 
 class _AppLocalizationsDelegate

@@ -2627,5 +2627,64 @@
   "settings_export_ready": "Report ready to share",
   "about_tagline": "AI-Powered Calorie Tracker",
   "about_follow_us": "Follow us",
-  "progress_take_first_photo": "Take your first photo"
+  "progress_take_first_photo": "Take your first photo",
+  "hc_sync_body": "Automatically sync your steps, workouts and calories.",
+  "hc_status_connected": "Connected",
+  "hc_status_checking": "Checking…",
+  "hc_status_not_connected": "Not connected",
+  "hc_activity_title": "Activity",
+  "hc_steps_today": "Steps today",
+  "hc_kcal_burned": "{kcal} kcal burned",
+  "@hc_kcal_burned": {
+    "placeholders": {
+      "kcal": {
+        "type": "String"
+      }
+    }
+  },
+  "hc_kcal_estimated": "~{kcal} kcal burned · estimated",
+  "@hc_kcal_estimated": {
+    "placeholders": {
+      "kcal": {
+        "type": "String"
+      }
+    }
+  },
+  "hc_goal_progress": "{percent}% of your {goal} step goal",
+  "@hc_goal_progress": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "hc_last_synced": "Last synced {when}",
+  "@hc_last_synced": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "hc_synced_never": "never",
+  "hc_synced_just_now": "just now",
+  "hc_synced_min_ago": "{minutes} min ago",
+  "@hc_synced_min_ago": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "hc_synced_hours_ago": "{hours} h ago",
+  "@hc_synced_hours_ago": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  }
 }

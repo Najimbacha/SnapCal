@@ -5333,4 +5333,58 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get progress_take_first_photo => 'التقط صورتك الأولى';
+
+  @override
+  String get hc_sync_body => 'زامن خطواتك وتمارينك وسعراتك تلقائيًا.';
+
+  @override
+  String get hc_status_connected => 'متصل';
+
+  @override
+  String get hc_status_checking => 'جارٍ التحقق…';
+
+  @override
+  String get hc_status_not_connected => 'غير متصل';
+
+  @override
+  String get hc_activity_title => 'النشاط';
+
+  @override
+  String get hc_steps_today => 'خطوات اليوم';
+
+  @override
+  String hc_kcal_burned(String kcal) {
+    return '$kcal سعرة محروقة';
+  }
+
+  @override
+  String hc_kcal_estimated(String kcal) {
+    return '~$kcal سعرة محروقة · تقديري';
+  }
+
+  @override
+  String hc_goal_progress(String percent, String goal) {
+    return '$percent% من هدفك البالغ $goal خطوة';
+  }
+
+  @override
+  String hc_last_synced(String when) {
+    return 'آخر مزامنة $when';
+  }
+
+  @override
+  String get hc_synced_never => 'أبدًا';
+
+  @override
+  String get hc_synced_just_now => 'الآن';
+
+  @override
+  String hc_synced_min_ago(String minutes) {
+    return 'قبل $minutes د';
+  }
+
+  @override
+  String hc_synced_hours_ago(String hours) {
+    return 'قبل $hours س';
+  }
 }
