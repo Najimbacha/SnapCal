@@ -1844,5 +1844,9 @@
   "hc_synced_never": "أبدًا",
   "hc_synced_just_now": "الآن",
   "hc_synced_min_ago": "قبل {minutes} د",
-  "hc_synced_hours_ago": "قبل {hours} س"
+  "hc_synced_hours_ago": "قبل {hours} س",
+  "coach_ask_eat": "ماذا آكل اليوم؟",
+  "coach_ask_track": "كيف أدائي مقارنة بأهدافي اليوم؟",
+  "coach_ask_week": "أنشئ لي خطة وجبات",
+  "coach_ask_protein": "اقترح وجبة غنية بالبروتين"
 }

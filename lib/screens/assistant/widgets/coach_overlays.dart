@@ -122,7 +122,7 @@ class _LockedCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Daily limit reached',
+                      AppLocalizations.of(context)!.coach_limit_title,
                       style: AppTypography.labelSmall.copyWith(
                         color: accent,
                         letterSpacing: 1.4,

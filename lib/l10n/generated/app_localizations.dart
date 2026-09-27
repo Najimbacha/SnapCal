@@ -9671,6 +9671,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{hours} h ago'**
   String hc_synced_hours_ago(String hours);
+
+  /// No description provided for @coach_ask_eat.
+  ///
+  /// In en, this message translates to:
+  /// **'What should I eat today?'**
+  String get coach_ask_eat;
+
+  /// No description provided for @coach_ask_track.
+  ///
+  /// In en, this message translates to:
+  /// **'How am I doing against my goals today?'**
+  String get coach_ask_track;
+
+  /// No description provided for @coach_ask_week.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a meal plan for me'**
+  String get coach_ask_week;
+
+  /// No description provided for @coach_ask_protein.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a high-protein meal'**
+  String get coach_ask_protein;
 }
 
 class _AppLocalizationsDelegate

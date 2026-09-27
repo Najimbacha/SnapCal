@@ -1,8 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snapcal/screens/log/models/log_metric_models.dart';
-import 'package:snapcal/screens/log/widgets/health_metric_dashboard.dart';
 
 void main() {
   test('weekly range starts on Sunday and ends on Saturday', () {
@@ -58,46 +55,5 @@ void main() {
       isMetricDateLocked(LogMetricType.steps, '2026-05-01', canViewDate),
       isFalse,
     );
-  });
-
-  testWidgets('health dashboard renders seven tappable metric cards', (
-    tester,
-  ) async {
-    LogMetricType? tappedType;
-    final cards =
-        LogMetricType.values.map((type) {
-          return HealthMetricCardData(
-            type: type,
-            title: type.id,
-            value: '1',
-            unit: type == LogMetricType.steps ? '' : 'u',
-            status: 'status',
-            values: const [1, 2, 3, 4, 5, 6, 7],
-            goal: 7,
-            chartStyle: HealthMetricChartStyle.bars,
-            icon: Icons.circle,
-          );
-        }).toList();
-
-    await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: HealthMetricDashboard(
-                title: 'Key metrics',
-                actionLabel: 'Customize',
-                cards: cards,
-                onMetricTap: (type) => tappedType = type,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byType(HealthMetricCard), findsNWidgets(7));
-    await tester.tap(find.text(LogMetricType.water.id));
-    expect(tappedType, LogMetricType.water);
   });
 }

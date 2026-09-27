@@ -239,11 +239,15 @@ class RecentMealTile extends StatelessWidget {
                         color: context.textMutedColor,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        meal.formattedTime,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: context.textMutedColor,
-                          fontWeight: FontWeight.w700,
+                      Flexible(
+                        child: Text(
+                          meal.formattedTime,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: context.textMutedColor,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),

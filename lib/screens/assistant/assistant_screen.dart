@@ -884,22 +884,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   Widget _buildActionGrid(bool d) {
     final l10n = AppLocalizations.of(context)!;
     final items = [
-      (WaznIcons.meal, l10n.coach_suggest_eat, 'What should I eat today?'),
-      (
-        WaznIcons.goal,
-        l10n.coach_suggest_track,
-        'How am I doing against my goals today?',
-      ),
-      (
-        WaznIcons.calendar,
-        l10n.coach_suggest_week,
-        'Create a meal plan for me',
-      ),
-      (
-        WaznIcons.trend,
-        l10n.coach_suggest_protein,
-        'Suggest a high-protein meal',
-      ),
+      (WaznIcons.meal, l10n.coach_suggest_eat, l10n.coach_ask_eat),
+      (WaznIcons.goal, l10n.coach_suggest_track, l10n.coach_ask_track),
+      (WaznIcons.calendar, l10n.coach_suggest_week, l10n.coach_ask_week),
+      (WaznIcons.trend, l10n.coach_suggest_protein, l10n.coach_ask_protein),
     ];
 
     return Column(

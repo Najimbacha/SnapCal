@@ -1841,5 +1841,9 @@
   "hc_synced_never": "nunca",
   "hc_synced_just_now": "ahora mismo",
   "hc_synced_min_ago": "hace {minutes} min",
-  "hc_synced_hours_ago": "hace {hours} h"
+  "hc_synced_hours_ago": "hace {hours} h",
+  "coach_ask_eat": "¿Qué debería comer hoy?",
+  "coach_ask_track": "¿Cómo voy con mis objetivos hoy?",
+  "coach_ask_week": "Crea un plan de comidas para mí",
+  "coach_ask_protein": "Sugiere una comida alta en proteínas"
 }

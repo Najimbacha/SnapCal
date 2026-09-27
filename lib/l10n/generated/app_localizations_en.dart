@@ -5405,4 +5405,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String hc_synced_hours_ago(String hours) {
     return '$hours h ago';
   }
+
+  @override
+  String get coach_ask_eat => 'What should I eat today?';
+
+  @override
+  String get coach_ask_track => 'How am I doing against my goals today?';
+
+  @override
+  String get coach_ask_week => 'Create a meal plan for me';
+
+  @override
+  String get coach_ask_protein => 'Suggest a high-protein meal';
 }

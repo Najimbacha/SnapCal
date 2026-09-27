@@ -766,7 +766,8 @@ class _BigDiscount extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            counter,
+            // Shrinks on a narrow phone with large text.
+            Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: counter)),
             const SizedBox(width: 10),
             Flexible(
               child: Text(
