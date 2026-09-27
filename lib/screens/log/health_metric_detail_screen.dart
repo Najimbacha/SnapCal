@@ -30,7 +30,7 @@ import '../../widgets/motion/count_up_text.dart';
 import '../../widgets/motion/reveal.dart';
 import '../../widgets/ui_blocks.dart';
 import 'models/log_metric_models.dart';
-import 'widgets/health_metric_dashboard.dart';
+import 'widgets/log_section_header.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 const _minimalBg = Color(0xFFF9F8F5);

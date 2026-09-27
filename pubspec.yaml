@@ -46,7 +46,6 @@ dependencies:
   font_awesome_flutter: ^11.0.0
   flutter_animate: ^4.5.0
   percent_indicator: ^4.2.3
-  fl_chart: ^1.2.0
 
   # Utilities
   uuid: ^4.2.2
