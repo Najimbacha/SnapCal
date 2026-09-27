@@ -14,14 +14,48 @@ class CameraService extends ChangeNotifier {
   bool _isInitializing = false;
   String? _error;
 
+  /// The start-up in flight, which every caller shares and awaits.
+  Future<void>? _warming;
+
+  /// Bumped by [stop], so a start-up that was overtaken lets go of the
+  /// hardware instead of carrying on as if it were still wanted.
+  int _generation = 0;
+
   CameraController? get controller => _controller;
   bool get isInitialized => _isInitialized;
   bool get isInitializing => _isInitializing;
   String? get error => _error;
 
-  /// Warm up the camera hardware in the background
-  Future<void> warmup() async {
-    if (_isInitialized || _isInitializing) return;
+  /// Starts the camera, or joins a start already under way. Callers used to
+  /// get back at once when one was running, and the camera screen would sit
+  /// on its placeholder after the camera had come up.
+  Future<void> warmup() {
+    if (_isInitialized) return Future.value();
+    final running = _warming;
+    if (running != null) return running;
+    final start = _warm(_generation);
+    _warming = start;
+    start.whenComplete(() {
+      if (identical(_warming, start)) _warming = null;
+    });
+    return start;
+  }
+
+  /// Starts the camera ahead of the camera screen -- while the "Log a meal"
+  /// sheet is open -- so the picture is already live when the screen shows.
+  /// Only once permission is granted: this never raises the permission
+  /// prompt over the sheet; the camera screen asks for it as before.
+  Future<void> prewarm() async {
+    try {
+      if (!(await Permission.camera.status).isGranted) return;
+      await warmup();
+    } catch (e) {
+      debugPrint('📸 CameraService: prewarm skipped: $e');
+    }
+  }
+
+  Future<void> _warm(int generation) async {
+    bool overtaken() => generation != _generation;
 
     _isInitializing = true;
     _error = null;
@@ -30,6 +64,7 @@ class CameraService extends ChangeNotifier {
     try {
       // Explicitly check for permission
       final status = await Permission.camera.request();
+      if (overtaken()) return;
       if (status.isDenied || status.isPermanentlyDenied) {
         _error = 'Camera permission denied. Please enable it in Settings.';
         _isInitializing = false;
@@ -37,8 +72,8 @@ class CameraService extends ChangeNotifier {
         return;
       }
 
-      _cameras = await availableCameras();
-      if (!_isInitializing) return;
+      _cameras ??= await availableCameras();
+      if (overtaken()) return;
 
       if (_cameras == null || _cameras!.isEmpty) {
         _error = 'No cameras available';
@@ -57,7 +92,7 @@ class CameraService extends ChangeNotifier {
       _controller = newController;
 
       await newController.initialize();
-      if (!_isInitializing) {
+      if (overtaken()) {
         await newController.dispose();
         if (_controller == newController) _controller = null;
         return;
@@ -68,7 +103,7 @@ class CameraService extends ChangeNotifier {
       debugPrint('📸 CameraService: Hardware warmed up and ready');
       notifyListeners();
     } catch (e) {
-      if (!_isInitializing) return; // Ignore errors if we've already stopped
+      if (overtaken()) return; // Ignore errors if we've already stopped
       _error = 'Camera warmup failed: $e';
       _isInitializing = false;
       _isInitialized = false;
@@ -88,6 +123,8 @@ class CameraService extends ChangeNotifier {
 
     debugPrint('📸 CameraService: Stopping camera and releasing hardware');
 
+    _generation++;
+    _warming = null;
     final controllerToDispose = _controller;
     _controller = null;
     _isInitialized = false;

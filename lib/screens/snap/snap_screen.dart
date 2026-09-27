@@ -10,7 +10,6 @@ import '../../widgets/wazn_icons.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart'
     show openAppSettings;
-import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
@@ -32,7 +31,6 @@ import 'widgets/shutter_button.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../data/services/camera_service.dart';
 import '../../router.dart';
-import '../../widgets/motion/reveal.dart';
 import '../../widgets/app_toast.dart';
 
 enum SnapInitialMode { food, barcode }
@@ -600,11 +598,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
               _focusAnimController?.reset();
               _focusAnimController?.forward();
             },
-            // The picture fades in over the placeholder once it is live.
+            // The picture comes in with a short fade once it is live.
             child: AnimatedSwitcher(
               duration: AppMotion.maybeZero(
                 context,
-                const Duration(milliseconds: 450),
+                const Duration(milliseconds: 150),
               ),
               child:
                   (_controller.cameraController?.value.isInitialized ?? false)
@@ -725,15 +723,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             top: topSafe + 14,
             left: 18,
             right: 18,
-            child: Reveal(
-              delay: const Duration(milliseconds: 150),
-              offset: const Offset(0, -14),
-              child: _InlineCameraHeader(
-                isReady: cameraReady,
-                flashMode: _controller.flashMode,
-                onClose: () => context.go('/'),
-                onFlash: _controller.toggleFlash,
-              ),
+            child: _InlineCameraHeader(
+              isReady: cameraReady,
+              flashMode: _controller.flashMode,
+              onClose: () => context.go('/'),
+              onFlash: _controller.toggleFlash,
             ),
           ),
 
@@ -742,24 +736,19 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
               left: 20,
               right: 20,
               bottom: bottomSafe + 16,
-              child: Reveal(
-                delay: const Duration(milliseconds: 250),
-                offset: const Offset(0, 60),
-                duration: const Duration(milliseconds: 620),
-                child: _InlineCameraControls(
-                  isCapturing: _controller.isCapturing,
-                  onCapture: cameraReady ? _capture : null,
-                  onGallery: _pickFromGallery,
-                  onBarcode:
-                      cameraReady
-                          ? () => _controller.isScanningBarcode = true
-                          : null,
-                  onManual: _openManualEntry,
-                  galleryLabel: l10n.snap_gallery,
-                  barcodeLabel: l10n.snap_barcode,
-                  manualLabel: l10n.log_add_manually,
-                  isCameraReady: cameraReady,
-                ),
+              child: _InlineCameraControls(
+                isCapturing: _controller.isCapturing,
+                onCapture: cameraReady ? _capture : null,
+                onGallery: _pickFromGallery,
+                onBarcode:
+                    cameraReady
+                        ? () => _controller.isScanningBarcode = true
+                        : null,
+                onManual: _openManualEntry,
+                galleryLabel: l10n.snap_gallery,
+                barcodeLabel: l10n.snap_barcode,
+                manualLabel: l10n.log_add_manually,
+                isCameraReady: cameraReady,
               ),
             ),
 
@@ -988,9 +977,7 @@ class _ScanGuide extends StatelessWidget {
                   alignment: Alignment.bottomCenter,
                   child: Transform.translate(
                     offset: const Offset(0, 42),
-                    child: Reveal(
-                      delay: const Duration(milliseconds: 650),
-                      offset: const Offset(0, 10),
+                    child: _Plain(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -1053,11 +1040,7 @@ class _ScanCorners extends StatelessWidget {
       // Each corner arrives from nearer the middle and settles outwards.
       return Align(
         alignment: alignment,
-        child: Reveal(
-          delay: const Duration(milliseconds: 300),
-          duration: const Duration(milliseconds: 620),
-          offset: Offset(flipX ? -26 : 26, flipY ? -26 : 26),
-          curve: AppMotion.springCurve,
+        child: _Plain(
           child: Transform.scale(
             scaleX: flipX ? -1.0 : 1.0,
             scaleY: flipY ? -1.0 : 1.0,
@@ -1396,46 +1379,14 @@ class _ScanProblemSheet extends StatelessWidget {
   }
 }
 
+/// What shows for the moment the camera takes to start: plain black, as in
+/// the phone's own camera app. A shimmering frame and bar stood here, which
+/// read as a loading screen rather than a camera about to open.
 class _CameraShimmerSkeleton extends StatelessWidget {
   const _CameraShimmerSkeleton();
 
   @override
-  Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: const Color(0xFF121212), // Charcoal base
-      highlightColor: const Color(0xFF1E1E1E), // Lighter highlight
-      child: Container(
-        color: Colors.black,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(40),
-                ),
-              ),
-              const SizedBox(height: 40),
-              Container(
-                width: 150,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const ColoredBox(color: Colors.black);
 }
 
 class _StatePanel extends StatelessWidget {
@@ -1496,7 +1447,8 @@ class _StatePanel extends StatelessWidget {
   }
 }
 
-/// A camera control that pops in a beat after the one before.
+/// A camera control. The controls used to pop in one after another; the
+/// camera now opens with everything already in place.
 class _Pop extends StatelessWidget {
   const _Pop({required this.order, required this.child});
 
@@ -1504,11 +1456,16 @@ class _Pop extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Reveal(
-    delay: Duration(milliseconds: 480 + 80 * order),
-    offset: Offset.zero,
-    scale: .6,
-    curve: AppMotion.springCurve,
-    child: child,
-  );
+  Widget build(BuildContext context) => child;
+}
+
+/// Stands where an entrance animation used to be: the camera screen opens
+/// with its guide already drawn.
+class _Plain extends StatelessWidget {
+  const _Plain({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => child;
 }
