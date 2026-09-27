@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'wazn_icons.dart';
 
 import '../core/theme/app_colors.dart';
+import '../data/services/camera_service.dart';
 import '../core/theme/app_typography.dart';
 import '../l10n/generated/app_localizations.dart';
 
@@ -14,6 +15,9 @@ Future<void> showScanChoiceSheet({
   required VoidCallback onBarcodeScan,
   VoidCallback? onVoiceLog,
 }) async {
+  // Most people pick Photo scan, so the camera starts while they choose:
+  // by the time the camera screen shows, the picture is already live.
+  CameraService().prewarm();
   final choice = await showModalBottomSheet<ScanChoice>(
     context: context,
     useRootNavigator: true,
@@ -22,6 +26,10 @@ Future<void> showScanChoiceSheet({
     barrierColor: Colors.black.withValues(alpha: 0.55),
     builder: (_) => _ScanChoiceSheet(showVoice: onVoiceLog != null),
   );
+
+  // Anything but a photo -- a barcode (its own scanner needs the camera),
+  // voice, or closing the sheet -- hands the camera straight back.
+  if (choice != ScanChoice.food) CameraService().stop();
 
   if (!context.mounted || choice == null) return;
 
