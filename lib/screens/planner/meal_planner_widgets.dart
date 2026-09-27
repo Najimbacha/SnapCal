@@ -93,7 +93,7 @@ class PlannerTopBar extends StatelessWidget {
                       child: Text(
                         groceryCount > 99 ? '99+' : '$groceryCount',
                         style: AppTypography.labelSmall.copyWith(
-                          color: Colors.white,
+                          color: context.onPrimaryColor,
                           fontSize: 9,
                         ),
                       ),
@@ -293,7 +293,10 @@ class PlannerDayStrip extends StatelessWidget {
                   Text(
                     DateFormat.E(locale).format(date).substring(0, 1),
                     style: AppTypography.labelSmall.copyWith(
-                      color: selected ? Colors.white70 : context.textMutedColor,
+                      color:
+                          selected
+                              ? context.onPrimaryColor.withValues(alpha: 0.75)
+                              : context.textMutedColor,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -305,7 +308,7 @@ class PlannerDayStrip extends StatelessWidget {
                         style: AppTypography.labelLarge.copyWith(
                           color:
                               selected
-                                  ? Colors.white
+                                  ? context.onPrimaryColor
                                   : context.textPrimaryColor,
                           fontWeight: FontWeight.w800,
                         ),
@@ -317,7 +320,9 @@ class PlannerDayStrip extends StatelessWidget {
                           size: 8,
                           color:
                               selected
-                                  ? Colors.white70
+                                  ? context.onPrimaryColor.withValues(
+                                    alpha: 0.75,
+                                  )
                                   : context.textMutedColor,
                         ),
                       ],
@@ -573,10 +578,10 @@ class PlannerMealRow extends StatelessWidget {
                               width: 2,
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             WaznIcons.check,
                             size: 11,
-                            color: Colors.white,
+                            color: context.onPrimaryColor,
                           ),
                         ),
                       ),

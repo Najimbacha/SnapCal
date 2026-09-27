@@ -1225,7 +1225,7 @@ class _AddTickState extends State<_AddTick>
                   scale: ticked.clamp(0.0, 1.2),
                   child: Icon(
                     WaznIcons.check,
-                    color: Colors.white,
+                    color: context.onPrimaryColor,
                     size: size * .53,
                   ),
                 ),
@@ -1365,7 +1365,7 @@ class _FilterChip extends StatelessWidget {
         backgroundColor: context.cardColor,
         padding: const EdgeInsets.symmetric(horizontal: 6),
         labelStyle: AppTypography.labelMedium.copyWith(
-          color: selected ? Colors.white : context.textSecondaryColor,
+          color: selected ? context.onPrimaryColor : context.textSecondaryColor,
           fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
         ),
       ),

@@ -367,7 +367,7 @@ class _RangeOption extends StatelessWidget {
                   fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
                   color:
                       selected
-                          ? Colors.white
+                          ? context.onPrimaryColor
                           : locked
                           ? context.textMutedColor
                           : context.textSecondaryColor,

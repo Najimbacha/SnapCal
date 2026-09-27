@@ -176,8 +176,12 @@ class _MealListTileState extends State<MealListTile>
                           const SizedBox(height: 3),
                           Text(
                             _detailText,
+                            // Muted grey fades too far on a dark card.
                             style: AppTypography.bodySmall.copyWith(
-                              color: context.textMutedColor,
+                              color:
+                                  context.isDarkMode
+                                      ? context.textSecondaryColor
+                                      : context.textMutedColor,
                               fontSize: 11,
                             ),
                             maxLines: 1,

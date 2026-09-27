@@ -378,7 +378,7 @@ class _SyncDataScreenState extends ConsumerState<SyncDataScreen>
                               icon: FontAwesomeIcons.google,
                               onPressed: _handleGoogleSignIn,
                               backgroundColor: colorScheme.primary,
-                              foregroundColor: Colors.white,
+                              foregroundColor: colorScheme.onPrimary,
                               isLoading: _isLoading,
                               isFaIcon: true,
                             ),
