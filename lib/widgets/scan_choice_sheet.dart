@@ -117,9 +117,10 @@ class _ScanChoiceSheetState extends State<_ScanChoiceSheet> {
                               color: (d
                                       ? Colors.white
                                       : const Color(0xFF1C1917))
-                                  .withValues(alpha: 0.45),
+                                  .withValues(alpha: 0.55),
+                              height: 1.3,
                             ),
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -291,18 +292,21 @@ class _ScanOption extends StatelessWidget {
                           fontSize: 15,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
+                      // Two lines, so a longer description (or a longer
+                      // language) is read in full rather than cut off.
                       Text(
                         subtitle,
                         style: AppTypography.labelSmall.copyWith(
                           color: (isDark
                                   ? Colors.white
                                   : const Color(0xFF1C1917))
-                              .withValues(alpha: 0.42),
+                              .withValues(alpha: 0.55),
                           fontWeight: FontWeight.w500,
                           fontSize: 12,
+                          height: 1.3,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
