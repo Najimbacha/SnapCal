@@ -57,6 +57,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   bool _emailLoading = false;
   bool _showEmailForm = false;
 
+  /// Log In, kept in sight above the keyboard while typing.
+  final _loginKey = GlobalKey();
+  double _lastInset = 0;
+
   /// A small shake of the form when the details are wrong.
   late final AnimationController _shake;
 
@@ -221,6 +225,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
     final isDark = context.isDarkMode;
     final l10n = AppLocalizations.of(context)!;
+    // While typing, the logo and the line under the title fold away and
+    // the title shrinks, so both fields and Log In fit above the keyboard.
+    final inset = MediaQuery.viewInsetsOf(context).bottom;
+    final typing = _showEmailForm && inset > 0;
+    if (typing && inset != _lastInset) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final login = _loginKey.currentContext;
+        if (login != null && login.mounted) {
+          Scrollable.ensureVisible(
+            login,
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+          );
+        }
+      });
+    }
+    _lastInset = inset;
 
     return Scaffold(
       backgroundColor: isDark ? _minimalDarkBg : _minimalBg,
@@ -233,41 +253,43 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // ── Logo ──
-                  Reveal(
-                    offset: Offset.zero,
-                    scale: .3,
-                    curve: AppMotion.springCurve,
-                    duration: const Duration(milliseconds: 700),
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _minimalGreen.withValues(
-                          alpha: isDark ? 0.18 : 0.08,
+                  if (!typing) ...[
+                    // ── Logo ──
+                    Reveal(
+                      offset: Offset.zero,
+                      scale: .3,
+                      curve: AppMotion.springCurve,
+                      duration: const Duration(milliseconds: 700),
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _minimalGreen.withValues(
+                            alpha: isDark ? 0.18 : 0.08,
+                          ),
+                          border: Border.all(
+                            color:
+                                isDark
+                                    ? Colors.white.withValues(alpha: 0.10)
+                                    : _minimalLine,
+                            width: 1,
+                          ),
                         ),
-                        border: Border.all(
-                          color:
-                              isDark
-                                  ? Colors.white.withValues(alpha: 0.10)
-                                  : _minimalLine,
-                          width: 1,
-                        ),
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/icon/icon.png',
-                          fit: BoxFit.cover,
-                          width: 80,
-                          height: 80,
-                          cacheWidth: 80,
-                          cacheHeight: 80,
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/icon/icon.png',
+                            fit: BoxFit.cover,
+                            width: 80,
+                            height: 80,
+                            cacheWidth: 80,
+                            cacheHeight: 80,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 32),
+                    const SizedBox(height: 32),
+                  ],
 
                   // ── Title ──
                   // The title rises a word at a time, and again when it changes.
@@ -285,23 +307,27 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                     style: AppTypography.displayMedium.copyWith(
                       color: context.textPrimaryColor,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: -1.5,
+                      letterSpacing: typing ? -0.8 : -1.5,
                       height: 1.1,
+                      fontSize: typing ? 30 : null,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Reveal(
-                    delay: const Duration(milliseconds: 450),
-                    offset: const Offset(0, 16),
-                    child: Text(
-                      l10n.auth_intro_body,
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: context.textSecondaryColor,
+                  if (!typing) ...[
+                    const SizedBox(height: 12),
+                    Reveal(
+                      delay: const Duration(milliseconds: 450),
+                      offset: const Offset(0, 16),
+                      child: Text(
+                        l10n.auth_intro_body,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: context.textSecondaryColor,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  const SizedBox(height: 48),
+                    const SizedBox(height: 48),
+                  ] else
+                    const SizedBox(height: 24),
 
                   // ── Auth Options ──
                   AnimatedSize(
@@ -346,6 +372,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                         controller: _passwordController,
                                         hint: l10n.auth_hint_password,
                                         isPassword: true,
+                                        onSubmitted:
+                                            (_) =>
+                                                _emailLoading
+                                                    ? null
+                                                    : _handleEmailSubmit(),
                                         showPassword: _showPassword,
                                         onTogglePassword:
                                             () => setState(
@@ -383,6 +414,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                                         ),
                                       ),
                                     Reveal(
+                                      key: _loginKey,
                                       delay: const Duration(milliseconds: 120),
                                       offset: const Offset(0, 16),
                                       child: AppScaleTap(
@@ -776,6 +808,7 @@ class _AuthTextField extends StatelessWidget {
   final VoidCallback? onTogglePassword;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
+  final ValueChanged<String>? onSubmitted;
 
   const _AuthTextField({
     required this.controller,
@@ -785,6 +818,7 @@ class _AuthTextField extends StatelessWidget {
     this.onTogglePassword,
     this.keyboardType,
     this.validator,
+    this.onSubmitted,
   });
 
   @override
@@ -795,6 +829,9 @@ class _AuthTextField extends StatelessWidget {
       obscureText: isPassword && !(showPassword ?? false),
       keyboardType: keyboardType,
       validator: validator,
+      // Next moves from email to password; Go on the password signs in.
+      textInputAction: isPassword ? TextInputAction.go : TextInputAction.next,
+      onSubmitted: onSubmitted,
       autofillHints:
           isPassword
               ? const [AutofillHints.password]

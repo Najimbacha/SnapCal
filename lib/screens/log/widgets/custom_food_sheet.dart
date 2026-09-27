@@ -1,5 +1,5 @@
+import '../../../widgets/pinned_footer_sheet.dart';
 import '../../../core/theme/app_button_theme.dart';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -124,14 +124,10 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
           color: context.backgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
         ),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            8,
-            20,
-            math.max(20, media.padding.bottom + 12),
-          ),
-          child: Column(
+        // While typing, the fields scroll and Add stays right above the
+        // keyboard.
+        child: PinnedFooterSheet(
+          body: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -265,7 +261,12 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
                   ],
                 ],
               ),
-              const SizedBox(height: 16),
+            ],
+          ),
+          footer: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               SizedBox(
                 height: appButtonHeight,
                 child: FilledButton(
@@ -297,14 +298,16 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                l10n.custom_food_note,
-                textAlign: TextAlign.center,
-                style: AppTypography.bodySmall.copyWith(
-                  color: context.textMutedColor,
+              if (!PinnedFooterSheet.keyboardOpen(context)) ...[
+                const SizedBox(height: 10),
+                Text(
+                  l10n.custom_food_note,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: context.textMutedColor,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

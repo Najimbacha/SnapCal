@@ -1,3 +1,4 @@
+import '../../../widgets/pinned_footer_sheet.dart';
 import '../../../core/theme/app_button_theme.dart';
 import 'package:flutter/material.dart';
 import '../../../widgets/app_text_field.dart';
@@ -154,280 +155,284 @@ class _SaveRoutineSheetState extends ConsumerState<SaveRoutineSheet> {
     final line = context.dividerColor.withValues(alpha: 0.35);
     final deep = isDark ? const Color(0xFF6EE7B7) : const Color(0xFF047857);
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        10,
-        20,
-        20 +
-            MediaQuery.viewInsetsOf(context).bottom +
-            MediaQuery.paddingOf(context).bottom,
-      ),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1B1F) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 14),
-                decoration: BoxDecoration(
-                  color: context.textMutedColor.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
+    // The panel rises with the keyboard; while typing, the foods scroll and
+    // Save stays right above the keyboard.
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+        ),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C1B1F) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        ),
+        child: PinnedFooterSheet(
+          topPadding: 10,
+          body: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: context.textMutedColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            Text(
-              l10n.routine_save_as,
-              style: AppTypography.titleLarge.copyWith(
-                fontWeight: FontWeight.w800,
-                color: context.textPrimaryColor,
+              Text(
+                l10n.routine_save_as,
+                style: AppTypography.titleLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimaryColor,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              l10n.routine_save_body(_included.length),
-              style: AppTypography.bodySmall.copyWith(
-                color: context.textSecondaryColor,
+              const SizedBox(height: 2),
+              Text(
+                l10n.routine_save_body(_included.length),
+                style: AppTypography.bodySmall.copyWith(
+                  color: context.textSecondaryColor,
+                ),
               ),
-            ),
-            const SizedBox(height: 14),
-            if (!canAdd) ...[
-              _LimitNote(
-                used: used,
-                onPro: _openPro,
-                key: const ValueKey('routine-limit'),
-              ),
-              const SizedBox(height: 12),
-            ],
-            Opacity(
-              opacity: canAdd ? 1 : .45,
-              child: IgnorePointer(
-                ignoring: !canAdd,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Emojis, with a highlight that springs to the pick.
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SizedBox(
-                        width: _emojis.length * (_cell + _gap) - _gap,
-                        height: _cell,
-                        child: Stack(
-                          children: [
-                            AnimatedPositionedDirectional(
-                              duration: AppMotion.maybeZero(
-                                context,
-                                const Duration(milliseconds: 420),
-                              ),
-                              curve: AppMotion.springCurve,
-                              start: _emoji * (_cell + _gap),
-                              top: 0,
-                              width: _cell,
-                              height: _cell,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(
-                                    alpha: .14,
+              const SizedBox(height: 14),
+              if (!canAdd) ...[
+                _LimitNote(
+                  used: used,
+                  onPro: _openPro,
+                  key: const ValueKey('routine-limit'),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Opacity(
+                opacity: canAdd ? 1 : .45,
+                child: IgnorePointer(
+                  ignoring: !canAdd,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Emojis, with a highlight that springs to the pick.
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: _emojis.length * (_cell + _gap) - _gap,
+                          height: _cell,
+                          child: Stack(
+                            children: [
+                              AnimatedPositionedDirectional(
+                                duration: AppMotion.maybeZero(
+                                  context,
+                                  const Duration(milliseconds: 420),
+                                ),
+                                curve: AppMotion.springCurve,
+                                start: _emoji * (_cell + _gap),
+                                top: 0,
+                                width: _cell,
+                                height: _cell,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(
+                                      alpha: .14,
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: deep, width: 2),
                                   ),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: deep, width: 2),
                                 ),
                               ),
-                            ),
-                            Row(
-                              children: [
-                                for (var i = 0; i < _emojis.length; i++) ...[
-                                  if (i > 0) const SizedBox(width: _gap),
-                                  GestureDetector(
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      setState(() => _emoji = i);
-                                    },
-                                    child: Container(
-                                      width: _cell,
-                                      height: _cell,
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(
-                                          color:
-                                              i == _emoji
-                                                  ? Colors.transparent
-                                                  : line,
+                              Row(
+                                children: [
+                                  for (var i = 0; i < _emojis.length; i++) ...[
+                                    if (i > 0) const SizedBox(width: _gap),
+                                    GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.selectionClick();
+                                        setState(() => _emoji = i);
+                                      },
+                                      child: Container(
+                                        width: _cell,
+                                        height: _cell,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          border: Border.all(
+                                            color:
+                                                i == _emoji
+                                                    ? Colors.transparent
+                                                    : line,
+                                          ),
                                         ),
-                                      ),
-                                      child: Text(
-                                        _emojis[i],
-                                        style: const TextStyle(fontSize: 21),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    AppTextField(
-                      fieldKey: const ValueKey('routine-name'),
-                      controller: _name,
-                      maxLength: 40,
-                      textCapitalization: TextCapitalization.sentences,
-                      label: l10n.custom_food_name,
-                      hint: l10n.feature_templates_name_hint,
-                    ),
-                    const SizedBox(height: 12),
-                    // The foods, each of which can be left out.
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: line),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < widget.meals.length; i++) ...[
-                            if (i > 0) Divider(height: 1, color: line),
-                            InkWell(
-                              onTap:
-                                  () => setState(
-                                    () =>
-                                        _included.contains(i)
-                                            ? _included.remove(i)
-                                            : _included.add(i),
-                                  ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                child: Row(
-                                  children: [
-                                    AnimatedContainer(
-                                      duration: const Duration(
-                                        milliseconds: 180,
-                                      ),
-                                      width: 22,
-                                      height: 22,
-                                      decoration: BoxDecoration(
-                                        color:
-                                            _included.contains(i)
-                                                ? AppColors.primary
-                                                : Colors.transparent,
-                                        borderRadius: BorderRadius.circular(7),
-                                        border: Border.all(
-                                          color:
-                                              _included.contains(i)
-                                                  ? AppColors.primary
-                                                  : context.textMutedColor,
+                                        child: Text(
+                                          _emojis[i],
+                                          style: const TextStyle(fontSize: 21),
                                         ),
-                                      ),
-                                      child:
-                                          _included.contains(i)
-                                              ? const Icon(
-                                                WaznIcons.check,
-                                                size: 14,
-                                                color: Colors.white,
-                                              )
-                                              : null,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        widget.meals[i].foodName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: AppTypography.bodyMedium
-                                            .copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              color: context.textPrimaryColor,
-                                            ),
-                                      ),
-                                    ),
-                                    Text(
-                                      '${widget.meals[i].calories}',
-                                      style: AppTypography.bodyMedium.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                        color: context.textPrimaryColor,
-                                        fontFeatures: const [
-                                          FontFeature.tabularFigures(),
-                                        ],
                                       ),
                                     ),
                                   ],
-                                ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Save; it shrinks to a round tick once saved.
-            Center(
-              child: LayoutBuilder(
-                builder:
-                    (context, constraints) => AnimatedContainer(
-                      key: const ValueKey('routine-save'),
-                      duration: AppMotion.maybeZero(
-                        context,
-                        const Duration(milliseconds: 340),
-                      ),
-                      curve: Curves.easeOutCubic,
-                      width: _saved ? appButtonHeight : constraints.maxWidth,
-                      height: appButtonHeight,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: context.primaryColor,
-                        borderRadius: BorderRadius.circular(
-                          _saved ? appButtonHeight / 2 : appButtonRadius,
-                        ),
-                      ),
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: InkWell(
-                          onTap: canAdd ? _save : _openPro,
-                          child: Center(
-                            child:
-                                _saved
-                                    ? Icon(
-                                      WaznIcons.check,
-                                      color: context.onPrimaryColor,
-                                      size: 24,
-                                    )
-                                    : FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        canAdd
-                                            ? l10n.feature_templates_save_btn
-                                            : l10n.routine_get_pro,
-                                        style: AppTypography.titleSmall
-                                            .copyWith(
-                                              color: context.onPrimaryColor,
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 16,
-                                            ),
-                                      ),
-                                    ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      AppTextField(
+                        fieldKey: const ValueKey('routine-name'),
+                        controller: _name,
+                        maxLength: 40,
+                        textCapitalization: TextCapitalization.sentences,
+                        label: l10n.custom_food_name,
+                        hint: l10n.feature_templates_name_hint,
+                      ),
+                      const SizedBox(height: 12),
+                      // The foods, each of which can be left out.
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: line),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < widget.meals.length; i++) ...[
+                              if (i > 0) Divider(height: 1, color: line),
+                              InkWell(
+                                onTap:
+                                    () => setState(
+                                      () =>
+                                          _included.contains(i)
+                                              ? _included.remove(i)
+                                              : _included.add(i),
+                                    ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 180,
+                                        ),
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          color:
+                                              _included.contains(i)
+                                                  ? AppColors.primary
+                                                  : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(
+                                            7,
+                                          ),
+                                          border: Border.all(
+                                            color:
+                                                _included.contains(i)
+                                                    ? AppColors.primary
+                                                    : context.textMutedColor,
+                                          ),
+                                        ),
+                                        child:
+                                            _included.contains(i)
+                                                ? const Icon(
+                                                  WaznIcons.check,
+                                                  size: 14,
+                                                  color: Colors.white,
+                                                )
+                                                : null,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          widget.meals[i].foodName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppTypography.bodyMedium
+                                              .copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: context.textPrimaryColor,
+                                              ),
+                                        ),
+                                      ),
+                                      Text(
+                                        '${widget.meals[i].calories}',
+                                        style: AppTypography.bodyMedium
+                                            .copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: context.textPrimaryColor,
+                                              fontFeatures: const [
+                                                FontFeature.tabularFigures(),
+                                              ],
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
+            ],
+          ),
+          // Save; it shrinks to a round tick once saved.
+          footer: Center(
+            child: LayoutBuilder(
+              builder:
+                  (context, constraints) => AnimatedContainer(
+                    key: const ValueKey('routine-save'),
+                    duration: AppMotion.maybeZero(
+                      context,
+                      const Duration(milliseconds: 340),
+                    ),
+                    curve: Curves.easeOutCubic,
+                    width: _saved ? appButtonHeight : constraints.maxWidth,
+                    height: appButtonHeight,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: context.primaryColor,
+                      borderRadius: BorderRadius.circular(
+                        _saved ? appButtonHeight / 2 : appButtonRadius,
+                      ),
+                    ),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkWell(
+                        onTap: canAdd ? _save : _openPro,
+                        child: Center(
+                          child:
+                              _saved
+                                  ? Icon(
+                                    WaznIcons.check,
+                                    color: context.onPrimaryColor,
+                                    size: 24,
+                                  )
+                                  : FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      canAdd
+                                          ? l10n.feature_templates_save_btn
+                                          : l10n.routine_get_pro,
+                                      style: AppTypography.titleSmall.copyWith(
+                                        color: context.onPrimaryColor,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                        ),
+                      ),
+                    ),
+                  ),
             ),
-          ],
+          ),
         ),
       ),
     );

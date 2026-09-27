@@ -76,6 +76,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
       duration: const Duration(milliseconds: 250),
     );
     WidgetsBinding.instance.addObserver(this);
+    _focusNode.addListener(_onFocus);
   }
 
   @override
@@ -91,6 +92,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
     _countdown?.cancel();
     unawaited(_speech.cancel());
     _transcriptController.dispose();
+    _focusNode.removeListener(_onFocus);
     _focusNode.dispose();
     _fill.dispose();
     super.dispose();
@@ -430,12 +432,19 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
     }
   }
 
+  void _onFocus() {
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    // Typing the meal instead of speaking: the microphone folds into one
+    // small row and Analyse sits right above the keyboard.
+    final typing =
+        MediaQuery.viewInsetsOf(context).bottom > 0 && _focusNode.hasFocus;
     final surface = dark ? AppColors.darkBackground : AppColors.lightBackground;
     final card = dark ? AppColors.darkCard : AppColors.lightCard;
     final textColor = dark ? AppColors.darkTextPrimary : AppColors.textPrimary;
@@ -443,6 +452,75 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
         dark ? AppColors.darkTextSecondary : AppColors.textSecondary;
     final border =
         dark ? Colors.white.withValues(alpha: 0.09) : AppColors.lightCardBorder;
+
+    final analyze = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _FillingButton(
+          fill: _fill,
+          child: FilledButton.icon(
+            key: const ValueKey('voice-analyze'),
+            onPressed: _canAnalyze ? _analyze : null,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(appButtonHeight),
+            ),
+            icon: AnimatedSwitcher(
+              duration: AppMotion.maybeZero(
+                context,
+                const Duration(milliseconds: 320),
+              ),
+              transitionBuilder:
+                  (child, animation) => ScaleTransition(
+                    scale: CurvedAnimation(
+                      parent: animation,
+                      curve: AppMotion.springCurve,
+                    ),
+                    child: child,
+                  ),
+              child:
+                  _analyzed
+                      ? const Icon(
+                        WaznIcons.success,
+                        key: ValueKey('done'),
+                        size: 20,
+                      )
+                      : _isAnalyzing
+                      ? SizedBox(
+                        key: const ValueKey('busy'),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      )
+                      : const Icon(
+                        WaznIcons.ai,
+                        key: ValueKey('idle'),
+                        size: 19,
+                      ),
+            ),
+            label: Text(
+              _isAnalyzing ? l10n.voice_analyzing : l10n.voice_analyze,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+        if (_transcriptController.text.trim().isNotEmpty && !_isAnalyzing) ...[
+          const SizedBox(height: 6),
+          TextButton.icon(
+            key: const ValueKey('voice-speak-again'),
+            onPressed:
+                _speechUnavailable
+                    ? null
+                    : () => _startListening(clearFirst: true),
+            icon: const Icon(WaznIcons.rotateCcw, size: 17),
+            label: Text(l10n.voice_speak_again),
+          ),
+        ],
+      ],
+    );
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -476,232 +554,272 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
         ),
         body: SafeArea(
           top: false,
-          child: LayoutBuilder(
-            builder:
-                (context, constraints) => SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.fromLTRB(20, 10, 20, 24 + bottomInset),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: (constraints.maxHeight - 40).clamp(
-                        0,
-                        double.infinity,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          l10n.voice_heading,
-                          style: AppTypography.headlineSmall.copyWith(
-                            color: textColor,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.35,
-                          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder:
+                      (context, constraints) => SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: EdgeInsets.fromLTRB(
+                          20,
+                          10,
+                          20,
+                          typing ? 12 : 24,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          l10n.voice_subtitle,
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: secondaryText,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 24),
-                          decoration: BoxDecoration(
-                            color: card,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: border),
-                          ),
-                          child: _MicControl(
-                            listening: _isListening,
-                            analyzing: _isAnalyzing,
-                            soundLevel: _soundLevel,
-                            secondsLeft: _secondsLeft,
-                            onTap:
-                                _isAnalyzing
-                                    ? null
-                                    : _isListening
-                                    ? _stopListening
-                                    : _startListening,
-                            readyLabel: l10n.voice_tap_to_speak,
-                            listeningLabel: l10n.voice_listening,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          l10n.voice_transcript_label,
-                          style: AppTypography.titleSmall.copyWith(
-                            color: textColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Stack(
-                          children: [
-                            TextField(
-                              key: const ValueKey('voice-transcript'),
-                              controller: _transcriptController,
-                              focusNode: _focusNode,
-                              enabled: !_isAnalyzing,
-                              minLines: 3,
-                              maxLines: 5,
-                              maxLength: 500,
-                              textCapitalization: TextCapitalization.sentences,
-                              onChanged: (_) => setState(() => _error = null),
-                              style: TextStyle(
-                                color: AppFieldColors.of(context).text,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              // The shared field style; it keeps its helper
-                              // line, so it stays a plain TextField.
-                              decoration: InputDecoration(
-                                hintText: l10n.voice_transcript_hint,
-                                helperText: l10n.voice_example,
-                                helperMaxLines: 2,
-                                contentPadding: const EdgeInsets.all(14),
-                                helperStyle: TextStyle(
-                                  color: secondaryText,
-                                  height: 1.3,
-                                ),
-                                counterText: '',
-                              ),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: (constraints.maxHeight - 40).clamp(
+                              0,
+                              double.infinity,
                             ),
-                            // While listening, each word fades in as it is
-                            // heard; the field takes over again after.
-                            if (_isListening &&
-                                _transcriptController.text.trim().isNotEmpty)
-                              Positioned(
-                                left: 0,
-                                right: 0,
-                                top: 0,
-                                child: IgnorePointer(
-                                  child: _LiveWords(
-                                    text: _transcriptController.text,
-                                    background: card,
-                                    border: AppColors.primary,
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 16,
-                                      height: 1.45,
-                                    ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (!typing) ...[
+                                Text(
+                                  l10n.voice_heading,
+                                  style: AppTypography.headlineSmall.copyWith(
+                                    color: textColor,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.35,
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              WaznIcons.shieldCheck,
-                              size: 15,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 7),
-                            Flexible(
-                              child: Text(
-                                l10n.voice_privacy_note,
-                                textAlign: TextAlign.center,
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: secondaryText,
+                                const SizedBox(height: 6),
+                                Text(
+                                  l10n.voice_subtitle,
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: secondaryText,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                              ],
+                              if (typing)
+                                _SpeakRow(
+                                  label: l10n.voice_tap_to_speak,
+                                  background: card,
+                                  border: border,
+                                  textColor: secondaryText,
+                                  onTap:
+                                      _isAnalyzing || _speechUnavailable
+                                          ? null
+                                          : () {
+                                            _focusNode.unfocus();
+                                            _startListening();
+                                          },
+                                )
+                              else
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 24,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: card,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: border),
+                                  ),
+                                  child: _MicControl(
+                                    listening: _isListening,
+                                    analyzing: _isAnalyzing,
+                                    soundLevel: _soundLevel,
+                                    secondsLeft: _secondsLeft,
+                                    onTap:
+                                        _isAnalyzing
+                                            ? null
+                                            : _isListening
+                                            ? _stopListening
+                                            : _startListening,
+                                    readyLabel: l10n.voice_tap_to_speak,
+                                    listeningLabel: l10n.voice_listening,
+                                  ),
+                                ),
+                              SizedBox(height: typing ? 14 : 20),
+                              Text(
+                                l10n.voice_transcript_label,
+                                style: AppTypography.titleSmall.copyWith(
+                                  color: textColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 12),
-                          _ErrorBanner(
-                            message: _error!,
-                            showSettings: _permanentlyDenied,
-                            settingsLabel: l10n.voice_open_settings,
-                            onSettings: openAppSettings,
-                          ),
-                        ],
-                        const SizedBox(height: 18),
-                        _FillingButton(
-                          fill: _fill,
-                          child: FilledButton.icon(
-                            key: const ValueKey('voice-analyze'),
-                            onPressed: _canAnalyze ? _analyze : null,
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(
-                                appButtonHeight,
-                              ),
-                            ),
-                            icon: AnimatedSwitcher(
-                              duration: AppMotion.maybeZero(
-                                context,
-                                const Duration(milliseconds: 320),
-                              ),
-                              transitionBuilder:
-                                  (child, animation) => ScaleTransition(
-                                    scale: CurvedAnimation(
-                                      parent: animation,
-                                      curve: AppMotion.springCurve,
+                              const SizedBox(height: 8),
+                              Stack(
+                                children: [
+                                  TextField(
+                                    key: const ValueKey('voice-transcript'),
+                                    controller: _transcriptController,
+                                    focusNode: _focusNode,
+                                    enabled: !_isAnalyzing,
+                                    minLines: 3,
+                                    maxLines: 5,
+                                    maxLength: 500,
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    onChanged:
+                                        (_) => setState(() => _error = null),
+                                    style: TextStyle(
+                                      color: AppFieldColors.of(context).text,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                    child: child,
-                                  ),
-                              child:
-                                  _analyzed
-                                      ? const Icon(
-                                        WaznIcons.success,
-                                        key: ValueKey('done'),
-                                        size: 20,
-                                      )
-                                      : _isAnalyzing
-                                      ? SizedBox(
-                                        key: const ValueKey('busy'),
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color:
-                                              Theme.of(
-                                                context,
-                                              ).colorScheme.onPrimary,
-                                        ),
-                                      )
-                                      : const Icon(
-                                        WaznIcons.ai,
-                                        key: ValueKey('idle'),
-                                        size: 19,
+                                    // The shared field style; it keeps its helper
+                                    // line, so it stays a plain TextField.
+                                    decoration: InputDecoration(
+                                      hintText: l10n.voice_transcript_hint,
+                                      helperText: l10n.voice_example,
+                                      helperMaxLines: 2,
+                                      contentPadding: const EdgeInsets.all(14),
+                                      helperStyle: TextStyle(
+                                        color: secondaryText,
+                                        height: 1.3,
                                       ),
-                            ),
-                            label: Text(
-                              _isAnalyzing
-                                  ? l10n.voice_analyzing
-                                  : l10n.voice_analyze,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+                                      counterText: '',
+                                    ),
+                                  ),
+                                  // While listening, each word fades in as it is
+                                  // heard; the field takes over again after.
+                                  if (_isListening &&
+                                      _transcriptController.text
+                                          .trim()
+                                          .isNotEmpty)
+                                    Positioned(
+                                      left: 0,
+                                      right: 0,
+                                      top: 0,
+                                      child: IgnorePointer(
+                                        child: _LiveWords(
+                                          text: _transcriptController.text,
+                                          background: card,
+                                          border: AppColors.primary,
+                                          style: TextStyle(
+                                            color: textColor,
+                                            fontSize: 16,
+                                            height: 1.45,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                            ),
+                              if (!typing) ...[
+                                const SizedBox(height: 14),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      WaznIcons.shieldCheck,
+                                      size: 15,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Flexible(
+                                      child: Text(
+                                        l10n.voice_privacy_note,
+                                        textAlign: TextAlign.center,
+                                        style: AppTypography.labelSmall
+                                            .copyWith(
+                                              color: secondaryText,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              if (_error != null) ...[
+                                const SizedBox(height: 12),
+                                _ErrorBanner(
+                                  message: _error!,
+                                  showSettings: _permanentlyDenied,
+                                  settingsLabel: l10n.voice_open_settings,
+                                  onSettings: openAppSettings,
+                                ),
+                              ],
+                              if (!typing) ...[
+                                const SizedBox(height: 18),
+                                analyze,
+                              ],
+                            ],
                           ),
                         ),
-                        if (_transcriptController.text.trim().isNotEmpty &&
-                            !_isAnalyzing) ...[
-                          const SizedBox(height: 6),
-                          TextButton.icon(
-                            key: const ValueKey('voice-speak-again'),
-                            onPressed:
-                                _speechUnavailable
-                                    ? null
-                                    : () => _startListening(clearFirst: true),
-                            icon: const Icon(WaznIcons.rotateCcw, size: 17),
-                            label: Text(l10n.voice_speak_again),
-                          ),
-                        ],
-                      ],
-                    ),
+                      ),
+                ),
+              ),
+              if (typing)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: surface,
+                    border: Border(top: BorderSide(color: border)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                    child: analyze,
                   ),
                 ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The microphone, folded into one row while the meal is being typed.
+class _SpeakRow extends StatelessWidget {
+  const _SpeakRow({
+    required this.label,
+    required this.background,
+    required this.border,
+    required this.textColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color background, border, textColor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: border),
+      ),
+      child: InkWell(
+        key: const ValueKey('voice-speak-row'),
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  WaznIcons.voice,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTypography.labelLarge.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
