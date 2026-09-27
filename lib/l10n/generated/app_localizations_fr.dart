@@ -5626,4 +5626,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get log_find_food => 'Trouver un aliment';
+
+  @override
+  String get auth_show_password => 'Afficher le mot de passe';
+
+  @override
+  String get auth_hide_password => 'Masquer le mot de passe';
 }

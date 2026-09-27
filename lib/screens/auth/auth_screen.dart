@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../widgets/app_text_field.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -792,59 +793,32 @@ class _AuthTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.isDarkMode;
-    return Container(
-      decoration: BoxDecoration(
-        color:
-            isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : const Color(0x00FFFFFF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : _minimalLine,
-        ),
-        boxShadow:
-            isDark
-                ? null
-                : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword && !(showPassword ?? false),
-        keyboardType: keyboardType,
-        validator: validator,
-        style: AppTypography.bodyLarge,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: AppTypography.bodyLarge.copyWith(
-            color: context.textMutedColor,
-          ),
-          suffixIcon:
-              isPassword
-                  ? IconButton(
-                    onPressed: onTogglePassword,
-                    icon: Icon(
-                      (showPassword ?? false)
-                          ? WaznIcons.eyeOff
-                          : WaznIcons.eye,
-                      size: 18,
-                      color: context.textMutedColor,
-                    ),
-                  )
-                  : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-        ),
-      ),
+    return AppTextField(
+      controller: controller,
+      hint: hint,
+      obscureText: isPassword && !(showPassword ?? false),
+      keyboardType: keyboardType,
+      validator: validator,
+      autofillHints:
+          isPassword
+              ? const [AutofillHints.password]
+              : keyboardType == TextInputType.emailAddress
+              ? const [AutofillHints.email]
+              : null,
+      trailing:
+          isPassword
+              ? IconButton(
+                tooltip:
+                    (showPassword ?? false)
+                        ? AppLocalizations.of(context)!.auth_hide_password
+                        : AppLocalizations.of(context)!.auth_show_password,
+                onPressed: onTogglePassword,
+                icon: Icon(
+                  (showPassword ?? false) ? WaznIcons.eyeOff : WaznIcons.eye,
+                  size: 18,
+                ),
+              )
+              : null,
     );
   }
 }

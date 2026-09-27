@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../../../widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' show DateFormat;
@@ -252,17 +253,15 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal>
                             child: child,
                           );
                         },
-                        child: TextField(
+                        child: AppTextField(
                           controller: _weightController,
                           autofocus: true, // Auto-focus for better UX
                           onChanged: _clearError,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: InputDecoration(
-                            hintText: AppLocalizations.of(context)!.weight_hint,
-                            suffixText: localizeUnit(context, weightUnit),
-                          ),
+                          label: AppLocalizations.of(context)!.weight_hint,
+                          unit: localizeUnit(context, weightUnit),
                         ),
                       ),
                       // The change the new number makes since last time,
@@ -324,16 +323,14 @@ class _WeightEntryModalState extends ConsumerState<WeightEntryModal>
                                 ),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      AppTextField(
                         controller: _bodyFatController,
                         onChanged: _clearError,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        decoration: InputDecoration(
-                          hintText: AppLocalizations.of(context)!.body_fat_hint,
-                          suffixText: '%',
-                        ),
+                        label: AppLocalizations.of(context)!.body_fat_hint,
+                        unit: '%',
                       ),
                       // The reason slides down under the box rather than
                       // just appearing.

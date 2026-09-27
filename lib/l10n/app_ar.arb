@@ -1875,5 +1875,7 @@
   "custom_food_macros": "البروتين والكربوهيدرات والدهون (اختياري)",
   "custom_food_add_to": "أضف إلى {meal}",
   "custom_food_note": "في المرة القادمة سيظهر في البحث والأخيرة.",
-  "log_find_food": "ابحث عن طعام"
+  "log_find_food": "ابحث عن طعام",
+  "auth_show_password": "إظهار كلمة المرور",
+  "auth_hide_password": "إخفاء كلمة المرور"
 }

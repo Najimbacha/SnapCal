@@ -5512,4 +5512,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get log_find_food => 'ابحث عن طعام';
+
+  @override
+  String get auth_show_password => 'إظهار كلمة المرور';
+
+  @override
+  String get auth_hide_password => 'إخفاء كلمة المرور';
 }

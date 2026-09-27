@@ -329,6 +329,7 @@ Future<void> _rename(
             maxLength: 40,
             decoration: InputDecoration(
               hintText: l10n.feature_templates_name_hint,
+              counterText: '',
             ),
             onSubmitted: (v) => Navigator.pop(context, v),
           ),

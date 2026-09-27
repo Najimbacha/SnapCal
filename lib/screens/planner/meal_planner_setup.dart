@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/app_text_field.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/wazn_icons.dart';
@@ -243,14 +244,12 @@ class _MealPlannerSetupState extends State<MealPlannerSetup> {
           onChanged: (value) => setState(() => _restriction = value),
         ),
         const SizedBox(height: 12),
-        TextField(
+        AppTextField(
           controller: _avoidController,
           textInputAction: TextInputAction.done,
-          decoration: InputDecoration(
-            labelText: l10n.planner_foods_avoid,
-            hintText: l10n.planner_foods_avoid_hint,
-            prefixIcon: const Icon(WaznIcons.blocked, size: 18),
-          ),
+          label: l10n.planner_foods_avoid,
+          hint: l10n.planner_foods_avoid_hint,
+          icon: WaznIcons.blocked,
         ),
       ],
     );

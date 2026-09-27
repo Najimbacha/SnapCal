@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../widgets/app_text_field.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -1734,12 +1735,10 @@ class _PlannerSwapSheetState extends State<PlannerSwapSheet> {
                 onChanged: (value) => setState(() => _keepPreferences = value),
               ),
               const SizedBox(height: 12),
-              TextField(
+              AppTextField(
                 controller: _noteController,
-                decoration: InputDecoration(
-                  labelText: l10n.planner_swap_custom_note,
-                  hintText: l10n.planner_swap_note_hint,
-                ),
+                label: l10n.planner_swap_custom_note,
+                hint: l10n.planner_swap_note_hint,
               ),
               const SizedBox(height: 12),
               Row(

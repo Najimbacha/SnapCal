@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_field_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
@@ -119,22 +120,7 @@ class AppTheme {
         ),
       ),
 
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.darkCard,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
-        ),
-      ),
+      inputDecorationTheme: appInputDecorationTheme(colorScheme),
       actionIconTheme: _actionIcons,
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
@@ -261,22 +247,7 @@ class AppTheme {
         ),
       ),
 
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: colorScheme.surfaceContainerHighest,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
-        ),
-      ),
+      inputDecorationTheme: appInputDecorationTheme(colorScheme),
       actionIconTheme: _actionIcons,
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,

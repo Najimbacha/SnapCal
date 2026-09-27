@@ -7,6 +7,7 @@ import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_colors.dart';
+import '../../../widgets/app_text_field.dart';
 import '../../../widgets/wazn_icons.dart';
 
 /// What the user typed for a food of their own.
@@ -187,7 +188,6 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
                       controller: _calories,
                       autofocus: hasName,
                       number: true,
-                      large: true,
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -342,7 +342,6 @@ class _Field extends StatelessWidget {
     required this.controller,
     this.suffix,
     this.number = false,
-    this.large = false,
     this.autofocus = false,
     this.capitalize = false,
     this.onChanged,
@@ -354,67 +353,25 @@ class _Field extends StatelessWidget {
   final String? suffix;
   final TextEditingController controller;
   final bool number;
-  final bool large;
   final bool autofocus;
   final bool capitalize;
   final ValueChanged<String>? onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    OutlineInputBorder border(Color color, [double width = 1]) =>
-        OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: color, width: width),
-        );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTypography.labelMedium.copyWith(
-            color: context.textSecondaryColor,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 5),
-        TextField(
-          key: fieldKey,
-          controller: controller,
-          autofocus: autofocus,
-          onChanged: onChanged,
-          keyboardType: number ? TextInputType.number : TextInputType.text,
-          inputFormatters:
-              number ? [FilteringTextInputFormatter.digitsOnly] : null,
-          textCapitalization:
-              capitalize
-                  ? TextCapitalization.sentences
-                  : TextCapitalization.none,
-          textInputAction: TextInputAction.next,
-          style: (large ? AppTypography.titleLarge : AppTypography.bodyLarge)
-              .copyWith(
-                color: context.textPrimaryColor,
-                fontWeight: large ? FontWeight.w700 : FontWeight.w600,
-              ),
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: hint,
-            suffixText: suffix,
-            filled: true,
-            fillColor: context.cardColor,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 13,
-              vertical: 13,
-            ),
-            border: border(context.dividerColor),
-            enabledBorder: border(context.dividerColor.withValues(alpha: .6)),
-            focusedBorder: border(context.primaryColor, 1.5),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => AppTextField(
+    fieldKey: fieldKey,
+    label: label,
+    hint: hint,
+    unit: suffix,
+    controller: controller,
+    autofocus: autofocus,
+    onChanged: onChanged,
+    keyboardType: number ? TextInputType.number : TextInputType.text,
+    inputFormatters: number ? [FilteringTextInputFormatter.digitsOnly] : null,
+    textCapitalization:
+        capitalize ? TextCapitalization.sentences : TextCapitalization.none,
+    textInputAction: TextInputAction.next,
+  );
 }
 
 class _MealChoice extends StatelessWidget {

@@ -1872,5 +1872,7 @@
   "custom_food_macros": "Protéines, glucides et lipides (facultatif)",
   "custom_food_add_to": "Ajouter : {meal}",
   "custom_food_note": "La prochaine fois, il apparaîtra dans la recherche et Récents.",
-  "log_find_food": "Trouver un aliment"
+  "log_find_food": "Trouver un aliment",
+  "auth_show_password": "Afficher le mot de passe",
+  "auth_hide_password": "Masquer le mot de passe"
 }

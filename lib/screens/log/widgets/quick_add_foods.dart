@@ -14,7 +14,9 @@ import '../../../data/models/quick_food.dart';
 import '../../../data/quick_food_catalog.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/quick_food_provider.dart';
+import '../../../widgets/app_text_field.dart';
 import '../../../widgets/app_toast.dart';
+import '../../../core/theme/app_field_theme.dart';
 
 typedef AddCatalogFood = Future<Meal> Function(QuickFood food, double grams);
 typedef RepeatLoggedMeal = Future<Meal> Function(Meal meal);
@@ -88,16 +90,22 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
             key: const ValueKey('quick-add-search'),
             onTap: () => _showBrowser(preferences),
             borderRadius: BorderRadius.circular(14),
+            // Drawn as the same box as every text field, so it reads as
+            // one to type in.
             child: Container(
-              height: 48,
+              height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: _softSurface(context, radius: 14),
+              decoration: BoxDecoration(
+                color: AppFieldColors.of(context).fill,
+                borderRadius: BorderRadius.circular(appFieldRadius),
+                border: Border.all(color: AppFieldColors.of(context).line),
+              ),
               child: Row(
                 children: [
                   Icon(
                     WaznIcons.search,
                     size: 19,
-                    color: context.textMutedColor,
+                    color: AppFieldColors.of(context).unit,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -106,8 +114,8 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.bodyLarge.copyWith(
-                        color: context.textMutedColor,
-                        fontSize: 15,
+                        color: AppFieldColors.of(context).hint,
+                        fontSize: 16,
                       ),
                     ),
                   ),
@@ -359,36 +367,28 @@ class _QuickFoodBrowserSheetState
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: TextField(
-                    key: const ValueKey('quick-food-search-field'),
+                  child: AppTextField(
+                    fieldKey: const ValueKey('quick-food-search-field'),
                     controller: _searchController,
                     autofocus: true,
                     textInputAction: TextInputAction.search,
                     onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      hintText: l10n.quick_add_search,
-                      prefixIcon: const Icon(WaznIcons.search, size: 19),
-                      suffixIcon:
-                          _searchController.text.isEmpty
-                              ? null
-                              : IconButton(
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {});
-                                },
-                                icon: const Icon(WaznIcons.close, size: 18),
-                              ),
-                      filled: true,
-                      fillColor: context.surfaceContainerColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: context.dividerColor),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: context.dividerColor),
-                      ),
-                    ),
+                    hint: l10n.quick_add_search,
+                    icon: WaznIcons.search,
+                    trailing:
+                        _searchController.text.isEmpty
+                            ? null
+                            : IconButton(
+                              tooltip:
+                                  MaterialLocalizations.of(
+                                    context,
+                                  ).deleteButtonTooltip,
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {});
+                              },
+                              icon: const Icon(WaznIcons.close, size: 18),
+                            ),
                   ),
                 ),
                 const SizedBox(height: 10),
