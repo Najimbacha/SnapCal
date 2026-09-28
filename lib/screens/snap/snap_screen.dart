@@ -360,6 +360,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
         l10n.scan_problem_gallery_title,
         l10n.scan_problem_gallery_body,
       ),
+      ScanProblem.busy => (
+        WaznIcons.hourglass,
+        l10n.scan_problem_busy_title,
+        l10n.scan_problem_busy_body,
+      ),
     };
 
     final String primaryLabel;

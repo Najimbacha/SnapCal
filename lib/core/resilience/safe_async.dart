@@ -54,12 +54,17 @@ class SafeAsync {
           final failure = AppFailure.fromError(error, stackTrace);
           debugPrint('⚠️ $label failed on attempt $attempt: $failure');
 
-          if (!retryPolicy.shouldRetry(failure, attempt)) {
+          // A server that says "come back in fifteen minutes" is not waited
+          // on: the rate limiter's Retry-After held a scan's waiting screen
+          // for up to fifteen minutes, twice over, with nothing on screen.
+          final retryAfter = failure.retryAfter;
+          if (!retryPolicy.shouldRetry(failure, attempt) ||
+              (retryAfter != null && retryAfter > retryPolicy.maxDelay)) {
             return AppResult.failure(failure, fallbackData: fallbackData);
           }
 
           await Future.delayed(
-            failure.retryAfter ?? retryPolicy.delayForAttempt(attempt),
+            retryAfter ?? retryPolicy.delayForAttempt(attempt),
           );
         }
       }

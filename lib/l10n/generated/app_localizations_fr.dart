@@ -4724,6 +4724,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Autorise Wazn à utiliser tes photos dans les Réglages, ou ajoute le repas manuellement.';
 
   @override
+  String get scan_problem_busy_title => 'Trop d\'analyses d\'un coup';
+
+  @override
+  String get scan_problem_busy_body =>
+      'Patientez quelques minutes, puis réessayez. Votre photo et vos repas sont en sécurité.';
+
+  @override
   String result_from_photo(String when) {
     return 'D\'après ta photo : $when';
   }

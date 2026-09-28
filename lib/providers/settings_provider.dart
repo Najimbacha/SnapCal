@@ -190,13 +190,14 @@ class Settings extends _$Settings {
     return false;
   }
 
-  Future<void> _updateSettings(
-    UserSettings updated, {
-    bool waitForCloud = true,
-  }) async {
+  /// Saves on the phone and uploads in the background; a failed upload
+  /// lands in the sync queue. Waiting for the upload made every change --
+  /// a goal, a reminder time, the theme -- sit on its spinner for eight
+  /// seconds offline, and left reminders on their old times until it gave up.
+  Future<void> _updateSettings(UserSettings updated) async {
     state = AsyncData(updated);
     final repo = await ref.read(settingsRepositoryProvider.future);
-    await repo.saveSettings(updated, waitForCloud: waitForCloud);
+    await repo.saveSettings(updated, waitForCloud: false);
     _syncNotifications(updated);
   }
 
@@ -741,7 +742,7 @@ class Settings extends _$Settings {
     );
     // Saved on the phone, the plan is ready: the cloud copy follows in the
     // background rather than holding the user on "Start plan".
-    await _updateSettings(updated, waitForCloud: false);
+    await _updateSettings(updated);
   }
 
   /// The daily water target in millilitres; 0 means "from my weight".

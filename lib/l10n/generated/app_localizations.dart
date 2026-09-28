@@ -8382,6 +8382,18 @@ abstract class AppLocalizations {
   /// **'Allow Wazn to use your photos in Settings, or add the meal manually.'**
   String get scan_problem_gallery_body;
 
+  /// No description provided for @scan_problem_busy_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many scans at once'**
+  String get scan_problem_busy_title;
+
+  /// No description provided for @scan_problem_busy_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait a few minutes, then try again. Your photo and meals are safe.'**
+  String get scan_problem_busy_body;
+
   /// On the scan result, when an older gallery photo sets the meal time, e.g. From your photo: Yesterday · 8:14 PM
   ///
   /// In en, this message translates to:

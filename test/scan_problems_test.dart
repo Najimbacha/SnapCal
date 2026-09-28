@@ -35,6 +35,19 @@ void main() {
       );
     });
 
+    test('too many scans at once is said so, not sent to the paywall', () {
+      expect(
+        SnapController.problemFor(
+          const AppFailure(
+            type: AppFailureType.quotaExceeded,
+            message: 'busy',
+            statusCode: 429,
+          ),
+        ),
+        ScanProblem.busy,
+      );
+    });
+
     test('anything else is a failed scan', () {
       for (final type in [
         AppFailureType.server,

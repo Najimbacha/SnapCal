@@ -1618,6 +1618,8 @@
   "scan_problem_no_food_body": "No vimos comida en esta foto. Vuelve a tomarla con la comida llenando el encuadre, o añádela manualmente.",
   "scan_problem_gallery_title": "No se pudieron abrir tus fotos",
   "scan_problem_gallery_body": "Permite que Wazn use tus fotos en Ajustes, o añade la comida manualmente.",
+  "scan_problem_busy_title": "Demasiados escaneos seguidos",
+  "scan_problem_busy_body": "Espera unos minutos e inténtalo de nuevo. Tu foto y tus comidas están a salvo.",
   "result_from_photo": "Según tu foto: {when}",
   "scan_problem_image_title": "No se puede usar esta foto",
   "scan_problem_image_body": "Prueba con otra foto o añade la comida manualmente.",
