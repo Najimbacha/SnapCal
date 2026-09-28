@@ -98,7 +98,9 @@ class Activity extends _$Activity {
   }
 
   void _onResume() {
-    if (AppLifecycleService().isResumed) ref.invalidateSelf();
+    // Steps may have moved while the app was out of sight; a pull of the
+    // notification shade is no reason to read Health Connect again.
+    if (AppLifecycleService().cameBack) ref.invalidateSelf();
   }
 
   Future<bool> authorize() => _health.requestPermissions();

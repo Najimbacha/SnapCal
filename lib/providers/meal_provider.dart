@@ -5,9 +5,7 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/meal.dart';
-import '../core/services/app_lifecycle_service.dart';
 import '../core/utils/date_utils.dart' as app_date;
-import '../data/services/gemini_service.dart';
 import '../data/services/first_meal_guide_service.dart';
 import '../data/services/promotional_paywall_service.dart';
 import 'planner_provider.dart';
@@ -51,23 +49,9 @@ class SelectedDate extends _$SelectedDate {
 @Riverpod(keepAlive: true)
 class MealLog extends _$MealLog {
   final Uuid _uuid = const Uuid();
-  final Map<String, List<NutritionResult>> _analysisCache = {};
-  int _lastMemoryPressureCount = 0;
 
   @override
-  FutureOr<void> build() {
-    AppLifecycleService().addListener(_handleLifecycleEvent);
-    ref.onDispose(
-      () => AppLifecycleService().removeListener(_handleLifecycleEvent),
-    );
-  }
-
-  void _handleLifecycleEvent() {
-    final count = AppLifecycleService().memoryPressureCount;
-    if (count == _lastMemoryPressureCount) return;
-    _lastMemoryPressureCount = count;
-    _analysisCache.clear();
-  }
+  FutureOr<void> build() {}
 
   String generateMealId() => _uuid.v4();
 
@@ -135,14 +119,4 @@ class MealLog extends _$MealLog {
     final repo = await ref.read(mealRepositoryProvider.future);
     await repo.deleteMeal(mealId);
   }
-
-  void cacheAnalysis(String imageKey, List<NutritionResult> results) {
-    if (_analysisCache.length >= 5) {
-      _analysisCache.remove(_analysisCache.keys.first);
-    }
-    _analysisCache[imageKey] = results;
-  }
-
-  List<NutritionResult>? getCachedAnalysis(String imageKey) =>
-      _analysisCache[imageKey];
 }

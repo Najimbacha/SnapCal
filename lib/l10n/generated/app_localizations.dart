@@ -8370,6 +8370,24 @@ abstract class AppLocalizations {
   /// **'We couldn\'t spot any food in this photo. Retake it with the food filling the frame, or add it manually.'**
   String get scan_problem_no_food_body;
 
+  /// No description provided for @scan_problem_gallery_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open your photos'**
+  String get scan_problem_gallery_title;
+
+  /// No description provided for @scan_problem_gallery_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Wazn to use your photos in Settings, or add the meal manually.'**
+  String get scan_problem_gallery_body;
+
+  /// On the scan result, when an older gallery photo sets the meal time, e.g. From your photo: Yesterday · 8:14 PM
+  ///
+  /// In en, this message translates to:
+  /// **'From your photo: {when}'**
+  String result_from_photo(String when);
+
   /// No description provided for @scan_problem_image_title.
   ///
   /// In en, this message translates to:
@@ -8633,6 +8651,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unlock 30 days'**
   String get stats_pro_button;
+
+  /// No description provided for @voice_listening_short.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening'**
+  String get voice_listening_short;
+
+  /// No description provided for @voice_say_what_you_ate.
+  ///
+  /// In en, this message translates to:
+  /// **'Say what you ate…'**
+  String get voice_say_what_you_ate;
+
+  /// No description provided for @voice_tap_when_done.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap when you\'re done'**
+  String get voice_tap_when_done;
+
+  /// No description provided for @voice_got_it.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get voice_got_it;
+
+  /// No description provided for @voice_working_out.
+  ///
+  /// In en, this message translates to:
+  /// **'Working out your meal'**
+  String get voice_working_out;
+
+  /// No description provided for @voice_type_instead.
+  ///
+  /// In en, this message translates to:
+  /// **'Type instead'**
+  String get voice_type_instead;
+
+  /// No description provided for @voice_edit_words.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit the words'**
+  String get voice_edit_words;
 
   /// No description provided for @voice_log_title.
   ///

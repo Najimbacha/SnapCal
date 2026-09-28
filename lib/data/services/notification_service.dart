@@ -20,6 +20,27 @@ class NotificationService {
   /// Callback invoked when a food reminder notification is tapped.
   static VoidCallback? onFoodReminderTapped;
 
+  static bool _foodReminderWaiting = false;
+
+  /// Opens the camera for a tapped food reminder -- or, when the tap
+  /// started the app and the screens are not up yet, keeps it until they
+  /// are ([takeWaitingFoodReminder]).
+  static void openFoodReminder() {
+    final open = onFoodReminderTapped;
+    if (open != null) {
+      open();
+    } else {
+      _foodReminderWaiting = true;
+    }
+  }
+
+  /// Whether a reminder tap is waiting for the screens; clears it.
+  static bool takeWaitingFoodReminder() {
+    final waiting = _foodReminderWaiting;
+    _foodReminderWaiting = false;
+    return waiting;
+  }
+
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -77,14 +98,18 @@ class NotificationService {
 
       await _notificationsPlugin.initialize(
         settings: settings,
-        onDidReceiveNotificationResponse: (details) {
-          if (details.payload == _foodReminderPayload) {
-            onFoodReminderTapped?.call();
-          } else if (details.payload == appUpdatePayload) {
-            ForceUpdateService().openStore();
-          }
-        },
+        onDidReceiveNotificationResponse: _onTapped,
       );
+
+      // A tap on a reminder while the app was closed starts the app, and
+      // the callback above is not called for it: the app opened on Home
+      // instead of the camera the reminder asked for.
+      final launch =
+          await _notificationsPlugin.getNotificationAppLaunchDetails();
+      final response = launch?.notificationResponse;
+      if ((launch?.didNotificationLaunchApp ?? false) && response != null) {
+        _onTapped(response);
+      }
 
       // No permission request here. It fired the moment the app first
       // opened, before the user knew what Wazn was; many said no, and
@@ -110,6 +135,14 @@ class NotificationService {
     } catch (e, stack) {
       debugPrint('⚠️ NotificationService: init failed: $e');
       debugPrint(stack.toString());
+    }
+  }
+
+  static void _onTapped(NotificationResponse details) {
+    if (details.payload == _foodReminderPayload) {
+      openFoodReminder();
+    } else if (details.payload == appUpdatePayload) {
+      ForceUpdateService().openStore();
     }
   }
 

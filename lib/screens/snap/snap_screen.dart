@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -252,6 +253,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             opacity: animation,
             child: ResultModal(
               imageBytes: _controller.capturedImageBytes,
+              eatenAtLabel: _eatenAtLabel(context),
               result:
                   results != null && results.length == 1 ? results.first : null,
               results: results != null && results.length > 1 ? results : null,
@@ -284,6 +286,28 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
         },
         transitionDuration: const Duration(milliseconds: 300),
       ),
+    );
+  }
+
+  /// "From your photo: Yesterday · 8:14 PM" when an older gallery photo sets
+  /// the meal's time; null for everything else.
+  String? _eatenAtLabel(BuildContext context) {
+    final at = _controller.photoTakenAt;
+    if (at == null) return null;
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(at.year, at.month, at.day);
+    final days = today.difference(day).inDays;
+    final dayLabel =
+        days == 0
+            ? l10n.common_today
+            : days == 1
+            ? l10n.common_yesterday
+            : DateFormat.MMMEd(locale).format(at);
+    return l10n.result_from_photo(
+      '$dayLabel · ${DateFormat.jm(locale).format(at)}',
     );
   }
 
@@ -330,6 +354,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
         WaznIcons.scan,
         l10n.scan_problem_barcode_title,
         l10n.scan_problem_barcode_body,
+      ),
+      ScanProblem.galleryUnavailable => (
+        WaznIcons.imageOff,
+        l10n.scan_problem_gallery_title,
+        l10n.scan_problem_gallery_body,
       ),
     };
 
@@ -451,7 +480,9 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     final mealNotifier = ref.read(mealLogProvider.notifier);
     final router = GoRouter.of(context);
     final now = DateTime.now();
-    final dateString = app_date.DateUtils.getDateString(now);
+    // An older gallery photo is logged when it was taken, not when scanned.
+    final eatenAt = _controller.photoTakenAt;
+    final dateString = app_date.DateUtils.getDateString(eatenAt ?? now);
     final unknownFood = l10n.log_unknown_food;
 
     try {
@@ -463,7 +494,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
         await mealNotifier.addMeal(
           Meal(
             id: mealNotifier.generateMealId(),
-            timestamp: DateTime.now().millisecondsSinceEpoch,
+            timestamp: (eatenAt ?? DateTime.now()).millisecondsSinceEpoch,
             dateString: dateString,
             imageUri: imageUri,
             foodName: item.foodName.isEmpty ? unknownFood : item.foodName,
@@ -484,6 +515,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             nutritionMatchId: item.nutritionMatchId,
             nutritionPer100g: item.nutritionPer100g,
           ),
+          mealDate: dateString,
         );
       }
 

@@ -4685,6 +4685,18 @@ class AppLocalizationsEs extends AppLocalizations {
       'No vimos comida en esta foto. Vuelve a tomarla con la comida llenando el encuadre, o añádela manualmente.';
 
   @override
+  String get scan_problem_gallery_title => 'No se pudieron abrir tus fotos';
+
+  @override
+  String get scan_problem_gallery_body =>
+      'Permite que Wazn use tus fotos en Ajustes, o añade la comida manualmente.';
+
+  @override
+  String result_from_photo(String when) {
+    return 'Según tu foto: $when';
+  }
+
+  @override
   String get scan_problem_image_title => 'No se puede usar esta foto';
 
   @override
@@ -4853,6 +4865,27 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get stats_pro_button => 'Desbloquear 30 días';
+
+  @override
+  String get voice_listening_short => 'Escuchando';
+
+  @override
+  String get voice_say_what_you_ate => 'Di lo que comiste…';
+
+  @override
+  String get voice_tap_when_done => 'Toca cuando termines';
+
+  @override
+  String get voice_got_it => 'Entendido';
+
+  @override
+  String get voice_working_out => 'Calculando tu comida';
+
+  @override
+  String get voice_type_instead => 'Escribir en su lugar';
+
+  @override
+  String get voice_edit_words => 'Editar las palabras';
 
   @override
   String get voice_log_title => 'Registro por voz';
