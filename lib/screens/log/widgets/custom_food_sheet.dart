@@ -30,6 +30,8 @@ Future<CustomFoodEntry?> showCustomFoodSheet(
   BuildContext context, {
   String initialName = '',
   required String mealType,
+  bool showMealType = true,
+  String? actionLabel,
 }) {
   return showModalBottomSheet<CustomFoodEntry>(
     context: context,
@@ -37,7 +39,12 @@ Future<CustomFoodEntry?> showCustomFoodSheet(
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder:
-        (_) => CustomFoodSheet(initialName: initialName, mealType: mealType),
+        (_) => CustomFoodSheet(
+          initialName: initialName,
+          mealType: mealType,
+          showMealType: showMealType,
+          actionLabel: actionLabel,
+        ),
   );
 }
 
@@ -46,10 +53,14 @@ class CustomFoodSheet extends StatefulWidget {
     super.key,
     this.initialName = '',
     required this.mealType,
+    this.showMealType = true,
+    this.actionLabel,
   });
 
   final String initialName;
   final String mealType;
+  final bool showMealType;
+  final String? actionLabel;
 
   @override
   State<CustomFoodSheet> createState() => _CustomFoodSheetState();
@@ -247,20 +258,21 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
                         ),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  for (final (i, type) in _mealTypes.indexed) ...[
-                    if (i > 0) const SizedBox(width: 6),
-                    Expanded(
-                      child: _MealChoice(
-                        label: _mealLabel(l10n, type),
-                        selected: type == _mealType,
-                        onTap: () => setState(() => _mealType = type),
+              if (widget.showMealType)
+                Row(
+                  children: [
+                    for (final (i, type) in _mealTypes.indexed) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      Expanded(
+                        child: _MealChoice(
+                          label: _mealLabel(l10n, type),
+                          selected: type == _mealType,
+                          onTap: () => setState(() => _mealType = type),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
-              ),
+                ),
             ],
           ),
           footer: Column(
@@ -290,9 +302,10 @@ class _CustomFoodSheetState extends State<CustomFoodSheet> {
                               size: 24,
                             )
                             : Text(
-                              l10n.custom_food_add_to(
-                                _mealLabel(l10n, _mealType),
-                              ),
+                              widget.actionLabel ??
+                                  l10n.custom_food_add_to(
+                                    _mealLabel(l10n, _mealType),
+                                  ),
                               key: ValueKey(_mealType),
                             ),
                   ),

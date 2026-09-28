@@ -19,6 +19,7 @@ import '../../../providers/settings_provider.dart';
 import '../../../widgets/macro_display.dart';
 import '../../../widgets/motion/reveal.dart';
 import '../../settings/widgets/settings_kit.dart';
+import '../../log/widgets/custom_food_sheet.dart';
 import '../../../widgets/app_toast.dart';
 
 const _presetWeights = <int>[50, 100, 150, 200, 250, 300, 400, 500];
@@ -320,9 +321,54 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     _haptic();
   }
 
-  void _add() {
-    setState(() => _items.add(_Item.blank()));
+  Future<void> _add() async {
+    final l10n = AppLocalizations.of(context)!;
+    final entry = await showCustomFoodSheet(
+      context,
+      mealType: 'Snack',
+      showMealType: false,
+      actionLabel: l10n.result_add_item,
+    );
+    if (!mounted || entry == null) return;
+    setState(() => _items.add(_itemFromCustom(entry)));
     _haptic();
+  }
+
+  Future<void> _assignFood(int i) async {
+    final l10n = AppLocalizations.of(context)!;
+    final entry = await showCustomFoodSheet(
+      context,
+      initialName: _items[i].name,
+      mealType: 'Snack',
+      showMealType: false,
+      actionLabel: l10n.result_assign_food,
+    );
+    if (!mounted || entry == null || i >= _items.length) return;
+    setState(() => _items[i] = _itemFromCustom(entry, uid: _items[i].uid));
+  }
+
+  _Item _itemFromCustom(CustomFoodEntry entry, {int? uid}) {
+    final match = RegExp(
+      r'(\d+(?:[.,]\d+)?)\s*(?:g|ml)\b',
+      caseSensitive: false,
+    ).firstMatch(entry.portion);
+    final parsedWeight = double.tryParse(
+      (match?.group(1) ?? '').replaceAll(',', '.'),
+    );
+    final weight = (parsedWeight ?? 100).clamp(1, 3000).toDouble();
+    final toPer100 = 100 / weight;
+    return _Item(
+      uid: uid,
+      name: entry.name,
+      weightG: weight,
+      matched: true,
+      per100g: {
+        'calories': entry.calories * toPer100,
+        'protein': entry.protein * toPer100,
+        'carbs': entry.carbs * toPer100,
+        'fat': entry.fat * toPer100,
+      },
+    );
   }
 
   void _del(int i, {required bool withUndo}) {
@@ -687,7 +733,10 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                             onWeightDelta: (delta) => _adjWt(e.key, delta),
                             onWeightSet: (g) => _setWt(e.key, g),
                             onWeightType: () => _typeWeight(e.key),
-                            onRename: () => _rename(e.key),
+                            onRename:
+                                !e.value.matched || e.value.per100g == null
+                                    ? () => _assignFood(e.key)
+                                    : () => _rename(e.key),
                             onDelete: () => _del(e.key, withUndo: true),
                           ),
                         ),

@@ -281,6 +281,56 @@ void main() {
     );
   });
 
+  testWidgets('Assign Food repairs an unmatched result before saving', (
+    tester,
+  ) async {
+    await setupTester(tester);
+    List<NutritionResult>? saved;
+    await tester.pumpWidget(
+      buildSubject(
+        isPro: true,
+        result: NutritionResult(
+          foodName: 'Unknown Sauce',
+          portion: '~10g',
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          weightG: 10,
+          matched: false,
+        ),
+        onSaveAll: (items) => saved = items,
+      ),
+    );
+
+    await tester.tap(find.text('Unknown Sauce').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Assign food'));
+    await tester.tap(find.text('Assign food'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-food-kcal')),
+      '35',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-food-portion')),
+      '10 g',
+    );
+    await tester.tap(find.byKey(const ValueKey('custom-food-add')));
+    await tester.pumpAndSettle();
+    tester.testTextInput.hide();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('result-save-button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('result-save-button')));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(saved, hasLength(1));
+    expect(saved!.single.foodName, 'Unknown Sauce');
+    expect(saved!.single.calories, 35);
+  });
+
   testWidgets('thousands separator and share context render for multi scan', (
     tester,
   ) async {
@@ -316,8 +366,11 @@ void main() {
     expect(find.textContaining('Add to Log'), findsOneWidget);
   });
 
-  testWidgets('Add Item button adds a placeholder row', (tester) async {
+  testWidgets('Add Item collects nutrition and saves the new food', (
+    tester,
+  ) async {
     await setupTester(tester);
+    List<NutritionResult>? saved;
     await tester.pumpWidget(
       buildSubject(
         isPro: true,
@@ -329,15 +382,34 @@ void main() {
           carbs: 35,
           fat: 1,
         ),
-        onSaveAll: (_) {},
+        onSaveAll: (items) => saved = items,
       ),
     );
 
-    final btnFinder = find.text('Add Item');
-    await tester.tap(btnFinder);
-    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('Add Item'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-food-name')),
+      'Avocado',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-food-kcal')),
+      '160',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-food-portion')),
+      '100 g',
+    );
+    await tester.tap(find.byKey(const ValueKey('custom-food-add')));
+    await tester.pumpAndSettle();
 
-    expect(find.text('Food item'), findsOneWidget);
+    expect(find.text('Avocado', skipOffstage: false), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('result-save-button')));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(saved, hasLength(2));
+    expect(saved!.last.foodName, 'Avocado');
+    expect(saved!.last.calories, 160);
   });
 
   testWidgets('save button calls single save callback', (tester) async {
