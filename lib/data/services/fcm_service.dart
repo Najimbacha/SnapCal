@@ -27,9 +27,6 @@ class FcmService {
   static const String _channelId = 'fcm_notifications_v1';
   static const String _broadcastsKey = 'fcm_broadcasts_enabled';
 
-  /// Callback invoked when a food reminder notification is tapped.
-  VoidCallback? onFoodReminderTapped;
-
   SharedPreferences? _prefs;
   FirebaseMessaging? _messaging;
   bool _initialized = false;
@@ -303,7 +300,7 @@ class FcmService {
         debugPrint('📩 FcmService: app opened from terminated notification');
         _logMessage(message);
         if (_isFoodReminder(message)) {
-          onFoodReminderTapped?.call();
+          NotificationService.openFoodReminder();
         }
         if (_isAppUpdate(message)) _openStoreFor(message);
       }
@@ -318,7 +315,7 @@ class FcmService {
     debugPrint('📩 FcmService: notification opened app');
     _logMessage(message);
     if (_isFoodReminder(message)) {
-      onFoodReminderTapped?.call();
+      NotificationService.openFoodReminder();
     }
     if (_isAppUpdate(message)) _openStoreFor(message);
   }

@@ -146,8 +146,8 @@ class AppInitializer {
     _lifecycleRecoveryConfigured = true;
 
     AppLifecycleService().addListener(() {
-      final lifecycle = AppLifecycleService();
-      if (!lifecycle.isResumed) return;
+      // Only a real return: not the notification shade or a system dialog.
+      if (!AppLifecycleService().cameBack) return;
       unawaited(
         _runOptionalBackgroundService(
           'Lifecycle sync queue flush',

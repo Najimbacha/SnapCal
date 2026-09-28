@@ -10,11 +10,12 @@ import 'router.dart';
 import 'core/services/app_initializer.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'data/services/fcm_service.dart';
 import 'data/services/notification_service.dart';
 import 'providers/auth_state_provider.dart';
 import 'providers/auth_notifier_provider.dart';
+import 'providers/repository_providers.dart';
 import 'providers/settings_provider.dart';
+import 'data/models/user_settings.dart';
 import 'screens/splash/splash_screen.dart';
 import 'widgets/wazn_icons.dart';
 import 'widgets/motion/theme_reveal.dart';
@@ -49,7 +50,7 @@ class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
   }
 
   void _runInit() {
-    _initFuture = AppInitializer.init()
+    _initFuture = _start()
         .timeout(
           const Duration(seconds: 35),
           onTimeout:
@@ -66,6 +67,23 @@ class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
           throw e;
         });
   }
+
+  /// Starts the app's services, then reads the user's settings while the
+  /// loading screen is still up. The app used to hand off before they were
+  /// read and show nothing until they were -- a flash of empty screen on
+  /// every launch, and a blank screen for good, with no way out, when they
+  /// could not be read at all. Now that failure lands on the retry screen.
+  Future<void> _start() async {
+    await AppInitializer.init();
+    // A failed read is remembered by its provider; forget it, so Retry
+    // really tries again.
+    ref.invalidate(settingsRepositoryProvider);
+    ref.invalidate(settingsProvider);
+    await ref.read(settingsProvider.future);
+  }
+
+  /// Retry: the new attempt has to be shown, or the button did nothing.
+  void _retry() => setState(_runInit);
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +177,7 @@ class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
                   ),
                   const SizedBox(height: 32),
                   FilledButton.icon(
-                    onPressed: _runInit,
+                    onPressed: _retry,
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
@@ -211,15 +229,22 @@ class AppTree extends ConsumerWidget {
 
     final router = ref.watch(routerProvider);
 
-    // FCM + notification tap routing via global router
-    FcmService().onFoodReminderTapped = () => globalRouter?.go('/snap');
+    // A tapped food reminder opens the camera. One that started the app
+    // may have arrived before the screens were up; it opens now.
     NotificationService.onFoodReminderTapped = () => globalRouter?.go('/snap');
+    if (NotificationService.takeWaitingFoodReminder()) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => globalRouter?.go('/snap'),
+      );
+    }
 
     // Wazn brand identity: always use the seeded emerald schemes.
     // (DynamicColorBuilder wallpaper palettes previously overrode the brand.)
-    final settingsAsync = ref.watch(settingsProvider);
-    if (!settingsAsync.hasValue) return const SizedBox.shrink();
-    final settings = settingsAsync.requireValue;
+    // Read before the loading screen hands over, and kept through any later
+    // reload; the defaults only stand in if a reload fails outright, so the
+    // app never goes blank.
+    final settings =
+        ref.watch(settingsProvider).valueOrNull ?? UserSettings.defaults();
 
     return MaterialApp.router(
       title: AppLocalizations.of(context)?.appTitle ?? 'Wazn',

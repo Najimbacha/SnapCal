@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
@@ -26,6 +26,7 @@ import 'screens/home/activity_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/scan_choice_sheet.dart';
 import 'providers/auth_state_provider.dart';
+import 'data/models/user_settings.dart';
 import 'providers/settings_provider.dart';
 import 'screens/planner/meal_planner_screen.dart';
 import 'screens/paywall/paywall_screen.dart';
@@ -58,31 +59,46 @@ class _RouterNotifier extends ChangeNotifier {
 
   String? _redirect(BuildContext context, GoRouterState state) {
     final auth = _ref.read(authStateProvider).valueOrNull;
-    final settings = _ref.read(settingsProvider).valueOrNull;
-    final onboarding = state.matchedLocation == '/onboarding';
-    final loggingIn = state.matchedLocation == '/auth';
-
-    if (auth != null &&
-        settings != null &&
-        !settings.onboardingComplete &&
-        !onboarding &&
-        !loggingIn) {
-      return '/onboarding';
-    }
-    // Signed in from onboarding's "I already have an account": home, where
-    // a returning user belongs -- not Settings.
-    if (loggingIn && auth != null && !auth.isAnonymous) {
-      return '/';
-    }
-    // An account that has already done onboarding has no business in it.
-    // Its settings can arrive a moment after sign-in; this lets them move
-    // the user on instead of leaving them to answer again and overwrite
-    // the account's plan.
-    if (onboarding && settings != null && settings.onboardingComplete) {
-      return '/';
-    }
-    return null;
+    return appRedirect(
+      location: state.matchedLocation,
+      settings: _ref.read(settingsProvider).valueOrNull,
+      hasAccount: auth != null && !auth.isAnonymous,
+    );
   }
+}
+
+/// Where the app sends someone instead of [location], or null to let them
+/// be. [hasAccount] is a real sign-in, not the guest session.
+@visibleForTesting
+String? appRedirect({
+  required String location,
+  required UserSettings? settings,
+  required bool hasAccount,
+}) {
+  final onboarding = location == '/onboarding';
+  final loggingIn = location == '/auth';
+
+  // Settings live on the phone, so a first launch knows at once that
+  // setup has not been done. Waiting for the guest sign-in as well showed
+  // Home for a moment and then threw the new user into setup -- and with
+  // no internet, left them on an empty Home with no setup at all.
+  if (settings != null &&
+      !settings.onboardingComplete &&
+      !onboarding &&
+      !loggingIn) {
+    return '/onboarding';
+  }
+  // Signed in from onboarding's "I already have an account": home, where
+  // a returning user belongs -- not Settings.
+  if (loggingIn && hasAccount) return '/';
+  // An account that has already done onboarding has no business in it.
+  // Its settings can arrive a moment after sign-in; this lets them move
+  // the user on instead of leaving them to answer again and overwrite
+  // the account's plan.
+  if (onboarding && settings != null && settings.onboardingComplete) {
+    return '/';
+  }
+  return null;
 }
 
 @Riverpod(keepAlive: true)
