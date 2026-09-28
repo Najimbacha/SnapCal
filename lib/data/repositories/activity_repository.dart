@@ -95,6 +95,12 @@ class ActivityRepository {
 
   Future<ActivitySummary> fetchSummary(DateTime date) async {
     final stepGoal = await getStepGoal();
+    final start = DateTime(date.year, date.month, date.day);
+    final manualWorkouts = await getWorkoutsForDate(start);
+    final manualCalories = manualWorkouts.fold<int>(
+      0,
+      (sum, workout) => sum + workout.calories,
+    );
     final hasPermissions = await _service.hasPermissions();
     if (!hasPermissions) {
       return normalize(
@@ -103,12 +109,12 @@ class ActivityRepository {
         stepGoal: stepGoal,
         activityCalories: 0,
         activityCaloriesEstimated: true,
-        workouts: const [],
+        workouts: manualWorkouts,
+        manualWorkoutCalories: manualCalories,
         stepStreak: 0,
       );
     }
 
-    final start = DateTime(date.year, date.month, date.day);
     final now = DateTime.now();
     final end =
         _sameDay(start, now)
@@ -126,7 +132,10 @@ class ActivityRepository {
         _sameDay(start, now)
             ? await _service.getTodayWorkoutSummary()
             : await _service.getWorkoutSummaryForRange(start, end);
-    final workouts = _workoutsFromSummary(start, workoutSummary);
+    final workouts = [
+      ..._workoutsFromSummary(start, workoutSummary),
+      ...manualWorkouts,
+    ];
     await _markSynced();
     return normalize(
       date: date,
@@ -135,6 +144,7 @@ class ActivityRepository {
       activityCalories: calories.calories,
       activityCaloriesEstimated: calories.isEstimated,
       workouts: workouts,
+      manualWorkoutCalories: manualCalories,
       stepStreak: await getStepStreak(),
     );
   }
@@ -181,6 +191,7 @@ class ActivityRepository {
     int? activityCalories,
     bool activityCaloriesEstimated = true,
     required List<WorkoutEntry> workouts,
+    int manualWorkoutCalories = 0,
     required int stepStreak,
   }) {
     final workoutCalories = workouts.fold<int>(
@@ -202,7 +213,7 @@ class ActivityRepository {
       stepGoal: stepGoal,
       activityCalories: displayCalories.clamp(0, 99999),
       activityCaloriesEstimated: activityCaloriesEstimated,
-      manualWorkoutCalories: 0,
+      manualWorkoutCalories: manualWorkoutCalories,
       stepStreak: stepStreak,
       activityScore: (stepScore + workoutScore + streakScore).round(),
       workouts: sortedWorkouts,

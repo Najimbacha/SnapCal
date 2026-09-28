@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:snapcal/data/repositories/activity_repository.dart';
 import 'package:snapcal/data/services/activity_service.dart';
 import 'package:snapcal/data/services/health_connect_service.dart';
+import 'package:snapcal/providers/activity_provider.dart' as provider;
 
 void main() {
   late Directory tempDir;
@@ -120,6 +122,82 @@ void main() {
     expect(summary.activityCalories, 200);
     expect(summary.activityCaloriesEstimated, isTrue);
   });
+
+  test('manual workouts are included in persisted daily summaries', () async {
+    final repository = ActivityRepository(
+      service: _FakeHealthConnectService(hasPermission: false),
+    );
+    final date = DateTime(2026, 5, 19, 10);
+    await repository.addManualWorkout(
+      type: 'Cycling',
+      calories: 240,
+      start: date,
+      duration: const Duration(minutes: 30),
+    );
+
+    final summary = await repository.fetchSummary(date);
+
+    expect(summary.manualWorkoutCalories, 240);
+    expect(summary.workouts.single.type, 'Cycling');
+  });
+
+  test('activity provider restores manual workouts after rebuilding', () async {
+    final repository = ActivityRepository(
+      service: _FakeHealthConnectService(hasPermission: false),
+    );
+    final first = ProviderContainer(
+      overrides: [
+        provider.activityRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    addTearDown(first.dispose);
+    await first.read(provider.activityProvider.future);
+
+    await first
+        .read(provider.activityProvider.notifier)
+        .addManualWorkout('Rowing', 180, const Duration(minutes: 20));
+    expect(
+      first.read(provider.activityProvider).valueOrNull?.activeCalories,
+      180,
+    );
+
+    final second = ProviderContainer(
+      overrides: [
+        provider.activityRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    addTearDown(second.dispose);
+    final restored = await second.read(provider.activityProvider.future);
+
+    expect(restored.activeCalories, 180);
+    expect(restored.workouts.single.name, 'Rowing');
+  });
+
+  test('activity provider exposes Health Connect workouts', () async {
+    final repository = ActivityRepository(
+      service: _FakeHealthConnectService(
+        activeCalories: 320,
+        workout: const HealthConnectWorkoutSummary(
+          workoutCount: 1,
+          duration: Duration(minutes: 45),
+          calories: 280,
+          primaryType: 'Running',
+        ),
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        provider.activityRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final activity = await container.read(provider.activityProvider.future);
+
+    expect(activity.workouts.single.name, 'Running');
+    expect(activity.workouts.single.calories, 280);
+    expect(activity.activeCalories, 320);
+  });
 }
 
 class _FakeHealthConnectService extends HealthConnectService {
@@ -129,6 +207,7 @@ class _FakeHealthConnectService extends HealthConnectService {
     this.grantsPermission = true,
     this.steps = 0,
     this.activeCalories,
+    this.workout = HealthConnectWorkoutSummary.empty,
   });
 
   final HealthConnectAvailability availability;
@@ -136,6 +215,7 @@ class _FakeHealthConnectService extends HealthConnectService {
   final bool grantsPermission;
   final int steps;
   final int? activeCalories;
+  final HealthConnectWorkoutSummary workout;
 
   final List<({DateTime start, DateTime end})> ranges = [];
 
@@ -174,7 +254,7 @@ class _FakeHealthConnectService extends HealthConnectService {
 
   @override
   Future<HealthConnectWorkoutSummary> getTodayWorkoutSummary() async {
-    return HealthConnectWorkoutSummary.empty;
+    return workout;
   }
 
   @override
@@ -182,6 +262,6 @@ class _FakeHealthConnectService extends HealthConnectService {
     DateTime start,
     DateTime end,
   ) async {
-    return HealthConnectWorkoutSummary.empty;
+    return workout;
   }
 }

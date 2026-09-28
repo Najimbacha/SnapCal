@@ -726,15 +726,19 @@ class _WorkoutTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final workouts = ref.watch(ap.activityProvider).valueOrNull?.workouts ?? [];
-    final workout = workouts.isEmpty ? null : workouts.first;
+    final calories = workouts.fold<int>(0, (sum, item) => sum + item.calories);
+    final minutes = workouts.fold<int>(
+      0,
+      (sum, item) => sum + item.duration.inMinutes,
+    );
 
     return MetricTile(
       label: l10n.activity_workout_calories,
-      value: workout == null ? '–' : '${workout.calories}',
+      value: workouts.isEmpty ? '–' : '$calories',
       hint:
-          workout == null
+          workouts.isEmpty
               ? l10n.activity_no_workout_today
-              : l10n.activity_workout_minutes(workout.duration.inMinutes),
+              : l10n.activity_workout_minutes(minutes),
       accent: AppColors.violet,
       icon: WaznIcons.exercise,
     );

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/repositories/activity_repository.dart';
+import '../data/models/activity_summary.dart' show WorkoutEntry;
 import '../data/services/health_connect_service.dart';
 import '../core/services/app_lifecycle_service.dart';
 import 'calorie_budget_provider.dart';
@@ -11,7 +12,7 @@ import 'current_day_provider.dart';
 part 'activity_provider.g.dart';
 
 /// Live Health Connect snapshot for the current day (steps, active calories,
-/// plus in-session manual workouts). This is deliberately a different type
+/// plus persisted manual workouts). This is deliberately a different type
 /// from the persisted daily rollup in data/models/activity_summary.dart,
 /// which the activity repository writes for history and charts.
 class ActivitySummary {
@@ -53,55 +54,104 @@ class ActivitySummary {
 }
 
 class Workout {
+  final String id;
   final String name;
   final int calories;
   final Duration duration;
+  final DateTime? start;
+  final bool isManual;
   const Workout({
+    this.id = '',
     required this.name,
     required this.calories,
     required this.duration,
+    this.start,
+    this.isManual = false,
   });
 }
 
 @Riverpod(keepAlive: true)
 class Activity extends _$Activity {
-  final HealthConnectService _health = HealthConnectService();
-
   @override
   Future<ActivitySummary> build() async {
     AppLifecycleService().addListener(_onResume);
     ref.onDispose(() => AppLifecycleService().removeListener(_onResume));
+    var manualWorkouts = <Workout>[];
     try {
-      final hasPermissions = await _health.hasPermissions();
-      if (!hasPermissions) return ActivitySummary.empty();
-      final steps = await _health.getTodaySteps();
-      final calories = await _health.getTodayActiveCaloriesBurned(
+      final repository = ref.watch(activityRepositoryProvider);
+      final health = repository.service;
+      final now = DateTime.now();
+      final manualEntries = await repository.getWorkoutsForDate(now);
+      manualWorkouts = manualEntries.map(_fromManualWorkout).toList();
+      final manualCalories = manualWorkouts.fold<int>(
+        0,
+        (sum, workout) => sum + workout.calories,
+      );
+      final hasPermissions = await health.hasPermissions();
+      if (!hasPermissions) {
+        return ActivitySummary(
+          activeCalories: manualCalories.toDouble(),
+          workouts: manualWorkouts,
+        );
+      }
+      final steps = await health.getTodaySteps();
+      final calories = await health.getTodayActiveCaloriesBurned(
         fallbackSteps: steps,
       );
+      final healthWorkout = await health.getTodayWorkoutSummary();
+      final workouts = <Workout>[
+        if (healthWorkout.hasWorkout)
+          Workout(
+            id: 'health-connect-${now.year}-${now.month}-${now.day}',
+            name: healthWorkout.primaryType ?? WorkoutEntry.defaultType,
+            calories: healthWorkout.calories,
+            duration: healthWorkout.duration,
+            start: DateTime(now.year, now.month, now.day),
+          ),
+        ...manualWorkouts,
+      ];
+      final totalCalories = calories.calories + manualCalories;
       // Remembered so the next opening starts from today's figure.
       unawaited(
-        ActivityBonusMemory.write(
-          ref.read(currentDayProvider),
-          calories.calories,
-        ),
+        ActivityBonusMemory.write(ref.read(currentDayProvider), totalCalories),
       );
       return ActivitySummary(
         steps: steps,
-        activeCalories: calories.calories.toDouble(),
+        activeCalories: totalCalories.toDouble(),
         activeCaloriesEstimated: calories.isEstimated,
+        workouts: workouts,
         healthConnected: true,
         lastSynced: DateTime.now(),
       );
     } catch (_) {
-      return ActivitySummary.empty();
+      final manualCalories = manualWorkouts.fold<int>(
+        0,
+        (sum, workout) => sum + workout.calories,
+      );
+      return ActivitySummary(
+        activeCalories: manualCalories.toDouble(),
+        workouts: manualWorkouts,
+      );
     }
   }
+
+  Workout _fromManualWorkout(WorkoutEntry workout) => Workout(
+    id: workout.id,
+    name: workout.type,
+    calories: workout.calories,
+    duration: workout.duration,
+    start: workout.start,
+    isManual: true,
+  );
 
   void _onResume() {
     // Steps may have moved while the app was out of sight; a pull of the
     // notification shade is no reason to read Health Connect again.
     if (AppLifecycleService().cameBack) ref.invalidateSelf();
   }
+
+  HealthConnectService get _health =>
+      ref.read(activityRepositoryProvider).service;
 
   Future<bool> authorize() => _health.requestPermissions();
   Future<bool> isConnected() => _health.hasPermissions();
@@ -112,13 +162,20 @@ class Activity extends _$Activity {
     int calories,
     Duration duration,
   ) async {
+    final start = DateTime.now();
+    final saved = await ref
+        .read(activityRepositoryProvider)
+        .addManualWorkout(
+          type: name,
+          calories: calories,
+          start: start,
+          duration: duration,
+        );
     final summary = state.valueOrNull ?? ActivitySummary.empty();
     state = AsyncData(
       summary.copyWith(
-        workouts: [
-          ...summary.workouts,
-          Workout(name: name, calories: calories, duration: duration),
-        ],
+        activeCalories: summary.activeCalories + saved.calories,
+        workouts: [...summary.workouts, _fromManualWorkout(saved)],
       ),
     );
   }
@@ -126,8 +183,17 @@ class Activity extends _$Activity {
   Future<void> deleteManualWorkout(int index) async {
     final summary = state.valueOrNull;
     if (summary == null || index >= summary.workouts.length) return;
+    final workout = summary.workouts[index];
+    if (!workout.isManual) return;
+    await ref
+        .read(activityRepositoryProvider)
+        .deleteManualWorkout(workout.id, workout.start!);
     state = AsyncData(
       summary.copyWith(
+        activeCalories: (summary.activeCalories - workout.calories).clamp(
+          0,
+          double.infinity,
+        ),
         workouts: [
           ...summary.workouts.take(index),
           ...summary.workouts.skip(index + 1),
@@ -142,18 +208,20 @@ final healthConnectServiceProvider = Provider<HealthConnectService>(
   (ref) => HealthConnectService(),
 );
 
+final activityRepositoryProvider = Provider<ActivityRepository>(
+  (ref) => ActivityRepository(service: ref.watch(healthConnectServiceProvider)),
+);
+
 /// The daily step goal, saved on the phone.
 ///
 /// Every screen hardcoded 10,000 while the activity store kept a goal that
 /// could be set -- and was already tested -- with nothing reading it.
-final _activityRepository = ActivityRepository();
-
 final stepGoalProvider = FutureProvider<int>(
-  (ref) => _activityRepository.getStepGoal(),
+  (ref) => ref.watch(activityRepositoryProvider).getStepGoal(),
 );
 
 Future<void> setStepGoal(WidgetRef ref, int goal) async {
-  await _activityRepository.setStepGoal(goal);
+  await ref.read(activityRepositoryProvider).setStepGoal(goal);
   ref.invalidate(stepGoalProvider);
 }
 
@@ -164,12 +232,12 @@ Future<void> setStepGoal(WidgetRef ref, int goal) async {
 final activityWeekProvider = FutureProvider<List<DailySteps>>((ref) async {
   final summary = ref.watch(activityProvider).valueOrNull;
   if (summary?.healthConnected != true) return const <DailySteps>[];
-  return _activityRepository.weeklySteps();
+  return ref.watch(activityRepositoryProvider).weeklySteps();
 });
 
 /// Days in a row the step goal has been met. It was hardcoded to zero.
 final stepStreakProvider = FutureProvider<int>((ref) async {
   final summary = ref.watch(activityProvider).valueOrNull;
   if (summary?.healthConnected != true) return 0;
-  return _activityRepository.getStepStreak();
+  return ref.watch(activityRepositoryProvider).getStepStreak();
 });
