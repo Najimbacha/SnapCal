@@ -194,6 +194,7 @@ class SnapController {
     _isAnalyzing = false;
     _capturedImageBytes = null;
     _photoTakenAt = null;
+    _analysisResults = null;
     onStateChanged?.call();
   }
 
@@ -301,8 +302,10 @@ class SnapController {
       final bytes = await imageFile.readAsBytes().timeout(
         TimeoutPolicy.gallery,
       );
-      _capturedImageBytes = await _prepare(bytes);
+      final prepared = await _prepare(bytes);
       unawaited(_deleteQuietly(imageFile));
+      if (!_isCurrent(op)) return;
+      _capturedImageBytes = prepared;
     } on UnsupportedImageException {
       _endAttempt(op, ScanProblem.unreadableImage, onProblem);
       return;
@@ -418,7 +421,9 @@ class SnapController {
       _capturedImageBytes = picked;
       onStateChanged?.call();
       _photoTakenAt = mealTimeFromPhoto(picked, DateTime.now());
-      _capturedImageBytes = await _prepare(picked);
+      final prepared = await _prepare(picked);
+      if (!_isCurrent(op)) return;
+      _capturedImageBytes = prepared;
     } on UnsupportedImageException {
       _endAttempt(op, ScanProblem.unreadableImage, onProblem);
       return;
@@ -668,11 +673,6 @@ class SnapController {
   }
 
   void reset() {
-    _capturedImageBytes = null;
-    _photoTakenAt = null;
-    _analysisResults = null;
-    _isAnalyzing = false;
-    _isCapturing = false;
-    onStateChanged?.call();
+    cancelScan();
   }
 }

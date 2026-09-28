@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/models/meal.dart';
+import '../data/repositories/meal_repository.dart';
 import '../core/utils/date_utils.dart' as app_date;
 import '../data/services/first_meal_guide_service.dart';
 import '../data/services/promotional_paywall_service.dart';
@@ -62,14 +63,36 @@ class MealLog extends _$MealLog {
   }) async {
     final repo = await ref.read(mealRepositoryProvider.future);
     await repo.addMeal(meal);
+    _afterMealSaved(
+      meal,
+      repo,
+      mealDate: mealDate,
+      rebalancePlanner: rebalancePlanner,
+    );
+  }
 
+  Future<void> addMeals(List<Meal> meals) async {
+    if (meals.isEmpty) return;
+    final repo = await ref.read(mealRepositoryProvider.future);
+    await repo.addMeals(meals);
+    for (final meal in meals) {
+      _afterMealSaved(meal, repo, mealDate: meal.dateString);
+    }
+  }
+
+  void _afterMealSaved(
+    Meal meal,
+    MealRepository repo, {
+    String? mealDate,
+    bool rebalancePlanner = true,
+  }) {
     // The first useful action explains the product better than a recurring
     // tutorial. Once any meal is safely stored, the optional Home hint is done.
-    unawaited(FirstMealGuideService().markCompleted());
+    _runAfterSave(() => FirstMealGuideService().markCompleted());
 
     // Fire-and-forget streak update via settings
-    unawaited(
-      ref
+    _runAfterSave(
+      () => ref
           .read(settingsProvider.notifier)
           .updateStreakOnMealLog(mealDate: mealDate),
     );
@@ -77,23 +100,44 @@ class MealLog extends _$MealLog {
     // Feeds the promotional paywall's eligibility rules (3 logged meals across
     // 2 distinct days). Nothing called this before, so the counter never moved
     // and the paywall could never become eligible.
-    unawaited(
-      PromotionalPaywallService.instance().recordSuccessfulMealScanOrLog(),
+    _runAfterSave(
+      () =>
+          PromotionalPaywallService.instance().recordSuccessfulMealScanOrLog(),
     );
 
     // And the review prompt's (5 logged meals across 3 days). The service
     // was complete but nothing fed it, so it could never ask.
-    unawaited(AppReviewService.instance().recordSuccessfulMealScanOrLog());
+    _runAfterSave(
+      () => AppReviewService.instance().recordSuccessfulMealScanOrLog(),
+    );
 
-    unawaited(ref.read(achievementsProvider.notifier).refreshAchievements());
+    _runAfterSave(
+      () => ref.read(achievementsProvider.notifier).refreshAchievements(),
+    );
 
     // A meal logged before its reminder moves that reminder to tomorrow.
-    unawaited(ref.read(settingsProvider.notifier).skipMealReminderFor(meal));
+    _runAfterSave(
+      () => ref.read(settingsProvider.notifier).skipMealReminderFor(meal),
+    );
 
     // After an off-plan meal, the rest of that day's planned meals are
     // resized to what the day has left. The planner could do this all
     // along; nothing asked it to.
-    unawaited(_rebalancePlanAfter(meal, repo.getMealsByDate(meal.dateString)));
+    if (rebalancePlanner) {
+      _runAfterSave(
+        () => _rebalancePlanAfter(meal, repo.getMealsByDate(meal.dateString)),
+      );
+    }
+  }
+
+  // Optional follow-up work must not turn a durable save into a reported
+  // failure (which would invite the user to save the same result again).
+  void _runAfterSave(Future<void> Function() action) {
+    unawaited(
+      Future<void>.sync(action).catchError((Object error) {
+        debugPrint('Meal follow-up failed: $error');
+      }),
+    );
   }
 
   Future<void> _rebalancePlanAfter(Meal meal, List<Meal> mealsForDate) async {

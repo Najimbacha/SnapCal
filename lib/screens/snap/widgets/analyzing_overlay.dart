@@ -11,10 +11,12 @@ import '../snap_controller.dart';
 class AnalyzingOverlay extends StatefulWidget {
   final SnapController controller;
   final VoidCallback? onManualEntry;
+  final VoidCallback? onCancel;
   const AnalyzingOverlay({
     super.key,
     required this.controller,
     this.onManualEntry,
+    this.onCancel,
   });
   @override
   State<AnalyzingOverlay> createState() => _AnalyzingOverlayState();
@@ -145,8 +147,7 @@ class _AnalyzingOverlayState extends State<AnalyzingOverlay>
                                     MaterialLocalizations.of(
                                       context,
                                     ).closeButtonTooltip,
-                                onPressed:
-                                    () => Navigator.of(context).maybePop(),
+                                onPressed: widget.onCancel,
                                 style: IconButton.styleFrom(
                                   foregroundColor: Colors.white,
                                   backgroundColor: Colors.white.withValues(

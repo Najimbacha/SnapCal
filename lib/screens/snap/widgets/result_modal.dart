@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../../core/theme/app_button_theme.dart';
 import 'dart:ui' show ImageFilter;
 
@@ -207,8 +208,11 @@ class ResultModal extends ConsumerStatefulWidget {
   final String? eatenAtLabel;
   final NutritionResult? result;
   final List<NutritionResult>? results;
-  final void Function(String, int, int, int, int, String?) onSave;
-  final void Function(List<NutritionResult> selected)? onSaveAll;
+
+  /// Complete only once the meal is stored locally; throw to keep edits open.
+  /// This route pops with `true` after success, so callers navigate afterwards.
+  final FutureOr<void> Function(String, int, int, int, int, String?) onSave;
+  final FutureOr<void> Function(List<NutritionResult> selected)? onSaveAll;
   final VoidCallback onCancel;
   final ScanGateService? scanGate;
 
@@ -231,6 +235,7 @@ class ResultModal extends ConsumerStatefulWidget {
 class _ResultModalState extends ConsumerState<ResultModal> {
   late List<_Item> _items;
   bool _saving = false;
+  bool _saved = false;
 
   /// The foods the scan found. They arrive one after another when the screen
   /// opens; anything added afterwards simply appears.
@@ -467,56 +472,69 @@ class _ResultModalState extends ConsumerState<ResultModal> {
     }
     setState(() => _saving = true);
     HapticFeedback.mediumImpact();
-    // Brief pause so the success checkmark is perceived before routing home.
-    await Future.delayed(const Duration(milliseconds: 420));
-    if (!mounted) return;
-    // One food goes the same way as several when the caller can take it: the
-    // single-item callback carries only name, calories and macros, so the
-    // most common scan was saved without its weight, per-100g or confidence.
-    if (widget.onSaveAll == null) {
-      final i = savable.first;
-      widget.onSave(
-        i.name,
-        i.calories,
-        i.protein,
-        i.carbs,
-        i.fat,
-        i.amountLabel,
-      );
-    } else {
-      widget.onSaveAll!(
-        savable
-            .map(
-              (i) => NutritionResult(
-                foodName: i.name,
-                portion: i.amountLabel,
-                calories: i.calories,
-                protein: i.protein,
-                carbs: i.carbs,
-                fat: i.fat,
-                healthScore: i.healthScore,
-                insights: i.insights,
-                weightG: i.weightG,
-                confidence: i.confidence,
-                nutritionMatchId: i.matchId,
-                matchKey: i.matchKey,
-                matched: i.matched,
-                nutritionPer100g: i.per100g,
-                nutritionActual:
-                    i.matched && i.per100g != null
-                        ? {
-                          'calories': i.calories,
-                          'protein': i.protein,
-                          'carbs': i.carbs,
-                          'fat': i.fat,
-                        }
-                        : null,
-              ),
-            )
-            .toList(),
+    try {
+      // One food goes the same way as several when the caller can take it: the
+      // single-item callback carries only name, calories and macros, so the
+      // most common scan was saved without its weight, per-100g or confidence.
+      if (widget.onSaveAll == null) {
+        final i = savable.first;
+        await widget.onSave(
+          i.name,
+          i.calories,
+          i.protein,
+          i.carbs,
+          i.fat,
+          i.amountLabel,
+        );
+      } else {
+        await widget.onSaveAll!(
+          savable
+              .map(
+                (i) => NutritionResult(
+                  foodName: i.name,
+                  portion: i.amountLabel,
+                  calories: i.calories,
+                  protein: i.protein,
+                  carbs: i.carbs,
+                  fat: i.fat,
+                  healthScore: i.healthScore,
+                  insights: i.insights,
+                  weightG: i.weightG,
+                  confidence: i.confidence,
+                  nutritionMatchId: i.matchId,
+                  matchKey: i.matchKey,
+                  matched: i.matched,
+                  nutritionPer100g: i.per100g,
+                  nutritionActual:
+                      i.matched && i.per100g != null
+                          ? {
+                            'calories': i.calories,
+                            'protein': i.protein,
+                            'carbs': i.carbs,
+                            'fat': i.fat,
+                          }
+                          : null,
+                ),
+              )
+              .toList(),
+        );
+      }
+      if (!mounted) return;
+      setState(() => _saved = true);
+      if (!AppMotion.reduceMotion(context)) {
+        await Future<void>.delayed(const Duration(milliseconds: 420));
+      }
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      debugPrint('Saving scan result failed: $error');
+      if (!mounted) return;
+      setState(() => _saving = false);
+      showAppToastOf(
+        context,
+        kind: ToastKind.error,
+        title: AppLocalizations.of(context)!.meal_save_failed,
       );
     }
-    Navigator.of(context).pop();
   }
 
   Color _accentFor(_Item i) {
@@ -608,117 +626,122 @@ class _ResultModalState extends ConsumerState<ResultModal> {
       },
       child: Scaffold(
         backgroundColor: d ? const Color(0xFF151918) : const Color(0xFFFAFCFB),
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: ListView(
-                  physics: const BouncingScrollPhysics(),
-                  // The save bar already absorbs the bottom safe-area inset.
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  children: [
-                    _header(context, l10n, d),
-                    Reveal(
-                      delay: const Duration(milliseconds: 620),
-                      child: _macroStrip(context, showMacros),
-                    ),
-                    const SizedBox(height: 24),
-                    if (widget.imageBytes != null) ...[
-                      Text(
-                        l10n.result_review_portions,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: d ? Colors.white : const Color(0xFF17251F),
-                        ),
+        body: AbsorbPointer(
+          absorbing: _saving,
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    // The save bar already absorbs the bottom safe-area inset.
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    children: [
+                      _header(context, l10n, d),
+                      Reveal(
+                        delay: const Duration(milliseconds: 620),
+                        child: _macroStrip(context, showMacros),
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        l10n.result_portion_guidance,
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 1.45,
-                          color: d ? Colors.white70 : const Color(0xFF56675D),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    if (_shareBar() != null) ...[
-                      _shareBar()!,
-                      const SizedBox(height: 12),
-                    ],
-                    ..._items.asMap().entries.map(
-                      (e) => Reveal(
-                        key: ValueKey('food-reveal-${e.value.uid}'),
-                        delay:
-                            _foundUids.contains(e.value.uid)
-                                ? Duration(milliseconds: 820 + e.key * 110)
-                                : Duration.zero,
-                        offset: const Offset(0, 18),
-                        child: _FoodCard(
-                          key: ValueKey('food-${e.value.uid}'),
-                          item: e.value,
-                          isDark: d,
-                          accent: _accentFor(e.value),
-                          sharePct: _sharePctOf(e.value),
-                          showMacros: showMacros,
-                          onWeightDelta: (delta) => _adjWt(e.key, delta),
-                          onWeightSet: (g) => _setWt(e.key, g),
-                          onWeightType: () => _typeWeight(e.key),
-                          onRename: () => _rename(e.key),
-                          onDelete: () => _del(e.key, withUndo: true),
-                        ),
-                      ),
-                    ),
-                    if (_items.isEmpty) _emptyState(l10n, d),
-                    const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: _add,
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        height: 48,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: (d ? Colors.white : const Color(0xFFC7C7CC))
-                                .withValues(alpha: 0.3),
+                      const SizedBox(height: 24),
+                      if (widget.imageBytes != null) ...[
+                        Text(
+                          l10n.result_review_portions,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: d ? Colors.white : const Color(0xFF17251F),
                           ),
-                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                WaznIcons.plus,
-                                size: 16,
-                                color:
-                                    d
-                                        ? Colors.white54
-                                        : const Color(0xFF8E8E93),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                l10n.result_add_item,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                        const SizedBox(height: 5),
+                        Text(
+                          l10n.result_portion_guidance,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.45,
+                            color: d ? Colors.white70 : const Color(0xFF56675D),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (_shareBar() != null) ...[
+                        _shareBar()!,
+                        const SizedBox(height: 12),
+                      ],
+                      ..._items.asMap().entries.map(
+                        (e) => Reveal(
+                          key: ValueKey('food-reveal-${e.value.uid}'),
+                          delay:
+                              _foundUids.contains(e.value.uid)
+                                  ? Duration(milliseconds: 820 + e.key * 110)
+                                  : Duration.zero,
+                          offset: const Offset(0, 18),
+                          child: _FoodCard(
+                            key: ValueKey('food-${e.value.uid}'),
+                            item: e.value,
+                            isDark: d,
+                            accent: _accentFor(e.value),
+                            sharePct: _sharePctOf(e.value),
+                            showMacros: showMacros,
+                            onWeightDelta: (delta) => _adjWt(e.key, delta),
+                            onWeightSet: (g) => _setWt(e.key, g),
+                            onWeightType: () => _typeWeight(e.key),
+                            onRename: () => _rename(e.key),
+                            onDelete: () => _del(e.key, withUndo: true),
+                          ),
+                        ),
+                      ),
+                      if (_items.isEmpty) _emptyState(l10n, d),
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: _add,
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: (d
+                                      ? Colors.white
+                                      : const Color(0xFFC7C7CC))
+                                  .withValues(alpha: 0.3),
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  WaznIcons.plus,
+                                  size: 16,
                                   color:
                                       d
                                           ? Colors.white54
                                           : const Color(0xFF8E8E93),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 6),
+                                Text(
+                                  l10n.result_add_item,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        d
+                                            ? Colors.white54
+                                            : const Color(0xFF8E8E93),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         bottomNavigationBar: Reveal(
@@ -978,7 +1001,9 @@ class _ResultModalState extends ConsumerState<ResultModal> {
         children: [
           _SaveButton(
             saving: _saving,
+            saved: _saved,
             label: l10n.result_add_to_log,
+            savingLabel: l10n.progress_saving,
             doneLabel: l10n.result_added,
             onPressed: _save,
           ),
@@ -1061,22 +1086,20 @@ class _ResultModalState extends ConsumerState<ResultModal> {
   }
 }
 
-/// Shared single-field prompt (rename, set weight). The dialog *owns* its
-/// controller: disposing from the caller raced the pop animation, rebuilding a
-/// live TextField against a disposed controller. State.dispose runs only after
-/// the route has fully unmounted.
-/// "Add to Log", which on tapping draws itself in to a green circle and
-/// ticks: the meal is in.
+/// Shows progress until persistence completes, then confirms success.
 class _SaveButton extends StatelessWidget {
   const _SaveButton({
     required this.saving,
+    required this.saved,
     required this.label,
+    required this.savingLabel,
     required this.doneLabel,
     required this.onPressed,
   });
 
   final bool saving;
-  final String label, doneLabel;
+  final bool saved;
+  final String label, savingLabel, doneLabel;
   final VoidCallback onPressed;
 
   static const _height = appButtonHeight;
@@ -1091,7 +1114,12 @@ class _SaveButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: !saving,
-      label: saving ? doneLabel : label,
+      label:
+          saved
+              ? doneLabel
+              : saving
+              ? savingLabel
+              : label,
       excludeSemantics: true,
       child: LayoutBuilder(
         builder:
@@ -1099,12 +1127,12 @@ class _SaveButton extends StatelessWidget {
               child: AnimatedContainer(
                 duration: duration,
                 curve: Curves.easeOutCubic,
-                width: saving ? _height : constraints.maxWidth,
+                width: saved ? _height : constraints.maxWidth,
                 height: _height,
                 decoration: BoxDecoration(
                   color: scheme.primary,
                   borderRadius: BorderRadius.circular(
-                    saving ? _height / 2 : appButtonRadius,
+                    saved ? _height / 2 : appButtonRadius,
                   ),
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -1119,7 +1147,7 @@ class _SaveButton extends StatelessWidget {
                         const Duration(milliseconds: 160),
                       ),
                       child:
-                          saving
+                          saved
                               ? _DrawnTick(
                                 key: const ValueKey('tick'),
                                 color: scheme.onPrimary,
@@ -1130,15 +1158,24 @@ class _SaveButton extends StatelessWidget {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                      WaznIcons.bookmarkPlus,
-                                      size: 20,
-                                      color: scheme.onPrimary,
-                                    ),
+                                    if (saving)
+                                      SizedBox.square(
+                                        dimension: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: scheme.onPrimary,
+                                        ),
+                                      )
+                                    else
+                                      Icon(
+                                        WaznIcons.bookmarkPlus,
+                                        size: 20,
+                                        color: scheme.onPrimary,
+                                      ),
                                     const SizedBox(width: 10),
                                     Flexible(
                                       child: Text(
-                                        label,
+                                        saving ? savingLabel : label,
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,

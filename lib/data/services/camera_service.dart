@@ -16,6 +16,7 @@ class CameraService extends ChangeNotifier {
 
   /// The start-up in flight, which every caller shares and awaits.
   Future<void>? _warming;
+  Future<void>? _stopping;
 
   /// Bumped by [stop], so a start-up that was overtaken lets go of the
   /// hardware instead of carrying on as if it were still wanted.
@@ -33,7 +34,13 @@ class CameraService extends ChangeNotifier {
     if (_isInitialized) return Future.value();
     final running = _warming;
     if (running != null) return running;
-    final start = _warm(_generation);
+    final generation = _generation;
+    final stopping = _stopping;
+    final start = () async {
+      await stopping;
+      if (generation != _generation) return;
+      await _warm(generation);
+    }();
     _warming = start;
     start.whenComplete(() {
       if (identical(_warming, start)) _warming = null;
@@ -46,8 +53,10 @@ class CameraService extends ChangeNotifier {
   /// Only once permission is granted: this never raises the permission
   /// prompt over the sheet; the camera screen asks for it as before.
   Future<void> prewarm() async {
+    final generation = _generation;
     try {
       if (!(await Permission.camera.status).isGranted) return;
+      if (generation != _generation) return;
       await warmup();
     } catch (e) {
       debugPrint('📸 CameraService: prewarm skipped: $e');
@@ -56,6 +65,7 @@ class CameraService extends ChangeNotifier {
 
   Future<void> _warm(int generation) async {
     bool overtaken() => generation != _generation;
+    CameraController? startingController;
 
     _isInitializing = true;
     _error = null;
@@ -65,7 +75,7 @@ class CameraService extends ChangeNotifier {
       // Explicitly check for permission
       final status = await Permission.camera.request();
       if (overtaken()) return;
-      if (status.isDenied || status.isPermanentlyDenied) {
+      if (!status.isGranted) {
         _error = 'Camera permission denied. Please enable it in Settings.';
         _isInitializing = false;
         notifyListeners();
@@ -89,20 +99,21 @@ class CameraService extends ChangeNotifier {
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
 
-      _controller = newController;
+      startingController = newController;
 
       await newController.initialize();
       if (overtaken()) {
-        await newController.dispose();
-        if (_controller == newController) _controller = null;
+        await _release(newController);
         return;
       }
 
+      _controller = newController;
       _isInitialized = true;
       _isInitializing = false;
       debugPrint('📸 CameraService: Hardware warmed up and ready');
       notifyListeners();
     } catch (e) {
+      if (startingController != null) await _release(startingController);
       if (overtaken()) return; // Ignore errors if we've already stopped
       _error = 'Camera warmup failed: $e';
       _isInitializing = false;
@@ -118,39 +129,52 @@ class CameraService extends ChangeNotifier {
     await warmup();
   }
 
-  Future<void> stop() async {
-    if (_controller == null && !_isInitialized) return;
-
+  Future<void> stop() {
     debugPrint('📸 CameraService: Stopping camera and releasing hardware');
 
     _generation++;
+    final warming = _warming;
+    final previousStop = _stopping;
     _warming = null;
     final controllerToDispose = _controller;
     _controller = null;
     _isInitialized = false;
     _isInitializing = false;
+    _error = null;
+
+    // A new warmup must wait until every older start and disposal settles.
+    // The starting controller belongs to _warm until initialization succeeds.
+    final stopping = () async {
+      await previousStop;
+      await warming;
+      if (controllerToDispose != null) await _release(controllerToDispose);
+    }();
+    _stopping = stopping;
+    stopping.whenComplete(() {
+      if (identical(_stopping, stopping)) _stopping = null;
+    });
 
     // Notify listeners immediately so the UI stops using the controller
     // before we start the potentially slow disposal process.
     notifyListeners();
+    return stopping;
+  }
 
-    if (controllerToDispose != null) {
-      try {
-        // Stop any active image streams first to prevent frames being sent to a detaching engine
-        if (controllerToDispose.value.isStreamingImages) {
-          await controllerToDispose.stopImageStream();
-        }
-        await controllerToDispose.dispose();
-      } catch (e) {
-        debugPrint('📸 CameraService: Error during disposal: $e');
+  Future<void> _release(CameraController controllerToDispose) async {
+    try {
+      // Stop any active image streams first to prevent frames being sent to a detaching engine
+      if (controllerToDispose.value.isStreamingImages) {
+        await controllerToDispose.stopImageStream();
       }
+      await controllerToDispose.dispose();
+    } catch (e) {
+      debugPrint('📸 CameraService: Error during disposal: $e');
     }
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
-    _isInitialized = false;
+    stop();
     super.dispose();
   }
 }

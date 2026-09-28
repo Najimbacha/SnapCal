@@ -489,29 +489,36 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
 
   Future<void> _addToLog() async {
     final items = _items;
-    if (items == null || _saving) return;
-    setState(() => _saved = true);
-    HapticFeedback.heavyImpact();
-    if (!AppMotion.reduceMotion(context)) {
-      await Future<void>.delayed(const Duration(milliseconds: 420));
+    if (items == null || _saving || _saved) return;
+    try {
+      await _saveMeals(items);
       if (!mounted) return;
+      setState(() => _saved = true);
+      HapticFeedback.heavyImpact();
+      if (!AppMotion.reduceMotion(context)) {
+        await Future<void>.delayed(const Duration(milliseconds: 420));
+      }
+      if (mounted) context.go('/');
+    } catch (error) {
+      if (!mounted) return;
+      showAppToastOf(
+        context,
+        kind: ToastKind.error,
+        title: AppLocalizations.of(context)!.meal_save_failed,
+      );
     }
-    await _saveMeals(items);
   }
 
   Future<void> _saveMeals(List<NutritionResult> items) async {
     if (_saving) return;
     _saving = true;
     final l10n = AppLocalizations.of(context)!;
-    final messenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
     final mealNotifier = ref.read(mealLogProvider.notifier);
     final dateString = app_date.DateUtils.getDateString(DateTime.now());
 
-    router.go('/');
     try {
-      for (final item in items) {
-        await mealNotifier.addMeal(
+      await mealNotifier.addMeals([
+        for (final item in items)
           Meal(
             id: mealNotifier.generateMealId(),
             timestamp: DateTime.now().millisecondsSinceEpoch,
@@ -534,9 +541,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
             nutritionMatchId: item.nutritionMatchId,
             nutritionPer100g: item.nutritionPer100g,
           ),
-          mealDate: dateString,
-        );
-      }
+      ]);
       _analytics.logEvent(
         'voice_log_saved',
         parameters: {'item_count': items.length},
@@ -549,22 +554,18 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
       );
     } catch (error) {
       debugPrint('Saving voice meal failed: $error');
-      showAppToast(
-        messenger,
-        kind: ToastKind.error,
-        title: l10n.meal_save_failed,
-      );
+      rethrow;
     } finally {
       _saving = false;
     }
   }
 
   /// The full result screen, for changing portions or removing a food.
-  void _review() {
+  Future<void> _review() async {
     final items = _items;
     if (items == null) return;
-    Navigator.of(context, rootNavigator: true).push(
-      PageRouteBuilder<void>(
+    final saved = await Navigator.of(context, rootNavigator: true).push<bool>(
+      PageRouteBuilder<bool>(
         opaque: true,
         pageBuilder:
             (context, animation, secondaryAnimation) => FadeTransition(
@@ -590,6 +591,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
         transitionDuration: const Duration(milliseconds: 280),
       ),
     );
+    if (mounted && saved == true) context.go('/');
   }
 
   void _type() {

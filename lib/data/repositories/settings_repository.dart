@@ -74,32 +74,13 @@ class SettingsRepository {
   Future<void> _initInternal() async {
     _firestore ??= FirebaseFirestore.instance;
     _auth ??= FirebaseAuth.instance;
-    try {
-      final encryptionKey = await SecurityService().getEncryptionKey();
-      _settingsBox = await Hive.openBox<UserSettings>(
-        AppConstants.settingsBoxName,
-        encryptionCipher: HiveAesCipher(encryptionKey),
-      ).timeout(const Duration(seconds: 10));
-    } catch (e) {
-      if (e is StateError &&
-          e.message.contains('Secure storage is unavailable')) {
-        rethrow;
-      }
-      debugPrint(
-        '⚠️ SettingsRepository: Box open failed, attempting recovery: $e',
-      );
-      try {
-        await Hive.deleteBoxFromDisk(AppConstants.settingsBoxName);
-        final encryptionKey = await SecurityService().getEncryptionKey();
-        _settingsBox = await Hive.openBox<UserSettings>(
-          AppConstants.settingsBoxName,
-          encryptionCipher: HiveAesCipher(encryptionKey),
-        );
-        debugPrint('✅ SettingsRepository: Recovery successful');
-      } catch (retryError) {
-        debugPrint('❌ SettingsRepository: Fatal recovery failure: $retryError');
-      }
-    }
+    // An open failure does not establish corruption. Preserve the saved data
+    // and let startup display its retry screen, including on a slow disk.
+    final encryptionKey = await SecurityService().getEncryptionKey();
+    _settingsBox = await Hive.openBox<UserSettings>(
+      AppConstants.settingsBoxName,
+      encryptionCipher: HiveAesCipher(encryptionKey),
+    ).timeout(const Duration(seconds: 10));
 
     // Emit initial value
     final initialSettings = getSettings();

@@ -21,9 +21,15 @@ class MealRepository {
   MealRepository._internal();
 
   @visibleForTesting
-  MealRepository.forTesting(FirebaseFirestore firestore, FirebaseAuth auth)
-    : _firestore = firestore,
-      _auth = auth;
+  MealRepository.forTesting(
+    FirebaseFirestore firestore,
+    FirebaseAuth auth, {
+    Box<Meal>? mealsBox,
+    Box<List<String>>? indexBox,
+  }) : _firestore = firestore,
+       _auth = auth,
+       _mealsBox = mealsBox,
+       _indexBox = indexBox;
 
   Box<Meal>? _mealsBox;
   Box<List<String>>? _indexBox;
@@ -68,44 +74,24 @@ class MealRepository {
     final encryptionKey = await SecurityService().getEncryptionKey();
     final cipher = HiveAesCipher(encryptionKey);
 
-    try {
-      if (!Hive.isBoxOpen(AppConstants.mealsBoxName)) {
-        _mealsBox = await Hive.openBox<Meal>(
-          AppConstants.mealsBoxName,
-          encryptionCipher: cipher,
-        ).timeout(const Duration(seconds: 10));
-      } else {
-        _mealsBox = Hive.box<Meal>(AppConstants.mealsBoxName);
-      }
+    // An open failure or timeout is not evidence of corruption. Keep both
+    // files intact and let startup retry; never erase saved meals to recover.
+    if (!Hive.isBoxOpen(AppConstants.mealsBoxName)) {
+      _mealsBox = await Hive.openBox<Meal>(
+        AppConstants.mealsBoxName,
+        encryptionCipher: cipher,
+      ).timeout(const Duration(seconds: 10));
+    } else {
+      _mealsBox = Hive.box<Meal>(AppConstants.mealsBoxName);
+    }
 
-      if (!Hive.isBoxOpen(AppConstants.mealIndexBoxName)) {
-        _indexBox = await Hive.openBox<List<String>>(
-          AppConstants.mealIndexBoxName,
-          encryptionCipher: cipher,
-        ).timeout(const Duration(seconds: 10));
-      } else {
-        _indexBox = Hive.box<List<String>>(AppConstants.mealIndexBoxName);
-      }
-    } catch (e) {
-      debugPrint('⚠️ MealRepository: Box open failed, attempting recovery: $e');
-      try {
-        // Attempt to delete corrupted boxes and recreate
-        await Hive.deleteBoxFromDisk(AppConstants.mealsBoxName);
-        await Hive.deleteBoxFromDisk(AppConstants.mealIndexBoxName);
-
-        _mealsBox = await Hive.openBox<Meal>(
-          AppConstants.mealsBoxName,
-          encryptionCipher: cipher,
-        );
-        _indexBox = await Hive.openBox<List<String>>(
-          AppConstants.mealIndexBoxName,
-          encryptionCipher: cipher,
-        );
-        debugPrint('✅ MealRepository: Recovery successful (Data cleared)');
-      } catch (retryError) {
-        debugPrint('❌ MealRepository: Fatal recovery failure: $retryError');
-        rethrow;
-      }
+    if (!Hive.isBoxOpen(AppConstants.mealIndexBoxName)) {
+      _indexBox = await Hive.openBox<List<String>>(
+        AppConstants.mealIndexBoxName,
+        encryptionCipher: cipher,
+      ).timeout(const Duration(seconds: 10));
+    } else {
+      _indexBox = Hive.box<List<String>>(AppConstants.mealIndexBoxName);
     }
 
     // Initial migration: if meals exist but the date index is missing.
@@ -189,6 +175,43 @@ class MealRepository {
     await _saveMealLocalOnly(meal);
     _emitTodaysMeals();
     _inBackground(_syncMealToCloud(meal));
+  }
+
+  /// Persist the foods from one scan together before reporting success.
+  /// Hive rolls back a failed putAll in memory. Preparing the index first
+  /// means an index error cannot leave a partly saved scan. If the meal write
+  /// fails, the unused index IDs are harmless: reads filter missing meals and
+  /// retrying with the same IDs does not create duplicates.
+  Future<void> addMeals(List<Meal> meals) async {
+    if (meals.isEmpty) return;
+    final box = _mealsBox;
+    final index = _indexBox;
+    if (box == null || !box.isOpen || index == null || !index.isOpen) {
+      throw StateError('Meal storage is unavailable');
+    }
+    final entries = <String, Meal>{};
+    final dates = <String, List<String>>{};
+    for (final meal in meals) {
+      if (entries.containsKey(meal.id)) {
+        throw ArgumentError('A meal batch must contain unique IDs');
+      }
+      final previous = box.get(meal.id);
+      if (previous != null && previous.dateString != meal.dateString) {
+        throw ArgumentError('Use updateMeal to move an existing meal');
+      }
+      entries[meal.id] = meal;
+      final ids = dates.putIfAbsent(
+        meal.dateString,
+        () => List<String>.of(index.get(meal.dateString) ?? const []),
+      );
+      if (!ids.contains(meal.id)) ids.add(meal.id);
+    }
+    await index.putAll(dates);
+    await box.putAll(entries);
+    _emitTodaysMeals();
+    for (final meal in entries.values) {
+      _inBackground(_syncMealToCloud(meal));
+    }
   }
 
   /// The meal is on the phone once the local write is done; the upload

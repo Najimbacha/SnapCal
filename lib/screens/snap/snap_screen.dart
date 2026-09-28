@@ -40,8 +40,14 @@ enum _ProblemChoice { primary, manual }
 
 class SnapScreen extends ConsumerStatefulWidget {
   final SnapInitialMode initialMode;
+  @visibleForTesting
+  final SnapController? controller;
 
-  const SnapScreen({super.key, this.initialMode = SnapInitialMode.food});
+  const SnapScreen({
+    super.key,
+    this.initialMode = SnapInitialMode.food,
+    this.controller,
+  });
 
   @override
   ConsumerState<SnapScreen> createState() => _SnapScreenState();
@@ -57,6 +63,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   bool _isTickerActive = true;
   bool _isSavingResult = false;
   String? _savedResultFingerprint;
+  bool _resultOpen = false;
 
   Offset? _focusPoint;
   AnimationController? _focusAnimController;
@@ -66,7 +73,9 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   @override
   void initState() {
     super.initState();
-    _controller = SnapController()..onStateChanged = () => setState(() {});
+    _controller =
+        (widget.controller ?? SnapController())
+          ..onStateChanged = () => setState(() {});
     WidgetsBinding.instance.addObserver(this);
 
     _focusAnimController = AnimationController(
@@ -112,6 +121,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     if (_isTickerActive != tickerActive) {
       _isTickerActive = tickerActive;
       if (!tickerActive) {
+        if (!_resultOpen) _controller.cancelScan();
         CameraService().stop();
       } else if (_hasInitializedOnce) {
         _startLaunchMode();
@@ -126,7 +136,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   }
 
   void _startLaunchMode() {
-    if (!mounted || !_isTickerActive) return;
+    if (!mounted || !_isTickerActive || _resultOpen) return;
     if (widget.initialMode == SnapInitialMode.barcode) {
       _controller.isScanningBarcode = true;
       return;
@@ -145,7 +155,10 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   /// there switched the hardware -- and the phone's camera-in-use dot -- on
   /// behind a screen that never used it, every time the app came back.
   bool get _cameraWanted =>
-      mounted && _isTickerActive && !_controller.isScanningBarcode;
+      mounted &&
+      _isTickerActive &&
+      !_resultOpen &&
+      !_controller.isScanningBarcode;
 
   @override
   void dispose() {
@@ -237,14 +250,16 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     );
   }
 
-  void _showResultModal() {
-    if (!mounted) return;
+  Future<void> _showResultModal() async {
+    if (!mounted || !_isTickerActive || _resultOpen) return;
+    _resultOpen = true;
     _isSavingResult = false;
     _savedResultFingerprint = null;
     final results = _controller.analysisResults;
 
-    Navigator.of(context, rootNavigator: true).push(
-      PageRouteBuilder(
+    unawaited(CameraService().stop());
+    final saved = await Navigator.of(context, rootNavigator: true).push<bool>(
+      PageRouteBuilder<bool>(
         opaque: true,
         barrierDismissible: false,
         barrierColor: Colors.black.withValues(alpha: 0.3),
@@ -287,6 +302,21 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
         transitionDuration: const Duration(milliseconds: 300),
       ),
     );
+    _resultOpen = false;
+    if (!mounted) return;
+    if (saved == true) {
+      _controller.reset();
+      context.go('/');
+      _askForReviewSoon();
+    } else if (_cameraWanted) {
+      unawaited(_controller.initializeCamera());
+    }
+  }
+
+  void _close() {
+    _controller.cancelScan();
+    unawaited(CameraService().stop());
+    context.go('/');
   }
 
   /// "From your photo: Yesterday · 8:14 PM" when an older gallery photo sets
@@ -481,9 +511,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     if (!_beginResultSave(fingerprint)) return;
 
     final l10n = AppLocalizations.of(context)!;
-    final messenger = ScaffoldMessenger.of(context);
     final mealNotifier = ref.read(mealLogProvider.notifier);
-    final router = GoRouter.of(context);
     final now = DateTime.now();
     // An older gallery photo is logged when it was taken, not when scanned.
     final eatenAt = _controller.photoTakenAt;
@@ -493,10 +521,8 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     try {
       final imageUri = await _persistCapturedMealImage(now);
       HapticFeedback.heavyImpact();
-      router.go('/');
-
-      for (final item in items) {
-        await mealNotifier.addMeal(
+      await mealNotifier.addMeals([
+        for (final item in items)
           Meal(
             id: mealNotifier.generateMealId(),
             timestamp: (eatenAt ?? DateTime.now()).millisecondsSinceEpoch,
@@ -520,22 +546,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             nutritionMatchId: item.nutritionMatchId,
             nutritionPer100g: item.nutritionPer100g,
           ),
-          mealDate: dateString,
-        );
-      }
-
-      _controller.reset();
-      _askForReviewSoon();
+      ]);
     } catch (error) {
-      // Home is already showing; without a word here the meal would simply
-      // not be there.
       debugPrint('Saving scanned meal failed: $error');
       _savedResultFingerprint = null;
-      showAppToast(
-        messenger,
-        kind: ToastKind.error,
-        title: l10n.meal_save_failed,
-      );
+      rethrow;
     } finally {
       _isSavingResult = false;
     }
@@ -602,7 +617,15 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) _close();
+    },
+    child: _buildContent(context),
+  );
+
+  Widget _buildContent(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final topSafe = MediaQuery.of(context).padding.top;
     final bottomSafe = MediaQuery.of(context).padding.bottom;
@@ -612,7 +635,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
         backgroundColor: Colors.black,
         body: BarcodeScannerView(
           onBarcodeDetected: _onBarcodeDetected,
-          onCancel: () => context.go('/'),
+          onCancel: _close,
         ),
       );
     }
@@ -655,20 +678,35 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     } else if (_controller.cameraProblem != null) {
       final problem = _controller.cameraProblem!;
       final needsPermission = problem == CameraProblem.permission;
-      cameraLayer = _StatePanel(
-        icon: WaznIcons.cameraOff,
-        title: l10n.error_camera,
-        body: switch (problem) {
-          CameraProblem.slow => l10n.snap_camera_slow,
-          CameraProblem.permission => l10n.snap_camera_permission,
-          CameraProblem.unavailable => l10n.snap_camera_unavailable,
-        },
-        actionLabel:
-            needsPermission ? l10n.snap_open_settings : l10n.assistant_retry,
-        onAction:
-            needsPermission
-                ? () => unawaited(openAppSettings())
-                : _controller.initializeCamera,
+      cameraLayer = Padding(
+        // Leave the independent gallery/manual controls reachable even on
+        // short screens; the error itself can scroll in the remaining space.
+        padding: EdgeInsets.only(top: topSafe + 80, bottom: bottomSafe + 220),
+        child: LayoutBuilder(
+          builder:
+              (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: _StatePanel(
+                    icon: WaznIcons.cameraOff,
+                    title: l10n.error_camera,
+                    body: switch (problem) {
+                      CameraProblem.slow => l10n.snap_camera_slow,
+                      CameraProblem.permission => l10n.snap_camera_permission,
+                      CameraProblem.unavailable => l10n.snap_camera_unavailable,
+                    },
+                    actionLabel:
+                        needsPermission
+                            ? l10n.snap_open_settings
+                            : l10n.assistant_retry,
+                    onAction:
+                        needsPermission
+                            ? () => unawaited(openAppSettings())
+                            : _controller.initializeCamera,
+                  ),
+                ),
+              ),
+        ),
       );
     } else {
       cameraLayer = const _CameraShimmerSkeleton();
@@ -677,7 +715,6 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
         _controller.isInitialized &&
         _controller.cameraController?.value.isInitialized == true &&
         _controller.cameraProblem == null;
-    final hasCameraProblem = _controller.cameraProblem != null;
 
     return Scaffold(
       backgroundColor: const Color(0xFF07110E),
@@ -763,37 +800,37 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
             child: _InlineCameraHeader(
               isReady: cameraReady,
               flashMode: _controller.flashMode,
-              onClose: () => context.go('/'),
+              onClose: _close,
               onFlash: _controller.toggleFlash,
             ),
           ),
 
-          if (!hasCameraProblem)
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: bottomSafe + 16,
-              child: _InlineCameraControls(
-                isCapturing: _controller.isCapturing,
-                onCapture: cameraReady ? _capture : null,
-                onGallery: _pickFromGallery,
-                onBarcode:
-                    cameraReady
-                        ? () => _controller.isScanningBarcode = true
-                        : null,
-                onManual: _openManualEntry,
-                galleryLabel: l10n.snap_gallery,
-                barcodeLabel: l10n.snap_barcode,
-                manualLabel: l10n.log_add_manually,
-                isCameraReady: cameraReady,
-              ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: bottomSafe + 16,
+            child: _InlineCameraControls(
+              isCapturing: _controller.isCapturing,
+              onCapture: cameraReady ? _capture : null,
+              onGallery: _pickFromGallery,
+              onBarcode:
+                  cameraReady
+                      ? () => _controller.isScanningBarcode = true
+                      : null,
+              onManual: _openManualEntry,
+              galleryLabel: l10n.snap_gallery,
+              barcodeLabel: l10n.snap_barcode,
+              manualLabel: l10n.log_add_manually,
+              isCameraReady: cameraReady,
             ),
+          ),
 
           // ── Analyzing overlay ──
           if (_controller.isAnalyzing)
             Positioned.fill(
               child: AnalyzingOverlay(
                 controller: _controller,
+                onCancel: _close,
                 onManualEntry: _manualInsteadOfWaiting,
               ),
             ),
