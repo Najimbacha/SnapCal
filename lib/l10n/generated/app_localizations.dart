@@ -8652,6 +8652,48 @@ abstract class AppLocalizations {
   /// **'Unlock 30 days'**
   String get stats_pro_button;
 
+  /// No description provided for @voice_listening_short.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening'**
+  String get voice_listening_short;
+
+  /// No description provided for @voice_say_what_you_ate.
+  ///
+  /// In en, this message translates to:
+  /// **'Say what you ate…'**
+  String get voice_say_what_you_ate;
+
+  /// No description provided for @voice_tap_when_done.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap when you\'re done'**
+  String get voice_tap_when_done;
+
+  /// No description provided for @voice_got_it.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get voice_got_it;
+
+  /// No description provided for @voice_working_out.
+  ///
+  /// In en, this message translates to:
+  /// **'Working out your meal'**
+  String get voice_working_out;
+
+  /// No description provided for @voice_type_instead.
+  ///
+  /// In en, this message translates to:
+  /// **'Type instead'**
+  String get voice_type_instead;
+
+  /// No description provided for @voice_edit_words.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit the words'**
+  String get voice_edit_words;
+
   /// No description provided for @voice_log_title.
   ///
   /// In en, this message translates to:

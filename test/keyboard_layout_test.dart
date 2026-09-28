@@ -40,6 +40,27 @@ Widget _app(Widget home) => ProviderScope(
   ),
 );
 
+/// A microphone that never hears anything.
+class _SilentVoice implements VoiceInput {
+  @override
+  Future<VoicePermission> ensurePermission() async => VoicePermission.granted;
+
+  @override
+  Future<bool> start({
+    required String languageCode,
+    required void Function(String words, bool isFinal) onWords,
+    required void Function(double level) onLevel,
+    required VoidCallback onDone,
+    required void Function(bool noSpeech) onError,
+  }) async => true;
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> cancel() async {}
+}
+
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
@@ -76,21 +97,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('typing a meal folds the microphone and keeps Analyse in view', (
+  testWidgets('typing a meal keeps Done right above the keyboard', (
     tester,
   ) async {
     _smallPhone(tester);
-    await tester.pumpWidget(_app(const VoiceMealScreen()));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('voice-speak-row')), findsNothing);
+    await tester.pumpWidget(_app(VoiceMealScreen(input: _SilentVoice())));
+    await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.tap(find.byKey(const ValueKey('voice-transcript')));
-    await _raiseKeyboard(tester);
+    await tester.tap(find.byKey(const ValueKey('voice-type')));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.enterText(
+      find.byKey(const ValueKey('voice-type-field')),
+      'Two eggs and toast',
+    );
+    tester.view.viewInsets = const FakeViewPadding(bottom: _keyboard);
+    await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.byKey(const ValueKey('voice-speak-row')), findsOneWidget);
-    expect(find.byKey(const ValueKey('voice-mic')), findsNothing);
+    expect(find.byKey(const ValueKey('voice-orb')), findsNothing);
     expect(
-      _aboveKeyboard(tester, find.byKey(const ValueKey('voice-analyze'))),
+      _aboveKeyboard(tester, find.byKey(const ValueKey('voice-type-done'))),
+      isTrue,
+    );
+    expect(
+      _aboveKeyboard(tester, find.byKey(const ValueKey('voice-type-field'))),
       isTrue,
     );
     expect(tester.takeException(), isNull);

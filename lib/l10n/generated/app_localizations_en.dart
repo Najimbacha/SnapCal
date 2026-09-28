@@ -4813,6 +4813,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stats_pro_button => 'Unlock 30 days';
 
   @override
+  String get voice_listening_short => 'Listening';
+
+  @override
+  String get voice_say_what_you_ate => 'Say what you ate…';
+
+  @override
+  String get voice_tap_when_done => 'Tap when you\'re done';
+
+  @override
+  String get voice_got_it => 'Got it';
+
+  @override
+  String get voice_working_out => 'Working out your meal';
+
+  @override
+  String get voice_type_instead => 'Type instead';
+
+  @override
+  String get voice_edit_words => 'Edit the words';
+
+  @override
   String get voice_log_title => 'Voice log';
 
   @override

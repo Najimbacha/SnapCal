@@ -4900,6 +4900,27 @@ class AppLocalizationsFr extends AppLocalizations {
   String get stats_pro_button => 'Débloquer 30 jours';
 
   @override
+  String get voice_listening_short => 'J\'écoute';
+
+  @override
+  String get voice_say_what_you_ate => 'Dis ce que tu as mangé…';
+
+  @override
+  String get voice_tap_when_done => 'Touche quand tu as fini';
+
+  @override
+  String get voice_got_it => 'Compris';
+
+  @override
+  String get voice_working_out => 'Calcul de ton repas';
+
+  @override
+  String get voice_type_instead => 'Écrire plutôt';
+
+  @override
+  String get voice_edit_words => 'Modifier les mots';
+
+  @override
   String get voice_log_title => 'Saisie vocale';
 
   @override

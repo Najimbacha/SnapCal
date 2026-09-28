@@ -4799,6 +4799,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get stats_pro_button => 'افتح 30 يوماً';
 
   @override
+  String get voice_listening_short => 'أستمع';
+
+  @override
+  String get voice_say_what_you_ate => 'قل ما أكلته…';
+
+  @override
+  String get voice_tap_when_done => 'اضغط عند الانتهاء';
+
+  @override
+  String get voice_got_it => 'فهمت';
+
+  @override
+  String get voice_working_out => 'نحسب وجبتك';
+
+  @override
+  String get voice_type_instead => 'اكتب بدلًا من ذلك';
+
+  @override
+  String get voice_edit_words => 'تعديل الكلمات';
+
+  @override
   String get voice_log_title => 'تسجيل صوتي';
 
   @override
