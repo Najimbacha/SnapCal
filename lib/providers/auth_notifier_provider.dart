@@ -27,6 +27,15 @@ import 'water_provider.dart';
 
 part 'auth_notifier_provider.g.dart';
 
+class PendingSyncException implements Exception {
+  const PendingSyncException(this.count);
+
+  final int count;
+
+  @override
+  String toString() => '$count local changes are still waiting to upload.';
+}
+
 @Riverpod(keepAlive: true)
 class AuthNotifier extends _$AuthNotifier {
   static const String _googleServerClientId =
@@ -349,10 +358,13 @@ class AuthNotifier extends _$AuthNotifier {
   Future<void> _signInReplacingAccount(Future<void> Function() signIn) async {
     await _flushQueueBeforeLeaving();
     try {
-      await SessionCleanupService().clearLocalUserData(finishSession: signIn);
+      await SessionCleanupService().clearLocalUserData(
+        finishSession: signIn,
+        finishSessionBeforeClear: true,
+      );
     } finally {
-      // On failure the current account is still signed in with an emptied
-      // phone; its sync brings the data back.
+      // On authentication failure the current account and its local data are
+      // untouched. After a successful switch, hydrate the newly empty boxes.
       //
       // Settings come first. Until they arrive the emptied phone reads as a
       // user who never finished onboarding, and the router sends that user to
@@ -378,10 +390,10 @@ class AuthNotifier extends _$AuthNotifier {
   /// Anything still queued belongs to the account being left, and the wipe
   /// that follows clears the queue with everything else.
   Future<void> _flushQueueBeforeLeaving() async {
-    try {
-      await SyncQueueService().flushDue().timeout(const Duration(seconds: 8));
-    } catch (e) {
-      debugPrint('Queue flush before leaving the account skipped: $e');
+    await SyncQueueService().flushDue().timeout(const Duration(seconds: 8));
+    final queue = SyncQueueService();
+    if (queue.hasPendingOperations) {
+      throw PendingSyncException(queue.pendingCount);
     }
   }
 
@@ -433,7 +445,9 @@ class AuthNotifier extends _$AuthNotifier {
       try {
         await _flushQueueBeforeLeaving();
       } catch (e) {
-        debugPrint('Pre-deletion flush skipped: $e');
+        // The server is about to delete the entire account, including any
+        // record represented by a local pending operation.
+        debugPrint('Pre-deletion queue could not be drained: $e');
       }
       await ApiClient.dio
           .delete<void>('${ConfigService().backendProxyUrl}/api/account')

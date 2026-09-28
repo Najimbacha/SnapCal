@@ -27,6 +27,7 @@ class SyncQueueService with ChangeNotifier {
 
   bool get isFlushing => _isFlushing;
   int get pendingCount => _box?.isOpen == true ? _box!.length : 0;
+  bool get hasPendingOperations => pendingCount > 0;
 
   Future<void> init() async {
     if (_initialized && _box?.isOpen == true) return;

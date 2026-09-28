@@ -66,11 +66,20 @@ class SessionCleanupService {
   Future<void> clearLocalUserData({
     bool wipeSecurityKeys = false,
     Future<void> Function()? finishSession,
+    bool finishSessionBeforeClear = false,
   }) => SessionDataGuard.instance.cleanup(() async {
-    await _clearLocalUserData(wipeSecurityKeys: wipeSecurityKeys);
-    // Keep downloads suspended until Firebase has switched identities too.
-    // Otherwise a fresh old-account pull can start just after the wipe.
-    await finishSession?.call();
+    if (finishSessionBeforeClear) {
+      // Validate and complete an account replacement before destroying the
+      // current account's only local copy. The guard remains suspended across
+      // both steps, so neither account can pull into the boxes mid-switch.
+      await finishSession?.call();
+      await _clearLocalUserData(wipeSecurityKeys: wipeSecurityKeys);
+    } else {
+      await _clearLocalUserData(wipeSecurityKeys: wipeSecurityKeys);
+      // Keep downloads suspended until Firebase has switched identities too.
+      // Otherwise a fresh old-account pull can start just after the wipe.
+      await finishSession?.call();
+    }
   });
 
   Future<void> _clearLocalUserData({required bool wipeSecurityKeys}) async {

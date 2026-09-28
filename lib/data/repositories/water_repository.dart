@@ -14,7 +14,30 @@ class WaterRepository {
   /// and one init future per box. See [SettingsRepository].
   static final WaterRepository _instance = WaterRepository._internal();
   factory WaterRepository() => _instance;
-  WaterRepository._internal();
+  WaterRepository._internal({
+    Future<List<int>> Function()? loadEncryptionKey,
+    Future<Box<WaterLog>> Function(List<int>)? openBox,
+  }) : _loadEncryptionKey =
+           loadEncryptionKey ?? SecurityService().getEncryptionKey,
+       _openBox = openBox ?? _openEncryptedBox;
+
+  @visibleForTesting
+  factory WaterRepository.forTesting({
+    required Future<List<int>> Function() loadEncryptionKey,
+    required Future<Box<WaterLog>> Function(List<int>) openBox,
+  }) => WaterRepository._internal(
+    loadEncryptionKey: loadEncryptionKey,
+    openBox: openBox,
+  );
+
+  final Future<List<int>> Function() _loadEncryptionKey;
+  final Future<Box<WaterLog>> Function(List<int>) _openBox;
+
+  static Future<Box<WaterLog>> _openEncryptedBox(List<int> encryptionKey) =>
+      Hive.openBox<WaterLog>(
+        AppConstants.waterBoxName,
+        encryptionCipher: HiveAesCipher(encryptionKey),
+      ).timeout(const Duration(seconds: 10));
 
   Box<WaterLog>? _waterBox;
   Future<void>? _initFuture;
@@ -85,28 +108,11 @@ class WaterRepository {
   }
 
   Future<void> _initInternal() async {
-    try {
-      final encryptionKey = await SecurityService().getEncryptionKey();
-      _waterBox = await Hive.openBox<WaterLog>(
-        AppConstants.waterBoxName,
-        encryptionCipher: HiveAesCipher(encryptionKey),
-      ).timeout(const Duration(seconds: 10));
-    } catch (e) {
-      debugPrint(
-        '⚠️ WaterRepository: Box open failed, attempting recovery: $e',
-      );
-      try {
-        await Hive.deleteBoxFromDisk(AppConstants.waterBoxName);
-        final encryptionKey = await SecurityService().getEncryptionKey();
-        _waterBox = await Hive.openBox<WaterLog>(
-          AppConstants.waterBoxName,
-          encryptionCipher: HiveAesCipher(encryptionKey),
-        );
-        debugPrint('✅ WaterRepository: Recovery successful');
-      } catch (retryError) {
-        debugPrint('❌ WaterRepository: Fatal recovery failure: $retryError');
-      }
-    }
+    // An open failure can be a slow disk, unavailable secure storage, or a
+    // temporarily wrong key. None proves the user's health history is corrupt.
+    // Surface the failure so startup can retry; never "recover" by deleting it.
+    final encryptionKey = await _loadEncryptionKey();
+    _waterBox = await _openBox(encryptionKey);
   }
 
   /// Get water for a specific date

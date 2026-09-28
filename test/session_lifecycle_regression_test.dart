@@ -160,4 +160,45 @@ void main() {
       );
     },
   );
+
+  test(
+    'account replacement authenticates before clearing local data',
+    () async {
+      final assistant = AssistantRepository();
+      await assistant.init();
+      await assistant.saveCoachChat([
+        {'type': 'user', 'content': 'Keep this if authentication fails'},
+      ]);
+
+      var authenticated = false;
+      await SessionCleanupService().clearLocalUserData(
+        finishSessionBeforeClear: true,
+        finishSession: () async {
+          expect(assistant.getCoachChat(), isNotEmpty);
+          authenticated = true;
+        },
+      );
+
+      expect(authenticated, isTrue);
+      expect(assistant.getCoachChat(), isEmpty);
+    },
+  );
+
+  test('failed account replacement leaves current local data intact', () async {
+    final assistant = AssistantRepository();
+    await assistant.init();
+    await assistant.saveCoachChat([
+      {'type': 'user', 'content': 'Still mine'},
+    ]);
+
+    await expectLater(
+      SessionCleanupService().clearLocalUserData(
+        finishSessionBeforeClear: true,
+        finishSession: () async => throw StateError('wrong password'),
+      ),
+      throwsStateError,
+    );
+
+    expect(assistant.getCoachChat().single['content'], 'Still mine');
+  });
 }

@@ -89,4 +89,16 @@ void main() {
     expect(queue.hasPendingFor('users/u/waterLogs/1'), isTrue);
     expect(queue.hasPendingFor('users/u/waterLogs/2'), isFalse);
   });
+
+  test('reports when session cleanup would discard queued writes', () async {
+    expect(queue.hasPendingOperations, isFalse);
+
+    await queue.enqueueSet(
+      id: 'meal:set:u:m1',
+      documentPath: 'users/u/meals/m1',
+      data: {'id': 'm1'},
+    );
+
+    expect(queue.hasPendingOperations, isTrue);
+  });
 }
