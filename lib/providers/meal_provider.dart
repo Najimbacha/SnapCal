@@ -117,6 +117,21 @@ class MealLog extends _$MealLog {
 
   Future<void> deleteMeal(String mealId) async {
     final repo = await ref.read(mealRepositoryProvider.future);
+    final date = repo.getMeal(mealId)?.dateString;
     await repo.deleteMeal(mealId);
+    // The streak counted that day. With its last meal gone -- a slip undone,
+    // a wrong entry removed -- it is worked out again from the meals left;
+    // it used to keep the day it no longer has. The recount was written
+    // long ago and never called.
+    if (date != null && repo.getMealsByDate(date).isEmpty) {
+      unawaited(
+        ref
+            .read(settingsProvider.notifier)
+            .adjustStreakOnDeletion(
+              dateOfDeletedMeal: date,
+              wasLastMealOfDay: true,
+            ),
+      );
+    }
   }
 }

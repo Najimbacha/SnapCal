@@ -165,6 +165,9 @@ class MealRepository {
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 
+  /// One meal by its id, if it is on the phone.
+  Meal? getMeal(String id) => _mealsBox?.get(id);
+
   /// Get meals for a specific date
   List<Meal> getMealsByDate(String dateString) {
     if (_indexBox == null || _mealsBox == null) return [];
@@ -185,7 +188,21 @@ class MealRepository {
   Future<void> addMeal(Meal meal) async {
     await _saveMealLocalOnly(meal);
     _emitTodaysMeals();
-    await _syncMealToCloud(meal);
+    _inBackground(_syncMealToCloud(meal));
+  }
+
+  /// The meal is on the phone once the local write is done; the upload
+  /// carries on by itself, and a failed one lands in the sync queue.
+  ///
+  /// Every save used to wait for it. Offline, a Firestore write does not
+  /// finish until its timeout, so each meal took eight seconds: a scan of
+  /// three foods filled the diary one food at a time over sixteen seconds,
+  /// and an edit or delete sat on its spinner as long. Water already worked
+  /// this way.
+  void _inBackground(Future<void> write) {
+    unawaited(
+      write.catchError((Object e) => debugPrint('Meal sync failed: $e')),
+    );
   }
 
   Future<void> _saveMealLocalOnly(Meal meal) async {
@@ -233,7 +250,7 @@ class MealRepository {
     }
 
     _emitTodaysMeals();
-    await _syncMealToCloud(meal);
+    _inBackground(_syncMealToCloud(meal));
   }
 
   /// Delete a meal
@@ -241,8 +258,11 @@ class MealRepository {
     final meal = await _deleteMealLocalOnly(id);
     _emitTodaysMeals();
     if (meal == null) return;
-    await _deleteMealFromCloud(id);
-    await _deleteUnusedLocalImage(meal.imageUri);
+    _inBackground(
+      _deleteMealFromCloud(
+        id,
+      ).whenComplete(() => _deleteUnusedLocalImage(meal.imageUri)),
+    );
   }
 
   Future<Meal?> _deleteMealLocalOnly(String id) async {
