@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_motion.dart';
+import '../../core/theme/app_typography.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/repository_providers.dart';
@@ -956,11 +957,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       spans.add(TextSpan(text: text.substring(lastEnd)));
     }
 
+    // RichText doesn't pick up the app's font by itself; without this the
+    // messages showed in the phone's default font instead of DM Sans.
     return RichText(
-      text: TextSpan(
-        style: TextStyle(fontSize: 15, height: 1.5, color: color),
-        children: spans,
-      ),
+      text: TextSpan(style: _messageStyle(color), children: spans),
     );
   }
 
@@ -1244,7 +1244,8 @@ class _WordWaveState extends State<_WordWave>
         final now = _controller.value * total;
         return RichText(
           text: TextSpan(
-            style: TextStyle(fontSize: 15, height: 1.5, color: widget.color),
+            // In the app's font, as the finished message will be.
+            style: _messageStyle(widget.color),
             children: [
               for (var k = 0; k < _words.length; k++)
                 TextSpan(
@@ -1267,6 +1268,14 @@ class _WordWaveState extends State<_WordWave>
     );
   }
 }
+
+/// The chat messages' text: the app's DM Sans at reading size.
+TextStyle _messageStyle(Color color) => AppTypography.bodyMedium.copyWith(
+  fontSize: 15,
+  height: 1.5,
+  fontWeight: FontWeight.w400,
+  color: color,
+);
 
 /// The small dot beside the coach's name, which pulses while he is thinking.
 class _StatusDot extends StatefulWidget {
