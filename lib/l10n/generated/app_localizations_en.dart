@@ -4632,6 +4632,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'We couldn\'t spot any food in this photo. Retake it with the food filling the frame, or add it manually.';
 
   @override
+  String get scan_problem_gallery_title => 'Couldn\'t open your photos';
+
+  @override
+  String get scan_problem_gallery_body =>
+      'Allow Wazn to use your photos in Settings, or add the meal manually.';
+
+  @override
+  String result_from_photo(String when) {
+    return 'From your photo: $when';
+  }
+
+  @override
   String get scan_problem_image_title => 'Can\'t use this photo';
 
   @override

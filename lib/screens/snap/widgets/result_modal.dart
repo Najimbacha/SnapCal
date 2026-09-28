@@ -202,6 +202,9 @@ String _healthLabel(AppLocalizations l10n, int score) {
 
 class ResultModal extends ConsumerStatefulWidget {
   final Uint8List? imageBytes;
+
+  /// When the meal will be logged, if not now (an older gallery photo).
+  final String? eatenAtLabel;
   final NutritionResult? result;
   final List<NutritionResult>? results;
   final void Function(String, int, int, int, int, String?) onSave;
@@ -212,6 +215,7 @@ class ResultModal extends ConsumerStatefulWidget {
   const ResultModal({
     super.key,
     this.imageBytes,
+    this.eatenAtLabel,
     this.result,
     this.results,
     required this.onSave,
@@ -865,6 +869,27 @@ class _ResultModalState extends ConsumerState<ResultModal> {
                           ],
                         ),
                       ),
+                      if (widget.eatenAtLabel != null) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(WaznIcons.clock, size: 14, color: muted),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                widget.eatenAtLabel!,
+                                key: const ValueKey('result-eaten-at'),
+                                style: TextStyle(
+                                  color: muted,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       if (score != null) ...[
                         const SizedBox(height: 8),
                         Reveal(

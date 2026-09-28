@@ -8370,6 +8370,24 @@ abstract class AppLocalizations {
   /// **'We couldn\'t spot any food in this photo. Retake it with the food filling the frame, or add it manually.'**
   String get scan_problem_no_food_body;
 
+  /// No description provided for @scan_problem_gallery_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open your photos'**
+  String get scan_problem_gallery_title;
+
+  /// No description provided for @scan_problem_gallery_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Wazn to use your photos in Settings, or add the meal manually.'**
+  String get scan_problem_gallery_body;
+
+  /// On the scan result, when an older gallery photo sets the meal time, e.g. From your photo: Yesterday · 8:14 PM
+  ///
+  /// In en, this message translates to:
+  /// **'From your photo: {when}'**
+  String result_from_photo(String when);
+
   /// No description provided for @scan_problem_image_title.
   ///
   /// In en, this message translates to:

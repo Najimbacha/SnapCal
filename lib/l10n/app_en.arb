@@ -2239,6 +2239,17 @@
   "scan_problem_failed_body": "Something went wrong on our side. Try again, or add the meal manually.",
   "scan_problem_no_food_title": "No food found",
   "scan_problem_no_food_body": "We couldn't spot any food in this photo. Retake it with the food filling the frame, or add it manually.",
+  "scan_problem_gallery_title": "Couldn't open your photos",
+  "scan_problem_gallery_body": "Allow Wazn to use your photos in Settings, or add the meal manually.",
+  "result_from_photo": "From your photo: {when}",
+  "@result_from_photo": {
+    "description": "On the scan result, when an older gallery photo sets the meal time, e.g. From your photo: Yesterday · 8:14 PM",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
   "scan_problem_image_title": "Can't use this photo",
   "scan_problem_image_body": "Try a different photo, or add the meal manually.",
   "scan_problem_barcode_title": "Product not found",

@@ -263,14 +263,22 @@ User daily targets:
   }
 
   /// Calls backend proxy to analyze food image (Groq/Gemini fallback is handled on the server)
+  ///
+  /// [prepared] says the bytes are already the shrunk JPEG from
+  /// [ImageUtils.compressImageBytesAsync]; shrinking them again only cost
+  /// time and blurred the detail the scan reads.
   Future<List<NutritionResult>> analyzeFood(
     Uint8List imageBytes, {
     String language = 'en',
+    bool prepared = false,
   }) async {
     if (FirebaseAuth.instance.currentUser == null) {
       throw GeminiException('Please sign in before scanning food.');
     }
-    final bytes = await ImageUtils.compressImageBytesAsync(imageBytes);
+    final bytes =
+        prepared
+            ? imageBytes
+            : await ImageUtils.compressImageBytesAsync(imageBytes);
     if (bytes == null) {
       // Undecodable input (unsupported/corrupt format) — not a size problem.
       throw const UnsupportedImageException();

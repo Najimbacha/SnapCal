@@ -4717,6 +4717,18 @@ class AppLocalizationsFr extends AppLocalizations {
       'Nous n\'avons repéré aucun aliment sur cette photo. Reprenez-la avec le plat bien cadré, ou ajoutez-le manuellement.';
 
   @override
+  String get scan_problem_gallery_title => 'Impossible d\'ouvrir tes photos';
+
+  @override
+  String get scan_problem_gallery_body =>
+      'Autorise Wazn à utiliser tes photos dans les Réglages, ou ajoute le repas manuellement.';
+
+  @override
+  String result_from_photo(String when) {
+    return 'D\'après ta photo : $when';
+  }
+
+  @override
   String get scan_problem_image_title => 'Impossible d\'utiliser cette photo';
 
   @override

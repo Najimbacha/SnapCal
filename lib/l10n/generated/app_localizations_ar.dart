@@ -4621,6 +4621,18 @@ class AppLocalizationsAr extends AppLocalizations {
       'لم نجد طعاماً في هذه الصورة. التقطها مجدداً بحيث يملأ الطعام الإطار، أو أضفه يدوياً.';
 
   @override
+  String get scan_problem_gallery_title => 'تعذّر فتح صورك';
+
+  @override
+  String get scan_problem_gallery_body =>
+      'اسمح لـ Wazn باستخدام صورك من الإعدادات، أو أضف الوجبة يدويًا.';
+
+  @override
+  String result_from_photo(String when) {
+    return 'من صورتك: $when';
+  }
+
+  @override
   String get scan_problem_image_title => 'لا يمكن استخدام هذه الصورة';
 
   @override
