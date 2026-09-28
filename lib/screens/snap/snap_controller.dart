@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
@@ -36,6 +37,10 @@ enum ScanProblem {
   /// The photo library itself would not open (permission, or the picker
   /// failed), as opposed to a photo that could not be read.
   galleryUnavailable,
+
+  /// Too many scans in a short time (the server's rate limit, HTTP 429) --
+  /// not the monthly free limit, which is the paywall.
+  busy,
 }
 
 /// Why the camera preview is not showing.
@@ -198,6 +203,8 @@ class SnapController {
     switch (failure.type) {
       case AppFailureType.offline:
         return ScanProblem.offline;
+      case AppFailureType.quotaExceeded:
+        return ScanProblem.busy;
       case AppFailureType.timeout:
         return ScanProblem.slow;
       default:
@@ -273,13 +280,14 @@ class SnapController {
     _isCapturing = true;
     onStateChanged?.call();
 
-    final gate = await _gate(connectivity, isPro);
-    if (!_isCurrent(op)) return;
+    // The picture is taken the moment the shutter is tapped. The connection
+    // check used to come first -- a lookup of up to two seconds -- so the
+    // photo was of wherever the phone had moved to by then; and offline no
+    // photo was taken at all, leaving "Try again" nothing to resend.
     final camera = CameraService().controller;
-    if (gate != _Gate.open || camera == null || !camera.value.isInitialized) {
+    if (camera == null || !camera.value.isInitialized) {
       _isCapturing = false;
       onStateChanged?.call();
-      _reportGate(gate, onShowPaywall, onProblem);
       return;
     }
 
@@ -294,6 +302,7 @@ class SnapController {
         TimeoutPolicy.gallery,
       );
       _capturedImageBytes = await _prepare(bytes);
+      unawaited(_deleteQuietly(imageFile));
     } on UnsupportedImageException {
       _endAttempt(op, ScanProblem.unreadableImage, onProblem);
       return;
@@ -303,6 +312,16 @@ class SnapController {
       return;
     }
     if (!_isCurrent(op)) return;
+
+    // Offline, the photo is kept, so "Try again" sends it once the
+    // connection is back instead of asking for another.
+    final gate = await _gate(connectivity, isPro);
+    if (!_isCurrent(op)) return;
+    if (gate != _Gate.open) {
+      HapticFeedback.vibrate();
+      _endAttempt(op, ScanProblem.offline, onProblem);
+      return;
+    }
 
     await _analyze(
       op: op,
@@ -314,6 +333,15 @@ class SnapController {
       onShowResult: onShowResult,
       onProblem: onProblem,
     );
+  }
+
+  /// The camera writes every photo to a file; once read, it is not needed.
+  /// Nothing removed them, so each scan left a photo behind in the cache.
+  static Future<void> _deleteQuietly(XFile file) async {
+    try {
+      final f = File(file.path);
+      if (await f.exists()) await f.delete();
+    } catch (_) {}
   }
 
   Future<void> pickFromGallery({
@@ -528,7 +556,7 @@ class SnapController {
             prepared: true,
           ),
       timeout: TimeoutPolicy.aiScan,
-      retryPolicy: RetryPolicy.ai,
+      retryPolicy: RetryPolicy.scan,
       // One key per attempt: a scan abandoned for manual entry may still be
       // in flight, and a shared key would turn the next scan away as
       // "already running".
@@ -545,8 +573,11 @@ class SnapController {
         return;
       }
       // Free-tier monthly limit hit (HTTP 402): this is the moment of
-      // highest intent — show the paywall, not an error.
-      if (failure.type == AppFailureType.quotaExceeded) {
+      // highest intent — show the paywall, not an error. Only 402: a 429 is
+      // the server's short-term rate limit, which Pro users meet as well,
+      // and it used to put the paywall in front of people already paying.
+      if (failure.type == AppFailureType.quotaExceeded &&
+          failure.statusCode == 402) {
         _isAnalyzing = false;
         _capturedImageBytes = null;
         onStateChanged?.call();

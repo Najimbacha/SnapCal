@@ -19,7 +19,9 @@ class BarcodeService {
   /// Fetches product data from OpenFoodFacts
   Future<NutritionResult?> fetchProductByBarcode(String barcode) async {
     debugPrint("Looking up barcode: $barcode");
-    final url = 'https://world.openfoodfacts.org/api/v2/product/$barcode.json';
+    if (!isFoodBarcode(barcode)) return null;
+    final url =
+        'https://world.openfoodfacts.org/api/v2/product/${barcode.trim()}.json';
 
     final response = await _dio.get(
       url,
@@ -49,42 +51,105 @@ class BarcodeService {
       );
     }
 
-    final nutriments =
-        product['nutriments'] is Map ? product['nutriments'] as Map : {};
+    return fromProduct(product, _l10n);
+  }
 
-    final name = product['product_name']?.toString().trim();
-    final portion = product['serving_size']?.toString().trim();
+  /// A food barcode: EAN-13, EAN-8, UPC-A or UPC-E -- digits only. Anything
+  /// else (a QR code's web address, say) went straight into the lookup's
+  /// address and came back as "product not found", or as a broken request.
+  @visibleForTesting
+  static bool isFoodBarcode(String code) =>
+      RegExp(r'^\d{6,14}$').hasMatch(code.trim());
 
+  /// The product as the result screen needs it: nutrition per 100 g and the
+  /// weight of one serving, so the screen can show and scale it.
+  ///
+  /// It sent totals and a label instead. The screen read the weight from the
+  /// label's first number, so "1 bar (40 g)" was a 1 g bar and adding 10 g
+  /// multiplied the calories elevenfold; per-serving calories were mixed with
+  /// per-100 g macros whenever a product listed only some per serving; a
+  /// product listing energy only in kJ came out at 0 kcal; and a drink with
+  /// no calories -- water, a diet soda -- could not be saved at all.
+  @visibleForTesting
+  static NutritionResult? fromProduct(Map product, AppLocalizations l10n) {
+    final n = product['nutriments'] is Map ? product['nutriments'] as Map : {};
+    double? num_(dynamic v) {
+      if (v is num) return v.isFinite ? v.toDouble() : null;
+      if (v is String) return double.tryParse(v.replaceAll(',', '.'));
+      return null;
+    }
+
+    double? kcal(String basis) {
+      final direct = num_(n['energy-kcal_$basis']);
+      if (direct != null) return direct;
+      final kj = num_(n['energy-kj_$basis']) ?? num_(n['energy_$basis']);
+      return kj == null ? null : kj / 4.184;
+    }
+
+    Map<String, double?> values(String basis) => {
+      'calories': kcal(basis),
+      'protein': num_(n['proteins_$basis']),
+      'carbs': num_(n['carbohydrates_$basis']),
+      'fat': num_(n['fat_$basis']),
+    };
+
+    final servingSize = product['serving_size']?.toString().trim();
+    final servingG = num_(product['serving_quantity']);
+    final hasServingWeight = servingG != null && servingG > 0;
+    final per100 = values('100g');
+    final perServing = values('serving');
+    bool known(Map<String, double?> v) => v.values.any((x) => x != null);
+
+    final Map<String, double?> base;
+    final double weight;
+    if (known(per100)) {
+      base = per100;
+      weight = hasServingWeight ? servingG : 100;
+    } else if (known(perServing)) {
+      // Only per serving: scaled to 100 g when the serving's weight is
+      // known, otherwise one serving stands in as the unit.
+      final w = hasServingWeight ? servingG : 100.0;
+      base = {
+        for (final e in perServing.entries)
+          e.key: e.value == null ? null : e.value! * 100 / w,
+      };
+      weight = w;
+    } else {
+      return NutritionResult(
+        foodName: _name(product, l10n),
+        portion:
+            servingSize?.isNotEmpty == true
+                ? servingSize!
+                : l10n.barcode_default_portion,
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        matched: false,
+      );
+    }
+
+    final per100g = {for (final e in base.entries) e.key: e.value ?? 0.0};
+    int at(String key) => (per100g[key]! * weight / 100).round();
     return NutritionResult(
-      foodName:
-          name == null || name.isEmpty ? _l10n.barcode_unknown_product : name,
+      foodName: _name(product, l10n),
       portion:
-          portion == null || portion.isEmpty
-              ? _l10n.barcode_default_portion
-              : portion,
-      calories: _toInt(
-        nutriments['energy-kcal_serving'] ??
-            nutriments['energy-kcal_100g'] ??
-            0,
-      ),
-      protein: _toInt(
-        nutriments['proteins_serving'] ?? nutriments['proteins_100g'] ?? 0,
-      ),
-      carbs: _toInt(
-        nutriments['carbohydrates_serving'] ??
-            nutriments['carbohydrates_100g'] ??
-            0,
-      ),
-      fat: _toInt(nutriments['fat_serving'] ?? nutriments['fat_100g'] ?? 0),
+          hasServingWeight && servingSize?.isNotEmpty == true
+              ? servingSize!
+              : '${weight.round()} g',
+      calories: at('calories'),
+      protein: at('protein'),
+      carbs: at('carbs'),
+      fat: at('fat'),
+      weightG: weight,
+      matched: true,
+      nutritionPer100g: per100g,
     );
   }
 
-  int _toInt(dynamic value) {
-    if (value == null) return 0;
-    if (value is int) return value;
-    if (value is double) return value.round();
-    if (value is String) return double.tryParse(value)?.round() ?? 0;
-    return 0;
+  static String _name(Map product, AppLocalizations l10n) {
+    final name = product['product_name']?.toString().trim();
+    return name == null || name.isEmpty ? l10n.barcode_unknown_product : name;
   }
 
   AppLocalizations get _l10n {

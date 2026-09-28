@@ -113,7 +113,16 @@ class DeviceVoiceInput implements VoiceInput {
 
 enum _Stage { waking, listening, understanding, result, idle, typing }
 
-enum _Problem { noSpeech, noAccess, blocked, unavailable, noFood, failed }
+enum _Problem {
+  noSpeech,
+  noAccess,
+  blocked,
+  unavailable,
+  noFood,
+  offline,
+  busy,
+  failed,
+}
 
 /// Voice logging in one screen: it opens listening, stops when you pause,
 /// works the meal out by itself and lays the foods out underneath your own
@@ -406,7 +415,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
               widget.analyzeMeal?.call(_words, language) ??
               _ai.analyzeMealText(_words, language: language),
       timeout: TimeoutPolicy.aiScan,
-      retryPolicy: RetryPolicy.ai,
+      retryPolicy: RetryPolicy.scan,
       operationKey: 'voice-meal-analysis-$session',
       isActive: () => _live(session),
     );
@@ -434,7 +443,13 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
         );
         return;
       }
-      _toIdle(_Problem.failed);
+      // Said as what it is: offline and "too many at once" both read as
+      // "Wazn couldn't analyze that meal", which sounds like the words.
+      _toIdle(switch (failure.type) {
+        AppFailureType.offline || AppFailureType.timeout => _Problem.offline,
+        AppFailureType.quotaExceeded => _Problem.busy,
+        _ => _Problem.failed,
+      });
       return;
     }
 
@@ -905,6 +920,8 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
         _Problem.noAccess || _Problem.blocked => l10n.voice_permission_denied,
         _Problem.unavailable => l10n.voice_unavailable,
         _Problem.noFood => l10n.voice_no_food,
+        _Problem.offline => l10n.scan_problem_slow_body,
+        _Problem.busy => l10n.scan_problem_busy_body,
         _Problem.failed => l10n.voice_analysis_failed,
       };
 }

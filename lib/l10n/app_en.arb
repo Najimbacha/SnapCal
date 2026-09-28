@@ -2241,6 +2241,8 @@
   "scan_problem_no_food_body": "We couldn't spot any food in this photo. Retake it with the food filling the frame, or add it manually.",
   "scan_problem_gallery_title": "Couldn't open your photos",
   "scan_problem_gallery_body": "Allow Wazn to use your photos in Settings, or add the meal manually.",
+  "scan_problem_busy_title": "Too many scans at once",
+  "scan_problem_busy_body": "Wait a few minutes, then try again. Your photo and meals are safe.",
   "result_from_photo": "From your photo: {when}",
   "@result_from_photo": {
     "description": "On the scan result, when an older gallery photo sets the meal time, e.g. From your photo: Yesterday · 8:14 PM",

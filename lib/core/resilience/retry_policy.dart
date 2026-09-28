@@ -35,6 +35,24 @@ class RetryPolicy {
     maxDelay: Duration(seconds: 6),
   );
 
+  /// A food scan (photo or words). Tried again only when the request never
+  /// reached the server, or the server's AI failed -- a failure it refunds.
+  ///
+  /// [ai] also retried timeouts and 429s. A scan that timed out on the phone
+  /// may still be running on the server, which has already charged it: the
+  /// retry charged a second scan, and each attempt waited its full minute,
+  /// so a slow network held the waiting screen for three.
+  static const scan = RetryPolicy(
+    maxAttempts: 2,
+    initialDelay: Duration(milliseconds: 700),
+    maxDelay: Duration(seconds: 3),
+    retryIf: _scanRetryable,
+  );
+
+  static bool _scanRetryable(AppFailure failure) =>
+      failure.type == AppFailureType.server ||
+      failure.type == AppFailureType.offline;
+
   static const cloudSync = RetryPolicy(
     maxAttempts: 3,
     initialDelay: Duration(milliseconds: 600),

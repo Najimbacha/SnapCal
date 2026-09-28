@@ -4628,6 +4628,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'اسمح لـ Wazn باستخدام صورك من الإعدادات، أو أضف الوجبة يدويًا.';
 
   @override
+  String get scan_problem_busy_title => 'عمليات مسح كثيرة في وقت قصير';
+
+  @override
+  String get scan_problem_busy_body =>
+      'انتظر بضع دقائق ثم حاول مرة أخرى. صورتك ووجباتك محفوظة.';
+
+  @override
   String result_from_photo(String when) {
     return 'من صورتك: $when';
   }

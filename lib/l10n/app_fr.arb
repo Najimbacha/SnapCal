@@ -1618,6 +1618,8 @@
   "scan_problem_no_food_body": "Nous n'avons repéré aucun aliment sur cette photo. Reprenez-la avec le plat bien cadré, ou ajoutez-le manuellement.",
   "scan_problem_gallery_title": "Impossible d'ouvrir tes photos",
   "scan_problem_gallery_body": "Autorise Wazn à utiliser tes photos dans les Réglages, ou ajoute le repas manuellement.",
+  "scan_problem_busy_title": "Trop d'analyses d'un coup",
+  "scan_problem_busy_body": "Patientez quelques minutes, puis réessayez. Votre photo et vos repas sont en sécurité.",
   "result_from_photo": "D'après ta photo : {when}",
   "scan_problem_image_title": "Impossible d'utiliser cette photo",
   "scan_problem_image_body": "Essayez une autre photo ou ajoutez le repas manuellement.",

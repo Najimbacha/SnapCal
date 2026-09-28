@@ -56,6 +56,71 @@ void main() {
       expect(attempts, 3);
     });
 
+    test('a server asking for minutes is not waited on', () async {
+      var attempts = 0;
+      final watch = Stopwatch()..start();
+      final result = await SafeAsync.run<int>(
+        label: 'rate limited',
+        retryPolicy: RetryPolicy.network,
+        operation: () async {
+          attempts++;
+          throw const AppFailure(
+            type: AppFailureType.quotaExceeded,
+            message: 'Too many',
+            statusCode: 429,
+            retryAfter: Duration(minutes: 15),
+          );
+        },
+      );
+      expect(result.failure?.statusCode, 429);
+      expect(attempts, 1);
+      expect(watch.elapsed, lessThan(const Duration(seconds: 1)));
+    });
+
+    test('a scan is not sent twice after a timeout or a 429', () async {
+      for (final failure in const [
+        AppFailure(type: AppFailureType.timeout, message: 'slow'),
+        AppFailure(
+          type: AppFailureType.quotaExceeded,
+          message: 'busy',
+          statusCode: 429,
+        ),
+      ]) {
+        var attempts = 0;
+        final result = await SafeAsync.run<int>(
+          label: 'scan',
+          retryPolicy: RetryPolicy.scan,
+          operation: () async {
+            attempts++;
+            throw failure;
+          },
+        );
+        expect(result.isFailure, isTrue);
+        expect(attempts, 1, reason: failure.type.name);
+      }
+    });
+
+    test('a scan whose AI failed on the server is tried once more', () async {
+      var attempts = 0;
+      final result = await SafeAsync.run<int>(
+        label: 'scan',
+        retryPolicy: RetryPolicy.scan,
+        operation: () async {
+          attempts++;
+          if (attempts == 1) {
+            throw const AppFailure(
+              type: AppFailureType.server,
+              message: 'AI failed',
+              statusCode: 502,
+            );
+          }
+          return 3;
+        },
+      );
+      expect(result.requireData, 3);
+      expect(attempts, 2);
+    });
+
     test('operation gate prevents duplicate work', () async {
       final gate = OperationGate();
       final first = gate.runExclusive('save', () async {
