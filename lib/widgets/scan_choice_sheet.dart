@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'wazn_icons.dart';
 
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_button_theme.dart';
+import '../core/services/backend_warmup_service.dart';
 import '../data/services/camera_service.dart';
 import '../core/theme/app_typography.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -15,10 +18,12 @@ Future<void> showScanChoiceSheet({
   required VoidCallback onFoodScan,
   required VoidCallback onBarcodeScan,
   VoidCallback? onVoiceLog,
+  @visibleForTesting Future<void> Function()? prewarmBackend,
 }) async {
   // Most people pick Photo scan, so the camera starts while they choose:
   // by the time the camera screen shows, the picture is already live.
   CameraService().prewarm();
+  unawaited((prewarmBackend ?? BackendWarmupService.instance.prewarm).call());
   final choice = await showModalBottomSheet<ScanChoice>(
     context: context,
     useRootNavigator: true,

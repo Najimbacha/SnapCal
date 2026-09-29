@@ -47,6 +47,15 @@ void main() {
     expect(barcodeCalls, 0);
   });
 
+  testWidgets('opening scan choices starts one backend warmup', (tester) async {
+    var warmupCalls = 0;
+
+    await _pumpHost(tester, prewarmBackend: () async => warmupCalls++);
+    await _openSheet(tester);
+
+    expect(warmupCalls, 1);
+  });
+
   testWidgets('barcode choice calls barcode callback once', (tester) async {
     var foodCalls = 0;
     var barcodeCalls = 0;
@@ -142,6 +151,7 @@ Future<void> _pumpHost(
   VoidCallback? onFoodScan,
   VoidCallback? onBarcodeScan,
   VoidCallback? onVoiceLog,
+  Future<void> Function()? prewarmBackend,
   Locale locale = const Locale('en'),
   TextScaler textScaler = TextScaler.noScaling,
 }) {
@@ -167,6 +177,7 @@ Future<void> _pumpHost(
                         onFoodScan: onFoodScan ?? () {},
                         onBarcodeScan: onBarcodeScan ?? () {},
                         onVoiceLog: onVoiceLog,
+                        prewarmBackend: prewarmBackend ?? () async {},
                       ),
                   child: const Text('Open'),
                 ),

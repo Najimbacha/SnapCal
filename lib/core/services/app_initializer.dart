@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:snapcal/core/services/backend_warmup_service.dart';
 import 'package:snapcal/core/services/config_service.dart';
 import 'package:snapcal/data/services/notification_service.dart';
 import '../../data/models/meal.dart';
@@ -126,6 +127,11 @@ class AppInitializer {
   }
 
   static Future<void> _initBackgroundServices() async {
+    // This can legitimately take longer than the optional-service timeout when
+    // the host is asleep. It owns its timeout and failure handling, and must
+    // not delay the other background services.
+    unawaited(BackendWarmupService.instance.prewarm());
+
     await _runOptionalBackgroundService(
       'Remote config init',
       () => ConfigService().init().timeout(const Duration(seconds: 10)),
@@ -221,6 +227,7 @@ class AppInitializer {
           },
         ),
       );
+      unawaited(BackendWarmupService.instance.prewarm());
     });
   }
 
