@@ -136,7 +136,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   }
 
   void _startLaunchMode() {
-    if (!mounted || !_isTickerActive || _resultOpen) return;
+    if (!mounted || !_isTickerActive || !_appIsVisible || _resultOpen) return;
     if (widget.initialMode == SnapInitialMode.barcode) {
       _controller.isScanningBarcode = true;
       return;
@@ -157,8 +157,14 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   bool get _cameraWanted =>
       mounted &&
       _isTickerActive &&
+      _appIsVisible &&
       !_resultOpen &&
       !_controller.isScanningBarcode;
+
+  bool get _appIsVisible {
+    final state = WidgetsBinding.instance.lifecycleState;
+    return state == null || state == AppLifecycleState.resumed;
+  }
 
   @override
   void dispose() {

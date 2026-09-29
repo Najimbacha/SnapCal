@@ -21,12 +21,13 @@ class _Controller extends SnapController {
   bool analyzing;
   final CameraProblem? problem;
   int cancellations = 0;
+  int initializations = 0;
   @override
   bool get isAnalyzing => analyzing;
   @override
   CameraProblem? get cameraProblem => problem;
   @override
-  Future<void> initializeCamera() async {}
+  Future<void> initializeCamera() async => initializations++;
   @override
   List<NutritionResult> get analysisResults => [
     NutritionResult(
@@ -124,6 +125,28 @@ Future<GoRouter> _open(
 }
 
 void main() {
+  testWidgets('photo camera waits when startup finishes in background', (
+    tester,
+  ) async {
+    final controller = _Controller();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    addTearDown(
+      () => tester.binding.handleAppLifecycleStateChanged(
+        AppLifecycleState.resumed,
+      ),
+    );
+
+    final router = await _open(tester, controller);
+    expect(controller.initializations, 0);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(controller.initializations, 1);
+
+    await tester.pumpWidget(const SizedBox());
+    router.dispose();
+  });
+
   testWidgets(
     'scan stays open on failed batch save and goes home only after successful retry',
     (tester) async {

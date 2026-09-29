@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -22,11 +24,12 @@ class BarcodeScannerView extends StatefulWidget {
 }
 
 class _BarcodeScannerViewState extends State<BarcodeScannerView>
-    with TickerProviderStateMixin {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   /// Food packaging's own codes only. Reading every format also picked up
   /// QR codes -- often printed beside the barcode -- and sent their web
   /// address off as a product.
   final MobileScannerController _controller = MobileScannerController(
+    autoStart: false,
     formats: const [
       BarcodeFormat.ean13,
       BarcodeFormat.ean8,
@@ -34,6 +37,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
       BarcodeFormat.upcE,
     ],
   );
+  StreamSubscription<BarcodeCapture>? _barcodeSubscription;
   bool _isProcessing = false;
 
   /// The red line sweeping the frame while it looks for a code.
@@ -53,6 +57,42 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
       vsync: this,
       duration: const Duration(milliseconds: 520),
     );
+    WidgetsBinding.instance.addObserver(this);
+    _listenForBarcodes();
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle == null || lifecycle == AppLifecycleState.resumed) {
+      unawaited(_controller.start());
+    }
+  }
+
+  void _listenForBarcodes() {
+    _barcodeSubscription ??= _controller.barcodes.listen(_handleBarcode);
+  }
+
+  void _handleBarcode(BarcodeCapture capture) {
+    if (_isProcessing) return;
+    final code = capture.barcodes.firstOrNull?.rawValue;
+    if (code == null) return;
+    HapticFeedback.mediumImpact();
+    setState(() => _isProcessing = true);
+    _laser.stop();
+    _found.forward(from: 0);
+    widget.onBarcodeDetected(code);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _listenForBarcodes();
+      unawaited(_controller.start());
+      return;
+    }
+    // A permission dialog can hide the app before the first start finishes.
+    // There is no camera to stop until permission has been granted.
+    if (!_controller.value.hasCameraPermission) return;
+    unawaited(_barcodeSubscription?.cancel());
+    _barcodeSubscription = null;
+    unawaited(_controller.stop());
   }
 
   @override
@@ -67,9 +107,12 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_barcodeSubscription?.cancel());
+    _barcodeSubscription = null;
     _laser.dispose();
     _found.dispose();
-    _controller.dispose();
+    unawaited(_controller.dispose());
     super.dispose();
   }
 
@@ -79,19 +122,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          MobileScanner(
-            controller: _controller,
-            onDetect: (capture) {
-              if (_isProcessing) return;
-              final code = capture.barcodes.firstOrNull?.rawValue;
-              if (code == null) return;
-              HapticFeedback.mediumImpact();
-              setState(() => _isProcessing = true);
-              _laser.stop();
-              _found.forward(from: 0);
-              widget.onBarcodeDetected(code);
-            },
-          ),
+          MobileScanner(controller: _controller),
 
           // Subtle gradient overlay
           Positioned.fill(
