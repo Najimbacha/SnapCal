@@ -31,6 +31,7 @@ import 'widgets/result_modal.dart';
 import 'widgets/shutter_button.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 import '../../data/services/camera_service.dart';
+import '../../data/services/meal_image_transaction.dart';
 import '../../router.dart';
 import '../../widgets/app_toast.dart';
 
@@ -534,34 +535,38 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
     final unknownFood = l10n.log_unknown_food;
 
     try {
-      final imageUri = await _persistCapturedMealImage(now);
-      HapticFeedback.heavyImpact();
-      await mealNotifier.addMeals([
-        for (final item in items)
-          Meal(
-            id: mealNotifier.generateMealId(),
-            timestamp: (eatenAt ?? DateTime.now()).millisecondsSinceEpoch,
-            dateString: dateString,
-            imageUri: imageUri,
-            foodName: item.foodName.isEmpty ? unknownFood : item.foodName,
-            calories: item.calories,
-            macros: Macros(
-              protein: item.protein,
-              carbs: item.carbs,
-              fat: item.fat,
-            ),
-            portion: item.portion,
-            // The detector's own value when it gave one, and nothing when it
-            // did not: this used to be a hardcoded 0.82 on every meal, beside
-            // a sentence claiming an estimate that never happened.
-            scanConfidence: item.confidence,
-            scanSource: 'ai_scan',
-            originalCalories: item.calories,
-            weightG: item.weightG,
-            nutritionMatchId: item.nutritionMatchId,
-            nutritionPer100g: item.nutritionPer100g,
-          ),
-      ]);
+      await MealImageTransaction.run<void>(
+        persistImage: () => _persistCapturedMealImage(now),
+        saveMeal: (imageUri) async {
+          HapticFeedback.heavyImpact();
+          await mealNotifier.addMeals([
+            for (final item in items)
+              Meal(
+                id: mealNotifier.generateMealId(),
+                timestamp: (eatenAt ?? DateTime.now()).millisecondsSinceEpoch,
+                dateString: dateString,
+                imageUri: imageUri,
+                foodName: item.foodName.isEmpty ? unknownFood : item.foodName,
+                calories: item.calories,
+                macros: Macros(
+                  protein: item.protein,
+                  carbs: item.carbs,
+                  fat: item.fat,
+                ),
+                portion: item.portion,
+                // The detector's own value when it gave one, and nothing when
+                // it did not: this used to be a hardcoded 0.82 on every meal,
+                // beside a sentence claiming an estimate that never happened.
+                scanConfidence: item.confidence,
+                scanSource: 'ai_scan',
+                originalCalories: item.calories,
+                weightG: item.weightG,
+                nutritionMatchId: item.nutritionMatchId,
+                nutritionPer100g: item.nutritionPer100g,
+              ),
+          ]);
+        },
+      );
     } catch (error) {
       debugPrint('Saving scanned meal failed: $error');
       _savedResultFingerprint = null;
