@@ -14,6 +14,24 @@ void main() {
     expect(BarcodeService.isFoodBarcode('../../admin'), isFalse);
   });
 
+  test('every printed form of a barcode is tried', () {
+    expect(BarcodeService.lookupCodes('5449000000996'), ['5449000000996']);
+    expect(BarcodeService.lookupCodes('042100005264'), [
+      '042100005264',
+      '0042100005264',
+    ]);
+    expect(BarcodeService.lookupCodes('04252614'), [
+      '04252614',
+      '042100005264',
+      '0042100005264',
+    ]);
+    expect(BarcodeService.lookupCodes('15449000000993'), [
+      '15449000000993',
+      '5449000000996',
+    ]);
+    expect(BarcodeService.lookupCodes('https://example.com'), isEmpty);
+  });
+
   test('a serving is its real weight, not the first number on the label', () {
     final r =
         BarcodeService.fromProduct({

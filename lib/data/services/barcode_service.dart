@@ -16,20 +16,38 @@ class BarcodeService {
 
   final Dio _dio;
 
+  /// OpenFoodFacts asks apps to name themselves; anonymous callers can be
+  /// slowed or blocked.
+  @visibleForTesting
+  static const userAgent = 'Wazn-Android/1.0';
+
   /// Fetches product data from OpenFoodFacts
   Future<NutritionResult?> fetchProductByBarcode(String barcode) async {
     debugPrint("Looking up barcode: $barcode");
-    if (!isFoodBarcode(barcode)) return null;
-    final url =
-        'https://world.openfoodfacts.org/api/v2/product/${barcode.trim()}.json';
+    for (final code in lookupCodes(barcode)) {
+      final result = await _fetchOne(code);
+      if (result != null) return result;
+    }
+    return null;
+  }
 
-    final response = await _dio.get(
-      url,
-      options: Options(
-        connectTimeout: TimeoutPolicy.barcode,
-        receiveTimeout: TimeoutPolicy.barcode,
-      ),
-    );
+  Future<NutritionResult?> _fetchOne(String code) async {
+    final url = 'https://world.openfoodfacts.org/api/v2/product/$code.json';
+
+    final Response response;
+    try {
+      response = await _dio.get(
+        url,
+        options: Options(
+          headers: const {'User-Agent': userAgent},
+          connectTimeout: TimeoutPolicy.barcode,
+          receiveTimeout: TimeoutPolicy.barcode,
+        ),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
 
     if (response.statusCode != 200) return null;
 
@@ -60,6 +78,56 @@ class BarcodeService {
   @visibleForTesting
   static bool isFoodBarcode(String code) =>
       RegExp(r'^\d{6,14}$').hasMatch(code.trim());
+
+  /// The same product can be printed in several forms: a 12-digit UPC-A is an
+  /// EAN-13 with a leading 0, a UPC-E is a squeezed UPC-A, and a 14-digit
+  /// case code wraps the 13-digit one. The database knows the plain forms, so
+  /// each is tried in turn.
+  @visibleForTesting
+  static List<String> lookupCodes(String raw) {
+    if (!isFoodBarcode(raw)) return const [];
+    final code = raw.trim();
+    final codes = <String>[code];
+    void add(String c) {
+      if (!codes.contains(c)) codes.add(c);
+    }
+
+    if (code.length == 8 && (code[0] == '0' || code[0] == '1')) {
+      final upcA = _expandUpcE(code);
+      add(upcA);
+      add('0$upcA');
+    } else if (code.length == 12) {
+      add('0$code');
+    } else if (code.length == 14) {
+      final body = code.substring(1, 13);
+      add('$body${_ean13Check(body)}');
+    }
+    return codes;
+  }
+
+  static String _expandUpcE(String upcE) {
+    final d = upcE.split('');
+    final String body;
+    switch (d[6]) {
+      case '0' || '1' || '2':
+        body = '${d[0]}${d[1]}${d[2]}${d[6]}0000${d[3]}${d[4]}${d[5]}';
+      case '3':
+        body = '${d[0]}${d[1]}${d[2]}${d[3]}00000${d[4]}${d[5]}';
+      case '4':
+        body = '${d[0]}${d[1]}${d[2]}${d[3]}${d[4]}00000${d[5]}';
+      default:
+        body = '${d[0]}${d[1]}${d[2]}${d[3]}${d[4]}${d[5]}0000${d[6]}';
+    }
+    return '$body${d[7]}';
+  }
+
+  static int _ean13Check(String twelveDigits) {
+    var sum = 0;
+    for (var i = 0; i < 12; i++) {
+      sum += int.parse(twelveDigits[i]) * (i.isEven ? 1 : 3);
+    }
+    return (10 - sum % 10) % 10;
+  }
 
   /// The product as the result screen needs it: nutrition per 100 g and the
   /// weight of one serving, so the screen can show and scale it.

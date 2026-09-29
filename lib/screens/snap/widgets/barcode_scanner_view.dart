@@ -26,9 +26,9 @@ class BarcodeScannerView extends StatefulWidget {
 
 class _BarcodeScannerViewState extends State<BarcodeScannerView>
     with WidgetsBindingObserver, TickerProviderStateMixin {
-  /// Food packaging's own codes only. Reading every format also picked up
-  /// QR codes -- often printed beside the barcode -- and sent their web
-  /// address off as a product.
+  /// Every code food packaging uses: the retail ones, plus Code 128, Code 39
+  /// and ITF-14 seen on imported goods and cases. QR codes stay out -- often
+  /// printed beside the barcode, they sent a web address off as a product.
   final MobileScannerController _controller = MobileScannerController(
     autoStart: false,
     formats: const [
@@ -36,6 +36,9 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
       BarcodeFormat.ean8,
       BarcodeFormat.upcA,
       BarcodeFormat.upcE,
+      BarcodeFormat.code128,
+      BarcodeFormat.code39,
+      BarcodeFormat.itf14,
     ],
   );
   StreamSubscription<BarcodeCapture>? _barcodeSubscription;
